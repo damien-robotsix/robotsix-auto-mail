@@ -18,8 +18,6 @@ The robotsix-mill is designed to solve tickets across more than one repository. 
 
 This repository contains only a `README.md` (and whatever else the mill produces when filing and solving tickets). There is no `src/`, no `package.json`, no `pyproject.toml`, no `Dockerfile` — nothing to install, run, or configure.
 
-**Note on tests:** there is a single `test_placeholder.py` that contains one trivial assertion. It exists only so that `pytest` discovers at least one test and exits with code 0 rather than code 5 ("no tests collected"). There is no application code to test — the placeholder is a formality to keep the test runner happy.
-
 ## How it's managed
 
 Every change in this repository is driven by tickets filed and resolved by the robotsix-mill. There is no manual development workflow, no human maintainers, and no release process. The history of this repo is a log of mill activity.
