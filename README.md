@@ -12,6 +12,16 @@ This project is currently a stub — there is no source code, no build pipeline,
 
 **Language:** The project will be written in **Python** (3.12+), chosen for its standard-library support for IMAP, SMTP, MIME parsing, and SQLite — the four core capabilities required by the [ROADMAP](ROADMAP.md). Full rationale is in [ADR 0001](docs/decisions/0001-programming-language.md).
 
+## Directory layout
+
+| Directory | Role |
+|---|---|
+| `src/robotsix_auto_mail/` | Production Python package, following the `src` layout prescribed by [ADR 0001](docs/decisions/0001-programming-language.md). |
+| `tests/` | Test code mirroring the `src/` package structure. |
+| `config/` | Example and sample configuration files for operators. |
+| `docs/` | Project documentation, including architecture decision records. |
+| Root | Top-level project configuration, build scripts, and this README. |
+
 ## License
 
 This project is not yet licensed. A license will be selected and added as part of early implementation work.
