@@ -520,3 +520,237 @@ def test_imap_client_only_uses_imap_fields(cfg: MailConfig) -> None:
     assert client._password == "s3cret"
     # SMTP fields are never stored
     assert not hasattr(client, "_smtp_host")
+
+
+# ---------------------------------------------------------------------------
+# search_uids
+# ---------------------------------------------------------------------------
+
+
+def test_search_uids_returns_uids(cfg: MailConfig) -> None:
+    """search_uids parses space-separated UIDs from the SEARCH response."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b"1 2 3"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.search_uids()
+
+    mock_ssl.uid.assert_called_once_with("SEARCH", "ALL")
+    assert result == [1, 2, 3]
+
+
+def test_search_uids_empty_result(cfg: MailConfig) -> None:
+    """search_uids returns [] when SEARCH finds nothing."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b""])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.search_uids()
+
+    assert result == []
+
+
+def test_search_uids_empty_data_list(cfg: MailConfig) -> None:
+    """search_uids returns [] when data list is empty."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.search_uids()
+
+    assert result == []
+
+
+def test_search_uids_custom_criteria(cfg: MailConfig) -> None:
+    """search_uids passes custom criteria through."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b"42 43"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.search_uids("UID 41:*")
+
+    mock_ssl.uid.assert_called_once_with("SEARCH", "UID 41:*")
+    assert result == [42, 43]
+
+
+def test_search_uids_not_connected(cfg: MailConfig) -> None:
+    """search_uids raises ImapError when the client is not connected."""
+    client = ImapClient(cfg)
+    with pytest.raises(ImapError, match="Not connected"):
+        client.search_uids()
+
+
+def test_search_uids_server_error(cfg: MailConfig) -> None:
+    """search_uids raises ImapError on non-OK response."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("NO", [b"Server error"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapError, match="UID SEARCH failed"):
+                client.search_uids()
+
+
+def test_search_uids_single_uid(cfg: MailConfig) -> None:
+    """search_uids works when only one UID matches."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b"99"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.search_uids()
+
+    assert result == [99]
+
+
+# ---------------------------------------------------------------------------
+# fetch_messages
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_messages_returns_uid_body_pairs(cfg: MailConfig) -> None:
+    """fetch_messages returns (uid, raw_bytes) for each fetched message."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = (
+        "OK",
+        [
+            (b"1 (UID 1)", b"msg1-body"),
+            (b"2 (UID 2)", b"msg2-body"),
+        ],
+    )
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.fetch_messages([1, 2])
+
+    assert result == [(1, b"msg1-body"), (2, b"msg2-body")]
+
+
+def test_fetch_messages_uses_body_peek(cfg: MailConfig) -> None:
+    """fetch_messages uses BODY.PEEK[] so the \Seen flag is NOT set."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.fetch_messages([1])
+
+    mock_ssl.uid.assert_called_once_with(
+        "FETCH", "1", "(BODY.PEEK[])"
+    )
+
+
+def test_fetch_messages_multiple_uids_comma_separated(cfg: MailConfig) -> None:
+    """fetch_messages builds a comma-separated UID set."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.fetch_messages([10, 20, 30])
+
+    mock_ssl.uid.assert_called_once_with(
+        "FETCH", "10,20,30", "(BODY.PEEK[])"
+    )
+
+
+def test_fetch_messages_skips_missing_uids(cfg: MailConfig) -> None:
+    """fetch_messages silently omits UIDs that the server didn't return."""
+    mock_ssl = _make_mock_imap_ssl()
+    # Server only returns UID 1, not 2 (UID 2 was deleted between
+    # SEARCH and FETCH).
+    mock_ssl.uid.return_value = (
+        "OK",
+        [(b"1 (UID 1)", b"body1")],
+    )
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.fetch_messages([1, 2])
+
+    assert result == [(1, b"body1")]
+
+
+def test_fetch_messages_empty_uids(cfg: MailConfig) -> None:
+    """fetch_messages returns [] when given an empty UID list."""
+    mock_ssl = _make_mock_imap_ssl()
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.fetch_messages([])
+
+    assert result == []
+    mock_ssl.uid.assert_not_called()
+
+
+def test_fetch_messages_not_connected(cfg: MailConfig) -> None:
+    """fetch_messages raises ImapError when not connected."""
+    client = ImapClient(cfg)
+    with pytest.raises(ImapError, match="Not connected"):
+        client.fetch_messages([1])
+
+
+def test_fetch_messages_server_error(cfg: MailConfig) -> None:
+    """fetch_messages raises ImapError on non-OK response."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("NO", [b"Some error"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapError, match="UID FETCH failed"):
+                client.fetch_messages([1])
+
+
+def test_fetch_messages_skips_non_tuple_items(cfg: MailConfig) -> None:
+    """fetch_messages ignores non-tuple items in the response."""
+    mock_ssl = _make_mock_imap_ssl()
+    # imaplib sometimes returns a trailing closing ")" as a bytes item.
+    mock_ssl.uid.return_value = (
+        "OK",
+        [
+            b"1 (UID 1 BODY[] {5}",
+            b"body1",
+            b")",
+            b"2 (UID 2 BODY[] {5}",
+            b"body2",
+            b")",
+            b")",  # trailing ")" from imaplib — should be skipped
+        ],
+    )
+
+    def fake_uid(cmd, uid_set, fetch_spec):
+        # Return a properly structured response that imaplib will process
+        # into (header, body) tuples.
+        return ("OK", [
+            (b"1 (UID 1)", b"body1"),
+            (b"2 (UID 2)", b"body2"),
+        ])
+
+    mock_ssl.uid.side_effect = fake_uid
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.fetch_messages([1, 2])
+
+    assert result == [(1, b"body1"), (2, b"body2")]
+
+
+def test_fetch_messages_header_with_body_size(cfg: MailConfig) -> None:
+    """fetch_messages parses UID from headers containing BODY[] size."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = (
+        "OK",
+        [
+            (b"1 (UID 42 BODY[] {5}", b"abcde"),
+        ],
+    )
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.fetch_messages([42])
+
+    assert result == [(42, b"abcde")]

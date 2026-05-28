@@ -18,6 +18,9 @@ port = 993
 # "none":       no TLS at all (INSECURE – local dev only!).
 tls_mode = "direct-tls"
 
+# IMAP folder (mailbox) to watch for new mail (default: "INBOX").
+# folder = "INBOX"
+
 [smtp]
 # Hostname of the SMTP server (required).
 host = "smtp.example.com"
