@@ -28,6 +28,19 @@ def test_mailconfig_construction_defaults() -> None:
     assert cfg.imap_tls_mode == "direct-tls"
     assert cfg.smtp_port == 587
     assert cfg.smtp_tls_mode == "starttls"
+    assert cfg.imap_folder == "INBOX"
+
+
+def test_mailconfig_imap_folder_explicit() -> None:
+    """imap_folder can be set explicitly."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="u",
+        password="p",
+        imap_folder="Archive",
+    )
+    assert cfg.imap_folder == "Archive"
 
 
 def test_mailconfig_is_immutable() -> None:
@@ -103,6 +116,7 @@ def test_from_env_defaults_used_when_absent() -> None:
         assert cfg.imap_tls_mode == "direct-tls"
         assert cfg.smtp_port == 587
         assert cfg.smtp_tls_mode == "starttls"
+        assert cfg.imap_folder == "INBOX"
 
 
 def test_from_env_optional_fields_applied() -> None:
@@ -116,6 +130,7 @@ def test_from_env_optional_fields_applied() -> None:
         "MAIL_SMTP_TLS_MODE": "direct-tls",
         "MAIL_USERNAME": "u",
         "MAIL_PASSWORD": "p",
+        "MAIL_IMAP_FOLDER": "Archive",
     }
     with mock.patch.dict(os.environ, env, clear=True):
         cfg = MailConfig.from_env()
@@ -123,6 +138,7 @@ def test_from_env_optional_fields_applied() -> None:
         assert cfg.imap_tls_mode == "starttls"
         assert cfg.smtp_port == 465
         assert cfg.smtp_tls_mode == "direct-tls"
+        assert cfg.imap_folder == "Archive"
 
 
 def test_from_env_missing_required_multiple() -> None:
@@ -221,6 +237,7 @@ def test_from_toml_example_file() -> None:
     assert cfg.smtp_tls_mode == "starttls"
     assert cfg.username == "user@example.com"
     assert cfg.password == "s3cret"
+    assert cfg.imap_folder == "INBOX"
 
 
 def test_from_toml_defaults_for_missing_fields(tmp_path: Path) -> None:
@@ -244,6 +261,28 @@ password = "p"
     assert cfg.imap_tls_mode == "direct-tls"
     assert cfg.smtp_port == 587
     assert cfg.smtp_tls_mode == "starttls"
+    assert cfg.imap_folder == "INBOX"
+
+
+def test_from_toml_custom_imap_folder(tmp_path: Path) -> None:
+    """imap_folder can be set via TOML [imap] folder key."""
+    toml_file = tmp_path / "folder.toml"
+    toml_file.write_text(
+        """\
+[imap]
+host = "imap.example.com"
+folder = "Archive"
+
+[smtp]
+host = "smtp.example.com"
+
+[auth]
+username = "u"
+password = "p"
+"""
+    )
+    cfg = MailConfig.from_toml(toml_file)
+    assert cfg.imap_folder == "Archive"
 
 
 def test_from_toml_missing_required_fields(tmp_path: Path) -> None:
@@ -402,6 +441,32 @@ password = "toml_pass"
         # SMTP still from TOML
         assert cfg.smtp_host == "smtp.toml.com"
         assert cfg.username == "toml_user"
+
+
+def test_load_env_overrides_toml_folder(tmp_path: Path) -> None:
+    """MAIL_IMAP_FOLDER env var overrides TOML folder."""
+    toml_file = tmp_path / "test.toml"
+    toml_file.write_text(
+        """\
+[imap]
+host = "imap.toml.com"
+folder = "INBOX"
+
+[smtp]
+host = "smtp.toml.com"
+
+[auth]
+username = "toml_user"
+password = "toml_pass"
+"""
+    )
+    env: dict[str, str] = {
+        "MAIL_CONFIG_PATH": str(toml_file),
+        "MAIL_IMAP_FOLDER": "Archive",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = load()
+        assert cfg.imap_folder == "Archive"
 
 
 def test_load_missing_config_file() -> None:

@@ -338,3 +338,106 @@ class ImapClient:
             except (ValueError, TypeError):
                 return 0
         return 0
+
+    def search_uids(self, criteria: str = "ALL") -> list[int]:
+        """Issue ``UID SEARCH`` and return matching UIDs.
+
+        Args:
+            criteria: IMAP search criteria (default ``"ALL"``).
+                For watermark-based incremental fetch use e.g.
+                ``"UID 42:*"``.
+
+        Returns:
+            Sorted list of numeric UIDs.  Empty when no messages match.
+
+        Raises:
+            ImapError: If not connected or the server returns non-OK.
+        """
+        if self._imap is None:
+            raise ImapError("Not connected")
+        status, data = self._imap.uid("SEARCH", criteria)
+        if status != "OK":
+            raise ImapError(f"UID SEARCH failed: {status}")
+        # data is a list containing one element: the space-separated UIDs.
+        if not data or not data[0]:
+            return []
+        try:
+            uid_str = data[0].decode("utf-8", errors="replace").strip()
+        except (AttributeError, LookupError):
+            return []
+        if not uid_str:
+            return []
+        return [int(uid) for uid in uid_str.split()]
+
+    def fetch_messages(
+        self, uids: list[int]
+    ) -> list[tuple[int, bytes]]:
+        """Fetch raw message bodies by UID without setting ``\\Seen``.
+
+        Uses ``BODY.PEEK[]`` so the server does NOT mark messages as
+        read.
+
+        Args:
+            uids: List of IMAP UIDs to fetch.
+
+        Returns:
+            List of ``(uid, raw_mime_bytes)`` pairs.  UIDs that no
+            longer exist on the server are silently omitted.
+
+        Raises:
+            ImapError: If not connected or the server returns non-OK.
+        """
+        if self._imap is None:
+            raise ImapError("Not connected")
+        if not uids:
+            return []
+
+        uid_set = ",".join(str(uid) for uid in uids)
+        status, data = self._imap.uid("FETCH", uid_set, "(BODY.PEEK[])")
+        if status != "OK":
+            raise ImapError(f"UID FETCH failed: {status}")
+
+        result: list[tuple[int, bytes]] = []
+        # imaplib returns untagged FETCH responses in data as a list of
+        # alternating (header_bytes, literal_bytes) pairs.  We walk the
+        # list and, for each pair, extract the UID from the header line
+        # and pair it with the literal body.
+        for item in data:
+            if not isinstance(item, tuple) or len(item) != 2:
+                continue
+            header, body = item
+            if not isinstance(header, bytes) or not isinstance(body, bytes):
+                continue
+            # Parse UID from the header line, e.g.:
+            # b'1 (UID 42)'
+            # b'1 (UID 42 BODY[] {5}'
+            uid = self._parse_uid_from_fetch_header(header)
+            if uid is not None:
+                result.append((uid, body))
+
+        return result
+
+    @staticmethod
+    def _parse_uid_from_fetch_header(header: bytes) -> int | None:
+        """Extract the UID from a FETCH response header line.
+
+        Typical format: ``b'1 (UID 42)'`` or ``b'1 (UID 42 BODY[] {5}'``.
+        """
+        try:
+            text = header.decode("utf-8", errors="replace")
+        except AttributeError:
+            return None
+        # Find "(UID " ... ")"
+        start = text.find("(UID ")
+        if start < 0:
+            return None
+        start += 5  # len("(UID ")
+        end = text.find(" ", start)
+        if end < 0:
+            end = text.find(")", start)
+            if end < 0:
+                return None
+        try:
+            return int(text[start:end].rstrip(")"))
+        except (ValueError, TypeError):
+            return None

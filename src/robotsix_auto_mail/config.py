@@ -86,6 +86,7 @@ class MailConfig:
     smtp_tls_mode: str = "starttls"
 
     db_path: str = "mail.db"
+    imap_folder: str = "INBOX"
 
     # -- masking -----------------------------------------------------------
 
@@ -177,6 +178,7 @@ class MailConfig:
         )
 
         db_path = os.environ.get("MAIL_DB_PATH", "mail.db")
+        imap_folder = os.environ.get("MAIL_IMAP_FOLDER", "INBOX")
 
         # -- final validation ----------------------------------------------
 
@@ -207,6 +209,7 @@ class MailConfig:
             username=username,
             password=password,
             db_path=db_path,
+            imap_folder=imap_folder,
         )
 
     @classmethod
@@ -272,6 +275,7 @@ class MailConfig:
         imap_host = _get_str(imap_section, "host", "")
         imap_port = _get_int(imap_section, "port", 993, path)
         imap_tls_mode = _get_str(imap_section, "tls_mode", "direct-tls")
+        imap_folder = _get_str(imap_section, "folder", "INBOX")
 
         smtp_host = _get_str(smtp_section, "host", "")
         smtp_port = _get_int(smtp_section, "port", 587, path)
@@ -327,6 +331,7 @@ class MailConfig:
             username=username,
             password=password,
             db_path=db_path,
+            imap_folder=imap_folder,
         )
 
 
@@ -391,6 +396,7 @@ def _merge_env_onto_toml(base: MailConfig) -> MailConfig:
         "username": "MAIL_USERNAME",
         "password": "MAIL_PASSWORD",
         "db_path": "MAIL_DB_PATH",
+        "imap_folder": "MAIL_IMAP_FOLDER",
     }
 
     kwargs: dict[str, str | int] = {}
