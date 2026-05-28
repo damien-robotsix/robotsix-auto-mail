@@ -24,4 +24,4 @@ This project is currently a stub — there is no source code, no build pipeline,
 
 ## License
 
-This project is not yet licensed. A license will be selected and added as part of early implementation work.
+This project is licensed under the MIT License (SPDX: `MIT`). See [LICENSE](LICENSE) for the full text.
