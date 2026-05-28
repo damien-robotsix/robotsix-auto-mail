@@ -419,9 +419,91 @@ def test_load_missing_config_file() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_load_re_raises_on_invalid_value_not_missing(tmp_path: Path) -> None:
+    """load() must NOT fall back to TOML when env has an invalid value.
+
+    If from_env() fails because of an invalid value (e.g. a non-integer
+    port), the user explicitly set the env var — falling back to TOML
+    would silently swallow their typo.
+    """
+    toml_file = tmp_path / "test.toml"
+    toml_file.write_text(
+        """\
+[imap]
+host = "imap.toml.com"
+
+[smtp]
+host = "smtp.toml.com"
+
+[auth]
+username = "toml_user"
+password = "toml_pass"
+"""
+    )
+    env: dict[str, str] = {
+        "MAIL_CONFIG_PATH": str(toml_file),
+        "MAIL_IMAP_HOST": "imap.env.com",
+        "MAIL_SMTP_HOST": "smtp.env.com",
+        "MAIL_USERNAME": "env_user",
+        "MAIL_PASSWORD": "env_pass",
+        "MAIL_IMAP_PORT": "not-a-number",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        with pytest.raises(ConfigurationError) as exc:
+            load()
+        msg = str(exc.value)
+        assert "MAIL_IMAP_PORT" in msg
+        assert "not-a-number" in msg
+
+
+def test_load_re_raises_on_invalid_tls_not_missing(tmp_path: Path) -> None:
+    """load() must re-raise when TLS mode is invalid, even if all
+    required fields are present."""
+    toml_file = tmp_path / "test.toml"
+    toml_file.write_text(
+        """\
+[imap]
+host = "imap.toml.com"
+
+[smtp]
+host = "smtp.toml.com"
+
+[auth]
+username = "toml_user"
+password = "toml_pass"
+"""
+    )
+    env: dict[str, str] = {
+        "MAIL_CONFIG_PATH": str(toml_file),
+        "MAIL_IMAP_HOST": "imap.env.com",
+        "MAIL_SMTP_HOST": "smtp.env.com",
+        "MAIL_USERNAME": "env_user",
+        "MAIL_PASSWORD": "env_pass",
+        "MAIL_IMAP_TLS_MODE": "tls-9.9",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        with pytest.raises(ConfigurationError) as exc:
+            load()
+        msg = str(exc.value)
+        assert "MAIL_IMAP_TLS_MODE" in msg
+        assert "tls-9.9" in msg
+
+
 def test_configuration_error_is_exception() -> None:
     """ConfigurationError is a proper Exception subclass."""
     err = ConfigurationError("test message")
     assert isinstance(err, Exception)
     assert str(err) == "test message"
     assert err.message == "test message"
+
+
+def test_configuration_error_missing_only_default() -> None:
+    """missing_only defaults to False."""
+    err = ConfigurationError("test")
+    assert err.missing_only is False
+
+
+def test_configuration_error_missing_only_true() -> None:
+    """missing_only can be set to True."""
+    err = ConfigurationError("test", missing_only=True)
+    assert err.missing_only is True

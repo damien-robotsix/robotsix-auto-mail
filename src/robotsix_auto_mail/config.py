@@ -18,11 +18,21 @@ from pathlib import Path
 
 
 class ConfigurationError(Exception):
-    """Raised when the mail configuration is invalid or incomplete."""
+    """Raised when the mail configuration is invalid or incomplete.
 
-    def __init__(self, message: str) -> None:
+    Attributes:
+        message: Human-readable error description.
+        missing_only: True when the *only* problem is missing required
+            fields (no invalid values).  Used by ``load()`` to decide
+            whether TOML fallback is appropriate.
+    """
+
+    def __init__(
+        self, message: str, *, missing_only: bool = False
+    ) -> None:
         super().__init__(message)
         self.message = message
+        self.missing_only = missing_only
 
     def __str__(self) -> str:
         return self.message
@@ -174,7 +184,14 @@ class MailConfig:
             )
         msgs.extend(errors)
         if msgs:
-            raise ConfigurationError("\n".join(msgs))
+            # If *only* missing-required-field errors (no invalid
+            # values), flag the error so load() can safely fall back
+            # to TOML.  Invalid values mean the user explicitly set an
+            # env var — falling back would silently swallow their typo.
+            raise ConfigurationError(
+                "\n".join(msgs),
+                missing_only=bool(missing and not errors),
+            )
 
         return cls(
             imap_host=imap_host,
@@ -314,24 +331,32 @@ def load() -> MailConfig:
 
     1. Call ``MailConfig.from_env()``.  If all required fields are
        present, return immediately (env wins).
-    2. Otherwise, determine the TOML path via the ``MAIL_CONFIG_PATH``
+    2. Otherwise, if *only* required fields are missing (no invalid
+       values), determine the TOML path via the ``MAIL_CONFIG_PATH``
        env var (defaulting to ``config/mail.toml``) and call
        ``MailConfig.from_toml()``.
     3. Then *re-apply* environment variables on top, so that any env
        var that IS set overrides the corresponding TOML value.
+
+    If ``from_env()`` fails because of an invalid value (e.g. a
+    non-integer port), the error is re-raised immediately — the user
+    explicitly set an env var and a typo should not be silently
+    swallowed by a TOML fallback.
     """
     # Determine TOML path early (used for fallback).
     toml_path = Path(os.environ.get("MAIL_CONFIG_PATH", "config/mail.toml"))
 
     # Attempt from_env alone first.
-    toml_cfg: MailConfig | None = None
-
     try:
         env_cfg = MailConfig.from_env()
         return env_cfg
-    except ConfigurationError:
-        # Some required fields are missing from env — fall back to TOML.
-        pass
+    except ConfigurationError as exc:
+        # Only fall back to TOML when the *only* problem is missing
+        # required fields — invalid values (e.g. MAIL_IMAP_PORT=abc)
+        # mean the user explicitly set an env var and should get an
+        # error instead of a silent TOML fallback.
+        if not exc.missing_only:
+            raise
 
     # Load from TOML (will raise if file missing / invalid).
     try:
