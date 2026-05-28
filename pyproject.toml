@@ -27,6 +27,9 @@ select = ["E", "F", "I"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+[project.scripts]
+robotsix-auto-mail = "robotsix_auto_mail.cli:main"
+
 [tool.mypy]
 strict = true
 python_version = "3.12"

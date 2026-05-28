@@ -99,6 +99,22 @@ class SmtpClient:
 
         self._smtp: smtplib.SMTP | None = None
 
+    # -- read-only server metadata ---------------------------------------
+
+    @property
+    def ehlo_response(self) -> bytes | None:
+        """Full EHLO response bytes, or ``None`` when not connected."""
+        if self._smtp is None:
+            return None
+        return self._smtp.ehlo_resp
+
+    @property
+    def esmtp_features(self) -> dict[str, str]:
+        """Copy of ``esmtp_features`` dict, or ``{}`` when not connected."""
+        if self._smtp is None:
+            return {}
+        return dict(self._smtp.esmtp_features)
+
     # -- repr --------------------------------------------------------------
 
     def __repr__(self) -> str:
