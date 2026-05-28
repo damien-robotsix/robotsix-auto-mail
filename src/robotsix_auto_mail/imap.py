@@ -168,6 +168,24 @@ class ImapClient:
 
     # -- repr --------------------------------------------------------------
 
+    # -- read-only server metadata ---------------------------------------
+
+    @property
+    def server_greeting(self) -> bytes | None:
+        """Server greeting (``welcome`` line), or ``None`` when not connected."""
+        if self._imap is None:
+            return None
+        return self._imap.welcome
+
+    @property
+    def capabilities(self) -> tuple[str, ...]:
+        """Server capabilities, or ``()`` when not connected."""
+        if self._imap is None:
+            return ()
+        return self._imap.capabilities
+
+    # -- repr --------------------------------------------------------------
+
     def __repr__(self) -> str:
         cls = type(self).__name__
         return (
