@@ -722,7 +722,9 @@ def test_fetch_messages_skips_non_tuple_items(cfg: MailConfig) -> None:
         ],
     )
 
-    def fake_uid(cmd, uid_set, fetch_spec):
+    def fake_uid(
+    cmd: str, uid_set: str, fetch_spec: str
+) -> tuple[str, list[tuple[bytes, bytes]]]:
         # Return a properly structured response that imaplib will process
         # into (header, body) tuples.
         return ("OK", [

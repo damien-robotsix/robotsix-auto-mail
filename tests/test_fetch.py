@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Generator
 from unittest import mock
 
 import pytest
@@ -28,7 +29,7 @@ def cfg() -> MailConfig:
 
 
 @pytest.fixture
-def conn() -> sqlite3.Connection:
+def conn() -> Generator[sqlite3.Connection, None, None]:
     c = init_db(":memory:")
     yield c
     c.close()

@@ -50,7 +50,7 @@ def test_mailrecord_is_frozen() -> None:
         date="2025-01-01",
     )
     with pytest.raises(dataclasses.FrozenInstanceError):
-        record.subject = "Changed"
+        record.subject = "Changed"  # type: ignore[misc]
 
 
 def test_mailrecord_all_fields_explicit() -> None:
@@ -187,14 +187,37 @@ CREATE TABLE IF NOT EXISTS watermark (
 
 
 def _make_record(**overrides: str | int | None) -> MailRecord:
-    defaults: dict[str, str | int | None] = {
+    kwargs: dict[str, str | int | None] = {
         "message_id": "<test@example.com>",
         "sender": "sender@example.com",
         "subject": "Test Subject",
         "date": "2025-06-01T12:00:00Z",
     }
-    defaults.update(overrides)
-    return MailRecord(**defaults)
+    kwargs.update(overrides)
+
+    def _opt_str(key: str, default: str = "") -> str:
+        val = kwargs.get(key, default)
+        assert isinstance(val, str)
+        return val
+
+    def _opt_int_none(key: str) -> int | None:
+        val = kwargs.get(key)
+        if val is None:
+            return None
+        assert isinstance(val, int)
+        return val
+
+    return MailRecord(
+        message_id=str(kwargs["message_id"]),
+        sender=str(kwargs["sender"]),
+        subject=str(kwargs["subject"]),
+        date=str(kwargs["date"]),
+        imap_uid=_opt_int_none("imap_uid"),
+        recipients_json=_opt_str("recipients_json", '{"to": [], "cc": []}'),
+        body_plain=_opt_str("body_plain", ""),
+        body_html=_opt_str("body_html", ""),
+        attachments_json=_opt_str("attachments_json", "[]"),
+    )
 
 
 def test_insert_record_returns_rowid() -> None:
