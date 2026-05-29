@@ -730,3 +730,119 @@ def test_board_header_uses_print_header(
     # "\nInbox\n------------------------------------------------------------\n"
     assert "\nInbox\n" in captured.out
     assert "-" * 60 in captured.out
+
+
+def test_board_does_not_mutate_database(
+    env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """main(["board"]) must not add, delete, or modify any rows in the database."""
+    import os
+    import tempfile
+
+    from robotsix_auto_mail.db import init_db as real_init_db
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+
+    try:
+        conn = real_init_db(db_path)
+
+        # Pre-populate with 2 records whose values we can snapshot.
+        row1 = (
+            10, "<x@a.com>", "alice@x.com", "Hello",
+            "2025-01-01T12:00:00", '{"to":["bob@x.com"],"cc":[]}',
+            "Body A", "<p>Body A</p>", '[{"name":"a.txt"}]',
+        )
+        row2 = (
+            20, "<y@b.com>", "bob@x.com", "Hi",
+            "2025-01-02T13:00:00", '{"to":["carol@x.com"],"cc":[]}',
+            "Body B", "<p>Body B</p>", "[]",
+        )
+        conn.execute(
+            """\
+INSERT INTO mail_records
+    (imap_uid, message_id, sender, subject, date,
+     recipients_json, body_plain, body_html, attachments_json)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""",
+            row1,
+        )
+        conn.execute(
+            """\
+INSERT INTO mail_records
+    (imap_uid, message_id, sender, subject, date,
+     recipients_json, body_plain, body_html, attachments_json)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""",
+            row2,
+        )
+        conn.commit()
+
+        # Snapshot the full table state before the board command runs.
+        def _snapshot(c: "sqlite3.Connection") -> dict:
+            import sqlite3  # noqa: F811
+
+            cur = c.execute("SELECT * FROM mail_records ORDER BY id")
+            col_names = [desc[0] for desc in cur.description]
+            rows = [dict(zip(col_names, r)) for r in cur.fetchall()]
+            cur = c.execute("SELECT COUNT(*) FROM watermark")
+            wm_count = cur.fetchone()[0]
+            return {"mail_records": rows, "watermark_count": wm_count}
+
+        before = _snapshot(conn)
+        conn.close()
+
+        # Now run main(["board"]) — it will call init_db(db_path) via load().
+        # We patch only load(); init_db will be the real one, which opens the
+        # same file-backed database.  The db_path comes from the config.
+        cfg_with_db = MailConfig(
+            imap_host="imap.example.com",
+            imap_port=993,
+            imap_tls_mode="direct-tls",
+            smtp_host="smtp.example.com",
+            smtp_port=587,
+            smtp_tls_mode="starttls",
+            username="user@example.com",
+            password="s3cret",
+            db_path=db_path,
+        )
+
+        with mock.patch(
+            "robotsix_auto_mail.cli.load", return_value=cfg_with_db
+        ):
+            rc = main(["board"])
+
+        assert rc == 0
+
+        # Re-open the same file and snapshot again.
+        conn2 = real_init_db(db_path)
+        after = _snapshot(conn2)
+        conn2.close()
+
+        # Row count must be identical.
+        assert len(after["mail_records"]) == 2
+        assert len(after["mail_records"]) == len(before["mail_records"])
+
+        # Every column of every row must be bit-for-bit unchanged.
+        for i, (b_row, a_row) in enumerate(
+            zip(before["mail_records"], after["mail_records"])
+        ):
+            for col in b_row:
+                assert a_row[col] == b_row[col], (
+                    f"Row {i} column {col} changed: "
+                    f"{b_row[col]!r} -> {a_row[col]!r}"
+                )
+
+        # Watermark table must be untouched.
+        assert after["watermark_count"] == before["watermark_count"]
+
+        # No interactive prompts or write-action indicators in output.
+        captured = capsys.readouterr()
+        assert "write" not in captured.out.lower()
+        assert "delete" not in captured.out.lower()
+        assert "edit" not in captured.out.lower()
+        assert "modify" not in captured.out.lower()
+        assert "select an action" not in captured.out.lower()
+
+    finally:
+        os.unlink(db_path)
