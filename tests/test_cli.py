@@ -779,8 +779,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         conn.commit()
 
         # Snapshot the full table state before the board command runs.
-        def _snapshot(c: "sqlite3.Connection") -> dict:
-            import sqlite3  # noqa: F811
+        def _snapshot(c) -> dict:
 
             cur = c.execute("SELECT * FROM mail_records ORDER BY id")
             col_names = [desc[0] for desc in cur.description]

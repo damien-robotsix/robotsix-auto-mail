@@ -441,6 +441,10 @@ def test_list_records_returns_all_fields() -> None:
     """Every field of an inserted MailRecord round-trips through list_records."""
     conn = init_db(":memory:")
     try:
+        attachments_json_val = (
+            '[{"filename": "f1.pdf", "size": 2048}, '
+            '{"filename": "f2.txt", "size": 512}]'
+        )
         record = MailRecord(
             message_id="<all-fields@example.com>",
             sender="sender@example.com",
@@ -450,7 +454,7 @@ def test_list_records_returns_all_fields() -> None:
             recipients_json='{"to": ["a@b.com"], "cc": ["c@d.com"]}',
             body_plain="Plain text body.",
             body_html="<p>HTML body.</p>",
-            attachments_json='[{"filename": "f1.pdf", "size": 2048}, {"filename": "f2.txt", "size": 512}]',
+            attachments_json=attachments_json_val,
         )
         insert_record(conn, record)
         results = list_records(conn)
