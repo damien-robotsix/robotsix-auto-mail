@@ -14,12 +14,9 @@ against it via `docker compose run`, rinse and repeat.
 | What | Minimum | Check with |
 |---|---|---|
 | Docker Engine | 20.10+ | `docker --version` |
-| Docker Compose | file-format `3.9`+ | `docker compose version` |
+| Docker Compose | Compose plugin 2.0+ | `docker compose version` |
 | Git | any recent | `git --version` |
 
-The Compose file uses `version: "3.9"`.  If `docker compose version` reports
-a Compose plugin version of `2.0` or later you are fine — the file format is
-the constraint, not the plugin version.
 
 Installation guides (do **not** reproduce here):  
 - [Docker Engine install](https://docs.docker.com/engine/install/)  
@@ -168,11 +165,6 @@ here — the connecting doc is authoritative.
 
 The Compose file defines a single service, `robotsix-auto-mail`, configured
 for CLI-style invocation.  Here is every top-level key and why it is there:
-
-### `version: "3.9"`
-
-Minimum Compose file format.  Compatible with Docker Compose plugin 2.x and
-the standalone `docker-compose` 1.29+.
 
 ### `services.robotsix-auto-mail`
 
@@ -461,3 +453,4 @@ docker compose run robotsix-auto-mail ingest
 - **[docs/ingestion.md](ingestion.md)** — ingestion pipeline, schema,
   idempotency guarantees, and `ingest` CLI usage.
 - **[README.md](../README.md)** — project overview, layout, and status.
+../README.md)** — project overview, layout, and status.
