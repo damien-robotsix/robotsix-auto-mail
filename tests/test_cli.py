@@ -631,6 +631,68 @@ VALUES
     assert "Your inbox is empty." not in out
 
 
+def test_board_body_preview_truncation(
+    env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Body preview truncates at 150 chars with '…' only when longer."""
+    from robotsix_auto_mail.db import init_db as real_init_db
+
+    # Body exactly at the limit — no ellipsis
+    body_150 = "x" * 150
+    # Body over the limit — should truncate with ellipsis
+    body_200 = "y" * 200
+
+    conn = real_init_db(":memory:")
+    conn.execute(
+        """\
+INSERT INTO mail_records
+    (imap_uid, message_id, sender, subject, date,
+     recipients_json, body_plain, body_html, attachments_json)
+VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""",
+        (
+            1, "<a@x.com>", "a@x.com", "150 chars",
+            "2025-06-01T14:30:00", '{"to":[],"cc":[]}',
+            body_150, "", "[]",
+        ),
+    )
+    conn.execute(
+        """\
+INSERT INTO mail_records
+    (imap_uid, message_id, sender, subject, date,
+     recipients_json, body_plain, body_html, attachments_json)
+VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""",
+        (
+            2, "<b@x.com>", "b@x.com", "200 chars",
+            "2025-06-02T09:15:00", '{"to":[],"cc":[]}',
+            body_200, "", "[]",
+        ),
+    )
+    conn.commit()
+
+    with mock.patch(
+        "robotsix_auto_mail.cli.load", return_value=env_cfg
+    ), mock.patch(
+        "robotsix_auto_mail.cli.init_db", return_value=conn
+    ):
+        rc = main(["board"])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+
+    # 150-char body: full text, no ellipsis in its card
+    assert body_150 in out
+    assert body_150 + "\u2026" not in out
+
+    # 200-char body: truncated at 150 chars + ellipsis
+    truncated = body_200[:150] + "\u2026"
+    assert truncated in out
+    assert body_200 not in out  # full 200-char string not present
+
+
 def test_board_config_load_failure(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
