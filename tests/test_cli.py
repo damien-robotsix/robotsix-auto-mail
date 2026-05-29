@@ -536,7 +536,7 @@ def test_board_takes_no_extra_args() -> None:
 def test_board_empty_inbox(
     env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """board prints '(no mail)' when the database is empty."""
+    """board prints a friendly message when the database is empty."""
     from robotsix_auto_mail.db import init_db as real_init_db
 
     conn = real_init_db(":memory:")  # schema lives in db.py — no DDL duplication
@@ -552,13 +552,18 @@ def test_board_empty_inbox(
     assert rc == 0
     captured = capsys.readouterr()
     assert "Inbox" in captured.out
-    assert "(no mail)" in captured.out
+    assert "Your inbox is empty." in captured.out
+    # No card-like content should appear
+    assert "From:" not in captured.out
+    # The header emits one 60-dash line; there should be no second one
+    # (no card separator).
+    assert captured.out.count("-" * 60) == 1
 
 
 def test_board_with_records(
     env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """board prints a message count when records exist."""
+    """board prints cards with sender, subject, date, body preview and count."""
     from robotsix_auto_mail.db import init_db as real_init_db
 
     conn = real_init_db(":memory:")  # schema lives in db.py — no DDL duplication
@@ -572,7 +577,8 @@ VALUES
 """,
         (
             1, "<a@x.com>", "alice@example.com", "Hello",
-            "2025-06-01", '{"to":[],"cc":[]}', "", "", "[]",
+            "2025-06-01T14:30:00", '{"to":[],"cc":[]}',
+            "Just checking in!", "", "[]",
         ),
     )
     conn.execute(
@@ -585,7 +591,8 @@ VALUES
 """,
         (
             2, "<b@x.com>", "bob@example.com", "Hi",
-            "2025-06-02", '{"to":[],"cc":[]}', "", "", "[]",
+            "2025-06-02T09:15:00", '{"to":[],"cc":[]}',
+            "See you at 10.\n\n--Bob", "", "[]",
         ),
     )
     conn.commit()
@@ -600,8 +607,90 @@ VALUES
 
     assert rc == 0
     captured = capsys.readouterr()
-    assert "Inbox" in captured.out
-    assert "2 message(s)" in captured.out
+    out = captured.out
+
+    assert "Inbox" in out
+    assert "2 message(s)" in out
+
+    # Card 1 content
+    assert "alice@example.com" in out
+    assert "Subject: Hello" in out
+    assert "Date:    2025-06-01 14:30" in out
+    assert "Just checking in!" in out
+
+    # Card 2 content
+    assert "bob@example.com" in out
+    assert "Subject: Hi" in out
+    assert "Date:    2025-06-02 09:15" in out
+    assert "See you at 10." in out
+
+    # Separator between cards (dashed line) — plus one from the header = 2
+    assert out.count("-" * 60) == 2
+
+    # No empty-inbox message
+    assert "Your inbox is empty." not in out
+
+
+def test_board_body_preview_truncation(
+    env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Body preview truncates at 150 chars with '…' only when longer."""
+    from robotsix_auto_mail.db import init_db as real_init_db
+
+    # Body exactly at the limit — no ellipsis
+    body_150 = "x" * 150
+    # Body over the limit — should truncate with ellipsis
+    body_200 = "y" * 200
+
+    conn = real_init_db(":memory:")
+    conn.execute(
+        """\
+INSERT INTO mail_records
+    (imap_uid, message_id, sender, subject, date,
+     recipients_json, body_plain, body_html, attachments_json)
+VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""",
+        (
+            1, "<a@x.com>", "a@x.com", "150 chars",
+            "2025-06-01T14:30:00", '{"to":[],"cc":[]}',
+            body_150, "", "[]",
+        ),
+    )
+    conn.execute(
+        """\
+INSERT INTO mail_records
+    (imap_uid, message_id, sender, subject, date,
+     recipients_json, body_plain, body_html, attachments_json)
+VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""",
+        (
+            2, "<b@x.com>", "b@x.com", "200 chars",
+            "2025-06-02T09:15:00", '{"to":[],"cc":[]}',
+            body_200, "", "[]",
+        ),
+    )
+    conn.commit()
+
+    with mock.patch(
+        "robotsix_auto_mail.cli.load", return_value=env_cfg
+    ), mock.patch(
+        "robotsix_auto_mail.cli.init_db", return_value=conn
+    ):
+        rc = main(["board"])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+
+    # 150-char body: full text, no ellipsis in its card
+    assert body_150 in out
+    assert body_150 + "\u2026" not in out
+
+    # 200-char body: truncated at 150 chars + ellipsis
+    truncated = body_200[:150] + "\u2026"
+    assert truncated in out
+    assert body_200 not in out  # full 200-char string not present
 
 
 def test_board_config_load_failure(
