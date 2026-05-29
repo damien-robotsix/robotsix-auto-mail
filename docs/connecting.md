@@ -244,6 +244,39 @@ failures (e.g. IMAP server unreachable).  This makes the exit code suitable
 for cron and automation — a single malformed message will not cause a non-zero
 exit.
 
+### Datastore schema
+
+The local SQLite database (default: `mail.db`) contains two tables.
+
+#### `mail_records` — parsed messages
+
+| Column | Type | Role |
+|---|---|---|
+| `id` | `INTEGER` | Auto-increment primary key (internal row ID). |
+| `imap_uid` | `INTEGER` | IMAP UID of the message on the server at fetch time. |
+| `message_id` | `TEXT NOT NULL UNIQUE` | The `Message-ID` header value. The `UNIQUE` constraint is the first line of deduplication — any attempt to insert a record with an already-seen `Message-ID` is silently skipped. |
+| `sender` | `TEXT NOT NULL` | `From` header (RFC 5322). |
+| `subject` | `TEXT NOT NULL` | `Subject` header, decoded from RFC 2047 if necessary. |
+| `date` | `TEXT NOT NULL` | `Date` header in its original string form. |
+| `recipients_json` | `TEXT NOT NULL` | JSON array of `To` / `Cc` / `Bcc` recipients. |
+| `body_plain` | `TEXT NOT NULL` | Decoded `text/plain` body (empty string if absent). |
+| `body_html` | `TEXT NOT NULL` | Decoded `text/html` body (empty string if absent). |
+| `attachments_json` | `TEXT NOT NULL` | JSON array of attachment metadata (filename, MIME type, size). |
+
+#### `watermark` — fetch progress
+
+| Column | Type | Role |
+|---|---|---|
+| `key` | `TEXT PRIMARY KEY` | Watermark identifier (the value is `"imap_uid"`). |
+| `value` | `TEXT NOT NULL` | The highest IMAP UID successfully fetched and stored. |
+
+The watermark table stores a single row with key `imap_uid`.  On every
+successful ingest, this value is advanced to the maximum UID in the batch so
+that the next fetch only retrieves messages with UIDs greater than this value.
+
+Both tables are created automatically on first run via `CREATE TABLE IF NOT
+EXISTS` — no manual DDL or migration step is required.
+
 ### Idempotency
 
 The pipeline is safe to re-run even if a previous run crashed partway through:
