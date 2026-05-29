@@ -485,7 +485,7 @@ def load() -> MailConfig:
         present, return immediately (env wins).
     2.  Otherwise, if *only* required fields are missing (no invalid
         values), determine the config path via the ``MAIL_CONFIG_PATH``
-        env var (defaulting to ``config/mail.toml``) and load it.
+        env var (defaulting to ``config/mail.local.yaml``) and load it.
     3.  If the path ends with ``.yaml`` or ``.yml``, load via
         ``from_yaml()``; otherwise via ``from_toml()``.
     4.  If a ``MAIL_DEFAULTS_PATH`` env var is set (or a file exists
