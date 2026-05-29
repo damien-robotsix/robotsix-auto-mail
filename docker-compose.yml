@@ -1,5 +1,3 @@
-version: "3.9"
-
 # -------------------------------------------------------------------------
 # robotsix-auto-mail — single-service Docker Compose file.
 #
