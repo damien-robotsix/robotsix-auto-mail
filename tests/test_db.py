@@ -12,6 +12,7 @@ from robotsix_auto_mail.db import (
     get_watermark,
     init_db,
     insert_record,
+    list_records,
     set_watermark,
 )
 
@@ -418,6 +419,118 @@ def test_watermark_across_connections() -> None:
         conn2.close()
     finally:
         os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# list_records
+# ---------------------------------------------------------------------------
+
+
+def test_list_records_empty_table() -> None:
+    """list_records returns an empty list when mail_records is empty."""
+    conn = init_db(":memory:")
+    try:
+        result = list_records(conn)
+        assert isinstance(result, list)
+        assert len(result) == 0
+    finally:
+        conn.close()
+
+
+def test_list_records_returns_all_fields() -> None:
+    """Every field of an inserted MailRecord round-trips through list_records."""
+    conn = init_db(":memory:")
+    try:
+        record = MailRecord(
+            message_id="<all-fields@example.com>",
+            sender="sender@example.com",
+            subject="All Fields Test",
+            date="2025-07-01T10:00:00Z",
+            imap_uid=77,
+            recipients_json='{"to": ["a@b.com"], "cc": ["c@d.com"]}',
+            body_plain="Plain text body.",
+            body_html="<p>HTML body.</p>",
+            attachments_json='[{"filename": "f1.pdf", "size": 2048}, {"filename": "f2.txt", "size": 512}]',
+        )
+        insert_record(conn, record)
+        results = list_records(conn)
+        assert len(results) == 1
+        r = results[0]
+        assert r.message_id == "<all-fields@example.com>"
+        assert r.sender == "sender@example.com"
+        assert r.subject == "All Fields Test"
+        assert r.date == "2025-07-01T10:00:00Z"
+        assert r.imap_uid == 77
+        assert r.recipients_json == '{"to": ["a@b.com"], "cc": ["c@d.com"]}'
+        assert r.body_plain == "Plain text body."
+        assert r.body_html == "<p>HTML body.</p>"
+        assert r.attachments_json == (
+            '[{"filename": "f1.pdf", "size": 2048}, '
+            '{"filename": "f2.txt", "size": 512}]'
+        )
+        assert r.id is not None and r.id > 0
+    finally:
+        conn.close()
+
+
+def test_list_records_ordering() -> None:
+    """list_records returns results ordered by id ASC regardless of insert order."""
+    conn = init_db(":memory:")
+    try:
+        # Insert 3 records with message_ids that would sort differently
+        # alphabetically: <c>, <a>, <b> -> auto-increment ids 1, 2, 3.
+        for mid in ("<c@x.com>", "<a@x.com>", "<b@x.com>"):
+            record = _make_record(message_id=mid)
+            insert_record(conn, record)
+
+        results = list_records(conn)
+        assert len(results) == 3
+        # Must be ordered by id ASC (insertion order = alphabetical order of
+        # the message_ids in this case: c, a, b -> ids 1, 2, 3).
+        assert results[0].message_id == "<c@x.com>"
+        assert results[1].message_id == "<a@x.com>"
+        assert results[2].message_id == "<b@x.com>"
+    finally:
+        conn.close()
+
+
+def test_list_records_multiple_rows() -> None:
+    """list_records returns the correct count and content for 3 records."""
+    conn = init_db(":memory:")
+    try:
+        insert_record(
+            conn,
+            _make_record(
+                message_id="<m1@x.com>",
+                sender="alice@x.com",
+                subject="First",
+            ),
+        )
+        insert_record(
+            conn,
+            _make_record(
+                message_id="<m2@x.com>",
+                sender="bob@x.com",
+                subject="Second",
+            ),
+        )
+        insert_record(
+            conn,
+            _make_record(
+                message_id="<m3@x.com>",
+                sender="carol@x.com",
+                subject="Third",
+            ),
+        )
+
+        results = list_records(conn)
+        assert len(results) == 3
+        senders = [r.sender for r in results]
+        subjects = [r.subject for r in results]
+        assert senders == ["alice@x.com", "bob@x.com", "carol@x.com"]
+        assert subjects == ["First", "Second", "Third"]
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
