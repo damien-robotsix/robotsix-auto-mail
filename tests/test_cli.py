@@ -737,7 +737,9 @@ def test_board_does_not_mutate_database(
 ) -> None:
     """main(["board"]) must not add, delete, or modify any rows in the database."""
     import os
+    import sqlite3
     import tempfile
+    from typing import Any
 
     from robotsix_auto_mail.db import init_db as real_init_db
 
@@ -779,7 +781,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         conn.commit()
 
         # Snapshot the full table state before the board command runs.
-        def _snapshot(c) -> dict:
+        def _snapshot(c: sqlite3.Connection) -> dict[str, Any]:
 
             cur = c.execute("SELECT * FROM mail_records ORDER BY id")
             col_names = [desc[0] for desc in cur.description]
