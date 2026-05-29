@@ -637,6 +637,7 @@ def test_board_header_uses_print_header(
         main(["board"])
 
     captured = capsys.readouterr()
-    # The _print_header produces: "\nInbox\n------------------------------------------------------------\n"
+    # _print_header produces:
+    # "\nInbox\n------------------------------------------------------------\n"
     assert "\nInbox\n" in captured.out
     assert "-" * 60 in captured.out
