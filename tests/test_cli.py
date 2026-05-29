@@ -512,3 +512,187 @@ def test_imap_client_properties_after_connect(env_cfg: MailConfig) -> None:
                 "STARTTLS",
                 "AUTH=PLAIN",
             )
+
+
+# ---------------------------------------------------------------------------
+# board subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_parser_has_board_subcommand() -> None:
+    """The parser knows the board subcommand."""
+    parser = build_parser()
+    args = parser.parse_args(["board"])
+    assert args.command == "board"
+
+
+def test_board_takes_no_extra_args() -> None:
+    """board rejects extra arguments."""
+    parser = build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["board", "--foo"])
+
+
+def test_board_empty_inbox(
+    env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """board prints '(no mail)' when the database is empty."""
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.execute(
+            """\
+CREATE TABLE IF NOT EXISTS mail_records (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    imap_uid        INTEGER,
+    message_id      TEXT    NOT NULL UNIQUE,
+    sender          TEXT    NOT NULL,
+    subject         TEXT    NOT NULL,
+    date            TEXT    NOT NULL,
+    recipients_json TEXT    NOT NULL,
+    body_plain      TEXT    NOT NULL,
+    body_html       TEXT    NOT NULL,
+    attachments_json TEXT   NOT NULL
+)
+"""
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    with mock.patch(
+        "robotsix_auto_mail.cli.load", return_value=env_cfg
+    ), mock.patch(
+        "robotsix_auto_mail.cli.init_db", return_value=conn
+    ):
+        rc = main(["board"])
+
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "Inbox" in captured.out
+    assert "(no mail)" in captured.out
+
+
+def test_board_with_records(
+    env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """board prints a message count when records exist."""
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.execute(
+            """\
+CREATE TABLE IF NOT EXISTS mail_records (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    imap_uid        INTEGER,
+    message_id      TEXT    NOT NULL UNIQUE,
+    sender          TEXT    NOT NULL,
+    subject         TEXT    NOT NULL,
+    date            TEXT    NOT NULL,
+    recipients_json TEXT    NOT NULL,
+    body_plain      TEXT    NOT NULL,
+    body_html       TEXT    NOT NULL,
+    attachments_json TEXT   NOT NULL
+)
+"""
+        )
+        conn.execute(
+            """\
+INSERT INTO mail_records
+    (imap_uid, message_id, sender, subject, date,
+     recipients_json, body_plain, body_html, attachments_json)
+VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""",
+            (
+                1, "<a@x.com>", "alice@example.com", "Hello",
+                "2025-06-01", '{"to":[],"cc":[]}', "", "", "[]",
+            ),
+        )
+        conn.execute(
+            """\
+INSERT INTO mail_records
+    (imap_uid, message_id, sender, subject, date,
+     recipients_json, body_plain, body_html, attachments_json)
+VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""",
+            (
+                2, "<b@x.com>", "bob@example.com", "Hi",
+                "2025-06-02", '{"to":[],"cc":[]}', "", "", "[]",
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    with mock.patch(
+        "robotsix_auto_mail.cli.load", return_value=env_cfg
+    ), mock.patch(
+        "robotsix_auto_mail.cli.init_db", return_value=conn
+    ):
+        rc = main(["board"])
+
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "Inbox" in captured.out
+    assert "2 message(s)" in captured.out
+
+
+def test_board_config_load_failure(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """board returns 1 when config loading fails."""
+    with mock.patch(
+        "robotsix_auto_mail.cli.load",
+        side_effect=RuntimeError("boom"),
+    ):
+        rc = main(["board"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "Error loading configuration" in err
+    assert "boom" in err
+
+
+def test_board_header_uses_print_header(
+    env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """board output includes the _print_header-style header."""
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.execute(
+            """\
+CREATE TABLE IF NOT EXISTS mail_records (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    imap_uid        INTEGER,
+    message_id      TEXT    NOT NULL UNIQUE,
+    sender          TEXT    NOT NULL,
+    subject         TEXT    NOT NULL,
+    date            TEXT    NOT NULL,
+    recipients_json TEXT    NOT NULL,
+    body_plain      TEXT    NOT NULL,
+    body_html       TEXT    NOT NULL,
+    attachments_json TEXT   NOT NULL
+)
+"""
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    with mock.patch(
+        "robotsix_auto_mail.cli.load", return_value=env_cfg
+    ), mock.patch(
+        "robotsix_auto_mail.cli.init_db", return_value=conn
+    ):
+        main(["board"])
+
+    captured = capsys.readouterr()
+    # The _print_header produces: "\nInbox\n------------------------------------------------------------\n"
+    assert "\nInbox\n" in captured.out
+    assert "-" * 60 in captured.out
