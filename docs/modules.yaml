@@ -1,0 +1,95 @@
+# Canonical module taxonomy for robotsix-auto-mail.
+#
+# Each module declares a name, a human-readable description, and the
+# set of repo-relative file paths it owns.  Every file in the repo
+# must belong to exactly one module.  Paths use forward slashes.
+#
+# This file is the source of truth for drift detection: any file not
+# listed here is "unclassified"; any listed path that no longer exists
+# is "stale"; any new module proposal must start by adding an entry here.
+
+modules:
+  - name: core
+    description: >-
+      Project root, package identity, build configuration, and roadmap.
+    paths:
+      - src/robotsix_auto_mail/__init__.py
+      - pyproject.toml
+      - .gitignore
+      - .python-version
+      - LICENSE
+      - README.md
+      - ROADMAP.md
+      - tests/test_stub.py
+
+  - name: cli
+    description: >-
+      CLI entry point exposing probe and ingest subcommands.
+    paths:
+      - src/robotsix_auto_mail/cli.py
+      - tests/test_cli.py
+
+  - name: config
+    description: >-
+      Configuration loading (TOML + env), config templates.
+    paths:
+      - src/robotsix_auto_mail/config.py
+      - tests/test_config.py
+      - config/.gitkeep
+      - config/mail.example.toml
+
+  - name: db
+    description: >-
+      SQLite datastore: schema, MailRecord, insert, watermark.
+    paths:
+      - src/robotsix_auto_mail/db.py
+      - tests/test_db.py
+
+  - name: fetch
+    description: >-
+      Watermark-aware IMAP fetch logic.
+    paths:
+      - src/robotsix_auto_mail/fetch.py
+      - tests/test_fetch.py
+
+  - name: imap
+    description: >-
+      Low-level IMAP client (stdlib imaplib wrapper).
+    paths:
+      - src/robotsix_auto_mail/imap.py
+      - tests/test_imap.py
+
+  - name: parser
+    description: >-
+      MIME to MailRecord parsing.
+    paths:
+      - src/robotsix_auto_mail/parser.py
+      - tests/test_parser.py
+
+  - name: pipeline
+    description: >-
+      Ingestion orchestration: fetch, parse, store, watermark.
+    paths:
+      - src/robotsix_auto_mail/pipeline.py
+      - tests/test_pipeline.py
+
+  - name: smtp
+    description: >-
+      SMTP sending client.
+    paths:
+      - src/robotsix_auto_mail/smtp_client.py
+      - tests/test_smtp_client.py
+
+  - name: docs
+    description: >-
+      User-facing documentation and architecture decisions.
+    paths:
+      - docs/connecting.md
+      - docs/ingestion.md
+      - docs/decisions/0001-programming-language.md
+
+  - name: ci
+    description: >-
+      GitHub Actions CI pipeline.
+    paths:
+      - .github/workflows/ci.yml
