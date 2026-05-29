@@ -11,7 +11,7 @@ from typing import TextIO
 
 from robotsix_auto_mail import __version__
 from robotsix_auto_mail.config import MailConfig, load
-from robotsix_auto_mail.db import init_db, list_records, MailRecord
+from robotsix_auto_mail.db import MailRecord, init_db, list_records
 from robotsix_auto_mail.imap import ImapClient, ImapError
 from robotsix_auto_mail.pipeline import IngestResult, ingest_mail
 from robotsix_auto_mail.smtp_client import SmtpClient, SmtpError

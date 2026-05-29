@@ -10,7 +10,6 @@ import json
 
 from robotsix_auto_mail.parser import ParseError, parse_message
 
-
 # ---------------------------------------------------------------------------
 # Header extraction
 # ---------------------------------------------------------------------------
