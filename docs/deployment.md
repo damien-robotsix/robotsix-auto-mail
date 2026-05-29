@@ -453,4 +453,3 @@ docker compose run robotsix-auto-mail ingest
 - **[docs/ingestion.md](ingestion.md)** — ingestion pipeline, schema,
   idempotency guarantees, and `ingest` CLI usage.
 - **[README.md](../README.md)** — project overview, layout, and status.
-../README.md)** — project overview, layout, and status.
