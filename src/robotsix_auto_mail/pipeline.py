@@ -15,7 +15,7 @@ from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import insert_record, record_exists
 from robotsix_auto_mail.fetch import fetch_new_messages, update_watermark
 from robotsix_auto_mail.imap import ImapClient
-from robotsix_auto_mail.parser import ParseError, parse_message
+from robotsix_auto_mail.parser import parse_message
 
 
 @dataclasses.dataclass(frozen=True)

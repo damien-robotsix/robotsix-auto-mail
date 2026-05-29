@@ -547,7 +547,8 @@ def test_get_all_records_importable() -> None:
 
 
 def test_record_exists_fresh_connection_no_error() -> None:
-    """record_exists on a non-init_db connection (table created manually) returns False, not an error."""
+    """record_exists on a non-init_db connection (table created manually)
+    returns False, not an error."""
     import sqlite3
 
     conn = sqlite3.connect(":memory:")

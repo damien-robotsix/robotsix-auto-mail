@@ -565,7 +565,8 @@ def test_ingest_dry_run_does_not_store_or_update_watermark(
     conn: sqlite3.Connection,
     cfg: MailConfig,
 ) -> None:
-    """dry_run=True fetches and parses but never calls insert_record or update_watermark."""
+    """dry_run=True fetches and parses but never calls insert_record or
+    update_watermark."""
     mock_fetch.return_value = [
         (1, _make_raw_message(message_id="<a@x>", subject="One")),
         (2, _make_raw_message(message_id="<b@x>", subject="Two")),

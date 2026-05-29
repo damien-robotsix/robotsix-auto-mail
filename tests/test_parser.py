@@ -8,10 +8,7 @@ import email.mime.multipart
 import email.mime.text
 import json
 
-import pytest
-
 from robotsix_auto_mail.parser import ParseError, parse_message
-
 
 # ---------------------------------------------------------------------------
 # Header extraction
