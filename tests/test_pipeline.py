@@ -604,7 +604,7 @@ def test_cli_ingest_success(
     env_cfg_ingest: MailConfig,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """ingest subcommand prints summary and exits 0 on success."""
+    """ingest subcommand prints summary and exits 1 when errors are present."""
     mock_from_env.return_value = env_cfg_ingest
 
     # Set up an in-memory DB for init_db.

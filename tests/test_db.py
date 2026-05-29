@@ -449,8 +449,8 @@ def test_record_exists_returns_true_after_insert() -> None:
         conn.close()
 
 
-def test_record_exists_does_not_error_on_missing_table() -> None:
-    """record_exists on a fresh connection returns False, not an error."""
+def test_record_exists_fresh_connection_no_error() -> None:
+    """record_exists on a non-init_db connection (table created manually) returns False, not an error."""
     import sqlite3
 
     conn = sqlite3.connect(":memory:")

@@ -13,7 +13,7 @@ from robotsix_auto_mail import __version__
 from robotsix_auto_mail.config import MailConfig, load
 from robotsix_auto_mail.db import init_db
 from robotsix_auto_mail.imap import ImapClient, ImapError
-from robotsix_auto_mail.pipeline import ingest_mail
+from robotsix_auto_mail.pipeline import IngestResult, ingest_mail
 from robotsix_auto_mail.smtp_client import SmtpClient, SmtpError
 
 
@@ -118,12 +118,17 @@ def _cmd_ingest(config: MailConfig) -> int:
 
     Returns 0 on success, 1 if any errors occurred.
     """
+    result: IngestResult | None = None
     conn = init_db(config.db_path)
     try:
         with ImapClient(config) as imap_client:
             result = ingest_mail(conn, imap_client, config)
     finally:
         conn.close()
+
+    # If ImapClient(config) raised before ingest_mail ran, result is None.
+    if result is None:
+        return 1
 
     # -- Print summary -------------------------------------------------------
     sys.stdout.write(f"Fetched: {result.total_fetched:>2} messages\n")
