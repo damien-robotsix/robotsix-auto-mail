@@ -39,6 +39,7 @@ def test_mailrecord_required_fields() -> None:
     assert record.body_plain == ""
     assert record.body_html == ""
     assert record.attachments_json == "[]"
+    assert record.status == "inbox"
     assert record.id == 0
 
 
@@ -68,11 +69,24 @@ def test_mailrecord_all_fields_explicit() -> None:
         attachments_json='[{"filename": "a.pdf", "size": 1024}]',
         id=0,
     )
+    assert record.status == "inbox"
     assert record.imap_uid == 42
     assert record.recipients_json == '{"to": ["x@x.com"], "cc": ["y@y.com"]}'
     assert record.body_plain == "Hello world"
     assert record.body_html == "<p>Hello world</p>"
     assert record.attachments_json == '[{"filename": "a.pdf", "size": 1024}]'
+
+
+def test_mailrecord_status_explicit() -> None:
+    """status can be set explicitly to a non-default value."""
+    record = MailRecord(
+        message_id="<status@example.com>",
+        sender="x@x.com",
+        subject="S",
+        date="2025-01-01",
+        status="triaging",
+    )
+    assert record.status == "triaging"
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +120,7 @@ def test_init_db_creates_mail_records_table() -> None:
             "body_plain": "TEXT",
             "body_html": "TEXT",
             "attachments_json": "TEXT",
+            "status": "TEXT",
         }
         for name, type_ in expected.items():
             assert name in cols, f"Column {name} missing"
@@ -172,7 +187,8 @@ CREATE TABLE IF NOT EXISTS mail_records (
     recipients_json TEXT    NOT NULL,
     body_plain      TEXT    NOT NULL,
     body_html       TEXT    NOT NULL,
-    attachments_json TEXT   NOT NULL
+    attachments_json TEXT   NOT NULL,
+    status          TEXT    NOT NULL DEFAULT 'inbox'
 );
 
 CREATE TABLE IF NOT EXISTS watermark (
@@ -266,6 +282,7 @@ def test_insert_record_persists_data() -> None:
         assert data["body_plain"] == "Hi Bob"
         assert data["body_html"] == "<p>Hi Bob</p>"
         assert data["attachments_json"] == '[{"name": "file.txt"}]'
+        assert data["status"] == "inbox"
     finally:
         conn.close()
 
@@ -472,6 +489,7 @@ def test_list_records_returns_all_fields() -> None:
             '[{"filename": "f1.pdf", "size": 2048}, '
             '{"filename": "f2.txt", "size": 512}]'
         )
+        assert r.status == "inbox"
         assert r.id is not None and r.id > 0
     finally:
         conn.close()
