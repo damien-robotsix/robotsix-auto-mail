@@ -30,6 +30,7 @@ class MailRecord:
     subject: str
     date: str
 
+    status: str = "inbox"
     imap_uid: int | None = None
     recipients_json: str = '{"to": [], "cc": []}'
     body_plain: str = ""
@@ -54,7 +55,8 @@ CREATE TABLE IF NOT EXISTS mail_records (
     recipients_json TEXT    NOT NULL,
     body_plain      TEXT    NOT NULL,
     body_html       TEXT    NOT NULL,
-    attachments_json TEXT   NOT NULL
+    attachments_json TEXT   NOT NULL,
+    status          TEXT    NOT NULL DEFAULT 'inbox'
 );
 
 CREATE TABLE IF NOT EXISTS watermark (
@@ -77,6 +79,17 @@ def init_db(path: str) -> sqlite3.Connection:
     """
     conn = sqlite3.connect(path)
     conn.executescript(_SCHEMA)
+    # Migration: add status column to databases created before the
+    # column was part of the schema.  On databases where the column
+    # already exists (brand-new or already-migrated) this raises
+    # sqlite3.OperationalError ("duplicate column name"), which we
+    # swallow to keep initialisation idempotent.
+    try:
+        conn.execute(
+            "ALTER TABLE mail_records ADD COLUMN status TEXT NOT NULL DEFAULT 'inbox'"
+        )
+    except sqlite3.OperationalError:
+        pass
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     return conn
@@ -97,10 +110,10 @@ def insert_record(
             """\
 INSERT INTO mail_records
     (imap_uid, message_id, sender, subject, date,
-     recipients_json, body_plain, body_html, attachments_json)
+     recipients_json, body_plain, body_html, attachments_json, status)
 VALUES
     (:imap_uid, :message_id, :sender, :subject, :date,
-     :recipients_json, :body_plain, :body_html, :attachments_json)
+     :recipients_json, :body_plain, :body_html, :attachments_json, :status)
 """,
             {
                 "imap_uid": record.imap_uid,
@@ -112,6 +125,7 @@ VALUES
                 "body_plain": record.body_plain,
                 "body_html": record.body_html,
                 "attachments_json": record.attachments_json,
+                "status": record.status,
             },
         )
     except sqlite3.IntegrityError:
@@ -165,6 +179,7 @@ def list_records(conn: sqlite3.Connection) -> list[MailRecord]:
                 sender=data["sender"],
                 subject=data["subject"],
                 date=data["date"],
+                status=data["status"],
                 imap_uid=data["imap_uid"],
                 recipients_json=data["recipients_json"],
                 body_plain=data["body_plain"],
