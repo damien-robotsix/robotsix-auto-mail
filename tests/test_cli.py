@@ -537,29 +537,10 @@ def test_board_empty_inbox(
     env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """board prints '(no mail)' when the database is empty."""
-    import sqlite3
+    from robotsix_auto_mail.db import init_db as real_init_db
 
-    conn = sqlite3.connect(":memory:")
-    try:
-        conn.execute(
-            """\
-CREATE TABLE IF NOT EXISTS mail_records (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    imap_uid        INTEGER,
-    message_id      TEXT    NOT NULL UNIQUE,
-    sender          TEXT    NOT NULL,
-    subject         TEXT    NOT NULL,
-    date            TEXT    NOT NULL,
-    recipients_json TEXT    NOT NULL,
-    body_plain      TEXT    NOT NULL,
-    body_html       TEXT    NOT NULL,
-    attachments_json TEXT   NOT NULL
-)
-"""
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    conn = real_init_db(":memory:")  # schema lives in db.py — no DDL duplication
+    # Keep conn open — _cmd_board's finally block closes it.
 
     with mock.patch(
         "robotsix_auto_mail.cli.load", return_value=env_cfg
@@ -578,55 +559,37 @@ def test_board_with_records(
     env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """board prints a message count when records exist."""
-    import sqlite3
+    from robotsix_auto_mail.db import init_db as real_init_db
 
-    conn = sqlite3.connect(":memory:")
-    try:
-        conn.execute(
-            """\
-CREATE TABLE IF NOT EXISTS mail_records (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    imap_uid        INTEGER,
-    message_id      TEXT    NOT NULL UNIQUE,
-    sender          TEXT    NOT NULL,
-    subject         TEXT    NOT NULL,
-    date            TEXT    NOT NULL,
-    recipients_json TEXT    NOT NULL,
-    body_plain      TEXT    NOT NULL,
-    body_html       TEXT    NOT NULL,
-    attachments_json TEXT   NOT NULL
-)
-"""
-        )
-        conn.execute(
-            """\
+    conn = real_init_db(":memory:")  # schema lives in db.py — no DDL duplication
+    conn.execute(
+        """\
 INSERT INTO mail_records
     (imap_uid, message_id, sender, subject, date,
      recipients_json, body_plain, body_html, attachments_json)
 VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?)
 """,
-            (
-                1, "<a@x.com>", "alice@example.com", "Hello",
-                "2025-06-01", '{"to":[],"cc":[]}', "", "", "[]",
-            ),
-        )
-        conn.execute(
-            """\
+        (
+            1, "<a@x.com>", "alice@example.com", "Hello",
+            "2025-06-01", '{"to":[],"cc":[]}', "", "", "[]",
+        ),
+    )
+    conn.execute(
+        """\
 INSERT INTO mail_records
     (imap_uid, message_id, sender, subject, date,
      recipients_json, body_plain, body_html, attachments_json)
 VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?)
 """,
-            (
-                2, "<b@x.com>", "bob@example.com", "Hi",
-                "2025-06-02", '{"to":[],"cc":[]}', "", "", "[]",
-            ),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+        (
+            2, "<b@x.com>", "bob@example.com", "Hi",
+            "2025-06-02", '{"to":[],"cc":[]}', "", "", "[]",
+        ),
+    )
+    conn.commit()
+    # Keep conn open — _cmd_board's finally block closes it.
 
     with mock.patch(
         "robotsix_auto_mail.cli.load", return_value=env_cfg
@@ -661,29 +624,10 @@ def test_board_header_uses_print_header(
     env_cfg: MailConfig, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """board output includes the _print_header-style header."""
-    import sqlite3
+    from robotsix_auto_mail.db import init_db as real_init_db
 
-    conn = sqlite3.connect(":memory:")
-    try:
-        conn.execute(
-            """\
-CREATE TABLE IF NOT EXISTS mail_records (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    imap_uid        INTEGER,
-    message_id      TEXT    NOT NULL UNIQUE,
-    sender          TEXT    NOT NULL,
-    subject         TEXT    NOT NULL,
-    date            TEXT    NOT NULL,
-    recipients_json TEXT    NOT NULL,
-    body_plain      TEXT    NOT NULL,
-    body_html       TEXT    NOT NULL,
-    attachments_json TEXT   NOT NULL
-)
-"""
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    conn = real_init_db(":memory:")  # schema lives in db.py — no DDL duplication
+    # Keep conn open — _cmd_board's finally block closes it.
 
     with mock.patch(
         "robotsix_auto_mail.cli.load", return_value=env_cfg
