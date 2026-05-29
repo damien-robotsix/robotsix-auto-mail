@@ -137,6 +137,42 @@ def record_exists(conn: sqlite3.Connection, message_id: str) -> bool:
     return cur.fetchone() is not None
 
 
+def get_all_records(conn: sqlite3.Connection) -> list[MailRecord]:
+    """Return every row from ``mail_records`` as a list of ``MailRecord``,
+    ordered by ``date`` descending (most-recent first).
+
+    Date values are ISO 8601 TEXT, so a lexicographic ``ORDER BY`` is
+    equivalent to a chronological sort. The full ``body_plain`` is
+    returned; callers that need previews are responsible for truncation.
+
+    Note: this is a read-all query with no filtering or pagination.
+    Add pagination if the dataset grows beyond what the inbox view can
+    reasonably render in one shot.
+    """
+    cur = conn.execute(
+        "SELECT id, imap_uid, message_id, sender, subject, date, "
+        "recipients_json, body_plain, body_html, attachments_json "
+        "FROM mail_records ORDER BY date DESC"
+    )
+    col_names = [desc[0] for desc in cur.description]
+    records: list[MailRecord] = []
+    for row in cur.fetchall():
+        data = dict(zip(col_names, row))
+        records.append(MailRecord(
+            message_id=data["message_id"],
+            sender=data["sender"],
+            subject=data["subject"],
+            date=data["date"],
+            imap_uid=data["imap_uid"],
+            recipients_json=data["recipients_json"],
+            body_plain=data["body_plain"],
+            body_html=data["body_html"],
+            attachments_json=data["attachments_json"],
+            id=data["id"],
+        ))
+    return records
+
+
 def get_watermark(conn: sqlite3.Connection, key: str) -> str | None:
     """Return the watermark value for *key*, or ``None`` if it hasn't been set."""
     cur = conn.execute(

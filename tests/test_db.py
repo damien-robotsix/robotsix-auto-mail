@@ -9,6 +9,7 @@ import pytest
 
 from robotsix_auto_mail.db import (
     MailRecord,
+    get_all_records,
     get_watermark,
     init_db,
     insert_record,
@@ -447,6 +448,102 @@ def test_record_exists_returns_true_after_insert() -> None:
         assert record_exists(conn, "<exists@x>") is True
     finally:
         conn.close()
+
+
+def test_get_all_records_empty_db_returns_empty_list() -> None:
+    conn = init_db(":memory:")
+    try:
+        assert get_all_records(conn) == []
+    finally:
+        conn.close()
+
+
+def test_get_all_records_returns_all_inserted_records() -> None:
+    conn = init_db(":memory:")
+    try:
+        insert_record(conn, _make_record(
+            message_id="<a@x>", date="2025-01-01",
+            sender="a@x", subject="A", body_plain="body-a",
+        ))
+        insert_record(conn, _make_record(
+            message_id="<b@x>", date="2025-02-01",
+            sender="b@x", subject="B", body_plain="body-b",
+        ))
+        insert_record(conn, _make_record(
+            message_id="<c@x>", date="2025-03-01",
+            sender="c@x", subject="C", body_plain="body-c",
+        ))
+        assert len(get_all_records(conn)) == 3
+    finally:
+        conn.close()
+
+
+def test_get_all_records_sorted_by_date_desc() -> None:
+    conn = init_db(":memory:")
+    try:
+        insert_record(conn, _make_record(
+            message_id="<jan@x>", date="2025-01-01",
+        ))
+        insert_record(conn, _make_record(
+            message_id="<jun@x>", date="2025-06-15",
+        ))
+        insert_record(conn, _make_record(
+            message_id="<mar@x>", date="2025-03-10",
+        ))
+        rows = get_all_records(conn)
+        assert [r.date for r in rows] == [
+            "2025-06-15", "2025-03-10", "2025-01-01",
+        ]
+    finally:
+        conn.close()
+
+
+def test_get_all_records_returns_mailrecord_instances() -> None:
+    conn = init_db(":memory:")
+    try:
+        insert_record(conn, _make_record(message_id="<m@x>"))
+        rows = get_all_records(conn)
+        assert all(isinstance(r, MailRecord) for r in rows)
+    finally:
+        conn.close()
+
+
+def test_get_all_records_fields_match() -> None:
+    conn = init_db(":memory:")
+    try:
+        insert_record(conn, _make_record(
+            message_id="<fields@x>",
+            sender="alice@x",
+            subject="Hello",
+            date="2025-04-02T10:00:00Z",
+            body_plain="body content",
+        ))
+        [row] = get_all_records(conn)
+        assert row.sender == "alice@x"
+        assert row.subject == "Hello"
+        assert row.date == "2025-04-02T10:00:00Z"
+        assert row.body_plain == "body content"
+    finally:
+        conn.close()
+
+
+def test_get_all_records_body_plain_is_full() -> None:
+    conn = init_db(":memory:")
+    try:
+        long_body = "x" * 500
+        insert_record(conn, _make_record(
+            message_id="<long@x>", body_plain=long_body,
+        ))
+        [row] = get_all_records(conn)
+        assert row.body_plain == long_body
+        assert len(row.body_plain) == 500
+    finally:
+        conn.close()
+
+
+def test_get_all_records_importable() -> None:
+    from robotsix_auto_mail.db import get_all_records as gar
+    assert callable(gar)
 
 
 def test_record_exists_fresh_connection_no_error() -> None:
