@@ -369,6 +369,210 @@ password = "p"
 
 
 # ---------------------------------------------------------------------------
+# from_yaml
+# ---------------------------------------------------------------------------
+
+
+def test_from_yaml_example_file() -> None:
+    """The bundled example YAML file is valid and parses correctly."""
+    cfg = MailConfig.from_yaml("config/mail.local.example.yaml")
+    assert cfg.imap_host == "imap.example.com"
+    assert cfg.imap_port == 993
+    assert cfg.imap_tls_mode == "direct-tls"
+    assert cfg.smtp_host == "smtp.example.com"
+    assert cfg.smtp_port == 587
+    assert cfg.smtp_tls_mode == "starttls"
+    assert cfg.username == "user@example.com"
+    assert cfg.password == "your-password-here"
+    assert cfg.imap_folder == "INBOX"
+
+
+def test_from_yaml_defaults_for_missing_fields(tmp_path: Path) -> None:
+    """Fields missing from YAML fall back to defaults."""
+    yaml_file = tmp_path / "minimal.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  host: imap.example.com
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: u
+  password: p
+"""
+    )
+    cfg = MailConfig.from_yaml(yaml_file)
+    assert cfg.imap_port == 993
+    assert cfg.imap_tls_mode == "direct-tls"
+    assert cfg.smtp_port == 587
+    assert cfg.smtp_tls_mode == "starttls"
+    assert cfg.imap_folder == "INBOX"
+
+
+def test_from_yaml_custom_imap_folder(tmp_path: Path) -> None:
+    """imap_folder can be set via YAML imap.folder key."""
+    yaml_file = tmp_path / "folder.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  host: imap.example.com
+  folder: Archive
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: u
+  password: p
+"""
+    )
+    cfg = MailConfig.from_yaml(yaml_file)
+    assert cfg.imap_folder == "Archive"
+
+
+def test_from_yaml_missing_required_fields(tmp_path: Path) -> None:
+    """Missing required YAML fields → ConfigurationError with all names."""
+    yaml_file = tmp_path / "bad.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  port: 993
+
+smtp:
+  tls_mode: none
+"""
+    )
+    with pytest.raises(ConfigurationError) as exc:
+        MailConfig.from_yaml(yaml_file)
+    msg = str(exc.value)
+    assert "imap.host" in msg
+    assert "smtp.host" in msg
+    assert "auth.username" in msg
+    assert "auth.password" in msg
+
+
+def test_from_yaml_invalid_tls_mode(tmp_path: Path) -> None:
+    """Invalid TLS mode in YAML → ConfigurationError."""
+    yaml_file = tmp_path / "bad_tls.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  host: imap.example.com
+  tls_mode: bad-mode
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: u
+  password: p
+"""
+    )
+    with pytest.raises(ConfigurationError) as exc:
+        MailConfig.from_yaml(yaml_file)
+    msg = str(exc.value)
+    assert "imap.tls_mode" in msg
+    assert "bad-mode" in msg
+
+
+def test_from_yaml_malformed_file(tmp_path: Path) -> None:
+    """Malformed YAML → ConfigurationError."""
+    yaml_file = tmp_path / "malformed.yaml"
+    yaml_file.write_text("this: [is not: valid: YAML")
+    with pytest.raises(ConfigurationError) as exc:
+        MailConfig.from_yaml(yaml_file)
+    assert "Invalid YAML" in str(exc.value)
+
+
+def test_from_yaml_file_not_found(tmp_path: Path) -> None:
+    """Missing file → FileNotFoundError (not swallowed)."""
+    missing = tmp_path / "does_not_exist.yaml"
+    with pytest.raises(FileNotFoundError):
+        MailConfig.from_yaml(missing)
+
+
+def test_from_yaml_wrong_type_for_field(tmp_path: Path) -> None:
+    """Field with wrong type (e.g. port as string) → ConfigurationError."""
+    yaml_file = tmp_path / "bad_port.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  host: imap.example.com
+  port: not-a-number
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: u
+  password: p
+"""
+    )
+    with pytest.raises(ConfigurationError) as exc:
+        MailConfig.from_yaml(yaml_file)
+    msg = str(exc.value)
+    assert "port" in msg
+
+
+def test_from_yaml_validate_false_skips_required_checks(
+    tmp_path: Path,
+) -> None:
+    """validate=False skips required-field validation (used for defaults)."""
+    yaml_file = tmp_path / "defaults.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  host: ""
+  port: 993
+
+smtp:
+  host: ""
+
+auth:
+  username: ""
+  password: ""
+"""
+    )
+    # With validate=True (default), missing required fields should error.
+    with pytest.raises(ConfigurationError):
+        MailConfig.from_yaml(yaml_file, validate=True)
+
+    # With validate=False, it should succeed — defaults loader path.
+    cfg = MailConfig.from_yaml(yaml_file, validate=False)
+    assert cfg.imap_host == ""
+    assert cfg.imap_port == 993
+    assert cfg.smtp_host == ""
+    assert cfg.username == ""
+    assert cfg.password == ""
+
+
+def test_from_yaml_null_file_produces_defaults(tmp_path: Path) -> None:
+    """A YAML file containing only null / empty → defaults (with validate=False)."""
+    yaml_file = tmp_path / "null.yaml"
+    yaml_file.write_text("")
+    cfg = MailConfig.from_yaml(yaml_file, validate=False)
+    assert cfg.imap_host == ""
+    assert cfg.imap_port == 993
+    assert cfg.imap_tls_mode == "direct-tls"
+    assert cfg.smtp_host == ""
+    assert cfg.smtp_port == 587
+    assert cfg.smtp_tls_mode == "starttls"
+    assert cfg.username == ""
+    assert cfg.password == ""
+
+
+def test_from_yaml_root_not_mapping(tmp_path: Path) -> None:
+    """A YAML file whose root is not a mapping → ConfigurationError."""
+    yaml_file = tmp_path / "list.yaml"
+    yaml_file.write_text("- item1\n- item2\n")
+    with pytest.raises(ConfigurationError) as exc:
+        MailConfig.from_yaml(yaml_file)
+    assert "mapping" in str(exc.value).lower()
+
+
+# ---------------------------------------------------------------------------
 # load() convenience function
 # ---------------------------------------------------------------------------
 
@@ -477,6 +681,72 @@ def test_load_missing_config_file() -> None:
     with mock.patch.dict(os.environ, env, clear=True):
         with pytest.raises(ConfigurationError):
             load()
+
+
+def test_load_yaml_with_defaults(tmp_path: Path) -> None:
+    """load() deep-merges YAML defaults + local overrides + env reapply."""
+    defaults_file = tmp_path / "mail.defaults.yaml"
+    defaults_file.write_text(
+        """\
+imap:
+  host: ""
+  port: 993
+  tls_mode: direct-tls
+  folder: INBOX
+
+smtp:
+  host: ""
+  port: 587
+  tls_mode: starttls
+
+auth:
+  username: ""
+  password: ""
+
+store:
+  path: /default/path/mail.db
+"""
+    )
+
+    local_file = tmp_path / "mail.local.yaml"
+    local_file.write_text(
+        """\
+imap:
+  host: imap.overrides.com
+
+smtp:
+  host: smtp.from.local.com
+
+auth:
+  username: override_user
+  password: override_pass
+"""
+    )
+
+    env: dict[str, str] = {
+        "MAIL_CONFIG_PATH": str(local_file),
+        "MAIL_DEFAULTS_PATH": str(defaults_file),
+        "MAIL_SMTP_HOST": "smtp.from.env.com",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = load()
+
+    # YAML local overrides the defaults for imap.host.
+    assert cfg.imap_host == "imap.overrides.com"
+    # SMTP from local, overridden by env.
+    assert cfg.smtp_host == "smtp.from.env.com"  # env overrides local
+    # Auth from local.
+    assert cfg.username == "override_user"
+    assert cfg.password == "override_pass"
+    # port / tls_mode from defaults (not in local, not in env).
+    assert cfg.imap_port == 993
+    assert cfg.imap_tls_mode == "direct-tls"
+    assert cfg.smtp_port == 587
+    assert cfg.smtp_tls_mode == "starttls"
+    # db_path from defaults.
+    assert cfg.db_path == "/default/path/mail.db"
+    # imap_folder from defaults.
+    assert cfg.imap_folder == "INBOX"
 
 
 # ---------------------------------------------------------------------------

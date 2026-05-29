@@ -509,7 +509,7 @@ def load() -> MailConfig:
 
     # — determine file path —
     config_path = Path(
-        os.environ.get("MAIL_CONFIG_PATH", "config/mail.toml")
+        os.environ.get("MAIL_CONFIG_PATH", "config/mail.local.yaml")
     )
 
     # — load file config (YAML or TOML) —
