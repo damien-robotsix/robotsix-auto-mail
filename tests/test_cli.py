@@ -8,6 +8,7 @@ import os
 import smtplib
 import ssl
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -743,7 +744,6 @@ def test_board_does_not_mutate_database(
     import os
     import sqlite3
     import tempfile
-    from typing import Any
 
     from robotsix_auto_mail.db import init_db as real_init_db
 
@@ -877,10 +877,14 @@ def test_detect_missing_pydantic_ai(capsys: pytest.CaptureFixture[str]) -> None:
     real_detect = sys.modules.pop("robotsix_auto_mail.detect", None)
     original_import = builtins.__import__
 
-    def _block_detect(name, *args, **kwargs):
+    def _block_detect(
+        name: str,
+        *args: object,
+        **kwargs: object,
+    ) -> object:
         if name == "robotsix_auto_mail.detect":
             raise ImportError("No module named 'pydantic_ai'")
-        return original_import(name, *args, **kwargs)
+        return original_import(name, *args, **kwargs)  # type: ignore[arg-type]
 
     try:
         with mock.patch("builtins.__import__", side_effect=_block_detect):
