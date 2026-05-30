@@ -512,7 +512,7 @@ def render_config(config: MailConfig) -> str:
         password_line = f"password: {json.dumps(config.password)}"
     else:
         password_line = (
-            'password: ""  # set your password here, '
+            'password: ""  # set your password here, '  # nosec B105
             "or via the MAIL_PASSWORD env var"
         )
 

@@ -496,7 +496,7 @@ def _merge_env(base: MailConfig) -> MailConfig:
         "smtp_port": "MAIL_SMTP_PORT",
         "smtp_tls_mode": "MAIL_SMTP_TLS_MODE",
         "username": "MAIL_USERNAME",
-        "password": "MAIL_PASSWORD",
+        "password": "MAIL_PASSWORD",  # nosec B105
         "db_path": "MAIL_DB_PATH",
         "imap_folder": "MAIL_IMAP_FOLDER",
         "llm_api_key": "LLM_API_KEY",
