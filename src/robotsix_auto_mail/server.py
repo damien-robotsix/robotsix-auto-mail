@@ -64,14 +64,23 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; }
 .card .subject a:hover { text-decoration: underline; }
 
 /* Detail page */
-.back-link { display: inline-block; margin-bottom: 1rem; color: #333; text-decoration: none; }
+.back-link {
+    display: inline-block; margin-bottom: 1rem;
+    color: #333; text-decoration: none;
+}
 .back-link:hover { text-decoration: underline; }
 .detail-container { max-width: 800px; }
 .detail-field { margin-bottom: 0.75rem; }
-.detail-label { font-weight: 700; font-size: 0.85rem; color: #666; margin-bottom: 0.15rem; }
+.detail-label {
+    font-weight: 700; font-size: 0.85rem;
+    color: #666; margin-bottom: 0.15rem;
+}
 .detail-value { font-size: 0.95rem; }
 .detail-value pre { margin: 0; white-space: pre-wrap; font-family: inherit; }
-.detail-value code { font-size: 0.85rem; background: #eee; padding: 0.1rem 0.3rem; border-radius: 3px; }
+.detail-value code {
+    font-size: 0.85rem; background: #eee;
+    padding: 0.1rem 0.3rem; border-radius: 3px;
+}
 .detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem; align-items: center; }
 .detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }
 .detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem; cursor: pointer; }"""
@@ -152,8 +161,12 @@ def _build_detail_html(db_path: str, message_id: str) -> str | None:
         recipients = json.loads(record.recipients_json)
     except (json.JSONDecodeError, TypeError):
         recipients = {"to": [], "cc": []}
-    to_list: list[str] = recipients.get("to", []) if isinstance(recipients, dict) else []
-    cc_list: list[str] = recipients.get("cc", []) if isinstance(recipients, dict) else []
+    to_list: list[str] = (
+        recipients.get("to", []) if isinstance(recipients, dict) else []
+    )
+    cc_list: list[str] = (
+        recipients.get("cc", []) if isinstance(recipients, dict) else []
+    )
 
     try:
         attachments = json.loads(record.attachments_json)

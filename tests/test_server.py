@@ -1325,7 +1325,10 @@ def test_handler_email_detail_with_attachments() -> None:
                     "With Attachments",
                     "2025-01-01T00:00:00",
                     "body",
-                    '[{"filename": "doc.pdf", "size": 2048}, {"filename": "img.png", "size": 512}]',
+                    (
+                        '[{"filename": "doc.pdf", "size": 2048}, '
+                        '{"filename": "img.png", "size": 512}]'
+                    ),
                     "inbox",
                 ),
             )
