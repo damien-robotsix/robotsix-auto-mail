@@ -421,7 +421,7 @@ def make_board_handler(
         def _handle_move(self) -> None:
             """Process POST /move — update a card's status and redirect."""
             from robotsix_auto_mail.db import init_db
-            from robotsix_auto_mail.status import VALID_STATUSES, set_status
+            from robotsix_auto_mail.status import set_status
 
             content_length = int(self.headers.get("Content-Length", 0))
             raw = self.rfile.read(content_length).decode("utf-8")
