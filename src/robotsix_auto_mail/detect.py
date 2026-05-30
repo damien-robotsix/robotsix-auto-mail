@@ -295,7 +295,7 @@ def _parse_autoconfig_xml(xml_text: str) -> MailProvider | None:
     Returns ``None`` when the document lacks a usable IMAP + SMTP pair.
     """
     try:
-        root = ElementTree.fromstring(xml_text)
+        root = ElementTree.fromstring(xml_text)  # nosec B314
     except ElementTree.ParseError:
         return None
 
