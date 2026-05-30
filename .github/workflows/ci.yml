@@ -29,6 +29,16 @@ jobs:
       - name: Type check (mypy)
         run: mypy .
 
+      - name: SAST (bandit)
+        run: |
+          pip install 'bandit[toml]'
+          bandit -r src/ -f json -c pyproject.toml
+
+      - name: Secret scanning (TruffleHog)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+
       - name: Test (pytest)
         run: pytest
 
