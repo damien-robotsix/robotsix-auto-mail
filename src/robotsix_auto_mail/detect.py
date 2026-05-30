@@ -8,8 +8,7 @@ Two complementary detectors return IMAP/SMTP settings for an email address:
 * :func:`detect_provider` — asks an LLM, optionally with feedback describing a
   previous failed attempt so it can refine a non-obvious guess.
 
-All ``pydantic_ai`` imports are lazy so the rest of the CLI works without the
-optional ``[llm]`` dependency.
+The ``pydantic_ai`` imports are lazy to keep module-load time low.
 """
 
 from __future__ import annotations
