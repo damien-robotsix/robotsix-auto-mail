@@ -257,8 +257,8 @@ def _cmd_serve(config: MailConfig, *, port: int) -> int:
     handler_class = make_board_handler(config.db_path)
 
     print(f"Serving board on http://0.0.0.0:{port}/board")
-    server = HTTPServer(("0.0.0.0", port), handler_class)
     try:
+        server = HTTPServer(("0.0.0.0", port), handler_class)
         server.serve_forever()
     except KeyboardInterrupt:
         print("Shutting down.")

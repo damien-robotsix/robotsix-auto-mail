@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import os
 import re
 import tempfile
@@ -10,7 +9,6 @@ from urllib.request import urlopen
 
 from robotsix_auto_mail.db import MailRecord, init_db
 from robotsix_auto_mail.server import _build_board_html, _format_date, _render_card
-from robotsix_auto_mail.status import list_by_status
 
 
 # ---------------------------------------------------------------------------
