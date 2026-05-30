@@ -162,13 +162,14 @@ Press `Ctrl-C` to stop the daemon.
 ### Ephemeral containers, persistent data
 
 Each `docker compose run` creates a **new, ephemeral** container that is
-removed when the command exits.  The SQLite database lives in the `mail_data`
-named volume, which persists across runs and across container lifecycles.
+removed when the command exits.  The SQLite database lives outside the
+container in `./.mail_data` on the host (a git-ignored bind-mount), so it
+persists across runs and container lifecycles.
 
-To verify the volume exists and has data:
+To inspect it:
 
 ```sh
-docker volume ls | grep mail_data
+ls -la .mail_data/        # mail.db lives here
 ```
 
 ---
@@ -199,8 +200,8 @@ here — the connecting doc is authoritative.
 
 ## `docker-compose.yml` structure
 
-The Compose file defines a single service, `robotsix-auto-mail`, configured
-for CLI-style invocation.  Here is every top-level key and why it is there:
+The Compose file defines two services that share the same image and data:
+`robotsix-auto-mail` (the periodic ingester) and `board` (the web board).
 
 ### `services.robotsix-auto-mail`
 
@@ -208,43 +209,38 @@ for CLI-style invocation.  Here is every top-level key and why it is there:
 |---|---|---|
 | `build.context` | `.` | Build from the repo root. |
 | `build.dockerfile` | `Dockerfile` | The multi-stage Dockerfile. |
-| `stdin_open` | `true` | Keeps stdin open — needed so the CLI can accept input if required. |
+| `command` | `ingest --watch` | Default: run the periodic ingester. Overridden by `docker compose run … <cmd>` for one-shot commands. |
+| `stdin_open` | `true` | Keeps stdin open so one-shot interactive commands (e.g. `detect`'s password prompt) work. |
 | `tty` | `false` | No pseudo-TTY allocation; output is plain streams. |
-| `restart` | `"no"` | This is a CLI tool, not a daemon. It should never restart. |
-| `environment` | `MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml` | Points the tool at the mounted config file inside the container. |
-| `volumes` | Two entries (see below) | Config bind-mount + data persistence. |
+| `restart` | `unless-stopped` | The default command is a long-running daemon, so it should stay up. |
+| `environment` | `MAIL_CONFIG_PATH`, `LLM_API_KEY`, `LLM_MODEL` | Points the tool at the mounted config and passes LLM credentials through. |
+| `volumes` | Two entries (see below) | Config bind-mount + data bind-mount. |
 
-The CLI service has **no** `ports:` and **no** `depends_on:` — the
-operator supplies the subcommand at runtime via `docker compose run
-robotsix-auto-mail <subcommand>`.  The `command:` key is intentionally
-absent so the operator controls the subcommand.
+`docker compose up -d` runs this service (the ingester) alongside `board`.
+A one-shot command overrides `command:` at runtime — e.g.
+`docker compose run robotsix-auto-mail probe`.
 
 ### Volumes
 
 | Volume | Type | Purpose |
 |---|---|---|
 | `./config:/home/mailbot/config` | Bind-mount | Makes host config files available inside the container without a build. |
-| `mail_data:/home/mailbot/data` | Named volume | Persists the SQLite database across runs. |
+| `./.mail_data:/home/mailbot/.data` | Bind-mount | Persists the SQLite database in the project dir (git-ignored), at the container's default store location. |
 
 ### `services.board`
 
-The `board` service runs the same image as the CLI service but with a
-different configuration suitable for a long-running daemon:
+The `board` service runs the same image but starts the web server:
 
 | Key | Value | Why |
 |---|---|---|
-| `command` | `serve --port ${BOARD_PORT:-8078}` | Starts the web server as a daemon instead of a one-shot CLI command. |
-| `restart` | `on-failure` | Restarts if the process crashes — unlike the CLI service's `restart: "no"`, this is a daemon that should stay up. |
+| `command` | `serve --port ${BOARD_PORT:-8078}` | Starts the web server as a daemon. |
+| `restart` | `on-failure` | Restarts if the process crashes. |
 | `ports` | `"${BOARD_PORT:-8078}:${BOARD_PORT:-8078}"` | Maps the board port to the host so browsers can reach it. |
-| `environment` | `MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml` | Same as the CLI service — both read the same config. |
-| `volumes` | Same as CLI service | Shares the `mail_data` volume so the CLI and board see the same database. |
+| `environment` | `MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml` | Same config as the ingester. |
+| `volumes` | Same as the ingester | Shares `./.mail_data` so the ingester and board see the same database. |
 
 There is no `stdin_open` or `tty` — the board is a daemon, not an
 interactive process.
-
-### `volumes.mail_data`
-
-Declares the named volume so Compose can manage its lifecycle.
 
 ---
 
@@ -289,7 +285,7 @@ with a plain `docker run`:
 ```sh
 docker run --rm \
   -v "$(pwd)/config:/home/mailbot/config" \
-  -v mail_data:/home/mailbot/data \
+  -v "$(pwd)/.mail_data:/home/mailbot/.data" \
   -e MAIL_CONFIG_PATH=/home/mailbot/config/mail.local.yaml \
   registry.example.com/robotsix-auto-mail:v1.0.0 \
   probe
@@ -347,12 +343,14 @@ running (`docker compose up board`), restart it after a rebuild:
 If you want to wipe the SQLite database and start fresh:
 
 ```sh
-docker compose down -v
+docker compose down
+rm -rf ./.mail_data
 ```
 
-This removes the `mail_data` named volume.  The next `ingest` will
-re-create the database from scratch and fetch all messages from the
-watermark baseline.
+Because the database is a host bind-mount (not a named volume), removing the
+`./.mail_data` directory is what clears it — `docker compose down -v` will
+not.  The next `ingest` re-creates the database from scratch and fetches all
+messages from the watermark baseline.
 
 ---
 
@@ -439,9 +437,11 @@ host running Docker can reach those hosts on the configured ports.
 
 ### Volume permissions
 
-The `mail_data` volume is owned by `mailbot:mailbot` (UID 1000) inside the
-container.  If you override the user (e.g. `docker compose run --user root`)
-the database file may become inaccessible to future runs as `mailbot`.
+The container runs as `mailbot` (UID 1000) and writes the database into the
+bind-mounted `./.mail_data`.  On the host the files will be owned by UID 1000;
+if your host user is not UID 1000 you may need to adjust ownership, and
+overriding the user (e.g. `docker compose run --user root`) can leave files
+that future runs as `mailbot` cannot read.
 
 **Diagnose:**
 
@@ -449,15 +449,17 @@ the database file may become inaccessible to future runs as `mailbot`.
 # See what user the container runs as
 docker compose run robotsix-auto-mail whoami
 
-# Inspect volume ownership
-docker compose run robotsix-auto-mail ls -la /home/mailbot/data/
+# Inspect data ownership
+docker compose run robotsix-auto-mail ls -la /home/mailbot/.data/
+ls -la ./.mail_data/      # on the host
 ```
 
 **Fix:**  do not override `--user` unless you have a specific reason.  If
-the volume was created under a different UID, reset it:
+the data was created under a different UID, reset it:
 
 ```sh
-docker compose down -v
+docker compose down
+rm -rf ./.mail_data
 docker compose run robotsix-auto-mail ingest   # re-creates the db as mailbot
 ```
 
@@ -478,8 +480,8 @@ degrade gracefully here.
 
 ### "database is locked" / SQLite database corruption
 
-If two `ingest` commands run concurrently against the same `mail_data`
-volume, SQLite may return `database is locked`.  The tool does not use
+If two `ingest` commands run concurrently against the same `./.mail_data`
+database, SQLite may return `database is locked`.  The tool does not use
 WAL mode by default, so concurrent writers will contend.
 
 **Fix:**  do not run concurrent `ingest` commands.  The tool is designed

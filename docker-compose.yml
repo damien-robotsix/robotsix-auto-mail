@@ -40,9 +40,10 @@ services:
     volumes:
       # Config bind-mount — YAML files available without image rebuild.
       - ./config:/home/mailbot/config
-      # Data named volume — SQLite database persists across runs.
-      # Mounted at the default store location (.data, under WORKDIR).
-      - mail_data:/home/mailbot/.data
+      # Data bind-mount — the SQLite database lives in ./.mail_data on the
+      # host (git-ignored), mounted at the default store location
+      # (.data, under WORKDIR) inside the container.
+      - ./.mail_data:/home/mailbot/.data
 
   # -----------------------------------------------------------------------
   # board — long-running kanban-board daemon
@@ -62,7 +63,4 @@ services:
 
     volumes:
       - ./config:/home/mailbot/config
-      - mail_data:/home/mailbot/.data
-
-volumes:
-  mail_data:
+      - ./.mail_data:/home/mailbot/.data

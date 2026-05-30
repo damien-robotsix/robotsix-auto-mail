@@ -16,10 +16,13 @@ dist/
 # Real mail configuration (may contain credentials)
 config/mail.local.yaml
 
-# Runtime SQLite store written by the ingest pipeline. The default store
-# location is ./.data/mail.db (a git-ignored directory next to the working
-# directory); inside Docker it lives on the mail_data named volume.
+# Runtime SQLite store written by the ingest pipeline. Local runs use
+# ./.data/mail.db; the Docker stack bind-mounts ./.mail_data for it. The
+# .mail_data dir is tracked (via .gitkeep) so Docker doesn't create it as
+# root — only its contents are ignored.
 /.data/
+/.mail_data/*
+!/.mail_data/.gitkeep
 *.db
 *.db-journal
 *.db-wal

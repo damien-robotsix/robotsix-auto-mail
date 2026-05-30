@@ -44,7 +44,8 @@ docker compose run robotsix-auto-mail board
   is picked up immediately — no rebuild needed.
 - The `MAIL_CONFIG_PATH` environment variable is set to
   `/home/mailbot/config/mail.local.yaml` by `docker-compose.yml`.
-- The mail database persists in a named Docker volume (`mail_data`).
+- The mail database persists in `./.mail_data` on the host (bind-mounted,
+  git-ignored).
 
 ## Auto-detection with `detect`
 
