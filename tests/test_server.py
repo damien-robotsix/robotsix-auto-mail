@@ -5,7 +5,11 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+from typing import TYPE_CHECKING
 from urllib.request import urlopen
+
+if TYPE_CHECKING:
+    from http.server import HTTPServer
 
 from robotsix_auto_mail.db import MailRecord, init_db
 from robotsix_auto_mail.server import _build_board_html, _format_date, _render_card
@@ -202,7 +206,7 @@ def test_render_card_message_id_with_angle_brackets() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _populate_db(db_path: str, inserts: list[dict]) -> None:
+def _populate_db(db_path: str, inserts: list[dict[str, str]]) -> None:
     """Open *db_path*, insert rows, commit, close."""
     conn = init_db(db_path)
     try:
@@ -357,7 +361,7 @@ def test_build_board_html_no_body_shows_placeholder() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _start_test_server(db_path: str, port: int = 0):
+def _start_test_server(db_path: str, port: int = 0) -> tuple[HTTPServer, int]:
     """Start an HTTPServer, return (server, port).  port=0 means auto-assign."""
     import threading
     from http.server import HTTPServer
@@ -568,11 +572,26 @@ def _post_form(port: int, fields: dict[str, str]) -> tuple[int, str]:
 
     # Don't follow redirects, and capture 400/404 bodies.
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+        def redirect_request(
+            self,
+            req: urllib.request.Request,
+            fp: object,
+            code: int,
+            msg: object,
+            hdrs: object,
+            newurl: str,
+        ) -> None:
             return None
 
     class CaptureError(urllib.request.HTTPDefaultErrorHandler):
-        def http_error_default(self, req, fp, code, msg, hdrs):
+        def http_error_default(  # type: ignore[override]
+            self,
+            req: urllib.request.Request,
+            fp: object,
+            code: int,
+            msg: object,
+            hdrs: object,
+        ) -> object:
             return fp
 
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
