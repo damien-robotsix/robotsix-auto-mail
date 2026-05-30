@@ -1,13 +1,17 @@
 # -------------------------------------------------------------------------
-# robotsix-auto-mail — single-service Docker Compose file.
+# robotsix-auto-mail — Docker Compose file with CLI + board services.
 #
-# This is a CLI tool, not a long-running daemon.  The primary invocation
-# pattern is `docker compose run` (not `docker compose up`):
+# CLI service (one-shot invocations via `docker compose run`):
 #
 #     docker compose run robotsix-auto-mail probe
 #     docker compose run robotsix-auto-mail ingest
 #     docker compose run robotsix-auto-mail board
 #     docker compose run robotsix-auto-mail --help
+#
+# Board service (long-running daemon via `docker compose up`):
+#
+#     docker compose up board
+#     # → http://localhost:${BOARD_PORT:-8078}/board
 #
 # Configuration is delivered via YAML files bind-mounted from the host
 # ./config directory.  The only environment variable set here points the
@@ -34,6 +38,26 @@ services:
       # Config bind-mount — YAML files available without image rebuild.
       - ./config:/home/mailbot/config:ro
       # Data named volume — SQLite database persists across runs.
+      - mail_data:/home/mailbot/data
+
+  # -----------------------------------------------------------------------
+  # board — long-running kanban-board daemon
+  # -----------------------------------------------------------------------
+  board:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: serve --port ${BOARD_PORT:-8078}
+    restart: on-failure
+
+    environment:
+      MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml
+
+    ports:
+      - "${BOARD_PORT:-8078}:${BOARD_PORT:-8078}"
+
+    volumes:
+      - ./config:/home/mailbot/config:ro
       - mail_data:/home/mailbot/data
 
 volumes:
