@@ -631,7 +631,7 @@ def test_fetch_messages_returns_uid_body_pairs(cfg: MailConfig) -> None:
 
 
 def test_fetch_messages_uses_body_peek(cfg: MailConfig) -> None:
-    """fetch_messages uses BODY.PEEK[] so the \Seen flag is NOT set."""
+    r"""fetch_messages uses BODY.PEEK[] so the \Seen flag is NOT set."""
     mock_ssl = _make_mock_imap_ssl()
     mock_ssl.uid.return_value = ("OK", [])
 

@@ -479,7 +479,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     except ImportError:
         sys.stderr.write(
             "The 'detect' command requires the pydantic-ai package. "
-            "Install it with: pip install robotsix-auto-mail[llm]\n"
+            "Install it with: pip install robotsix-auto-mail[dev]\n"
         )
         return 1
 

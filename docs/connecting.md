@@ -62,14 +62,14 @@ settings through a ladder, most authoritative first:
    hint so it identifies the provider rather than guessing blindly.
 
 After writing the config, `detect` verifies it by connecting (see below), and
-refines on failure. The LLM step needs the optional `[llm]` dependency and an
+refines on failure. The LLM step needs a `pydantic-ai` installation and an
 API key; autoconfig and MX detection do not.
 
 ### Setup
 
 ```sh
-# Install the optional LLM dependency
-pip install robotsix-auto-mail[llm]
+# pydantic-ai is included in dev installs
+pip install -e ".[dev]"
 
 # Set your OpenRouter API key (required)
 export LLM_API_KEY=sk-or-v1-…
