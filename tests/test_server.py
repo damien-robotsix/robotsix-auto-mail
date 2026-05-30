@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 from robotsix_auto_mail.db import MailRecord, init_db
 from robotsix_auto_mail.format import _format_date
-from robotsix_auto_mail.server import _build_board_html, _render_card
+from robotsix_auto_mail.server import _build_board_html, _build_detail_html, _render_card
 
 # ---------------------------------------------------------------------------
 # _format_date
@@ -838,7 +838,8 @@ def test_email_status_unknown_message_id_returns_404() -> None:
         server.shutdown()
 
 
-def test_email_path_without_status_suffix_returns_404() -> None:
+def test_email_path_without_status_suffix_now_returns_detail() -> None:
+    """GET /email/{mid} (no /status suffix) now returns the detail page."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
@@ -858,14 +859,12 @@ def test_email_path_without_status_suffix_returns_404() -> None:
 
         server, port = _start_test_server(db_path)
         try:
-            import urllib.error
-
-            try:
-                urlopen(f"http://127.0.0.1:{port}/email/mid1")
-            except urllib.error.HTTPError as exc:
-                assert exc.code == 404
-            else:
-                raise AssertionError("Expected HTTPError 404")
+            resp = urlopen(f"http://127.0.0.1:{port}/email/mid1")
+            assert resp.status == 200
+            body = resp.read().decode("utf-8")
+            assert "<!DOCTYPE html>" in body
+            assert "Test" in body
+            assert "x@x.com" in body
         finally:
             server.shutdown()
     finally:
@@ -895,6 +894,492 @@ def test_email_status_simple_message_id() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/email/simple-id/status")
             assert resp.status == 200
             assert resp.read().decode("utf-8") == "done"
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# _render_card — detail link
+# ---------------------------------------------------------------------------
+
+
+def test_render_card_has_detail_link() -> None:
+    """_render_card output contains a link to /email/{message_id}."""
+    record = MailRecord(
+        message_id="<abc@example.com>",
+        sender="alice@example.com",
+        subject="Hello World",
+        date="2025-01-10T12:00:00",
+        body_plain="Body.",
+    )
+    html = _render_card(record)
+    # The subject should be wrapped in an <a> pointing to the detail page
+    assert '<a href="/email/' in html
+    # The quoted message_id should appear in the href
+    import urllib.parse
+    quoted = urllib.parse.quote("<abc@example.com>", safe="")
+    assert f'href="/email/{quoted}"' in html
+    # The visible subject text should be escaped and inside the <a>
+    assert ">Hello World</a>" in html
+
+
+def test_render_card_link_preserves_move_form() -> None:
+    """The Move <form> is still present when the subject is a link."""
+    record = MailRecord(
+        message_id="<test@example.com>",
+        sender="x@x.com",
+        subject="Test",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    html = _render_card(record)
+    assert '<form class="card-form"' in html
+    assert 'method="post" action="/move"' in html
+    assert '<button type="submit">Move</button>' in html
+
+
+# ---------------------------------------------------------------------------
+# _build_detail_html
+# ---------------------------------------------------------------------------
+
+
+def test_build_detail_html_basic() -> None:
+    """_build_detail_html returns a page with all expected content."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<detail@test.com>",
+                    "sender": "detail-sender@test.com",
+                    "subject": "Detail Test Subject",
+                    "date": "2025-06-15T14:30:00",
+                    "body_plain": "Full body content here.\nLine two.",
+                    "status": "inbox",
+                },
+            ],
+        )
+
+        html = _build_detail_html(db_path, "<detail@test.com>")
+        assert html is not None
+        assert "<!DOCTYPE html>" in html
+        assert "<title>Mail: Detail Test Subject</title>" in html
+        assert "← Back to board" in html
+        assert 'href="/board"' in html
+        assert "Detail Test Subject" in html
+        assert "detail-sender@test.com" in html
+        assert "2025-06-15 14:30" in html
+        assert "Full body content here." in html
+        assert "Line two." in html
+        # Recipients To
+        assert "To" in html
+        # Move form
+        assert '<form class="detail-form"' in html
+        assert 'method="post" action="/move"' in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_unknown_message_id_returns_none() -> None:
+    """_build_detail_html returns None for a nonexistent message_id."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        result = _build_detail_html(db_path, "<does-not-exist@x.com>")
+        assert result is None
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_empty_body_placeholder() -> None:
+    """Placeholder '(no body)' shown when body_plain is empty."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<empty-body@test.com>",
+                    "sender": "x@x.com",
+                    "subject": "Empty Body",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "",
+                    "status": "inbox",
+                },
+            ],
+        )
+
+        html = _build_detail_html(db_path, "<empty-body@test.com>")
+        assert html is not None
+        assert "(no body)" in html
+        assert "<em>(no body)</em>" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_no_attachments() -> None:
+    """'(none)' shown when attachments list is empty."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<no-attach@test.com>",
+                    "sender": "x@x.com",
+                    "subject": "No Attachments",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "inbox",
+                },
+            ],
+        )
+
+        html = _build_detail_html(db_path, "<no-attach@test.com>")
+        assert html is not None
+        assert "(none)" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_no_cc() -> None:
+    """CC section is omitted when cc list is empty."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        # Insert with explicit recipients_json that has no CC
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "INSERT INTO mail_records "
+                "(message_id, sender, subject, date, recipients_json, "
+                "body_plain, body_html, attachments_json, status) "
+                "VALUES (?, ?, ?, ?, ?, ?, '', '[]', ?)",
+                (
+                    "<no-cc@test.com>",
+                    "x@x.com",
+                    "No CC",
+                    "2025-01-01T00:00:00",
+                    '{"to": ["a@b.com"], "cc": []}',
+                    "body",
+                    "inbox",
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        html = _build_detail_html(db_path, "<no-cc@test.com>")
+        assert html is not None
+        # "To" should be present, but no separate CC label
+        assert "To" in html
+        # The string "CC" should not appear as a detail-label
+        assert ">CC</div>" not in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_includes_move_form() -> None:
+    """Detail page includes a Move form with the correct message_id."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<move-detail@test.com>",
+                    "sender": "x@x.com",
+                    "subject": "Move Detail",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "triaging",
+                },
+            ],
+        )
+
+        html = _build_detail_html(db_path, "<move-detail@test.com>")
+        assert html is not None
+        assert '<form class="detail-form"' in html
+        assert 'method="post" action="/move"' in html
+        assert 'value="&lt;move-detail@test.com&gt;"' in html
+        # Should have the current status pre-selected
+        assert '<option value="triaging" selected>Triaging</option>' in html
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# GET /email/{message_id} handler integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_handler_email_detail_returns_200() -> None:
+    """GET /email/{encoded_id} returns 200 and HTML."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<handler-detail@test.com>",
+                    "sender": "h@h.com",
+                    "subject": "Handler Detail",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "detail body",
+                    "status": "inbox",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            import urllib.request
+            encoded = urllib.request.pathname2url("<handler-detail@test.com>")
+            resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
+            assert resp.status == 200
+            content_type = resp.headers.get("Content-Type", "")
+            assert "text/html" in content_type
+            body = resp.read().decode("utf-8")
+            assert "<!DOCTYPE html>" in body
+            assert "Handler Detail" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_handler_email_detail_unknown_returns_404() -> None:
+    """GET /email/unknown-id returns 404."""
+    server, port = _start_test_server(":memory:")
+    try:
+        import urllib.error
+        try:
+            urlopen(f"http://127.0.0.1:{port}/email/does-not-exist")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 404
+        else:
+            raise AssertionError("Expected HTTPError 404")
+    finally:
+        server.shutdown()
+
+
+def test_handler_email_detail_missing_db_returns_503() -> None:
+    """GET /email/{id} returns 503 when DB is unavailable."""
+    import urllib.error
+    server, port = _start_test_server("/dev/null/nonexistent.db")
+    try:
+        try:
+            urlopen(f"http://127.0.0.1:{port}/email/anything")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 503
+            body = exc.read().decode("utf-8")
+            assert "Database unavailable" in body
+        else:
+            raise AssertionError("Expected HTTPError for 503")
+    finally:
+        server.shutdown()
+
+
+def test_handler_email_detail_xss_prevention() -> None:
+    """HTML in subject/body is escaped, not rendered on the detail page."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<xss-detail@test.com>",
+                    "sender": "<script>alert(1)</script>",
+                    "subject": "<img onerror=alert(2)>",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "<b>evil body</b>",
+                    "status": "inbox",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            import urllib.request
+            encoded = urllib.request.pathname2url("<xss-detail@test.com>")
+            resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
+            body = resp.read().decode("utf-8")
+
+            # All angle brackets must be escaped
+            assert "<script>" not in body
+            assert "&lt;script&gt;" in body
+            assert "&lt;img onerror" in body
+            assert "&lt;b&gt;evil body&lt;/b&gt;" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_handler_email_detail_does_not_capture_status_route() -> None:
+    """GET /email/{id}/status still returns plain text, not HTML detail."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<status-route@test.com>",
+                    "sender": "s@s.com",
+                    "subject": "Status Route",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "done",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            import urllib.request
+            encoded = urllib.request.pathname2url("<status-route@test.com>")
+            resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}/status")
+            assert resp.status == 200
+            content_type = resp.headers.get("Content-Type", "")
+            assert "text/plain" in content_type
+            body = resp.read().decode("utf-8")
+            assert body == "done"
+            # Should NOT be HTML
+            assert "<!DOCTYPE html>" not in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_handler_email_detail_with_recipients() -> None:
+    """Detail page shows To and CC when present."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "INSERT INTO mail_records "
+                "(message_id, sender, subject, date, recipients_json, "
+                "body_plain, body_html, attachments_json, status) "
+                "VALUES (?, ?, ?, ?, ?, ?, '', '[]', ?)",
+                (
+                    "<with-cc@test.com>",
+                    "sender@test.com",
+                    "With CC",
+                    "2025-01-01T00:00:00",
+                    '{"to": ["alice@x.com", "bob@x.com"], "cc": ["carol@x.com"]}',
+                    "body",
+                    "inbox",
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        server, port = _start_test_server(db_path)
+        try:
+            import urllib.request
+            encoded = urllib.request.pathname2url("<with-cc@test.com>")
+            resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
+            body = resp.read().decode("utf-8")
+            assert "alice@x.com, bob@x.com" in body
+            assert "carol@x.com" in body
+            assert ">CC</div>" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_handler_email_detail_with_attachments() -> None:
+    """Detail page shows attachment filenames and sizes."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "INSERT INTO mail_records "
+                "(message_id, sender, subject, date, recipients_json, "
+                "body_plain, body_html, attachments_json, status) "
+                "VALUES (?, ?, ?, ?, '{}', ?, '', ?, ?)",
+                (
+                    "<with-attach@test.com>",
+                    "sender@test.com",
+                    "With Attachments",
+                    "2025-01-01T00:00:00",
+                    "body",
+                    '[{"filename": "doc.pdf", "size": 2048}, {"filename": "img.png", "size": 512}]',
+                    "inbox",
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        server, port = _start_test_server(db_path)
+        try:
+            import urllib.request
+            encoded = urllib.request.pathname2url("<with-attach@test.com>")
+            resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
+            body = resp.read().decode("utf-8")
+            assert "doc.pdf" in body
+            assert "2,048 bytes" in body
+            assert "img.png" in body
+            assert "512 bytes" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_handler_email_detail_html_version_note() -> None:
+    """Detail page shows 'HTML version available' when body_html is non-empty."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "INSERT INTO mail_records "
+                "(message_id, sender, subject, date, recipients_json, "
+                "body_plain, body_html, attachments_json, status) "
+                "VALUES (?, ?, ?, ?, '{}', ?, ?, '[]', ?)",
+                (
+                    "<html-body@test.com>",
+                    "sender@test.com",
+                    "HTML Body",
+                    "2025-01-01T00:00:00",
+                    "plain text",
+                    "<p>HTML content</p>",
+                    "inbox",
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        server, port = _start_test_server(db_path)
+        try:
+            import urllib.request
+            encoded = urllib.request.pathname2url("<html-body@test.com>")
+            resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
+            body = resp.read().decode("utf-8")
+            assert "HTML version available" in body
+            # Raw HTML body should NOT be rendered
+            assert "<p>HTML content</p>" not in body
         finally:
             server.shutdown()
     finally:

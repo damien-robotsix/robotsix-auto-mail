@@ -9,6 +9,7 @@ import pytest
 
 from robotsix_auto_mail.db import (
     MailRecord,
+    get_record_by_message_id,
     get_watermark,
     init_db,
     insert_record,
@@ -551,6 +552,76 @@ def test_list_records_multiple_rows() -> None:
         subjects = [r.subject for r in results]
         assert senders == ["alice@x.com", "bob@x.com", "carol@x.com"]
         assert subjects == ["First", "Second", "Third"]
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# get_record_by_message_id
+# ---------------------------------------------------------------------------
+
+
+def test_get_record_by_message_id_found() -> None:
+    """get_record_by_message_id returns a full MailRecord for a known id."""
+    conn = init_db(":memory:")
+    try:
+        record = MailRecord(
+            message_id="<lookup@example.com>",
+            sender="lookup@example.com",
+            subject="Lookup Test",
+            date="2025-08-01T10:00:00Z",
+            imap_uid=42,
+            recipients_json='{"to": ["a@b.com"], "cc": ["c@d.com"]}',
+            body_plain="Plain text here.",
+            body_html="<p>HTML here.</p>",
+            attachments_json='[{"filename": "doc.pdf", "size": 512}]',
+            status="triaging",
+        )
+        insert_record(conn, record)
+
+        result = get_record_by_message_id(conn, "<lookup@example.com>")
+        assert result is not None
+        assert result.message_id == "<lookup@example.com>"
+        assert result.sender == "lookup@example.com"
+        assert result.subject == "Lookup Test"
+        assert result.date == "2025-08-01T10:00:00Z"
+        assert result.imap_uid == 42
+        assert result.recipients_json == '{"to": ["a@b.com"], "cc": ["c@d.com"]}'
+        assert result.body_plain == "Plain text here."
+        assert result.body_html == "<p>HTML here.</p>"
+        assert result.attachments_json == '[{"filename": "doc.pdf", "size": 512}]'
+        assert result.status == "triaging"
+        assert result.id > 0
+    finally:
+        conn.close()
+
+
+def test_get_record_by_message_id_not_found() -> None:
+    """get_record_by_message_id returns None for an unknown message_id."""
+    conn = init_db(":memory:")
+    try:
+        result = get_record_by_message_id(conn, "<nonexistent@x.com>")
+        assert result is None
+    finally:
+        conn.close()
+
+
+def test_get_record_by_message_id_angle_brackets() -> None:
+    """message_id with angle brackets round-trips correctly."""
+    conn = init_db(":memory:")
+    try:
+        mid = "<abc@example.com>"
+        record = MailRecord(
+            message_id=mid,
+            sender="test@t.com",
+            subject="Angle Brackets",
+            date="2025-09-01T10:00:00Z",
+        )
+        insert_record(conn, record)
+
+        result = get_record_by_message_id(conn, mid)
+        assert result is not None
+        assert result.message_id == mid
     finally:
         conn.close()
 
