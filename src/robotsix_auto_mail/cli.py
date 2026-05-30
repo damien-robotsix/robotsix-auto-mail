@@ -524,7 +524,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             sys.stderr.write("\nDetection cancelled.\n")
             return 1
     elif password is None and args.stdout:
-        password = ""  # no prompt in stdout mode
+        password = ""  # no prompt in stdout mode  # nosec B105
 
     # -- preserve settings detect doesn't generate (LLM credentials, a custom
     #    store path, an existing password) from an existing config file --
