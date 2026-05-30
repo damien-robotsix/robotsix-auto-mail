@@ -45,6 +45,14 @@ modules:
       - src/robotsix_auto_mail/db.py
       - tests/test_db.py
 
+  - name: detect
+    description: >-
+      MX-record provider detection and auto-configuration lookup
+      (Mozilla ISPDB, autoconfig XML, LLM fallback).
+    paths:
+      - src/robotsix_auto_mail/detect.py
+      - tests/test_detect.py
+
   - name: fetch
     description: >-
       Watermark-aware IMAP fetch logic.
