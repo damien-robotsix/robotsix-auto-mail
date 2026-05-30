@@ -29,7 +29,7 @@ def get_status(conn: sqlite3.Connection, message_id: str) -> str | None:
     if row is None:
         return None
     value = row[0]
-    assert isinstance(value, str)
+    assert isinstance(value, str)  # nosec B101
     return value
 
 

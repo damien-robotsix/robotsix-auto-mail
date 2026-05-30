@@ -269,7 +269,7 @@ class ImapClient:
             ) from exc
 
     def _authenticate(self) -> None:
-        assert self._imap is not None  # called after connect
+        assert self._imap is not None  # called after connect  # nosec B101
         try:
             self._imap.login(self._username, self._password)
         except _IMAP4_ERROR as exc:

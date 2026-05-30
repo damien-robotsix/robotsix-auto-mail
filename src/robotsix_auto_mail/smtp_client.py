@@ -270,7 +270,7 @@ class SmtpClient:
             ) from exc
 
     def _authenticate(self) -> None:
-        assert self._smtp is not None  # called after connect
+        assert self._smtp is not None  # called after connect  # nosec B101
         try:
             self._smtp.login(self._username, self._password)
         except _SMTP_EXCEPTION as exc:
