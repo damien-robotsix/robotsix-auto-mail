@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from robotsix_auto_mail.db import MailRecord
+from robotsix_auto_mail.db import MailRecord, row_to_mailrecord
 
 #: The four canonical status values, matching the kanban columns.
 VALID_STATUSES: frozenset[str] = frozenset({"inbox", "triaging", "done", "archive"})
@@ -82,20 +82,5 @@ def list_by_status(
     col_names = [desc[0] for desc in cur.description]
     results: list[MailRecord] = []
     for row in rows:
-        data = dict(zip(col_names, row))
-        results.append(
-            MailRecord(
-                message_id=data["message_id"],
-                sender=data["sender"],
-                subject=data["subject"],
-                date=data["date"],
-                status=data["status"],
-                imap_uid=data["imap_uid"],
-                recipients_json=data["recipients_json"],
-                body_plain=data["body_plain"],
-                body_html=data["body_html"],
-                attachments_json=data["attachments_json"],
-                id=data["id"],
-            )
-        )
+        results.append(row_to_mailrecord(row, col_names))
     return results
