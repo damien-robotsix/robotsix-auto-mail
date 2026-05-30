@@ -26,7 +26,9 @@ def get_status(conn: sqlite3.Connection, message_id: str) -> str | None:
     row = cur.fetchone()
     if row is None:
         return None
-    return row[0]
+    value = row[0]
+    assert isinstance(value, str)
+    return value
 
 
 def set_status(

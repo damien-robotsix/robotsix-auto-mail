@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import tempfile
+from typing import Any
 
 from robotsix_auto_mail.db import MailRecord, init_db, insert_record
 from robotsix_auto_mail.status import (
@@ -105,7 +106,7 @@ class _CommitTracker:
         self.commit_called = True
         self._conn.commit()
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._conn, name)
 
 
