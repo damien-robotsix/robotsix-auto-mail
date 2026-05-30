@@ -495,4 +495,4 @@ auto-refreshes every 30 seconds.
 | **Refresh** | Manual (re-run the command) | Automatic (30-second meta refresh) |
 
 Both commands read from the same local SQLite datastore — no configuration
-changes are needed to switch between them.ch between them.
+changes are needed to switch between them.

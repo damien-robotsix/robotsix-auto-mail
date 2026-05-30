@@ -390,7 +390,7 @@ def test_from_yaml_example_file() -> None:
     assert cfg.smtp_port == 587
     assert cfg.smtp_tls_mode == "starttls"
     assert cfg.username == "user@example.com"
-    assert cfg.password == "your-password-here"
+    assert cfg.password == ""
     assert cfg.imap_folder == "INBOX"
 
 
