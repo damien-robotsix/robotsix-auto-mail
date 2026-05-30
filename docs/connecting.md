@@ -8,6 +8,10 @@ The recommended approach for operators is the **YAML defaults + local
 overrides** pattern, which ships with the Docker Compose setup described
 below.
 
+New users can also run `robotsix-auto-mail detect` to auto-generate config
+from just an email address — see [Auto-detection with
+`detect`](#auto-detection-with-detect).
+
 ## Quick start — Docker Compose (recommended)
 
 The project includes a `docker-compose.yml` that builds the container and
@@ -35,7 +39,7 @@ docker compose run robotsix-auto-mail board
   at its default value.
 - `config/mail.local.yaml` *(git-ignored)* contains only the fields the
   operator wants to override — typically `imap.host`, `smtp.host`,
-  `auth.username`, and `auth.password`.
+  `auth.username`, and `auth.password` (optional — can come from `secrets.yaml`).
 - The config loader deep-merges the two files: defaults first, local on top.
 - The `./config` directory is bind-mounted read-only into the container at
   `/home/mailbot/config`, so editing `config/mail.local.yaml` on the host
@@ -43,6 +47,61 @@ docker compose run robotsix-auto-mail board
 - The `MAIL_CONFIG_PATH` environment variable is set to
   `/home/mailbot/config/mail.local.yaml` by `docker-compose.yml`.
 - The mail database persists in a named Docker volume (`mail_data`).
+
+## Auto-detection with `detect`
+
+Instead of manually researching and writing config, you can auto-generate it
+from just an email address. The `detect` command uses an LLM to look up the
+correct IMAP/SMTP settings for your provider.
+
+### Setup
+
+```sh
+# Install the optional LLM dependency
+pip install robotsix-auto-mail[llm]
+
+# Set your OpenRouter API key (required)
+export LLM_API_KEY=sk-or-v1-…
+
+# Optional: choose a different model (default: deepseek/deepseek-v4-flash)
+export LLM_MODEL=anthropic/claude-3-haiku
+```
+
+### Minimal usage
+
+```sh
+robotsix-auto-mail detect user@gmail.com
+```
+
+This auto-detects settings, writes `config/mail.local.yaml` (without the
+password), prompts for the password interactively, and writes
+`config/secrets.yaml` alongside it.
+
+### Scripting usage
+
+```sh
+robotsix-auto-mail detect user@gmail.com \
+    --password "app-password" \
+    --output config/mail.local.yaml
+```
+
+### Options
+
+| Option | Required | Default | Purpose |
+|---|---|---|---|
+| `EMAIL` (positional) | yes | – | Email address to detect settings for |
+| `--password` | no | (prompted) | Password to write to `secrets.yaml` |
+| `--output PATH` | no | `config/mail.local.yaml` | Write mail config to this path |
+| `--stdout` | no | – | Print config to stdout instead of writing to file |
+
+### Caveats
+
+- **LLM output should be verified.** Run `robotsix-auto-mail probe` after
+  generating config to confirm connectivity.
+- The `detect` command does **not** connect to any mail server — it is
+  purely a config-file generator.
+- For users who prefer manual config, the traditional approach (editing
+  `config/mail.local.yaml` by hand) is unaffected and fully supported.
 
 ## Configuration keys
 
@@ -64,7 +123,7 @@ smtp:
 
 auth:
   username: ""      # required — operator must supply in mail.local.yaml
-  password: ""      # required — operator must supply in mail.local.yaml
+  password: ""      # optional — set via secrets.yaml or MAIL_PASSWORD env var
 
 store:
   path: /home/mailbot/data/mail.db
@@ -85,7 +144,7 @@ smtp:
 
 auth:
   username: user@example.com
-  password: your-password-here
+  password: ""  # password stored in config/secrets.yaml
 
 # store:
 #   path: /home/mailbot/data/mail.db
@@ -101,7 +160,7 @@ auth:
 | `smtp.port` | no | `587` | SMTP server port |
 | `smtp.tls_mode` | no | `"starttls"` | SMTP TLS mode |
 | `auth.username` | yes | – | Login username (typically the full email address) |
-| `auth.password` | yes | – | Login password |
+| `auth.password` | no | – | Login password (optional — can come from `secrets.yaml`) |
 | `store.path` | no | `"mail.db"` | Filesystem path for the SQLite database |
 
 ### TOML config file (alternative)
@@ -121,7 +180,7 @@ tls_mode = "starttls"
 
 [auth]
 username = "user@example.com"
-password = "s3cret"
+password = ""  # password stored in config/secrets.yaml
 ```
 
 | Key | Required | Default | Purpose |
@@ -133,9 +192,32 @@ password = "s3cret"
 | `smtp.port` | no | `587` | SMTP server port |
 | `smtp.tls_mode` | no | `"starttls"` | SMTP TLS mode |
 | `auth.username` | yes | – | Login username |
-| `auth.password` | yes | – | Login password |
+| `auth.password` | no | – | Login password (optional — can come from `secrets.yaml`) |
 
 A commented template is available at `config/mail.example.toml`.
+
+### Secrets file (`config/secrets.yaml`)
+
+The mail password can be stored in a separate `config/secrets.yaml` file
+instead of embedding it in `config/mail.local.yaml`.  This keeps credentials
+isolated from general configuration, making it safer to share or back up
+your mail config.
+
+```sh
+cp config/secrets.example.yaml config/secrets.yaml
+$EDITOR config/secrets.yaml
+```
+
+```yaml
+# config/secrets.yaml
+mail_password: "your-app-password-here"
+```
+
+- `config/secrets.yaml` is **git-ignored** — it will never be committed.
+- The path can be overridden via the `MAIL_SECRETS_FILE` environment variable.
+- If the file is missing or has an empty password, the password from
+  `mail.local.yaml` (or `MAIL_PASSWORD`) is used as a fallback.
+- The password value is **redacted** in logs and debug output.
 
 ### Environment variables
 
@@ -181,6 +263,9 @@ A commented template is available at `config/mail.example.toml`.
    then re-applied on top of the file values. This lets you keep shared
    settings in a config file while overriding just the password via
    `MAIL_PASSWORD`, for example.
+5. **Secrets application.** If `config/secrets.yaml` exists with a
+   non-empty `mail_password`, it overrides the password from the config
+   file or environment variables.
 
 If any environment variable has an *invalid* value (e.g. a non-integer
 port), the error is raised immediately — the file fallback is skipped so
@@ -204,7 +289,7 @@ smtp:
 
 auth:
   username: user@mail.example.com
-  password: your-app-password-here
+  password: ""  # password stored in config/secrets.yaml
 ```
 
 ```sh
@@ -241,7 +326,7 @@ tls_mode = "starttls"
 
 [auth]
 username = "user@mail.example.com"
-password = "your-app-password-here"
+password = ""  # password stored in config/secrets.yaml
 ```
 
 ## The `probe` command

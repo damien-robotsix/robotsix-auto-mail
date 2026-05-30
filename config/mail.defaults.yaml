@@ -21,7 +21,7 @@ smtp:
 
 auth:
   username: ""      # required — operator must supply in mail.local.yaml
-  password: ""      # required — operator must supply in mail.local.yaml
+  password: ""      # optional — set via secrets.yaml or MAIL_PASSWORD env var
 
 store:
   path: /home/mailbot/data/mail.db

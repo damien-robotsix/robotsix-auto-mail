@@ -16,6 +16,7 @@ dist/
 # Real mail configuration (may contain credentials)
 config/mail.toml
 config/mail.local.yaml
+config/secrets.yaml
 
 # Runtime SQLite store written by the ingest pipeline. The production
 # default is /home/mailbot/data/mail.db (inside the Docker image), but

@@ -19,7 +19,7 @@ smtp:
 
 auth:
   username: user@example.com
-  password: your-password-here
+  password: ""  # password stored in config/secrets.yaml
 
 # store:
 #   path: /home/mailbot/data/mail.db
