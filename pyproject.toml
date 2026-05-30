@@ -8,6 +8,7 @@ version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
     "pyyaml>=6.0",
+    "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -41,3 +42,11 @@ robotsix-auto-mail = "robotsix_auto_mail.cli:main"
 strict = true
 python_version = "3.12"
 packages = ["src/robotsix_auto_mail"]
+
+[[tool.mypy.overrides]]
+module = [
+    "pydantic_ai",
+    "pydantic_ai.models.openai",
+    "pydantic_ai.providers.openrouter",
+]
+ignore_missing_imports = true
