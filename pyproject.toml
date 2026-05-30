@@ -18,8 +18,8 @@ dev = [
     "pytest",
     "hatchling",
     "types-PyYAML",
+    "pydantic-ai-slim[openrouter]>=1.0",
 ]
-llm = ["pydantic-ai-slim[openrouter]>=1.0"]
 
 [tool.ruff]
 target-version = "py312"
@@ -43,10 +43,3 @@ strict = true
 python_version = "3.12"
 packages = ["src/robotsix_auto_mail"]
 
-[[tool.mypy.overrides]]
-module = [
-    "pydantic_ai",
-    "pydantic_ai.models.openai",
-    "pydantic_ai.providers.openrouter",
-]
-ignore_missing_imports = true

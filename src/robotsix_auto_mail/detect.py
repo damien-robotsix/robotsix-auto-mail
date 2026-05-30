@@ -193,11 +193,6 @@ def detect_provider(
         DetectionError: If the API key is missing, the LLM returns an
             invalid response, or any other error occurs.
     """
-    # -- lazy imports so the rest of the CLI works without pydantic_ai --
-    from pydantic_ai import Agent, PromptedOutput
-    from pydantic_ai.models.openai import OpenAIChatModel
-    from pydantic_ai.providers.openrouter import OpenRouterProvider
-
     # -- resolve API key --
     resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
     if not resolved_key:
@@ -205,6 +200,11 @@ def detect_provider(
             "No LLM API key found — set the LLM_API_KEY environment "
             "variable or add an `llm.api_key` entry to your config file"
         )
+
+    # -- lazy imports so the rest of the CLI works without pydantic_ai --
+    from pydantic_ai import Agent, PromptedOutput
+    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.providers.openrouter import OpenRouterProvider
 
     # -- resolve model --
     resolved_model = model or os.environ.get("LLM_MODEL", DEFAULT_LLM_MODEL)
