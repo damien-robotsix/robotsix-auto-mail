@@ -160,7 +160,7 @@ auth:
 | `smtp.port` | no | `587` | SMTP server port |
 | `smtp.tls_mode` | no | `"starttls"` | SMTP TLS mode |
 | `auth.username` | yes | – | Login username (typically the full email address) |
-| `auth.password` | yes | – | Login password |
+| `auth.password` | no | – | Login password (optional — can come from `secrets.yaml`) |
 | `store.path` | no | `"mail.db"` | Filesystem path for the SQLite database |
 
 ### TOML config file (alternative)
@@ -180,7 +180,7 @@ tls_mode = "starttls"
 
 [auth]
 username = "user@example.com"
-password = "s3cret"
+password = ""  # password stored in config/secrets.yaml
 ```
 
 | Key | Required | Default | Purpose |
@@ -192,7 +192,7 @@ password = "s3cret"
 | `smtp.port` | no | `587` | SMTP server port |
 | `smtp.tls_mode` | no | `"starttls"` | SMTP TLS mode |
 | `auth.username` | yes | – | Login username |
-| `auth.password` | yes | – | Login password |
+| `auth.password` | no | – | Login password (optional — can come from `secrets.yaml`) |
 
 A commented template is available at `config/mail.example.toml`.
 
@@ -326,7 +326,7 @@ tls_mode = "starttls"
 
 [auth]
 username = "user@mail.example.com"
-password = "your-app-password-here"
+password = ""  # password stored in config/secrets.yaml
 ```
 
 ## The `probe` command
@@ -495,4 +495,4 @@ auto-refreshes every 30 seconds.
 | **Refresh** | Manual (re-run the command) | Automatic (30-second meta refresh) |
 
 Both commands read from the same local SQLite datastore — no configuration
-changes are needed to switch between them.
+changes are needed to switch between them.ch between them.
