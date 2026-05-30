@@ -3,6 +3,9 @@
 Provides ``MailConfig``, a frozen dataclass that holds IMAP and SMTP
 connection parameters, and several classmethods / convenience functions
 for loading it from environment variables, TOML files, or YAML files.
+
+Also provides ``Secrets`` for loading credentials from a separate
+``config/secrets.yaml`` file, keeping secrets out of the main config.
 """
 
 from __future__ import annotations
@@ -38,6 +41,86 @@ class ConfigurationError(Exception):
 
     def __str__(self) -> str:
         return self.message
+
+
+# ---------------------------------------------------------------------------
+# Secrets
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class Secrets:
+    """Credentials loaded from ``config/secrets.yaml``.
+
+    Never merged into MailConfig — credentials stay in this separate object.
+    """
+
+    mail_password: str = ""
+
+    def __repr__(self) -> str:
+        return "Secrets(mail_password=<redacted>)"
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+
+_secrets_cache: Secrets | None = None
+
+
+def load_secrets(path: str | Path | None = None) -> Secrets:
+    """Load secrets from a YAML file.
+
+    Args:
+        path: Filesystem path to the secrets YAML file.  When ``None``,
+            the ``MAIL_SECRETS_FILE`` env var is checked, falling back to
+            ``config/secrets.yaml``.
+
+    Returns:
+        A ``Secrets`` instance.  Returns ``Secrets()`` (empty password)
+        if the file does not exist.
+
+    Raises:
+        ConfigurationError: If the file exists but cannot be parsed.
+    """
+    if path is None:
+        path = os.environ.get("MAIL_SECRETS_FILE", "config/secrets.yaml")
+    path = Path(path)
+
+    try:
+        raw = path.read_text()
+    except FileNotFoundError:
+        return Secrets()
+    except OSError as exc:
+        raise ConfigurationError(
+            f"Cannot read secrets file {path}: {exc}"
+        ) from exc
+
+    try:
+        data: object = yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise ConfigurationError(
+            f"Invalid YAML in secrets file {path}: {exc}"
+        ) from exc
+
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        raise ConfigurationError(
+            f"Secrets YAML root must be a mapping, got {type(data).__name__}"
+        )
+
+    password = data.get("mail_password", "")
+    if not isinstance(password, str):
+        password = str(password)
+    return Secrets(mail_password=password)
+
+
+def get_secrets() -> Secrets:
+    """Return the cached ``Secrets`` instance, loading it on first call."""
+    global _secrets_cache
+    if _secrets_cache is None:
+        _secrets_cache = load_secrets()
+    return _secrets_cache
 
 
 # ---------------------------------------------------------------------------
@@ -323,7 +406,6 @@ class MailConfig:
                 ("imap.host", imap_host),
                 ("smtp.host", smtp_host),
                 ("auth.username", username),
-                ("auth.password", password),
             ]:
                 if not value:
                     missing.append(label)
@@ -445,7 +527,6 @@ class MailConfig:
             ("imap.host", imap_host),
             ("smtp.host", smtp_host),
             ("auth.username", username),
-            ("auth.password", password),
         ]:
             if not value:
                 missing.append(label)
@@ -544,7 +625,14 @@ def load() -> MailConfig:
             file_cfg = _deep_merge(defaults_cfg, file_cfg)
 
     # — env vars override file values field-by-field —
-    return _merge_env_onto_toml(file_cfg)
+    cfg = _merge_env_onto_toml(file_cfg)
+
+    # — step 6: secrets application —
+    secrets = get_secrets()
+    if secrets.mail_password:
+        cfg = dataclasses.replace(cfg, password=secrets.mail_password)
+
+    return cfg
 
 
 def _merge_env_onto_toml(base: MailConfig) -> MailConfig:

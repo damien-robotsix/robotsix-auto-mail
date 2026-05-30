@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import errno
+import getpass
 import sys
 from datetime import datetime
 from typing import TextIO
@@ -55,6 +56,34 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=8080,
         help="Port to listen on (default: %(default)s)",
+    )
+
+    detect_parser = sub.add_parser(
+        "detect",
+        help="Auto-detect email provider settings via LLM and write config",
+    )
+    detect_parser.add_argument(
+        "email",
+        help="Email address to detect provider settings for",
+    )
+    detect_parser.add_argument(
+        "--password",
+        default=None,
+        help=(
+            "Password to write to secrets.yaml. "
+            "When omitted, prompts interactively."
+        ),
+    )
+    detect_parser.add_argument(
+        "--output",
+        default="config/mail.local.yaml",
+        help="Write mail config to this file path (default: %(default)s)",
+    )
+    detect_parser.add_argument(
+        "--stdout",
+        action="store_true",
+        default=False,
+        help="Print mail config to stdout instead of writing to file",
     )
 
     return parser
@@ -245,6 +274,97 @@ def _cmd_board(config: MailConfig) -> int:
     return 0
 
 
+def _cmd_detect(args: argparse.Namespace) -> int:
+    """Run the detect subcommand: auto-detect provider settings via LLM.
+
+    Returns 0 on success, 1 on any error.
+    """
+    # -- lazy-import detect (pydantic_ai is optional) --
+    try:
+        from robotsix_auto_mail.detect import (
+            DetectionError,
+            detect_provider,
+            provider_to_config,
+            render_config,
+            render_secrets,
+        )
+    except ImportError:
+        sys.stderr.write(
+            "The 'detect' command requires the pydantic-ai package. "
+            "Install it with: pip install robotsix-auto-mail[llm]\n"
+        )
+        return 1
+
+    import os
+
+    # -- resolve model from env --
+    model = os.environ.get("LLM_MODEL", "deepseek/deepseek-v4-flash")
+
+    # -- detect provider --
+    try:
+        provider = detect_provider(
+            args.email,
+            model=model,
+        )
+    except DetectionError as exc:
+        sys.stderr.write(f"Error: {exc}\n")
+        return 1
+
+    # -- convert to config --
+    config = provider_to_config(provider, args.email)
+    yaml_text = render_config(config, fmt="yaml")
+
+    # -- password handling --
+    password: str | None = args.password
+    if password is None and not args.stdout:
+        # Interactive prompt
+        try:
+            password = getpass.getpass("Email password: ")
+        except (EOFError, KeyboardInterrupt):
+            sys.stderr.write("\nDetection cancelled.\n")
+            return 1
+    elif password is None and args.stdout:
+        password = ""  # no prompt in stdout mode
+
+    # -- output --
+    if args.stdout:
+        # Banner to stderr
+        sys.stderr.write(
+            f"# LLM-detected settings for {args.email} — verify before using.\n"
+            "# Save this as config/mail.local.yaml and put your password "
+            "in config/secrets.yaml.\n"
+        )
+        sys.stdout.write(yaml_text)
+        if password:
+            sys.stderr.write(
+                "Password was provided but not written to file. "
+                "Use --output (without --stdout) to save both config "
+                "and secrets.yaml.\n"
+            )
+        return 0
+
+    # -- file output --
+    from pathlib import Path
+
+    output_path = Path(args.output)
+    # Ensure parent directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(yaml_text)
+    sys.stderr.write(f"Config written to {output_path}\n")
+
+    if password:
+        secrets_path = output_path.parent / "secrets.yaml"
+        secrets_path.write_text(render_secrets(password))
+        sys.stderr.write(f"Secrets written to {secrets_path}\n")
+    else:
+        sys.stderr.write(
+            "No password provided — add it to config/secrets.yaml "
+            "before running probe\n"
+        )
+
+    return 0
+
+
 def _cmd_serve(config: MailConfig, *, port: int) -> int:
     """Run the serve subcommand: start the web board HTTP server.
 
@@ -309,6 +429,9 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.write(f"Error loading configuration: {exc}\n")
             return 1
         return _cmd_serve(config, port=args.port)
+
+    if args.command == "detect":
+        return _cmd_detect(args)
 
     # No command given — print help and exit 1.
     parser.print_help(sys.stderr)

@@ -9,7 +9,14 @@ from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail.config import ConfigurationError, MailConfig, load
+from robotsix_auto_mail.config import (
+    ConfigurationError,
+    MailConfig,
+    Secrets,
+    get_secrets,
+    load,
+    load_secrets,
+)
 
 # ---------------------------------------------------------------------------
 # MailConfig basics
@@ -303,7 +310,7 @@ tls_mode = "none"
     assert "imap.host" in msg
     assert "smtp.host" in msg
     assert "auth.username" in msg
-    assert "auth.password" in msg
+    # auth.password is no longer required — it can come from secrets.yaml
 
 
 def test_from_toml_invalid_tls_mode(tmp_path: Path) -> None:
@@ -450,7 +457,7 @@ smtp:
     assert "imap.host" in msg
     assert "smtp.host" in msg
     assert "auth.username" in msg
-    assert "auth.password" in msg
+    # auth.password is no longer required — it can come from secrets.yaml
 
 
 def test_from_yaml_invalid_tls_mode(tmp_path: Path) -> None:
@@ -842,3 +849,233 @@ def test_configuration_error_missing_only_true() -> None:
     """missing_only can be set to True."""
     err = ConfigurationError("test", missing_only=True)
     assert err.missing_only is True
+
+
+# ---------------------------------------------------------------------------
+# Secrets
+# ---------------------------------------------------------------------------
+
+
+def test_secrets_repr_redaction_with_password() -> None:
+    """repr(Secrets) redacts the password value."""
+    s = Secrets(mail_password="s3cret")
+    r = repr(s)
+    assert "s3cret" not in r
+    assert "<redacted>" in r
+
+
+def test_secrets_repr_redaction_default() -> None:
+    """Default Secrets() repr still shows <redacted>."""
+    s = Secrets()
+    r = repr(s)
+    assert "<redacted>" in r
+
+
+def test_secrets_str_redaction() -> None:
+    """str(Secrets) does NOT contain the actual password."""
+    s = Secrets(mail_password="s3cret")
+    r = str(s)
+    assert "s3cret" not in r
+
+
+# -- load_secrets ----------------------------------------------------------
+
+
+def test_load_secrets_happy_path(tmp_path: Path) -> None:
+    """load_secrets reads mail_password from a valid YAML file."""
+    secrets_file = tmp_path / "secrets.yaml"
+    secrets_file.write_text("mail_password: my-pass\n")
+    result = load_secrets(secrets_file)
+    assert result.mail_password == "my-pass"
+
+
+def test_load_secrets_missing_file(tmp_path: Path) -> None:
+    """load_secrets returns empty Secrets when file does not exist."""
+    missing = tmp_path / "nonexistent.yaml"
+    result = load_secrets(missing)
+    assert result.mail_password == ""
+    assert isinstance(result, Secrets)
+
+
+def test_load_secrets_empty_file(tmp_path: Path) -> None:
+    """load_secrets returns empty Secrets for an empty YAML file."""
+    secrets_file = tmp_path / "empty.yaml"
+    secrets_file.write_text("")
+    result = load_secrets(secrets_file)
+    assert result.mail_password == ""
+
+
+def test_load_secrets_missing_key(tmp_path: Path) -> None:
+    """load_secrets returns empty password when mail_password key is absent."""
+    secrets_file = tmp_path / "other.yaml"
+    secrets_file.write_text("other: value\n")
+    result = load_secrets(secrets_file)
+    assert result.mail_password == ""
+
+
+def test_load_secrets_bad_yaml(tmp_path: Path) -> None:
+    """load_secrets raises ConfigurationError for malformed YAML."""
+    secrets_file = tmp_path / "bad.yaml"
+    secrets_file.write_text("{this is: not: valid: yaml")
+    with pytest.raises(ConfigurationError) as exc:
+        load_secrets(secrets_file)
+    assert "Invalid YAML" in str(exc.value)
+
+
+# -- get_secrets caching ---------------------------------------------------
+
+
+def test_get_secrets_caching() -> None:
+    """get_secrets() caches the result and only calls load_secrets once."""
+    import robotsix_auto_mail.config as config_mod
+
+    # Reset cache before test
+    config_mod._secrets_cache = None
+
+    with mock.patch(
+        "robotsix_auto_mail.config.load_secrets",
+        return_value=Secrets(mail_password="first"),
+    ) as mock_load:
+        s1 = get_secrets()
+        s2 = get_secrets()
+        assert s1 is s2
+        assert mock_load.call_count == 1
+
+    # Clean up
+    config_mod._secrets_cache = None
+
+
+# -- load() with secrets ---------------------------------------------------
+
+
+def test_load_with_secrets(tmp_path: Path) -> None:
+    """load() applies secrets.mail_password on top of file config."""
+    import robotsix_auto_mail.config as config_mod
+
+    # Reset cache
+    config_mod._secrets_cache = None
+
+    local_yaml = tmp_path / "mail.local.yaml"
+    local_yaml.write_text(
+        """\
+imap:
+  host: imap.example.com
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: user@example.com
+  password: ""
+"""
+    )
+
+    secrets_yaml = tmp_path / "secrets.yaml"
+    secrets_yaml.write_text("mail_password: secret-pass\n")
+
+    env: dict[str, str] = {
+        "MAIL_CONFIG_PATH": str(local_yaml),
+        "MAIL_SECRETS_FILE": str(secrets_yaml),
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = load()
+        assert cfg.password == "secret-pass"
+        assert cfg.imap_host == "imap.example.com"
+        assert cfg.smtp_host == "smtp.example.com"
+        assert cfg.username == "user@example.com"
+
+    # Clean up
+    config_mod._secrets_cache = None
+
+
+def test_load_without_secrets_file(tmp_path: Path) -> None:
+    """load() preserves file password when no secrets file exists."""
+    import robotsix_auto_mail.config as config_mod
+
+    # Reset cache
+    config_mod._secrets_cache = None
+
+    local_yaml = tmp_path / "mail.local.yaml"
+    local_yaml.write_text(
+        """\
+imap:
+  host: imap.example.com
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: user@example.com
+  password: "file-pass"
+"""
+    )
+
+    env: dict[str, str] = {
+        "MAIL_CONFIG_PATH": str(local_yaml),
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = load()
+        assert cfg.password == "file-pass"
+
+    # Clean up
+    config_mod._secrets_cache = None
+
+
+# -- from_yaml / from_toml: password not required -------------------------
+
+
+def test_from_yaml_missing_auth_password_ok(tmp_path: Path) -> None:
+    """from_yaml with validate=True does NOT require auth.password."""
+    yaml_file = tmp_path / "no_pass.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  host: imap.example.com
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: user@example.com
+"""
+    )
+    cfg = MailConfig.from_yaml(yaml_file, validate=True)
+    assert cfg.password == ""
+    assert cfg.username == "user@example.com"
+
+
+def test_from_toml_missing_auth_password_ok(tmp_path: Path) -> None:
+    """from_toml does NOT require auth.password."""
+    toml_file = tmp_path / "no_pass.toml"
+    toml_file.write_text(
+        """\
+[imap]
+host = "imap.example.com"
+
+[smtp]
+host = "smtp.example.com"
+
+[auth]
+username = "user@example.com"
+"""
+    )
+    cfg = MailConfig.from_toml(toml_file)
+    assert cfg.password == ""
+
+
+# -- from_env still requires MAIL_PASSWORD --------------------------------
+
+
+def test_from_env_still_requires_mail_password() -> None:
+    """from_env raises ConfigurationError when MAIL_PASSWORD is missing."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "user@example.com",
+        # MAIL_PASSWORD intentionally missing
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        with pytest.raises(ConfigurationError) as exc:
+            MailConfig.from_env()
+        msg = str(exc.value)
+        assert "MAIL_PASSWORD" in msg
