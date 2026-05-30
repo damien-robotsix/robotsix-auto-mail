@@ -227,7 +227,9 @@ def _build_board_html(db_path: str) -> str:
     )
 
 
-def _build_detail_html(db_path: str, message_id: str, *, embed: bool = False) -> str | None:
+def _build_detail_html(
+    db_path: str, message_id: str, *, embed: bool = False,
+) -> str | None:
     """Build a full HTML detail page for a single ``MailRecord``.
 
     Returns the HTML string, or ``None`` when *message_id* is not found.
@@ -375,7 +377,8 @@ def _build_detail_html(db_path: str, message_id: str, *, embed: bool = False) ->
             '<div class="embed-detail">\n'
             '<div class="detail-field">'
             '<div class="detail-label">Sender</div>'
-            f'<div class="detail-value"><strong>{html.escape(record.sender)}</strong></div>'
+            f'<div class="detail-value"><strong>{html.escape(record.sender)}'
+            '</strong></div>'
             '</div>\n'
             '<div class="detail-field">'
             '<div class="detail-label">Date</div>'
@@ -402,7 +405,8 @@ def _build_detail_html(db_path: str, message_id: str, *, embed: bool = False) ->
             '</div>\n'
             '<div class="detail-field">'
             '<div class="detail-label">Message ID</div>'
-            f'<div class="detail-value"><code>{html.escape(record.message_id)}</code></div>'
+            f'<div class="detail-value"><code>{html.escape(record.message_id)}'
+            '</code></div>'
             '</div>\n'
             f'{imap_uid_section}'
             '</div>\n'
@@ -495,7 +499,8 @@ def _render_card(record: MailRecord) -> str:
     )
 
     return (
-        f'<div class="card" data-message-id="{quoted_mid}" data-subject="{subject_attr}">'
+        f'<div class="card" data-message-id="{quoted_mid}"'
+        f' data-subject="{subject_attr}">'
         f'<div class="sender">{sender}</div>'
         f'<div class="subject">{subject_html}</div>'
         f'<div class="date">{date_str}</div>'
