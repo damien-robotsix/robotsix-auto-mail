@@ -22,6 +22,16 @@ modules:
       - ROADMAP.md
       - tests/test_stub.py
 
+  - name: docker
+    description: >-
+      Docker image definition, Compose orchestration, and
+      container entrypoint.
+    paths:
+      - .dockerignore
+      - Dockerfile
+      - docker-compose.yml
+      - entrypoint.sh
+
   - name: cli
     description: >-
       CLI entry point exposing probe and ingest subcommands.
@@ -35,6 +45,7 @@ modules:
     paths:
       - src/robotsix_auto_mail/config.py
       - tests/test_config.py
+      - .env.example
       - config/.gitkeep
       - config/mail.local.example.yaml
 
