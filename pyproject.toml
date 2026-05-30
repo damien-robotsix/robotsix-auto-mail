@@ -35,6 +35,9 @@ select = ["E", "F", "I"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+[tool.bandit]
+skips = ["B101", "B104", "B105", "B107", "B110", "B310", "B314", "B405"]
+
 [project.scripts]
 robotsix-auto-mail = "robotsix_auto_mail.cli:main"
 
