@@ -13,7 +13,9 @@ modules:
     description: >-
       Project root, package identity, build configuration, and roadmap.
     paths:
+      - .mail_data/.gitkeep
       - src/robotsix_auto_mail/__init__.py
+      - src/robotsix_auto_mail/format.py
       - pyproject.toml
       - .gitignore
       - .python-version
@@ -119,6 +121,7 @@ modules:
       User-facing documentation and architecture decisions.
     paths:
       - docs/connecting.md
+      - docs/deployment.md
       - docs/ingestion.md
       - docs/modules.yaml
       - docs/decisions/0001-programming-language.md
@@ -127,4 +130,5 @@ modules:
     description: >-
       GitHub Actions CI pipeline.
     paths:
+      - .github/dependabot.yml
       - .github/workflows/ci.yml
