@@ -144,6 +144,23 @@ VALUES
         return cur.lastrowid
 
 
+def get_record_by_message_id(
+    conn: sqlite3.Connection, message_id: str,
+) -> MailRecord | None:
+    """Return the ``MailRecord`` for *message_id*, or ``None`` if not found.
+
+    Read-only — does **not** call ``conn.commit()``.
+    """
+    cur = conn.execute(
+        "SELECT * FROM mail_records WHERE message_id = ?", (message_id,)
+    )
+    row = cur.fetchone()
+    if row is None:
+        return None
+    col_names = [desc[0] for desc in cur.description]
+    return row_to_mailrecord(row, col_names)
+
+
 def record_exists(conn: sqlite3.Connection, message_id: str) -> bool:
     """Check whether a message with *message_id* already exists in the DB.
 
