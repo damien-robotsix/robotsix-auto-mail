@@ -79,8 +79,9 @@ The [`Dockerfile`](../Dockerfile) has two stages:
 | `builder` | Installs the Python package (wheel) from `pyproject.toml` |
 | `production` | Copies **only** the installed artifacts from `builder`, creates a non-root `mailbot` user (UID 1000), and sets the entrypoint |
 
-The final image runs as `mailbot` (UID 1000).  No ports are exposed and there
-is no healthcheck — this is a CLI tool that starts, does its work, and exits.
+The final image runs as `mailbot` (UID 1000).  The base image exposes no ports
+and has no healthcheck — CLI operations are one-shot.  The `board` service in
+`docker-compose.yml` maps a port for the long-running web server.
 
 To build without the Compose cache:
 
@@ -92,8 +93,9 @@ docker compose build --no-cache
 
 ## Run locally
 
-All commands use `docker compose run` — **not** `docker compose up`.  The tool
-is a CLI; there is no long-running process for `up` to manage.
+CLI operations (`probe`, `ingest`, `board`) use `docker compose run` — they are
+one-shot commands.  The web board is a long-running daemon started with
+`docker compose up board`; see [Start the web board](#start-the-web-board).
 
 ### Probe connectivity (always run first)
 
