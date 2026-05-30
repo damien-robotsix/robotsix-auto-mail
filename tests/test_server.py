@@ -1509,7 +1509,7 @@ def test_build_board_html_has_script_block() -> None:
         html = _build_board_html(db_path)
         assert "function openDetail(messageId, subject)" in html
         assert "function closeDetail()" in html
-        assert "encodeURIComponent(messageId)" in html
+        assert "'/email/' + messageId + '?embed=1'" in html
         assert "classList.add('open')" in html
         assert "classList.remove('open')" in html
         assert "location.hash" in html
