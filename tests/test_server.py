@@ -13,7 +13,11 @@ if TYPE_CHECKING:
 
 from robotsix_auto_mail.db import MailRecord, init_db
 from robotsix_auto_mail.format import _format_date
-from robotsix_auto_mail.server import _build_board_html, _build_detail_html, _render_card
+from robotsix_auto_mail.server import (
+    _build_board_html,
+    _build_detail_html,
+    _render_card,
+)
 
 # ---------------------------------------------------------------------------
 # _format_date
