@@ -17,7 +17,7 @@ import dataclasses
 import json
 import os
 import urllib.parse
-from xml.etree import ElementTree
+from xml.etree import ElementTree  # nosec B405
 
 import urllib3
 import urllib3.exceptions

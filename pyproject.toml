@@ -37,7 +37,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.bandit]
-skips = ["B107", "B405"]
+skips = ["B107"]
 
 [project.scripts]
 robotsix-auto-mail = "robotsix_auto_mail.cli:main"
