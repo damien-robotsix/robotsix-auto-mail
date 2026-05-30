@@ -216,7 +216,7 @@ class ImapClient:
         if self._imap is not None:
             try:
                 self._imap.logout()
-            except Exception:
+            except Exception:  # nosec B110
                 # Connection may already be dead – best-effort close.
                 pass
         # In case logout() left the socket dangling, close it ourselves.
@@ -286,7 +286,7 @@ class ImapClient:
             sock = getattr(self._imap, "sock", None)
             if sock is not None:
                 sock.close()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # -- public methods ----------------------------------------------------
