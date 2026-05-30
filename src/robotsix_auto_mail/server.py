@@ -36,16 +36,37 @@ _BODY_PREVIEW_LIMIT = 100
 
 _CSS = """\
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: system-ui, -apple-system, sans-serif; background: #e8e8e8; padding: 1.5rem; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #e8e8e8; padding: 1.5rem;
+}
 h1 { margin-bottom: 1rem; font-size: 1.5rem; }
 .board { display: flex; gap: 1rem; overflow-x: auto; }
-.column { flex: 1; min-width: 260px; background: #f5f5f5; border-radius: 8px; padding: 0.75rem; }
-.column-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid #ddd; }
-.column-header h2 { font-size: 1rem; font-weight: 600; text-transform: capitalize; }
-.count { background: #666; color: #fff; font-size: 0.75rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px; }
+.column {
+  flex: 1; min-width: 260px; background: #f5f5f5;
+  border-radius: 8px; padding: 0.75rem;
+}
+.column-header {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem; border-bottom: 2px solid #ddd;
+}
+.column-header h2 {
+  font-size: 1rem; font-weight: 600; text-transform: capitalize;
+}
+.count {
+  background: #666; color: #fff; font-size: 0.75rem;
+  font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px;
+}
 .cards { display: flex; flex-direction: column; gap: 0.5rem; }
-.card { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 0.6rem 0.75rem; }
-.card .sender { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card {
+  background: #fff; border: 1px solid #ddd;
+  border-radius: 6px; padding: 0.6rem 0.75rem;
+}
+.card .sender {
+  font-weight: 700; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
 .card .subject { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card .date { font-size: 0.8rem; color: #888; }
 .card .body-preview { font-size: 0.85rem; color: #444; margin-top: 0.25rem; }
@@ -127,12 +148,14 @@ def _render_card(record: MailRecord) -> str:
     for s in _BOARD_COLUMNS:
         sel = ' selected' if s == record.status else ''
         options_parts.append(
-            f'<option value="{html.escape(s)}"{sel}>{html.escape(s.capitalize())}</option>'
+            f'<option value="{html.escape(s)}"{sel}>'
+            f'{html.escape(s.capitalize())}</option>'
         )
 
     form_html = (
         '<form class="card-form" method="post" action="/move">'
-        f'<input type="hidden" name="message_id" value="{html.escape(record.message_id)}">'
+        f'<input type="hidden" name="message_id"'
+        f' value="{html.escape(record.message_id)}">'
         f'<select name="status">{"".join(options_parts)}</select>'
         '<button type="submit">Move</button>'
         '</form>'
@@ -228,7 +251,7 @@ def make_board_handler(
         def _handle_move(self) -> None:
             """Process POST /move — update a card's status and redirect."""
             from robotsix_auto_mail.db import init_db
-            from robotsix_auto_mail.status import set_status, VALID_STATUSES
+            from robotsix_auto_mail.status import VALID_STATUSES, set_status
 
             content_length = int(self.headers.get("Content-Length", 0))
             raw = self.rfile.read(content_length).decode("utf-8")

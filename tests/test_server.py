@@ -10,7 +10,6 @@ from urllib.request import urlopen
 from robotsix_auto_mail.db import MailRecord, init_db
 from robotsix_auto_mail.server import _build_board_html, _format_date, _render_card
 
-
 # ---------------------------------------------------------------------------
 # _format_date
 # ---------------------------------------------------------------------------
@@ -577,7 +576,11 @@ def _post_form(port: int, fields: dict[str, str]) -> tuple[int, str]:
             return fp
 
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
     return resp.status, body
@@ -638,7 +641,9 @@ def test_move_to_triaging() -> None:
 
         server, port = _start_test_server(db_path)
         try:
-            status, _ = _post_form(port, {"message_id": "m-triaging", "status": "triaging"})
+            status, _ = _post_form(
+                port, {"message_id": "m-triaging", "status": "triaging"}
+            )
             assert status == 302
 
             resp = urlopen(f"http://127.0.0.1:{port}/board")
@@ -671,7 +676,9 @@ def test_move_to_archive() -> None:
 
         server, port = _start_test_server(db_path)
         try:
-            status, _ = _post_form(port, {"message_id": "m-archive", "status": "archive"})
+            status, _ = _post_form(
+                port, {"message_id": "m-archive", "status": "archive"}
+            )
             assert status == 302
 
             resp = urlopen(f"http://127.0.0.1:{port}/board")
@@ -704,7 +711,9 @@ def test_move_invalid_status_returns_400() -> None:
 
         server, port = _start_test_server(db_path)
         try:
-            status, body = _post_form(port, {"message_id": "bad-status", "status": "bogus"})
+            status, body = _post_form(
+                port, {"message_id": "bad-status", "status": "bogus"}
+            )
             assert status == 400
             assert "Invalid status: 'bogus'" in body
         finally:
@@ -746,7 +755,9 @@ def test_move_empty_message_id_returns_400() -> None:
 def test_move_unknown_message_id_returns_404() -> None:
     server, port = _start_test_server(":memory:")
     try:
-        status, body = _post_form(port, {"message_id": "does-not-exist", "status": "done"})
+        status, body = _post_form(
+            port, {"message_id": "does-not-exist", "status": "done"}
+        )
         assert status == 404
         assert body == "Not found"
     finally:
