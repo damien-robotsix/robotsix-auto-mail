@@ -160,6 +160,33 @@ def get_watermark(conn: sqlite3.Connection, key: str) -> str | None:
     return row[0] if row is not None else None
 
 
+def row_to_mailrecord(
+    row: tuple,  # type: ignore[type-arg]  # sqlite3 rows are dynamic at the type level
+    col_names: list[str],
+) -> MailRecord:
+    """Convert a sqlite3 row tuple and its column names to a ``MailRecord``.
+
+    The caller is responsible for extracting *col_names* from
+    ``cursor.description``.  This helper is pure — it does not touch
+    the cursor or the connection — so both ``db.list_records`` and
+    ``status.list_by_status`` can share it.
+    """
+    data = dict(zip(col_names, row))
+    return MailRecord(
+        message_id=data["message_id"],
+        sender=data["sender"],
+        subject=data["subject"],
+        date=data["date"],
+        status=data["status"],
+        imap_uid=data["imap_uid"],
+        recipients_json=data["recipients_json"],
+        body_plain=data["body_plain"],
+        body_html=data["body_html"],
+        attachments_json=data["attachments_json"],
+        id=data["id"],
+    )
+
+
 def list_records(conn: sqlite3.Connection) -> list[MailRecord]:
     """Return every ``MailRecord`` in the ``mail_records`` table.
 
@@ -172,22 +199,7 @@ def list_records(conn: sqlite3.Connection) -> list[MailRecord]:
     col_names = [desc[0] for desc in cur.description]
     results: list[MailRecord] = []
     for row in rows:
-        data = dict(zip(col_names, row))
-        results.append(
-            MailRecord(
-                message_id=data["message_id"],
-                sender=data["sender"],
-                subject=data["subject"],
-                date=data["date"],
-                status=data["status"],
-                imap_uid=data["imap_uid"],
-                recipients_json=data["recipients_json"],
-                body_plain=data["body_plain"],
-                body_html=data["body_html"],
-                attachments_json=data["attachments_json"],
-                id=data["id"],
-            )
-        )
+        results.append(row_to_mailrecord(row, col_names))
     return results
 
 
