@@ -1547,7 +1547,8 @@ def test_render_card_has_data_message_id() -> None:
 
 
 def test_render_card_data_message_id_present_with_subject_link() -> None:
-    """data-message-id coexists with the existing subject <a> link for non-JS fallback."""
+    """data-message-id coexists with the existing subject <a> link for
+    non-JS fallback."""
     record = MailRecord(
         message_id="abc123",
         sender="x@x.com",
