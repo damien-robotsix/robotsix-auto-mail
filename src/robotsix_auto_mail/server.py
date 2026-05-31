@@ -13,12 +13,10 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, quote, unquote
 
 from robotsix_auto_mail.db import MailRecord
-from robotsix_auto_mail.format import _format_date
+from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.status import STATUS_ORDER, VALID_STATUSES
 
 _BOARD_COLUMNS = STATUS_ORDER
-
-_BODY_PREVIEW_LIMIT = 150
 
 _CSS = """\
 * { box-sizing: border-box; margin: 0; padding: 0; }

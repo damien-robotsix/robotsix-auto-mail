@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, TextIO
 from robotsix_auto_mail import __version__
 from robotsix_auto_mail.config import MailConfig, load
 from robotsix_auto_mail.db import MailRecord, init_db, list_records
-from robotsix_auto_mail.format import _format_date
+from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
 from robotsix_auto_mail.pipeline import IngestResult, ingest_mail
 from robotsix_auto_mail.smtp_client import (
@@ -264,7 +264,6 @@ def _cmd_ingest(
         return 0
 
 
-_BODY_PREVIEW_LIMIT = 150
 _SEPARATOR = "-" * 60 + "\n"
 
 
