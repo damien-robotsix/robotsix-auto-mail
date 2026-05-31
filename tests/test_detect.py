@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import Literal
 from unittest import mock
@@ -198,7 +199,7 @@ def test_mail_provider_default_values() -> None:
 def test_mail_provider_is_immutable() -> None:
     """MailProvider is frozen — no attribute assignment after creation."""
     mp = MailProvider(imap_host="ih", smtp_host="sh")
-    with pytest.raises(Exception):  # dataclasses.FrozenInstanceError
+    with pytest.raises(FrozenInstanceError):
         mp.imap_host = "other"  # type: ignore[misc]
 
 

@@ -273,7 +273,7 @@ def test_insert_record_persists_data() -> None:
         row = cur.fetchone()
         assert row is not None
         col_names = [desc[0] for desc in cur.description]
-        data = dict(zip(col_names, row))
+        data = dict(zip(col_names, row, strict=True))
         assert data["message_id"] == "<m1@example.com>"
         assert data["sender"] == "alice@example.com"
         assert data["subject"] == "Hello"

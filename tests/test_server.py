@@ -599,7 +599,7 @@ def _post_form(port: int, fields: dict[str, str]) -> tuple[int, str]:
             return fp
 
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-    req = urllib.request.Request(
+    req = urllib.request.Request(  # noqa: S310
         url,
         data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -1598,7 +1598,7 @@ def test_move_with_redirect_to() -> None:
             assert status == 302, f"Expected 302, got {status}: {body}"
 
             # Also verify normal redirect still works (no redirect_to)
-            status2, body2 = _post_form(
+            status2, _body2 = _post_form(
                 port,
                 {"message_id": "redirect-me", "status": "triaging"},
             )

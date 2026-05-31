@@ -101,7 +101,7 @@ def test_version_flag(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# probe – success
+# probe - success
 # ---------------------------------------------------------------------------
 
 
@@ -143,7 +143,7 @@ def test_probe_success(
 
 
 # ---------------------------------------------------------------------------
-# probe – IMAP failure, SMTP succeeds
+# probe - IMAP failure, SMTP succeeds
 # ---------------------------------------------------------------------------
 
 
@@ -182,7 +182,7 @@ def test_probe_imap_failure_smtp_ok(
 
 
 # ---------------------------------------------------------------------------
-# probe – SMTP failure, IMAP succeeds
+# probe - SMTP failure, IMAP succeeds
 # ---------------------------------------------------------------------------
 
 
@@ -219,7 +219,7 @@ def test_probe_smtp_failure_imap_ok(
 
 
 # ---------------------------------------------------------------------------
-# probe – both fail
+# probe - both fail
 # ---------------------------------------------------------------------------
 
 
@@ -252,7 +252,7 @@ def test_probe_both_fail(
 
 
 # ---------------------------------------------------------------------------
-# probe – never calls send_message
+# probe - never calls send_message
 # ---------------------------------------------------------------------------
 
 
@@ -276,7 +276,7 @@ def test_probe_never_calls_send_message(
 
 
 # ---------------------------------------------------------------------------
-# probe – connection refusal for IMAP
+# probe - connection refusal for IMAP
 # ---------------------------------------------------------------------------
 
 
@@ -301,7 +301,7 @@ def test_probe_imap_connection_refused(
 
 
 # ---------------------------------------------------------------------------
-# probe – connection refusal for SMTP
+# probe - connection refusal for SMTP
 # ---------------------------------------------------------------------------
 
 
@@ -328,7 +328,7 @@ def test_probe_smtp_connection_refused(
 
 
 # ---------------------------------------------------------------------------
-# probe – TLS failure for IMAP
+# probe - TLS failure for IMAP
 # ---------------------------------------------------------------------------
 
 
@@ -368,7 +368,7 @@ def test_probe_imap_tls_failure(
 
 
 # ---------------------------------------------------------------------------
-# probe – SMTP STARTTLS failure
+# probe - SMTP STARTTLS failure
 # ---------------------------------------------------------------------------
 
 
@@ -395,7 +395,7 @@ def test_probe_smtp_tls_failure(
 
 
 # ---------------------------------------------------------------------------
-# probe – IMAP authentication failure
+# probe - IMAP authentication failure
 # ---------------------------------------------------------------------------
 
 
@@ -791,7 +791,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 
             cur = c.execute("SELECT * FROM mail_records ORDER BY id")
             col_names = [desc[0] for desc in cur.description]
-            rows = [dict(zip(col_names, r)) for r in cur.fetchall()]
+            rows = [dict(zip(col_names, r, strict=True)) for r in cur.fetchall()]
             cur = c.execute("SELECT COUNT(*) FROM watermark")
             wm_count = cur.fetchone()[0]
             return {"mail_records": rows, "watermark_count": wm_count}
@@ -832,7 +832,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 
         # Every column of every row must be bit-for-bit unchanged.
         for i, (b_row, a_row) in enumerate(
-            zip(before["mail_records"], after["mail_records"])
+            zip(before["mail_records"], after["mail_records"], strict=True)
         ):
             for col in b_row:
                 assert a_row[col] == b_row[col], (

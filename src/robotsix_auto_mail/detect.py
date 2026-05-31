@@ -294,7 +294,7 @@ def _parse_autoconfig_xml(xml_text: str) -> MailProvider | None:
     Returns ``None`` when the document lacks a usable IMAP + SMTP pair.
     """
     try:
-        root = ElementTree.fromstring(xml_text)  # nosec B314
+        root = ElementTree.fromstring(xml_text)  # noqa: S314
     except ElementTree.ParseError:
         return None
 
@@ -518,7 +518,7 @@ def render_config(config: MailConfig) -> str:
         password_line = f"password: {json.dumps(config.password)}"
     else:
         password_line = (
-            'password: ""  # set your password here, '  # nosec B105
+            'password: ""  # set your password here, '  # noqa: S105
             "or via the MAIL_PASSWORD env var"
         )
 

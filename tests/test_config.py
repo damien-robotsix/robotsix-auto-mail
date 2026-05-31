@@ -50,7 +50,7 @@ def test_mailconfig_imap_folder_explicit() -> None:
 
 
 def test_mailconfig_is_immutable() -> None:
-    """MailConfig is frozen – no attribute assignment after creation."""
+    """MailConfig is frozen - no attribute assignment after creation."""
     cfg = MailConfig(
         imap_host="imap.example.com",
         smtp_host="smtp.example.com",

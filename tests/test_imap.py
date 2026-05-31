@@ -5,6 +5,7 @@ from __future__ import annotations
 import imaplib
 import socket
 import ssl
+from dataclasses import FrozenInstanceError
 from unittest import mock
 
 import pytest
@@ -477,7 +478,7 @@ def test_context_manager_closes_socket_when_logout_fails(cfg: MailConfig) -> Non
 def test_mailbox_info_is_frozen() -> None:
     """MailboxInfo is immutable."""
     info = MailboxInfo(name="INBOX", attributes=("\\HasNoChildren",), delimiter="/")
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         info.name = "OTHER"  # type: ignore[misc]
 
 
