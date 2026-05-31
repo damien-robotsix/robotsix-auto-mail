@@ -667,7 +667,7 @@ def _cmd_serve(config: MailConfig, *, port: int) -> int:
     try:
         # Binding to 0.0.0.0 is intentional: ``serve_board`` is a local dev
         # convenience tool, not a production server.
-        server = HTTPServer(("0.0.0.0", port), handler_class)  # noqa: S104
+        server = HTTPServer(("0.0.0.0", port), handler_class)  # noqa: S104  # nosec B104
         server.serve_forever()
     except KeyboardInterrupt:
         print("Shutting down.")
