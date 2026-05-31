@@ -503,7 +503,7 @@ def _parse_md_table(text: str, section_heading: str) -> list[dict[str, str]]:
         cells = [c.strip() for c in stripped.split("|")[1:-1]]
         if len(cells) != len(headers):
             continue
-        row = dict(zip(headers, cells))
+        row = dict(zip(headers, cells, strict=True))
         rows.append(row)
 
     return rows
@@ -519,10 +519,10 @@ def _strip_backticks(s: str) -> str:
 def _normalise_doc_default(raw: str) -> Any:
     """Convert a documented default value to a Python object.
 
-    Returns ``dataclasses.MISSING`` when the doc says "–" (none).
+    Returns ``dataclasses.MISSING`` when the doc says "-" (none).
     """
     stripped = _strip_backticks(raw.strip())
-    if stripped in ("–", "—", "-", "N/A", ""):
+    if stripped in ("–", "—", "-", "N/A", ""):  # noqa: RUF001
         return dataclasses.MISSING
     # YAML-parse: bare numbers, quoted strings, etc.
     try:
@@ -597,7 +597,7 @@ def check_docs_connecting(
         doc_default = _normalise_doc_default(doc_default_raw)
 
         if doc_default is dataclasses.MISSING:
-            # Doc says "–" → no default documented.  Treat an
+            # Doc says "-" → no default documented.  Treat an
             # empty-string MailConfig default as equivalent ("no value").
             if default == "":
                 continue
@@ -664,7 +664,7 @@ def check_docs_connecting(
         doc_default = _normalise_doc_default(doc_default_raw)
 
         if doc_default is dataclasses.MISSING:
-            # Doc says "–" → no default documented.  Treat an
+            # Doc says "-" → no default documented.  Treat an
             # empty-string MailConfig default as equivalent ("no value").
             if default == "":
                 continue
