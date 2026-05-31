@@ -528,7 +528,7 @@ def make_board_handler(
         # Class attribute so every request can find the database.
         db_path: str = _db
 
-        def do_GET(self) -> None:  # noqa: N802
+        def do_GET(self) -> None:
             """Route GET requests."""
             if self.path == "/":
                 self._redirect("/board")
@@ -581,7 +581,7 @@ def make_board_handler(
             self.end_headers()
             self.wfile.write(encoded)
 
-        def do_POST(self) -> None:  # noqa: N802
+        def do_POST(self) -> None:
             """Route POST requests."""
             if self.path == "/move":
                 self._handle_move()
@@ -694,7 +694,7 @@ def make_board_handler(
             self.end_headers()
             self.wfile.write(encoded)
 
-        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+        def log_message(self, format: str, *args: object) -> None:
             """Suppress logging to stderr (keep server quiet)."""
             pass
 

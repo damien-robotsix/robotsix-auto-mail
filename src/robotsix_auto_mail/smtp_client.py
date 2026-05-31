@@ -1,6 +1,6 @@
 """SMTP client built on stdlib ``smtplib``.
 
-Provides ``SmtpClient`` – a context manager that connects to an SMTP
+Provides ``SmtpClient`` - a context manager that connects to an SMTP
 server, negotiates TLS, authenticates, and sends plain-text MIME messages.
 
 Depends only on ``MailConfig`` from ``robotsix_auto_mail.config`` and the
@@ -270,7 +270,8 @@ class SmtpClient:
             ) from exc
 
     def _authenticate(self) -> None:
-        assert self._smtp is not None  # called after connect  # nosec B101
+        if self._smtp is None:
+            raise RuntimeError("_authenticate() called before _connect_*()")
         try:
             self._smtp.login(self._username, self._password)
         except _SMTP_EXCEPTION as exc:

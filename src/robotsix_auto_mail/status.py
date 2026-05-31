@@ -29,7 +29,8 @@ def get_status(conn: sqlite3.Connection, message_id: str) -> str | None:
     if row is None:
         return None
     value = row[0]
-    assert isinstance(value, str)  # nosec B101
+    if not isinstance(value, str):
+        raise TypeError(f"Expected str from DB, got {type(value).__name__}")
     return value
 
 

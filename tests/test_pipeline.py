@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Generator
+from dataclasses import FrozenInstanceError
 from unittest import mock
 
 import pytest
@@ -77,7 +78,7 @@ def test_ingest_error_is_frozen() -> None:
     assert err.uid == 1
     assert err.message_id == "<x@y>"
     assert err.error == "boom"
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         err.uid = 2  # type: ignore[misc]
 
 
@@ -94,7 +95,7 @@ def test_ingest_result_is_frozen() -> None:
     assert result.stored == 2
     assert result.skipped == 1
     assert result.errors == []
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         result.stored = 99  # type: ignore[misc]
 
 
@@ -107,7 +108,7 @@ def test_ingest_result_defaults() -> None:
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – happy path (acceptance criterion 1)
+# ingest_mail - happy path (acceptance criterion 1)
 # ---------------------------------------------------------------------------
 
 
@@ -141,7 +142,7 @@ def test_ingest_stores_three_messages_and_updates_watermark(
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – idempotency (acceptance criterion 2)
+# ingest_mail - idempotency (acceptance criterion 2)
 # ---------------------------------------------------------------------------
 
 
@@ -180,7 +181,7 @@ def test_ingest_idempotent_second_run_skips_all(
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – partial parse failure (acceptance criterion 3)
+# ingest_mail - partial parse failure (acceptance criterion 3)
 # ---------------------------------------------------------------------------
 
 
@@ -236,7 +237,7 @@ def test_ingest_partial_parse_failure(
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – crash simulation (acceptance criterion 4)
+# ingest_mail - crash simulation (acceptance criterion 4)
 # ---------------------------------------------------------------------------
 
 
@@ -282,7 +283,7 @@ def test_ingest_crash_before_watermark_no_duplicates(
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – empty batch
+# ingest_mail - empty batch
 # ---------------------------------------------------------------------------
 
 
@@ -326,7 +327,7 @@ def test_ingest_empty_batch_does_not_touch_existing_watermark(
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – DB insert failure
+# ingest_mail - DB insert failure
 # ---------------------------------------------------------------------------
 
 
@@ -372,7 +373,7 @@ def test_ingest_insert_failure_is_collected(
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – record_exists dance
+# ingest_mail - record_exists dance
 # ---------------------------------------------------------------------------
 
 
@@ -418,7 +419,7 @@ def test_ingest_record_exists_skips(
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – watermark advances to max UID in batch
+# ingest_mail - watermark advances to max UID in batch
 # ---------------------------------------------------------------------------
 
 
@@ -457,7 +458,7 @@ def test_ingest_watermark_advances_to_max_uid(
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – ParseError with non-empty message
+# ingest_mail - ParseError with non-empty message
 # ---------------------------------------------------------------------------
 
 
@@ -481,7 +482,7 @@ def test_ingest_parse_error_message(
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – mixing stored, skipped, errors in one batch
+# ingest_mail - mixing stored, skipped, errors in one batch
 # ---------------------------------------------------------------------------
 
 
@@ -555,7 +556,7 @@ def test_pipeline_imports_from_expected_modules() -> None:
 
 
 # ---------------------------------------------------------------------------
-# ingest_mail – dry_run mode
+# ingest_mail - dry_run mode
 # ---------------------------------------------------------------------------
 
 

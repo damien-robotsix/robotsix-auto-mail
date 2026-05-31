@@ -195,7 +195,7 @@ def row_to_mailrecord(
     the cursor or the connection — so both ``db.list_records`` and
     ``status.list_by_status`` can share it.
     """
-    data = dict(zip(col_names, row))
+    data = dict(zip(col_names, row, strict=True))
     return MailRecord(
         message_id=data["message_id"],
         sender=data["sender"],

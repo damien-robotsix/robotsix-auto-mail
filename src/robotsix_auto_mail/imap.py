@@ -1,6 +1,6 @@
 """IMAP client built on stdlib ``imaplib``.
 
-Provides ``ImapClient`` – a context manager that connects to a real IMAP
+Provides ``ImapClient`` - a context manager that connects to a real IMAP
 server, negotiates TLS, authenticates, and exposes ``list_folders()`` and
 ``select_folder()`` for basic mailbox inspection.
 
@@ -216,8 +216,8 @@ class ImapClient:
         if self._imap is not None:
             try:
                 self._imap.logout()
-            except Exception:  # nosec B110
-                # Connection may already be dead – best-effort close.
+            except Exception:  # noqa: S110
+                # Connection may already be dead - best-effort close.
                 pass
         # In case logout() left the socket dangling, close it ourselves.
         self._close_socket()
@@ -251,7 +251,7 @@ class ImapClient:
         try:
             self._imap.starttls(ssl_context=ctx)
         except (_IMAP4_ERROR, ssl.SSLError, OSError) as exc:
-            # Close the plain connection before raising – it is now
+            # Close the plain connection before raising - it is now
             # in an unknown state.
             self._close_socket()
             raise ImapTlsError(
@@ -269,7 +269,8 @@ class ImapClient:
             ) from exc
 
     def _authenticate(self) -> None:
-        assert self._imap is not None  # called after connect  # nosec B101
+        if self._imap is None:
+            raise RuntimeError("_authenticate() called before _connect_*()")
         try:
             self._imap.login(self._username, self._password)
         except _IMAP4_ERROR as exc:
@@ -286,7 +287,7 @@ class ImapClient:
             sock = getattr(self._imap, "sock", None)
             if sock is not None:
                 sock.close()
-        except Exception:  # nosec B110
+        except Exception:  # noqa: S110
             pass
 
     # -- public methods ----------------------------------------------------
