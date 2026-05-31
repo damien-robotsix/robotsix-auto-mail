@@ -24,10 +24,10 @@ import urllib3
 import urllib3.exceptions
 
 from robotsix_auto_mail.config import (
+    _VALID_TLS_MODES,
     DEFAULT_DB_PATH,
     DEFAULT_LLM_MODEL,
     MailConfig,
-    _VALID_TLS_MODES,
 )
 
 # ---------------------------------------------------------------------------
