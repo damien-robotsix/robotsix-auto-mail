@@ -8,6 +8,10 @@ dist/
 .ruff_cache/
 .pytest_cache/
 
+# Ephemeral lockfile export produced by CI for pip-audit (never committed;
+# uv.lock is the source of truth).
+requirements-locked.txt
+
 # Environment files (may contain credentials)
 .env
 .env.*
