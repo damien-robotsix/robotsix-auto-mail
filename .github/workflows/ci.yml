@@ -13,15 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      # setup-uv installs uv and a Python matching .python-version, so a
+      # separate actions/setup-python step is no longer needed.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
 
+      # --frozen uses uv.lock as-is and FAILS if pyproject.toml was changed
+      # without re-running `uv lock` — guaranteeing the committed lockfile is
+      # the single source of truth for the resolved dependency tree.
+      # --extra dev pulls the dev tooling (ruff/mypy/pytest/...) which lives
+      # in [project.optional-dependencies]; uv does not install extras by
+      # default.
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+        run: uv sync --frozen --extra dev
 
       - name: Validate module taxonomy
         run: |
@@ -29,15 +33,15 @@ jobs:
           check-jsonschema --schemafile docs/modules.schema.yaml docs/modules.yaml
 
       - name: Lint (ruff)
-        run: ruff check .
+        run: uv run ruff check .
 
       - name: Type check (mypy)
-        run: mypy .
+        run: uv run mypy .
 
       - name: SAST (bandit)
         run: |
-          pip install 'bandit[toml]'
-          bandit -r src/ -f json -c pyproject.toml
+          uv pip install 'bandit[toml]'
+          uv run bandit -r src/ -f json -c pyproject.toml
 
       - name: Secret scanning (TruffleHog)
         uses: trufflesecurity/trufflehog@main
@@ -45,7 +49,18 @@ jobs:
           path: ./
 
       - name: Test (pytest)
-        run: pytest
+        run: uv run pytest
+
+      # Audit the FULL locked dependency set (incl. platform-specific
+      # packages) rather than only what pip happened to install for this
+      # runner — export the lockfile to a pip-compatible requirements file
+      # first, then point pip-audit at it.
+      # --no-emit-project drops the local editable project ("-e .") so
+      # pip-audit only sees third-party dependencies.
+      - name: Export lockfile for audit
+        run: uv export --format requirements-txt --no-emit-project -o requirements-locked.txt
 
       - name: Audit dependencies (pip-audit)
         uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          inputs: requirements-locked.txt

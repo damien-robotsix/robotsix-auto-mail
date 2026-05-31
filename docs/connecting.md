@@ -68,8 +68,12 @@ API key; autoconfig and MX detection do not.
 ### Setup
 
 ```sh
-# pydantic-ai is included in dev installs
-pip install -e ".[dev]"
+# Installs dev dependencies (incl. pydantic-ai) from the committed uv.lock,
+# so you get the exact same resolved versions as CI. The dev tooling lives
+# in the `dev` extra, which `--extra dev` pulls in. After changing
+# dependencies in pyproject.toml, run `uv lock` and commit the updated
+# uv.lock.
+uv sync --extra dev
 
 # Set your OpenRouter API key (required)
 export LLM_API_KEY=sk-or-v1-…
