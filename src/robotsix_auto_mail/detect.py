@@ -27,6 +27,7 @@ from robotsix_auto_mail.config import (
     DEFAULT_DB_PATH,
     DEFAULT_LLM_MODEL,
     MailConfig,
+    _VALID_TLS_MODES,
 )
 
 # ---------------------------------------------------------------------------
@@ -62,9 +63,9 @@ class DetectedProvider(pydantic.BaseModel):
     @pydantic.field_validator("imap_tls_mode", "smtp_tls_mode")
     @classmethod
     def _validate_tls_mode(cls, v: str) -> str:
-        if v not in {"starttls", "direct-tls", "none"}:
+        if v not in _VALID_TLS_MODES:
             raise ValueError(
-                f"TLS mode must be one of starttls, direct-tls, none; got {v!r}"
+                f"TLS mode must be one of {sorted(_VALID_TLS_MODES)!r}; got {v!r}"
             )
         return v
 
