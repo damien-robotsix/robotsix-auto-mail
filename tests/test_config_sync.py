@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 # Make the script importable.
 _SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(_SCRIPTS))
@@ -86,18 +84,18 @@ _DOCS_YAML_TABLE = """\
 
 | Key | Required | Default | Purpose |
 |---|---|---|---|
-| `imap.host` | yes | – | IMAP server hostname |
+| `imap.host` | yes | - | IMAP server hostname |
 | `imap.port` | no | `993` | IMAP server port |
 | `imap.tls_mode` | no | `"direct-tls"` | IMAP TLS mode |
 | `imap.folder` | no | `"INBOX"` | IMAP mailbox folder name |
-| `smtp.host` | yes | – | SMTP server hostname |
+| `smtp.host` | yes | - | SMTP server hostname |
 | `smtp.port` | no | `587` | SMTP server port |
 | `smtp.tls_mode` | no | `"starttls"` | SMTP TLS mode |
-| `auth.username` | yes | – | Login username |
-| `auth.password` | no | – | Login password |
+| `auth.username` | yes | - | Login username |
+| `auth.password` | no | - | Login password |
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles |
-| `llm.api_key` | no | – | LLM provider API key |
+| `llm.api_key` | no | - | LLM provider API key |
 | `llm.model` | no | `"deepseek/deepseek-v4-flash"` | LLM model name |
 """
 
@@ -106,10 +104,10 @@ _DOCS_ENV_TABLE = """\
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `MAIL_IMAP_HOST` | yes | – | IMAP server hostname |
-| `MAIL_SMTP_HOST` | yes | – | SMTP server hostname |
-| `MAIL_USERNAME` | yes | – | Login username |
-| `MAIL_PASSWORD` | yes | – | Login password |
+| `MAIL_IMAP_HOST` | yes | - | IMAP server hostname |
+| `MAIL_SMTP_HOST` | yes | - | SMTP server hostname |
+| `MAIL_USERNAME` | yes | - | Login username |
+| `MAIL_PASSWORD` | yes | - | Login password |
 | `MAIL_IMAP_PORT` | no | `993` | IMAP server port |
 | `MAIL_IMAP_TLS_MODE` | no | `direct-tls` | TLS negotiation for IMAP |
 | `MAIL_SMTP_PORT` | no | `587` | SMTP server port |
@@ -117,8 +115,8 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_IMAP_FOLDER` | no | `INBOX` | IMAP mailbox folder name |
 | `MAIL_DB_PATH` | no | `.data/mail.db` | Filesystem path for the SQLite database |
 | `MAIL_INGEST_INTERVAL` | no | `15` | Minutes between automatic ingest cycles |
-| `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
-| `LLM_API_KEY` | no | – | LLM provider API key |
+| `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
+| `LLM_API_KEY` | no | - | LLM provider API key |
 | `LLM_MODEL` | no | `deepseek/deepseek-v4-flash` | LLM model name |
 """
 
