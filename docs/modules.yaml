@@ -134,3 +134,5 @@ modules:
     paths:
       - .github/dependabot.yml
       - .github/workflows/ci.yml
+      - .pre-commit-config.yaml
+      - .secrets.baseline
