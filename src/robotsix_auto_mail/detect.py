@@ -28,6 +28,8 @@ from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
 from robotsix_auto_mail.config import (
     _VALID_TLS_MODES,
     DEFAULT_DB_PATH,
+    DEFAULT_IMAP_TLS_MODE,
+    DEFAULT_SMTP_TLS_MODE,
     MailConfig,
 )
 
@@ -56,10 +58,10 @@ class DetectedProvider(pydantic.BaseModel):
 
     imap_host: str = pydantic.Field(..., min_length=1)
     imap_port: int = pydantic.Field(default=993, ge=1, le=65535)
-    imap_tls_mode: str = pydantic.Field(default="direct-tls")
+    imap_tls_mode: str = pydantic.Field(default=DEFAULT_IMAP_TLS_MODE)
     smtp_host: str = pydantic.Field(..., min_length=1)
     smtp_port: int = pydantic.Field(default=587, ge=1, le=65535)
-    smtp_tls_mode: str = pydantic.Field(default="starttls")
+    smtp_tls_mode: str = pydantic.Field(default=DEFAULT_SMTP_TLS_MODE)
 
     @pydantic.field_validator("imap_tls_mode", "smtp_tls_mode")
     @classmethod
@@ -83,9 +85,9 @@ class MailProvider:
     imap_host: str
     smtp_host: str
     imap_port: int = 993
-    imap_tls_mode: str = "direct-tls"
+    imap_tls_mode: str = DEFAULT_IMAP_TLS_MODE
     smtp_port: int = 587
-    smtp_tls_mode: str = "starttls"
+    smtp_tls_mode: str = DEFAULT_SMTP_TLS_MODE
 
 
 # ---------------------------------------------------------------------------
