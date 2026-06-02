@@ -17,10 +17,10 @@ dev = [
     "ruff",
     "mypy",
     "pytest",
+    "deptry",
     "hatchling",
     "types-PyYAML",
     "robotsix-llmio[openrouter-deepseek]",
-    "deptry",
 ]
 llm = [
     "robotsix-llmio[openrouter-deepseek]",
