@@ -49,6 +49,10 @@ class ConfigurationError(Exception):
 
 _VALID_TLS_MODES = frozenset({"starttls", "direct-tls", "none"})
 
+# Default TLS modes for IMAP and SMTP connections.
+DEFAULT_IMAP_TLS_MODE = "direct-tls"
+DEFAULT_SMTP_TLS_MODE = "starttls"
+
 # Default location for the SQLite store: a ``.data/`` directory next to the
 # current working directory (git-ignored), keeping the repo root clean.
 DEFAULT_DB_PATH = ".data/mail.db"
@@ -101,9 +105,9 @@ class MailConfig:
     password: str
 
     imap_port: int = 993
-    imap_tls_mode: str = "direct-tls"
+    imap_tls_mode: str = DEFAULT_IMAP_TLS_MODE
     smtp_port: int = 587
-    smtp_tls_mode: str = "starttls"
+    smtp_tls_mode: str = DEFAULT_SMTP_TLS_MODE
 
     db_path: str = DEFAULT_DB_PATH
     imap_folder: str = "INBOX"
@@ -201,10 +205,10 @@ class MailConfig:
         imap_port = _optional_int("MAIL_IMAP_PORT", "imap_port", 993)
         smtp_port = _optional_int("MAIL_SMTP_PORT", "smtp_port", 587)
         imap_tls_mode = _optional_tls(
-            "MAIL_IMAP_TLS_MODE", "imap_tls_mode", "direct-tls"
+            "MAIL_IMAP_TLS_MODE", "imap_tls_mode", DEFAULT_IMAP_TLS_MODE
         )
         smtp_tls_mode = _optional_tls(
-            "MAIL_SMTP_TLS_MODE", "smtp_tls_mode", "starttls"
+            "MAIL_SMTP_TLS_MODE", "smtp_tls_mode", DEFAULT_SMTP_TLS_MODE
         )
 
         db_path = os.environ.get("MAIL_DB_PATH", DEFAULT_DB_PATH)
@@ -268,12 +272,12 @@ class MailConfig:
 
         imap_host = _get_str(imap_section, "host", "")
         imap_port = _get_int(imap_section, "port", 993, path)
-        imap_tls_mode = _get_str(imap_section, "tls_mode", "direct-tls")
+        imap_tls_mode = _get_str(imap_section, "tls_mode", DEFAULT_IMAP_TLS_MODE)
         imap_folder = _get_str(imap_section, "folder", "INBOX")
 
         smtp_host = _get_str(smtp_section, "host", "")
         smtp_port = _get_int(smtp_section, "port", 587, path)
-        smtp_tls_mode = _get_str(smtp_section, "tls_mode", "starttls")
+        smtp_tls_mode = _get_str(smtp_section, "tls_mode", DEFAULT_SMTP_TLS_MODE)
 
         username = _get_str(auth_section, "username", "")
         password = _get_str(auth_section, "password", "")
