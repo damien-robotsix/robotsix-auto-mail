@@ -17,6 +17,7 @@ dev = [
     "ruff",
     "mypy",
     "pytest",
+    "deptry",
     "hatchling",
     "types-PyYAML",
     "robotsix-llmio[openrouter-deepseek]",
@@ -51,3 +52,14 @@ strict = true
 python_version = "3.12"
 packages = ["src/robotsix_auto_mail"]
 
+[tool.deptry]
+# Treat everything under [project.optional-dependencies][dev] (ruff, mypy,
+# pytest, hatchling, types-PyYAML, robotsix-llmio, deptry) as dev-only.
+# Dev deps are exempt from DEP002 (unused) regardless of whether tests/
+# actually imports them.
+optional_dependencies_dev_groups = ["dev"]
+
+[tool.deptry.per_rule_ignores]
+# pydantic_ai is pulled in transitively via robotsix-llmio[openrouter-deepseek]
+# (declared in the [llm] extra); the lazy import in detect.py is intentional.
+DEP003 = ["pydantic_ai"]
