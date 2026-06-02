@@ -9,10 +9,18 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 WORKDIR /build
 
+# Bring in the `uv` binary so the install step can honour
+# [tool.uv.sources] in pyproject.toml — pip cannot, and the
+# only non-PyPI dep (robotsix-llmio) is declared there.
+COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
+
 COPY pyproject.toml .
 COPY src/ src/
 
-RUN pip install --no-cache-dir ".[llm]"
+# --system installs into the image's system Python (the same
+# /usr/local/lib/python3.12/site-packages/ path the production
+# stage copies from), matching the previous `pip install` layout.
+RUN uv pip install --system --no-cache-dir ".[llm]"
 
 # ---------------------------------------------------------------------------
 # Production stage — minimal runtime image with only the installed artifacts
