@@ -14,6 +14,7 @@ from __future__ import annotations
 import dataclasses
 import os
 from pathlib import Path
+from typing import Any, Final, NamedTuple
 
 import yaml
 
@@ -82,6 +83,77 @@ def _parse_int(label: str, raw: str) -> int:
         raise ConfigurationError(
             f"{label} must be an integer, got {raw!r}"
         ) from None
+
+
+# ---------------------------------------------------------------------------
+# Per-field spec table (single source of truth)
+# ---------------------------------------------------------------------------
+
+# Sentinel marking a field with no real default value: callers (env loader,
+# YAML loader) decide what to use as a fallback when the value is absent.
+_REQUIRED: Final[object] = object()
+
+
+class _FieldSpec(NamedTuple):
+    """How to read one ``MailConfig`` field from the env and the YAML file.
+
+    ``env_key`` is the environment variable name; ``yaml_path`` is a dotted
+    ``section.key`` pair (exactly two segments).  ``kind`` selects the
+    parser / validator: ``"str"``, ``"int"`` or ``"tls_mode"``.  ``default``
+    is the value used when the source is absent and the field is not
+    required for that source (or :data:`_REQUIRED` if no real default
+    exists).  ``required_in_env`` / ``required_in_yaml`` are intentionally
+    independent — ``password`` is required in env but not in YAML.
+    """
+
+    field_name: str
+    env_key: str
+    yaml_path: str
+    kind: str
+    default: Any
+    required_in_env: bool
+    required_in_yaml: bool
+
+
+_FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
+    _FieldSpec("imap_host", "MAIL_IMAP_HOST", "imap.host",
+               "str", _REQUIRED, True, True),
+    _FieldSpec("imap_port", "MAIL_IMAP_PORT", "imap.port",
+               "int", 993, False, False),
+    _FieldSpec("imap_tls_mode", "MAIL_IMAP_TLS_MODE", "imap.tls_mode",
+               "tls_mode", DEFAULT_IMAP_TLS_MODE, False, False),
+    _FieldSpec("imap_folder", "MAIL_IMAP_FOLDER", "imap.folder",
+               "str", "INBOX", False, False),
+    _FieldSpec("smtp_host", "MAIL_SMTP_HOST", "smtp.host",
+               "str", _REQUIRED, True, True),
+    _FieldSpec("smtp_port", "MAIL_SMTP_PORT", "smtp.port",
+               "int", 587, False, False),
+    _FieldSpec("smtp_tls_mode", "MAIL_SMTP_TLS_MODE", "smtp.tls_mode",
+               "tls_mode", DEFAULT_SMTP_TLS_MODE, False, False),
+    _FieldSpec("username", "MAIL_USERNAME", "auth.username",
+               "str", _REQUIRED, True, True),
+    # password: required in env, but optional in YAML (env can supply it).
+    _FieldSpec("password", "MAIL_PASSWORD", "auth.password",
+               "str", _REQUIRED, True, False),
+    _FieldSpec("db_path", "MAIL_DB_PATH", "store.path",
+               "str", DEFAULT_DB_PATH, False, False),
+    _FieldSpec("llm_api_key", "LLM_API_KEY", "llm.api_key",
+               "str", "", False, False),
+    _FieldSpec("llm_model", "LLM_MODEL", "llm.model",
+               "str", DEFAULT_LLM_MODEL, False, False),
+    _FieldSpec("ingest_interval_minutes", "MAIL_INGEST_INTERVAL",
+               "ingest.interval_minutes", "int",
+               DEFAULT_INGEST_INTERVAL_MINUTES, False, False),
+)
+
+# Each yaml_path must be exactly ``section.key`` — the YAML loader splits
+# on the single dot.  Validated once at import time so a typo here fails
+# immediately rather than at first use.
+for _s in _FIELD_SPECS:
+    assert _s.yaml_path.count(".") == 1, (  # noqa: S101
+        f"_FieldSpec.yaml_path must have exactly one dot, "
+        f"got {_s.yaml_path!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -162,66 +234,34 @@ class MailConfig:
         """
         missing: list[str] = []
         errors: list[str] = []
+        kwargs: dict[str, Any] = {}
 
-        # -- helpers that collect instead of raising immediately -----------
-
-        def _required(env_key: str, field_name: str) -> str:
-            value = os.environ.get(env_key, "")
-            if not value:
-                missing.append(env_key)
-                return ""
-            return value
-
-        def _optional_int(
-            env_key: str, field_name: str, default: int
-        ) -> int:
-            raw = os.environ.get(env_key, "")
+        for spec in _FIELD_SPECS:
+            raw = os.environ.get(spec.env_key, "")
             if not raw:
-                return default
-            try:
-                return int(raw)
-            except ValueError:
-                errors.append(f"{env_key} must be an integer, got {raw!r}")
-                return default
-
-        def _optional_tls(env_key: str, field_name: str, default: str) -> str:
-            raw = os.environ.get(env_key, "")
-            if not raw:
-                return default
-            if raw not in _VALID_TLS_MODES:
-                errors.append(
-                    f"{env_key} must be one of {sorted(_VALID_TLS_MODES)!r}, "
-                    f"got {raw!r}"
-                )
-            return raw
-
-        # -- collect -------------------------------------------------------
-
-        imap_host = _required("MAIL_IMAP_HOST", "imap_host")
-        smtp_host = _required("MAIL_SMTP_HOST", "smtp_host")
-        username = _required("MAIL_USERNAME", "username")
-        password = _required("MAIL_PASSWORD", "password")
-
-        imap_port = _optional_int("MAIL_IMAP_PORT", "imap_port", 993)
-        smtp_port = _optional_int("MAIL_SMTP_PORT", "smtp_port", 587)
-        imap_tls_mode = _optional_tls(
-            "MAIL_IMAP_TLS_MODE", "imap_tls_mode", DEFAULT_IMAP_TLS_MODE
-        )
-        smtp_tls_mode = _optional_tls(
-            "MAIL_SMTP_TLS_MODE", "smtp_tls_mode", DEFAULT_SMTP_TLS_MODE
-        )
-
-        db_path = os.environ.get("MAIL_DB_PATH", DEFAULT_DB_PATH)
-        imap_folder = os.environ.get("MAIL_IMAP_FOLDER", "INBOX")
-
-        llm_api_key = os.environ.get("LLM_API_KEY", "")
-        llm_model = os.environ.get("LLM_MODEL", DEFAULT_LLM_MODEL)
-
-        ingest_interval_minutes = _optional_int(
-            "MAIL_INGEST_INTERVAL",
-            "ingest_interval_minutes",
-            DEFAULT_INGEST_INTERVAL_MINUTES,
-        )
+                if spec.required_in_env:
+                    missing.append(spec.env_key)
+                    kwargs[spec.field_name] = ""
+                else:
+                    kwargs[spec.field_name] = spec.default
+                continue
+            if spec.kind == "str":
+                kwargs[spec.field_name] = raw
+            elif spec.kind == "int":
+                try:
+                    kwargs[spec.field_name] = int(raw)
+                except ValueError:
+                    errors.append(
+                        f"{spec.env_key} must be an integer, got {raw!r}"
+                    )
+                    kwargs[spec.field_name] = spec.default
+            else:  # "tls_mode"
+                if raw not in _VALID_TLS_MODES:
+                    errors.append(
+                        f"{spec.env_key} must be one of "
+                        f"{sorted(_VALID_TLS_MODES)!r}, got {raw!r}"
+                    )
+                kwargs[spec.field_name] = raw
 
         # -- final validation ----------------------------------------------
 
@@ -242,110 +282,58 @@ class MailConfig:
                 missing_only=bool(missing and not errors),
             )
 
-        return cls(
-            imap_host=imap_host,
-            imap_port=imap_port,
-            imap_tls_mode=imap_tls_mode,
-            smtp_host=smtp_host,
-            smtp_port=smtp_port,
-            smtp_tls_mode=smtp_tls_mode,
-            username=username,
-            password=password,
-            db_path=db_path,
-            imap_folder=imap_folder,
-            llm_api_key=llm_api_key,
-            llm_model=llm_model,
-            ingest_interval_minutes=ingest_interval_minutes,
-        )
+        return cls(**kwargs)
 
     @classmethod
     def _parse_config_dict(
         cls, data: dict[str, object], path: Path, *, validate: bool = True
     ) -> MailConfig:
-        # -- extract sections ----------------------------------------------
-
-        imap_section = _get_table(data, "imap") or {}
-        smtp_section = _get_table(data, "smtp") or {}
-        auth_section = _get_table(data, "auth") or {}
-
-        # -- read fields with defaults -------------------------------------
-
-        imap_host = _get_str(imap_section, "host", "")
-        imap_port = _get_int(imap_section, "port", 993, path)
-        imap_tls_mode = _get_str(imap_section, "tls_mode", DEFAULT_IMAP_TLS_MODE)
-        imap_folder = _get_str(imap_section, "folder", "INBOX")
-
-        smtp_host = _get_str(smtp_section, "host", "")
-        smtp_port = _get_int(smtp_section, "port", 587, path)
-        smtp_tls_mode = _get_str(smtp_section, "tls_mode", DEFAULT_SMTP_TLS_MODE)
-
-        username = _get_str(auth_section, "username", "")
-        password = _get_str(auth_section, "password", "")
-
-        store_section = _get_table(data, "store") or {}
-        db_path = _get_str(store_section, "path", DEFAULT_DB_PATH)
-
-        llm_section = _get_table(data, "llm") or {}
-        llm_api_key = _get_str(llm_section, "api_key", "")
-        llm_model = _get_str(llm_section, "model", DEFAULT_LLM_MODEL)
-
-        ingest_section = _get_table(data, "ingest") or {}
-        ingest_interval_minutes = _get_int(
-            ingest_section,
-            "interval_minutes",
-            DEFAULT_INGEST_INTERVAL_MINUTES,
-            path,
-        )
-
-        # -- validate TLS modes --------------------------------------------
-
         errors: list[str] = []
-        for label, value in [
-            ("imap.tls_mode", imap_tls_mode),
-            ("smtp.tls_mode", smtp_tls_mode),
-        ]:
-            if value not in _VALID_TLS_MODES:
-                errors.append(
-                    f"{label} must be one of {sorted(_VALID_TLS_MODES)!r}, "
-                    f"got {value!r}"
+        kwargs: dict[str, Any] = {}
+        # Memoise top-level section lookups so we don't re-validate
+        # the same mapping for every field that lives under it.
+        sections: dict[str, dict[str, object]] = {}
+
+        for spec in _FIELD_SPECS:
+            section_name, key_name = spec.yaml_path.split(".", 1)
+            if section_name not in sections:
+                sections[section_name] = _get_table(data, section_name) or {}
+            section = sections[section_name]
+
+            if spec.kind == "int":
+                kwargs[spec.field_name] = _get_int(
+                    section, key_name, spec.default, path
+                )
+            elif spec.kind == "tls_mode":
+                value = _get_str(section, key_name, spec.default)
+                if value not in _VALID_TLS_MODES:
+                    errors.append(
+                        f"{spec.yaml_path} must be one of "
+                        f"{sorted(_VALID_TLS_MODES)!r}, got {value!r}"
+                    )
+                kwargs[spec.field_name] = value
+            else:  # "str"
+                default_str = "" if spec.default is _REQUIRED else spec.default
+                kwargs[spec.field_name] = _get_str(
+                    section, key_name, default_str
                 )
 
         # -- required fields (skipped when validate=False) -----------------
 
         if validate:
             missing: list[str] = []
-            for label, value in [
-                ("imap.host", imap_host),
-                ("smtp.host", smtp_host),
-                ("auth.username", username),
-            ]:
-                if not value:
-                    missing.append(label)
-
+            for spec in _FIELD_SPECS:
+                if spec.required_in_yaml and not kwargs[spec.field_name]:
+                    missing.append(spec.yaml_path)
             if missing:
                 errors.append(
-                    "Missing required field(s): "
-                    + ", ".join(missing)
+                    "Missing required field(s): " + ", ".join(missing)
                 )
 
         if errors:
             raise ConfigurationError("\n".join(errors))
 
-        return cls(
-            imap_host=imap_host,
-            imap_port=imap_port,
-            imap_tls_mode=imap_tls_mode,
-            smtp_host=smtp_host,
-            smtp_port=smtp_port,
-            smtp_tls_mode=smtp_tls_mode,
-            username=username,
-            password=password,
-            db_path=db_path,
-            imap_folder=imap_folder,
-            llm_api_key=llm_api_key,
-            llm_model=llm_model,
-            ingest_interval_minutes=ingest_interval_minutes,
-        )
+        return cls(**kwargs)
 
     @classmethod
     def from_yaml(
@@ -417,6 +405,21 @@ class MailConfig:
             )
 
         return cls._parse_config_dict(data, path, validate=validate)
+
+
+# ---------------------------------------------------------------------------
+# Self-consistency: ``_FIELD_SPECS`` must enumerate every dataclass field
+# exactly once.  If they drift apart, import fails immediately — making
+# "add a new field" a one-place edit.
+# ---------------------------------------------------------------------------
+
+_spec_names = {s.field_name for s in _FIELD_SPECS}
+_dc_names = {f.name for f in dataclasses.fields(MailConfig)}
+assert _spec_names == _dc_names, (  # noqa: S101
+    f"_FIELD_SPECS / MailConfig drift: "
+    f"missing from specs={_dc_names - _spec_names}, "
+    f"missing from dataclass={_spec_names - _dc_names}"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -498,50 +501,20 @@ def load_llm() -> tuple[str, str]:
 
 def _merge_env(base: MailConfig) -> MailConfig:
     """Return a new ``MailConfig`` where any set env var overrides *base*."""
-    env_map: dict[str, str] = {
-        "imap_host": "MAIL_IMAP_HOST",
-        "imap_port": "MAIL_IMAP_PORT",
-        "imap_tls_mode": "MAIL_IMAP_TLS_MODE",
-        "smtp_host": "MAIL_SMTP_HOST",
-        "smtp_port": "MAIL_SMTP_PORT",
-        "smtp_tls_mode": "MAIL_SMTP_TLS_MODE",
-        "username": "MAIL_USERNAME",
-        "password": "MAIL_PASSWORD",  # nosec B105
-        "db_path": "MAIL_DB_PATH",
-        "imap_folder": "MAIL_IMAP_FOLDER",
-        "llm_api_key": "LLM_API_KEY",
-        "llm_model": "LLM_MODEL",
-        "ingest_interval_minutes": "MAIL_INGEST_INTERVAL",
-    }
-
-    kwargs: dict[str, str | int] = {}
-    for field_name, env_key in env_map.items():
-        raw = os.environ.get(env_key, "")
+    kwargs: dict[str, Any] = {}
+    for spec in _FIELD_SPECS:
+        raw = os.environ.get(spec.env_key, "")
         if raw:
-            # Integer fields need parsing.
-            if field_name in (
-                "imap_port",
-                "smtp_port",
-                "ingest_interval_minutes",
-            ):
-                kwargs[field_name] = _parse_int(env_key, raw)
+            if spec.kind == "int":
+                kwargs[spec.field_name] = _parse_int(spec.env_key, raw)
+            elif spec.kind == "tls_mode":
+                _check_tls_mode(spec.env_key, raw)
+                kwargs[spec.field_name] = raw
             else:
-                kwargs[field_name] = raw
-            # Validate TLS modes when supplied via env.
-            if field_name in ("imap_tls_mode", "smtp_tls_mode") and raw:
-                _check_tls_mode(env_key, raw)
+                kwargs[spec.field_name] = raw
         else:
-            kwargs[field_name] = getattr(base, field_name)
-
-    # If any TLS overrides were supplied, they've been validated above;
-    # also validate the ones that came from the file (already done in
-    # from_yaml, but belt-and-suspenders).
-    for field_name in ("imap_tls_mode", "smtp_tls_mode"):
-        val = kwargs[field_name]
-        if isinstance(val, str):
-            _check_tls_mode(field_name, val)
-
-    return MailConfig(**kwargs)  # type: ignore[arg-type]
+            kwargs[spec.field_name] = getattr(base, spec.field_name)
+    return MailConfig(**kwargs)
 
 
 # ---------------------------------------------------------------------------
