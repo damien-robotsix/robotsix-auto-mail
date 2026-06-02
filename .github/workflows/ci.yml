@@ -38,6 +38,9 @@ jobs:
       - name: Type check (mypy)
         run: uv run --frozen mypy .
 
+      - name: Dependency hygiene (deptry)
+        run: uv run --frozen deptry src/ tests/
+
       - name: SAST (bandit)
         run: |
           uv pip install 'bandit[toml]'
