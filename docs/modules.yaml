@@ -22,6 +22,7 @@ modules:
       - .python-version
       - LICENSE
       - README.md
+      - SECURITY.md
       - ROADMAP.md
       - tests/conftest.py
       - tests/test_stub.py

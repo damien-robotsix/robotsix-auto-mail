@@ -58,3 +58,7 @@ details are in [docs/connecting.md](docs/connecting.md#the-serve-command).
 ## License
 
 This project is licensed under the MIT License (SPDX: `MIT`). See [LICENSE](LICENSE) for the full text.
+
+## Security
+
+To report a security vulnerability, see our [security policy](SECURITY.md).
