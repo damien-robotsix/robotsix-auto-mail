@@ -12,9 +12,20 @@ import json
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, quote, unquote
 
+import jinja2
+
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.status import STATUS_ORDER, VALID_STATUSES
+
+# Jinja2 environment for the board/detail pages.  ``autoescape`` is enabled
+# at the environment level (so the security default is safe), but each
+# template wraps its body in ``{% autoescape false %}`` because every
+# interpolated value is already escaped in Python via ``html.escape`` (which
+# uses ``&quot;``/``&#x27;`` for quotes) — letting Jinja2 autoescape would
+# both double-escape and switch to ``markupsafe`` quote sequences, changing
+# the emitted bytes.
+_JINJA_ENV = jinja2.Environment(autoescape=True)
 
 _BOARD_COLUMNS = STATUS_ORDER
 
@@ -128,6 +139,127 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; }
 }"""
 
 
+# Full ``/board`` document.  ``css`` and ``columns_html`` are passed in
+# already-rendered (and, where applicable, ``html.escape``-d) so the template
+# only assembles the surrounding chrome.  The body is wrapped in
+# ``{% autoescape false %}`` to emit the pre-escaped values verbatim.
+_BOARD_TEMPLATE = _JINJA_ENV.from_string(
+    "{% autoescape false %}"
+    "<!DOCTYPE html>\n"
+    '<html lang="en">\n'
+    "<head>\n"
+    '<meta charset="utf-8">\n'
+    "<title>Mail Board</title>\n"
+    '<meta http-equiv="refresh" content="30">\n'
+    "<style>{{ css }}</style>\n"
+    "</head>\n"
+    "<body>\n"
+    "<h1>Mail Board</h1>\n"
+    '<div class="board-wrapper">\n'
+    '<div class="board">\n'
+    "{{ columns_html }}"
+    "\n</div>\n"
+    "</div>\n"
+    '<div class="side-panel" id="side-panel">\n'
+    '<div class="panel-header">\n'
+    '<span class="panel-title"></span>\n'
+    '<button class="close-btn" onclick="closeDetail()">&times;</button>\n'
+    "</div>\n"
+    '<iframe src="" title="Mail detail"></iframe>\n'
+    "</div>\n"
+    "<script>\n"
+    "function openDetail(messageId, subject) {\n"
+    "  document.querySelector('.side-panel iframe').src"
+    " = '/email/' + messageId + '?embed=1';\n"
+    "  document.querySelector('.side-panel').classList.add('open');\n"
+    "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
+    "  document.querySelector('.panel-title').textContent = subject || '';\n"
+    "  location.hash = messageId;\n"
+    "}\n"
+    "function closeDetail() {\n"
+    "  document.querySelector('.side-panel').classList.remove('open');\n"
+    "  document.querySelector('.board-wrapper').classList.remove('panel-open');\n"
+    "  document.querySelector('.side-panel iframe').src = '';\n"
+    "  location.hash = '';\n"
+    "}\n"
+    "if (location.hash) {\n"
+    "  var mid = location.hash.slice(1);\n"
+    "  if (mid) openDetail(mid);\n"
+    "}\n"
+    "window.addEventListener('hashchange', function() {\n"
+    "  if (!location.hash) closeDetail();\n"
+    "});\n"
+    "window.addEventListener('keydown', function(e) {\n"
+    "  if (e.key === 'Escape') closeDetail();\n"
+    "});\n"
+    "document.querySelector('.board').addEventListener('click', function(e) {\n"
+    "  var card = e.target.closest('.card');\n"
+    "  if (!card) return;\n"
+    "  var mid = card.getAttribute('data-message-id');\n"
+    "  if (!mid) return;\n"
+    "  e.preventDefault();\n"
+    "  var subject = card.getAttribute('data-subject') || '';\n"
+    "  openDetail(mid, subject);\n"
+    "});\n"
+    "</script>\n"
+    "</body>\n"
+    "</html>"
+    "{% endautoescape %}"
+)
+
+
+# Embedded (iframe) detail fragment.  ``fields_html`` is the shared,
+# already-escaped inner block.
+_DETAIL_EMBED_TEMPLATE = _JINJA_ENV.from_string(
+    "{% autoescape false %}"
+    '<style>\n'
+    '.detail-field { margin-bottom: 0.75rem; }\n'
+    '.detail-label { font-weight: 700; font-size: 0.85rem; color: #666;'
+    ' margin-bottom: 0.15rem; }\n'
+    '.detail-value { font-size: 0.95rem; }\n'
+    '.detail-value pre { margin: 0; white-space: pre-wrap;'
+    ' font-family: inherit; }\n'
+    '.detail-value code { font-size: 0.85rem; background: #eee;'
+    ' padding: 0.1rem 0.3rem; border-radius: 3px; }\n'
+    '.detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem;'
+    ' align-items: center; }\n'
+    '.detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }\n'
+    '.detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem;'
+    ' cursor: pointer; }\n'
+    '.embed-detail { padding: 1rem;'
+    ' font-family: system-ui, -apple-system, sans-serif; }\n'
+    '</style>\n'
+    '<div class="embed-detail">\n'
+    "{{ fields_html }}"
+    '</div>\n'
+    "{% endautoescape %}"
+)
+
+
+# Full standalone detail document.  ``title``/``heading`` are passed in
+# already ``html.escape``-d; ``css`` and ``fields_html`` are trusted markup.
+_DETAIL_PAGE_TEMPLATE = _JINJA_ENV.from_string(
+    "{% autoescape false %}"
+    "<!DOCTYPE html>\n"
+    '<html lang="en">\n'
+    "<head>\n"
+    '<meta charset="utf-8">\n'
+    "<title>Mail: {{ title }}</title>\n"
+    '<meta http-equiv="refresh" content="30">\n'
+    "<style>{{ css }}</style>\n"
+    "</head>\n"
+    "<body>\n"
+    '<a class="back-link" href="/board">← Back to board</a>\n'
+    '<div class="detail-container">\n'
+    "<h1>{{ heading }}</h1>\n"
+    "{{ fields_html }}"
+    '</div>\n'
+    "</body>\n"
+    "</html>"
+    "{% endautoescape %}"
+)
+
+
 def _build_board_html(db_path: str) -> str:
     """Build the full ``/board`` HTML document.
 
@@ -153,66 +285,9 @@ def _build_board_html(db_path: str) -> str:
         _render_column(status, records) for status, records in columns
     ]
 
-    return (
-        "<!DOCTYPE html>\n"
-        '<html lang="en">\n'
-        "<head>\n"
-        '<meta charset="utf-8">\n'
-        "<title>Mail Board</title>\n"
-        '<meta http-equiv="refresh" content="30">\n'
-        f"<style>{_CSS}</style>\n"
-        "</head>\n"
-        "<body>\n"
-        "<h1>Mail Board</h1>\n"
-        '<div class="board-wrapper">\n'
-        '<div class="board">\n'
-        + "".join(columns_html_parts)
-        + "\n</div>\n"
-        "</div>\n"
-        '<div class="side-panel" id="side-panel">\n'
-        '<div class="panel-header">\n'
-        '<span class="panel-title"></span>\n'
-        '<button class="close-btn" onclick="closeDetail()">&times;</button>\n'
-        "</div>\n"
-        '<iframe src="" title="Mail detail"></iframe>\n'
-        "</div>\n"
-        "<script>\n"
-        "function openDetail(messageId, subject) {\n"
-        "  document.querySelector('.side-panel iframe').src"
-        " = '/email/' + messageId + '?embed=1';\n"
-        "  document.querySelector('.side-panel').classList.add('open');\n"
-        "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
-        "  document.querySelector('.panel-title').textContent = subject || '';\n"
-        "  location.hash = messageId;\n"
-        "}\n"
-        "function closeDetail() {\n"
-        "  document.querySelector('.side-panel').classList.remove('open');\n"
-        "  document.querySelector('.board-wrapper').classList.remove('panel-open');\n"
-        "  document.querySelector('.side-panel iframe').src = '';\n"
-        "  location.hash = '';\n"
-        "}\n"
-        "if (location.hash) {\n"
-        "  var mid = location.hash.slice(1);\n"
-        "  if (mid) openDetail(mid);\n"
-        "}\n"
-        "window.addEventListener('hashchange', function() {\n"
-        "  if (!location.hash) closeDetail();\n"
-        "});\n"
-        "window.addEventListener('keydown', function(e) {\n"
-        "  if (e.key === 'Escape') closeDetail();\n"
-        "});\n"
-        "document.querySelector('.board').addEventListener('click', function(e) {\n"
-        "  var card = e.target.closest('.card');\n"
-        "  if (!card) return;\n"
-        "  var mid = card.getAttribute('data-message-id');\n"
-        "  if (!mid) return;\n"
-        "  e.preventDefault();\n"
-        "  var subject = card.getAttribute('data-subject') || '';\n"
-        "  openDetail(mid, subject);\n"
-        "});\n"
-        "</script>\n"
-        "</body>\n"
-        "</html>"
+    return _BOARD_TEMPLATE.render(
+        css=_CSS,
+        columns_html="".join(columns_html_parts),
     )
 
 
@@ -384,46 +459,13 @@ def _build_detail_html(
     )
 
     if embed:
-        return (
-            '<style>\n'
-            '.detail-field { margin-bottom: 0.75rem; }\n'
-            '.detail-label { font-weight: 700; font-size: 0.85rem; color: #666;'
-            ' margin-bottom: 0.15rem; }\n'
-            '.detail-value { font-size: 0.95rem; }\n'
-            '.detail-value pre { margin: 0; white-space: pre-wrap;'
-            ' font-family: inherit; }\n'
-            '.detail-value code { font-size: 0.85rem; background: #eee;'
-            ' padding: 0.1rem 0.3rem; border-radius: 3px; }\n'
-            '.detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem;'
-            ' align-items: center; }\n'
-            '.detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }\n'
-            '.detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem;'
-            ' cursor: pointer; }\n'
-            '.embed-detail { padding: 1rem;'
-            ' font-family: system-ui, -apple-system, sans-serif; }\n'
-            '</style>\n'
-            '<div class="embed-detail">\n'
-            f'{fields_html}'
-            '</div>\n'
-        )
+        return _DETAIL_EMBED_TEMPLATE.render(fields_html=fields_html)
 
-    return (
-        "<!DOCTYPE html>\n"
-        '<html lang="en">\n'
-        "<head>\n"
-        '<meta charset="utf-8">\n'
-        f"<title>Mail: {html.escape(title_subject)}</title>\n"
-        '<meta http-equiv="refresh" content="30">\n'
-        f"<style>{_CSS}</style>\n"
-        "</head>\n"
-        "<body>\n"
-        '<a class="back-link" href="/board">← Back to board</a>\n'
-        '<div class="detail-container">\n'
-        f'<h1>{html.escape(record.subject.strip() or "(no subject)")}</h1>\n'
-        f'{fields_html}'
-        '</div>\n'
-        "</body>\n"
-        "</html>"
+    return _DETAIL_PAGE_TEMPLATE.render(
+        title=html.escape(title_subject),
+        css=_CSS,
+        heading=html.escape(record.subject.strip() or "(no subject)"),
+        fields_html=fields_html,
     )
 
 
