@@ -37,6 +37,12 @@ modules:
       - docker-compose.yml
       - entrypoint.sh
 
+  - id: dev
+    description: >-
+      Developer and deployment helper scripts.
+    paths:
+      - dev/auto-mail-autoupdate.sh
+
   - id: cli
     description: >-
       CLI entry point exposing probe and ingest subcommands.
