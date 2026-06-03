@@ -113,7 +113,7 @@ modules:
       SMTP sending client.
     paths:
       - src/robotsix_auto_mail/smtp_client.py
-      - tests/test_smtp_client.py
+      - tests/smtp/test_smtp_client.py
 
   - id: server
     description: >-
