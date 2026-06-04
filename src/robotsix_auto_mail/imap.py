@@ -322,6 +322,37 @@ class ImapClient(_ProtocolClient):
                 return 0
         return 0
 
+    def create_folder(self, name: str) -> None:
+        """Create a mailbox (folder) on the server, idempotently.
+
+        Issues an IMAP ``CREATE``.  When the server responds with a
+        non-OK status the folder may already exist (servers commonly
+        reply ``NO`` with text containing ``ALREADYEXISTS`` /
+        ``already exists``).  In that case the existing folder is
+        treated as success: the folder list is re-fetched and, if a
+        mailbox with the same name is present, the method returns
+        silently.
+
+        Args:
+            name: Mailbox name to create (e.g.
+                ``"robotsix-mail-archive/2026"``).
+
+        Raises:
+            ImapError: If the client is not connected, or the server
+                returns a non-OK status and no mailbox with ``name``
+                exists in the folder list.
+        """
+        if self._imap is None:
+            raise ImapError("Not connected")
+        status, _data = self._imap.create(name)
+        if status == "OK":
+            return
+        # Non-OK: the folder may already exist. Re-list and check.
+        for folder in self.list_folders():
+            if folder.name == name:
+                return
+        raise ImapError(f"CREATE '{name}' failed: {status}")
+
     def search_uids(self, criteria: str = "ALL") -> list[int]:
         """Issue ``UID SEARCH`` and return matching UIDs.
 
