@@ -177,6 +177,10 @@ auth:
 # store:
 #   path: .data/mail.db
 
+# archive:
+#   root: robotsix-mail-archive
+#   enabled: true
+
 # llm:
 #   api_key: sk-or-v1-…   # or via the LLM_API_KEY env var
 #   model: deepseek/deepseek-v4-flash
@@ -195,6 +199,8 @@ auth:
 | `auth.password` | no | – | Login password (may instead be supplied via `MAIL_PASSWORD`) |
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles (`ingest --watch`) |
+| `archive.root` | no | `"robotsix-mail-archive"` | Root folder for the self-managed archive structure |
+| `archive.enabled` | no | `true` | Whether to create/manage the archive folder structure |
 | `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing (may instead be supplied via `LLM_API_KEY`) |
 | `llm.model` | no | `"deepseek/deepseek-v4-flash"` | LLM model name |
 
@@ -216,6 +222,8 @@ debug output regardless of how they are supplied.
 | `MAIL_IMAP_FOLDER` | no | `INBOX` | IMAP mailbox folder name |
 | `MAIL_DB_PATH` | no | `.data/mail.db` | Filesystem path for the SQLite database |
 | `MAIL_INGEST_INTERVAL` | no | `15` | Minutes between automatic ingest cycles (`ingest --watch`) |
+| `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Root folder for the self-managed archive structure |
+| `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to create/manage the archive folder structure |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
 | `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |
 | `LLM_MODEL` | no | `deepseek/deepseek-v4-flash` | LLM model name (overrides `llm.model`) |
@@ -227,6 +235,26 @@ debug output regardless of how they are supplied.
 | `direct-tls` | TLS from the first byte, no plaintext negotiation (IMAP port 993, SMTP port 465) |
 | `starttls` | Plain connection upgraded to TLS via STARTTLS (IMAP port 143, SMTP port 587) |
 | `none` | No TLS at all — **insecure, for local development only** |
+
+### Self-managed archive structure
+
+`robotsix-auto-mail` manages its own archive folder hierarchy, rooted at
+`archive.root` (default `robotsix-mail-archive`). On the first ingest a quick
+LLM call proposes an appropriate layout based on the mailbox's existing
+folders; the resulting folder list is then persisted in the SQLite
+`watermark` table under the key `archive_structure` and reused verbatim on
+every subsequent run — no folders are listed, no LLM is called, and nothing
+is recreated.
+
+Set `archive.enabled` (env `MAIL_ARCHIVE_ENABLED`) to `false` to disable
+archive management entirely: `setup_archive` is never called, no watermark is
+written, and ingestion proceeds normally. Re-enabling it later runs setup on
+the next ingest (since the watermark was never set).
+
+Because the structure is remembered after the first run, **changing
+`archive.root` afterwards does not move or recreate any folders** — the
+persisted `archive_structure` watermark short-circuits subsequent runs. A new
+root only takes effect on a fresh run that has no watermark yet.
 
 ## Precedence rules
 

@@ -64,20 +64,22 @@ class ArchiveStructure(pydantic.BaseModel):
 # System prompt
 # ---------------------------------------------------------------------------
 
-_ARCHIVE_SYSTEM_PROMPT: str = (
-    "You are an email archive organisation expert. Given the list of folders "
-    "that already exist in a user's mailbox, propose an appropriate archive "
-    f"folder layout rooted at `{ARCHIVE_ROOT}`.\n"
-    "\n"
-    "Return a JSON object with a `folders` field: a list of sub-paths "
-    f"relative to the root `{ARCHIVE_ROOT}`, using `/` as the hierarchy "
-    "separator. Do NOT include the root itself in the list, and do NOT "
-    "prefix entries with the root. The list may be empty if just the root "
-    "is appropriate.\n"
-    "\n"
-    "Return ONLY the JSON object matching the schema — no explanation, no "
-    "markdown fences."
-)
+def _build_archive_system_prompt(archive_root: str) -> str:
+    """Build the LLM system prompt, rooted at *archive_root*."""
+    return (
+        "You are an email archive organisation expert. Given the list of "
+        "folders that already exist in a user's mailbox, propose an "
+        f"appropriate archive folder layout rooted at `{archive_root}`.\n"
+        "\n"
+        "Return a JSON object with a `folders` field: a list of sub-paths "
+        f"relative to the root `{archive_root}`, using `/` as the hierarchy "
+        "separator. Do NOT include the root itself in the list, and do NOT "
+        "prefix entries with the root. The list may be empty if just the "
+        "root is appropriate.\n"
+        "\n"
+        "Return ONLY the JSON object matching the schema — no explanation, no "
+        "markdown fences."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -88,6 +90,7 @@ _ARCHIVE_SYSTEM_PROMPT: str = (
 def determine_archive_structure(
     existing_folders: list[str],
     *,
+    archive_root: str = ARCHIVE_ROOT,
     api_key: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> list[str]:
@@ -122,7 +125,7 @@ def determine_archive_structure(
     llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
-        system_prompt=_ARCHIVE_SYSTEM_PROMPT,
+        system_prompt=_build_archive_system_prompt(archive_root),
         output_type=PromptedOutput(ArchiveStructure),
     )
 
@@ -153,6 +156,7 @@ def setup_archive(
     conn: sqlite3.Connection,
     client: ImapClient,
     *,
+    archive_root: str = ARCHIVE_ROOT,
     api_key: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> list[str]:
@@ -193,16 +197,19 @@ def setup_archive(
     resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
     if resolved_key:
         subpaths = determine_archive_structure(
-            [f.name for f in existing], api_key=resolved_key, tier=tier
+            [f.name for f in existing],
+            archive_root=archive_root,
+            api_key=resolved_key,
+            tier=tier,
         )
     else:
         subpaths = []
 
     # -- build the full set of folder names to ensure --
-    structure: list[str] = [ARCHIVE_ROOT]
+    structure: list[str] = [archive_root]
     for subpath in subpaths:
         translated = subpath.replace("/", delimiter)
-        structure.append(ARCHIVE_ROOT + delimiter + translated)
+        structure.append(archive_root + delimiter + translated)
 
     # -- create only the missing targets --
     existing_names = {f.name for f in existing}

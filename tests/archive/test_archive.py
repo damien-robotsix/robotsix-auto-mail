@@ -208,6 +208,70 @@ def test_setup_archive_skips_existing_folders() -> None:
         conn.close()
 
 
+def test_setup_archive_custom_root_creates_and_persists() -> None:
+    """A custom archive_root is used for created/persisted folder names."""
+    conn = init_db(":memory:")
+    try:
+        client = _FakeImapClient([_folder("INBOX"), _folder("Sent")])
+        with mock.patch.dict(
+            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
+        ):
+            with _patch_llm(["Receipts", "Work/2024"]):
+                result = setup_archive(
+                    conn,
+                    cast(ImapClient, client),
+                    archive_root="custom-archive",
+                )
+
+        expected = [
+            "custom-archive",
+            "custom-archive/Receipts",
+            "custom-archive/Work/2024",
+        ]
+        assert result == expected
+        assert client.created == expected
+        # The default root is not used anywhere.
+        assert ARCHIVE_ROOT not in result
+        stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
+        assert stored is not None
+        assert json.loads(stored) == expected
+    finally:
+        conn.close()
+
+
+def test_setup_archive_custom_root_passed_to_llm() -> None:
+    """The custom root is threaded into the LLM system prompt."""
+    conn = init_db(":memory:")
+    try:
+        client = _FakeImapClient([_folder("INBOX")])
+        with mock.patch.dict(
+            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
+        ):
+            with mock.patch(
+                "robotsix_auto_mail.archive.OpenRouterDeepseekProvider"
+            ) as cls:
+                mock_run_result = mock.MagicMock()
+                mock_run_result.output = ArchiveStructure(folders=[])
+                mock_handle = mock.MagicMock()
+                mock_handle.run_sync.return_value = mock_run_result
+                provider = cls.return_value
+                provider.build_agent.return_value = mock_handle
+                provider.call_with_retry.side_effect = (
+                    lambda fn, what: fn()
+                )
+
+                setup_archive(
+                    conn,
+                    cast(ImapClient, client),
+                    archive_root="custom-archive",
+                )
+
+        prompt = provider.build_agent.call_args.kwargs["system_prompt"]
+        assert "custom-archive" in prompt
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # setup_archive — subsequent run
 # ---------------------------------------------------------------------------

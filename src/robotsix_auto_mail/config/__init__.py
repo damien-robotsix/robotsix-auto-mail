@@ -67,6 +67,9 @@ DEFAULT_LLM_MODEL = "deepseek/deepseek-v4-flash"
 # Default interval (minutes) between automatic ingest cycles in watch mode.
 DEFAULT_INGEST_INTERVAL_MINUTES = 15
 
+# Default root folder under which the self-managed archive structure lives.
+DEFAULT_ARCHIVE_ROOT = "robotsix-mail-archive"
+
 
 def _check_tls_mode(label: str, value: str) -> None:
     if value not in _VALID_TLS_MODES:
@@ -83,6 +86,19 @@ def _parse_int(label: str, raw: str) -> int:
         raise ConfigurationError(
             f"{label} must be an integer, got {raw!r}"
         ) from None
+
+
+_BOOL_TRUE = frozenset({"1", "true", "yes", "on"})
+_BOOL_FALSE = frozenset({"0", "false", "no", "off"})
+
+
+def _parse_bool(label: str, raw: str) -> bool:
+    lowered = raw.lower()
+    if lowered in _BOOL_TRUE:
+        return True
+    if lowered in _BOOL_FALSE:
+        return False
+    raise ConfigurationError(f"{label} must be a boolean, got {raw!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -144,6 +160,10 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
     _FieldSpec("ingest_interval_minutes", "MAIL_INGEST_INTERVAL",
                "ingest.interval_minutes", "int",
                DEFAULT_INGEST_INTERVAL_MINUTES, False, False),
+    _FieldSpec("archive_root", "MAIL_ARCHIVE_ROOT", "archive.root",
+               "str", DEFAULT_ARCHIVE_ROOT, False, False),
+    _FieldSpec("archive_enabled", "MAIL_ARCHIVE_ENABLED", "archive.enabled",
+               "bool", True, False, False),
 )
 
 # Each yaml_path must be exactly ``section.key`` — the YAML loader splits
@@ -191,6 +211,10 @@ class MailConfig:
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
     ingest_interval_minutes: int = DEFAULT_INGEST_INTERVAL_MINUTES
+
+    # Self-managed archive folder structure.
+    archive_root: str = DEFAULT_ARCHIVE_ROOT
+    archive_enabled: bool = True
 
     # -- masking -----------------------------------------------------------
 
@@ -255,6 +279,12 @@ class MailConfig:
                         f"{spec.env_key} must be an integer, got {raw!r}"
                     )
                     kwargs[spec.field_name] = spec.default
+            elif spec.kind == "bool":
+                try:
+                    kwargs[spec.field_name] = _parse_bool(spec.env_key, raw)
+                except ConfigurationError as exc:
+                    errors.append(exc.message)
+                    kwargs[spec.field_name] = spec.default
             else:  # "tls_mode"
                 if raw not in _VALID_TLS_MODES:
                     errors.append(
@@ -303,6 +333,10 @@ class MailConfig:
             if spec.kind == "int":
                 kwargs[spec.field_name] = _get_int(
                     section, key_name, spec.default, path
+                )
+            elif spec.kind == "bool":
+                kwargs[spec.field_name] = _get_bool(
+                    section, key_name, spec.default
                 )
             elif spec.kind == "tls_mode":
                 value = _get_str(section, key_name, spec.default)
@@ -507,6 +541,8 @@ def _merge_env(base: MailConfig) -> MailConfig:
         if raw:
             if spec.kind == "int":
                 kwargs[spec.field_name] = _parse_int(spec.env_key, raw)
+            elif spec.kind == "bool":
+                kwargs[spec.field_name] = _parse_bool(spec.env_key, raw)
             elif spec.kind == "tls_mode":
                 _check_tls_mode(spec.env_key, raw)
                 kwargs[spec.field_name] = raw
@@ -560,5 +596,16 @@ def _get_int(
     if not isinstance(value, int):
         raise ConfigurationError(
             f"Config key {key!r} must be an integer, got {type(value).__name__}"
+        )
+    return value
+
+
+def _get_bool(section: dict[str, object], key: str, default: bool) -> bool:
+    value = section.get(key)
+    if value is None:
+        return default
+    if not isinstance(value, bool):
+        raise ConfigurationError(
+            f"Config key {key!r} must be a boolean, got {type(value).__name__}"
         )
     return value

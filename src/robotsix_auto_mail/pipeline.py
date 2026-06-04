@@ -92,9 +92,14 @@ def ingest_mail(
     #    dry run, and any archive failure (LLM/network/IMAP) must not
     #    abort ingestion — setup_archive only persists its watermark on
     #    success, so a failed run naturally retries next time.
-    if not dry_run:
+    if not dry_run and config.archive_enabled:
         try:
-            setup_archive(db_conn, imap_client, api_key=config.llm_api_key)
+            setup_archive(
+                db_conn,
+                imap_client,
+                archive_root=config.archive_root,
+                api_key=config.llm_api_key,
+            )
         except Exception:
             _logger.exception("Archive setup failed; continuing ingestion")
 
