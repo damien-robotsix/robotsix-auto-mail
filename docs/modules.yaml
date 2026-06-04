@@ -24,6 +24,7 @@ modules:
       - README.md
       - SECURITY.md
       - ROADMAP.md
+      - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
 
