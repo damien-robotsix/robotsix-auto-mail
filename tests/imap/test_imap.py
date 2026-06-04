@@ -302,6 +302,62 @@ def test_select_folder_empty_data(cfg: MailConfig) -> None:
 
 
 # ---------------------------------------------------------------------------
+# create_folder
+# ---------------------------------------------------------------------------
+
+
+def test_create_folder_success(cfg: MailConfig) -> None:
+    """create_folder issues CREATE and returns None on OK."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.create.return_value = ("OK", [b"Create completed"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.create_folder("robotsix-mail-archive")
+
+    mock_ssl.create.assert_called_once_with("robotsix-mail-archive")
+    assert result is None
+
+
+def test_create_folder_not_connected(cfg: MailConfig) -> None:
+    """create_folder raises ImapError when the client is not connected."""
+    client = ImapClient(cfg)
+    with pytest.raises(ImapError, match="Not connected"):
+        client.create_folder("robotsix-mail-archive")
+
+
+def test_create_folder_genuine_failure(cfg: MailConfig) -> None:
+    """Non-OK status with the folder absent from LIST raises ImapError."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.create.return_value = ("NO", [b"Permission denied"])
+    mock_ssl.list.return_value = ("OK", [b'(\\HasNoChildren) "/" "INBOX"'])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapError, match="CREATE 'Archive' failed"):
+                client.create_folder("Archive")
+
+
+def test_create_folder_already_exists_is_idempotent(cfg: MailConfig) -> None:
+    """Non-OK status but the name appears in LIST → returns None."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.create.return_value = (
+        "NO",
+        [b"[ALREADYEXISTS] Mailbox already exists"],
+    )
+    mock_ssl.list.return_value = (
+        "OK",
+        [b'(\\HasNoChildren) "/" "robotsix-mail-archive"'],
+    )
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.create_folder("robotsix-mail-archive")
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
 # Connection errors
 # ---------------------------------------------------------------------------
 
