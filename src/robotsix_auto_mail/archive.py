@@ -155,7 +155,7 @@ def setup_archive(
     *,
     api_key: str | None = None,
     tier: Tier = Tier.CHEAP,
-) -> list[str] | None:
+) -> list[str]:
     """Ensure the managed archive folder structure exists and is remembered.
 
     On the first run (no persisted structure) this lists the mailbox's
