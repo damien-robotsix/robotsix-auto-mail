@@ -13,6 +13,11 @@ import dataclasses
 import sqlite3
 from pathlib import Path
 
+#: The default status assigned to new ``MailRecord`` instances and used as
+#: the SQL DDL default.  Must be a member of
+#: :data:`robotsix_auto_mail.status.STATUS_ORDER`.
+DEFAULT_STATUS: str = "inbox"
+
 # ---------------------------------------------------------------------------
 # MailRecord
 # ---------------------------------------------------------------------------
@@ -31,7 +36,7 @@ class MailRecord:
     subject: str
     date: str
 
-    status: str = "inbox"
+    status: str = DEFAULT_STATUS
     imap_uid: int | None = None
     recipients_json: str = '{"to": [], "cc": []}'
     body_plain: str = ""
@@ -45,7 +50,7 @@ class MailRecord:
 # Schema
 # ---------------------------------------------------------------------------
 
-_SCHEMA = """
+_SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS mail_records (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     imap_uid        INTEGER,
@@ -57,7 +62,7 @@ CREATE TABLE IF NOT EXISTS mail_records (
     body_plain      TEXT    NOT NULL,
     body_html       TEXT    NOT NULL,
     attachments_json TEXT   NOT NULL,
-    status          TEXT    NOT NULL DEFAULT 'inbox'
+    status          TEXT    NOT NULL DEFAULT '{DEFAULT_STATUS}'
 );
 
 CREATE TABLE IF NOT EXISTS watermark (
