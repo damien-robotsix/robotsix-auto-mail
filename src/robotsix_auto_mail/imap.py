@@ -1,8 +1,9 @@
 """IMAP client built on stdlib ``imaplib``.
 
 Provides ``ImapClient`` - a context manager that connects to a real IMAP
-server, negotiates TLS, authenticates, and exposes ``list_folders()`` and
-``select_folder()`` for basic mailbox inspection.
+server, negotiates TLS, authenticates, and exposes ``list_folders()``,
+``select_folder()``, and ``create_folder()`` for mailbox inspection and
+creation.
 
 Depends only on ``MailConfig`` from ``robotsix_auto_mail.config`` and the
 Python standard library (``imaplib``, ``ssl``).
