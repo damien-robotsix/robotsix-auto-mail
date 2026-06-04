@@ -74,7 +74,7 @@ class DetectedProvider(pydantic.BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Internal dataclass
+# Internal dataclasses
 # ---------------------------------------------------------------------------
 
 
@@ -90,80 +90,347 @@ class MailProvider:
     smtp_tls_mode: str = DEFAULT_SMTP_TLS_MODE
 
 
+@dataclasses.dataclass(frozen=True)
+class ProviderEntry:
+    """Single source of truth for a known email provider."""
+
+    label: str
+    imap_host: str
+    smtp_host: str
+    imap_port: int = 993
+    imap_tls_mode: str = DEFAULT_IMAP_TLS_MODE
+    smtp_port: int = 587
+    smtp_tls_mode: str = DEFAULT_SMTP_TLS_MODE
+    mx_needles: tuple[str, ...] = ()
+    domain_patterns: tuple[str, ...] = ()
+    in_prompt_table: bool = True
+    in_managed_hosting: bool = False
+
+
 # ---------------------------------------------------------------------------
-# System prompt — embeds all known provider data
+# Single source-of-truth provider registry
 # ---------------------------------------------------------------------------
 
-_DETECT_SYSTEM_PROMPT = """\
-You are an email provider configuration expert. Given an email address, \
-return the correct IMAP and SMTP server settings as a JSON object.
+_PROVIDER_DB: tuple[ProviderEntry, ...] = (
+    # ---- prompt-table providers (rows 1-13) ----
+    ProviderEntry(
+        label="Gmail / Google Workspace",
+        imap_host="imap.gmail.com",
+        smtp_host="smtp.gmail.com",
+        mx_needles=("google.com", "googlemail.com"),
+        domain_patterns=("gmail.com", "googlemail.com"),
+        in_managed_hosting=True,
+    ),
+    ProviderEntry(
+        label="Outlook / Hotmail / Live / MS365",
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        mx_needles=("outlook.com", "office365.com", "protection.outlook.com"),
+        domain_patterns=(
+            "outlook.com", "outlook.*", "hotmail.com", "hotmail.*",
+            "live.com", "live.*", "msn.com",
+        ),
+        in_managed_hosting=True,
+    ),
+    ProviderEntry(
+        label="Yahoo Mail",
+        imap_host="imap.mail.yahoo.com",
+        smtp_host="smtp.mail.yahoo.com",
+        mx_needles=("yahoodns.net",),
+        domain_patterns=("yahoo.com", "yahoo.*", "ymail.com", "rocketmail.com"),
+    ),
+    ProviderEntry(
+        label="iCloud",
+        imap_host="imap.mail.me.com",
+        smtp_host="smtp.mail.me.com",
+        mx_needles=("icloud.com", "me.com", "mac.com"),
+        domain_patterns=("icloud.com", "me.com", "mac.com"),
+    ),
+    ProviderEntry(
+        label="Fastmail",
+        imap_host="imap.fastmail.com",
+        smtp_host="smtp.fastmail.com",
+        mx_needles=("messagingengine.com", "fastmail"),
+        domain_patterns=("fastmail.com", "fastmail.*"),
+        in_managed_hosting=True,
+    ),
+    ProviderEntry(
+        label="Zoho Mail",
+        imap_host="imap.zoho.com",
+        smtp_host="smtp.zoho.com",
+        mx_needles=("zoho.com", "zoho.eu"),
+        domain_patterns=("zoho.com", "zoho.*"),
+        in_managed_hosting=True,
+    ),
+    ProviderEntry(
+        label="Proton Mail Bridge",
+        imap_host="127.0.0.1",
+        smtp_host="127.0.0.1",
+        imap_port=1143,
+        imap_tls_mode="none",
+        smtp_port=1025,
+        smtp_tls_mode="none",
+        domain_patterns=("proton.me", "protonmail.com", "pm.me"),
+    ),
+    ProviderEntry(
+        label="GMX",
+        imap_host="imap.gmx.com",
+        smtp_host="mail.gmx.com",
+        mx_needles=("gmx",),
+        domain_patterns=("gmx.com", "gmx.*"),
+    ),
+    ProviderEntry(
+        label="mail.com",
+        imap_host="imap.mail.com",
+        smtp_host="smtp.mail.com",
+        mx_needles=("mail.com",),
+        domain_patterns=("mail.com",),
+    ),
+    ProviderEntry(
+        label="Yandex Mail",
+        imap_host="imap.yandex.com",
+        smtp_host="smtp.yandex.com",
+        mx_needles=("yandex",),
+        domain_patterns=("yandex.com", "yandex.*"),
+    ),
+    ProviderEntry(
+        label="QQ Mail",
+        imap_host="imap.qq.com",
+        smtp_host="smtp.qq.com",
+        mx_needles=("qq.com",),
+        domain_patterns=("qq.com",),
+    ),
+    ProviderEntry(
+        label="AOL Mail",
+        imap_host="imap.aol.com",
+        smtp_host="smtp.aol.com",
+        mx_needles=("aol.com",),
+        domain_patterns=("aol.com",),
+    ),
+    ProviderEntry(
+        label="Mail.ru",
+        imap_host="imap.mail.ru",
+        smtp_host="smtp.mail.ru",
+        mx_needles=("mail.ru",),
+        domain_patterns=("mail.ru", "inbox.ru", "list.ru", "bk.ru"),
+    ),
+    # ---- domain-heuristics-only (NetEase — per-domain hosts) ----
+    ProviderEntry(
+        label="NetEase",
+        imap_host="",
+        smtp_host="",
+        domain_patterns=("126.com", "163.com"),
+        in_prompt_table=False,
+    ),
+    # ---- managed-hosting-only providers (not in prompt table) ----
+    ProviderEntry(
+        label="mailbox.org",
+        imap_host="imap.mailbox.org",
+        smtp_host="smtp.mailbox.org",
+        mx_needles=("mailbox.org",),
+        in_prompt_table=False,
+        in_managed_hosting=True,
+    ),
+    ProviderEntry(
+        label="Migadu",
+        imap_host="imap.migadu.com",
+        smtp_host="smtp.migadu.com",
+        mx_needles=("migadu.com",),
+        in_prompt_table=False,
+        in_managed_hosting=True,
+    ),
+    ProviderEntry(
+        label="Gandi",
+        imap_host="mail.gandi.net",
+        smtp_host="mail.gandi.net",
+        mx_needles=("gandi.net",),
+        in_prompt_table=False,
+        in_managed_hosting=True,
+    ),
+    ProviderEntry(
+        label="OVH",
+        imap_host="ssl0.ovh.net",
+        smtp_host="ssl0.ovh.net",
+        mx_needles=("ovh.net", "ovh.ca"),
+        in_prompt_table=False,
+        in_managed_hosting=True,
+    ),
+    ProviderEntry(
+        label="Infomaniak",
+        imap_host="mail.infomaniak.com",
+        smtp_host="mail.infomaniak.com",
+        mx_needles=("infomaniak.com",),
+        in_prompt_table=False,
+        in_managed_hosting=True,
+    ),
+    ProviderEntry(
+        label="Purelymail",
+        imap_host="imap.purelymail.com",
+        smtp_host="smtp.purelymail.com",
+        mx_needles=("purelymail.com",),
+        in_prompt_table=False,
+        in_managed_hosting=True,
+    ),
+    # ---- MX-only (GoDaddy — never in prompt) ----
+    ProviderEntry(
+        label="GoDaddy",
+        imap_host="imap.secureserver.net",
+        smtp_host="smtpout.secureserver.net",
+        mx_needles=("secureserver.net",),
+        in_prompt_table=False,
+    ),
+)
 
-**TLS mode rules:**
-- `direct-tls`: TLS from the first byte — used on IMAP port 993 and SMTP \
-port 465.
-- `starttls`: plain connection upgraded to TLS via STARTTLS — used on \
-IMAP port 143 and SMTP port 587.
-- `none`: no TLS — for local/dev only.
+# ---------------------------------------------------------------------------
+# Anti-spam gateway MX needles — map to None (hide the real provider)
+# ---------------------------------------------------------------------------
 
-**Known provider settings (use these exact values when the domain matches):**
+_GATEWAY_MX_NEEDLES: tuple[tuple[str, ...], ...] = (
+    ("pphosted.com", "proofpoint", "mimecast", "barracudanetworks.com"),
+)
 
-| Provider | IMAP Host | IMAP Port | IMAP TLS | SMTP Host | SMTP Port | SMTP TLS |
-|---|---|---|---|---|---|---|
-| Gmail / Google Workspace | `imap.gmail.com` | 993 | `direct-tls` | `smtp.gmail.com` | 587 | `starttls` |
-| Outlook / Hotmail / Live / MS365 | `outlook.office365.com` | 993 | `direct-tls` | `smtp.office365.com` | 587 | `starttls` |
-| Yahoo Mail | `imap.mail.yahoo.com` | 993 | `direct-tls` | `smtp.mail.yahoo.com` | 587 | `starttls` |
-| iCloud | `imap.mail.me.com` | 993 | `direct-tls` | `smtp.mail.me.com` | 587 | `starttls` |
-| Fastmail | `imap.fastmail.com` | 993 | `direct-tls` | `smtp.fastmail.com` | 587 | `starttls` |
-| Zoho Mail | `imap.zoho.com` | 993 | `direct-tls` | `smtp.zoho.com` | 587 | `starttls` |
-| Proton Mail Bridge | `127.0.0.1` | 1143 | `none` | `127.0.0.1` | 1025 | `none` |
-| GMX | `imap.gmx.com` | 993 | `direct-tls` | `mail.gmx.com` | 587 | `starttls` |
-| mail.com | `imap.mail.com` | 993 | `direct-tls` | `smtp.mail.com` | 587 | `starttls` |
-| Yandex Mail | `imap.yandex.com` | 993 | `direct-tls` | `smtp.yandex.com` | 587 | `starttls` |
-| QQ Mail | `imap.qq.com` | 993 | `direct-tls` | `smtp.qq.com` | 587 | `starttls` |
-| AOL Mail | `imap.aol.com` | 993 | `direct-tls` | `smtp.aol.com` | 587 | `starttls` |
-| Mail.ru | `imap.mail.ru` | 993 | `direct-tls` | `smtp.mail.ru` | 587 | `starttls` |
+# ---------------------------------------------------------------------------
+# Derive _MX_PROVIDERS from the unified registry
+# ---------------------------------------------------------------------------
 
-**Domain heuristics (when the domain isn't in the table above):**
-- `@gmail.com` or `@googlemail.com` → Gmail settings.
-- `@outlook.com`, `@outlook.*`, `@hotmail.com`, `@hotmail.*`, \
-`@live.com`, `@live.*`, `@msn.com` → Outlook/Microsoft 365 settings.
-- `@yahoo.com`, `@yahoo.*`, `@ymail.com`, `@rocketmail.com` → Yahoo \
-settings.
-- `@icloud.com`, `@me.com`, `@mac.com` → iCloud settings.
-- `@fastmail.com`, `@fastmail.*` → Fastmail settings.
-- `@zoho.com`, `@zoho.*` → Zoho settings.
-- `@proton.me`, `@protonmail.com`, `@pm.me` → Proton Mail Bridge (localhost).
-- `@gmx.com`, `@gmx.*` → GMX settings.
-- `@mail.com` → mail.com settings.
-- `@yandex.com`, `@yandex.*` → Yandex settings.
-- `@qq.com` → QQ Mail settings.
-- `@aol.com` → AOL settings.
-- `@mail.ru`, `@inbox.ru`, `@list.ru`, `@bk.ru` → Mail.ru settings.
-- `@126.com`, `@163.com` → NetEase: `imap.126.com`/`imap.163.com` port \
-993 `direct-tls`, `smtp.126.com`/`smtp.163.com` port 587 `starttls`.
-- For self-hosted / custom domains (e.g. `@example.com`): the typical \
-pattern is `imap.<domain>` port 993 and `smtp.<domain>` port 587 — but \
-many custom domains are hosted by a managed provider, so consider these too.
 
-**Managed hosting of custom domains (the address domain is NOT the mail host):**
-- Google Workspace → `imap.gmail.com` / `smtp.gmail.com`.
-- Microsoft 365 / Exchange Online → `outlook.office365.com` / `smtp.office365.com`.
-- Zoho-hosted → `imap.zoho.com` / `smtp.zoho.com` (or `.eu`/`.in` regional).
-- Fastmail-hosted → `imap.fastmail.com` / `smtp.fastmail.com`.
-- mailbox.org → `imap.mailbox.org` / `smtp.mailbox.org`.
-- Migadu → `imap.migadu.com` / `smtp.migadu.com`.
-- Gandi → `mail.gandi.net` (IMAP 993 direct-tls, SMTP 587 starttls).
-- OVH → `ssl0.ovh.net` (IMAP 993 direct-tls, SMTP 587 starttls).
-- Infomaniak → `mail.infomaniak.com`.
-- Purelymail → `imap.purelymail.com` / `smtp.purelymail.com`.
-- cPanel/Plesk shared hosting → often `mail.<domain>` or the server hostname.
+def _build_mx_providers() -> list[tuple[tuple[str, ...], MailProvider | None]]:
+    """Build the MX-provider lookup table from ``_PROVIDER_DB``."""
+    result: list[tuple[tuple[str, ...], MailProvider | None]] = []
+    for entry in _PROVIDER_DB:
+        if entry.mx_needles and entry.imap_host:
+            result.append((
+                entry.mx_needles,
+                MailProvider(
+                    imap_host=entry.imap_host,
+                    smtp_host=entry.smtp_host,
+                    imap_port=entry.imap_port,
+                    imap_tls_mode=entry.imap_tls_mode,
+                    smtp_port=entry.smtp_port,
+                    smtp_tls_mode=entry.smtp_tls_mode,
+                ),
+            ))
+    for needles in _GATEWAY_MX_NEEDLES:
+        result.append((needles, None))
+    return result
 
-When the obvious `imap.<domain>` is uncertain, prefer `mail.<domain>` or the \
-provider patterns above. If you are given feedback that a previous guess \
-failed, do NOT repeat it — propose a genuinely different host.
 
-Return ONLY a JSON object matching the schema — no explanation, no markdown \
-fences."""
+_MX_PROVIDERS: list[tuple[tuple[str, ...], MailProvider | None]] = (
+    _build_mx_providers()
+)
+
+
+# ---------------------------------------------------------------------------
+# Build the LLM system prompt from the unified registry
+# ---------------------------------------------------------------------------
+
+
+def _build_domain_heuristic_line(entry: ProviderEntry) -> str:
+    """Build a single domain-heuristic bullet for *entry*."""
+    patterns = entry.domain_patterns
+    quoted = ", ".join(f"`@{p}`" for p in patterns)
+    label = entry.label
+    # Proton gets a special suffix
+    if entry.label == "Proton Mail Bridge":
+        return f"- {quoted} → {label} (localhost)."
+    return f"- {quoted} → {label} settings."
+
+
+def _build_prompt_table_row(entry: ProviderEntry) -> str:
+    """Build a single Markdown table row for *entry*."""
+    return (
+        f"| {entry.label} "
+        f"| `{entry.imap_host}` "
+        f"| {entry.imap_port} "
+        f"| `{entry.imap_tls_mode}` "
+        f"| `{entry.smtp_host}` "
+        f"| {entry.smtp_port} "
+        f"| `{entry.smtp_tls_mode}` |"
+    )
+
+
+def _build_system_prompt() -> str:
+    """Assemble the full system prompt from the registry + fixed prose."""
+
+    # -- table rows: every entry with in_prompt_table=True and imap_host != "" --
+    table_rows = [
+        _build_prompt_table_row(e)
+        for e in _PROVIDER_DB
+        if e.in_prompt_table and e.imap_host
+    ]
+
+    # -- domain heuristics: every entry with non-empty domain_patterns,
+    #    except NetEase (handled manually below) --
+    heuristic_lines = [
+        _build_domain_heuristic_line(e)
+        for e in _PROVIDER_DB
+        if e.domain_patterns and e.label != "NetEase"
+    ]
+
+    # -- NetEase manual line --
+    netease_line = (
+        "- `@126.com`, `@163.com` → NetEase: `imap.126.com`/`imap.163.com` "
+        "port 993 `direct-tls`, `smtp.126.com`/`smtp.163.com` port 587 "
+        "`starttls`."
+    )
+
+    return (
+        "You are an email provider configuration expert. Given an email "
+        "address, return the correct IMAP and SMTP server settings as a "
+        "JSON object.\n"
+        "\n"
+        "**TLS mode rules:**\n"
+        "- `direct-tls`: TLS from the first byte — used on IMAP port 993 "
+        "and SMTP port 465.\n"
+        "- `starttls`: plain connection upgraded to TLS via STARTTLS — "
+        "used on IMAP port 143 and SMTP port 587.\n"
+        "- `none`: no TLS — for local/dev only.\n"
+        "\n"
+        "**Known provider settings (use these exact values when the domain "
+        "matches):**\n"
+        "\n"
+        "| Provider | IMAP Host | IMAP Port | IMAP TLS | SMTP Host | "
+        "SMTP Port | SMTP TLS |\n"
+        "|---|---|---|---|---|---|---|\n"
+        + "\n".join(table_rows) + "\n"
+        "\n"
+        "**Domain heuristics (when the domain isn't in the table above):**\n"
+        + "\n".join(heuristic_lines) + "\n"
+        + netease_line + "\n"
+        "- For self-hosted / custom domains (e.g. `@example.com`): the "
+        "typical pattern is `imap.<domain>` port 993 and `smtp.<domain>` "
+        "port 587 — but many custom domains are hosted by a managed "
+        "provider, so consider these too.\n"
+        "\n"
+        "**Managed hosting of custom domains (the address domain is NOT "
+        "the mail host):**\n"
+        "- Google Workspace → `imap.gmail.com` / `smtp.gmail.com`.\n"
+        "- Microsoft 365 / Exchange Online → `outlook.office365.com` / "
+        "`smtp.office365.com`.\n"
+        "- Zoho-hosted → `imap.zoho.com` / `smtp.zoho.com` (or `.eu`/`.in` "
+        "regional).\n"
+        "- Fastmail-hosted → `imap.fastmail.com` / `smtp.fastmail.com`.\n"
+        "- mailbox.org → `imap.mailbox.org` / `smtp.mailbox.org`.\n"
+        "- Migadu → `imap.migadu.com` / `smtp.migadu.com`.\n"
+        "- Gandi → `mail.gandi.net` (IMAP 993 direct-tls, SMTP 587 "
+        "starttls).\n"
+        "- OVH → `ssl0.ovh.net` (IMAP 993 direct-tls, SMTP 587 starttls).\n"
+        "- Infomaniak → `mail.infomaniak.com`.\n"
+        "- Purelymail → `imap.purelymail.com` / `smtp.purelymail.com`.\n"
+        "- cPanel/Plesk shared hosting → often `mail.<domain>` or the "
+        "server hostname.\n"
+        "\n"
+        "When the obvious `imap.<domain>` is uncertain, prefer "
+        "`mail.<domain>` or the provider patterns above. If you are given "
+        "feedback that a previous guess failed, do NOT repeat it — propose "
+        "a genuinely different host.\n"
+        "\n"
+        "Return ONLY a JSON object matching the schema — no explanation, "
+        "no markdown fences."
+    )
+
+
+_DETECT_SYSTEM_PROMPT: str = _build_system_prompt()
 
 
 # ---------------------------------------------------------------------------
@@ -370,47 +637,6 @@ def autoconfig_lookup(
 
 # Google's DNS-over-HTTPS JSON resolver — stdlib-only, works in slim images.
 _DOH_RESOLVER = "https://dns.google/resolve"
-
-# MX-host substring → known provider IMAP/SMTP settings. The first matching
-# host wins; ``None`` marks an anti-spam gateway that hides the real provider
-# (so the caller falls through to autoconfig/the LLM). MailProvider defaults
-# (IMAP 993 direct-tls, SMTP 587 starttls) suit every entry below.
-_MX_PROVIDERS: list[tuple[tuple[str, ...], MailProvider | None]] = [
-    (("google.com", "googlemail.com"),
-     MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")),
-    (("outlook.com", "office365.com", "protection.outlook.com"),
-     MailProvider(imap_host="outlook.office365.com",
-                  smtp_host="smtp.office365.com")),
-    (("gandi.net",),
-     MailProvider(imap_host="mail.gandi.net", smtp_host="mail.gandi.net")),
-    (("zoho.com", "zoho.eu"),
-     MailProvider(imap_host="imap.zoho.com", smtp_host="smtp.zoho.com")),
-    (("mailbox.org",),
-     MailProvider(imap_host="imap.mailbox.org", smtp_host="smtp.mailbox.org")),
-    (("migadu.com",),
-     MailProvider(imap_host="imap.migadu.com", smtp_host="smtp.migadu.com")),
-    (("messagingengine.com", "fastmail"),
-     MailProvider(imap_host="imap.fastmail.com",
-                  smtp_host="smtp.fastmail.com")),
-    (("ovh.net", "ovh.ca"),
-     MailProvider(imap_host="ssl0.ovh.net", smtp_host="ssl0.ovh.net")),
-    (("infomaniak.com",),
-     MailProvider(imap_host="mail.infomaniak.com",
-                  smtp_host="mail.infomaniak.com")),
-    (("icloud.com", "me.com", "mac.com"),
-     MailProvider(imap_host="imap.mail.me.com", smtp_host="smtp.mail.me.com")),
-    (("secureserver.net",),
-     MailProvider(imap_host="imap.secureserver.net",
-                  smtp_host="smtpout.secureserver.net")),
-    (("yandex",),
-     MailProvider(imap_host="imap.yandex.com", smtp_host="smtp.yandex.com")),
-    (("yahoodns.net",),
-     MailProvider(imap_host="imap.mail.yahoo.com",
-                  smtp_host="smtp.mail.yahoo.com")),
-    # Anti-spam gateways — the real mailbox provider is hidden behind these.
-    (("pphosted.com", "proofpoint", "mimecast", "barracudanetworks.com"),
-     None),
-]
 
 
 def mx_lookup(email_address: str, *, timeout: float = 5.0) -> list[str]:
