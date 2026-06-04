@@ -19,7 +19,7 @@ from robotsix_auto_mail.archive import (
     setup_archive,
 )
 from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
-from robotsix_auto_mail.imap import ImapClient, MailboxInfo
+from robotsix_auto_mail.imap import ImapClient, ImapError, MailboxInfo
 
 
 class _FakeImapClient:
@@ -319,5 +319,51 @@ def test_setup_archive_no_api_key_falls_back_to_root() -> None:
         stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
         assert stored is not None
         assert json.loads(stored) == [ARCHIVE_ROOT]
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# setup_archive — IMAP failure paths must not persist a watermark
+# ---------------------------------------------------------------------------
+
+
+def test_setup_archive_create_folder_error_propagates_and_does_not_persist() -> None:
+    """A create_folder ImapError propagates and leaves no watermark."""
+    conn = init_db(":memory:")
+    try:
+
+        class _FailingCreateClient(_FakeImapClient):
+            def create_folder(self, name: str) -> None:
+                raise ImapError("CREATE failed: NO")
+
+        client = _FailingCreateClient([_folder("INBOX")])
+        with mock.patch.dict(
+            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
+        ):
+            with _patch_llm(["Receipts"]):
+                with pytest.raises(ImapError):
+                    setup_archive(conn, cast(ImapClient, client))
+        assert get_watermark(conn, _ARCHIVE_WATERMARK_KEY) is None
+    finally:
+        conn.close()
+
+
+def test_setup_archive_list_folders_error_propagates_and_does_not_persist() -> None:
+    """A list_folders ImapError propagates and leaves no watermark."""
+    conn = init_db(":memory:")
+    try:
+
+        class _FailingListClient(_FakeImapClient):
+            def list_folders(self) -> list[MailboxInfo]:
+                raise ImapError("LIST failed")
+
+        client = _FailingListClient([])
+        with mock.patch.dict(
+            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
+        ):
+            with pytest.raises(ImapError):
+                setup_archive(conn, cast(ImapClient, client))
+        assert get_watermark(conn, _ARCHIVE_WATERMARK_KEY) is None
     finally:
         conn.close()
