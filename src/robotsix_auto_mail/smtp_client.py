@@ -15,6 +15,7 @@ from email.mime.text import MIMEText
 from email.utils import formatdate
 from typing import Any
 
+from robotsix_auto_mail._base_client import _ProtocolClient
 from robotsix_auto_mail.config import MailConfig
 
 # Store a reference to SMTPException *before* any mocking can replace
@@ -71,7 +72,7 @@ class SmtpSendError(SmtpError):
 # ---------------------------------------------------------------------------
 
 
-class SmtpClient:
+class SmtpClient(_ProtocolClient):
     """Context-managed SMTP client.
 
     Constructor accepts a ``MailConfig`` and extracts only the
@@ -91,11 +92,13 @@ class SmtpClient:
     """
 
     def __init__(self, config: MailConfig) -> None:
-        self._host = config.smtp_host
-        self._port = config.smtp_port
-        self._tls_mode = config.smtp_tls_mode
-        self._username = config.username
-        self._password = config.password
+        super().__init__(
+            host=config.smtp_host,
+            port=config.smtp_port,
+            tls_mode=config.smtp_tls_mode,
+            username=config.username,
+            password=config.password,
+        )
 
         self._smtp: smtplib.SMTP | None = None
 
@@ -115,15 +118,6 @@ class SmtpClient:
             return {}
         return dict(self._smtp.esmtp_features)
 
-    # -- repr --------------------------------------------------------------
-
-    def __repr__(self) -> str:
-        cls = type(self).__name__
-        return (
-            f"{cls}(host={self._host!r}, port={self._port!r}, "
-            f"user={self._username!r}, password=<redacted>)"
-        )
-
     # -- public API --------------------------------------------------------
 
     def connect(self) -> None:
@@ -136,17 +130,7 @@ class SmtpClient:
                 failure.
             SmtpAuthError: Login rejected (bad credentials, etc.).
         """
-        tls_mode = self._tls_mode
-
-        if tls_mode == "direct-tls":
-            self._connect_direct_tls()
-        elif tls_mode == "starttls":
-            self._connect_starttls()
-        elif tls_mode == "none":
-            self._connect_plain()
-        else:
-            raise ValueError(f"Unknown TLS mode: {tls_mode!r}")
-
+        self._dispatch_tls()
         self._authenticate()
 
     def send(
