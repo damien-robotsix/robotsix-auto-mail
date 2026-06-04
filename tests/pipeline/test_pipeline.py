@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import sqlite3
 from dataclasses import FrozenInstanceError
 from unittest import mock
@@ -690,7 +691,7 @@ def test_ingest_calls_setup_archive_before_fetch(
     ingest_mail(conn, imap, cfg)
 
     mock_setup_archive.assert_called_once_with(
-        conn, imap, api_key=cfg.llm_api_key
+        conn, imap, archive_root=cfg.archive_root, api_key=cfg.llm_api_key
     )
     # setup_archive must run before fetch_new_messages.
     call_order = [c[0] for c in manager.mock_calls]
@@ -714,6 +715,44 @@ def test_ingest_dry_run_does_not_call_setup_archive(
     ingest_mail(conn, imap, cfg, dry_run=True)
 
     mock_setup_archive.assert_not_called()
+
+
+@mock.patch("robotsix_auto_mail.pipeline.setup_archive")
+@mock.patch("robotsix_auto_mail.pipeline.fetch_new_messages")
+def test_ingest_archive_disabled_does_not_call_setup_archive(
+    mock_fetch: mock.MagicMock,
+    mock_setup_archive: mock.MagicMock,
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """archive_enabled=False must skip setup_archive entirely."""
+    cfg_disabled = dataclasses.replace(cfg, archive_enabled=False)
+    mock_fetch.return_value = []
+    imap = _mock_imap_client()
+
+    ingest_mail(conn, imap, cfg_disabled)
+
+    mock_setup_archive.assert_not_called()
+
+
+@mock.patch("robotsix_auto_mail.pipeline.setup_archive")
+@mock.patch("robotsix_auto_mail.pipeline.fetch_new_messages")
+def test_ingest_passes_configured_archive_root(
+    mock_fetch: mock.MagicMock,
+    mock_setup_archive: mock.MagicMock,
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """The configured archive_root is forwarded to setup_archive."""
+    cfg_custom = dataclasses.replace(cfg, archive_root="custom-archive")
+    mock_fetch.return_value = []
+    imap = _mock_imap_client()
+
+    ingest_mail(conn, imap, cfg_custom)
+
+    mock_setup_archive.assert_called_once_with(
+        conn, imap, archive_root="custom-archive", api_key=cfg.llm_api_key
+    )
 
 
 @mock.patch("robotsix_auto_mail.pipeline.setup_archive")

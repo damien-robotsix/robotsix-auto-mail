@@ -30,6 +30,11 @@ auth:
 # ingest:
 #   interval_minutes: 15
 
+# Self-managed archive folder structure.
+# archive:
+#   root: robotsix-mail-archive
+#   enabled: true
+
 # LLM provider — used by the `detect` command and future LLM-assisted mail
 # processing. Optional; the LLM_API_KEY / LLM_MODEL environment variables
 # override these values.

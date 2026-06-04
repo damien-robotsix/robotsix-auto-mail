@@ -47,6 +47,8 @@ FIELD_TO_YAML: dict[str, str] = {
     "llm_api_key": "llm.api_key",
     "llm_model": "llm.model",
     "ingest_interval_minutes": "ingest.interval_minutes",
+    "archive_root": "archive.root",
+    "archive_enabled": "archive.enabled",
 }
 
 FIELD_TO_ENV: dict[str, str] = {
@@ -63,6 +65,8 @@ FIELD_TO_ENV: dict[str, str] = {
     "llm_api_key": "LLM_API_KEY",
     "llm_model": "LLM_MODEL",
     "ingest_interval_minutes": "MAIL_INGEST_INTERVAL",
+    "archive_root": "MAIL_ARCHIVE_ROOT",
+    "archive_enabled": "MAIL_ARCHIVE_ENABLED",
 }
 
 # ---------------------------------------------------------------------------

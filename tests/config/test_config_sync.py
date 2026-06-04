@@ -53,6 +53,11 @@ auth:
 # ingest:
 #   interval_minutes: 15
 
+# Self-managed archive folder structure.
+# archive:
+#   root: robotsix-mail-archive
+#   enabled: true
+
 # LLM provider — used by the `detect` command and future LLM-assisted mail
 # processing. Optional; the LLM_API_KEY / LLM_MODEL environment variables
 # override these values.
@@ -75,6 +80,8 @@ MAIL_USERNAME=user@example.com
 MAIL_PASSWORD=your-password-here
 MAIL_DB_PATH=.data/mail.db
 MAIL_INGEST_INTERVAL=15
+MAIL_ARCHIVE_ROOT=robotsix-mail-archive
+MAIL_ARCHIVE_ENABLED=true
 LLM_API_KEY=sk-or-v1-…
 LLM_MODEL=deepseek/deepseek-v4-flash
 """
@@ -95,6 +102,8 @@ _DOCS_YAML_TABLE = """\
 | `auth.password` | no | - | Login password |
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles |
+| `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
+| `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `llm.api_key` | no | - | LLM provider API key |
 | `llm.model` | no | `"deepseek/deepseek-v4-flash"` | LLM model name |
 """
@@ -115,6 +124,8 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_IMAP_FOLDER` | no | `INBOX` | IMAP mailbox folder name |
 | `MAIL_DB_PATH` | no | `.data/mail.db` | Filesystem path for the SQLite database |
 | `MAIL_INGEST_INTERVAL` | no | `15` | Minutes between automatic ingest cycles |
+| `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Archive root folder |
+| `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to manage the archive structure |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
 | `LLM_API_KEY` | no | - | LLM provider API key |
 | `LLM_MODEL` | no | `deepseek/deepseek-v4-flash` | LLM model name |
