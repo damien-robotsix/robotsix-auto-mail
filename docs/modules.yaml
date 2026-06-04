@@ -94,6 +94,13 @@ modules:
       - src/robotsix_auto_mail/fetch.py
       - tests/fetch/test_fetch.py
 
+  - id: protocol
+    description: >-
+      Shared protocol-client base class: common TLS-mode dispatch
+      and config fields for the IMAP and SMTP clients.
+    paths:
+      - src/robotsix_auto_mail/_base_client.py
+
   - id: imap
     description: >-
       Low-level IMAP client (stdlib imaplib wrapper).
