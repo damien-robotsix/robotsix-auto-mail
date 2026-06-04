@@ -11,8 +11,9 @@ from urllib.request import urlopen
 if TYPE_CHECKING:
     from http.server import HTTPServer
 
-from robotsix_auto_mail.db import init_db
 from tests.conftest import _make_record
+
+from robotsix_auto_mail.db import init_db
 from robotsix_auto_mail.format import _format_date
 from robotsix_auto_mail.server import (
     _build_board_html,

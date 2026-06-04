@@ -6,6 +6,7 @@ import dataclasses
 import sqlite3
 
 import pytest
+from tests.conftest import _make_record
 
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -16,7 +17,6 @@ from robotsix_auto_mail.db import (
     list_records,
     set_watermark,
 )
-from tests.conftest import _make_record
 
 # ---------------------------------------------------------------------------
 # MailRecord construction and defaults
