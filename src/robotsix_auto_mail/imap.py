@@ -16,6 +16,7 @@ import shlex
 import ssl
 from typing import Any
 
+from robotsix_auto_mail._base_client import _ProtocolClient
 from robotsix_auto_mail.config import MailConfig
 
 # Store a reference to IMAP4.error *before* any mocking can replace
@@ -142,7 +143,7 @@ def _parse_list_line(line: bytes) -> MailboxInfo:
 # ---------------------------------------------------------------------------
 
 
-class ImapClient:
+class ImapClient(_ProtocolClient):
     """Context-managed IMAP client.
 
     Constructor accepts a ``MailConfig`` and extracts only the IMAP-relevant
@@ -158,15 +159,15 @@ class ImapClient:
     """
 
     def __init__(self, config: MailConfig) -> None:
-        self._host = config.imap_host
-        self._port = config.imap_port
-        self._tls_mode = config.imap_tls_mode
-        self._username = config.username
-        self._password = config.password
+        super().__init__(
+            host=config.imap_host,
+            port=config.imap_port,
+            tls_mode=config.imap_tls_mode,
+            username=config.username,
+            password=config.password,
+        )
 
         self._imap: imaplib.IMAP4 | None = None
-
-    # -- repr --------------------------------------------------------------
 
     # -- read-only server metadata ---------------------------------------
 
@@ -184,30 +185,11 @@ class ImapClient:
             return ()
         return self._imap.capabilities
 
-    # -- repr --------------------------------------------------------------
-
-    def __repr__(self) -> str:
-        cls = type(self).__name__
-        return (
-            f"{cls}(host={self._host!r}, port={self._port!r}, "
-            f"user={self._username!r}, password=<redacted>)"
-        )
-
     # -- context manager ---------------------------------------------------
 
     def __enter__(self) -> ImapClient:
         """Connect + authenticate, returning the ready-to-use client."""
-        tls_mode = self._tls_mode
-
-        if tls_mode == "direct-tls":
-            self._connect_direct_tls()
-        elif tls_mode == "starttls":
-            self._connect_starttls()
-        elif tls_mode == "none":
-            self._connect_plain()
-        else:
-            raise ValueError(f"Unknown TLS mode: {tls_mode!r}")
-
+        self._dispatch_tls()
         self._authenticate()
         return self
 
