@@ -6,6 +6,8 @@ import sqlite3
 import tempfile
 from typing import Any
 
+from tests.conftest import _make_record
+
 from robotsix_auto_mail.db import init_db, insert_record
 from robotsix_auto_mail.status import (
     VALID_STATUSES,
@@ -13,7 +15,6 @@ from robotsix_auto_mail.status import (
     list_by_status,
     set_status,
 )
-from tests.conftest import _make_record
 
 # ---------------------------------------------------------------------------
 # VALID_STATUSES
