@@ -9,13 +9,17 @@ and advances the watermark only after the full batch.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import sqlite3
 
+from robotsix_auto_mail.archive import setup_archive
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import insert_record, record_exists
 from robotsix_auto_mail.fetch import fetch_new_messages, update_watermark
 from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.parser import parse_message
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -83,6 +87,17 @@ def ingest_mail(
     IngestResult
         Summary with total fetched, stored, skipped, and any errors.
     """
+    # 0. First-run archive setup (best-effort; skipped in dry-run).
+    #    Creating folders / writing the watermark must not happen on a
+    #    dry run, and any archive failure (LLM/network/IMAP) must not
+    #    abort ingestion — setup_archive only persists its watermark on
+    #    success, so a failed run naturally retries next time.
+    if not dry_run:
+        try:
+            setup_archive(db_conn, imap_client, api_key=config.llm_api_key)
+        except Exception:
+            _logger.exception("Archive setup failed; continuing ingestion")
+
     # 1. Fetch raw messages (read-only on DB).
     messages = fetch_new_messages(db_conn, imap_client, config)
     total_fetched = len(messages)
