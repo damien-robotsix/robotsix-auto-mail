@@ -21,6 +21,7 @@ modules:
       - .gitignore
       - .python-version
       - LICENSE
+      - CLAUDE.md
       - README.md
       - SECURITY.md
       - ROADMAP.md
