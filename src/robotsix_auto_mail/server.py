@@ -572,18 +572,10 @@ def make_board_handler(
             try:
                 body = _build_board_html(self.db_path)
             except Exception:
-                self.send_response(503)
-                self.send_header("Content-Type", "text/plain; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(b"Database unavailable")
+                self._send_error_response(503, "Database unavailable")
                 return
 
-            encoded = body.encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(encoded)))
-            self.end_headers()
-            self.wfile.write(encoded)
+            self._send_html_response(body)
 
         def _not_found(self) -> None:
             """Send a 404 Not Found."""
@@ -606,6 +598,23 @@ def make_board_handler(
             encoded = json.dumps(payload).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+
+        def _send_error_response(self, status_code: int, message: str) -> None:
+            """Send a plain-text error response with *status_code*."""
+            encoded = message.encode("utf-8")
+            self.send_response(status_code)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(encoded)
+
+        def _send_html_response(self, body: str, status_code: int = 200) -> None:
+            """Send an HTML response with *status_code* (default 200)."""
+            encoded = body.encode("utf-8")
+            self.send_response(status_code)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(encoded)))
             self.end_headers()
             self.wfile.write(encoded)
@@ -762,22 +771,14 @@ def make_board_handler(
                     self.db_path, message_id, embed=embed,
                 )
             except Exception:
-                self.send_response(503)
-                self.send_header("Content-Type", "text/plain; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(b"Database unavailable")
+                self._send_error_response(503, "Database unavailable")
                 return
 
             if detail_html is None:
                 self._not_found()
                 return
 
-            encoded = detail_html.encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(encoded)))
-            self.end_headers()
-            self.wfile.write(encoded)
+            self._send_html_response(detail_html)
 
         def log_message(self, format: str, *args: object) -> None:
             """Suppress logging to stderr (keep server quiet)."""
