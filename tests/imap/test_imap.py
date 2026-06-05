@@ -33,6 +33,7 @@ def _make_mock_imap_ssl() -> mock.MagicMock:
     m.list.return_value = ("OK", [])
     m.select.return_value = ("OK", [b"5"])
     m.logout.return_value = ("OK", [b"Logged out"])
+    m.subscribe.return_value = ("OK", [b"Subscribe completed"])
     # A mock socket so close_socket has something to close.
     m.sock = mock.MagicMock()
     return m
@@ -307,7 +308,7 @@ def test_select_folder_empty_data(cfg: MailConfig) -> None:
 
 
 def test_create_folder_success(cfg: MailConfig) -> None:
-    """create_folder issues CREATE and returns None on OK."""
+    """create_folder issues CREATE then SUBSCRIBE on OK."""
     mock_ssl = _make_mock_imap_ssl()
     mock_ssl.create.return_value = ("OK", [b"Create completed"])
 
@@ -316,6 +317,7 @@ def test_create_folder_success(cfg: MailConfig) -> None:
             client.create_folder("robotsix-mail-archive")
 
     mock_ssl.create.assert_called_once_with("robotsix-mail-archive")
+    mock_ssl.subscribe.assert_called_once_with("robotsix-mail-archive")
 
 
 def test_create_folder_not_connected(cfg: MailConfig) -> None:
@@ -352,6 +354,24 @@ def test_create_folder_already_exists_is_idempotent(cfg: MailConfig) -> None:
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
         with ImapClient(cfg) as client:
             client.create_folder("robotsix-mail-archive")
+
+    mock_ssl.subscribe.assert_called_once_with("robotsix-mail-archive")
+
+
+def test_create_folder_subscribe_failure_is_swallowed(
+    cfg: MailConfig,
+) -> None:
+    """A non-OK / raising SUBSCRIBE must not fail folder creation."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.create.return_value = ("OK", [b"Create completed"])
+    mock_ssl.subscribe.side_effect = OSError("connection reset")
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            # Must not raise — the folder exists regardless of subscription.
+            client.create_folder("robotsix-mail-archive")
+
+    mock_ssl.subscribe.assert_called_once_with("robotsix-mail-archive")
 
 
 # ---------------------------------------------------------------------------

@@ -13,12 +13,15 @@ from __future__ import annotations
 
 import dataclasses
 import imaplib
+import logging
 import shlex
 import ssl
 from typing import Any
 
 from robotsix_auto_mail._base_client import _ProtocolClient
 from robotsix_auto_mail.config import MailConfig
+
+_logger = logging.getLogger(__name__)
 
 # Store a reference to IMAP4.error *before* any mocking can replace
 # IMAP4 and turn ``IMAP4.error`` into a MagicMock attribute.  Using
@@ -334,6 +337,12 @@ class ImapClient(_ProtocolClient):
         mailbox with the same name is present, the method returns
         silently.
 
+        Once the mailbox exists it is also ``SUBSCRIBE``-d: most mail
+        clients only display *subscribed* folders (they list via
+        ``LSUB``), so an unsubscribed archive folder would be invisible
+        to the user.  The subscribe is best-effort — its failure does
+        not undo the create or raise.
+
         Args:
             name: Mailbox name to create (e.g.
                 ``"robotsix-mail-archive/2026"``).
@@ -347,12 +356,32 @@ class ImapClient(_ProtocolClient):
             raise ImapError("Not connected")
         status, _data = self._imap.create(name)
         if status == "OK":
+            self._subscribe(name)
             return
         # Non-OK: the folder may already exist. Re-list and check.
         for folder in self.list_folders():
             if folder.name == name:
+                self._subscribe(name)
                 return
         raise ImapError(f"CREATE '{name}' failed: {status}")
+
+    def _subscribe(self, name: str) -> None:
+        """Best-effort IMAP ``SUBSCRIBE`` so the folder is client-visible.
+
+        A non-OK status or transport error is logged and swallowed: the
+        mailbox already exists, and a missing subscription only affects
+        client visibility, not ingestion.
+        """
+        if self._imap is None:
+            return
+        try:
+            status, _data = self._imap.subscribe(name)
+            if status != "OK":
+                _logger.warning(
+                    "SUBSCRIBE '%s' returned non-OK: %s", name, status
+                )
+        except Exception:
+            _logger.warning("SUBSCRIBE '%s' failed", name, exc_info=True)
 
     def search_uids(self, criteria: str = "ALL") -> list[int]:
         """Issue ``UID SEARCH`` and return matching UIDs.
