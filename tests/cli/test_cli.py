@@ -1553,6 +1553,101 @@ def test_config_sync_dedup_forwards_conn(
     assert mock_agent.call_args.kwargs["conn"] is not None
 
 
+def test_parser_has_config_sync_set_subcommand() -> None:
+    """The parser knows the config-sync-set subcommand with positional args."""
+    args = build_parser().parse_args(
+        ["config-sync-set", "abc123", "accepted"]
+    )
+    assert args.command == "config-sync-set"
+    assert args.fingerprint == "abc123"
+    assert args.state == "accepted"
+
+
+def test_config_sync_set_success(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """config-sync-set transitions a known finding and exits 0."""
+    from robotsix_auto_mail.config_sync import (
+        _load_ledger,
+        _proposal_fingerprint,
+        record_and_filter_proposals,
+    )
+    from robotsix_auto_mail.db import init_db as real_init_db
+
+    cfg_db = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        db_path=str(tmp_path / "ledger.db"),
+    )
+    proposal = DriftProposal(
+        title="imap_folder default mismatch",
+        body="Docs say INBOX.All but the dataclass default is INBOX.",
+        affected_field="imap_folder",
+        confidence="high",
+    )
+    fingerprint = _proposal_fingerprint(proposal)
+    conn = real_init_db(cfg_db.db_path)
+    try:
+        record_and_filter_proposals(conn, [proposal])
+    finally:
+        conn.close()
+
+    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+        rc = main(["config-sync-set", fingerprint, "accepted"])
+
+    assert rc == 0
+    assert "Recorded config-drift finding state" in capsys.readouterr().out
+
+    conn = real_init_db(cfg_db.db_path)
+    try:
+        ledger = _load_ledger(conn)
+        assert ledger[fingerprint].state == "accepted"
+    finally:
+        conn.close()
+
+
+def test_config_sync_set_invalid_state(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """config-sync-set exits 1 with a clear message on an invalid state."""
+    cfg_db = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        db_path=str(tmp_path / "ledger.db"),
+    )
+    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+        rc = main(["config-sync-set", "abc123", "banana"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "invalid state" in err
+    assert "banana" in err
+
+
+def test_config_sync_set_unknown_fingerprint(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """config-sync-set exits 1 when the fingerprint is unknown."""
+    cfg_db = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        db_path=str(tmp_path / "ledger.db"),
+    )
+    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+        rc = main(["config-sync-set", "deadbeef", "accepted"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "No ledger finding" in err
+    assert "deadbeef" in err
+
+
 # ---------------------------------------------------------------------------
 # triage subcommand
 # ---------------------------------------------------------------------------
