@@ -18,8 +18,13 @@ from robotsix_auto_mail.config_sync import (
     ConfigSyncError,
     ConfigSyncResult,
     DriftProposal,
+    LedgerEntry,
+    _proposal_fingerprint,
+    record_and_filter_proposals,
     run_config_sync_agent,
+    set_finding_state,
 )
+from robotsix_auto_mail.db import init_db
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -193,3 +198,205 @@ def test_run_config_sync_agent_all_surfaces_reach_prompt(
     assert "MailConfig fields" in user_message
     assert "imap_host" in user_message
     assert "imap_host: yaml=`imap.host`" in user_message
+
+
+# ---------------------------------------------------------------------------
+# Fingerprinting
+# ---------------------------------------------------------------------------
+
+
+def test_fingerprint_stable_across_body_wording() -> None:
+    """Fingerprint ignores body wording — same field+title => same id."""
+    a = DriftProposal(
+        title="imap_folder default mismatch",
+        body="Docs say INBOX.All but the dataclass default is INBOX.",
+        affected_field="imap_folder",
+    )
+    b = DriftProposal(
+        title="imap_folder default mismatch",
+        body="The documentation claims INBOX.All; the default is INBOX.",
+        affected_field="imap_folder",
+    )
+    assert _proposal_fingerprint(a) == _proposal_fingerprint(b)
+
+
+def test_fingerprint_ignores_case_and_whitespace() -> None:
+    """Fingerprint normalises case and surrounding whitespace."""
+    a = DriftProposal(
+        title="Default Mismatch", body="x", affected_field="imap_folder"
+    )
+    b = DriftProposal(
+        title="  default mismatch  ", body="y", affected_field=" imap_folder "
+    )
+    assert _proposal_fingerprint(a) == _proposal_fingerprint(b)
+
+
+def test_fingerprint_distinct_for_different_findings() -> None:
+    """Different title or affected_field => different fingerprint."""
+    base = DriftProposal(title="t", body="b", affected_field="imap_folder")
+    other_title = DriftProposal(
+        title="other", body="b", affected_field="imap_folder"
+    )
+    other_field = DriftProposal(title="t", body="b", affected_field="db_path")
+    assert _proposal_fingerprint(base) != _proposal_fingerprint(other_title)
+    assert _proposal_fingerprint(base) != _proposal_fingerprint(other_field)
+
+
+# ---------------------------------------------------------------------------
+# LedgerEntry
+# ---------------------------------------------------------------------------
+
+
+def test_ledger_entry_rejects_unknown_state() -> None:
+    """An out-of-set state raises a pydantic ValidationError."""
+    with pytest.raises(pydantic.ValidationError):
+        LedgerEntry(title="t", state="bogus")
+
+
+# ---------------------------------------------------------------------------
+# Dedup ledger: record_and_filter_proposals
+# ---------------------------------------------------------------------------
+
+
+def _drift(title: str, field: str = "f", body: str = "b") -> DriftProposal:
+    return DriftProposal(title=title, body=body, affected_field=field)
+
+
+def test_record_and_filter_first_run_returns_all() -> None:
+    """A fresh ledger returns all proposals and records them as pending."""
+    conn = init_db(":memory:")
+    try:
+        proposals = [_drift("a"), _drift("b")]
+        out = record_and_filter_proposals(conn, proposals)
+        assert [p.title for p in out] == ["a", "b"]
+        # Both are remembered as pending.
+        for p in proposals:
+            fp = _proposal_fingerprint(p)
+            assert fp is not None
+        second = record_and_filter_proposals(conn, proposals)
+        assert second == []
+    finally:
+        conn.close()
+
+
+def test_record_and_filter_dedups_reworded_body() -> None:
+    """A second run with the same finding (reworded body) returns []."""
+    conn = init_db(":memory:")
+    try:
+        first = record_and_filter_proposals(
+            conn, [_drift("dup", body="original wording")]
+        )
+        assert len(first) == 1
+        second = record_and_filter_proposals(
+            conn, [_drift("dup", body="completely different wording")]
+        )
+        assert second == []
+    finally:
+        conn.close()
+
+
+def test_record_and_filter_new_finding_passes_while_old_filtered() -> None:
+    """A genuinely-new finding is returned; previously-seen ones filtered."""
+    conn = init_db(":memory:")
+    try:
+        record_and_filter_proposals(conn, [_drift("old")])
+        out = record_and_filter_proposals(conn, [_drift("old"), _drift("new")])
+        assert [p.title for p in out] == ["new"]
+    finally:
+        conn.close()
+
+
+def test_set_finding_state_suppresses_reproposal() -> None:
+    """A finding marked accepted is not re-proposed on a later run."""
+    conn = init_db(":memory:")
+    try:
+        proposal = _drift("accept-me")
+        record_and_filter_proposals(conn, [proposal])
+        set_finding_state(
+            conn, _proposal_fingerprint(proposal), "accepted"
+        )
+        out = record_and_filter_proposals(conn, [proposal])
+        assert out == []
+    finally:
+        conn.close()
+
+
+def test_set_finding_state_rejects_invalid_state() -> None:
+    """An invalid target state raises ConfigSyncError."""
+    conn = init_db(":memory:")
+    try:
+        proposal = _drift("x")
+        record_and_filter_proposals(conn, [proposal])
+        with pytest.raises(ConfigSyncError):
+            set_finding_state(
+                conn, _proposal_fingerprint(proposal), "bogus"
+            )
+    finally:
+        conn.close()
+
+
+def test_set_finding_state_unknown_fingerprint_raises() -> None:
+    """An unknown fingerprint raises ConfigSyncError."""
+    conn = init_db(":memory:")
+    try:
+        with pytest.raises(ConfigSyncError):
+            set_finding_state(conn, "deadbeefdeadbeef", "accepted")
+    finally:
+        conn.close()
+
+
+def test_ledger_persists_across_connections() -> None:
+    """The ledger written on one connection is visible on another."""
+    import os
+    import tempfile
+
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        conn1 = init_db(path)
+        record_and_filter_proposals(conn1, [_drift("persisted")])
+        conn1.close()
+
+        conn2 = init_db(path)
+        out = record_and_filter_proposals(conn2, [_drift("persisted")])
+        assert out == []
+        conn2.close()
+    finally:
+        os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# run_config_sync_agent dedup integration
+# ---------------------------------------------------------------------------
+
+
+def test_run_config_sync_agent_without_conn_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without conn the LLM proposals are returned unchanged."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    result_obj = ConfigSyncResult(proposals=[_drift("only")])
+    handle, patcher = _patch_llm(result_obj)
+    with patcher:
+        out = run_config_sync_agent()
+    assert [p.title for p in out.proposals] == ["only"]
+    handle.close.assert_called_once()
+
+
+def test_run_config_sync_agent_with_conn_dedups(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With conn, the same finding is filtered on the second run."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        result_obj = ConfigSyncResult(proposals=[_drift("recurring")])
+        handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            first = run_config_sync_agent(conn=conn)
+            assert [p.title for p in first.proposals] == ["recurring"]
+            second = run_config_sync_agent(conn=conn)
+            assert second.proposals == []
+        handle.close.assert_called()
+    finally:
+        conn.close()
