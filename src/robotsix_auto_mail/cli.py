@@ -167,6 +167,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Triage action: answer, archive, delete, ignore, or user_triage.",
     )
 
+    config_sync_set_parser = sub.add_parser(
+        "config-sync-set",
+        help="Mark a config-drift finding accepted or rejected so it is "
+             "suppressed by the dedup memory ledger",
+    )
+    config_sync_set_parser.add_argument(
+        "fingerprint", help="Fingerprint of the config-drift finding.",
+    )
+    config_sync_set_parser.add_argument(
+        "state",
+        help="Ledger state: pending, accepted, or rejected.",
+    )
+
     return parser
 
 
@@ -928,6 +941,49 @@ def _cmd_triage_set(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_config_sync_set(args: argparse.Namespace) -> int:
+    """Record a user decision for a single config-drift finding.
+
+    Returns 0 on success, 1 when the fingerprint is unknown or the state is
+    invalid.
+    """
+    try:
+        from robotsix_auto_mail.config_sync import (
+            _VALID_LEDGER_STATES,
+            ConfigSyncError,
+            set_finding_state,
+        )
+    except ImportError:
+        sys.stderr.write(
+            "The 'config-sync-set' command requires the pydantic-ai package. "
+            "Install it with: pip install robotsix-auto-mail[dev]\n"
+        )
+        return 1
+
+    if args.state not in _VALID_LEDGER_STATES:
+        sys.stderr.write(
+            f"Error: invalid state {args.state!r}. "
+            f"Must be one of {sorted(_VALID_LEDGER_STATES)}\n"
+        )
+        return 1
+
+    config = _load_config_or_exit()
+    conn = init_db(config.db_path)
+    try:
+        set_finding_state(conn, args.fingerprint, args.state)
+    except ConfigSyncError as exc:
+        sys.stderr.write(f"Error: {exc}\n")
+        return 1
+    finally:
+        conn.close()
+
+    sys.stdout.write(
+        f"Recorded config-drift finding state: "
+        f"{args.fingerprint} -> {args.state}\n"
+    )
+    return 0
+
+
 def _cmd_serve(config: MailConfig, *, port: int) -> int:
     """Run the serve subcommand: start the web board HTTP server.
 
@@ -997,6 +1053,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "triage-set":
         return _cmd_triage_set(args)
+
+    if args.command == "config-sync-set":
+        return _cmd_config_sync_set(args)
 
     # No command given — print help and exit 1.
     parser.print_help(sys.stderr)
