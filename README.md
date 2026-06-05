@@ -22,6 +22,12 @@ The mail ingestion pipeline is implemented: `robotsix-auto-mail` can fetch messa
 | `docs/` | Project documentation, including architecture decision records. |
 | Root | Top-level project configuration, build scripts, and this README. |
 
+> **Rule:** Every new repo file must be registered in `docs/modules.yaml`
+> under exactly one module's `paths` list; root-level docs (README.md,
+> SECURITY.md, ROADMAP.md, CLAUDE.md) belong to the `core` module.
+> Unlisted files are flagged by the module-classification drift check and
+> will fail CI.
+
 ## Connecting
 
 Configuration keys, precedence rules, and walkthroughs of the `probe`
