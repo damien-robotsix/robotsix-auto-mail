@@ -1,0 +1,72 @@
+name: CodeQL
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    types: [opened, synchronize]
+  # Weekly baseline-drift scan; CodeQL queries evolve, so re-running on a
+  # schedule catches newly-detectable issues even without code changes.
+  schedule:
+    - cron: "0 3 * * 1"
+
+# Least-privilege: CodeQL needs to read the repo/workflow runs and upload
+# its SARIF results to the code-scanning (security-events) API. Nothing more.
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        language: ["python"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # NOTE: GitHub Actions `needs:` only links jobs WITHIN the same
+      # workflow file, so this standalone codeql.yml cannot `needs: verify`
+      # from ci.yml. The draft's real goal — analyze with the full
+      # dependency graph available so the extractor can resolve third-party
+      # imports — is achieved by installing dependencies in-job below
+      # (uv sync) before CodeQL init. Do NOT "fix" this into a cross-workflow
+      # `needs: verify`; that is not a thing GitHub Actions supports.
+
+      # setup-uv installs uv and a Python matching .python-version, mirroring
+      # the convention in ci.yml.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+
+      # Install the full dependency graph the same way ci.yml does so the
+      # CodeQL Python extractor can resolve third-party imports.
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev
+
+      # Point CodeQL at the uv-managed interpreter (which has the deps
+      # installed) instead of letting the action provision its own.
+      - name: Expose uv interpreter to CodeQL
+        run: echo "CODEQL_PYTHON=$(uv run python -c 'import sys;print(sys.executable)')" >> "$GITHUB_ENV"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+          # We install dependencies ourselves via uv (above); disable the
+          # action's own pip-based install so it does not re-resolve them.
+          setup-python-dependencies: false
+        env:
+          CODEQL_PYTHON: ${{ env.CODEQL_PYTHON }}
+
+      # No autobuild step: Python is interpreted, not compiled, so CodeQL
+      # needs no build to extract it.
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
