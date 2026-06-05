@@ -24,6 +24,11 @@ from robotsix_auto_mail.config_sync import (
 from robotsix_auto_mail.detect import DetectionError, MailProvider
 from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.smtp_client import SmtpClient
+from robotsix_auto_mail.triage import (
+    TriageError,
+    TriageItem,
+    TriageResult,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -1546,3 +1551,209 @@ def test_config_sync_dedup_forwards_conn(
 
     assert rc == 0
     assert mock_agent.call_args.kwargs["conn"] is not None
+
+
+# ---------------------------------------------------------------------------
+# triage subcommand
+# ---------------------------------------------------------------------------
+
+
+def _patch_triage_llm(
+    result_obj: TriageResult,
+) -> mock._patch[mock.MagicMock]:
+    """Patch OpenRouterDeepseekProvider so the agent returns *result_obj*."""
+    mock_run_result = mock.MagicMock()
+    mock_run_result.output = result_obj
+    mock_handle = mock.MagicMock()
+    mock_handle.run_sync.return_value = mock_run_result
+
+    mock_provider = mock.MagicMock()
+    mock_provider.build_agent.return_value = mock_handle
+    mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
+
+    return mock.patch(
+        "robotsix_auto_mail.triage.OpenRouterDeepseekProvider",
+        return_value=mock_provider,
+    )
+
+
+def _cfg_with_inbox(tmp_path: Path, message_id: str = "<a@x.com>") -> MailConfig:
+    """A MailConfig pointing at a temp DB seeded with one inbox record."""
+    from robotsix_auto_mail.db import (
+        MailRecord,
+        insert_record,
+    )
+    from robotsix_auto_mail.db import (
+        init_db as real_init_db,
+    )
+
+    db_path = str(tmp_path / "triage.db")
+    conn = real_init_db(db_path)
+    insert_record(
+        conn,
+        MailRecord(
+            message_id=message_id,
+            sender="alice@example.com",
+            subject="Hello",
+            date="2025-06-01T12:00:00",
+            body_plain="Just checking in!",
+        ),
+    )
+    conn.close()
+    return MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        db_path=db_path,
+    )
+
+
+def test_parser_has_triage_subcommand() -> None:
+    """The parser knows the triage subcommand with expected defaults."""
+    args = build_parser().parse_args(["triage", "--output-format", "json"])
+    assert args.command == "triage"
+    assert args.output_format == "json"
+    assert args.api_key is None
+
+
+def test_parser_has_triage_set_subcommand() -> None:
+    """The parser knows the triage-set subcommand with positional args."""
+    args = build_parser().parse_args(["triage-set", "<a@x.com>", "answer"])
+    assert args.command == "triage-set"
+    assert args.message_id == "<a@x.com>"
+    assert args.action == "answer"
+
+
+def test_triage_text_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """triage prints decisions and exits 0 (text)."""
+    cfg_db = _cfg_with_inbox(tmp_path)
+    result = TriageResult(
+        items=[TriageItem(index=1, action="answer", reason="needs reply")]
+    )
+    with _patch_triage_llm(result), mock.patch(
+        "robotsix_auto_mail.cli.load", return_value=cfg_db
+    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+        rc = main(["triage"])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Inbox Triage" in out
+    assert "<a@x.com>" in out
+    assert "answer" in out
+    assert "needs reply" in out
+
+
+def test_triage_json_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """triage --output-format json prints a parseable list and exits 0."""
+    cfg_db = _cfg_with_inbox(tmp_path)
+    result = TriageResult(
+        items=[TriageItem(index=1, action="archive", confidence="high")]
+    )
+    with _patch_triage_llm(result), mock.patch(
+        "robotsix_auto_mail.cli.load", return_value=cfg_db
+    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+        rc = main(["triage", "--output-format", "json"])
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert isinstance(payload, list)
+    assert payload[0]["message_id"] == "<a@x.com>"
+    assert payload[0]["action"] == "archive"
+    assert payload[0]["source"] == "agent"
+
+
+def test_triage_empty_inbox(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """triage prints a friendly message when there is no inbox mail."""
+    cfg_db = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        db_path=str(tmp_path / "empty.db"),
+    )
+    with mock.patch(
+        "robotsix_auto_mail.triage.OpenRouterDeepseekProvider"
+    ) as cls, mock.patch(
+        "robotsix_auto_mail.cli.load", return_value=cfg_db
+    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+        rc = main(["triage"])
+
+    assert rc == 0
+    assert "No inbox mail to triage." in capsys.readouterr().out
+    cls.assert_not_called()
+
+
+def test_triage_error_path(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A TriageError returns 1 and writes an Error: line to stderr."""
+    cfg_db = _cfg_with_inbox(tmp_path)
+    with mock.patch(
+        "robotsix_auto_mail.triage.run_triage_agent",
+        side_effect=TriageError("llm exploded"),
+    ), mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+        rc = main(["triage"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "Error:" in err
+    assert "llm exploded" in err
+
+
+def test_triage_set_success(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """triage-set records a user decision and exits 0."""
+    from robotsix_auto_mail.db import init_db as real_init_db
+    from robotsix_auto_mail.triage import get_triage_decision
+
+    cfg_db = _cfg_with_inbox(tmp_path)
+    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+        rc = main(["triage-set", "<a@x.com>", "archive"])
+
+    assert rc == 0
+    assert "Recorded user triage decision" in capsys.readouterr().out
+
+    conn = real_init_db(cfg_db.db_path)
+    try:
+        decision = get_triage_decision(conn, "<a@x.com>")
+        assert decision is not None
+        assert decision.action == "archive"
+        assert decision.source == "user"
+    finally:
+        conn.close()
+
+
+def test_triage_set_invalid_action(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """triage-set exits 1 with a clear message on an invalid action."""
+    cfg_db = _cfg_with_inbox(tmp_path)
+    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+        rc = main(["triage-set", "<a@x.com>", "banana"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "invalid action" in err
+    assert "banana" in err
+
+
+def test_triage_set_unknown_message_id(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """triage-set exits 1 with a clear message when the message_id is unknown."""
+    cfg_db = _cfg_with_inbox(tmp_path)
+    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+        rc = main(["triage-set", "<missing@x.com>", "answer"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "no mail with message_id" in err
+    assert "<missing@x.com>" in err

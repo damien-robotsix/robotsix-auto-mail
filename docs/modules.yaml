@@ -78,6 +78,16 @@ modules:
       - src/robotsix_auto_mail/config_sync.py
       - tests/config/test_config_sync_agent.py
 
+  - id: triage
+    description: >-
+      LLM-driven inbox triage agent and local triage-decision
+      persistence: classifies inbox mail into advisory action statuses
+      (answer / archive / delete / ignore / user_triage) stored in the
+      triage_decisions table without moving mail in the mailbox.
+    paths:
+      - src/robotsix_auto_mail/triage.py
+      - tests/triage/test_triage.py
+
   - id: db
     description: >-
       SQLite datastore: schema, MailRecord, insert, watermark.
