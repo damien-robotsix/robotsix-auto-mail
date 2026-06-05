@@ -920,6 +920,105 @@ The `triage-set` command requires a loadable configuration (for `db_path`),
 but does **not** require the `pydantic-ai` package or an LLM API key — it is
 purely a local decision-recording tool.
 
+## The `triage-rules` command
+
+Beyond per-message LLM classification, the system can propose **deterministic
+triage rules** derived from your recorded triage history and apply accepted
+rules without any LLM call. To see the latest proposals (and the rules already
+accepted), run:
+
+```sh
+$ robotsix-auto-mail triage-rules
+```
+
+### How it works
+
+`triage-rules` scans the `triage_decisions` history (no LLM involved) and
+proposes a rule whenever the evidence is consistent and above a small
+threshold:
+
+- **Sender rule** — a single sender that was triaged the same non-`user_triage`
+  way at least three times (for example `newsletters@x.com` archived three
+  times) becomes a proposal to triage that sender's mail with that action.
+- **Domain rule** — when at least two distinct senders in one domain were all
+  triaged the same way, and the domain accumulated at least three such
+  decisions **in total** (domain-wide, not three per sender — e.g.
+  `alice@news.com` and `bob@news.com` archived twice each, four decisions
+  combined), a domain-level proposal is emitted.
+
+`user_triage` decisions are ignored entirely, and a sender (or domain) with
+conflicting actions yields no proposal. Each new proposal is recorded in a
+dedup memory ledger keyed by a stable SHA-256 fingerprint over
+`(match_type, match_value, action)`, so a finding already seen in any
+state — `pending`, `accepted`, or `rejected` — is never re-proposed.
+
+### Options
+
+| Option | Description |
+| --- | --- |
+| `--output-format {text,json}` | Output format for proposals and active rules (default: `text`). |
+
+### Behavior
+
+This is an **advisory** tool: it always exits `0`, even when proposals are
+found. The text output lists each new proposal with its fingerprint,
+confidence and rule, followed by the currently active (accepted) rules. The
+JSON output is an object with `proposals` (each carrying its `fingerprint`)
+and `active_rules`.
+
+### Requirements
+
+The `triage-rules` command requires a loadable configuration (for `db_path`)
+but does **not** require the `pydantic-ai` package or an LLM API key — rule
+proposal is purely deterministic.
+
+## The `triage-rules-set` command
+
+To accept or reject a proposed triage rule, use `triage-rules-set`:
+
+```sh
+$ robotsix-auto-mail triage-rules-set <fingerprint> <state>
+```
+
+Accepting a proposal adds its rule to the **active rules** list (persisted in
+the watermark table under `triage_rules_active`). On subsequent `triage` runs,
+each inbox message is checked against the active rules first: a match is
+triaged deterministically (recorded with `source=agent` and
+`reason="matched deterministic rule"`) and is **not** sent to the LLM; only
+unmatched mail is classified by the agent. Rejecting a proposal records the
+decision in the ledger without adding an active rule.
+
+### Arguments
+
+| Argument | Description |
+| --- | --- |
+| `<fingerprint>` | The fingerprint of a rule proposal, as printed by a prior `triage-rules` run. |
+| `<state>` | `accepted` or `rejected`. |
+
+### Examples
+
+```sh
+# Accept a proposed rule so matching mail is triaged deterministically.
+robotsix-auto-mail triage-rules-set <fingerprint> accepted
+
+# Reject a proposed rule so it is suppressed without becoming active.
+robotsix-auto-mail triage-rules-set <fingerprint> rejected
+```
+
+### Behavior
+
+- If the `fingerprint` is unknown, exits with code `1` and an error message.
+- If the `state` is not `accepted` or `rejected`, exits with code `1` and an
+  error message.
+- On success, the ledger (and, for `accepted`, the active-rules list) is
+  updated; exit code is `0`.
+
+### Requirements
+
+The `triage-rules-set` command requires a loadable configuration (for
+`db_path`) but does **not** require the `pydantic-ai` package or an LLM API
+key — it is purely a local decision-recording tool.
+
 ## The config-sync-set command
 
 To manually record an operator decision for a single config-drift finding in
