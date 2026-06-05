@@ -34,6 +34,15 @@ Configuration keys, precedence rules, and walkthroughs of the `probe`
 diagnostics command, the `ingest` mail-fetching command, and the `board`
 read-only view are documented in [docs/connecting.md](docs/connecting.md).
 
+## Further documentation
+
+- [docs/architecture.md](docs/architecture.md) — system design, module
+  relationships, and the ingestion data flow.
+- [docs/testing.md](docs/testing.md) — how to run the tests, their
+  organization, and the local quality gate.
+- [docs/troubleshooting.md](docs/troubleshooting.md) — diagnosing
+  connection, TLS, and authentication failures.
+
 ## Development
 
 This repository uses [pre-commit](https://pre-commit.com) to lint and

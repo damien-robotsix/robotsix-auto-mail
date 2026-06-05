@@ -173,9 +173,12 @@ modules:
     description: >-
       User-facing documentation and architecture decisions.
     paths:
+      - docs/architecture.md
       - docs/connecting.md
       - docs/deployment.md
       - docs/ingestion.md
+      - docs/testing.md
+      - docs/troubleshooting.md
       - docs/modules.yaml
       - docs/modules.schema.yaml
       - docs/decisions/0001-programming-language.md
