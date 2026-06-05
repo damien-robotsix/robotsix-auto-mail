@@ -67,6 +67,17 @@ modules:
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
 
+  - id: config_sync
+    description: >-
+      Optional LLM-driven config-drift advisory agent: reads the four
+      config surfaces (MailConfig, YAML template, .env.example,
+      connecting docs) and emits human-readable drift proposals.
+      Complements (does not replace) the deterministic
+      check_config_sync gate.
+    paths:
+      - src/robotsix_auto_mail/config_sync.py
+      - tests/config/test_config_sync_agent.py
+
   - id: db
     description: >-
       SQLite datastore: schema, MailRecord, insert, watermark.
