@@ -70,3 +70,19 @@ jobs:
         uses: pypa/gh-action-pip-audit@v1.1.0
         with:
           inputs: requirements-locked.txt
+
+      - name: Generate SBOM (CycloneDX)
+        if: always()
+        run: |
+          uvx --from 'pip-audit[cyclonedx]' pip-audit \
+            --format cyclonedx-json \
+            --output sbom.json \
+            -r requirements-locked.txt || true
+
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          if-no-files-found: error
