@@ -1,0 +1,397 @@
+"""Tests for the inbox triage agent and triage-decision persistence.
+
+These exercise ``src/robotsix_auto_mail/triage.py``.
+"""
+
+from __future__ import annotations
+
+import os
+import tempfile
+from unittest import mock
+
+import pydantic
+import pytest
+from robotsix_llmio.core import Tier
+
+from robotsix_auto_mail.db import MailRecord, init_db, insert_record
+from robotsix_auto_mail.triage import (
+    VALID_TRIAGE_ACTIONS,
+    TriageDecision,
+    TriageError,
+    TriageItem,
+    TriageResult,
+    get_triage_decision,
+    list_triage_decisions,
+    run_triage_agent,
+    set_triage_decision,
+)
+
+
+def _patch_llm(
+    result_obj: TriageResult,
+) -> tuple[mock.MagicMock, mock._patch[mock.MagicMock]]:
+    """Patch OpenRouterDeepseekProvider to return *result_obj* from the LLM.
+
+    Returns the mock handle (to assert ``close()``) and the patcher.
+    """
+    mock_run_result = mock.MagicMock()
+    mock_run_result.output = result_obj
+    mock_handle = mock.MagicMock()
+    mock_handle.run_sync.return_value = mock_run_result
+
+    mock_provider = mock.MagicMock()
+    mock_provider.build_agent.return_value = mock_handle
+    mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
+
+    patcher = mock.patch(
+        "robotsix_auto_mail.triage.OpenRouterDeepseekProvider",
+        return_value=mock_provider,
+    )
+    return mock_handle, patcher
+
+
+def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
+    """Insert an inbox MailRecord with sensible defaults."""
+    record = MailRecord(
+        message_id=message_id,
+        sender=overrides.get("sender", "alice@example.com"),
+        subject=overrides.get("subject", "Hello"),
+        date="2025-06-01T12:00:00",
+        status=overrides.get("status", "inbox"),
+        body_plain=overrides.get("body_plain", "Just checking in!"),
+    )
+    insert_record(conn, record)  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# Pydantic models
+# ---------------------------------------------------------------------------
+
+
+def test_triage_item_defaults() -> None:
+    """action defaults to user_triage, confidence to medium, reason to ''."""
+    item = TriageItem(index=1)
+    assert item.action == "user_triage"
+    assert item.confidence == "medium"
+    assert item.reason == ""
+
+
+def test_triage_item_coerces_unknown_action() -> None:
+    """An unknown action is coerced to user_triage, not rejected."""
+    item = TriageItem(index=1, action="banana")
+    assert item.action == "user_triage"
+
+
+def test_triage_item_rejects_index_below_one() -> None:
+    """index must be >= 1."""
+    with pytest.raises(pydantic.ValidationError):
+        TriageItem(index=0)
+
+
+def test_triage_item_rejects_unknown_confidence() -> None:
+    """An out-of-set confidence raises a pydantic ValidationError."""
+    with pytest.raises(pydantic.ValidationError):
+        TriageItem(index=1, confidence="bogus")
+
+
+def test_triage_result_defaults_empty() -> None:
+    """items defaults to an empty list."""
+    assert TriageResult().items == []
+
+
+def test_triage_decision_rejects_invalid_action() -> None:
+    with pytest.raises(pydantic.ValidationError):
+        TriageDecision(message_id="<a>", action="banana", source="user")
+
+
+def test_triage_decision_rejects_invalid_source() -> None:
+    with pytest.raises(pydantic.ValidationError):
+        TriageDecision(message_id="<a>", action="answer", source="robot")
+
+
+def test_triage_error_is_exception() -> None:
+    err = TriageError("boom")
+    assert isinstance(err, Exception)
+    assert str(err) == "boom"
+
+
+# ---------------------------------------------------------------------------
+# set_triage_decision validation
+# ---------------------------------------------------------------------------
+
+
+def test_set_triage_decision_rejects_invalid_action() -> None:
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        with pytest.raises(TriageError):
+            set_triage_decision(conn, "<a@x.com>", "banana", source="user")
+    finally:
+        conn.close()
+
+
+def test_set_triage_decision_rejects_invalid_source() -> None:
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        with pytest.raises(TriageError):
+            set_triage_decision(conn, "<a@x.com>", "answer", source="robot")
+    finally:
+        conn.close()
+
+
+def test_set_triage_decision_upserts() -> None:
+    """A second call for the same message_id overwrites the first."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        set_triage_decision(conn, "<a@x.com>", "answer", source="agent")
+        set_triage_decision(
+            conn, "<a@x.com>", "archive", source="user", reason="mine"
+        )
+        decision = get_triage_decision(conn, "<a@x.com>")
+        assert decision is not None
+        assert decision.action == "archive"
+        assert decision.source == "user"
+        assert decision.reason == "mine"
+        # Still exactly one row.
+        assert len(list_triage_decisions(conn)) == 1
+    finally:
+        conn.close()
+
+
+def test_get_triage_decision_missing_returns_none() -> None:
+    conn = init_db(":memory:")
+    try:
+        assert get_triage_decision(conn, "<nope@x.com>") is None
+    finally:
+        conn.close()
+
+
+def test_list_triage_decisions_filters_by_source() -> None:
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _insert_inbox(conn, "<b@x.com>")
+        set_triage_decision(conn, "<a@x.com>", "answer", source="agent")
+        set_triage_decision(conn, "<b@x.com>", "archive", source="user")
+        agent_only = list_triage_decisions(conn, source="agent")
+        assert [d.message_id for d in agent_only] == ["<a@x.com>"]
+        user_only = list_triage_decisions(conn, source="user")
+        assert [d.message_id for d in user_only] == ["<b@x.com>"]
+        assert len(list_triage_decisions(conn)) == 2
+    finally:
+        conn.close()
+
+
+def test_triage_decision_persists_across_connections() -> None:
+    """A decision written on one connection is visible on another."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        conn1 = init_db(path)
+        _insert_inbox(conn1, "<persisted@x.com>")
+        set_triage_decision(
+            conn1, "<persisted@x.com>", "answer", source="user"
+        )
+        conn1.close()
+
+        conn2 = init_db(path)
+        decision = get_triage_decision(conn2, "<persisted@x.com>")
+        assert decision is not None
+        assert decision.action == "answer"
+        assert decision.source == "user"
+        conn2.close()
+    finally:
+        os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# run_triage_agent
+# ---------------------------------------------------------------------------
+
+
+def test_run_triage_agent_empty_inbox_no_llm(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An empty inbox returns [] without invoking the LLM."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        with mock.patch(
+            "robotsix_auto_mail.triage.OpenRouterDeepseekProvider"
+        ) as cls:
+            out = run_triage_agent(conn)
+        assert out == []
+        cls.assert_not_called()
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_happy_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Indices map to message_ids; decisions persisted with source='agent'."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _insert_inbox(conn, "<b@x.com>")
+        result_obj = TriageResult(
+            items=[
+                TriageItem(index=1, action="answer", confidence="high"),
+                TriageItem(index=2, action="archive", reason="keep"),
+            ]
+        )
+        handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            out = run_triage_agent(conn)
+
+        assert [(d.message_id, d.action) for d in out] == [
+            ("<a@x.com>", "answer"),
+            ("<b@x.com>", "archive"),
+        ]
+        # Persisted with source='agent'.
+        stored = list_triage_decisions(conn)
+        assert all(d.source == "agent" for d in stored)
+        assert get_triage_decision(conn, "<a@x.com>").action == "answer"  # type: ignore[union-attr]
+        assert get_triage_decision(conn, "<b@x.com>").reason == "keep"  # type: ignore[union-attr]
+        handle.close.assert_called_once()
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_uses_cheap_tier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """build_agent is called with Tier.CHEAP by default."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _handle, patcher = _patch_llm(
+            TriageResult(items=[TriageItem(index=1, action="answer")])
+        )
+        with patcher as cls:
+            run_triage_agent(conn)
+            provider = cls.return_value
+        provider.build_agent.assert_called_once()
+        assert provider.build_agent.call_args.kwargs["tier"] == Tier.CHEAP
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_clamps_unknown_action(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unknown action coerces to user_triage."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        # The model coerces unknown -> user_triage at validation time.
+        result_obj = TriageResult(items=[TriageItem(index=1, action="weird")])
+        _handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            out = run_triage_agent(conn)
+        assert out[0].action == "user_triage"
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_omitted_record_defaults_user_triage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An inbox record the LLM omitted defaults to user_triage."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _insert_inbox(conn, "<b@x.com>")
+        # Only index 1 returned; index 2 omitted.
+        result_obj = TriageResult(
+            items=[TriageItem(index=1, action="answer")]
+        )
+        _handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            out = run_triage_agent(conn)
+        by_id = {d.message_id: d.action for d in out}
+        assert by_id == {
+            "<a@x.com>": "answer",
+            "<b@x.com>": "user_triage",
+        }
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_missing_api_key(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """No api_key, no env, no config key → TriageError; LLM not built."""
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.setenv("MAIL_CONFIG_PATH", str(tmp_path / "missing.yaml"))  # type: ignore[operator]
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        with mock.patch(
+            "robotsix_auto_mail.triage.OpenRouterDeepseekProvider"
+        ) as cls:
+            with pytest.raises(TriageError) as exc:
+                run_triage_agent(conn, api_key=None)
+        assert "LLM_API_KEY" in str(exc.value)
+        cls.assert_not_called()
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_llm_failure_wrapped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A call_with_retry failure is wrapped as TriageError; close runs."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        mock_handle = mock.MagicMock()
+        mock_provider = mock.MagicMock()
+        mock_provider.build_agent.return_value = mock_handle
+        mock_provider.call_with_retry.side_effect = RuntimeError("timeout")
+        with mock.patch(
+            "robotsix_auto_mail.triage.OpenRouterDeepseekProvider",
+            return_value=mock_provider,
+        ):
+            with pytest.raises(TriageError) as exc:
+                run_triage_agent(conn)
+        assert "timeout" in str(exc.value)
+        mock_handle.close.assert_called_once()
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_does_not_touch_status_column(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Triage must not change the kanban status column."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _handle, patcher = _patch_llm(
+            TriageResult(items=[TriageItem(index=1, action="archive")])
+        )
+        with patcher:
+            run_triage_agent(conn)
+        # mail_records.status is still 'inbox'.
+        row = conn.execute(
+            "SELECT status FROM mail_records WHERE message_id = ?",
+            ("<a@x.com>",),
+        ).fetchone()
+        assert row[0] == "inbox"
+    finally:
+        conn.close()
+
+
+def test_valid_triage_actions_vocabulary() -> None:
+    assert VALID_TRIAGE_ACTIONS == frozenset(
+        {"answer", "archive", "delete", "ignore", "user_triage"}
+    )

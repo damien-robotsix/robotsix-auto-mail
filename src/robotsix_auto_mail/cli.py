@@ -18,7 +18,12 @@ from typing import TYPE_CHECKING, TextIO
 
 from robotsix_auto_mail import __version__
 from robotsix_auto_mail.config import MailConfig, load
-from robotsix_auto_mail.db import MailRecord, init_db, list_records
+from robotsix_auto_mail.db import (
+    MailRecord,
+    get_record_by_message_id,
+    init_db,
+    list_records,
+)
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
 from robotsix_auto_mail.pipeline import IngestResult, ingest_mail
@@ -133,6 +138,33 @@ def build_parser() -> argparse.ArgumentParser:
         "--dedup", action="store_true", default=False,
         help="Consult/update the dedup memory ledger so previously-seen "
              "findings are suppressed. Requires a loadable config (for db_path).",
+    )
+
+    triage_parser = sub.add_parser(
+        "triage",
+        help="Run the LLM inbox-triage agent and record advisory action "
+             "statuses (does not move mail in the mailbox)",
+    )
+    triage_parser.add_argument(
+        "--api-key", default=None,
+        help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
+    )
+    triage_parser.add_argument(
+        "--output-format", choices=["text", "json"], default="text",
+        help="Output format for triage decisions (default: %(default)s).",
+    )
+
+    triage_set_parser = sub.add_parser(
+        "triage-set",
+        help="Record a user triage decision for a single message "
+             "(advisory; does not move mail in the mailbox)",
+    )
+    triage_set_parser.add_argument(
+        "message_id", help="Message-ID of the mail to triage.",
+    )
+    triage_set_parser.add_argument(
+        "action",
+        help="Triage action: answer, archive, delete, ignore, or user_triage.",
     )
 
     return parser
@@ -798,6 +830,102 @@ def _cmd_config_sync(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_triage(args: argparse.Namespace) -> int:
+    """Run the inbox-triage agent and render the recorded decisions.
+
+    This is an advisory tool, not a CI gate: a successful run returns 0 even
+    when triage decisions are produced.  Returns 1 only on error (missing
+    pydantic_ai, TriageError).
+    """
+    try:
+        from robotsix_auto_mail.triage import TriageError, run_triage_agent
+    except ImportError:
+        sys.stderr.write(
+            "The 'triage' command requires the pydantic-ai package. "
+            "Install it with: pip install robotsix-auto-mail[dev]\n"
+        )
+        return 1
+
+    config = _load_config_or_exit()
+    conn = init_db(config.db_path)
+    try:
+        decisions = run_triage_agent(conn, api_key=args.api_key)
+    except TriageError as exc:
+        sys.stderr.write(f"Error: {exc}\n")
+        return 1
+    finally:
+        conn.close()
+
+    if args.output_format == "json":
+        payload = [d.model_dump() for d in decisions]
+        sys.stdout.write(json.dumps(payload, indent=2) + "\n")
+        return 0
+
+    _print_header(sys.stdout, "Inbox Triage")
+    if not decisions:
+        sys.stdout.write("No inbox mail to triage.\n")
+        return 0
+
+    for decision in decisions:
+        sys.stdout.write(f"\n{decision.message_id}\n")
+        sys.stdout.write(f"  action: {decision.action}\n")
+        sys.stdout.write(f"  confidence: {decision.confidence}\n")
+        reason = decision.reason if decision.reason else "(none)"
+        sys.stdout.write(f"  reason: {reason}\n")
+
+    return 0
+
+
+def _cmd_triage_set(args: argparse.Namespace) -> int:
+    """Record a user triage decision for a single message.
+
+    Returns 0 on success, 1 when the message_id is unknown or the action is
+    invalid.
+    """
+    try:
+        from robotsix_auto_mail.triage import (
+            VALID_TRIAGE_ACTIONS,
+            TriageError,
+            set_triage_decision,
+        )
+    except ImportError:
+        sys.stderr.write(
+            "The 'triage-set' command requires the pydantic-ai package. "
+            "Install it with: pip install robotsix-auto-mail[dev]\n"
+        )
+        return 1
+
+    if args.action not in VALID_TRIAGE_ACTIONS:
+        sys.stderr.write(
+            f"Error: invalid action {args.action!r}. "
+            f"Must be one of {sorted(VALID_TRIAGE_ACTIONS)}\n"
+        )
+        return 1
+
+    config = _load_config_or_exit()
+    conn = init_db(config.db_path)
+    try:
+        if get_record_by_message_id(conn, args.message_id) is None:
+            sys.stderr.write(
+                f"Error: no mail with message_id {args.message_id!r}\n"
+            )
+            return 1
+        try:
+            set_triage_decision(
+                conn, args.message_id, args.action, source="user"
+            )
+        except TriageError as exc:
+            sys.stderr.write(f"Error: {exc}\n")
+            return 1
+    finally:
+        conn.close()
+
+    sys.stdout.write(
+        f"Recorded user triage decision: {args.message_id} -> {args.action}\n"
+    )
+    return 0
+
+
 def _cmd_serve(config: MailConfig, *, port: int) -> int:
     """Run the serve subcommand: start the web board HTTP server.
 
@@ -861,6 +989,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "config-sync":
         return _cmd_config_sync(args)
+
+    if args.command == "triage":
+        return _cmd_triage(args)
+
+    if args.command == "triage-set":
+        return _cmd_triage_set(args)
 
     # No command given — print help and exit 1.
     parser.print_help(sys.stderr)

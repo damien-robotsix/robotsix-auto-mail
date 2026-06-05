@@ -69,6 +69,16 @@ CREATE TABLE IF NOT EXISTS watermark (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS triage_decisions (
+    message_id  TEXT NOT NULL UNIQUE,
+    action      TEXT NOT NULL,
+    source      TEXT NOT NULL,
+    reason      TEXT NOT NULL DEFAULT '',
+    confidence  TEXT NOT NULL DEFAULT 'medium',
+    updated_at  TEXT NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES mail_records(message_id)
+);
 """
 
 
