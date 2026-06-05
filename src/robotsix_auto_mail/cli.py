@@ -167,6 +167,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="Triage action: answer, archive, delete, ignore, or user_triage.",
     )
 
+    triage_rules_parser = sub.add_parser(
+        "triage-rules",
+        help="Propose deterministic triage rules from triage history and "
+             "list the accepted (active) rules (advisory; no LLM call)",
+    )
+    triage_rules_parser.add_argument(
+        "--output-format", choices=["text", "json"], default="text",
+        help="Output format for rule proposals (default: %(default)s).",
+    )
+
+    triage_rules_set_parser = sub.add_parser(
+        "triage-rules-set",
+        help="Accept or reject a proposed triage rule by fingerprint; "
+             "accepted rules become active deterministic rules",
+    )
+    triage_rules_set_parser.add_argument(
+        "fingerprint", help="Fingerprint of the triage rule proposal.",
+    )
+    triage_rules_set_parser.add_argument(
+        "state",
+        help="New state: accepted or rejected.",
+    )
+
     config_sync_set_parser = sub.add_parser(
         "config-sync-set",
         help="Mark a config-drift finding accepted or rejected so it is "
@@ -941,6 +964,99 @@ def _cmd_triage_set(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_triage_rules(args: argparse.Namespace) -> int:
+    """Propose deterministic triage rules and list the active rules.
+
+    Deterministic — derived from triage history, no LLM / pydantic-ai
+    required.  This is advisory: a successful run returns 0 even when new
+    proposals are found.
+    """
+    from robotsix_auto_mail.triage import (
+        _load_active_rules,
+        _rule_fingerprint,
+        propose_triage_rules,
+        record_and_filter_rule_proposals,
+    )
+
+    config = _load_config_or_exit()
+    conn = init_db(config.db_path)
+    try:
+        proposals = propose_triage_rules(conn)
+        new_proposals = record_and_filter_rule_proposals(conn, proposals)
+        active_rules = _load_active_rules(conn)
+    finally:
+        conn.close()
+
+    if args.output_format == "json":
+        payload = {
+            "proposals": [
+                {**p.model_dump(), "fingerprint": _rule_fingerprint(p)}
+                for p in new_proposals
+            ],
+            "active_rules": [r.model_dump() for r in active_rules],
+        }
+        sys.stdout.write(json.dumps(payload, indent=2) + "\n")
+        return 0
+
+    _print_header(sys.stdout, "Triage Rule Proposals")
+    if not new_proposals:
+        sys.stdout.write("No new triage rule proposals.\n")
+    else:
+        for proposal in new_proposals:
+            sys.stdout.write(f"\n{proposal.title}\n")
+            sys.stdout.write(
+                f"  fingerprint: {_rule_fingerprint(proposal)}\n"
+            )
+            sys.stdout.write(f"  confidence: {proposal.confidence}\n")
+            sys.stdout.write(
+                f"  rule: {proposal.match_type}={proposal.match_value} "
+                f"-> {proposal.action}\n"
+            )
+            sys.stdout.write(f"\n{proposal.body}\n")
+
+    sys.stdout.write("\nActive rules:\n")
+    if not active_rules:
+        sys.stdout.write("  (none)\n")
+    else:
+        for rule in active_rules:
+            sys.stdout.write(
+                f"  {rule.match_type}={rule.match_value} -> {rule.action}\n"
+            )
+    return 0
+
+
+def _cmd_triage_rules_set(args: argparse.Namespace) -> int:
+    """Accept or reject a proposed triage rule by fingerprint.
+
+    Deterministic — no LLM / pydantic-ai required.  Returns 0 on success,
+    1 when the fingerprint is unknown or the state is invalid.
+    """
+    from robotsix_auto_mail.triage import TriageError, set_rule_state
+
+    valid_states = {"accepted", "rejected"}
+    if args.state not in valid_states:
+        sys.stderr.write(
+            f"Error: invalid state {args.state!r}. "
+            f"Must be one of {sorted(valid_states)}\n"
+        )
+        return 1
+
+    config = _load_config_or_exit()
+    conn = init_db(config.db_path)
+    try:
+        set_rule_state(conn, args.fingerprint, args.state)
+    except TriageError as exc:
+        sys.stderr.write(f"Error: {exc}\n")
+        return 1
+    finally:
+        conn.close()
+
+    sys.stdout.write(
+        f"Recorded triage rule state: {args.fingerprint} -> {args.state}\n"
+    )
+    return 0
+
+
 def _cmd_config_sync_set(args: argparse.Namespace) -> int:
     """Record a user decision for a single config-drift finding.
 
@@ -1053,6 +1169,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "triage-set":
         return _cmd_triage_set(args)
+
+    if args.command == "triage-rules":
+        return _cmd_triage_rules(args)
+
+    if args.command == "triage-rules-set":
+        return _cmd_triage_rules_set(args)
 
     if args.command == "config-sync-set":
         return _cmd_config_sync_set(args)
