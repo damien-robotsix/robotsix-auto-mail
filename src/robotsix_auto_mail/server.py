@@ -7,8 +7,10 @@ path.
 
 from __future__ import annotations
 
+import functools
 import html
 import json
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, quote, unquote
 
@@ -700,301 +702,301 @@ def _render_rule_proposals(
     )
 
 
-def make_board_handler(
-    db_path: str,
-) -> type[BaseHTTPRequestHandler]:
-    """Return a ``BaseHTTPRequestHandler`` subclass wired to *db_path*.
+class BoardHandler(BaseHTTPRequestHandler):
+    """Request handler for the robotsix-auto-mail board server.
 
-    The handler routes ``GET /`` to a 301 redirect to ``/board``, ``GET
-    /board`` to the kanban board HTML page, and everything else to 404.
+    Routes ``GET /`` to a 301 redirect to ``/board``, ``GET /board`` to
+    the kanban board HTML page, and everything else to 404.  The target
+    SQLite database is injected per-instance via ``db_path``.
     """
 
-    # Capture db_path for the handler class via a closure-friendly name.
-    _db = db_path
+    def __init__(self, *args: object, db_path: str, **kwargs: object) -> None:
+        # Set the attribute BEFORE calling ``super().__init__`` because
+        # ``BaseHTTPRequestHandler.__init__`` invokes ``handle()``
+        # synchronously, which dispatches to ``do_GET``/``do_POST``.
+        self.db_path = db_path
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
-    class BoardHandler(BaseHTTPRequestHandler):
-        """Request handler for the robotsix-auto-mail board server."""
-
-        # Class attribute so every request can find the database.
-        db_path: str = _db
-
-        def do_GET(self) -> None:
-            """Route GET requests."""
-            if self.path == "/":
-                self._redirect("/board")
-            elif self.path == "/board":
-                self._serve_board()
-            elif self.path.startswith("/email/") and self.path.endswith("/status"):
-                self._serve_email_status()
-            elif self.path.startswith("/email/"):
-                self._serve_email_detail()
-            else:
-                self._not_found()
-
-        def _redirect(self, location: str, code: int = 301) -> None:
-            """Send a redirect to *location*.
-
-            Defense-in-depth at the sink: if *location* carries any CR/LF
-            or other ASCII control character (which could split the HTTP
-            response and inject extra headers), fall back to ``/board`` so
-            the ``Location`` header can never carry such a value.
-            """
-            if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in location):
-                location = "/board"
-            self.send_response(code)
-            self.send_header("Location", location)
-            self.end_headers()
-
-        def _serve_board(self) -> None:
-            """Render and serve the kanban board HTML."""
-            try:
-                body = _build_board_html(self.db_path)
-            except Exception:
-                self._send_error_response(503, "Database unavailable")
+    def do_GET(self) -> None:
+        """Route GET requests via an ordered (predicate → handler) table."""
+        routes: list[tuple[Callable[[str], bool], Callable[[], None]]] = [
+            (lambda p: p == "/", lambda: self._redirect("/board")),
+            (lambda p: p == "/board", self._serve_board),
+            (
+                lambda p: p.startswith("/email/") and p.endswith("/status"),
+                self._serve_email_status,
+            ),
+            (lambda p: p.startswith("/email/"), self._serve_email_detail),
+        ]
+        for matches, handler in routes:
+            if matches(self.path):
+                handler()
                 return
+        self._not_found()
 
-            self._send_html_response(body)
+    def do_POST(self) -> None:
+        """Route POST requests via an exact-match table."""
+        # Periodic-trigger decision — Option A (on-demand endpoint
+        # only): no background/periodic runner is added.  The
+        # deterministic ``check_config_sync.py`` remains the fast, free,
+        # blocking CI gate; the LLM agent is an optional advisory tool,
+        # so it does not need to run on a schedule.  The board server is
+        # a single-threaded ``BaseHTTPRequestHandler``/``HTTPServer``
+        # with no scheduler — adding a ``while True``/``time.sleep`` loop
+        # would block request serving and is out of scope.  External
+        # schedulers (cron, systemd timer) can simply POST to
+        # ``/config-sync``, which fully satisfies optional periodic
+        # invocation without new in-process machinery.  Option B (an
+        # in-process periodic runner) is explicitly deferred.
+        routes: dict[str, Callable[[], None]] = {
+            "/move": self._handle_move,
+            "/rule-action": self._handle_rule_action,
+            "/config-sync": self._handle_config_sync,
+        }
+        handler = routes.get(self.path)
+        if handler is None:
+            self._not_found()
+            return
+        handler()
 
-        def _not_found(self) -> None:
-            """Send a 404 Not Found."""
-            self.send_response(404)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(b"Not found")
+    def _send_response(
+        self,
+        body: bytes | str,
+        status: int = 200,
+        content_type: str = "text/plain; charset=utf-8",
+    ) -> None:
+        """Write a complete response (status line, headers, body).
 
-        def _bad_request(self, message: str) -> None:
-            """Send a 400 Bad Request with a plain-text body."""
-            encoded = message.encode("utf-8")
-            self.send_response(400)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(encoded)))
-            self.end_headers()
-            self.wfile.write(encoded)
+        The single place that writes response headers + body — all
+        handler methods delegate here (the only other writer is
+        ``_redirect``, which emits a bodiless ``Location`` redirect).
+        """
+        encoded = body.encode("utf-8") if isinstance(body, str) else body
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
 
-        def _serve_json(self, payload: dict[str, object], status: int = 200) -> None:
-            """Serialize *payload* as JSON and send it with *status*."""
-            encoded = json.dumps(payload).encode("utf-8")
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(encoded)))
-            self.end_headers()
-            self.wfile.write(encoded)
+    def _redirect(self, location: str, code: int = 301) -> None:
+        """Send a redirect to *location*.
 
-        def _send_error_response(self, status_code: int, message: str) -> None:
-            """Send a plain-text error response with *status_code*."""
-            encoded = message.encode("utf-8")
-            self.send_response(status_code)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(encoded)
+        Defense-in-depth at the sink: if *location* carries any CR/LF
+        or other ASCII control character (which could split the HTTP
+        response and inject extra headers), fall back to ``/board`` so
+        the ``Location`` header can never carry such a value.
+        """
+        if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in location):
+            location = "/board"
+        self.send_response(code)
+        self.send_header("Location", location)
+        self.end_headers()
 
-        def _send_html_response(self, body: str, status_code: int = 200) -> None:
-            """Send an HTML response with *status_code* (default 200)."""
-            encoded = body.encode("utf-8")
-            self.send_response(status_code)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(encoded)))
-            self.end_headers()
-            self.wfile.write(encoded)
+    def _not_found(self) -> None:
+        """Send a 404 Not Found."""
+        self._send_response(b"Not found", status=404)
 
-        def do_POST(self) -> None:
-            """Route POST requests."""
-            # Periodic-trigger decision — Option A (on-demand endpoint
-            # only): no background/periodic runner is added.  The
-            # deterministic ``check_config_sync.py`` remains the fast, free,
-            # blocking CI gate; the LLM agent is an optional advisory tool,
-            # so it does not need to run on a schedule.  The board server is
-            # a single-threaded ``BaseHTTPRequestHandler``/``HTTPServer``
-            # with no scheduler — adding a ``while True``/``time.sleep`` loop
-            # would block request serving and is out of scope.  External
-            # schedulers (cron, systemd timer) can simply POST to
-            # ``/config-sync``, which fully satisfies optional periodic
-            # invocation without new in-process machinery.  Option B (an
-            # in-process periodic runner) is explicitly deferred.
-            if self.path == "/move":
-                self._handle_move()
-            elif self.path == "/rule-action":
-                self._handle_rule_action()
-            elif self.path == "/config-sync":
-                self._handle_config_sync()
-            else:
-                self._not_found()
+    def _bad_request(self, message: str) -> None:
+        """Send a 400 Bad Request with a plain-text body."""
+        self._send_response(message, status=400)
 
-        def _handle_move(self) -> None:
-            """Process POST /move — update a card's status and redirect."""
-            from robotsix_auto_mail.db import init_db
-            from robotsix_auto_mail.status import set_status
+    def _serve_json(self, payload: dict[str, object], status: int = 200) -> None:
+        """Serialize *payload* as JSON and send it with *status*."""
+        self._send_response(
+            json.dumps(payload),
+            status=status,
+            content_type="application/json; charset=utf-8",
+        )
 
-            content_length = int(self.headers.get("Content-Length", 0))
-            raw = self.rfile.read(content_length).decode("utf-8")
-            fields = parse_qs(raw)
+    def _serve_board(self) -> None:
+        """Render and serve the kanban board HTML."""
+        try:
+            body = _build_board_html(self.db_path)
+        except Exception:
+            self._send_response("Database unavailable", status=503)
+            return
 
-            # parse_qs returns {key: [value, ...]} — extract first value.
-            message_id = (fields.get("message_id") or [""])[0].strip()
-            new_status = (fields.get("status") or [""])[0].strip()
-            redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+        self._send_response(body, content_type="text/html; charset=utf-8")
 
-            if not message_id or not new_status:
-                self._bad_request("Missing message_id or status")
-                return
+    def _handle_move(self) -> None:
+        """Process POST /move — update a card's status and redirect."""
+        from robotsix_auto_mail.db import init_db
+        from robotsix_auto_mail.status import set_status
 
-            if new_status not in VALID_STATUSES:
-                self._bad_request(f"Invalid status: {new_status!r}")
-                return
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
 
-            conn = init_db(self.db_path)
-            try:
-                ok = set_status(conn, message_id, new_status)
-            finally:
-                conn.close()
+        # parse_qs returns {key: [value, ...]} — extract first value.
+        message_id = (fields.get("message_id") or [""])[0].strip()
+        new_status = (fields.get("status") or [""])[0].strip()
+        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
 
-            if not ok:
-                self._not_found()
-                return
+        if not message_id or not new_status:
+            self._bad_request("Missing message_id or status")
+            return
 
-            if redirect_to and _is_safe_redirect_path(redirect_to):
-                self._redirect(redirect_to, code=302)
-            else:
-                self._redirect("/board", code=302)
+        if new_status not in VALID_STATUSES:
+            self._bad_request(f"Invalid status: {new_status!r}")
+            return
 
-        def _handle_rule_action(self) -> None:
-            """Process POST /rule-action — accept/reject a rule proposal."""
-            from robotsix_auto_mail.db import init_db
+        conn = init_db(self.db_path)
+        try:
+            ok = set_status(conn, message_id, new_status)
+        finally:
+            conn.close()
 
-            content_length = int(self.headers.get("Content-Length", 0))
-            raw = self.rfile.read(content_length).decode("utf-8")
-            fields = parse_qs(raw)
+        if not ok:
+            self._not_found()
+            return
 
-            # parse_qs returns {key: [value, ...]} — extract first value.
-            fingerprint = (fields.get("fingerprint") or [""])[0].strip()
-            decision = (fields.get("decision") or [""])[0].strip()
-
-            if not fingerprint or not decision:
-                self._bad_request("Missing fingerprint or decision")
-                return
-
-            decision_to_state = {"accept": "accepted", "reject": "rejected"}
-            mapped_state = decision_to_state.get(decision)
-            if mapped_state is None:
-                self._bad_request(f"Invalid decision: {decision!r}")
-                return
-
-            conn = init_db(self.db_path)
-            try:
-                set_rule_state(conn, fingerprint, mapped_state)
-            except TriageError:
-                self._not_found()
-                return
-            finally:
-                conn.close()
-
+        if redirect_to and _is_safe_redirect_path(redirect_to):
+            self._redirect(redirect_to, code=302)
+        else:
             self._redirect("/board", code=302)
 
-        def _handle_config_sync(self) -> None:
-            """Process POST /config-sync — run the LLM drift advisory agent.
+    def _handle_rule_action(self) -> None:
+        """Process POST /rule-action — accept/reject a rule proposal."""
+        from robotsix_auto_mail.db import init_db
 
-            Lazily imports the optional LLM-backed agent so the rest of the
-            server works without ``pydantic_ai`` installed.  On success,
-            returns the ``ConfigSyncResult`` serialized as JSON; on a missing
-            optional extra returns 503, and on any agent failure returns 503
-            with a JSON error body (never a traceback).
-            """
-            try:
-                from robotsix_auto_mail.config_sync import (
-                    ConfigSyncError,
-                    run_config_sync_agent,
-                )
-            except ImportError:
-                self._serve_json(
-                    {
-                        "error": (
-                            "Config-sync advisory requires the optional LLM "
-                            "extra, which is not installed"
-                        )
-                    },
-                    status=503,
-                )
-                return
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
 
-            from robotsix_auto_mail.db import init_db
+        # parse_qs returns {key: [value, ...]} — extract first value.
+        fingerprint = (fields.get("fingerprint") or [""])[0].strip()
+        decision = (fields.get("decision") or [""])[0].strip()
 
-            conn = init_db(self.db_path)
-            try:
-                result = run_config_sync_agent(conn=conn)
-            except ConfigSyncError as exc:
-                self._serve_json({"error": str(exc)}, status=503)
-                return
-            except Exception as exc:
-                self._serve_json({"error": str(exc)}, status=503)
-                return
-            finally:
-                conn.close()
+        if not fingerprint or not decision:
+            self._bad_request("Missing fingerprint or decision")
+            return
 
-            self._serve_json(result.model_dump(), status=200)
+        decision_to_state = {"accept": "accepted", "reject": "rejected"}
+        mapped_state = decision_to_state.get(decision)
+        if mapped_state is None:
+            self._bad_request(f"Invalid decision: {decision!r}")
+            return
 
-        def _serve_email_status(self) -> None:
-            """Serve GET /email/{message_id}/status — return status as text."""
-            from robotsix_auto_mail.db import init_db
-            from robotsix_auto_mail.status import get_status
+        conn = init_db(self.db_path)
+        try:
+            set_rule_state(conn, fingerprint, mapped_state)
+        except TriageError:
+            self._not_found()
+            return
+        finally:
+            conn.close()
 
-            # Extract the URL-encoded message_id from the path:
-            #   "/email/<encoded>/status" → extract and decode.
-            path = self.path
-            prefix = "/email/"
-            suffix = "/status"
-            encoded_mid = path[len(prefix) : -len(suffix)]
-            message_id = unquote(encoded_mid)
+        self._redirect("/board", code=302)
 
-            conn = init_db(self.db_path)
-            try:
-                status = get_status(conn, message_id)
-            finally:
-                conn.close()
+    def _handle_config_sync(self) -> None:
+        """Process POST /config-sync — run the LLM drift advisory agent.
 
-            if status is None:
-                self._not_found()
-                return
+        Lazily imports the optional LLM-backed agent so the rest of the
+        server works without ``pydantic_ai`` installed.  On success,
+        returns the ``ConfigSyncResult`` serialized as JSON; on a missing
+        optional extra returns 503, and on any agent failure returns 503
+        with a JSON error body (never a traceback).
+        """
+        try:
+            from robotsix_auto_mail.config_sync import (
+                ConfigSyncError,
+                run_config_sync_agent,
+            )
+        except ImportError:
+            self._serve_json(
+                {
+                    "error": (
+                        "Config-sync advisory requires the optional LLM "
+                        "extra, which is not installed"
+                    )
+                },
+                status=503,
+            )
+            return
 
-            encoded_body = status.encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(encoded_body)))
-            self.end_headers()
-            self.wfile.write(encoded_body)
+        from robotsix_auto_mail.db import init_db
 
-        def _serve_email_detail(self) -> None:
-            """Serve GET /email/{message_id} — full detail page.
+        conn = init_db(self.db_path)
+        try:
+            result = run_config_sync_agent(conn=conn)
+        except ConfigSyncError as exc:
+            self._serve_json({"error": str(exc)}, status=503)
+            return
+        except Exception as exc:
+            self._serve_json({"error": str(exc)}, status=503)
+            return
+        finally:
+            conn.close()
 
-            Supports ``?embed=1`` to return a fragment suitable for an
-            iframe (no full-page chrome, no refresh).
-            """
-            from urllib.parse import parse_qs, urlparse
+        self._serve_json(result.model_dump(), status=200)
 
-            path = self.path
-            prefix = "/email/"
+    def _serve_email_status(self) -> None:
+        """Serve GET /email/{message_id}/status — return status as text."""
+        from robotsix_auto_mail.db import init_db
+        from robotsix_auto_mail.status import get_status
 
-            # Separate path from query string.
-            parsed = urlparse(path)
-            message_id = unquote(parsed.path[len(prefix):])
-            qs = parse_qs(parsed.query)
-            embed = qs.get("embed", ["0"])[0] == "1"
+        # Extract the URL-encoded message_id from the path:
+        #   "/email/<encoded>/status" → extract and decode.
+        path = self.path
+        prefix = "/email/"
+        suffix = "/status"
+        encoded_mid = path[len(prefix) : -len(suffix)]
+        message_id = unquote(encoded_mid)
 
-            try:
-                detail_html = _build_detail_html(
-                    self.db_path, message_id, embed=embed,
-                )
-            except Exception:
-                self._send_error_response(503, "Database unavailable")
-                return
+        conn = init_db(self.db_path)
+        try:
+            status = get_status(conn, message_id)
+        finally:
+            conn.close()
 
-            if detail_html is None:
-                self._not_found()
-                return
+        if status is None:
+            self._not_found()
+            return
 
-            self._send_html_response(detail_html)
+        self._send_response(status)
 
-        def log_message(self, format: str, *args: object) -> None:
-            """Suppress logging to stderr (keep server quiet)."""
-            pass
+    def _serve_email_detail(self) -> None:
+        """Serve GET /email/{message_id} — full detail page.
 
-    return BoardHandler
+        Supports ``?embed=1`` to return a fragment suitable for an
+        iframe (no full-page chrome, no refresh).
+        """
+        from urllib.parse import parse_qs, urlparse
+
+        path = self.path
+        prefix = "/email/"
+
+        # Separate path from query string.
+        parsed = urlparse(path)
+        message_id = unquote(parsed.path[len(prefix):])
+        qs = parse_qs(parsed.query)
+        embed = qs.get("embed", ["0"])[0] == "1"
+
+        try:
+            detail_html = _build_detail_html(
+                self.db_path, message_id, embed=embed,
+            )
+        except Exception:
+            self._send_response("Database unavailable", status=503)
+            return
+
+        if detail_html is None:
+            self._not_found()
+            return
+
+        self._send_response(detail_html, content_type="text/html; charset=utf-8")
+
+    def log_message(self, format: str, *args: object) -> None:
+        """Suppress logging to stderr (keep server quiet)."""
+        pass
+
+
+def make_board_handler(db_path: str) -> functools.partial[BoardHandler]:
+    """Return a callable that builds a ``BoardHandler`` wired to *db_path*.
+
+    ``HTTPServer`` calls the result as ``handler(request, client_address,
+    server)``; the returned ``functools.partial`` binds *db_path* as a
+    keyword argument so the standard three positional args still flow
+    through to ``BoardHandler.__init__``.
+    """
+    return functools.partial(BoardHandler, db_path=db_path)

@@ -489,6 +489,18 @@ def _start_test_server(db_path: str, port: int = 0) -> tuple[HTTPServer, int]:
     return server, assigned_port
 
 
+def test_make_board_handler_binds_boardhandler_with_db_path() -> None:
+    """make_board_handler yields a partial binding BoardHandler + db_path.
+
+    Proves BoardHandler is module-level and testable without the factory.
+    """
+    from robotsix_auto_mail.server import BoardHandler, make_board_handler
+
+    handler = make_board_handler(":memory:")
+    assert handler.func is BoardHandler
+    assert handler.keywords == {"db_path": ":memory:"}
+
+
 def test_handler_root_redirects() -> None:
     from urllib.request import (
         HTTPRedirectHandler,
