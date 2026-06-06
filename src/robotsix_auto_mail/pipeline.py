@@ -18,6 +18,7 @@ from robotsix_auto_mail.db import insert_record, record_exists
 from robotsix_auto_mail.fetch import fetch_new_messages, update_watermark
 from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.parser import parse_message
+from robotsix_auto_mail.triage import run_triage_agent
 
 _logger = logging.getLogger(__name__)
 
@@ -51,12 +52,16 @@ class IngestResult:
             already present in the database.
         errors: Per-message failures (parse errors, DB write
             errors, etc.).
+        triaged: Number of triage decisions produced by the
+            automatic post-ingest triage pass (0 when triage is
+            disabled, dry-run, or raised).
     """
 
     total_fetched: int
     stored: int
     skipped: int
     errors: list[IngestError]
+    triaged: int = 0
 
 
 def ingest_mail(
@@ -170,9 +175,28 @@ def ingest_mail(
     if max_uid > 0 and not dry_run:
         update_watermark(db_conn, max_uid)
 
+    # 4. Triage newly-stored inbox mail (best-effort; skipped in dry-run
+    #    and when disabled via config).  Only undecided inbox records are
+    #    triaged so re-running ingest produces no duplicate decisions and
+    #    no extra LLM calls.  A triage failure must never abort ingestion
+    #    or change the stored/skipped counts — mirror the setup_archive
+    #    best-effort precedent.
+    triaged = 0
+    if not dry_run and config.triage_on_ingest:
+        try:
+            decisions = run_triage_agent(
+                db_conn,
+                api_key=config.llm_api_key,
+                only_undecided=True,
+            )
+            triaged = len(decisions)
+        except Exception:
+            _logger.exception("Triage failed; continuing ingestion")
+
     return IngestResult(
         total_fetched=total_fetched,
         stored=stored,
         skipped=skipped,
         errors=errors,
+        triaged=triaged,
     )

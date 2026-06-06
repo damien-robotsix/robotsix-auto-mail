@@ -778,6 +778,102 @@ def test_ingest_setup_archive_failure_does_not_propagate(
 
 
 # ---------------------------------------------------------------------------
+# ingest_mail - post-ingest triage pass
+# ---------------------------------------------------------------------------
+
+
+@mock.patch("robotsix_auto_mail.pipeline.run_triage_agent")
+@mock.patch("robotsix_auto_mail.pipeline.setup_archive")
+@mock.patch("robotsix_auto_mail.pipeline.fetch_new_messages")
+def test_ingest_runs_triage_on_new_mail(
+    mock_fetch: mock.MagicMock,
+    mock_setup_archive: mock.MagicMock,
+    mock_triage: mock.MagicMock,
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """A normal run triages only-undecided mail and reports the count."""
+    mock_fetch.return_value = [(1, _make_raw_message(message_id="<a@x>"))]
+    mock_triage.return_value = [object(), object()]
+    imap = _mock_imap_client()
+
+    result = ingest_mail(conn, imap, cfg)
+
+    mock_triage.assert_called_once_with(
+        conn, api_key=cfg.llm_api_key, only_undecided=True
+    )
+    assert result.triaged == 2
+    # Triage must perform no IMAP/mailbox action of its own.
+    imap.assert_not_called()
+
+
+@mock.patch("robotsix_auto_mail.pipeline.run_triage_agent")
+@mock.patch("robotsix_auto_mail.pipeline.setup_archive")
+@mock.patch("robotsix_auto_mail.pipeline.fetch_new_messages")
+def test_ingest_triage_disabled_does_not_call_triage(
+    mock_fetch: mock.MagicMock,
+    mock_setup_archive: mock.MagicMock,
+    mock_triage: mock.MagicMock,
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """triage_on_ingest=False must skip run_triage_agent entirely."""
+    cfg_disabled = dataclasses.replace(cfg, triage_on_ingest=False)
+    mock_fetch.return_value = [(1, _make_raw_message(message_id="<a@x>"))]
+    imap = _mock_imap_client()
+
+    result = ingest_mail(conn, imap, cfg_disabled)
+
+    mock_triage.assert_not_called()
+    assert result.triaged == 0
+
+
+@mock.patch("robotsix_auto_mail.pipeline.run_triage_agent")
+@mock.patch("robotsix_auto_mail.pipeline.setup_archive")
+@mock.patch("robotsix_auto_mail.pipeline.fetch_new_messages")
+def test_ingest_dry_run_does_not_call_triage(
+    mock_fetch: mock.MagicMock,
+    mock_setup_archive: mock.MagicMock,
+    mock_triage: mock.MagicMock,
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """dry_run=True must not call run_triage_agent."""
+    mock_fetch.return_value = [(1, _make_raw_message(message_id="<a@x>"))]
+    imap = _mock_imap_client()
+
+    result = ingest_mail(conn, imap, cfg, dry_run=True)
+
+    mock_triage.assert_not_called()
+    assert result.triaged == 0
+
+
+@mock.patch("robotsix_auto_mail.pipeline.run_triage_agent")
+@mock.patch("robotsix_auto_mail.pipeline.setup_archive")
+@mock.patch("robotsix_auto_mail.pipeline.fetch_new_messages")
+def test_ingest_triage_failure_does_not_propagate(
+    mock_fetch: mock.MagicMock,
+    mock_setup_archive: mock.MagicMock,
+    mock_triage: mock.MagicMock,
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """A triage exception is swallowed; ingestion still returns triaged=0."""
+    from robotsix_auto_mail.triage import TriageError
+
+    mock_fetch.return_value = [(1, _make_raw_message(message_id="<a@x>"))]
+    mock_triage.side_effect = TriageError("LLM exploded")
+    imap = _mock_imap_client()
+
+    result = ingest_mail(conn, imap, cfg)
+
+    assert isinstance(result, IngestResult)
+    assert result.total_fetched == 1
+    assert result.stored == 1
+    assert result.triaged == 0
+
+
+# ---------------------------------------------------------------------------
 # CLI ingest subcommand tests
 # ---------------------------------------------------------------------------
 
@@ -853,6 +949,7 @@ def test_cli_ingest_with_errors_exits_zero(
                     error="failed to parse raw bytes as MIME message",
                 ),
             ],
+            triaged=4,
         )
 
         from robotsix_auto_mail.cli import main
@@ -870,6 +967,7 @@ def test_cli_ingest_with_errors_exits_zero(
     assert "Fetched: 12 messages" in out
     assert "Stored:  10 new" in out
     assert "Skipped:  1 duplicate" in out
+    assert "Triaged:  4" in out
     assert "Errors:   1" in out
     assert "UID 42 (<msg-id@example.com>)" in out
     assert "failed to parse raw bytes as MIME message" in out
