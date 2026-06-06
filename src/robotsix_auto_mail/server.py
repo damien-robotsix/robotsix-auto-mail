@@ -574,7 +574,7 @@ def _render_card(
     if decision is not None:
         badge = (
             f'<span class="triage-badge triage-{html.escape(decision.action)}"'
-            f' title="{html.escape(decision.reason)}">'
+            f' title="{html.escape(decision.reason or "")}">'
             f'{html.escape(decision.action)}</span>'
         )
     else:
