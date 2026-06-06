@@ -1045,10 +1045,14 @@ def test_detect_stdout(
     assert "verify" in captured.err.lower()
 
 
-def test_detect_stdout_with_password(
+def test_detect_stdout_redacts_password(
     capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """detect --stdout --password embeds the password in the printed config."""
+    """detect --stdout --password omits the password from the printed config.
+
+    The supplied password must NOT leak to stdout; instead the rendered
+    config carries the empty-password placeholder hinting at MAIL_PASSWORD.
+    """
     mock_provider = MailProvider(
         imap_host="imap.gmail.com",
         smtp_host="smtp.gmail.com",
@@ -1064,7 +1068,8 @@ def test_detect_stdout_with_password(
     assert rc == 0
     captured = capsys.readouterr()
     assert "imap.gmail.com" in captured.out
-    assert "cli-pass" in captured.out
+    assert "cli-pass" not in captured.out
+    assert "MAIL_PASSWORD" in captured.out
 
 
 def test_detect_detection_error(
