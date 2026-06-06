@@ -57,6 +57,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
+          config-file: ./.github/codeql/codeql-config.yml
           # We install dependencies ourselves via uv (above); disable the
           # action's own pip-based install so it does not re-resolve them.
           setup-python-dependencies: false
