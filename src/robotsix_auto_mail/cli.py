@@ -858,9 +858,11 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     if password is None:
         return 1
     if args.stdout:
-        config = provider_to_config(provider, args.email, password=password or "")
+        config = provider_to_config(provider, args.email, password="")
         sys.stderr.write(
             f"# Detected settings for {args.email} — verify before using.\n"
+            "# The password was intentionally omitted: fill in auth.password "
+            "or set the MAIL_PASSWORD env var before use.\n"
             "# Save this as config/mail.local.yaml.\n"
         )
         sys.stdout.write(render_config(config))
