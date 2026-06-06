@@ -761,6 +761,34 @@ def set_rule_state(
         _save_active_rules(conn, active)
 
 
+def list_rule_proposals(
+    conn: sqlite3.Connection, state: str = "pending"
+) -> list[tuple[str, RuleLedgerEntry]]:
+    """Return (fingerprint, entry) pairs from the rule ledger whose
+    ``state`` matches *state*, sorted deterministically by
+    ``(match_type, match_value, action)``.
+    """
+    if state not in _VALID_RULE_STATES:
+        raise TriageError(
+            "state must be one of "
+            f"{sorted(_VALID_RULE_STATES)!r}; got {state!r}"
+        )
+    ledger = _load_rule_ledger(conn)
+    pairs = [
+        (fingerprint, entry)
+        for fingerprint, entry in ledger.items()
+        if entry.state == state
+    ]
+    pairs.sort(
+        key=lambda item: (
+            item[1].match_type,
+            item[1].match_value,
+            item[1].action,
+        )
+    )
+    return pairs
+
+
 def _rule_matches(rule: TriageRule, record: MailRecord) -> bool:
     """Return whether *record* matches *rule*."""
     value = rule.match_value.strip().lower()

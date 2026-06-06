@@ -20,8 +20,9 @@ from robotsix_auto_mail.server import (
     _build_board_html,
     _build_detail_html,
     _render_card,
+    _render_rule_card,
 )
-from robotsix_auto_mail.triage import TriageDecision
+from robotsix_auto_mail.triage import RuleLedgerEntry, TriageDecision
 
 # ---------------------------------------------------------------------------
 # _format_date
@@ -211,8 +212,83 @@ def test_render_card_message_id_with_angle_brackets() -> None:
 
 
 # ---------------------------------------------------------------------------
+# _render_rule_card
+# ---------------------------------------------------------------------------
+
+
+def test_render_rule_card_basic() -> None:
+    entry = RuleLedgerEntry(
+        match_type="sender",
+        match_value="alice@example.com",
+        action="archive",
+        title="Triage mail from alice@example.com as archive",
+        state="pending",
+    )
+    html = _render_rule_card("deadbeef", entry)
+    assert "Triage mail from alice@example.com as archive" in html
+    assert "sender=alice@example.com -&gt; archive" in html
+    assert '<input type="hidden" name="fingerprint" value="deadbeef">' in html
+    assert 'name="decision" value="accept"' in html
+    assert 'name="decision" value="reject"' in html
+    assert 'action="/rule-action"' in html
+
+
+def test_render_rule_card_html_escapes_title() -> None:
+    entry = RuleLedgerEntry(
+        match_type="sender",
+        match_value="x@x.com",
+        action="archive",
+        title="<script>alert('xss')</script>",
+        state="pending",
+    )
+    html = _render_rule_card("fp", entry)
+    assert "&lt;script&gt;" in html
+    assert "<script>" not in html
+
+
+def test_render_rule_card_html_escapes_match_value() -> None:
+    entry = RuleLedgerEntry(
+        match_type="sender",
+        match_value='<img src=x onerror="alert(1)">',
+        action="archive",
+        title="t",
+        state="pending",
+    )
+    html = _render_rule_card("fp", entry)
+    assert "&lt;img" in html
+    assert "<img" not in html
+
+
+# ---------------------------------------------------------------------------
 # Helpers for tests that need a file-based DB
 # ---------------------------------------------------------------------------
+
+
+def _seed_rule_proposal(
+    db_path: str, match_type: str, match_value: str, action: str
+) -> None:
+    """Seed one pending rule proposal into *db_path* via the triage API."""
+    from robotsix_auto_mail.triage import (
+        TriageRuleProposal,
+        record_and_filter_rule_proposals,
+    )
+
+    conn = init_db(db_path)
+    try:
+        record_and_filter_rule_proposals(
+            conn,
+            [
+                TriageRuleProposal(
+                    match_type=match_type,
+                    match_value=match_value,
+                    action=action,
+                    title=f"Triage {match_value} as {action}",
+                    body="b",
+                )
+            ],
+        )
+    finally:
+        conn.close()
 
 
 def _populate_db(db_path: str, inserts: list[dict[str, str]]) -> None:
@@ -309,6 +385,33 @@ def test_build_board_html_empty_db() -> None:
         # All counts should be 0
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
         assert counts == ["0", "0", "0", "0"]
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_shows_rule_proposal() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_rule_proposal(db_path, "sender", "spam@x.com", "delete")
+        html = _build_board_html(db_path)
+        assert "Rule proposals" in html
+        assert 'class="rule-card"' in html
+        assert "sender=spam@x.com -&gt; delete" in html
+        assert 'name="decision" value="accept"' in html
+        assert 'name="decision" value="reject"' in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_empty_rule_proposals() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        html = _build_board_html(db_path)
+        assert "Rule proposals" in html
+        assert "No pending rule proposals" in html
+        assert 'class="rule-card"' not in html
     finally:
         os.unlink(db_path)
 
@@ -656,6 +759,160 @@ def _post_form_resp(port: int, fields: dict[str, str]) -> HTTPResponse:
     resp = opener.open(req)
     resp.read()
     return cast("HTTPResponse", resp)
+
+
+def _post_to_path(
+    port: int, path: str, fields: dict[str, str]
+) -> HTTPResponse:
+    """POST url-encoded *fields* to *path* and return the raw response.
+
+    Does not follow redirects and captures error responses so 302/400/404
+    can be inspected directly.
+    """
+    import urllib.request
+
+    data = urllib.parse.urlencode(fields).encode("utf-8")
+    url = f"http://127.0.0.1:{port}{path}"
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(
+            self,
+            req: urllib.request.Request,
+            fp: object,
+            code: int,
+            msg: object,
+            hdrs: object,
+            newurl: str,
+        ) -> None:
+            return None
+
+    class CaptureError(urllib.request.HTTPDefaultErrorHandler):
+        def http_error_default(  # type: ignore[override]
+            self,
+            req: urllib.request.Request,
+            fp: object,
+            code: int,
+            msg: object,
+            hdrs: object,
+        ) -> object:
+            return fp
+
+    opener = urllib.request.build_opener(NoRedirect(), CaptureError())
+    req = urllib.request.Request(  # noqa: S310
+        url,
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    resp = opener.open(req)
+    resp.read()
+    return cast("HTTPResponse", resp)
+
+
+def test_rule_action_accept_redirects_and_activates() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_rule_proposal(db_path, "sender", "spam@x.com", "delete")
+        conn = init_db(db_path)
+        try:
+            from robotsix_auto_mail.triage import (
+                TriageRule,
+                _load_active_rules,
+                _rule_fingerprint,
+                list_rule_proposals,
+            )
+
+            fingerprint = list_rule_proposals(conn, "pending")[0][0]
+        finally:
+            conn.close()
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/rule-action",
+                {"fingerprint": fingerprint, "decision": "accept"},
+            )
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+        finally:
+            server.shutdown()
+
+        # The rule is now active.
+        conn = init_db(db_path)
+        try:
+            active = _load_active_rules(conn)
+            assert any(
+                _rule_fingerprint(r) == fingerprint for r in active
+            )
+            assert isinstance(active[0], TriageRule)
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_rule_action_reject_redirects() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_rule_proposal(db_path, "sender", "spam@x.com", "delete")
+        conn = init_db(db_path)
+        try:
+            from robotsix_auto_mail.triage import list_rule_proposals
+
+            fingerprint = list_rule_proposals(conn, "pending")[0][0]
+        finally:
+            conn.close()
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/rule-action",
+                {"fingerprint": fingerprint, "decision": "reject"},
+            )
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_rule_action_unknown_fingerprint_not_found() -> None:
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(
+            port,
+            "/rule-action",
+            {"fingerprint": "deadbeef", "decision": "accept"},
+        )
+        assert resp.status == 404
+    finally:
+        server.shutdown()
+
+
+def test_rule_action_invalid_decision_bad_request() -> None:
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(
+            port,
+            "/rule-action",
+            {"fingerprint": "deadbeef", "decision": "bogus"},
+        )
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
+def test_rule_action_missing_fingerprint_bad_request() -> None:
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(port, "/rule-action", {"decision": "accept"})
+        assert resp.status == 400
+    finally:
+        server.shutdown()
 
 
 def test_move_success_redirects_302() -> None:
