@@ -11,6 +11,7 @@ dependencies = [
     "urllib3>=2.0",
     "pydantic>=2.0",
     "jinja2>=3.1",
+    "robotsix-yaml-config",
 ]
 
 [project.optional-dependencies]
@@ -68,3 +69,4 @@ DEP003 = ["pydantic_ai"]
 
 [tool.uv.sources]
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "main" }
+robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }

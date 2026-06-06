@@ -16,7 +16,10 @@ import os
 from pathlib import Path
 from typing import Any, Final, NamedTuple
 
-import yaml
+from robotsix_yaml_config import (  # type: ignore[import-untyped]
+    YamlConfigError,
+    read_yaml_file,
+)
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -420,28 +423,18 @@ class MailConfig:
         """
         path = Path(path)
 
-        try:
-            raw = path.read_text()
-        except FileNotFoundError:
-            raise
-        except OSError as exc:
-            raise ConfigurationError(
-                f"Cannot read config file {path}: {exc}"
-            ) from exc
+        # ``read_yaml_file`` returns an empty dict for a missing file; we
+        # still want ``from_yaml`` to surface a FileNotFoundError so callers
+        # (e.g. ``load()``) can distinguish "no file" from "empty file".
+        if not path.exists():
+            raise FileNotFoundError(f"Config file not found: {path}")
 
         try:
-            data: object = yaml.safe_load(raw)
-        except yaml.YAMLError as exc:
+            data = read_yaml_file(path)
+        except YamlConfigError as exc:
             raise ConfigurationError(
                 f"Invalid YAML in {path}: {exc}"
             ) from exc
-
-        if data is None:
-            data = {}
-        if not isinstance(data, dict):
-            raise ConfigurationError(
-                f"YAML root must be a mapping, got {type(data).__name__}"
-            )
 
         return cls._parse_config_dict(data, path, validate=validate)
 
