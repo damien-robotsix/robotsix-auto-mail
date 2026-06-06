@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "robotsix-auto-mail"
 version = "0.0.0"
-requires-python = ">=3.12,<3.15"
+requires-python = ">=3.14,<3.15"
 dependencies = [
-    "pyyaml>=6.0",
     "urllib3>=2.0",
     "pydantic>=2.0",
     "jinja2>=3.1",
+    "robotsix-yaml-config",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +20,10 @@ dev = [
     "pytest",
     "deptry",
     "hatchling",
+    # pyyaml is no longer used by the package itself (YAML loading is delegated
+    # to robotsix-yaml-config); it remains a dev-only need for the CI helper
+    # scripts/config/check_config_sync.py, which imports `yaml` directly.
+    "pyyaml>=6.0",
     "types-PyYAML",
     "types-jinja2",
     "robotsix-llmio[openrouter-deepseek]",
@@ -68,3 +72,4 @@ DEP003 = ["pydantic_ai"]
 
 [tool.uv.sources]
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "main" }
+robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }
