@@ -309,6 +309,7 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
     sys.stdout.write(f"Fetched: {result.total_fetched:>2} messages\n")
     sys.stdout.write(f"Stored:  {result.stored:>2} new\n")
     sys.stdout.write(f"Skipped: {result.skipped:>2} duplicate\n")
+    sys.stdout.write(f"Triaged: {result.triaged:>2}\n")
     sys.stdout.write(f"Errors:  {len(result.errors):>2}\n")
 
     if result.errors:

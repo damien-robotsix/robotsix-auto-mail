@@ -49,6 +49,7 @@ FIELD_TO_YAML: dict[str, str] = {
     "ingest_interval_minutes": "ingest.interval_minutes",
     "archive_root": "archive.root",
     "archive_enabled": "archive.enabled",
+    "triage_on_ingest": "triage.on_ingest",
 }
 
 FIELD_TO_ENV: dict[str, str] = {
@@ -67,6 +68,7 @@ FIELD_TO_ENV: dict[str, str] = {
     "ingest_interval_minutes": "MAIL_INGEST_INTERVAL",
     "archive_root": "MAIL_ARCHIVE_ROOT",
     "archive_enabled": "MAIL_ARCHIVE_ENABLED",
+    "triage_on_ingest": "MAIL_TRIAGE_ON_INGEST",
 }
 
 # ---------------------------------------------------------------------------

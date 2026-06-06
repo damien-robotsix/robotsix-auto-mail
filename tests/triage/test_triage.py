@@ -340,6 +340,59 @@ def test_run_triage_agent_omitted_record_defaults_user_triage(
         conn.close()
 
 
+def test_run_triage_agent_only_undecided_skips_decided(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """only_undecided=True triages only inbox records with no decision row."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _insert_inbox(conn, "<b@x.com>")
+        # <a@x.com> already has a decision — it must be left untouched.
+        set_triage_decision(
+            conn, "<a@x.com>", "archive", source="user", reason="pre"
+        )
+        # The LLM sees only the single undecided record at index 1.
+        result_obj = TriageResult(
+            items=[TriageItem(index=1, action="answer")]
+        )
+        _handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            out = run_triage_agent(conn, only_undecided=True)
+
+        assert [(d.message_id, d.action) for d in out] == [
+            ("<b@x.com>", "answer")
+        ]
+        # The pre-existing decision is unchanged (still user/archive/pre).
+        decided = get_triage_decision(conn, "<a@x.com>")
+        assert decided is not None
+        assert decided.source == "user"
+        assert decided.action == "archive"
+        assert decided.reason == "pre"
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_only_undecided_all_decided_no_llm() -> None:
+    """only_undecided=True with every record decided returns [] and no LLM."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _insert_inbox(conn, "<b@x.com>")
+        set_triage_decision(conn, "<a@x.com>", "archive", source="user")
+        set_triage_decision(conn, "<b@x.com>", "ignore", source="user")
+        with mock.patch(
+            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
+        ) as cls:
+            # No api_key needed: filtering empties the set before any LLM.
+            out = run_triage_agent(conn, only_undecided=True)
+        assert out == []
+        cls.assert_not_called()
+    finally:
+        conn.close()
+
+
 def test_run_triage_agent_missing_api_key(
     monkeypatch: pytest.MonkeyPatch, tmp_path: object
 ) -> None:

@@ -35,6 +35,10 @@ auth:
 #   root: robotsix-mail-archive
 #   enabled: true
 
+# Inbox triage agent — runs automatically after each ingest cycle.
+# triage:
+#   on_ingest: true
+
 # LLM provider — used by the `detect` command and future LLM-assisted mail
 # processing. Optional; the LLM_API_KEY / LLM_MODEL environment variables
 # override these values.

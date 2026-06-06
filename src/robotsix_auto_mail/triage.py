@@ -849,6 +849,7 @@ def run_triage_agent(
     *,
     api_key: str | None = None,
     tier: Tier = Tier.CHEAP,
+    only_undecided: bool = False,
 ) -> list[TriageDecision]:
     """Classify every inbox mail into a triage action and persist the result.
 
@@ -865,11 +866,24 @@ def run_triage_agent(
             ``api_key`` argument → ``LLM_API_KEY`` env var →
             ``config.llm_api_key`` (via :func:`load_llm`).
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
+        only_undecided: When ``True``, inbox records that already have a
+            ``triage_decisions`` row (per :func:`get_triage_decision`) are
+            dropped before both the deterministic-rule fast-path and the
+            LLM call, making the pass incremental and idempotent.  When the
+            filtered set is empty, returns ``[]`` without building the LLM
+            agent (no API key required).  Defaults to ``False`` (re-triage
+            every inbox record, preserving the manual CLI behavior).
 
     Raises:
         TriageError: If the API key is missing or the LLM call fails.
     """
     records = list_by_status(conn, "inbox")
+    if only_undecided:
+        records = [
+            record
+            for record in records
+            if get_triage_decision(conn, record.message_id) is None
+        ]
     if not records:
         return []
 

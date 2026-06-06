@@ -164,6 +164,8 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
                "str", DEFAULT_ARCHIVE_ROOT, False, False),
     _FieldSpec("archive_enabled", "MAIL_ARCHIVE_ENABLED", "archive.enabled",
                "bool", True, False, False),
+    _FieldSpec("triage_on_ingest", "MAIL_TRIAGE_ON_INGEST", "triage.on_ingest",
+               "bool", True, False, False),
 )
 
 # Each yaml_path must be exactly ``section.key`` — the YAML loader splits
@@ -215,6 +217,9 @@ class MailConfig:
     # Self-managed archive folder structure.
     archive_root: str = DEFAULT_ARCHIVE_ROOT
     archive_enabled: bool = True
+
+    # Run the inbox triage agent automatically at the end of each ingest.
+    triage_on_ingest: bool = True
 
     # -- masking -----------------------------------------------------------
 

@@ -58,6 +58,10 @@ auth:
 #   root: robotsix-mail-archive
 #   enabled: true
 
+# Inbox triage agent — runs automatically after each ingest cycle.
+# triage:
+#   on_ingest: true
+
 # LLM provider — used by the `detect` command and future LLM-assisted mail
 # processing. Optional; the LLM_API_KEY / LLM_MODEL environment variables
 # override these values.
@@ -82,6 +86,7 @@ MAIL_DB_PATH=.data/mail.db
 MAIL_INGEST_INTERVAL=15
 MAIL_ARCHIVE_ROOT=robotsix-mail-archive
 MAIL_ARCHIVE_ENABLED=true
+MAIL_TRIAGE_ON_INGEST=true
 LLM_API_KEY=sk-or-v1-…
 LLM_MODEL=deepseek/deepseek-v4-flash
 """
@@ -104,6 +109,7 @@ _DOCS_YAML_TABLE = """\
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles |
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
+| `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
 | `llm.api_key` | no | - | LLM provider API key |
 | `llm.model` | no | `"deepseek/deepseek-v4-flash"` | LLM model name |
 """
@@ -126,6 +132,7 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_INGEST_INTERVAL` | no | `15` | Minutes between automatic ingest cycles |
 | `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Archive root folder |
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to manage the archive structure |
+| `MAIL_TRIAGE_ON_INGEST` | no | `true` | Run inbox triage automatically after ingest |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
 | `LLM_API_KEY` | no | - | LLM provider API key |
 | `LLM_MODEL` | no | `deepseek/deepseek-v4-flash` | LLM model name |
