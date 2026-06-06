@@ -5,10 +5,11 @@ from __future__ import annotations
 import os
 import re
 import tempfile
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.request import urlopen
 
 if TYPE_CHECKING:
+    from http.client import HTTPResponse
     from http.server import HTTPServer
 
 from tests.conftest import _make_record
@@ -610,6 +611,51 @@ def _post_form(port: int, fields: dict[str, str]) -> tuple[int, str]:
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
     return resp.status, body
+
+
+def _post_form_resp(port: int, fields: dict[str, str]) -> HTTPResponse:
+    """POST url-encoded *fields* to /move and return the raw response.
+
+    Like :func:`_post_form` but returns the response object so the raw
+    ``Location``/headers can be inspected (does not follow redirects).
+    """
+    import urllib.request
+
+    data = urllib.parse.urlencode(fields).encode("utf-8")
+    url = f"http://127.0.0.1:{port}/move"
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(
+            self,
+            req: urllib.request.Request,
+            fp: object,
+            code: int,
+            msg: object,
+            hdrs: object,
+            newurl: str,
+        ) -> None:
+            return None
+
+    class CaptureError(urllib.request.HTTPDefaultErrorHandler):
+        def http_error_default(  # type: ignore[override]
+            self,
+            req: urllib.request.Request,
+            fp: object,
+            code: int,
+            msg: object,
+            hdrs: object,
+        ) -> object:
+            return fp
+
+    opener = urllib.request.build_opener(NoRedirect(), CaptureError())
+    req = urllib.request.Request(  # noqa: S310
+        url,
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    resp = opener.open(req)
+    resp.read()
+    return cast("HTTPResponse", resp)
 
 
 def test_move_success_redirects_302() -> None:
@@ -1654,6 +1700,71 @@ def test_move_with_empty_redirect_to_falls_back_to_board() -> None:
             server.shutdown()
     finally:
         os.unlink(db_path)
+
+
+def _move_and_get_location(redirect_to: str) -> HTTPResponse:
+    """POST /move with *redirect_to* and return the raw response object."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "evil-me",
+                    "sender": "x@x.com",
+                    "subject": "Evil test",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "inbox",
+                },
+            ],
+        )
+        server, port = _start_test_server(db_path)
+        try:
+            return _post_form_resp(
+                port,
+                {
+                    "message_id": "evil-me",
+                    "status": "done",
+                    "redirect_to": redirect_to,
+                },
+            )
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_move_protocol_relative_redirect_falls_back_to_board() -> None:
+    """A ``//evil.com`` redirect_to must fall back to /board (open redirect)."""
+    resp = _move_and_get_location("//evil.com")
+    assert resp.status == 302
+    assert resp.headers.get("Location") == "/board"
+
+
+def test_move_backslash_redirect_falls_back_to_board() -> None:
+    """A ``/\\evil.com`` redirect_to must fall back to /board (open redirect)."""
+    resp = _move_and_get_location("/\\evil.com")
+    assert resp.status == 302
+    assert resp.headers.get("Location") == "/board"
+
+
+def test_move_crlf_redirect_does_not_inject_header() -> None:
+    """A CRLF-bearing redirect_to must not inject extra response headers."""
+    resp = _move_and_get_location("/board\r\nSet-Cookie: pwned=1")
+    assert resp.status == 302
+    # The malicious value is neutralized — fall back to /board ...
+    assert resp.headers.get("Location") == "/board"
+    # ... and no injected header reaches the client.
+    assert resp.headers.get("Set-Cookie") is None
+
+
+def test_move_valid_local_redirect_to_is_preserved() -> None:
+    """A valid local redirect_to is used verbatim for the 302 Location."""
+    resp = _move_and_get_location("/email/evil-me?embed=1")
+    assert resp.status == 302
+    assert resp.headers.get("Location") == "/email/evil-me?embed=1"
 
 
 # ---------------------------------------------------------------------------

@@ -275,6 +275,28 @@ _DETAIL_PAGE_TEMPLATE = _JINJA_ENV.from_string(
 )
 
 
+def _is_safe_redirect_path(location: str) -> bool:
+    """Return ``True`` if *location* is a safe same-origin relative path.
+
+    Rejects values that could be used for open-redirect or HTTP
+    response-splitting attacks.  A safe value must:
+
+    - start with a single ``/`` (a relative, same-origin path),
+    - not start with ``//`` (protocol-relative URL → other origin),
+    - not start with ``/\\`` (backslash trick some browsers treat as
+      protocol-relative), and
+    - contain no CR (``\\r``), LF (``\\n``), or other ASCII control
+      characters (which could inject extra response headers).
+    """
+    if not location.startswith("/"):
+        return False
+    if location.startswith(("//", "/\\")):
+        return False
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in location):
+        return False
+    return True
+
+
 def _build_board_html(db_path: str) -> str:
     """Build the full ``/board`` HTML document.
 
@@ -624,7 +646,15 @@ def make_board_handler(
                 self._not_found()
 
         def _redirect(self, location: str, code: int = 301) -> None:
-            """Send a redirect to *location*."""
+            """Send a redirect to *location*.
+
+            Defense-in-depth at the sink: if *location* carries any CR/LF
+            or other ASCII control character (which could split the HTTP
+            response and inject extra headers), fall back to ``/board`` so
+            the ``Location`` header can never carry such a value.
+            """
+            if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in location):
+                location = "/board"
             self.send_response(code)
             self.send_header("Location", location)
             self.end_headers()
@@ -734,7 +764,7 @@ def make_board_handler(
                 self._not_found()
                 return
 
-            if redirect_to and redirect_to.startswith("/"):
+            if redirect_to and _is_safe_redirect_path(redirect_to):
                 self._redirect(redirect_to, code=302)
             else:
                 self._redirect("/board", code=302)
