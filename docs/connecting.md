@@ -494,8 +494,20 @@ $ robotsix-auto-mail serve
 Open `http://localhost:<port>/board` in a browser.  The page shows ingested
 mail in **four columns** — Inbox, Triaging, Done, Archive — each with a card
 count badge.  Every mail card has a **Move** dropdown that lets you change
-the card's status column via `POST /move`.  The board is the interface: no
-separate client is needed.
+the card's status column via `POST /move`.
+
+**Triage badges.**  When a mail record has a triage decision, the card displays a
+small **triage badge** showing the action label (one of `answer`, `archive`,
+`delete`, `ignore`, or `user_triage`) with the decision reason visible in a
+tooltip when you hover over the badge. Cards without a triage decision show no
+badge.
+
+**Detail drawer.**  Click any card to open a detail drawer showing the full
+message, including the **Triage** field with the decision action, reason, source
+(agent or user), and confidence level. If no decision has been recorded, the
+Triage field shows "(no triage decision)".
+
+The board is the interface: no separate client is needed.
 
 The page includes `<meta http-equiv="refresh" content="30">`, so the board
 auto-refreshes every 30 seconds.

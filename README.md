@@ -67,8 +67,11 @@ docker compose up board
 ```
 
 The board shows ingested mail in four columns — Inbox, Triaging, Done,
-Archive — with per-card Move dropdowns and a 30-second auto-refresh.  Full
-details are in [docs/connecting.md](docs/connecting.md#the-serve-command).
+Archive — with per-card Move dropdowns and a 30-second auto-refresh. Cards
+display triage badges showing the decision action (e.g. answer, archive)
+with the reason visible on hover. Click any card to view full details
+including the triage action, reason, and confidence. Full details are in
+[docs/connecting.md](docs/connecting.md#the-serve-command).
 
 ## License
 

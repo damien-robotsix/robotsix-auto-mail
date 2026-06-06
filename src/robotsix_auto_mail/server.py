@@ -17,6 +17,11 @@ import jinja2
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.status import STATUS_ORDER, VALID_STATUSES
+from robotsix_auto_mail.triage import (
+    TriageDecision,
+    get_triage_decision,
+    list_triage_decisions,
+)
 
 # Jinja2 environment for the board/detail pages.  ``autoescape`` is enabled
 # at the environment level (so the security default is safe), but each
@@ -53,6 +58,16 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; }
   background: #666; color: #fff; font-size: 0.75rem;
   font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px;
 }
+.triage-badge {
+  display: inline-block; background: #555; color: #fff;
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+  padding: 0.1rem 0.4rem; border-radius: 999px; cursor: help;
+}
+.triage-answer { background: #2563eb; }
+.triage-archive { background: #6b7280; }
+.triage-delete { background: #b91c1c; }
+.triage-ignore { background: #9ca3af; }
+.triage-user_triage { background: #d97706; }
 .cards { display: flex; flex-direction: column; gap: 0.5rem; }
 .card {
   background: #fff; border: 1px solid #ddd;
@@ -277,12 +292,17 @@ def _build_board_html(db_path: str) -> str:
         for status in _BOARD_COLUMNS:
             records = list_by_status(conn, status)
             columns.append((status, records))
+        # Read every triage decision once and key it by message_id so each
+        # card can show its advisory action without a per-card query.
+        triage_by_mid: dict[str, TriageDecision] = {
+            decision.message_id: decision for decision in list_triage_decisions(conn)
+        }
     finally:
         conn.close()
 
     # Build column HTML fragments.
     columns_html_parts = [
-        _render_column(status, records) for status, records in columns
+        _render_column(status, records, triage_by_mid) for status, records in columns
     ]
 
     return _BOARD_TEMPLATE.render(
@@ -304,6 +324,7 @@ def _build_detail_html(
     conn = init_db(db_path)
     try:
         record = get_record_by_message_id(conn, message_id)
+        triage_decision = get_triage_decision(conn, message_id)
     finally:
         conn.close()
 
@@ -419,6 +440,28 @@ def _build_detail_html(
             '</div>'
         )
 
+    # Triage decision (read-only advisory display).
+    if triage_decision is not None:
+        triage_value = (
+            f'<strong>{html.escape(triage_decision.action)}</strong>'
+            f' <span class="triage-source">'
+            f'({html.escape(triage_decision.source)},'
+            f' {html.escape(triage_decision.confidence)})</span>'
+        )
+        if triage_decision.reason:
+            triage_value += (
+                f'<div class="triage-reason">'
+                f'{html.escape(triage_decision.reason)}</div>'
+            )
+    else:
+        triage_value = '<em>(no triage decision)</em>'
+    triage_section = (
+        '<div class="detail-field">'
+        '<div class="detail-label">Triage</div>'
+        f'<div class="detail-value">{triage_value}</div>'
+        '</div>\n'
+    )
+
     # The inner detail fields (Sender through IMAP UID) are identical for
     # the embedded fragment and the full standalone page.
     fields_html = (
@@ -436,6 +479,7 @@ def _build_detail_html(
         f'<div class="detail-value">{html.escape(record.status.capitalize())}'
         f'{move_form}</div>'
         '</div>\n'
+        f'{triage_section}'
         '<div class="detail-field">'
         '<div class="detail-label">To</div>'
         f'<div class="detail-value">{to_html}</div>'
@@ -469,11 +513,17 @@ def _build_detail_html(
     )
 
 
-def _render_column(status: str, records: list[MailRecord]) -> str:
+def _render_column(
+    status: str,
+    records: list[MailRecord],
+    triage_by_mid: dict[str, TriageDecision],
+) -> str:
     """Render a single board column (header + cards) as an HTML string."""
     title = status.capitalize()
     count = len(records)
-    cards_html = "".join(_render_card(r) for r in records)
+    cards_html = "".join(
+        _render_card(r, triage_by_mid.get(r.message_id)) for r in records
+    )
     return (
         f'<div class="column">'
         f'<div class="column-header"><h2>{html.escape(title)}</h2>'
@@ -483,7 +533,9 @@ def _render_column(status: str, records: list[MailRecord]) -> str:
     )
 
 
-def _render_card(record: MailRecord) -> str:
+def _render_card(
+    record: MailRecord, decision: TriageDecision | None = None
+) -> str:
     """Render a single ``MailRecord`` as a ``.card`` HTML string."""
     sender = html.escape(record.sender)
     subject = html.escape(record.subject) if record.subject.strip() else "(no subject)"
@@ -518,12 +570,22 @@ def _render_card(record: MailRecord) -> str:
         '</form>'
     )
 
+    # Read-only triage badge: action label with the reason in a tooltip.
+    if decision is not None:
+        badge = (
+            f'<span class="triage-badge triage-{html.escape(decision.action)}"'
+            f' title="{html.escape(decision.reason or "")}">'
+            f'{html.escape(decision.action)}</span>'
+        )
+    else:
+        badge = ''
+
     return (
         f'<div class="card" data-message-id="{quoted_mid}"'
         f' data-subject="{subject_attr}">'
         f'<div class="sender">{sender}</div>'
         f'<div class="subject">{subject_html}</div>'
-        f'<div class="date">{date_str}</div>'
+        f'<div class="date">{date_str}{badge}</div>'
         f'<div class="body-preview">{body_html}</div>'
         f'{form_html}'
         f'</div>'
