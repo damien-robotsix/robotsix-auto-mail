@@ -858,7 +858,11 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     if password is None:
         return 1
     if args.stdout:
-        config = provider_to_config(provider, args.email, password="")
+        config = provider_to_config(
+            provider,
+            args.email,
+            password="",  # nosec B106 - intentionally omitted from stdout
+        )
         sys.stderr.write(
             f"# Detected settings for {args.email} — verify before using.\n"
             "# The password was intentionally omitted: fill in auth.password "
