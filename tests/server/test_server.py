@@ -20,6 +20,7 @@ from robotsix_auto_mail.server import (
     _build_detail_html,
     _render_card,
 )
+from robotsix_auto_mail.triage import TriageDecision
 
 # ---------------------------------------------------------------------------
 # _format_date
@@ -1848,3 +1849,258 @@ def test_config_sync_unknown_post_path_returns_404() -> None:
             raise AssertionError("Expected HTTPError 404")
     finally:
         server.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# Triage decision display (read-only badge + detail field)
+# ---------------------------------------------------------------------------
+
+
+def _seed_triage_decision(
+    db_path: str,
+    message_id: str,
+    *,
+    action: str,
+    source: str = "agent",
+    reason: str = "",
+    confidence: str = "medium",
+) -> None:
+    """Insert a triage_decisions row directly (read-only display fixture)."""
+    conn = init_db(db_path)
+    try:
+        conn.execute(
+            "INSERT INTO triage_decisions "
+            "(message_id, action, source, reason, confidence, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, '2025-01-01T00:00:00+00:00')",
+            (message_id, action, source, reason, confidence),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_render_card_with_triage_decision_shows_badge() -> None:
+    record = _make_record(
+        message_id="abc",
+        sender="x",
+        subject="s",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    decision = TriageDecision(
+        message_id="abc",
+        action="archive",
+        source="agent",
+        reason="newsletter",
+    )
+    html = _render_card(record, decision)
+    assert 'class="triage-badge triage-archive"' in html
+    assert ">archive</span>" in html
+    assert 'title="newsletter"' in html
+
+
+def test_render_card_without_triage_decision_has_no_badge() -> None:
+    record = _make_record(
+        message_id="abc",
+        sender="x",
+        subject="s",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    html = _render_card(record)
+    assert "triage-badge" not in html
+
+
+def test_render_card_triage_reason_is_escaped() -> None:
+    record = _make_record(
+        message_id="abc",
+        sender="x",
+        subject="s",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    decision = TriageDecision(
+        message_id="abc",
+        action="delete",
+        source="agent",
+        reason='<script>alert("xss")</script>',
+    )
+    html = _render_card(record, decision)
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "&quot;" in html
+
+
+def test_build_board_html_shows_triage_badge() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "m1",
+                    "sender": "a@b.com",
+                    "subject": "Subj",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "Body",
+                    "status": "archive",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "m1", action="archive", reason="bulk mail")
+
+        html = _build_board_html(db_path)
+        assert 'class="triage-badge triage-archive"' in html
+        assert ">archive</span>" in html
+        assert 'title="bulk mail"' in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_no_badge_without_decision() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "m1",
+                    "sender": "a@b.com",
+                    "subject": "Subj",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "Body",
+                    "status": "inbox",
+                },
+            ],
+        )
+
+        html = _build_board_html(db_path)
+        # The CSS block defines ``.triage-badge`` so the bare substring is
+        # always present; assert the rendered badge span is absent instead.
+        assert '<span class="triage-badge' not in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_triage_reason_escaped() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "m1",
+                    "sender": "a@b.com",
+                    "subject": "Subj",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "Body",
+                    "status": "done",
+                },
+            ],
+        )
+        _seed_triage_decision(
+            db_path,
+            "m1",
+            action="ignore",
+            reason='<script>alert("xss")</script>',
+        )
+
+        html = _build_board_html(db_path)
+        assert "<script>alert" not in html
+        assert "&lt;script&gt;" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_shows_triage_field() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<triage-detail@test.com>",
+                    "sender": "x@x.com",
+                    "subject": "Triage Detail",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "triaging",
+                },
+            ],
+        )
+        _seed_triage_decision(
+            db_path,
+            "<triage-detail@test.com>",
+            action="answer",
+            reason="needs a reply",
+        )
+
+        for embed in (False, True):
+            html = _build_detail_html(db_path, "<triage-detail@test.com>", embed=embed)
+            assert html is not None
+            assert "Triage" in html
+            assert "answer" in html
+            assert "needs a reply" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_no_triage_decision() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<no-triage@test.com>",
+                    "sender": "x@x.com",
+                    "subject": "No Triage",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "inbox",
+                },
+            ],
+        )
+
+        html = _build_detail_html(db_path, "<no-triage@test.com>")
+        assert html is not None
+        assert "(no triage decision)" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_triage_reason_escaped() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<xss-triage@test.com>",
+                    "sender": "x@x.com",
+                    "subject": "XSS Triage",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "done",
+                },
+            ],
+        )
+        _seed_triage_decision(
+            db_path,
+            "<xss-triage@test.com>",
+            action="delete",
+            reason='<script>alert("xss")</script>',
+        )
+
+        html = _build_detail_html(db_path, "<xss-triage@test.com>")
+        assert html is not None
+        assert "<script>alert" not in html
+        assert "&lt;script&gt;" in html
+    finally:
+        os.unlink(db_path)
