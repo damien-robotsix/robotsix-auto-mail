@@ -173,6 +173,8 @@ modules:
     description: >-
       User-facing documentation and architecture decisions.
     paths:
+      - docs/CHANGELOG.md
+      - docs/CONTRIBUTING.md
       - docs/architecture.md
       - docs/connecting.md
       - docs/deployment.md
