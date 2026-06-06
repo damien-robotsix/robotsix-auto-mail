@@ -18,9 +18,13 @@ from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.status import STATUS_ORDER, VALID_STATUSES
 from robotsix_auto_mail.triage import (
+    RuleLedgerEntry,
     TriageDecision,
+    TriageError,
     get_triage_decision,
+    list_rule_proposals,
     list_triage_decisions,
+    set_rule_state,
 )
 
 # Jinja2 environment for the board/detail pages.  ``autoescape`` is enabled
@@ -86,6 +90,30 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; }
 .card-form button { font-size: 0.75rem; padding: 0.1rem 0.5rem; cursor: pointer; }
 .card .subject a { color: inherit; text-decoration: none; }
 .card .subject a:hover { text-decoration: underline; }
+
+/* Rule proposals section */
+.rule-proposals {
+  background: #f5f5f5; border-radius: 8px;
+  padding: 0.75rem; margin-bottom: 1rem;
+}
+.rule-proposals-header {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 0.75rem; padding-bottom: 0.5rem;
+  border-bottom: 2px solid #ddd;
+}
+.rule-proposals-header h2 { font-size: 1rem; font-weight: 600; }
+.rule-cards { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.rule-card {
+  background: #fff; border: 1px solid #ddd;
+  border-radius: 6px; padding: 0.6rem 0.75rem; min-width: 260px;
+}
+.rule-card .rule-title { font-weight: 700; }
+.rule-card .rule-summary {
+  font-size: 0.85rem; color: #444; margin-top: 0.25rem;
+}
+.rule-form { margin-top: 0.4rem; display: flex; gap: 0.25rem; }
+.rule-form button { font-size: 0.75rem; padding: 0.1rem 0.5rem; cursor: pointer; }
+.rule-empty { font-style: italic; color: #999; }
 
 /* Detail page */
 .back-link {
@@ -170,6 +198,7 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "</head>\n"
     "<body>\n"
     "<h1>Mail Board</h1>\n"
+    "{{ proposals_html }}\n"
     '<div class="board-wrapper">\n'
     '<div class="board">\n'
     "{{ columns_html }}"
@@ -319,6 +348,9 @@ def _build_board_html(db_path: str) -> str:
         triage_by_mid: dict[str, TriageDecision] = {
             decision.message_id: decision for decision in list_triage_decisions(conn)
         }
+        # List (read-only) the pending deterministic-rule proposals so the
+        # board can surface them for human validation.
+        proposals = list_rule_proposals(conn, "pending")
     finally:
         conn.close()
 
@@ -330,6 +362,7 @@ def _build_board_html(db_path: str) -> str:
     return _BOARD_TEMPLATE.render(
         css=_CSS,
         columns_html="".join(columns_html_parts),
+        proposals_html=_render_rule_proposals(proposals),
     )
 
 
@@ -614,6 +647,59 @@ def _render_card(
     )
 
 
+def _render_rule_card(fingerprint: str, entry: RuleLedgerEntry) -> str:
+    """Render one pending rule proposal as a ``.rule-card`` HTML string.
+
+    Every interpolated value is passed through ``html.escape`` because the
+    board templates run under ``{% autoescape false %}`` (see ``_JINJA_ENV``).
+    """
+    title = html.escape(entry.title)
+    summary = html.escape(
+        f"{entry.match_type}={entry.match_value} -> {entry.action}"
+    )
+    fp = html.escape(fingerprint)
+    return (
+        '<div class="rule-card">'
+        f'<div class="rule-title">{title}</div>'
+        f'<div class="rule-summary">{summary}</div>'
+        '<form class="rule-form" method="post" action="/rule-action">'
+        f'<input type="hidden" name="fingerprint" value="{fp}">'
+        '<button type="submit" name="decision" value="accept">Accept</button>'
+        '<button type="submit" name="decision" value="reject">Reject</button>'
+        '</form>'
+        '</div>'
+    )
+
+
+def _render_rule_proposals(
+    proposals: list[tuple[str, RuleLedgerEntry]],
+) -> str:
+    """Render the "Rule proposals" board section as an HTML string.
+
+    Shows one ``_render_rule_card`` per pending proposal, or an explicit
+    empty-state message when there are none.  The count badge reuses the
+    existing ``.count`` styling.
+    """
+    count = len(proposals)
+    if proposals:
+        cards_html = "".join(
+            _render_rule_card(fingerprint, entry)
+            for fingerprint, entry in proposals
+        )
+    else:
+        cards_html = (
+            '<div class="rule-empty">No pending rule proposals</div>'
+        )
+    return (
+        '<div class="rule-proposals">'
+        '<div class="rule-proposals-header">'
+        '<h2>Rule proposals</h2>'
+        f'<span class="count rule-count">{count}</span></div>'
+        f'<div class="rule-cards">{cards_html}</div>'
+        '</div>'
+    )
+
+
 def make_board_handler(
     db_path: str,
 ) -> type[BaseHTTPRequestHandler]:
@@ -727,6 +813,8 @@ def make_board_handler(
             # in-process periodic runner) is explicitly deferred.
             if self.path == "/move":
                 self._handle_move()
+            elif self.path == "/rule-action":
+                self._handle_rule_action()
             elif self.path == "/config-sync":
                 self._handle_config_sync()
             else:
@@ -768,6 +856,39 @@ def make_board_handler(
                 self._redirect(redirect_to, code=302)
             else:
                 self._redirect("/board", code=302)
+
+        def _handle_rule_action(self) -> None:
+            """Process POST /rule-action — accept/reject a rule proposal."""
+            from robotsix_auto_mail.db import init_db
+
+            content_length = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(content_length).decode("utf-8")
+            fields = parse_qs(raw)
+
+            # parse_qs returns {key: [value, ...]} — extract first value.
+            fingerprint = (fields.get("fingerprint") or [""])[0].strip()
+            decision = (fields.get("decision") or [""])[0].strip()
+
+            if not fingerprint or not decision:
+                self._bad_request("Missing fingerprint or decision")
+                return
+
+            decision_to_state = {"accept": "accepted", "reject": "rejected"}
+            mapped_state = decision_to_state.get(decision)
+            if mapped_state is None:
+                self._bad_request(f"Invalid decision: {decision!r}")
+                return
+
+            conn = init_db(self.db_path)
+            try:
+                set_rule_state(conn, fingerprint, mapped_state)
+            except TriageError:
+                self._not_found()
+                return
+            finally:
+                conn.close()
+
+            self._redirect("/board", code=302)
 
         def _handle_config_sync(self) -> None:
             """Process POST /config-sync — run the LLM drift advisory agent.

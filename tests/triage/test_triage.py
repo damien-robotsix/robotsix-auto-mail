@@ -33,6 +33,7 @@ from robotsix_auto_mail.triage import (
     _rule_fingerprint,
     apply_triage_rules,
     get_triage_decision,
+    list_rule_proposals,
     list_triage_decisions,
     propose_triage_rules,
     record_and_filter_rule_proposals,
@@ -986,6 +987,136 @@ def test_set_rule_state_invalid_state_raises() -> None:
         record_and_filter_rule_proposals(conn, [proposal])
         with pytest.raises(TriageError):
             set_rule_state(conn, _rule_fingerprint(proposal), "bogus")
+    finally:
+        conn.close()
+
+
+def test_list_rule_proposals_empty_ledger() -> None:
+    """An absent/empty ledger yields an empty list."""
+    conn = init_db(":memory:")
+    try:
+        assert list_rule_proposals(conn, "pending") == []
+    finally:
+        conn.close()
+
+
+def test_list_rule_proposals_returns_pending_sorted() -> None:
+    """Pending entries are returned sorted by (match_type, match_value, action)."""
+    conn = init_db(":memory:")
+    try:
+        proposals = [
+            TriageRuleProposal(
+                match_type="sender",
+                match_value="bob@example.com",
+                action="delete",
+                title="bob",
+                body="b",
+            ),
+            TriageRuleProposal(
+                match_type="domain",
+                match_value="news.com",
+                action="archive",
+                title="news",
+                body="b",
+            ),
+            TriageRuleProposal(
+                match_type="sender",
+                match_value="alice@example.com",
+                action="archive",
+                title="alice",
+                body="b",
+            ),
+        ]
+        record_and_filter_rule_proposals(conn, proposals)
+        result = list_rule_proposals(conn, "pending")
+        # Sorted by (match_type, match_value, action).
+        assert [entry.match_value for _, entry in result] == [
+            "news.com",
+            "alice@example.com",
+            "bob@example.com",
+        ]
+        # The fingerprint is the ledger dict key, not recomputed wrongly.
+        for fingerprint, entry in result:
+            assert (
+                _rule_fingerprint(
+                    TriageRule(
+                        match_type=entry.match_type,
+                        match_value=entry.match_value,
+                        action=entry.action,
+                    )
+                )
+                == fingerprint
+            )
+    finally:
+        conn.close()
+
+
+def test_list_rule_proposals_excludes_non_pending() -> None:
+    """Accepted/rejected entries are excluded when filtering for pending."""
+    conn = init_db(":memory:")
+    try:
+        pending = TriageRuleProposal(
+            match_type="sender",
+            match_value="alice@example.com",
+            action="archive",
+            title="alice",
+            body="b",
+        )
+        accepted = TriageRuleProposal(
+            match_type="sender",
+            match_value="bob@example.com",
+            action="delete",
+            title="bob",
+            body="b",
+        )
+        rejected = TriageRuleProposal(
+            match_type="domain",
+            match_value="news.com",
+            action="archive",
+            title="news",
+            body="b",
+        )
+        record_and_filter_rule_proposals(conn, [pending, accepted, rejected])
+        set_rule_state(conn, _rule_fingerprint(accepted), "accepted")
+        set_rule_state(conn, _rule_fingerprint(rejected), "rejected")
+
+        result = list_rule_proposals(conn, "pending")
+        assert [entry.match_value for _, entry in result] == [
+            "alice@example.com"
+        ]
+    finally:
+        conn.close()
+
+
+def test_list_rule_proposals_filters_by_state() -> None:
+    """Filtering by a non-pending state returns matching entries."""
+    conn = init_db(":memory:")
+    try:
+        accepted = TriageRuleProposal(
+            match_type="sender",
+            match_value="bob@example.com",
+            action="delete",
+            title="bob",
+            body="b",
+        )
+        record_and_filter_rule_proposals(conn, [accepted])
+        set_rule_state(conn, _rule_fingerprint(accepted), "accepted")
+
+        assert list_rule_proposals(conn, "pending") == []
+        accepted_result = list_rule_proposals(conn, "accepted")
+        assert [entry.match_value for _, entry in accepted_result] == [
+            "bob@example.com"
+        ]
+    finally:
+        conn.close()
+
+
+def test_list_rule_proposals_invalid_state_raises() -> None:
+    """An invalid state raises TriageError."""
+    conn = init_db(":memory:")
+    try:
+        with pytest.raises(TriageError):
+            list_rule_proposals(conn, "bogus")
     finally:
         conn.close()
 
