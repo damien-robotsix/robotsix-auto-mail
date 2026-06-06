@@ -118,7 +118,7 @@ robotsix-auto-mail detect user@gmail.com \
 | `EMAIL` (positional) | yes | – | Email address to detect settings for |
 | `--password` | no | (prompted) | Password to write into the config file |
 | `--output PATH` | no | `config/mail.local.yaml` | Write mail config to this path |
-| `--stdout` | no | – | Print config to stdout instead of writing to file (no verification) |
+| `--stdout` | no | – | Print config to stdout instead of writing to file; password is intentionally omitted (must be filled in manually or via `MAIL_PASSWORD`); no verification is performed |
 | `--no-verify` | no | – | Skip the post-write IMAP/SMTP connection check |
 
 ### Docker invocation
@@ -148,6 +148,11 @@ interactive prompt appears (requires a TTY — use `docker compose run` without
 - With `--no-verify` (or `--stdout`, which never writes), no connection is
   made — `detect` is then purely a config-file generator, so run
   `robotsix-auto-mail probe` yourself afterwards.
+  When using `--stdout`, the password is intentionally omitted from the printed
+  config for security (to avoid leaking it into shell history or logs). You must
+  supply the password separately: save the printed config to a file and edit it
+  to fill in `auth.password`, or supply the password via the `MAIL_PASSWORD`
+  environment variable before running other commands.
 - For users who prefer manual config, the traditional approach (editing
   `config/mail.local.yaml` by hand) is unaffected and fully supported.
 
