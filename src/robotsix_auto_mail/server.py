@@ -991,7 +991,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         pass
 
 
-def make_board_handler(db_path: str) -> Callable[..., BoardHandler]:
+def make_board_handler(db_path: str) -> functools.partial[BoardHandler]:
     """Return a callable that builds a ``BoardHandler`` wired to *db_path*.
 
     ``HTTPServer`` calls the result as ``handler(request, client_address,
