@@ -39,6 +39,25 @@ pytest
 The full test layout, mocking strategy, and coverage expectations are
 documented in [docs/testing.md](testing.md).
 
+## Building documentation
+
+Project documentation uses [MkDocs](https://www.mkdocs.org/) with the Material theme. To build and serve docs locally:
+
+```sh
+uv sync --frozen --extra docs
+uv run --frozen mkdocs serve
+```
+
+Then open http://localhost:8000 in your browser. The site will auto-reload as you edit markdown files in the `docs/` directory.
+
+To build a static copy of the site (e.g., before committing documentation changes):
+
+```sh
+uv run --frozen mkdocs build
+```
+
+This generates a `site/` directory with the built HTML (which is not committed to the repository).
+
 ## Code style and quality gate
 
 CI (`.github/workflows/ci.yml`) is the source of truth for the quality

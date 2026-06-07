@@ -4,6 +4,9 @@ __pycache__/
 *.pyo
 dist/
 *.egg-info/
+
+# MkDocs build output (never committed; built by the docs workflow).
+site/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/

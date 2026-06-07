@@ -184,6 +184,8 @@ modules:
     paths:
       - docs/CHANGELOG.md
       - docs/CONTRIBUTING.md
+      - docs/index.md
+      - mkdocs.yml
       - docs/architecture.md
       - docs/connecting.md
       - docs/deployment.md
@@ -204,6 +206,7 @@ modules:
       - .github/dependabot.yml
       - .github/workflows/ci.yml
       - .github/workflows/codeql.yml
+      - .github/workflows/docs.yml
       - .github/workflows/lockfile.yml
       - .pre-commit-config.yaml
       - .secrets.baseline
