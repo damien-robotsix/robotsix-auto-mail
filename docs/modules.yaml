@@ -206,7 +206,6 @@ modules:
       detect-secrets baseline).
     paths:
       - .github/codeql/codeql-config.yml
-      - .github/dependabot.yml
       - .github/workflows/ci.yml
       - .github/workflows/codeql.yml
       - .github/workflows/docs.yml
@@ -214,6 +213,7 @@ modules:
       - .github/workflows/release.yml
       - .pre-commit-config.yaml
       - .secrets.baseline
+      - renovate.json
       - scripts/modules/check_module_registration.py
       - tests/modules/test_module_registration.py
 
