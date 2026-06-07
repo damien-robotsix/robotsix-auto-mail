@@ -1,9 +1,11 @@
-ARG BASE_DIGEST=sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203
-
 # ---------------------------------------------------------------------------
 # Builder stage — builds the wheel and installs the package
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim@${BASE_DIGEST} AS builder
+# Python 3.14: pyproject requires-python is >=3.14,<3.15 (matches the
+# robotsix-yaml-config / robotsix-llmio git deps). Must stay in sync with
+# requires-python — a 3.12 base makes uv resolution fail ("does not satisfy
+# Python>=3.14").
+FROM python:3.14-slim AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -25,16 +27,16 @@ COPY pyproject.toml .
 COPY src/ src/
 
 # --system installs into the image's system Python (the same
-# /usr/local/lib/python3.12/site-packages/ path the production
+# /usr/local/lib/python3.14/site-packages/ path the production
 # stage copies from), matching the previous `pip install` layout.
 RUN uv pip install --system --no-cache-dir ".[llm]"
 
 # ---------------------------------------------------------------------------
 # Production stage — minimal runtime image with only the installed artifacts
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim@${BASE_DIGEST} AS production
+FROM python:3.14-slim AS production
 
-COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+COPY --from=builder /usr/local/lib/python3.14/site-packages/ /usr/local/lib/python3.14/site-packages/
 COPY --from=builder /usr/local/bin/robotsix-auto-mail /usr/local/bin/robotsix-auto-mail
 
 RUN groupadd --gid 1000 mailbot && \
