@@ -78,6 +78,9 @@ jobs:
           pip install check-jsonschema
           check-jsonschema --schemafile docs/modules.schema.yaml docs/modules.yaml
 
+      - name: Check module registration completeness
+        run: uv run --frozen python scripts/modules/check_module_registration.py
+
       - name: SAST (bandit)
         run: |
           uv pip install 'bandit[toml]'
