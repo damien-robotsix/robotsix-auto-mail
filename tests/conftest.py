@@ -105,7 +105,7 @@ def _make_record(**overrides: str | int | None) -> MailRecord:
         sender=str(kwargs["sender"]),
         subject=str(kwargs["subject"]),
         date=str(kwargs["date"]),
-        status=str(kwargs.get("status", "inbox")),
+        status=str(kwargs.get("status", "to_read")),
         imap_uid=_opt_int_none("imap_uid"),
         recipients_json=_opt_str("recipients_json", '{"to": [], "cc": []}'),
         body_plain=_opt_str("body_plain", ""),

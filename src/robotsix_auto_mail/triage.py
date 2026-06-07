@@ -50,11 +50,11 @@ VALID_TRIAGE_ACTIONS = frozenset(
 #: Maps each triage action to the kanban column its card moves to.
 #: This is a LOCAL board move only — it never touches IMAP.
 TRIAGE_ACTION_TO_STATUS: dict[str, str] = {
-    "archive": "archive",
+    "archive": "no_action",  # FYI, nothing to do
     "ignore": "done",
-    "delete": "archive",  # user does NOT want real deletion — board column only
-    "answer": "triaging",  # needs a human reply
-    "user_triage": "triaging",  # system unsure → human decides
+    "delete": "no_action",  # user does NOT want real deletion — board column only
+    "answer": "needs_reply",  # needs a human reply
+    "user_triage": "to_read",  # system unsure → human reads/decides
 }
 
 #: Accepted decision sources.
@@ -881,8 +881,8 @@ def run_triage_agent(
 ) -> list[TriageDecision]:
     """Classify every inbox mail into a triage action and persist the result.
 
-    Reads inbox records via ``list_by_status(conn, "inbox")``; returns ``[]``
-    immediately (without calling the LLM) when the inbox is empty.  Each
+    Reads to-read records via ``list_by_status(conn, "to_read")``; returns
+    ``[]`` immediately (without calling the LLM) when there is none.  Each
     returned ``TriageItem`` is mapped back to its ``MailRecord`` by 1-based
     index; unknown actions are clamped to ``user_triage`` and any omitted
     inbox record defaults to ``user_triage``.  Every decision is persisted
@@ -905,7 +905,7 @@ def run_triage_agent(
     Raises:
         TriageError: If the API key is missing or the LLM call fails.
     """
-    records = list_by_status(conn, "inbox")
+    records = list_by_status(conn, "to_read")
     if only_undecided:
         records = [
             record

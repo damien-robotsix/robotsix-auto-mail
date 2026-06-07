@@ -74,7 +74,7 @@ def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
         sender=overrides.get("sender", "alice@example.com"),
         subject=overrides.get("subject", "Hello"),
         date="2025-06-01T12:00:00",
-        status=overrides.get("status", "inbox"),
+        status=overrides.get("status", "to_read"),
         body_plain=overrides.get("body_plain", "Just checking in!"),
     )
     insert_record(conn, record)  # type: ignore[arg-type]
@@ -451,12 +451,12 @@ def test_run_triage_agent_moves_status_column(
         )
         with patcher:
             run_triage_agent(conn)
-        # mail_records.status moved to 'archive' (archive -> archive column).
+        # mail_records.status moved to 'no_action' (archive -> No action).
         row = conn.execute(
             "SELECT status FROM mail_records WHERE message_id = ?",
             ("<a@x.com>",),
         ).fetchone()
-        assert row[0] == "archive"
+        assert row[0] == "no_action"
     finally:
         conn.close()
 
@@ -470,11 +470,11 @@ def test_triage_action_to_status_mapping_coverage(
     assert set(TRIAGE_ACTION_TO_STATUS) == set(VALID_TRIAGE_ACTIONS)
     assert all(v in status.VALID_STATUSES for v in TRIAGE_ACTION_TO_STATUS.values())
     expected = {
-        "archive": "archive",
+        "archive": "no_action",
         "ignore": "done",
-        "delete": "archive",
-        "answer": "triaging",
-        "user_triage": "triaging",
+        "delete": "no_action",
+        "answer": "needs_reply",
+        "user_triage": "to_read",
     }
     for action, column in expected.items():
         conn = init_db(":memory:")
@@ -516,7 +516,7 @@ def test_run_triage_agent_performs_no_imap_calls(
             "SELECT status FROM mail_records WHERE message_id = ?",
             ("<a@x.com>",),
         ).fetchone()
-        assert row[0] == "archive"
+        assert row[0] == "no_action"
         # (b) no IMAP constructor was ever called.
         assert imap4.call_count == 0
         assert imap4_ssl.call_count == 0
