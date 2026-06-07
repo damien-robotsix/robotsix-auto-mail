@@ -85,7 +85,15 @@ _PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
 # Meta env vars / YAML keys excluded from "stale" checks.
 # ---------------------------------------------------------------------------
 
-_ENV_EXCLUDE_STALE: frozenset[str] = frozenset({"MAIL_CONFIG_PATH"})
+_ENV_EXCLUDE_STALE: frozenset[str] = frozenset(
+    {
+        "MAIL_CONFIG_PATH",
+        # Logging env vars are read directly by ``logging_config.setup_logging``
+        # (via ``os.environ``) and are intentionally not ``MailConfig`` fields.
+        "LOG_LEVEL",
+        "LOG_FORMAT",
+    }
+)
 
 
 # ====================================================================
