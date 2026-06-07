@@ -40,7 +40,7 @@ jobs:
       # setup-uv installs uv and a Python matching .python-version, mirroring
       # the convention in ci.yml.
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@v8.2.0
 
       # Install the full dependency graph the same way ci.yml does so the
       # CodeQL Python extractor can resolve third-party imports.

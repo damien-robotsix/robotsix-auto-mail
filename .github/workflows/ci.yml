@@ -23,7 +23,7 @@ jobs:
       # the requested interpreter automatically — so the per-version core
       # checks (lint, mypy, deptry, pytest) run against every supported Python.
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -62,7 +62,7 @@ jobs:
       # supply-chain checks are version-independent, so they run once on the
       # pinned interpreter rather than across the matrix.
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@v8.2.0
 
       # --frozen uses uv.lock as-is and FAILS if pyproject.toml was changed
       # without re-running `uv lock` — guaranteeing the committed lockfile is
