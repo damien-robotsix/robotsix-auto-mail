@@ -133,7 +133,7 @@ modules:
       and config fields for the IMAP and SMTP clients.
     paths:
       - src/robotsix_auto_mail/_base_client.py
-      - tests/test_base_client.py
+      - tests/protocol/test_base_client.py
 
   - id: imap
     description: >-
