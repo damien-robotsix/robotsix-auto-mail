@@ -211,6 +211,7 @@ modules:
       - .github/workflows/codeql.yml
       - .github/workflows/docs.yml
       - .github/workflows/lockfile.yml
+      - .github/workflows/release.yml
       - .pre-commit-config.yaml
       - .secrets.baseline
       - scripts/modules/check_module_registration.py

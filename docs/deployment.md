@@ -246,6 +246,20 @@ interactive process.
 
 ## Production deployment
 
+### Pull the published image
+
+On every `v*` git tag, the [`release.yml`](../.github/workflows/release.yml)
+workflow builds the `Dockerfile` and publishes a semver-tagged image to the
+GitHub Container Registry, complete with SLSA build provenance and an SBOM
+attestation. Instead of building locally you can pull a versioned image
+directly:
+
+```sh
+docker pull ghcr.io/damien-robotsix/robotsix-auto-mail:v1.0.0
+```
+
+Tags follow semver (`v1.0.0`, `1.0`, `1`) plus a commit `sha-<short>` tag.
+
 ### Build the production image
 
 The same `Dockerfile` that works for local development also targets
