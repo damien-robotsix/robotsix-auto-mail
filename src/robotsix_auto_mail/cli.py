@@ -26,6 +26,7 @@ from robotsix_auto_mail.db import (
 )
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
+from robotsix_auto_mail.logging_config import setup_logging
 from robotsix_auto_mail.pipeline import IngestResult, ingest_mail
 from robotsix_auto_mail.smtp_client import (
     SmtpAuthError,
@@ -1211,6 +1212,8 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    setup_logging()
 
     if args.command == "probe":
         return _cmd_probe(_load_config_or_exit())

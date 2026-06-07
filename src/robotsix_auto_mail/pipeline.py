@@ -9,8 +9,9 @@ and advances the watermark only after the full batch.
 from __future__ import annotations
 
 import dataclasses
-import logging
 import sqlite3
+
+import structlog
 
 from robotsix_auto_mail.archive import setup_archive
 from robotsix_auto_mail.config import MailConfig
@@ -20,7 +21,7 @@ from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.parser import parse_message
 from robotsix_auto_mail.triage import run_triage_agent
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -106,7 +107,7 @@ def ingest_mail(
                 api_key=config.llm_api_key,
             )
         except Exception:
-            _logger.exception("Archive setup failed; continuing ingestion")
+            _logger.exception("archive_setup_failed")
 
     # 1. Fetch raw messages (read-only on DB).
     messages = fetch_new_messages(db_conn, imap_client, config)
@@ -191,7 +192,7 @@ def ingest_mail(
             )
             triaged = len(decisions)
         except Exception:
-            _logger.exception("Triage failed; continuing ingestion")
+            _logger.exception("triage_failed")
 
     return IngestResult(
         total_fetched=total_fetched,

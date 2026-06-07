@@ -234,6 +234,8 @@ debug output regardless of how they are supplied.
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
 | `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |
 | `LLM_MODEL` | no | `deepseek/deepseek-v4-flash` | LLM model name (overrides `llm.model`) |
+| `LOG_LEVEL` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `LOG_FORMAT` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
 
 **TLS modes**
 
