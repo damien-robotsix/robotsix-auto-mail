@@ -165,7 +165,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     triage_set_parser.add_argument(
         "action",
-        help="Triage action: answer, archive, delete, ignore, or user_triage.",
+        help="Triage action: answer, waiting, archive, delete, ignore, "
+             "or user_triage.",
     )
 
     triage_rules_parser = sub.add_parser(

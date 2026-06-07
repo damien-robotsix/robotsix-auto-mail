@@ -27,6 +27,7 @@ from robotsix_auto_mail.triage import (
     TriageRule,
     TriageRuleProposal,
     _build_memory_guidance,
+    _build_triage_system_prompt,
     _load_active_rules,
     _load_memory,
     _load_rule_ledger,
@@ -474,6 +475,7 @@ def test_triage_action_to_status_mapping_coverage(
         "ignore": "done",
         "delete": "no_action",
         "answer": "needs_reply",
+        "waiting": "waiting",
         "user_triage": "to_read",
     }
     for action, column in expected.items():
@@ -526,8 +528,14 @@ def test_run_triage_agent_performs_no_imap_calls(
 
 def test_valid_triage_actions_vocabulary() -> None:
     assert VALID_TRIAGE_ACTIONS == frozenset(
-        {"answer", "archive", "delete", "ignore", "user_triage"}
+        {"answer", "archive", "delete", "ignore", "user_triage", "waiting"}
     )
+
+
+def test_build_triage_system_prompt_mentions_waiting() -> None:
+    """The LLM system prompt describes the `waiting` action."""
+    prompt = _build_triage_system_prompt()
+    assert "`waiting`" in prompt
 
 
 # ---------------------------------------------------------------------------
