@@ -18,7 +18,7 @@ import jinja2
 
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
-from robotsix_auto_mail.status import STATUS_ORDER, VALID_STATUSES
+from robotsix_auto_mail.status import STATUS_LABELS, STATUS_ORDER, VALID_STATUSES
 from robotsix_auto_mail.triage import (
     RuleLedgerEntry,
     TriageDecision,
@@ -58,7 +58,7 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; }
   padding-bottom: 0.5rem; border-bottom: 2px solid #ddd;
 }
 .column-header h2 {
-  font-size: 1rem; font-weight: 600; text-transform: capitalize;
+  font-size: 1rem; font-weight: 600;
 }
 .count {
   background: #666; color: #fff; font-size: 0.75rem;
@@ -331,7 +331,7 @@ def _is_safe_redirect_path(location: str) -> bool:
 def _build_board_html(db_path: str) -> str:
     """Build the full ``/board`` HTML document.
 
-    Opens a fresh database connection, queries all four status columns,
+    Opens a fresh database connection, queries all status columns,
     and returns a string.  Raises ``Exception`` when the database cannot
     be opened (the caller should catch it and return a 503).
     """
@@ -413,7 +413,7 @@ def _build_detail_html(
         sel = ' selected' if s == record.status else ''
         options_parts.append(
             f'<option value="{html.escape(s)}"{sel}>'
-            f'{html.escape(s.capitalize())}</option>'
+            f'{html.escape(STATUS_LABELS[s])}</option>'
         )
 
     quoted_mid = quote(record.message_id, safe="")
@@ -533,7 +533,7 @@ def _build_detail_html(
         '</div>\n'
         '<div class="detail-field">'
         '<div class="detail-label">Status</div>'
-        f'<div class="detail-value">{html.escape(record.status.capitalize())}'
+        f'<div class="detail-value">{html.escape(STATUS_LABELS[record.status])}'
         f'{move_form}</div>'
         '</div>\n'
         f'{triage_section}'
@@ -576,7 +576,7 @@ def _render_column(
     triage_by_mid: dict[str, TriageDecision],
 ) -> str:
     """Render a single board column (header + cards) as an HTML string."""
-    title = status.capitalize()
+    title = STATUS_LABELS[status]
     count = len(records)
     cards_html = "".join(
         _render_card(r, triage_by_mid.get(r.message_id)) for r in records
@@ -615,7 +615,7 @@ def _render_card(
         sel = ' selected' if s == record.status else ''
         options_parts.append(
             f'<option value="{html.escape(s)}"{sel}>'
-            f'{html.escape(s.capitalize())}</option>'
+            f'{html.escape(STATUS_LABELS[s])}</option>'
         )
 
     form_html = (

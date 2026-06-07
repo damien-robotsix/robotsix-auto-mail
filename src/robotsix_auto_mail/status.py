@@ -10,10 +10,26 @@ import sqlite3
 
 from robotsix_auto_mail.db import MailRecord, row_to_mailrecord
 
-#: Canonical status order for the kanban board (inbox → triaging → done → archive).
-STATUS_ORDER: tuple[str, ...] = ("inbox", "triaging", "done", "archive")
-#: The four canonical status values, matching the kanban columns.
+#: Canonical status order for the kanban board, organised by the action the
+#: user owes each mail (needs_reply → waiting → to_read → no_action → done).
+STATUS_ORDER: tuple[str, ...] = (
+    "needs_reply",
+    "waiting",
+    "to_read",
+    "no_action",
+    "done",
+)
+#: The canonical status values, matching the kanban columns.
 VALID_STATUSES: frozenset[str] = frozenset(STATUS_ORDER)
+#: Human-readable column labels (status key → board header text), in the same
+#: order as :data:`STATUS_ORDER`.
+STATUS_LABELS: dict[str, str] = {
+    "needs_reply": "Needs reply",
+    "waiting": "Waiting on them",
+    "to_read": "To read",
+    "no_action": "No action",
+    "done": "Done",
+}
 
 
 def get_status(conn: sqlite3.Connection, message_id: str) -> str | None:

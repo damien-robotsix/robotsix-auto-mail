@@ -15,8 +15,19 @@ from pathlib import Path
 
 #: The default status assigned to new ``MailRecord`` instances and used as
 #: the SQL DDL default.  Must be a member of
-#: :data:`robotsix_auto_mail.status.STATUS_ORDER`.
-DEFAULT_STATUS: str = "inbox"
+#: :data:`robotsix_auto_mail.status.STATUS_ORDER`.  Newly-ingested mail lands
+#: in the "To read" column.
+DEFAULT_STATUS: str = "to_read"
+
+#: One-time remap of legacy workflow-internal status values to the new
+#: awaiting-action column set.  Applied at startup by :func:`init_db` so no
+#: row is left with an invalid status.  ``done`` is unchanged and therefore
+#: omitted.
+_LEGACY_STATUS_MIGRATION: dict[str, str] = {
+    "inbox": "to_read",
+    "triaging": "needs_reply",
+    "archive": "no_action",
+}
 
 # ---------------------------------------------------------------------------
 # MailRecord
@@ -103,7 +114,22 @@ def init_db(path: str) -> sqlite3.Connection:
     conn.executescript(_SCHEMA)
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
+    _migrate_legacy_statuses(conn)
     return conn
+
+
+def _migrate_legacy_statuses(conn: sqlite3.Connection) -> None:
+    """Remap any legacy ``mail_records.status`` values to the new column set.
+
+    Idempotent: rows already using the new awaiting-action statuses are left
+    untouched, so this is safe to run on every ``init_db`` call.
+    """
+    for old_status, new_status in _LEGACY_STATUS_MIGRATION.items():
+        conn.execute(
+            "UPDATE mail_records SET status = ? WHERE status = ?",
+            (new_status, old_status),
+        )
+    conn.commit()
 
 
 def insert_record(

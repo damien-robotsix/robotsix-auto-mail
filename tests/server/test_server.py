@@ -73,8 +73,8 @@ def test_render_card_basic() -> None:
     assert 'value="abc"' in html
     assert '<select name="status">' in html
     assert '<button type="submit">Move</button>' in html
-    # Default status (no explicit status → ''), so "inbox" is selected first
-    assert '<option value="inbox" selected' in html
+    # Default status is "to_read", so that option is selected.
+    assert '<option value="to_read" selected' in html
 
 
 def test_render_card_empty_subject() -> None:
@@ -195,7 +195,7 @@ def test_render_card_selected_status() -> None:
     )
     html = _render_card(record)
     assert '<option value="done" selected>Done</option>' in html
-    assert '<option value="inbox">Inbox</option>' in html
+    assert '<option value="to_read">To read</option>' in html
 
 
 def test_render_card_message_id_with_angle_brackets() -> None:
@@ -333,7 +333,7 @@ def test_build_board_html_structure() -> None:
                     "subject": "Subj",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "Body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
                 {
                     "message_id": "m2",
@@ -356,18 +356,22 @@ def test_build_board_html_structure() -> None:
         assert 'class="board"' in html
 
         # Exactly 4 columns
-        assert html.count('class="column"') == 4
+        assert html.count('class="column"') == 5
 
-        # Order: Inbox, Triaging, Done, Archive
-        inbox_pos = html.find("<h2>Inbox</h2>")
-        triaging_pos = html.find("<h2>Triaging</h2>")
+        # Order: Needs reply, Waiting on them, To read, No action, Done
+        needs_reply_pos = html.find("<h2>Needs reply</h2>")
+        waiting_pos = html.find("<h2>Waiting on them</h2>")
+        to_read_pos = html.find("<h2>To read</h2>")
+        no_action_pos = html.find("<h2>No action</h2>")
         done_pos = html.find("<h2>Done</h2>")
-        archive_pos = html.find("<h2>Archive</h2>")
-        assert 0 <= inbox_pos < triaging_pos < done_pos < archive_pos
+        assert (
+            0 <= needs_reply_pos < waiting_pos < to_read_pos
+            < no_action_pos < done_pos
+        )
 
-        # Counts — Inbox:1, Triaging:0, Done:1, Archive:0
+        # Counts — needs_reply:0, waiting:0, to_read:1, no_action:0, done:1
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["1", "0", "1", "0"]
+        assert counts == ["0", "0", "1", "0", "1"]
 
         # Cards
         assert "a@b.com" in html
@@ -384,7 +388,7 @@ def test_build_board_html_empty_db() -> None:
         assert 'class="column"' in html
         # All counts should be 0
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["0", "0", "0", "0"]
+        assert counts == ["0", "0", "0", "0", "0"]
     finally:
         os.unlink(db_path)
 
@@ -430,7 +434,7 @@ def test_build_board_html_body_preview_truncated() -> None:
                     "subject": "Long body",
                     "date": "2025-03-01T00:00:00",
                     "body_plain": long_body,
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -456,7 +460,7 @@ def test_build_board_html_no_body_shows_placeholder() -> None:
                     "subject": "No body",
                     "date": "2025-04-01T00:00:00",
                     "body_plain": "",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -600,7 +604,7 @@ def test_handler_board_with_data() -> None:
                     "subject": "Inbox Msg",
                     "date": "2025-05-01T10:00:00",
                     "body_plain": "Hello",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
                 {
                     "message_id": "m11",
@@ -608,7 +612,7 @@ def test_handler_board_with_data() -> None:
                     "subject": "Triaging Msg",
                     "date": "2025-05-02T10:00:00",
                     "body_plain": "Hi",
-                    "status": "triaging",
+                    "status": "needs_reply",
                 },
                 {
                     "message_id": "m12",
@@ -616,7 +620,7 @@ def test_handler_board_with_data() -> None:
                     "subject": "Archive1",
                     "date": "2025-05-03T10:00:00",
                     "body_plain": "Yo",
-                    "status": "archive",
+                    "status": "no_action",
                 },
                 {
                     "message_id": "m13",
@@ -624,7 +628,7 @@ def test_handler_board_with_data() -> None:
                     "subject": "Archive2",
                     "date": "2025-05-04T10:00:00",
                     "body_plain": "Hey",
-                    "status": "archive",
+                    "status": "no_action",
                 },
             ],
         )
@@ -639,9 +643,9 @@ def test_handler_board_with_data() -> None:
             assert "archive1@test.com" in body
             assert "archive2@test.com" in body
 
-            # Check counts — order: Inbox, Triaging, Done, Archive
+            # Check counts — order: needs_reply, waiting, to_read, no_action, done
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["1", "1", "0", "2"]
+            assert counts == ["1", "0", "1", "2", "0"]
         finally:
             server.shutdown()
     finally:
@@ -661,7 +665,7 @@ def test_handler_xss_prevention() -> None:
                     "subject": "<img onerror=alert(2)>",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "<b>evil</b>",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -940,7 +944,7 @@ def test_move_success_redirects_302() -> None:
                     "subject": "Move test",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -953,9 +957,9 @@ def test_move_success_redirects_302() -> None:
             # Verify the card actually moved by checking /board.
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             board_html = resp.read().decode("utf-8")
-            # Should be in Done column, not Inbox
+            # Should be in Done column, not To read
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "1", "0"], f"Unexpected counts: {counts}"
+            assert counts == ["0", "0", "0", "0", "1"], f"Unexpected counts: {counts}"
         finally:
             server.shutdown()
     finally:
@@ -975,7 +979,7 @@ def test_move_to_triaging() -> None:
                     "subject": "Triaging",
                     "date": "2025-02-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -983,14 +987,14 @@ def test_move_to_triaging() -> None:
         server, port = _start_test_server(db_path)
         try:
             status, _ = _post_form(
-                port, {"message_id": "m-triaging", "status": "triaging"}
+                port, {"message_id": "m-triaging", "status": "needs_reply"}
             )
             assert status == 302
 
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             body = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["0", "1", "0", "0"]
+            assert counts == ["1", "0", "0", "0", "0"]
         finally:
             server.shutdown()
     finally:
@@ -1010,7 +1014,7 @@ def test_move_to_archive() -> None:
                     "subject": "Archive",
                     "date": "2025-03-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1018,14 +1022,14 @@ def test_move_to_archive() -> None:
         server, port = _start_test_server(db_path)
         try:
             status, _ = _post_form(
-                port, {"message_id": "m-archive", "status": "archive"}
+                port, {"message_id": "m-archive", "status": "no_action"}
             )
             assert status == 302
 
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             body = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["0", "0", "0", "1"]
+            assert counts == ["0", "0", "0", "1", "0"]
         finally:
             server.shutdown()
     finally:
@@ -1045,7 +1049,7 @@ def test_move_invalid_status_returns_400() -> None:
                     "subject": "Bad",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1123,7 +1127,7 @@ def test_email_status_returns_200() -> None:
                     "subject": "Status test",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "triaging",
+                    "status": "needs_reply",
                 },
             ],
         )
@@ -1137,7 +1141,7 @@ def test_email_status_returns_200() -> None:
             assert resp.status == 200
             assert resp.headers.get("Content-Type", "").startswith("text/plain")
             body = resp.read().decode("utf-8")
-            assert body == "triaging"
+            assert body == "needs_reply"
         finally:
             server.shutdown()
     finally:
@@ -1173,7 +1177,7 @@ def test_email_path_without_status_suffix_now_returns_detail() -> None:
                     "subject": "Test",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1280,7 +1284,7 @@ def test_build_detail_html_basic() -> None:
                     "subject": "Detail Test Subject",
                     "date": "2025-06-15T14:30:00",
                     "body_plain": "Full body content here.\nLine two.",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1330,7 +1334,7 @@ def test_build_detail_html_empty_body_placeholder() -> None:
                     "subject": "Empty Body",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1357,7 +1361,7 @@ def test_build_detail_html_no_attachments() -> None:
                     "subject": "No Attachments",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1389,7 +1393,7 @@ def test_build_detail_html_no_cc() -> None:
                     "2025-01-01T00:00:00",
                     '{"to": ["a@b.com"], "cc": []}',
                     "body",
-                    "inbox",
+                    "to_read",
                 ),
             )
             conn.commit()
@@ -1420,7 +1424,7 @@ def test_build_detail_html_includes_move_form() -> None:
                     "subject": "Move Detail",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "triaging",
+                    "status": "needs_reply",
                 },
             ],
         )
@@ -1431,7 +1435,7 @@ def test_build_detail_html_includes_move_form() -> None:
         assert 'method="post" action="/move"' in html
         assert 'value="&lt;move-detail@test.com&gt;"' in html
         # Should have the current status pre-selected
-        assert '<option value="triaging" selected>Triaging</option>' in html
+        assert '<option value="needs_reply" selected>Needs reply</option>' in html
     finally:
         os.unlink(db_path)
 
@@ -1455,7 +1459,7 @@ def test_handler_email_detail_returns_200() -> None:
                     "subject": "Handler Detail",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "detail body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1523,7 +1527,7 @@ def test_handler_email_detail_xss_prevention() -> None:
                     "subject": "<img onerror=alert(2)>",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "<b>evil body</b>",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1602,7 +1606,7 @@ def test_handler_email_detail_with_recipients() -> None:
                     "2025-01-01T00:00:00",
                     '{"to": ["alice@x.com", "bob@x.com"], "cc": ["carol@x.com"]}',
                     "body",
-                    "inbox",
+                    "to_read",
                 ),
             )
             conn.commit()
@@ -1646,7 +1650,7 @@ def test_handler_email_detail_with_attachments() -> None:
                         '[{"filename": "doc.pdf", "size": 2048}, '
                         '{"filename": "img.png", "size": 512}]'
                     ),
-                    "inbox",
+                    "to_read",
                 ),
             )
             conn.commit()
@@ -1688,7 +1692,7 @@ def test_handler_email_detail_html_version_note() -> None:
                     "2025-01-01T00:00:00",
                     "plain text",
                     "<p>HTML content</p>",
-                    "inbox",
+                    "to_read",
                 ),
             )
             conn.commit()
@@ -1730,7 +1734,7 @@ def test_build_detail_html_embed_no_full_page_chrome() -> None:
                     "subject": "Embed Test Subject",
                     "date": "2025-06-15T14:30:00",
                     "body_plain": "Embed body content.",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1771,7 +1775,7 @@ def test_build_detail_html_embed_has_redirect_to() -> None:
                     "subject": "Redirect Embed",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "triaging",
+                    "status": "needs_reply",
                 },
             ],
         )
@@ -1898,7 +1902,7 @@ def test_move_with_redirect_to() -> None:
                     "subject": "Redirect test",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1918,7 +1922,7 @@ def test_move_with_redirect_to() -> None:
             # Also verify normal redirect still works (no redirect_to)
             status2, _body2 = _post_form(
                 port,
-                {"message_id": "redirect-me", "status": "triaging"},
+                {"message_id": "redirect-me", "status": "needs_reply"},
             )
             assert status2 == 302
         finally:
@@ -1941,7 +1945,7 @@ def test_move_with_empty_redirect_to_falls_back_to_board() -> None:
                     "subject": "Fallback test",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -1964,7 +1968,7 @@ def test_move_with_empty_redirect_to_falls_back_to_board() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             board_html = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "1", "0"]
+            assert counts == ["0", "0", "0", "0", "1"]
         finally:
             server.shutdown()
     finally:
@@ -1985,7 +1989,7 @@ def _move_and_get_location(redirect_to: str) -> HTTPResponse:
                     "subject": "Evil test",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -2055,7 +2059,7 @@ def test_handler_email_detail_embed_returns_fragment() -> None:
                     "subject": "Embed Handler",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "embed handler body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -2324,7 +2328,7 @@ def test_build_board_html_shows_triage_badge() -> None:
                     "subject": "Subj",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "Body",
-                    "status": "archive",
+                    "status": "no_action",
                 },
             ],
         )
@@ -2351,7 +2355,7 @@ def test_build_board_html_no_badge_without_decision() -> None:
                     "subject": "Subj",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "Body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )
@@ -2408,7 +2412,7 @@ def test_build_detail_html_shows_triage_field() -> None:
                     "subject": "Triage Detail",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "triaging",
+                    "status": "needs_reply",
                 },
             ],
         )
@@ -2442,7 +2446,7 @@ def test_build_detail_html_no_triage_decision() -> None:
                     "subject": "No Triage",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "body",
-                    "status": "inbox",
+                    "status": "to_read",
                 },
             ],
         )

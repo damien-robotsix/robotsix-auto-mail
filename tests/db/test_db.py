@@ -41,7 +41,7 @@ def test_mailrecord_required_fields() -> None:
     assert record.body_plain == ""
     assert record.body_html == ""
     assert record.attachments_json == "[]"
-    assert record.status == "inbox"
+    assert record.status == "to_read"
     assert record.id == 0
 
 
@@ -71,7 +71,7 @@ def test_mailrecord_all_fields_explicit() -> None:
         attachments_json='[{"filename": "a.pdf", "size": 1024}]',
         id=0,
     )
-    assert record.status == "inbox"
+    assert record.status == "to_read"
     assert record.imap_uid == 42
     assert record.recipients_json == '{"to": ["x@x.com"], "cc": ["y@y.com"]}'
     assert record.body_plain == "Hello world"
@@ -86,9 +86,9 @@ def test_mailrecord_status_explicit() -> None:
         sender="x@x.com",
         subject="S",
         date="2025-01-01",
-        status="triaging",
+        status="needs_reply",
     )
-    assert record.status == "triaging"
+    assert record.status == "needs_reply"
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +178,54 @@ def test_init_db_idempotent() -> None:
         conn.close()
 
 
+def test_init_db_migrates_legacy_statuses(tmp_db_path: str) -> None:
+    """init_db remaps legacy status values to the new awaiting-action set.
+
+    inbox→to_read, triaging→needs_reply, archive→no_action; done is left
+    unchanged.  After migration no legacy value remains.
+    """
+    conn = init_db(tmp_db_path)
+    try:
+        legacy = {
+            "<inbox@x.com>": "inbox",
+            "<triaging@x.com>": "triaging",
+            "<archive@x.com>": "archive",
+            "<done@x.com>": "done",
+        }
+        for mid, status in legacy.items():
+            conn.execute(
+                "INSERT INTO mail_records "
+                "(message_id, sender, subject, date, recipients_json, "
+                "body_plain, body_html, attachments_json, status) "
+                "VALUES (?, 's@x.com', 'S', 'd', '{}', '', '', '[]', ?)",
+                (mid, status),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Re-open: the startup migration should rewrite the legacy values.
+    conn = init_db(tmp_db_path)
+    try:
+        rows = dict(
+            conn.execute("SELECT message_id, status FROM mail_records").fetchall()
+        )
+        assert rows == {
+            "<inbox@x.com>": "to_read",
+            "<triaging@x.com>": "needs_reply",
+            "<archive@x.com>": "no_action",
+            "<done@x.com>": "done",
+        }
+        # No row left with a legacy/invalid status.
+        leftover = conn.execute(
+            "SELECT COUNT(*) FROM mail_records "
+            "WHERE status IN ('inbox', 'triaging', 'archive')"
+        ).fetchone()[0]
+        assert leftover == 0
+    finally:
+        conn.close()
+
+
 _SCHEMA_AGAIN = """
 CREATE TABLE IF NOT EXISTS mail_records (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -190,7 +238,7 @@ CREATE TABLE IF NOT EXISTS mail_records (
     body_plain      TEXT    NOT NULL,
     body_html       TEXT    NOT NULL,
     attachments_json TEXT   NOT NULL,
-    status          TEXT    NOT NULL DEFAULT 'inbox'
+    status          TEXT    NOT NULL DEFAULT 'to_read'
 );
 
 CREATE TABLE IF NOT EXISTS watermark (
@@ -250,7 +298,7 @@ def test_insert_record_persists_data() -> None:
         assert data["body_plain"] == "Hi Bob"
         assert data["body_html"] == "<p>Hi Bob</p>"
         assert data["attachments_json"] == '[{"name": "file.txt"}]'
-        assert data["status"] == "inbox"
+        assert data["status"] == "to_read"
     finally:
         conn.close()
 
@@ -457,7 +505,7 @@ def test_list_records_returns_all_fields() -> None:
             '[{"filename": "f1.pdf", "size": 2048}, '
             '{"filename": "f2.txt", "size": 512}]'
         )
-        assert r.status == "inbox"
+        assert r.status == "to_read"
         assert r.id is not None and r.id > 0
     finally:
         conn.close()
@@ -542,7 +590,7 @@ def test_get_record_by_message_id_found() -> None:
             body_plain="Plain text here.",
             body_html="<p>HTML here.</p>",
             attachments_json='[{"filename": "doc.pdf", "size": 512}]',
-            status="triaging",
+            status="needs_reply",
         )
         insert_record(conn, record)
 
@@ -557,7 +605,7 @@ def test_get_record_by_message_id_found() -> None:
         assert result.body_plain == "Plain text here."
         assert result.body_html == "<p>HTML here.</p>"
         assert result.attachments_json == '[{"filename": "doc.pdf", "size": 512}]'
-        assert result.status == "triaging"
+        assert result.status == "needs_reply"
         assert result.id > 0
     finally:
         conn.close()
