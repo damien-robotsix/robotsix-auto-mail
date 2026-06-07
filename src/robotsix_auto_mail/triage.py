@@ -1,9 +1,9 @@
 """LLM-driven inbox triage agent and local triage-decision persistence.
 
 The triage agent classifies each ingested inbox ``MailRecord`` into an
-*action status* — ``answer`` / ``archive`` / ``delete`` / ``ignore``, with
-``user_triage`` as the explicit "the system does not know what to do"
-fallback.  These action statuses are stored in the ``triage_decisions``
+*action status* — ``answer`` / ``waiting`` / ``archive`` / ``delete`` /
+``ignore``, with ``user_triage`` as the explicit "the system does not know
+what to do" fallback.  These action statuses are stored in the ``triage_decisions``
 table AND, in addition, a triage decision now moves the mail's card on the
 local kanban board by writing the ``status`` column owned by
 :mod:`robotsix_auto_mail.status` via :func:`robotsix_auto_mail.status.set_status`.
@@ -44,7 +44,7 @@ from robotsix_auto_mail.status import list_by_status, set_status
 #: Canonical triage action vocabulary.  ``user_triage`` is the explicit
 #: fallback meaning "the system does not know what to do".
 VALID_TRIAGE_ACTIONS = frozenset(
-    {"answer", "archive", "delete", "ignore", "user_triage"}
+    {"answer", "archive", "delete", "ignore", "user_triage", "waiting"}
 )
 
 #: Maps each triage action to the kanban column its card moves to.
@@ -54,6 +54,7 @@ TRIAGE_ACTION_TO_STATUS: dict[str, str] = {
     "ignore": "done",
     "delete": "no_action",  # user does NOT want real deletion — board column only
     "answer": "needs_reply",  # needs a human reply
+    "waiting": "waiting",  # you replied/acted; now awaiting the other party
     "user_triage": "to_read",  # system unsure → human reads/decides
 }
 
@@ -830,6 +831,8 @@ def _build_triage_system_prompt() -> str:
         "action status:\n"
         "\n"
         "- `answer`: the message needs a personal reply.\n"
+        "- `waiting`: you have already replied or acted and are now awaiting "
+        "a response/action from the other party.\n"
         "- `archive`: keep the message for reference but no reply is needed.\n"
         "- `delete`: the message is junk / worthless and can be discarded.\n"
         "- `ignore`: no action is needed and it need not be kept.\n"
