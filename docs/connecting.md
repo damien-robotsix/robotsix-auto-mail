@@ -499,11 +499,11 @@ $ robotsix-auto-mail serve
 ### The board page
 
 Open `http://localhost:<port>/board` in a browser.  The page shows ingested
-mail in **four columns** — Inbox, Triaging, Done, Archive — each with a card
+mail in **five columns** — Needs reply, Waiting on them, To read, No action, Done — each with a card
 count badge.  Every mail card has a **Move** dropdown that lets you change
 the card's status column via `POST /move`.
 
-**Rule proposals section.**  Above the four-column board, a **Rule proposals**
+**Rule proposals section.**  Above the board, a **Rule proposals**
 section displays any pending deterministic-rule proposals waiting for human
 validation. Each proposal shows:
 - the human-readable title (e.g. "Triage mail from alice@example.com as archive")
@@ -540,7 +540,7 @@ auto-refreshes every 30 seconds.
 | | `board` | `serve` |
 |---|---|---|
 | **Output** | Plain text to stdout | HTML page in a browser |
-| **Layout** | Single Inbox column | Four columns (Inbox, Triaging, Done, Archive) |
+| **Layout** | Single "To read" column | Five columns (Needs reply, Waiting on them, To read, No action, Done) |
 | **Lifetime** | One-shot — prints and exits | Persistent HTTP daemon |
 | **Interaction** | Read-only | Move dropdowns (`POST /move`) |
 | **Refresh** | Manual (re-run the command) | Automatic (30-second meta refresh) |
@@ -890,16 +890,16 @@ in the original mailbox. The agent defaults uncertain cases to `user_triage`
 
 | Status | Meaning | Board column |
 |---|---|---|
-| `answer` | The message needs a personal reply | Triaging |
-| `archive` | Keep the message for reference but no reply needed | Archive |
-| `delete` | The message is junk / worthless and can be discarded | Archive |
+| `answer` | The message needs a personal reply | Needs reply |
+| `archive` | Keep the message for reference but no reply needed | No action |
+| `delete` | The message is junk / worthless and can be discarded | No action |
 | `ignore` | No action needed and it need not be kept | Done |
-| `user_triage` | The system is not confident — defer to a human | Triaging |
+| `user_triage` | The system is not confident — defer to a human | To read |
 
 Each action automatically moves the card to its mapped board column. The
-kanban board has four columns — Inbox, Triaging, Done, and Archive — and a
-triage decision always places the card in one of these four columns. Note
-that `delete` moves the card to the Archive column (a board move only, not an
+kanban board has five columns — Needs reply, Waiting on them, To read, No action, and Done — and a
+triage decision always places the card in one of these five columns. Note
+that `delete` moves the card to the No action column (a board move only, not an
 IMAP deletion).
 
 ### Human-decision memory
