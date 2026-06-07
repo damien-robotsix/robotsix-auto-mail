@@ -236,7 +236,7 @@ def set_finding_state(
 
 def _default_repo_root() -> Path:
     """Return the repo root, resolved the same way the checker does."""
-    return Path(__file__).resolve().parent.parent.parent
+    return Path(__file__).resolve().parent.parent.parent.parent
 
 
 def _render_mailconfig_surface() -> str:

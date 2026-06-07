@@ -56,27 +56,19 @@ modules:
   - id: config
     description: >-
       Configuration loading (YAML file + env), config template,
-      and the drift-detection script that keeps the MailConfig
-      dataclass, env example, YAML example, and connecting docs
-      in sync.
+      the deterministic drift-detection script, and the optional
+      LLM-driven drift-advisory agent. Together they keep the
+      MailConfig dataclass, env example, YAML example, and
+      connecting docs in sync.
     paths:
       - src/robotsix_auto_mail/config/__init__.py
+      - src/robotsix_auto_mail/config/config_sync_agent.py
       - tests/config/test_config.py
       - .env.example
       - config/.gitkeep
       - config/mail.local.example.yaml
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
-
-  - id: config_sync
-    description: >-
-      Optional LLM-driven config-drift advisory agent: reads the four
-      config surfaces (MailConfig, YAML template, .env.example,
-      connecting docs) and emits human-readable drift proposals.
-      Complements (does not replace) the deterministic
-      check_config_sync gate.
-    paths:
-      - src/robotsix_auto_mail/config_sync.py
       - tests/config/test_config_sync_agent.py
 
   - id: triage

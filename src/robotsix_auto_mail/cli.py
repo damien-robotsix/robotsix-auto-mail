@@ -890,7 +890,7 @@ def _cmd_config_sync(args: argparse.Namespace) -> int:
     pydantic_ai, ConfigSyncError, missing API key).
     """
     try:
-        from robotsix_auto_mail.config_sync import (
+        from robotsix_auto_mail.config.config_sync_agent import (
             ConfigSyncError,
             run_config_sync_agent,
         )
@@ -1134,7 +1134,7 @@ def _cmd_config_sync_set(args: argparse.Namespace) -> int:
     invalid.
     """
     try:
-        from robotsix_auto_mail.config_sync import (
+        from robotsix_auto_mail.config.config_sync_agent import (
             _VALID_LEDGER_STATES,
             ConfigSyncError,
             set_finding_state,

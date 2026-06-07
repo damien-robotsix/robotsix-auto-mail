@@ -12,7 +12,7 @@ a local-only board, so moving a card never touches the original mailbox (no
 archive / delete / move / expunge / append / store).
 
 The ``pydantic_ai`` import is lazy to keep module-load time low, mirroring
-:mod:`robotsix_auto_mail.config_sync`.
+:mod:`robotsix_auto_mail.config.config_sync_agent`.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ _VALID_TRIAGE_SOURCES = frozenset({"agent", "user"})
 #: Watermark key owned by this module for the persistent human-decision
 #: memory.  The memory is persisted in ``db.py``'s ``watermark`` key-value
 #: table — NOT a separate on-disk file — using the same ``json.dumps`` /
-#: ``json.loads`` round-trip :mod:`robotsix_auto_mail.config_sync` uses for
+#: ``json.loads`` round-trip :mod:`robotsix_auto_mail.config.config_sync_agent` uses for
 #: its dedup ledger.  Reusing the watermark table keeps a single storage
 #: mechanism and a single DB file instead of a parallel format.
 _MEMORY_WATERMARK_KEY = "triage_human_memory"
@@ -76,12 +76,12 @@ _VALID_CONFIDENCE_LEVELS = frozenset({"low", "medium", "high"})
 _VALID_RULE_MATCH_TYPES = frozenset({"sender", "domain", "subject_contains"})
 
 #: Accepted :class:`RuleLedgerEntry` states.  All three suppress re-proposal
-#: of a rule once it has been recorded (mirrors ``config_sync`` vocabulary).
+#: of a rule once it has been recorded (mirrors ``config_sync_agent`` vocabulary).
 _VALID_RULE_STATES = frozenset({"pending", "accepted", "rejected"})
 
 #: Watermark key owned by this module for the rule-proposal dedup ledger.
 #: Persisted in ``db.py``'s ``watermark`` key-value table as JSON (no new
-#: tables / files), mirroring :mod:`robotsix_auto_mail.config_sync`.
+#: tables / files), mirroring :mod:`robotsix_auto_mail.config.config_sync_agent`.
 _RULE_LEDGER_WATERMARK_KEY = "triage_rules_ledger"
 
 #: Watermark key owned by this module for the accepted (active) rules list.
@@ -536,7 +536,7 @@ def _rule_fingerprint(rule: TriageRule) -> str:
     action)`` — each stripped and lower-cased — and hashed with SHA-256.
     Presentation fields (``title`` / ``body`` / ``confidence``) are
     deliberately EXCLUDED so a reworded proposal keeps the same identity,
-    mirroring :func:`config_sync._proposal_fingerprint`.
+    mirroring :func:`config_sync_agent._proposal_fingerprint`.
     """
     raw = (
         f"{rule.match_type.strip().lower()}"
@@ -699,7 +699,7 @@ def record_and_filter_rule_proposals(
     ANY state — ``pending`` / ``accepted`` / ``rejected`` all suppress
     re-proposal.  New proposals are recorded as ``pending`` and returned in
     input order; the ledger is only written when there is something new,
-    mirroring :func:`config_sync.record_and_filter_proposals`.
+    mirroring :func:`config_sync_agent.record_and_filter_proposals`.
     """
     ledger = _load_rule_ledger(conn)
     new_proposals: list[TriageRuleProposal] = []

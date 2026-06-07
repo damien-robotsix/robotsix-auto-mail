@@ -16,7 +16,7 @@ import pytest
 
 from robotsix_auto_mail.cli import _VerifyResult, build_parser, main
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.config_sync import (
+from robotsix_auto_mail.config.config_sync_agent import (
     ConfigSyncError,
     ConfigSyncResult,
     DriftProposal,
@@ -1424,7 +1424,7 @@ def _patch_config_sync_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     return mock.patch(
-        "robotsix_auto_mail.config_sync.OpenRouterDeepseekProvider",
+        "robotsix_auto_mail.config.config_sync_agent.OpenRouterDeepseekProvider",
         return_value=mock_provider,
     )
 
@@ -1511,7 +1511,7 @@ def test_config_sync_error_path(
 ) -> None:
     """A ConfigSyncError returns 1 and writes an Error: line to stderr."""
     with mock.patch(
-        "robotsix_auto_mail.config_sync.run_config_sync_agent",
+        "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
         side_effect=ConfigSyncError("surface read failed"),
     ):
         rc = main(["config-sync"])
@@ -1547,7 +1547,7 @@ def test_config_sync_dedup_forwards_conn(
         db_path=str(tmp_path / "ledger.db"),
     )
     with mock.patch(
-        "robotsix_auto_mail.config_sync.run_config_sync_agent",
+        "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
         return_value=ConfigSyncResult(proposals=[]),
     ) as mock_agent, mock.patch(
         "robotsix_auto_mail.cli.load", return_value=cfg_with_db
@@ -1572,7 +1572,7 @@ def test_config_sync_set_success(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """config-sync-set transitions a known finding and exits 0."""
-    from robotsix_auto_mail.config_sync import (
+    from robotsix_auto_mail.config.config_sync_agent import (
         _load_ledger,
         _proposal_fingerprint,
         record_and_filter_proposals,

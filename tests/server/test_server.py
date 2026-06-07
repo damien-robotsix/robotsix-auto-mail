@@ -2133,7 +2133,10 @@ def test_config_sync_success_returns_200_json() -> None:
     import json as _json
     from unittest import mock
 
-    from robotsix_auto_mail.config_sync import ConfigSyncResult, DriftProposal
+    from robotsix_auto_mail.config.config_sync_agent import (
+        ConfigSyncResult,
+        DriftProposal,
+    )
 
     fake_result = ConfigSyncResult(
         proposals=[
@@ -2154,7 +2157,7 @@ def test_config_sync_success_returns_200_json() -> None:
         server, port = _start_test_server(db_path)
         try:
             with mock.patch(
-                "robotsix_auto_mail.config_sync.run_config_sync_agent",
+                "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
                 return_value=fake_result,
             ) as mocked:
                 req = urllib.request.Request(
@@ -2192,7 +2195,7 @@ def test_config_sync_error_returns_503_json() -> None:
     import json as _json
     from unittest import mock
 
-    from robotsix_auto_mail.config_sync import ConfigSyncError
+    from robotsix_auto_mail.config.config_sync_agent import ConfigSyncError
 
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
@@ -2200,7 +2203,7 @@ def test_config_sync_error_returns_503_json() -> None:
         server, port = _start_test_server(db_path)
         try:
             with mock.patch(
-                "robotsix_auto_mail.config_sync.run_config_sync_agent",
+                "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
                 side_effect=ConfigSyncError("No LLM API key found"),
             ):
                 status, body = _post_config_sync(port)

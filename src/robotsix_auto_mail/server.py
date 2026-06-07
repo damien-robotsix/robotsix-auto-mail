@@ -898,7 +898,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         with a JSON error body (never a traceback).
         """
         try:
-            from robotsix_auto_mail.config_sync import (
+            from robotsix_auto_mail.config.config_sync_agent import (
                 ConfigSyncError,
                 run_config_sync_agent,
             )
