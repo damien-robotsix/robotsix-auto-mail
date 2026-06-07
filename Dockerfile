@@ -1,9 +1,9 @@
-ARG BASE_DIGEST=sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203
+ARG BASE_DIGEST=sha256:c845af9399020c7e562969a13689e929074a10fd057acd1b1fad06a2fb068e97
 
 # ---------------------------------------------------------------------------
 # Builder stage — builds the wheel and installs the package
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim@${BASE_DIGEST} AS builder
+FROM python:3.14-slim@${BASE_DIGEST} AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -25,16 +25,16 @@ COPY pyproject.toml .
 COPY src/ src/
 
 # --system installs into the image's system Python (the same
-# /usr/local/lib/python3.12/site-packages/ path the production
+# /usr/local/lib/python3.14/site-packages/ path the production
 # stage copies from), matching the previous `pip install` layout.
 RUN uv pip install --system --no-cache-dir ".[llm]"
 
 # ---------------------------------------------------------------------------
 # Production stage — minimal runtime image with only the installed artifacts
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim@${BASE_DIGEST} AS production
+FROM python:3.14-slim@${BASE_DIGEST} AS production
 
-COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+COPY --from=builder /usr/local/lib/python3.14/site-packages/ /usr/local/lib/python3.14/site-packages/
 COPY --from=builder /usr/local/bin/robotsix-auto-mail /usr/local/bin/robotsix-auto-mail
 
 RUN groupadd --gid 1000 mailbot && \
