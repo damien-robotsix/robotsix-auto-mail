@@ -16,7 +16,7 @@ jobs:
         python-version: ["3.14"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Passing python-version to setup-uv sets UV_PYTHON for the job,
       # overriding the pinned .python-version, and setup-uv downloads + caches
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # setup-uv installs uv and a Python matching .python-version, so a
       # separate actions/setup-python step is no longer needed. These

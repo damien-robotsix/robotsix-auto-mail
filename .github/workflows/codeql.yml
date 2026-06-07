@@ -27,7 +27,7 @@ jobs:
         language: ["python"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # NOTE: GitHub Actions `needs:` only links jobs WITHIN the same
       # workflow file, so this standalone codeql.yml cannot `needs: verify`
