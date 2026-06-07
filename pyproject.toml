@@ -32,6 +32,10 @@ dev = [
 llm = [
     "robotsix-llmio[openrouter-deepseek]",
 ]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+]
 
 [tool.ruff]
 target-version = "py312"
@@ -64,7 +68,7 @@ packages = ["src/robotsix_auto_mail"]
 # pytest, hatchling, types-PyYAML, robotsix-llmio, deptry) as dev-only.
 # Dev deps are exempt from DEP002 (unused) regardless of whether tests/
 # actually imports them.
-optional_dependencies_dev_groups = ["dev"]
+optional_dependencies_dev_groups = ["dev", "docs"]
 
 [tool.deptry.per_rule_ignores]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter-deepseek]

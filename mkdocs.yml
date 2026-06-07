@@ -1,0 +1,25 @@
+site_name: robotsix-auto-mail
+site_description: Automated mail ingestion, triage, and board for robotsix-auto-mail.
+repo_url: https://github.com/damien-robotsix/robotsix-auto-mail
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - content.code.copy
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Ingestion: ingestion.md
+  - Connecting: connecting.md
+  - Deployment: deployment.md
+  - Testing: testing.md
+  - Troubleshooting: troubleshooting.md
+  - Contributing: CONTRIBUTING.md
+  - Changelog: CHANGELOG.md
+  - Decisions:
+      - 0001 — Programming language: decisions/0001-programming-language.md
