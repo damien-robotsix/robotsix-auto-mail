@@ -43,6 +43,19 @@ read-only view are documented in [docs/connecting.md](docs/connecting.md).
 - [docs/troubleshooting.md](docs/troubleshooting.md) — diagnosing
   connection, TLS, and authentication failures.
 
+## Documentation site
+
+Project documentation is published as a browsable site on GitHub Pages (see the [GitHub Pages settings](https://github.com/damien-robotsix/robotsix-auto-mail/settings/pages) to enable it).
+
+To build and serve documentation locally during development:
+
+```sh
+uv sync --frozen --extra docs
+uv run --frozen mkdocs serve
+```
+
+Then open http://localhost:8000 in your browser. The site will auto-reload as you edit markdown files in the `docs/` directory.
+
 ## Development
 
 This repository uses [pre-commit](https://pre-commit.com) to lint and
