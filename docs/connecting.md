@@ -520,8 +520,8 @@ board displays them read-only and offers no way to *generate* new proposals (tha
 remains a CLI / scheduled-task responsibility).
 
 **Triage badges.**  When a mail record has a triage decision, the card displays a
-small **triage badge** showing the action label (one of `answer`, `archive`,
-`delete`, `ignore`, or `user_triage`) with the decision reason visible in a
+small **triage badge** showing the action label (one of `answer`, `waiting`,
+`archive`, `delete`, `ignore`, or `user_triage`) with the decision reason visible in a
 tooltip when you hover over the badge. Cards without a triage decision show no
 badge.
 
@@ -891,6 +891,7 @@ in the original mailbox. The agent defaults uncertain cases to `user_triage`
 | Status | Meaning | Board column |
 |---|---|---|
 | `answer` | The message needs a personal reply | Needs reply |
+| `waiting` | You have already replied or acted; now awaiting a response/action from the other party | Waiting on them |
 | `archive` | Keep the message for reference but no reply needed | No action |
 | `delete` | The message is junk / worthless and can be discarded | No action |
 | `ignore` | No action needed and it need not be kept | Done |
@@ -977,7 +978,7 @@ occur.
 | Argument | Purpose |
 |---|---|
 | `<message_id>` | The Message-ID of the mail to triage (from `board` or `triage` output) |
-| `<action>` | The action status: `answer`, `archive`, `delete`, `ignore`, or `user_triage` |
+| `<action>` | The action status: `answer`, `waiting`, `archive`, `delete`, `ignore`, or `user_triage` |
 
 ### Examples
 
