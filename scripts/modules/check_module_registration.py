@@ -31,7 +31,7 @@ import yaml
 # Vendored third-party code (``vendor/``) is intentionally not registered
 # as a module because it is externally maintained and not subject to the
 # project's own module taxonomy.
-_UNCLASSIFIED_EXEMPT_PREFIXES: tuple[str, ...] = ("vendor/", "pip-packages/")
+_UNCLASSIFIED_EXEMPT_PREFIXES: tuple[str, ...] = ("vendor/",)
 # ---------------------------------------------------------------------------
 # Repo location helpers.
 # ---------------------------------------------------------------------------
