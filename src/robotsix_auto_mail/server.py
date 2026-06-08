@@ -16,17 +16,20 @@ from urllib.parse import parse_qs, quote, unquote
 
 import jinja2
 
-from robotsix_auto_mail.db import MailRecord
+from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.status import STATUS_LABELS, STATUS_ORDER, VALID_STATUSES
 from robotsix_auto_mail.triage import (
+    TRIAGE_ACTION_TO_STATUS,
     RuleLedgerEntry,
     TriageDecision,
     TriageError,
     get_triage_decision,
     list_rule_proposals,
     list_triage_decisions,
+    record_human_decision,
     set_rule_state,
+    set_triage_decision,
 )
 
 # Jinja2 environment for the board/detail pages.  ``autoescape`` is enabled
@@ -39,6 +42,17 @@ from robotsix_auto_mail.triage import (
 _JINJA_ENV = jinja2.Environment(autoescape=True)
 
 _BOARD_COLUMNS = STATUS_ORDER
+
+#: Reverse mapping from kanban status column to the triage action a human
+#: move represents.  Used by ``_handle_move`` so a POST to ``/move``
+#: creates (or updates) a ``triage_decisions`` row.
+_STATUS_TO_TRIAGE_ACTION: dict[str, str] = {
+    "needs_reply": "answer",
+    "waiting": "waiting",
+    "to_read": "user_triage",
+    "no_action": "archive",
+    "done": "ignore",
+}
 
 _CSS = """\
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,16 +78,6 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; }
   background: #666; color: #fff; font-size: 0.75rem;
   font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px;
 }
-.triage-badge {
-  display: inline-block; background: #555; color: #fff;
-  font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
-  padding: 0.1rem 0.4rem; border-radius: 999px; cursor: help;
-}
-.triage-answer { background: #2563eb; }
-.triage-archive { background: #6b7280; }
-.triage-delete { background: #b91c1c; }
-.triage-ignore { background: #9ca3af; }
-.triage-user_triage { background: #d97706; }
 .cards { display: flex; flex-direction: column; gap: 0.5rem; }
 .card {
   background: #fff; border: 1px solid #ddd;
@@ -331,25 +335,40 @@ def _is_safe_redirect_path(location: str) -> bool:
 def _build_board_html(db_path: str) -> str:
     """Build the full ``/board`` HTML document.
 
-    Opens a fresh database connection, queries all status columns,
-    and returns a string.  Raises ``Exception`` when the database cannot
-    be opened (the caller should catch it and return a 503).
+    Opens a fresh database connection, gathers every mail record and
+    buckets them into kanban columns based on each record's triage
+    decision.  Cards with no triage decision land in the ``"to_read"``
+    column.  Raises ``Exception`` when the database cannot be opened
+    (the caller should catch it and return a 503).
     """
     from robotsix_auto_mail.db import init_db
-    from robotsix_auto_mail.status import list_by_status
 
     conn = init_db(db_path)
     try:
-        # Gather records per status in fixed column order.
-        columns: list[tuple[str, list[MailRecord]]] = []
-        for status in _BOARD_COLUMNS:
-            records = list_by_status(conn, status)
-            columns.append((status, records))
-        # Read every triage decision once and key it by message_id so each
-        # card can show its advisory action without a per-card query.
+        # Gather every record and every triage decision once.
+        all_records = list_records(conn)
         triage_by_mid: dict[str, TriageDecision] = {
-            decision.message_id: decision for decision in list_triage_decisions(conn)
+            decision.message_id: decision
+            for decision in list_triage_decisions(conn)
         }
+        # Bucket records into columns by triage-decision action →
+        # status mapping.  Untriaged records go in ``"to_read"``.
+        column_buckets: dict[str, list[MailRecord]] = {
+            status: [] for status in _BOARD_COLUMNS
+        }
+        for record in all_records:
+            decision = triage_by_mid.get(record.message_id)
+            if decision is not None:
+                column = TRIAGE_ACTION_TO_STATUS.get(
+                    decision.action, "to_read"
+                )
+            else:
+                column = "to_read"
+            column_buckets[column].append(record)
+
+        columns: list[tuple[str, list[MailRecord]]] = [
+            (status, column_buckets[status]) for status in _BOARD_COLUMNS
+        ]
         # List (read-only) the pending deterministic-rule proposals so the
         # board can surface them for human validation.
         proposals = list_rule_proposals(conn, "pending")
@@ -358,7 +377,8 @@ def _build_board_html(db_path: str) -> str:
 
     # Build column HTML fragments.
     columns_html_parts = [
-        _render_column(status, records, triage_by_mid) for status, records in columns
+        _render_column(status, records, triage_by_mid)
+        for status, records in columns
     ]
 
     return _BOARD_TEMPLATE.render(
@@ -407,10 +427,16 @@ def _build_detail_html(
     if not isinstance(attachments, list):
         attachments = []
 
-    # Status options
+    # Status options — drive from triage decision, not mail_records.status.
+    if triage_decision is not None:
+        current_status = TRIAGE_ACTION_TO_STATUS.get(
+            triage_decision.action, "to_read"
+        )
+    else:
+        current_status = "to_read"
     options_parts: list[str] = []
     for s in STATUS_ORDER:
-        sel = ' selected' if s == record.status else ''
+        sel = ' selected' if s == current_status else ''
         options_parts.append(
             f'<option value="{html.escape(s)}"{sel}>'
             f'{html.escape(STATUS_LABELS[s])}</option>'
@@ -533,7 +559,7 @@ def _build_detail_html(
         '</div>\n'
         '<div class="detail-field">'
         '<div class="detail-label">Status</div>'
-        f'<div class="detail-value">{html.escape(STATUS_LABELS[record.status])}'
+        f'<div class="detail-value">{html.escape(STATUS_LABELS[current_status])}'
         f'{move_form}</div>'
         '</div>\n'
         f'{triage_section}'
@@ -609,10 +635,19 @@ def _render_card(
     else:
         body_html = html.escape(body)
 
-    # Build status dropdown with current status pre-selected.
+    # Determine which column this card is currently in based on its
+    # triage decision (or "to_read" when no decision exists).
+    if decision is not None:
+        current_status = TRIAGE_ACTION_TO_STATUS.get(
+            decision.action, "to_read"
+        )
+    else:
+        current_status = "to_read"
+
+    # Build status dropdown with the current column pre-selected.
     options_parts: list[str] = []
     for s in _BOARD_COLUMNS:
-        sel = ' selected' if s == record.status else ''
+        sel = ' selected' if s == current_status else ''
         options_parts.append(
             f'<option value="{html.escape(s)}"{sel}>'
             f'{html.escape(STATUS_LABELS[s])}</option>'
@@ -627,22 +662,12 @@ def _render_card(
         '</form>'
     )
 
-    # Read-only triage badge: action label with the reason in a tooltip.
-    if decision is not None:
-        badge = (
-            f'<span class="triage-badge triage-{html.escape(decision.action)}"'
-            f' title="{html.escape(decision.reason or "")}">'
-            f'{html.escape(decision.action)}</span>'
-        )
-    else:
-        badge = ''
-
     return (
         f'<div class="card" data-message-id="{quoted_mid}"'
         f' data-subject="{subject_attr}">'
         f'<div class="sender">{sender}</div>'
         f'<div class="subject">{subject_html}</div>'
-        f'<div class="date">{date_str}{badge}</div>'
+        f'<div class="date">{date_str}</div>'
         f'<div class="body-preview">{body_html}</div>'
         f'{form_html}'
         f'</div>'
@@ -819,9 +844,8 @@ class BoardHandler(BaseHTTPRequestHandler):
         self._send_response(body, content_type="text/html; charset=utf-8")
 
     def _handle_move(self) -> None:
-        """Process POST /move — update a card's status and redirect."""
-        from robotsix_auto_mail.db import init_db
-        from robotsix_auto_mail.status import set_status
+        """Process POST /move — update a card's triage decision and redirect."""
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
         content_length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(content_length).decode("utf-8")
@@ -840,15 +864,25 @@ class BoardHandler(BaseHTTPRequestHandler):
             self._bad_request(f"Invalid status: {new_status!r}")
             return
 
+        triage_action = _STATUS_TO_TRIAGE_ACTION[new_status]
+
         conn = init_db(self.db_path)
         try:
-            ok = set_status(conn, message_id, new_status)
+            # Verify the record exists before upserting a triage decision
+            # (foreign key would reject it anyway, but we want a clean 404).
+            if get_record_by_message_id(conn, message_id) is None:
+                self._not_found()
+                return
+            set_triage_decision(
+                conn,
+                message_id,
+                triage_action,
+                source="user",
+                reason=f"moved to {new_status}",
+            )
+            record_human_decision(conn, message_id, triage_action)
         finally:
             conn.close()
-
-        if not ok:
-            self._not_found()
-            return
 
         if redirect_to and _is_safe_redirect_path(redirect_to):
             self._redirect(redirect_to, code=302)
@@ -931,9 +965,12 @@ class BoardHandler(BaseHTTPRequestHandler):
         self._serve_json(result.model_dump(), status=200)
 
     def _serve_email_status(self) -> None:
-        """Serve GET /email/{message_id}/status — return status as text."""
-        from robotsix_auto_mail.db import init_db
-        from robotsix_auto_mail.status import get_status
+        """Serve GET /email/{message_id}/status — return triage action as text.
+
+        Returns ``"to_read"`` when the record exists but has no triage
+        decision.  Returns 404 when the message_id is unknown.
+        """
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
         # Extract the URL-encoded message_id from the path:
         #   "/email/<encoded>/status" → extract and decode.
@@ -945,15 +982,19 @@ class BoardHandler(BaseHTTPRequestHandler):
 
         conn = init_db(self.db_path)
         try:
-            status = get_status(conn, message_id)
+            record = get_record_by_message_id(conn, message_id)
+            if record is None:
+                self._not_found()
+                return
+            decision = get_triage_decision(conn, message_id)
         finally:
             conn.close()
 
-        if status is None:
-            self._not_found()
+        if decision is None:
+            self._send_response("to_read")
             return
 
-        self._send_response(status)
+        self._send_response(decision.action)
 
     def _serve_email_detail(self) -> None:
         """Serve GET /email/{message_id} — full detail page.

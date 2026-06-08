@@ -184,7 +184,7 @@ def test_render_card_html_escapes_body() -> None:
 
 
 def test_render_card_selected_status() -> None:
-    """The current status should have the 'selected' attribute."""
+    """When no triage decision is passed, the default column is 'to_read'."""
     record = _make_record(
         message_id="test-id",
         sender="x",
@@ -194,8 +194,9 @@ def test_render_card_selected_status() -> None:
         status="done",
     )
     html = _render_card(record)
-    assert '<option value="done" selected>Done</option>' in html
-    assert '<option value="to_read">To read</option>' in html
+    # No decision → selected column is "to_read", not "done".
+    assert '<option value="to_read" selected>To read</option>' in html
+    assert '<option value="done">Done</option>' in html
 
 
 def test_render_card_message_id_with_angle_brackets() -> None:
@@ -369,7 +370,8 @@ def test_build_board_html_structure() -> None:
             < no_action_pos < done_pos
         )
 
-        # Counts — needs_reply:0, waiting:0, to_read:1, no_action:0, done:1
+        # "to_read" stays untriaged → to_read column.
+        # "done" migrates to triage action "ignore" → done column.
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
         assert counts == ["0", "0", "1", "0", "1"]
 
@@ -643,7 +645,10 @@ def test_handler_board_with_data() -> None:
             assert "archive1@test.com" in body
             assert "archive2@test.com" in body
 
-            # Check counts — order: needs_reply, waiting, to_read, no_action, done
+            # After migration:
+            # "to_read" → untriaged (to_read column)
+            # "needs_reply" → "answer" → needs_reply column
+            # "no_action" (x2) → "archive" → no_action column
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
             assert counts == ["1", "0", "1", "2", "0"]
         finally:
@@ -1141,7 +1146,8 @@ def test_email_status_returns_200() -> None:
             assert resp.status == 200
             assert resp.headers.get("Content-Type", "").startswith("text/plain")
             body = resp.read().decode("utf-8")
-            assert body == "needs_reply"
+            # "needs_reply" migrates to triage action "answer".
+            assert body == "answer"
         finally:
             server.shutdown()
     finally:
@@ -1218,7 +1224,8 @@ def test_email_status_simple_message_id() -> None:
         try:
             resp = urlopen(f"http://127.0.0.1:{port}/email/simple-id/status")
             assert resp.status == 200
-            assert resp.read().decode("utf-8") == "done"
+            # "done" migrates to triage action "ignore".
+            assert resp.read().decode("utf-8") == "ignore"
         finally:
             server.shutdown()
     finally:
@@ -1434,7 +1441,7 @@ def test_build_detail_html_includes_move_form() -> None:
         assert '<form class="detail-form"' in html
         assert 'method="post" action="/move"' in html
         assert 'value="&lt;move-detail@test.com&gt;"' in html
-        # Should have the current status pre-selected
+        # "needs_reply" migrates to triage action "answer" → "needs_reply" column.
         assert '<option value="needs_reply" selected>Needs reply</option>' in html
     finally:
         os.unlink(db_path)
@@ -1578,7 +1585,8 @@ def test_handler_email_detail_does_not_capture_status_route() -> None:
             content_type = resp.headers.get("Content-Type", "")
             assert "text/plain" in content_type
             body = resp.read().decode("utf-8")
-            assert body == "done"
+            # "done" migrates to triage action "ignore".
+            assert body == "ignore"
             # Should NOT be HTML
             assert "<!DOCTYPE html>" not in body
         finally:
@@ -2253,20 +2261,24 @@ def _seed_triage_decision(
     confidence: str = "medium",
 ) -> None:
     """Insert a triage_decisions row directly (read-only display fixture)."""
+    from robotsix_auto_mail.triage import set_triage_decision
+
     conn = init_db(db_path)
     try:
-        conn.execute(
-            "INSERT INTO triage_decisions "
-            "(message_id, action, source, reason, confidence, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, '2025-01-01T00:00:00+00:00')",
-            (message_id, action, source, reason, confidence),
+        set_triage_decision(
+            conn,
+            message_id,
+            action,
+            source=source,
+            reason=reason,
+            confidence=confidence,
         )
-        conn.commit()
     finally:
         conn.close()
 
 
-def test_render_card_with_triage_decision_shows_badge() -> None:
+def test_render_card_with_triage_decision_no_badge() -> None:
+    """The triage badge is no longer rendered — column placement is the indicator."""
     record = _make_record(
         message_id="abc",
         sender="x",
@@ -2281,9 +2293,10 @@ def test_render_card_with_triage_decision_shows_badge() -> None:
         reason="newsletter",
     )
     html = _render_card(record, decision)
-    assert 'class="triage-badge triage-archive"' in html
-    assert ">archive</span>" in html
-    assert 'title="newsletter"' in html
+    # No triage-badge span.
+    assert "triage-badge" not in html
+    # Dropdown pre-selects the column matching the decision.
+    assert '<option value="no_action" selected>No action</option>' in html
 
 
 def test_render_card_without_triage_decision_has_no_badge() -> None:
@@ -2298,7 +2311,8 @@ def test_render_card_without_triage_decision_has_no_badge() -> None:
     assert "triage-badge" not in html
 
 
-def test_render_card_triage_reason_is_escaped() -> None:
+def test_render_card_triage_decision_selects_column() -> None:
+    """When a triage decision exists, the dropdown pre-selects the mapped column."""
     record = _make_record(
         message_id="abc",
         sender="x",
@@ -2310,15 +2324,15 @@ def test_render_card_triage_reason_is_escaped() -> None:
         message_id="abc",
         action="delete",
         source="agent",
-        reason='<script>alert("xss")</script>',
+        reason="spam",
     )
     html = _render_card(record, decision)
-    assert "<script>" not in html
-    assert "&lt;script&gt;" in html
-    assert "&quot;" in html
+    # delete → no_action column.
+    assert '<option value="no_action" selected>No action</option>' in html
 
 
-def test_build_board_html_shows_triage_badge() -> None:
+def test_build_board_html_places_card_by_triage_decision() -> None:
+    """A triaged record appears in the column mapped from its triage action."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
@@ -2331,16 +2345,17 @@ def test_build_board_html_shows_triage_badge() -> None:
                     "subject": "Subj",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "Body",
-                    "status": "no_action",
+                    "status": "to_read",
                 },
             ],
         )
         _seed_triage_decision(db_path, "m1", action="archive", reason="bulk mail")
 
         html = _build_board_html(db_path)
-        assert 'class="triage-badge triage-archive"' in html
-        assert ">archive</span>" in html
-        assert 'title="bulk mail"' in html
+        # The card should be in the no_action column (archive → no_action).
+        # Verify by checking the board counts — one card in no_action.
+        counts = re.findall(r'<span class="count">(\d+)</span>', html)
+        assert counts == ["0", "0", "0", "1", "0"]
     finally:
         os.unlink(db_path)
 
@@ -2371,7 +2386,8 @@ def test_build_board_html_no_badge_without_decision() -> None:
         os.unlink(db_path)
 
 
-def test_build_board_html_triage_reason_escaped() -> None:
+def test_build_board_html_triage_reason_not_in_markup() -> None:
+    """Triage reason is not rendered as a separate badge (badge removed)."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
@@ -2384,7 +2400,7 @@ def test_build_board_html_triage_reason_escaped() -> None:
                     "subject": "Subj",
                     "date": "2025-01-01T00:00:00",
                     "body_plain": "Body",
-                    "status": "done",
+                    "status": "to_read",
                 },
             ],
         )
@@ -2396,8 +2412,8 @@ def test_build_board_html_triage_reason_escaped() -> None:
         )
 
         html = _build_board_html(db_path)
-        assert "<script>alert" not in html
-        assert "&lt;script&gt;" in html
+        # No triage-badge span anywhere.
+        assert '<span class="triage-badge' not in html
     finally:
         os.unlink(db_path)
 
@@ -2489,5 +2505,82 @@ def test_build_detail_html_triage_reason_escaped() -> None:
         assert html is not None
         assert "<script>alert" not in html
         assert "&lt;script&gt;" in html
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# Status → triage action reverse mapping
+# ---------------------------------------------------------------------------
+
+
+def test_status_to_triage_action_mapping() -> None:
+    """Each status in STATUS_ORDER has a reverse mapping to a valid action."""
+    from robotsix_auto_mail.server import _STATUS_TO_TRIAGE_ACTION
+    from robotsix_auto_mail.status import VALID_STATUSES
+    from robotsix_auto_mail.triage import TRIAGE_ACTION_TO_STATUS, VALID_TRIAGE_ACTIONS
+
+    assert set(_STATUS_TO_TRIAGE_ACTION.keys()) == set(VALID_STATUSES)
+    assert all(
+        v in VALID_TRIAGE_ACTIONS for v in _STATUS_TO_TRIAGE_ACTION.values()
+    )
+    # Round-trip: status → action → status should be identity.
+    for status, action in _STATUS_TO_TRIAGE_ACTION.items():
+        assert TRIAGE_ACTION_TO_STATUS[action] == status
+
+
+# ---------------------------------------------------------------------------
+# POST /move creates triage_decisions row
+# ---------------------------------------------------------------------------
+
+
+def test_move_creates_triage_decision() -> None:
+    """POST /move creates a triage_decisions row and does NOT update
+    mail_records.status."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "move-triage",
+                    "sender": "x@x.com",
+                    "subject": "Move triage test",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            status, _body = _post_form(
+                port, {"message_id": "move-triage", "status": "done"}
+            )
+            assert status == 302
+        finally:
+            server.shutdown()
+
+        # Verify triage_decisions row was created.
+        from robotsix_auto_mail.triage import get_triage_decision
+
+        conn = init_db(db_path)
+        try:
+            decision = get_triage_decision(conn, "move-triage")
+            assert decision is not None
+            # done → ignore
+            assert decision.action == "ignore"
+            assert decision.source == "user"
+            assert decision.reason == "moved to done"
+            # mail_records.status was NOT updated.
+            cur = conn.execute(
+                "SELECT status FROM mail_records WHERE message_id = ?",
+                ("move-triage",),
+            )
+            assert cur.fetchone()[0] == "to_read"
+        finally:
+            conn.close()
     finally:
         os.unlink(db_path)

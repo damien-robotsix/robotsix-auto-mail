@@ -4,10 +4,7 @@ The triage agent classifies each ingested inbox ``MailRecord`` into an
 *action status* — ``answer`` / ``waiting`` / ``archive`` / ``delete`` /
 ``ignore``, with ``user_triage`` as the explicit "the system does not know
 what to do" fallback.  These action statuses are stored in the ``triage_decisions``
-table AND, in addition, a triage decision now moves the mail's card on the
-local kanban board by writing the ``status`` column owned by
-:mod:`robotsix_auto_mail.status` via :func:`robotsix_auto_mail.status.set_status`.
-Triage performs **NO IMAP / mailbox side effects** whatsoever: the kanban is
+table.  Triage performs **NO IMAP / mailbox side effects** whatsoever: the kanban is
 a local-only board, so moving a card never touches the original mailbox (no
 archive / delete / move / expunge / append / store).
 
@@ -32,10 +29,10 @@ from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
     get_watermark,
+    list_untriaged_records,
     set_watermark,
 )
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT
-from robotsix_auto_mail.status import list_by_status, set_status
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -314,12 +311,6 @@ def set_triage_decision(
     against ``{"agent", "user"}`` (raising :class:`TriageError` otherwise),
     then upserts keyed on ``message_id`` and commits.  ``updated_at`` is set
     to an ISO-8601 UTC timestamp.
-
-    In addition to the advisory upsert, this moves the mail's card on the
-    local kanban board to the column mapped by
-    :data:`TRIAGE_ACTION_TO_STATUS` via
-    :func:`robotsix_auto_mail.status.set_status` — a local-only board move
-    that performs NO IMAP / mailbox side effects.
     """
     if action not in VALID_TRIAGE_ACTIONS:
         raise TriageError(
@@ -354,7 +345,6 @@ ON CONFLICT(message_id) DO UPDATE SET
         },
     )
     conn.commit()
-    set_status(conn, message_id, TRIAGE_ACTION_TO_STATUS[action])
 
 
 def get_triage_decision(
@@ -884,7 +874,8 @@ def run_triage_agent(
 ) -> list[TriageDecision]:
     """Classify every inbox mail into a triage action and persist the result.
 
-    Reads to-read records via ``list_by_status(conn, "to_read")``; returns
+    Reads untriaged records via ``list_untriaged_records(conn)`` (every
+    ``MailRecord`` without a ``triage_decisions`` row); returns
     ``[]`` immediately (without calling the LLM) when there is none.  Each
     returned ``TriageItem`` is mapped back to its ``MailRecord`` by 1-based
     index; unknown actions are clamped to ``user_triage`` and any omitted
@@ -908,7 +899,7 @@ def run_triage_agent(
     Raises:
         TriageError: If the API key is missing or the LLM call fails.
     """
-    records = list_by_status(conn, "to_read")
+    records = list_untriaged_records(conn)
     if only_undecided:
         records = [
             record

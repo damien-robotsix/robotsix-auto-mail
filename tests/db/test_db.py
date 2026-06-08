@@ -15,6 +15,7 @@ from robotsix_auto_mail.db import (
     init_db,
     insert_record,
     list_records,
+    list_untriaged_records,
     set_watermark,
 )
 
@@ -696,5 +697,191 @@ CREATE TABLE IF NOT EXISTS mail_records (
         from robotsix_auto_mail.db import record_exists
 
         assert record_exists(conn, "<anything@x>") is False
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# list_untriaged_records
+# ---------------------------------------------------------------------------
+
+
+def test_list_untriaged_records_empty() -> None:
+    """list_untriaged_records returns [] when the table is empty."""
+    conn = init_db(":memory:")
+    try:
+        assert list_untriaged_records(conn) == []
+    finally:
+        conn.close()
+
+
+def test_list_untriaged_records_all_untriaged() -> None:
+    """When no triage_decisions rows exist, every record is returned."""
+    conn = init_db(":memory:")
+    try:
+        for mid in ("<a@x.com>", "<b@x.com>", "<c@x.com>"):
+            insert_record(conn, _make_record(message_id=mid))
+        result = list_untriaged_records(conn)
+        assert len(result) == 3
+        assert [r.message_id for r in result] == [
+            "<a@x.com>", "<b@x.com>", "<c@x.com>"
+        ]
+    finally:
+        conn.close()
+
+
+def test_list_untriaged_records_some_triaged() -> None:
+    """Records with a triage_decisions row are excluded."""
+    conn = init_db(":memory:")
+    try:
+        insert_record(conn, _make_record(message_id="<triaged@x.com>"))
+        insert_record(conn, _make_record(message_id="<untriaged@x.com>"))
+        conn.execute(
+            "INSERT INTO triage_decisions "
+            "(message_id, action, source, reason, confidence, updated_at) "
+            "VALUES ('<triaged@x.com>', 'archive', 'agent', '', 'medium', '2025-01-01T00:00:00')"  # noqa: E501
+        )
+        conn.commit()
+        result = list_untriaged_records(conn)
+        assert len(result) == 1
+        assert result[0].message_id == "<untriaged@x.com>"
+    finally:
+        conn.close()
+
+
+def test_list_untriaged_records_ordered_by_id() -> None:
+    """Results are ordered by id ASC."""
+    conn = init_db(":memory:")
+    try:
+        # Insert in reverse alphabetical order to prove ordering is by id.
+        for mid in ("<c@x.com>", "<a@x.com>", "<b@x.com>"):
+            insert_record(conn, _make_record(message_id=mid))
+        result = list_untriaged_records(conn)
+        assert [r.message_id for r in result] == [
+            "<c@x.com>", "<a@x.com>", "<b@x.com>"
+        ]
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# _migrate_status_to_triage (via init_db)
+# ---------------------------------------------------------------------------
+
+
+def test_init_db_migrates_status_to_triage(tmp_db_path: str) -> None:
+    """init_db creates triage_decisions rows for non-default status values
+    that lack a decision."""
+    conn = init_db(tmp_db_path)
+    try:
+        # Insert records with non-default statuses but no triage_decisions.
+        records = {
+            "<needs@x.com>": "needs_reply",
+            "<wait@x.com>": "waiting",
+            "<noact@x.com>": "no_action",
+            "<done@x.com>": "done",
+            "<toread@x.com>": "to_read",
+        }
+        for mid, status in records.items():
+            conn.execute(
+                "INSERT INTO mail_records "
+                "(message_id, sender, subject, date, recipients_json, "
+                "body_plain, body_html, attachments_json, status) "
+                "VALUES (?, 's@x.com', 'S', 'd', '{}', '', '', '[]', ?)",
+                (mid, status),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Re-open: the startup migration should create triage_decisions rows.
+    conn = init_db(tmp_db_path)
+    try:
+        from robotsix_auto_mail.triage import list_triage_decisions
+
+        decisions = {d.message_id: d for d in list_triage_decisions(conn)}
+        # needs_reply → answer
+        assert "<needs@x.com>" in decisions
+        assert decisions["<needs@x.com>"].action == "answer"
+        assert decisions["<needs@x.com>"].source == "user"
+        assert "migrated from legacy status" in decisions["<needs@x.com>"].reason
+        # waiting → waiting
+        assert decisions["<wait@x.com>"].action == "waiting"
+        # no_action → archive
+        assert decisions["<noact@x.com>"].action == "archive"
+        # done → ignore
+        assert decisions["<done@x.com>"].action == "ignore"
+        # to_read is skipped (no migration)
+        assert "<toread@x.com>" not in decisions
+    finally:
+        conn.close()
+
+
+def test_init_db_status_migration_idempotent(tmp_db_path: str) -> None:
+    """Re-running init_db does not insert duplicate triage_decisions rows."""
+    conn = init_db(tmp_db_path)
+    try:
+        conn.execute(
+            "INSERT INTO mail_records "
+            "(message_id, sender, subject, date, recipients_json, "
+            "body_plain, body_html, attachments_json, status) "
+            "VALUES ('<dup@x.com>', 's@x.com', 'S', 'd', '{}', '', '', '[]', 'needs_reply')"  # noqa: E501
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    # First migration.
+    conn = init_db(tmp_db_path)
+    try:
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM triage_decisions WHERE message_id = '<dup@x.com>'"
+        )
+        assert cur.fetchone()[0] == 1
+    finally:
+        conn.close()
+
+    # Second migration (idempotent).
+    conn = init_db(tmp_db_path)
+    try:
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM triage_decisions WHERE message_id = '<dup@x.com>'"
+        )
+        assert cur.fetchone()[0] == 1
+    finally:
+        conn.close()
+
+
+def test_init_db_status_migration_skips_existing_decisions(
+    tmp_db_path: str,
+) -> None:
+    """Records that already have a triage_decisions row are not overwritten."""
+    conn = init_db(tmp_db_path)
+    try:
+        conn.execute(
+            "INSERT INTO mail_records "
+            "(message_id, sender, subject, date, recipients_json, "
+            "body_plain, body_html, attachments_json, status) "
+            "VALUES ('<existing@x.com>', 's@x.com', 'S', 'd', '{}', '', '', '[]', 'needs_reply')"  # noqa: E501
+        )
+        # Pre-create a triage_decisions row with a different action.
+        conn.execute(
+            "INSERT INTO triage_decisions "
+            "(message_id, action, source, reason, confidence, updated_at) "
+            "VALUES ('<existing@x.com>', 'delete', 'agent', 'spam', 'high', '2025-01-01T00:00:00')"  # noqa: E501
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Re-open: migration must NOT overwrite the existing decision.
+    conn = init_db(tmp_db_path)
+    try:
+        cur = conn.execute(
+            "SELECT action, source, reason FROM triage_decisions "
+            "WHERE message_id = '<existing@x.com>'"
+        )
+        row = cur.fetchone()
+        assert row == ("delete", "agent", "spam")
     finally:
         conn.close()
