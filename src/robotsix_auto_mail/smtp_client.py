@@ -98,6 +98,9 @@ class SmtpClient(_ProtocolClient):
             tls_mode=config.smtp_tls_mode,
             username=config.username,
             password=config.password,
+            oauth2_token=config.oauth2_token,
+            oauth2_client_id=config.oauth2_client_id,
+            oauth2_client_secret=config.oauth2_client_secret,
         )
 
         self._smtp: smtplib.SMTP | None = None
@@ -163,9 +166,7 @@ class SmtpClient(_ProtocolClient):
         msg["Date"] = formatdate(localtime=True)
 
         try:
-            self._smtp.send_message(
-                msg, from_addr=from_addr, to_addrs=[to_addr]
-            )
+            self._smtp.send_message(msg, from_addr=from_addr, to_addrs=[to_addr])
         except _SMTP_EXCEPTION as exc:
             raise SmtpSendError(
                 f"Failed to send message to {to_addr!r}: {exc}"
@@ -197,13 +198,10 @@ class SmtpClient(_ProtocolClient):
     def _connect_direct_tls(self) -> None:
         ctx = ssl.create_default_context()
         try:
-            self._smtp = smtplib.SMTP_SSL(
-                self._host, self._port, context=ctx
-            )
+            self._smtp = smtplib.SMTP_SSL(self._host, self._port, context=ctx)
         except (OSError, _SMTP_EXCEPTION) as exc:
             raise SmtpConnectionError(
-                f"Direct-TLS connection to {self._host}:{self._port} "
-                f"failed: {exc}"
+                f"Direct-TLS connection to {self._host}:{self._port} failed: {exc}"
             ) from exc
 
     def _connect_starttls(self) -> None:
@@ -212,8 +210,7 @@ class SmtpClient(_ProtocolClient):
             self._smtp = smtplib.SMTP(self._host, self._port)
         except (OSError, _SMTP_EXCEPTION) as exc:
             raise SmtpConnectionError(
-                f"Plain connection to {self._host}:{self._port} "
-                f"failed: {exc}"
+                f"Plain connection to {self._host}:{self._port} failed: {exc}"
             ) from exc
 
         # 2. Post-connect EHLO — the server may advertise STARTTLS
@@ -221,9 +218,7 @@ class SmtpClient(_ProtocolClient):
         try:
             self._smtp.ehlo_or_helo_if_needed()
         except _SMTP_EXCEPTION as exc:
-            raise SmtpConnectionError(
-                f"EHLO/HELO failed: {exc}"
-            ) from exc
+            raise SmtpConnectionError(f"EHLO/HELO failed: {exc}") from exc
 
         # 3. Upgrade to TLS.
         ctx = ssl.create_default_context()
@@ -231,8 +226,7 @@ class SmtpClient(_ProtocolClient):
             self._smtp.starttls(context=ctx)
         except (_SMTP_EXCEPTION, ssl.SSLError) as exc:
             raise SmtpTlsError(
-                f"STARTTLS negotiation with {self._host}:{self._port} "
-                f"failed: {exc}"
+                f"STARTTLS negotiation with {self._host}:{self._port} failed: {exc}"
             ) from exc
 
         # 4. Post-TLS EHLO — the server may advertise different
@@ -240,26 +234,39 @@ class SmtpClient(_ProtocolClient):
         try:
             self._smtp.ehlo_or_helo_if_needed()
         except _SMTP_EXCEPTION as exc:
-            raise SmtpTlsError(
-                f"Post-STARTTLS EHLO/HELO failed: {exc}"
-            ) from exc
+            raise SmtpTlsError(f"Post-STARTTLS EHLO/HELO failed: {exc}") from exc
 
     def _connect_plain(self) -> None:
         try:
             self._smtp = smtplib.SMTP(self._host, self._port)
         except (OSError, _SMTP_EXCEPTION) as exc:
             raise SmtpConnectionError(
-                f"Plain (no-TLS) connection to {self._host}:{self._port} "
-                f"failed: {exc}"
+                f"Plain (no-TLS) connection to {self._host}:{self._port} failed: {exc}"
             ) from exc
 
     def _authenticate(self) -> None:
         if self._smtp is None:
             raise RuntimeError("_authenticate() called before _connect_*()")
         try:
-            self._smtp.login(self._username, self._password)
+            if self._oauth2_token:
+                self._smtp.auth(
+                    "XOAUTH2", self._smtp_xoauth2_cb, initial_response_ok=True
+                )
+            else:
+                self._smtp.login(self._username, self._password)
         except _SMTP_EXCEPTION as exc:
             raise SmtpAuthError(
                 f"Authentication failed for user {self._username!r} "
                 f"on {self._host}:{self._port}: {exc}"
             ) from exc
+
+    def _smtp_xoauth2_cb(self, challenge: bytes | None) -> str:
+        """SASL XOAUTH2 callback for ``smtplib.SMTP.auth()``.
+
+        On the initial solicitation (``None``) returns the XOAUTH2
+        response string.  On any subsequent challenge (server-side
+        error) cancels with ``\\x01``.
+        """
+        if challenge is not None:
+            return "\x01"
+        return f"user={self._username}\x01auth=Bearer {self._oauth2_token}\x01\x01"

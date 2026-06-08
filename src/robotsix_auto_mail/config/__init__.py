@@ -36,9 +36,7 @@ class ConfigurationError(Exception):
             whether falling back to the YAML config file is appropriate.
     """
 
-    def __init__(
-        self, message: str, *, missing_only: bool = False
-    ) -> None:
+    def __init__(self, message: str, *, missing_only: bool = False) -> None:
         super().__init__(message)
         self.message = message
         self.missing_only = missing_only
@@ -77,8 +75,7 @@ DEFAULT_ARCHIVE_ROOT = "robotsix-mail-archive"
 def _check_tls_mode(label: str, value: str) -> None:
     if value not in _VALID_TLS_MODES:
         raise ConfigurationError(
-            f"{label} must be one of {sorted(_VALID_TLS_MODES)!r}, "
-            f"got {value!r}"
+            f"{label} must be one of {sorted(_VALID_TLS_MODES)!r}, got {value!r}"
         )
 
 
@@ -86,9 +83,7 @@ def _parse_int(label: str, raw: str) -> int:
     try:
         return int(raw)
     except (ValueError, TypeError):
-        raise ConfigurationError(
-            f"{label} must be an integer, got {raw!r}"
-        ) from None
+        raise ConfigurationError(f"{label} must be an integer, got {raw!r}") from None
 
 
 _BOOL_TRUE = frozenset({"1", "true", "yes", "on"})
@@ -135,42 +130,123 @@ class _FieldSpec(NamedTuple):
 
 
 _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
-    _FieldSpec("imap_host", "MAIL_IMAP_HOST", "imap.host",
-               "str", _REQUIRED, True, True),
-    _FieldSpec("imap_port", "MAIL_IMAP_PORT", "imap.port",
-               "int", 993, False, False),
-    _FieldSpec("imap_tls_mode", "MAIL_IMAP_TLS_MODE", "imap.tls_mode",
-               "tls_mode", DEFAULT_IMAP_TLS_MODE, False, False),
-    _FieldSpec("imap_folder", "MAIL_IMAP_FOLDER", "imap.folder",
-               "str", "INBOX", False, False),
-    _FieldSpec("smtp_host", "MAIL_SMTP_HOST", "smtp.host",
-               "str", _REQUIRED, True, True),
-    _FieldSpec("smtp_port", "MAIL_SMTP_PORT", "smtp.port",
-               "int", 587, False, False),
-    _FieldSpec("smtp_tls_mode", "MAIL_SMTP_TLS_MODE", "smtp.tls_mode",
-               "tls_mode", DEFAULT_SMTP_TLS_MODE, False, False),
-    _FieldSpec("username", "MAIL_USERNAME", "auth.username",
-               "str", _REQUIRED, True, True),
+    _FieldSpec(
+        "imap_host", "MAIL_IMAP_HOST", "imap.host", "str", _REQUIRED, True, True
+    ),
+    _FieldSpec("imap_port", "MAIL_IMAP_PORT", "imap.port", "int", 993, False, False),
+    _FieldSpec(
+        "imap_tls_mode",
+        "MAIL_IMAP_TLS_MODE",
+        "imap.tls_mode",
+        "tls_mode",
+        DEFAULT_IMAP_TLS_MODE,
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "imap_folder", "MAIL_IMAP_FOLDER", "imap.folder", "str", "INBOX", False, False
+    ),
+    _FieldSpec(
+        "smtp_host", "MAIL_SMTP_HOST", "smtp.host", "str", _REQUIRED, True, True
+    ),
+    _FieldSpec("smtp_port", "MAIL_SMTP_PORT", "smtp.port", "int", 587, False, False),
+    _FieldSpec(
+        "smtp_tls_mode",
+        "MAIL_SMTP_TLS_MODE",
+        "smtp.tls_mode",
+        "tls_mode",
+        DEFAULT_SMTP_TLS_MODE,
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "username", "MAIL_USERNAME", "auth.username", "str", _REQUIRED, True, True
+    ),
     # password: required in env, but optional in YAML (env can supply it).
-    _FieldSpec("password", "MAIL_PASSWORD", "auth.password",
-               "str", _REQUIRED, True, False),
-    _FieldSpec("db_path", "MAIL_DB_PATH", "store.path",
-               "str", DEFAULT_DB_PATH, False, False),
-    _FieldSpec("llm_api_key", "LLM_API_KEY", "llm.api_key",
-               "str", "", False, False),
-    _FieldSpec("llm_model", "LLM_MODEL", "llm.model",
-               "str", DEFAULT_LLM_MODEL, False, False),
-    _FieldSpec("ingest_interval_minutes", "MAIL_INGEST_INTERVAL",
-               "ingest.interval_minutes", "int",
-               DEFAULT_INGEST_INTERVAL_MINUTES, False, False),
-    _FieldSpec("archive_root", "MAIL_ARCHIVE_ROOT", "archive.root",
-               "str", DEFAULT_ARCHIVE_ROOT, False, False),
-    _FieldSpec("archive_namespace", "MAIL_ARCHIVE_NAMESPACE", "archive.namespace",
-               "str", "", False, False),
-    _FieldSpec("archive_enabled", "MAIL_ARCHIVE_ENABLED", "archive.enabled",
-               "bool", True, False, False),
-    _FieldSpec("triage_on_ingest", "MAIL_TRIAGE_ON_INGEST", "triage.on_ingest",
-               "bool", True, False, False),
+    _FieldSpec(
+        "password", "MAIL_PASSWORD", "auth.password", "str", _REQUIRED, True, False
+    ),
+    _FieldSpec(
+        "db_path", "MAIL_DB_PATH", "store.path", "str", DEFAULT_DB_PATH, False, False
+    ),
+    _FieldSpec("llm_api_key", "LLM_API_KEY", "llm.api_key", "str", "", False, False),
+    _FieldSpec(
+        "llm_model", "LLM_MODEL", "llm.model", "str", DEFAULT_LLM_MODEL, False, False
+    ),
+    _FieldSpec(
+        "ingest_interval_minutes",
+        "MAIL_INGEST_INTERVAL",
+        "ingest.interval_minutes",
+        "int",
+        DEFAULT_INGEST_INTERVAL_MINUTES,
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "archive_root",
+        "MAIL_ARCHIVE_ROOT",
+        "archive.root",
+        "str",
+        DEFAULT_ARCHIVE_ROOT,
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "archive_namespace",
+        "MAIL_ARCHIVE_NAMESPACE",
+        "archive.namespace",
+        "str",
+        "",
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "archive_enabled",
+        "MAIL_ARCHIVE_ENABLED",
+        "archive.enabled",
+        "bool",
+        True,
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "triage_on_ingest",
+        "MAIL_TRIAGE_ON_INGEST",
+        "triage.on_ingest",
+        "bool",
+        True,
+        False,
+        False,
+    ),
+    # OAuth2 / XOAUTH2 — optional; when oauth2_token is set, SASL XOAUTH2
+    # is used instead of password-based login().
+    _FieldSpec(
+        "oauth2_token",
+        "MAIL_OAUTH2_TOKEN",
+        "auth.oauth2_token",
+        "str",
+        "",
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "oauth2_client_id",
+        "MAIL_OAUTH2_CLIENT_ID",
+        "auth.oauth2_client_id",
+        "str",
+        "",
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "oauth2_client_secret",
+        "MAIL_OAUTH2_CLIENT_SECRET",
+        "auth.oauth2_client_secret",
+        "str",
+        "",
+        False,
+        False,
+    ),
 )
 
 # Each yaml_path must be exactly ``section.key`` — the YAML loader splits
@@ -178,8 +254,7 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
 # immediately rather than at first use.
 for _s in _FIELD_SPECS:
     assert _s.yaml_path.count(".") == 1, (  # noqa: S101  # nosec B101
-        f"_FieldSpec.yaml_path must have exactly one dot, "
-        f"got {_s.yaml_path!r}"
+        f"_FieldSpec.yaml_path must have exactly one dot, got {_s.yaml_path!r}"
     )
 
 
@@ -227,9 +302,16 @@ class MailConfig:
     # Run the inbox triage agent automatically at the end of each ingest.
     triage_on_ingest: bool = True
 
+    # OAuth2 / XOAUTH2 credentials (Gmail, Microsoft 365, etc.).
+    # Optional; when ``oauth2_token`` is set, SASL XOAUTH2 is used
+    # instead of password-based ``login()``.
+    oauth2_token: str = ""
+    oauth2_client_id: str = ""
+    oauth2_client_secret: str = ""
+
     # -- masking -----------------------------------------------------------
 
-    _SECRET_FIELDS = ("password", "llm_api_key")
+    _SECRET_FIELDS = ("password", "llm_api_key", "oauth2_token", "oauth2_client_secret")
 
     def __repr__(self) -> str:
         cls = type(self).__name__
@@ -286,9 +368,7 @@ class MailConfig:
                 try:
                     kwargs[spec.field_name] = int(raw)
                 except ValueError:
-                    errors.append(
-                        f"{spec.env_key} must be an integer, got {raw!r}"
-                    )
+                    errors.append(f"{spec.env_key} must be an integer, got {raw!r}")
                     kwargs[spec.field_name] = spec.default
             elif spec.kind == "bool":
                 try:
@@ -346,9 +426,7 @@ class MailConfig:
                     section, key_name, spec.default, path
                 )
             elif spec.kind == "bool":
-                kwargs[spec.field_name] = _get_bool(
-                    section, key_name, spec.default
-                )
+                kwargs[spec.field_name] = _get_bool(section, key_name, spec.default)
             elif spec.kind == "tls_mode":
                 value = _get_str(section, key_name, spec.default)
                 if value not in _VALID_TLS_MODES:
@@ -359,9 +437,7 @@ class MailConfig:
                 kwargs[spec.field_name] = value
             else:  # "str"
                 default_str = "" if spec.default is _REQUIRED else spec.default
-                kwargs[spec.field_name] = _get_str(
-                    section, key_name, default_str
-                )
+                kwargs[spec.field_name] = _get_str(section, key_name, default_str)
 
         # -- required fields (skipped when validate=False) -----------------
 
@@ -371,9 +447,7 @@ class MailConfig:
                 if spec.required_in_yaml and not kwargs[spec.field_name]:
                     missing.append(spec.yaml_path)
             if missing:
-                errors.append(
-                    "Missing required field(s): " + ", ".join(missing)
-                )
+                errors.append("Missing required field(s): " + ", ".join(missing))
 
         if errors:
             raise ConfigurationError("\n".join(errors))
@@ -381,9 +455,7 @@ class MailConfig:
         return cls(**kwargs)
 
     @classmethod
-    def from_yaml(
-        cls, path: str | Path, *, validate: bool = True
-    ) -> MailConfig:
+    def from_yaml(cls, path: str | Path, *, validate: bool = True) -> MailConfig:
         """Build a ``MailConfig`` from a YAML file.
 
         The file is expected to follow this structure::
@@ -435,9 +507,7 @@ class MailConfig:
         try:
             data = read_yaml_file(path)
         except YamlConfigError as exc:
-            raise ConfigurationError(
-                f"Invalid YAML in {path}: {exc}"
-            ) from exc
+            raise ConfigurationError(f"Invalid YAML in {path}: {exc}") from exc
 
         return cls._parse_config_dict(data, path, validate=validate)
 
@@ -489,15 +559,11 @@ def load() -> MailConfig:
             raise
 
     # — load the YAML config file —
-    config_path = Path(
-        os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH)
-    )
+    config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
     try:
         file_cfg = MailConfig.from_yaml(config_path)
     except FileNotFoundError:
-        raise ConfigurationError(
-            f"Config file not found: {config_path}"
-        ) from None
+        raise ConfigurationError(f"Config file not found: {config_path}") from None
 
     # — env vars override file values field-by-field —
     return _merge_env(file_cfg)
@@ -519,9 +585,7 @@ def load_llm() -> tuple[str, str]:
     model = os.environ.get("LLM_MODEL", "")
 
     if not api_key or not model:
-        config_path = Path(
-            os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH)
-        )
+        config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
         if config_path.exists():
             try:
                 file_cfg = MailConfig.from_yaml(config_path, validate=False)
@@ -559,16 +623,13 @@ def _merge_env(base: MailConfig) -> MailConfig:
 # ---------------------------------------------------------------------------
 
 
-def _get_table(
-    data: dict[str, object], key: str
-) -> dict[str, object] | None:
+def _get_table(data: dict[str, object], key: str) -> dict[str, object] | None:
     value = data.get(key)
     if value is None:
         return None
     if not isinstance(value, dict):
         raise ConfigurationError(
-            f"Config key {key!r} must be a table/mapping, "
-            f"got {type(value).__name__}"
+            f"Config key {key!r} must be a table/mapping, got {type(value).__name__}"
         )
     return value
 
@@ -584,9 +645,7 @@ def _get_str(section: dict[str, object], key: str, default: str) -> str:
     return value
 
 
-def _get_int(
-    section: dict[str, object], key: str, default: int, path: Path
-) -> int:
+def _get_int(section: dict[str, object], key: str, default: int, path: Path) -> int:
     value = section.get(key)
     if value is None:
         return default

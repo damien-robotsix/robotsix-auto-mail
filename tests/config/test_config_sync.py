@@ -44,6 +44,10 @@ smtp:
 auth:
   username: user@example.com
   password: ""  # set your password here, or via the MAIL_PASSWORD env var
+  # OAuth2 / XOAUTH2 — optional; see docs/connecting.md.
+  # oauth2_token: ""
+  # oauth2_client_id: ""
+  # oauth2_client_secret: ""
 
 # store:
 #   path: .data/mail.db
@@ -83,6 +87,9 @@ MAIL_SMTP_PORT=587
 MAIL_SMTP_TLS_MODE=starttls
 MAIL_USERNAME=user@example.com
 MAIL_PASSWORD=your-password-here
+MAIL_OAUTH2_TOKEN=
+MAIL_OAUTH2_CLIENT_ID=
+MAIL_OAUTH2_CLIENT_SECRET=
 MAIL_DB_PATH=.data/mail.db
 MAIL_INGEST_INTERVAL=15
 MAIL_ARCHIVE_ROOT=robotsix-mail-archive
@@ -107,6 +114,9 @@ _DOCS_YAML_TABLE = """\
 | `smtp.tls_mode` | no | `"starttls"` | SMTP TLS mode |
 | `auth.username` | yes | - | Login username |
 | `auth.password` | no | - | Login password |
+| `auth.oauth2_token` | no | - | OAuth2 access token for SASL XOAUTH2 |
+| `auth.oauth2_client_id` | no | - | OAuth2 client ID |
+| `auth.oauth2_client_secret` | no | - | OAuth2 client secret |
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles |
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
@@ -126,6 +136,9 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_SMTP_HOST` | yes | - | SMTP server hostname |
 | `MAIL_USERNAME` | yes | - | Login username |
 | `MAIL_PASSWORD` | yes | - | Login password |
+| `MAIL_OAUTH2_TOKEN` | no | - | OAuth2 access token for SASL XOAUTH2 |
+| `MAIL_OAUTH2_CLIENT_ID` | no | - | OAuth2 client ID |
+| `MAIL_OAUTH2_CLIENT_SECRET` | no | - | OAuth2 client secret |
 | `MAIL_IMAP_PORT` | no | `993` | IMAP server port |
 | `MAIL_IMAP_TLS_MODE` | no | `direct-tls` | TLS negotiation for IMAP |
 | `MAIL_SMTP_PORT` | no | `587` | SMTP server port |
@@ -147,11 +160,7 @@ def _full_docs(yaml_table: str, env_table: str) -> str:
     """Wrap the two tables in minimal md so the parser finds them."""
     return (
         "# Connecting\n\n"
-        "## Configuration keys\n\n"
-        + yaml_table
-        + "\n\n"
-        + env_table
-        + "\n"
+        "## Configuration keys\n\n" + yaml_table + "\n\n" + env_table + "\n"
     )
 
 
@@ -202,8 +211,7 @@ def test_yaml_missing_key() -> None:
     modified = _YAML_EXAMPLE.replace("  # port: 993\n", "")
     findings = check_yaml_example(modified)
     assert any(
-        f["type"] == "missing-from-yaml" and f["key"] == "imap.port"
-        for f in findings
+        f["type"] == "missing-from-yaml" and f["key"] == "imap.port" for f in findings
     )
 
 
@@ -212,8 +220,7 @@ def test_yaml_stale_key() -> None:
     modified = _YAML_EXAMPLE + "\n# foo:\n#   bar: 1\n"
     findings = check_yaml_example(modified)
     assert any(
-        f["type"] == "stale-yaml-key" and f["key"] == "foo.bar"
-        for f in findings
+        f["type"] == "stale-yaml-key" and f["key"] == "foo.bar" for f in findings
     )
 
 
@@ -234,9 +241,7 @@ def test_yaml_uncommented_default_mismatch() -> None:
     # Change smtp.host to something else — it's required so no comparison,
     # but we can change a value that has a default... actually smtp.host
     # has no default.  Let's change the password to non-empty.
-    modified = _YAML_EXAMPLE.replace(
-        'password: ""', 'password: "real"'
-    )
+    modified = _YAML_EXAMPLE.replace('password: ""', 'password: "real"')
     findings = check_yaml_example(modified)
     # password is MISSING in dataclass, so no default comparison.
     # But we should still verify it's not flagged.
@@ -256,8 +261,7 @@ def test_env_missing_var() -> None:
     modified = _ENV_EXAMPLE.replace("MAIL_IMAP_PORT=993\n", "")
     findings = check_env_example(modified)
     assert any(
-        f["type"] == "missing-from-env-example"
-        and f["key"] == "MAIL_IMAP_PORT"
+        f["type"] == "missing-from-env-example" and f["key"] == "MAIL_IMAP_PORT"
         for f in findings
     )
 
@@ -289,8 +293,7 @@ def test_env_stale_excludes_config_path() -> None:
     # It IS present in the example, but shouldn't be flagged as stale.
     findings = check_env_example(_ENV_EXAMPLE)
     assert not any(
-        f["type"] == "stale-env-example-var"
-        and f["key"] == "MAIL_CONFIG_PATH"
+        f["type"] == "stale-env-example-var" and f["key"] == "MAIL_CONFIG_PATH"
         for f in findings
     )
 
@@ -305,8 +308,7 @@ def test_placeholder_llm_api_key_yaml() -> None:
     # The default is "" but the example has "sk-or-v1-…" — OK.
     findings = check_yaml_example(_YAML_EXAMPLE)
     assert not any(
-        f["type"] == "default-mismatch" and "llm.api_key" in str(f)
-        for f in findings
+        f["type"] == "default-mismatch" and "llm.api_key" in str(f) for f in findings
     )
 
 
@@ -314,8 +316,7 @@ def test_placeholder_llm_api_key_env() -> None:
     """LLM_API_KEY placeholder is not a default-mismatch."""
     findings = check_env_example(_ENV_EXAMPLE)
     assert not any(
-        f["type"] == "default-mismatch" and "LLM_API_KEY" in str(f)
-        for f in findings
+        f["type"] == "default-mismatch" and "LLM_API_KEY" in str(f) for f in findings
     )
 
 
@@ -326,8 +327,7 @@ def test_placeholder_llm_api_key_changed() -> None:
     )
     findings = check_env_example(modified)
     assert not any(
-        f["type"] == "default-mismatch" and "LLM_API_KEY" in str(f)
-        for f in findings
+        f["type"] == "default-mismatch" and "LLM_API_KEY" in str(f) for f in findings
     )
 
 
@@ -339,8 +339,7 @@ def test_placeholder_password_env() -> None:
     )
     findings = check_env_example(modified)
     assert not any(
-        f["type"] == "default-mismatch" and "MAIL_PASSWORD" in str(f)
-        for f in findings
+        f["type"] == "default-mismatch" and "MAIL_PASSWORD" in str(f) for f in findings
     )
 
 
@@ -388,27 +387,21 @@ def test_doc_default_mismatch() -> None:
 
 def test_doc_stale_yaml_key() -> None:
     """Adding a made-up YAML row reports doc-stale-yaml-key."""
-    modified = _DOCS_YAML_TABLE + (
-        "| `foo.bar` | no | `1` | Made up |\n"
-    )
+    modified = _DOCS_YAML_TABLE + ("| `foo.bar` | no | `1` | Made up |\n")
     text = _full_docs(modified, _DOCS_ENV_TABLE)
     findings = check_docs_connecting(text)
     assert any(
-        f["type"] == "doc-stale-yaml-key" and f["key"] == "foo.bar"
-        for f in findings
+        f["type"] == "doc-stale-yaml-key" and f["key"] == "foo.bar" for f in findings
     )
 
 
 def test_doc_stale_env_var() -> None:
     """Adding a made-up env var row reports doc-stale-env-var."""
-    modified = _DOCS_ENV_TABLE + (
-        "| `MAIL_FOO` | no | `1` | Made up |\n"
-    )
+    modified = _DOCS_ENV_TABLE + ("| `MAIL_FOO` | no | `1` | Made up |\n")
     text = _full_docs(_DOCS_YAML_TABLE, modified)
     findings = check_docs_connecting(text)
     assert any(
-        f["type"] == "doc-stale-env-var" and f["key"] == "MAIL_FOO"
-        for f in findings
+        f["type"] == "doc-stale-env-var" and f["key"] == "MAIL_FOO" for f in findings
     )
 
 
@@ -417,8 +410,7 @@ def test_doc_stale_excludes_config_path() -> None:
     text = _full_docs(_DOCS_YAML_TABLE, _DOCS_ENV_TABLE)
     findings = check_docs_connecting(text)
     assert not any(
-        f["type"] == "doc-stale-env-var"
-        and f["key"] == "MAIL_CONFIG_PATH"
+        f["type"] == "doc-stale-env-var" and f["key"] == "MAIL_CONFIG_PATH"
         for f in findings
     )
 

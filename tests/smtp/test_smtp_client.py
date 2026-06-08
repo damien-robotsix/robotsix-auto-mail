@@ -25,7 +25,6 @@ from robotsix_auto_mail.smtp_client import (
 # ---------------------------------------------------------------------------
 
 
-
 def _make_mock_smtp_ssl() -> mock.MagicMock:
     """Factory for a mock ``SMTP_SSL`` instance."""
     m = mock.MagicMock(spec=smtplib.SMTP_SSL)
@@ -312,9 +311,7 @@ def test_connect_post_starttls_ehlo_failure(cfg: MailConfig) -> None:
 def test_connect_authentication_rejected(cfg: MailConfig) -> None:
     """login() fails → SmtpAuthError."""
     mock_smtp = _make_mock_smtp()
-    auth_error = smtplib.SMTPAuthenticationError(
-        535, b"5.7.8 Authentication failed"
-    )
+    auth_error = smtplib.SMTPAuthenticationError(535, b"5.7.8 Authentication failed")
     mock_smtp.login.side_effect = auth_error
 
     with mock.patch("smtplib.SMTP", return_value=mock_smtp):
@@ -337,14 +334,61 @@ def test_connect_auth_failure_direct_tls(cfg: MailConfig) -> None:
     )
 
     mock_smtp = _make_mock_smtp_ssl()
-    auth_error = smtplib.SMTPAuthenticationError(
-        535, b"5.7.8 Authentication failed"
-    )
+    auth_error = smtplib.SMTPAuthenticationError(535, b"5.7.8 Authentication failed")
     mock_smtp.login.side_effect = auth_error
 
     with mock.patch("smtplib.SMTP_SSL", return_value=mock_smtp):
         with pytest.raises(SmtpAuthError) as exc:
             SmtpClient(cfg).connect()
+        assert exc.value.__cause__ is auth_error
+
+
+# -- XOAUTH2 --------------------------------------------------------------
+
+
+def test_xoauth2_auth_called_when_token_present() -> None:
+    """When oauth2_token is set, auth('XOAUTH2', ...) is used."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        oauth2_token="ya29.test-token",
+        oauth2_client_id="test-client-id",
+        oauth2_client_secret="test-client-secret",
+    )
+
+    mock_smtp = _make_mock_smtp()
+    mock_smtp.auth.return_value = (235, b"2.7.0 Accepted")
+
+    with mock.patch("smtplib.SMTP", return_value=mock_smtp):
+        SmtpClient(cfg).connect()
+
+    mock_smtp.auth.assert_called_once()
+    assert mock_smtp.auth.call_args[0][0] == "XOAUTH2"
+    # login should not be called when XOAUTH2 is used
+    mock_smtp.login.assert_not_called()
+
+
+def test_xoauth2_authentication_rejected() -> None:
+    """When XOAUTH2 fails, SmtpAuthError is raised."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        oauth2_token="ya29.test-token",
+    )
+
+    mock_smtp = _make_mock_smtp()
+    auth_error = smtplib.SMTPAuthenticationError(535, b"5.7.8 Authentication failed")
+    mock_smtp.auth.side_effect = auth_error
+
+    with mock.patch("smtplib.SMTP", return_value=mock_smtp):
+        with pytest.raises(SmtpAuthError) as exc:
+            SmtpClient(cfg).connect()
+        assert "Authentication failed" in str(exc.value)
+        assert "user@example.com" in str(exc.value)
         assert exc.value.__cause__ is auth_error
 
 

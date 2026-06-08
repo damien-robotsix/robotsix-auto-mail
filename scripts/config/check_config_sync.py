@@ -43,6 +43,9 @@ FIELD_TO_YAML: dict[str, str] = {
     "smtp_tls_mode": "smtp.tls_mode",
     "username": "auth.username",
     "password": "auth.password",
+    "oauth2_token": "auth.oauth2_token",
+    "oauth2_client_id": "auth.oauth2_client_id",
+    "oauth2_client_secret": "auth.oauth2_client_secret",
     "db_path": "store.path",
     "llm_api_key": "llm.api_key",
     "llm_model": "llm.model",
@@ -63,6 +66,9 @@ FIELD_TO_ENV: dict[str, str] = {
     "smtp_tls_mode": "MAIL_SMTP_TLS_MODE",
     "username": "MAIL_USERNAME",
     "password": "MAIL_PASSWORD",
+    "oauth2_token": "MAIL_OAUTH2_TOKEN",
+    "oauth2_client_id": "MAIL_OAUTH2_CLIENT_ID",
+    "oauth2_client_secret": "MAIL_OAUTH2_CLIENT_SECRET",
     "db_path": "MAIL_DB_PATH",
     "llm_api_key": "LLM_API_KEY",
     "llm_model": "LLM_MODEL",
@@ -502,9 +508,7 @@ def _parse_md_table(text: str, section_heading: str) -> list[dict[str, str]]:
     for i, line in enumerate(lines):
         if line.strip().startswith("|") and "---" not in line:
             # Potential first row.  Check if the next line is a separator.
-            if i + 1 < len(lines) and re.match(
-                r"^\s*\|[\s\-:|]+\|\s*$", lines[i + 1]
-            ):
+            if i + 1 < len(lines) and re.match(r"^\s*\|[\s\-:|]+\|\s*$", lines[i + 1]):
                 table_start = i
                 break
 
@@ -814,8 +818,7 @@ def run_checks(
         actual = f.get("actual", None)
         if expected is not None and actual is not None:
             print(
-                f"{artifact}: {ftype}: {key} — "
-                f"expected {expected!r}, got {actual!r}",
+                f"{artifact}: {ftype}: {key} — expected {expected!r}, got {actual!r}",
                 file=sys.stderr,
             )
         else:
