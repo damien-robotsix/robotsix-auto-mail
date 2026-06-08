@@ -12,6 +12,7 @@ import html
 import json
 from collections.abc import Callable, Mapping
 from http.server import BaseHTTPRequestHandler
+from typing import Any
 from urllib.parse import parse_qs, quote, unquote
 
 import jinja2
@@ -460,7 +461,7 @@ def _is_safe_redirect_path(location: str) -> bool:
 
 def _build_board_content(
     db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
-) -> dict[str, str | bool]:
+) -> dict[str, str | bool | dict[str, dict[str, Any]]]:
     """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
 
     Opens a fresh database connection, gathers every mail record and
@@ -533,7 +534,7 @@ def _build_board_content(
 
         # -- unsubscribe suggestions for TO_DELETE column -----------------
         suggestions_raw = get_watermark(conn, "unsubscribe_suggestions")
-        unsubscribe_suggestions: dict[str, dict] = {}
+        unsubscribe_suggestions: dict[str, dict[str, Any]] = {}
         if suggestions_raw is not None:
             try:
                 unsubscribe_suggestions = json.loads(suggestions_raw)
@@ -796,7 +797,7 @@ def _render_column(
     archive_subfolders: dict[str, str] | None = None,
     existing_folders: dict[str, bool] | None = None,
     archive_root: str = DEFAULT_ARCHIVE_ROOT,
-    unsubscribe_suggestions: dict[str, dict] | None = None,
+    unsubscribe_suggestions: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     """Render a single board column (header + cards) as an HTML string."""
     title = TRIAGE_ACTION_LABELS[action]

@@ -1092,7 +1092,7 @@ def _build_user_message(records: list) -> str:  # type: ignore[type-arg]
 
 
 def _detect_unsubscribe_for_sender(
-    conn: sqlite3.Connection,
+    conn: sqlite3.Connection | None,
     sender: str,
     records: list[MailRecord],
 ) -> UnsubscribeDetection | None:
@@ -1183,7 +1183,7 @@ def _detect_unsubscribe_for_sender(
     finally:
         agent_handle.close()
 
-    return result.output
+    return result.output  # type: ignore[no-any-return]
 
 
 def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
