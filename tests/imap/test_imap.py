@@ -365,7 +365,7 @@ def test_create_folder_already_exists_is_idempotent(cfg: MailConfig) -> None:
         with ImapClient(cfg) as client:
             client.create_folder("robotsix-mail-archive")
 
-    # ALREADYEXISTS was detected in the response data – no LIST needed.
+    # ALREADYEXISTS was detected in the response data - no LIST needed.
     mock_ssl.list.assert_not_called()
 
 
