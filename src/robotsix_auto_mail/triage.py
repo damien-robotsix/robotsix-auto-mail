@@ -1,12 +1,13 @@
 """LLM-driven inbox triage agent and local triage-decision persistence.
 
-The triage agent classifies each ingested inbox ``MailRecord`` into an
-*action status* — ``answer`` / ``waiting`` / ``archive`` / ``delete`` /
-``ignore``, with ``user_triage`` as the explicit "the system does not know
-what to do" fallback.  These action statuses are stored in the ``triage_decisions``
-table.  Triage performs **NO IMAP / mailbox side effects** whatsoever: the kanban is
-a local-only board, so moving a card never touches the original mailbox (no
-archive / delete / move / expunge / append / store).
+The triage agent classifies each ingested inbox ``MailRecord`` into one of
+five canonical *triage actions* — ``INBOX`` / ``HUMAN_TRIAGE`` /
+``TO_ARCHIVE`` / ``TO_DELETE`` / ``TO_ANSWER`` — with ``HUMAN_TRIAGE`` as
+the explicit "the system does not know what to do" fallback.  These actions
+are stored in the ``triage_decisions`` table.  Triage performs **NO IMAP /
+mailbox side effects** whatsoever: the kanban is a local-only board, so
+moving a card never touches the original mailbox (no archive / delete /
+move / expunge / append / store).
 
 The ``pydantic_ai`` import is lazy to keep module-load time low, mirroring
 :mod:`robotsix_auto_mail.config.config_sync_agent`.
@@ -38,21 +39,21 @@ from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT
 # Constants
 # ---------------------------------------------------------------------------
 
-#: Canonical triage action vocabulary.  ``user_triage`` is the explicit
-#: fallback meaning "the system does not know what to do".
+#: Canonical triage state vocabulary — the five kanban columns.
+#: ``INBOX`` means "not triaged" (no ``triage_decisions`` row, or an
+#: explicit reset).
 VALID_TRIAGE_ACTIONS = frozenset(
-    {"answer", "archive", "delete", "ignore", "user_triage", "waiting"}
+    {"INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
 )
 
 #: Maps each triage action to the kanban column its card moves to.
 #: This is a LOCAL board move only — it never touches IMAP.
 TRIAGE_ACTION_TO_STATUS: dict[str, str] = {
-    "archive": "no_action",  # FYI, nothing to do
-    "ignore": "done",
-    "delete": "no_action",  # user does NOT want real deletion — board column only
-    "answer": "needs_reply",  # needs a human reply
-    "waiting": "waiting",  # you replied/acted; now awaiting the other party
-    "user_triage": "to_read",  # system unsure → human reads/decides
+    "INBOX": "to_read",       # not triaged / returned to inbox
+    "HUMAN_TRIAGE": "to_read", # system unsure → human reads/decides
+    "TO_ARCHIVE": "no_action", # FYI, nothing to do
+    "TO_DELETE": "no_action",  # user does NOT want real deletion — board column only
+    "TO_ANSWER": "needs_reply", # needs a human reply
 }
 
 #: Accepted decision sources.
@@ -84,7 +85,7 @@ _RULE_LEDGER_WATERMARK_KEY = "triage_rules_ledger"
 #: Watermark key owned by this module for the accepted (active) rules list.
 _RULE_ACTIVE_WATERMARK_KEY = "triage_rules_active"
 
-#: Minimum number of consistent, non-``user_triage`` decisions before a rule
+#: Minimum number of consistent, non-``HUMAN_TRIAGE`` decisions before a rule
 #: is proposed for a sender (or, in total, for a domain).
 _RULE_MIN_DECISIONS = 3
 
@@ -107,9 +108,9 @@ class TriageItem(pydantic.BaseModel):
     """One classified mail in the LLM response, referenced by 1-based index."""
 
     index: int = pydantic.Field(..., ge=1)
-    #: Triage action.  Unknown / empty values are coerced to ``user_triage``
+    #: Triage action.  Unknown / empty values are coerced to ``HUMAN_TRIAGE``
     #: rather than failing the whole batch.
-    action: str = pydantic.Field(default="user_triage")
+    action: str = pydantic.Field(default="HUMAN_TRIAGE")
     reason: str = pydantic.Field(default="")
     #: Confidence level — one of ``low`` / ``medium`` / ``high``.
     confidence: str = pydantic.Field(default="medium")
@@ -118,7 +119,7 @@ class TriageItem(pydantic.BaseModel):
     @classmethod
     def _coerce_action(cls, v: str) -> str:
         if v not in VALID_TRIAGE_ACTIONS:
-            return "user_triage"
+            return "HUMAN_TRIAGE"
         return v
 
     @pydantic.field_validator("confidence")
@@ -136,7 +137,7 @@ class TriageResult(pydantic.BaseModel):
     """Structured output the LLM must return — validated by pydantic.
 
     An empty ``items`` list is valid; any omitted inbox record is defaulted
-    to ``user_triage`` by :func:`run_triage_agent`.
+    to ``HUMAN_TRIAGE`` by :func:`run_triage_agent`.
     """
 
     items: list[TriageItem] = pydantic.Field(default_factory=list)
@@ -593,10 +594,10 @@ def propose_triage_rules(
     """Derive candidate deterministic triage rules from triage history.
 
     Scans :func:`list_triage_decisions`, resolving each decision's sender
-    via :func:`get_record_by_message_id`.  ``user_triage`` decisions and
+    via :func:`get_record_by_message_id`.  ``HUMAN_TRIAGE`` decisions and
     decisions whose mail is no longer present are ignored.  A *sender* rule
     is proposed when a single sender maps consistently to one non-
-    ``user_triage`` action across at least :data:`_RULE_MIN_DECISIONS`
+    ``HUMAN_TRIAGE`` action across at least :data:`_RULE_MIN_DECISIONS`
     decisions; a *domain* rule is proposed when at least two distinct senders
     in a domain all map to the same single action across at least
     :data:`_RULE_MIN_DECISIONS` decisions in total.  No LLM is involved.
@@ -605,13 +606,13 @@ def propose_triage_rules(
     for deterministic output; the caller is responsible for dedup via
     :func:`record_and_filter_rule_proposals`.
     """
-    # sender_key -> list of non-user_triage actions
+    # sender_key -> list of non-HUMAN_TRIAGE actions
     by_sender: dict[str, list[str]] = {}
-    # domain -> {sender_key -> list of non-user_triage actions}
+    # domain -> {sender_key -> list of non-HUMAN_TRIAGE actions}
     by_domain: dict[str, dict[str, list[str]]] = {}
 
     for decision in list_triage_decisions(conn):
-        if decision.action == "user_triage":
+        if decision.action == "HUMAN_TRIAGE":
             continue
         record = get_record_by_message_id(conn, decision.message_id)
         if record is None:
@@ -820,19 +821,19 @@ def _build_triage_system_prompt() -> str:
         "and a short body preview. Classify each message into exactly one "
         "action status:\n"
         "\n"
-        "- `answer`: the message needs a personal reply.\n"
-        "- `waiting`: you have already replied or acted and are now awaiting "
-        "a response/action from the other party.\n"
-        "- `archive`: keep the message for reference but no reply is needed.\n"
-        "- `delete`: the message is junk / worthless and can be discarded.\n"
-        "- `ignore`: no action is needed and it need not be kept.\n"
-        "- `user_triage`: you are NOT confident what to do — defer to a "
-        "human. Use this whenever you are unsure.\n"
+        "- `INBOX`: return to inbox; no action needed, not triaged.\n"
+        "- `HUMAN_TRIAGE`: you are NOT confident what to do — defer to a "
+        "human.\n"
+        "- `TO_ARCHIVE`: keep the message for reference but no reply is "
+        "needed.\n"
+        "- `TO_DELETE`: the message is junk / worthless and can be "
+        "discarded.\n"
+        "- `TO_ANSWER`: the message needs a personal reply.\n"
         "\n"
         "Reference each message by its 1-based `index` (do NOT echo back any "
         "message id). For each message return an `index`, an `action` (one "
         "of the values above), a short `reason`, and a `confidence` of "
-        "`low`, `medium`, or `high`. Prefer `user_triage` over guessing.\n"
+        "`low`, `medium`, or `high`. Prefer `HUMAN_TRIAGE` over guessing.\n"
         "\n"
         "Return a JSON object with an `items` list. Return ONLY the JSON "
         "object matching the schema — no explanation, no markdown fences."
@@ -878,8 +879,8 @@ def run_triage_agent(
     ``MailRecord`` without a ``triage_decisions`` row); returns
     ``[]`` immediately (without calling the LLM) when there is none.  Each
     returned ``TriageItem`` is mapped back to its ``MailRecord`` by 1-based
-    index; unknown actions are clamped to ``user_triage`` and any omitted
-    inbox record defaults to ``user_triage``.  Every decision is persisted
+    index; unknown actions are clamped to ``HUMAN_TRIAGE`` and any omitted
+    inbox record defaults to ``HUMAN_TRIAGE``.  Every decision is persisted
     with ``source='agent'``.
 
     Args:
@@ -980,7 +981,7 @@ def run_triage_agent(
 
     output: TriageResult = result.output
 
-    # -- map 1-based indices back to records; default omissions to user_triage --
+    # -- map 1-based indices back to records; default omissions to HUMAN_TRIAGE --
     by_index: dict[int, TriageItem] = {}
     for item in output.items:
         if 1 <= item.index <= len(remaining) and item.index not in by_index:
@@ -989,11 +990,11 @@ def run_triage_agent(
     for i, record in enumerate(remaining, start=1):
         matched = by_index.get(i)
         if matched is None:
-            action, reason, confidence = "user_triage", "", "medium"
+            action, reason, confidence = "HUMAN_TRIAGE", "", "medium"
         else:
             action = matched.action
             if action not in VALID_TRIAGE_ACTIONS:
-                action = "user_triage"
+                action = "HUMAN_TRIAGE"
             reason, confidence = matched.reason, matched.confidence
         set_triage_decision(
             conn,

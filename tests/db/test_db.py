@@ -739,7 +739,7 @@ def test_list_untriaged_records_some_triaged() -> None:
         conn.execute(
             "INSERT INTO triage_decisions "
             "(message_id, action, source, reason, confidence, updated_at) "
-            "VALUES ('<triaged@x.com>', 'archive', 'agent', '', 'medium', '2025-01-01T00:00:00')"  # noqa: E501
+            "VALUES ('<triaged@x.com>', 'TO_ARCHIVE', 'agent', '', 'medium', '2025-01-01T00:00:00')"  # noqa: E501
         )
         conn.commit()
         result = list_untriaged_records(conn)
@@ -802,15 +802,15 @@ def test_init_db_migrates_status_to_triage(tmp_db_path: str) -> None:
         decisions = {d.message_id: d for d in list_triage_decisions(conn)}
         # needs_reply → answer
         assert "<needs@x.com>" in decisions
-        assert decisions["<needs@x.com>"].action == "answer"
+        assert decisions["<needs@x.com>"].action == "TO_ANSWER"
         assert decisions["<needs@x.com>"].source == "user"
         assert "migrated from legacy status" in decisions["<needs@x.com>"].reason
-        # waiting → waiting
-        assert decisions["<wait@x.com>"].action == "waiting"
-        # no_action → archive
-        assert decisions["<noact@x.com>"].action == "archive"
-        # done → ignore
-        assert decisions["<done@x.com>"].action == "ignore"
+        # waiting → INBOX
+        assert decisions["<wait@x.com>"].action == "INBOX"
+        # no_action → TO_ARCHIVE
+        assert decisions["<noact@x.com>"].action == "TO_ARCHIVE"
+        # done → TO_ARCHIVE
+        assert decisions["<done@x.com>"].action == "TO_ARCHIVE"
         # to_read is skipped (no migration)
         assert "<toread@x.com>" not in decisions
     finally:
@@ -868,7 +868,7 @@ def test_init_db_status_migration_skips_existing_decisions(
         conn.execute(
             "INSERT INTO triage_decisions "
             "(message_id, action, source, reason, confidence, updated_at) "
-            "VALUES ('<existing@x.com>', 'delete', 'agent', 'spam', 'high', '2025-01-01T00:00:00')"  # noqa: E501
+            "VALUES ('<existing@x.com>', 'TO_DELETE', 'agent', 'spam', 'high', '2025-01-01T00:00:00')"  # noqa: E501
         )
         conn.commit()
     finally:
@@ -882,6 +882,6 @@ def test_init_db_status_migration_skips_existing_decisions(
             "WHERE message_id = '<existing@x.com>'"
         )
         row = cur.fetchone()
-        assert row == ("delete", "agent", "spam")
+        assert row == ("TO_DELETE", "agent", "spam")
     finally:
         conn.close()

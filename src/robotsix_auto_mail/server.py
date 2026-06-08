@@ -47,11 +47,11 @@ _BOARD_COLUMNS = STATUS_ORDER
 #: move represents.  Used by ``_handle_move`` so a POST to ``/move``
 #: creates (or updates) a ``triage_decisions`` row.
 _STATUS_TO_TRIAGE_ACTION: dict[str, str] = {
-    "needs_reply": "answer",
-    "waiting": "waiting",
-    "to_read": "user_triage",
-    "no_action": "archive",
-    "done": "ignore",
+    "needs_reply": "TO_ANSWER",
+    "waiting": "INBOX",          # "waiting" has no canonical equivalent → INBOX
+    "to_read": "HUMAN_TRIAGE",
+    "no_action": "TO_ARCHIVE",
+    "done": "TO_ARCHIVE",        # "done" has no canonical equivalent → TO_ARCHIVE
 }
 
 _CSS = """\

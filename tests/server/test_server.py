@@ -221,13 +221,13 @@ def test_render_rule_card_basic() -> None:
     entry = RuleLedgerEntry(
         match_type="sender",
         match_value="alice@example.com",
-        action="archive",
+        action="TO_ARCHIVE",
         title="Triage mail from alice@example.com as archive",
         state="pending",
     )
     html = _render_rule_card("deadbeef", entry)
     assert "Triage mail from alice@example.com as archive" in html
-    assert "sender=alice@example.com -&gt; archive" in html
+    assert "sender=alice@example.com -&gt; TO_ARCHIVE" in html
     assert '<input type="hidden" name="fingerprint" value="deadbeef">' in html
     assert 'name="decision" value="accept"' in html
     assert 'name="decision" value="reject"' in html
@@ -238,7 +238,7 @@ def test_render_rule_card_html_escapes_title() -> None:
     entry = RuleLedgerEntry(
         match_type="sender",
         match_value="x@x.com",
-        action="archive",
+        action="TO_ARCHIVE",
         title="<script>alert('xss')</script>",
         state="pending",
     )
@@ -251,7 +251,7 @@ def test_render_rule_card_html_escapes_match_value() -> None:
     entry = RuleLedgerEntry(
         match_type="sender",
         match_value='<img src=x onerror="alert(1)">',
-        action="archive",
+        action="TO_ARCHIVE",
         title="t",
         state="pending",
     )
@@ -371,9 +371,9 @@ def test_build_board_html_structure() -> None:
         )
 
         # "to_read" stays untriaged → to_read column.
-        # "done" migrates to triage action "ignore" → done column.
+        # "done" migrates to triage action "TO_ARCHIVE" → no_action column.
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["0", "0", "1", "0", "1"]
+        assert counts == ["0", "0", "1", "1", "0"]
 
         # Cards
         assert "a@b.com" in html
@@ -399,11 +399,11 @@ def test_build_board_html_shows_rule_proposal() -> None:
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
-        _seed_rule_proposal(db_path, "sender", "spam@x.com", "delete")
+        _seed_rule_proposal(db_path, "sender", "spam@x.com", "TO_DELETE")
         html = _build_board_html(db_path)
         assert "Rule proposals" in html
         assert 'class="rule-card"' in html
-        assert "sender=spam@x.com -&gt; delete" in html
+        assert "sender=spam@x.com -&gt; TO_DELETE" in html
         assert 'name="decision" value="accept"' in html
         assert 'name="decision" value="reject"' in html
     finally:
@@ -647,8 +647,8 @@ def test_handler_board_with_data() -> None:
 
             # After migration:
             # "to_read" → untriaged (to_read column)
-            # "needs_reply" → "answer" → needs_reply column
-            # "no_action" (x2) → "archive" → no_action column
+            # "needs_reply" → "TO_ANSWER" → needs_reply column
+            # "no_action" (x2) → "TO_ARCHIVE" → no_action column
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
             assert counts == ["1", "0", "1", "2", "0"]
         finally:
@@ -833,7 +833,7 @@ def test_rule_action_accept_redirects_and_activates() -> None:
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
-        _seed_rule_proposal(db_path, "sender", "spam@x.com", "delete")
+        _seed_rule_proposal(db_path, "sender", "spam@x.com", "TO_DELETE")
         conn = init_db(db_path)
         try:
             from robotsix_auto_mail.triage import (
@@ -877,7 +877,7 @@ def test_rule_action_reject_redirects() -> None:
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
-        _seed_rule_proposal(db_path, "sender", "spam@x.com", "delete")
+        _seed_rule_proposal(db_path, "sender", "spam@x.com", "TO_DELETE")
         conn = init_db(db_path)
         try:
             from robotsix_auto_mail.triage import list_rule_proposals
@@ -962,9 +962,9 @@ def test_move_success_redirects_302() -> None:
             # Verify the card actually moved by checking /board.
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             board_html = resp.read().decode("utf-8")
-            # Should be in Done column, not To read
+            # Should be in No action column (done → TO_ARCHIVE → no_action), not Done
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "0", "0", "1"], f"Unexpected counts: {counts}"
+            assert counts == ["0", "0", "0", "1", "0"], f"Unexpected counts: {counts}"
         finally:
             server.shutdown()
     finally:
@@ -1146,8 +1146,8 @@ def test_email_status_returns_200() -> None:
             assert resp.status == 200
             assert resp.headers.get("Content-Type", "").startswith("text/plain")
             body = resp.read().decode("utf-8")
-            # "needs_reply" migrates to triage action "answer".
-            assert body == "answer"
+            # "needs_reply" migrates to triage action "TO_ANSWER".
+            assert body == "TO_ANSWER"
         finally:
             server.shutdown()
     finally:
@@ -1224,8 +1224,8 @@ def test_email_status_simple_message_id() -> None:
         try:
             resp = urlopen(f"http://127.0.0.1:{port}/email/simple-id/status")
             assert resp.status == 200
-            # "done" migrates to triage action "ignore".
-            assert resp.read().decode("utf-8") == "ignore"
+            # "done" migrates to triage action "TO_ARCHIVE".
+            assert resp.read().decode("utf-8") == "TO_ARCHIVE"
         finally:
             server.shutdown()
     finally:
@@ -1441,7 +1441,7 @@ def test_build_detail_html_includes_move_form() -> None:
         assert '<form class="detail-form"' in html
         assert 'method="post" action="/move"' in html
         assert 'value="&lt;move-detail@test.com&gt;"' in html
-        # "needs_reply" migrates to triage action "answer" → "needs_reply" column.
+        # "needs_reply" migrates to triage action "TO_ANSWER" → "needs_reply" column.
         assert '<option value="needs_reply" selected>Needs reply</option>' in html
     finally:
         os.unlink(db_path)
@@ -1585,8 +1585,8 @@ def test_handler_email_detail_does_not_capture_status_route() -> None:
             content_type = resp.headers.get("Content-Type", "")
             assert "text/plain" in content_type
             body = resp.read().decode("utf-8")
-            # "done" migrates to triage action "ignore".
-            assert body == "ignore"
+            # "done" migrates to triage action "TO_ARCHIVE".
+            assert body == "TO_ARCHIVE"
             # Should NOT be HTML
             assert "<!DOCTYPE html>" not in body
         finally:
@@ -1976,7 +1976,7 @@ def test_move_with_empty_redirect_to_falls_back_to_board() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             board_html = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "0", "0", "1"]
+            assert counts == ["0", "0", "0", "1", "0"]
         finally:
             server.shutdown()
     finally:
@@ -2288,7 +2288,7 @@ def test_render_card_with_triage_decision_no_badge() -> None:
     )
     decision = TriageDecision(
         message_id="abc",
-        action="archive",
+        action="TO_ARCHIVE",
         source="agent",
         reason="newsletter",
     )
@@ -2322,7 +2322,7 @@ def test_render_card_triage_decision_selects_column() -> None:
     )
     decision = TriageDecision(
         message_id="abc",
-        action="delete",
+        action="TO_DELETE",
         source="agent",
         reason="spam",
     )
@@ -2349,7 +2349,7 @@ def test_build_board_html_places_card_by_triage_decision() -> None:
                 },
             ],
         )
-        _seed_triage_decision(db_path, "m1", action="archive", reason="bulk mail")
+        _seed_triage_decision(db_path, "m1", action="TO_ARCHIVE", reason="bulk mail")
 
         html = _build_board_html(db_path)
         # The card should be in the no_action column (archive → no_action).
@@ -2407,7 +2407,7 @@ def test_build_board_html_triage_reason_not_in_markup() -> None:
         _seed_triage_decision(
             db_path,
             "m1",
-            action="ignore",
+            action="TO_DELETE",
             reason='<script>alert("xss")</script>',
         )
 
@@ -2438,7 +2438,7 @@ def test_build_detail_html_shows_triage_field() -> None:
         _seed_triage_decision(
             db_path,
             "<triage-detail@test.com>",
-            action="answer",
+            action="TO_ANSWER",
             reason="needs a reply",
         )
 
@@ -2446,7 +2446,7 @@ def test_build_detail_html_shows_triage_field() -> None:
             html = _build_detail_html(db_path, "<triage-detail@test.com>", embed=embed)
             assert html is not None
             assert "Triage" in html
-            assert "answer" in html
+            assert "TO_ANSWER" in html
             assert "needs a reply" in html
     finally:
         os.unlink(db_path)
@@ -2497,7 +2497,7 @@ def test_build_detail_html_triage_reason_escaped() -> None:
         _seed_triage_decision(
             db_path,
             "<xss-triage@test.com>",
-            action="delete",
+            action="TO_DELETE",
             reason='<script>alert("xss")</script>',
         )
 
@@ -2524,9 +2524,18 @@ def test_status_to_triage_action_mapping() -> None:
     assert all(
         v in VALID_TRIAGE_ACTIONS for v in _STATUS_TO_TRIAGE_ACTION.values()
     )
-    # Round-trip: status → action → status should be identity.
+    # Round-trip: status → action → status should be identity where possible.
+    # Non-canonical statuses ("INBOX", "done") map to canonical actions
+    # that don't round-trip identically.
+    expected_roundtrips = {
+        "needs_reply": "needs_reply",
+        "waiting": "to_read",       # INBOX maps to to_read, not waiting
+        "to_read": "to_read",
+        "no_action": "no_action",
+        "done": "no_action",        # TO_ARCHIVE maps to no_action, not done
+    }
     for status, action in _STATUS_TO_TRIAGE_ACTION.items():
-        assert TRIAGE_ACTION_TO_STATUS[action] == status
+        assert TRIAGE_ACTION_TO_STATUS[action] == expected_roundtrips[status]
 
 
 # ---------------------------------------------------------------------------
@@ -2570,8 +2579,8 @@ def test_move_creates_triage_decision() -> None:
         try:
             decision = get_triage_decision(conn, "move-triage")
             assert decision is not None
-            # done → ignore
-            assert decision.action == "ignore"
+            # done → TO_ARCHIVE (no canonical equivalent)
+            assert decision.action == "TO_ARCHIVE"
             assert decision.source == "user"
             assert decision.reason == "moved to done"
             # mail_records.status was NOT updated.
