@@ -9,3 +9,4 @@
 paths-ignore:
   - tests
   - .pip-site
+  - .deps
