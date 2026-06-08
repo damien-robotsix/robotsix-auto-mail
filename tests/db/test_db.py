@@ -123,6 +123,7 @@ def test_init_db_creates_mail_records_table() -> None:
             "body_plain": "TEXT",
             "body_html": "TEXT",
             "attachments_json": "TEXT",
+            "unsubscribe_header": "TEXT",
             "status": "TEXT",
         }
         for name, type_ in expected.items():

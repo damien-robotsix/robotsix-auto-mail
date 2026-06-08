@@ -111,4 +111,5 @@ def _make_record(**overrides: str | int | None) -> MailRecord:
         body_plain=_opt_str("body_plain", ""),
         body_html=_opt_str("body_html", ""),
         attachments_json=_opt_str("attachments_json", "[]"),
+        unsubscribe_header=_opt_str("unsubscribe_header", ""),
     )

@@ -54,6 +54,7 @@ class MailRecord:
     body_plain: str = ""
     body_html: str = ""
     attachments_json: str = "[]"
+    unsubscribe_header: str = ""
 
     id: int = 0  # assigned by DB; ignored on insert
 
@@ -74,6 +75,7 @@ CREATE TABLE IF NOT EXISTS mail_records (
     body_plain      TEXT    NOT NULL,
     body_html       TEXT    NOT NULL,
     attachments_json TEXT   NOT NULL,
+    unsubscribe_header TEXT NOT NULL DEFAULT '',
     status          TEXT    NOT NULL DEFAULT '{DEFAULT_STATUS}'
 );
 
@@ -129,6 +131,7 @@ def init_db(
     if not skip_migrations:
         _migrate_legacy_statuses(conn)
         _migrate_status_to_triage(conn)
+        _migrate_add_unsubscribe_header(conn)
     return conn
 
 
@@ -194,6 +197,22 @@ WHERE mr.status = ?
     conn.commit()
 
 
+def _migrate_add_unsubscribe_header(conn: sqlite3.Connection) -> None:
+    """Add ``unsubscribe_header`` column to ``mail_records`` for existing DBs.
+
+    Idempotent: if the column already exists the ``ALTER TABLE`` raises
+    ``sqlite3.OperationalError`` which is caught and ignored.
+    """
+    try:
+        conn.execute(
+            "ALTER TABLE mail_records "
+            "ADD COLUMN unsubscribe_header TEXT NOT NULL DEFAULT ''"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
+
 def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
     """Insert *record* into ``mail_records``.
 
@@ -207,10 +226,12 @@ def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
             """\
 INSERT INTO mail_records
     (imap_uid, message_id, sender, subject, date,
-     recipients_json, body_plain, body_html, attachments_json, status)
+     recipients_json, body_plain, body_html, attachments_json,
+     unsubscribe_header, status)
 VALUES
     (:imap_uid, :message_id, :sender, :subject, :date,
-     :recipients_json, :body_plain, :body_html, :attachments_json, :status)
+     :recipients_json, :body_plain, :body_html, :attachments_json,
+     :unsubscribe_header, :status)
 """,
             {
                 "imap_uid": record.imap_uid,
@@ -222,6 +243,7 @@ VALUES
                 "body_plain": record.body_plain,
                 "body_html": record.body_html,
                 "attachments_json": record.attachments_json,
+                "unsubscribe_header": record.unsubscribe_header,
                 "status": record.status,
             },
         )
@@ -315,6 +337,7 @@ def row_to_mailrecord(
         body_plain=data["body_plain"],
         body_html=data["body_html"],
         attachments_json=data["attachments_json"],
+        unsubscribe_header=data["unsubscribe_header"],
         id=data["id"],
     )
 
