@@ -224,7 +224,15 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; display: inline; }
 }
 .archive-override-form button {
   font-size: 0.7rem; padding: 0.1rem 0.4rem; cursor: pointer;
-}"""
+}
+.archive-confirm-form { display: flex; gap: 0.15rem; align-items: center; }
+.archive-btn {
+  background: #2e7d32; color: #fff; border: none;
+  padding: 0.25rem 0.6rem; border-radius: 4px;
+  cursor: pointer; font-size: 0.75rem;
+}
+.archive-btn:hover { background: #1b5e20; }
+"""
 
 
 # Full ``/board`` document.  ``css`` and ``columns_html`` are passed in
@@ -896,6 +904,13 @@ def _render_card(
             ' placeholder="subfolder path" size="30">'
             '<button type="submit">Set</button>'
             "</form>"
+            '<form class="archive-confirm-form" method="post"'
+            ' action="/archive"'
+            ' onsubmit="return confirm('
+            f"'Archive this mail to {display_path}?')\">"
+            f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+            '<button type="submit" class="archive-btn">Archive</button>'
+            "</form>"
             "</div>"
         )
 
@@ -1047,6 +1062,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         routes: dict[str, Callable[[], None]] = {
             "/move": self._handle_move,
             "/delete": self._handle_delete,
+            "/archive": self._handle_archive,
             "/batch-delete": self._handle_batch_delete,
             "/rule-action": self._handle_rule_action,
             "/config-sync": self._handle_config_sync,
@@ -1234,6 +1250,87 @@ class BoardHandler(BaseHTTPRequestHandler):
             self._redirect(redirect_to, code=302)
         else:
             self._redirect("/board", code=302)
+
+    def _handle_archive(self) -> None:
+        """Process POST /archive — move mail to archive folder via IMAP
+        and remove it from the local database.
+        """
+        from robotsix_auto_mail.db import (
+            delete_record_by_message_id,
+            get_record_by_message_id,
+            init_db,
+        )
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
+
+        message_id = (fields.get("message_id") or [""])[0].strip()
+
+        if not message_id:
+            self._bad_request("Missing message_id")
+            return
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            record = get_record_by_message_id(conn, message_id)
+            if record is None:
+                self._not_found()
+                return
+
+            # Compute the effective archive subfolder.
+            subfolder = get_archive_subfolder(conn, message_id, record)
+
+            # Determine the archive root.
+            archive_root = (
+                self.mail_config.archive_root
+                if self.mail_config is not None
+                else DEFAULT_ARCHIVE_ROOT
+            )
+
+            # -- IMAP move phase (only when IMAP is configured and the
+            #    record has a tracked UID) --
+            if self.mail_config is not None and record.imap_uid is not None:
+                from robotsix_auto_mail.imap import ImapClient, ImapError
+
+                try:
+                    with ImapClient(self.mail_config) as client:
+                        client.select_folder(
+                            self.mail_config.imap_folder
+                        )
+
+                        # Determine the IMAP hierarchy delimiter.
+                        existing = client.list_folders()
+                        delimiter = next(
+                            (f.delimiter for f in existing if f.delimiter),
+                            "/",
+                        )
+
+                        # Build the destination IMAP folder name.
+                        if subfolder:
+                            translated = subfolder.replace("/", delimiter)
+                            dest_folder = (
+                                f"{archive_root}{delimiter}{translated}"
+                            )
+                        else:
+                            dest_folder = archive_root
+
+                        client.move_message(
+                            record.imap_uid, dest_folder
+                        )
+                except (ImapError, OSError) as exc:
+                    self._send_response(
+                        f"IMAP archive failed: {exc}",
+                        status=502,
+                    )
+                    return
+
+            # -- local DB cleanup --
+            delete_record_by_message_id(conn, message_id)
+        finally:
+            conn.close()
+
+        self._redirect("/board", code=302)
 
     def _handle_batch_delete(self) -> None:
         """Process POST /batch-delete — delete all TO_DELETE mail from IMAP

@@ -444,6 +444,32 @@ class ImapClient(_ProtocolClient):
         if status != "OK":
             raise ImapError(f"EXPUNGE failed: {status}")
 
+    def move_message(self, uid: int, dest_folder: str) -> None:
+        """Copy *uid* to *dest_folder* then delete the original.
+
+        Uses IMAP ``UID COPY`` to copy the message, then calls
+        :meth:`delete_message` to mark the original ``\\Deleted``
+        and expunge.  This two-step copy-then-delete approach uses
+        only RFC-3501-mandated commands (``COPY`` + ``STORE`` /
+        ``EXPUNGE``), avoiding the optional ``MOVE`` extension.
+
+        Raises :class:`ImapError` if not connected or the server
+        returns a non-OK status for either the ``UID COPY`` or the
+        subsequent deletion.
+        """
+        if self._imap is None:
+            raise ImapError("Not connected")
+
+        # Copy to destination.
+        status, _ = self._imap.uid("COPY", str(uid), dest_folder)
+        if status != "OK":
+            raise ImapError(
+                f"UID COPY of {uid} to {dest_folder!r} failed: {status}"
+            )
+
+        # Delete the original from the source mailbox.
+        self.delete_message(uid)
+
     @staticmethod
     def _parse_uid_from_fetch_header(header: bytes) -> int | None:
         """Extract the UID from a FETCH response header line.
