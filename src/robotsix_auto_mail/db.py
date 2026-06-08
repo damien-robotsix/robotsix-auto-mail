@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import dataclasses
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 
 #: The default status assigned to new ``MailRecord`` instances and used as
@@ -115,6 +116,7 @@ def init_db(path: str) -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     _migrate_legacy_statuses(conn)
+    _migrate_status_to_triage(conn)
     return conn
 
 
@@ -128,6 +130,54 @@ def _migrate_legacy_statuses(conn: sqlite3.Connection) -> None:
         conn.execute(
             "UPDATE mail_records SET status = ? WHERE status = ?",
             (new_status, old_status),
+        )
+    conn.commit()
+
+
+_STATUS_TO_TRIAGE_ACTION: dict[str, str] = {
+    "needs_reply": "answer",
+    "waiting": "waiting",
+    "no_action": "archive",
+    "done": "ignore",
+}
+
+
+def _utc_now_iso() -> str:
+    """Return the current UTC time as an ISO-8601 string."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _migrate_status_to_triage(conn: sqlite3.Connection) -> None:
+    """One-time migration: mirror non-default ``mail_records.status`` values
+    into ``triage_decisions`` for rows that lack a decision.
+
+    Only rows whose ``status`` is not ``"to_read"`` (the default) AND
+    that have no corresponding row in ``triage_decisions`` are migrated.
+    The mapping table is:
+
+    - ``needs_reply → answer``
+    - ``waiting → waiting``
+    - ``no_action → archive``
+    - ``done → ignore``
+
+    Migrated rows are inserted with ``source="user"`` and
+    ``reason="migrated from legacy status"``.  Rows already present in
+    ``triage_decisions`` are skipped.  Idempotent: running multiple
+    times never inserts duplicates.
+    """
+    for old_status, action in _STATUS_TO_TRIAGE_ACTION.items():
+        conn.execute(
+            """\
+INSERT OR IGNORE INTO triage_decisions
+    (message_id, action, source, reason, confidence, updated_at)
+SELECT mr.message_id, ?, 'user', 'migrated from legacy status', 'medium', ?
+FROM mail_records mr
+WHERE mr.status = ?
+  AND mr.message_id NOT IN (
+      SELECT message_id FROM triage_decisions
+  )
+""",
+            (action, _utc_now_iso(), old_status),
         )
     conn.commit()
 
@@ -249,6 +299,30 @@ def list_records(conn: sqlite3.Connection) -> list[MailRecord]:
     owns the connection and must close it.
     """
     cur = conn.execute("SELECT * FROM mail_records ORDER BY id ASC")
+    rows = cur.fetchall()
+    col_names = [desc[0] for desc in cur.description]
+    results: list[MailRecord] = []
+    for row in rows:
+        results.append(row_to_mailrecord(row, col_names))
+    return results
+
+
+def list_untriaged_records(conn: sqlite3.Connection) -> list[MailRecord]:
+    """Return every ``MailRecord`` without a ``triage_decisions`` row.
+
+    Uses a ``LEFT JOIN … WHERE td.message_id IS NULL`` so untriaged
+    records are returned in ``id ASC`` order.  Read-only — does **not**
+    call ``conn.commit()``.
+    """
+    cur = conn.execute(
+        """\
+SELECT mr.*
+FROM mail_records mr
+LEFT JOIN triage_decisions td ON mr.message_id = td.message_id
+WHERE td.message_id IS NULL
+ORDER BY mr.id ASC
+"""
+    )
     rows = cur.fetchall()
     col_names = [desc[0] for desc in cur.description]
     results: list[MailRecord] = []
