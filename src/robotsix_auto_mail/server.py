@@ -197,7 +197,14 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; display: inline; }
   margin-top: 0.3rem;
 }
 .delete-btn:hover { background: #b71c1c; }
-"""
+
+/* Triage-running indicator */
+.triage-banner {
+  background: #fff3cd; color: #664d03;
+  text-align: center; padding: 0.5rem 1rem;
+  border-radius: 6px; margin-bottom: 0.75rem;
+  font-size: 0.9rem; border: 1px solid #ffecb5;
+}"""
 
 
 # Full ``/board`` document.  ``css`` and ``columns_html`` are passed in
@@ -217,12 +224,22 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "<h1>Mail Board</h1>\n"
     '<button id="refresh-btn" title="Refresh now">↻</button>\n'
     '<span id="refresh-time"></span>\n'
+    '{% if triage_running %}'
+    '<div class="triage-banner">'
+    'Triage is currently running. The board will refresh automatically.'
+    '</div>\n'
+    '<button type="submit" disabled'
+    ' style="font-size:0.85rem; padding:0.25rem 0.75rem;'
+    ' cursor:not-allowed; opacity:0.6;">'
+    'Triage running\u2026</button>\n'
+    '{% else %}'
     '<form method="post" action="/run-triage"'
     ' style="display:inline-block; margin-left:1.5rem; vertical-align:middle;">\n'
     '  <button type="submit"'
     ' style="font-size:0.85rem; padding:0.25rem 0.75rem; cursor:pointer;">'
-    "Run triage</button>\n"
-    "</form>\n"
+    'Run triage</button>\n'
+    '</form>\n'
+    '{% endif %}'
     "{{ proposals_html }}\n"
     '<div class="board-wrapper">\n'
     '<div class="board">\n'
@@ -396,8 +413,8 @@ def _is_safe_redirect_path(location: str) -> bool:
     return True
 
 
-def _build_board_content(db_path: str) -> dict[str, str]:
-    """Return ``{"columns_html": …, "proposals_html": …}`` for the board.
+def _build_board_content(db_path: str) -> dict[str, str | bool]:
+    """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
 
     Opens a fresh database connection, gathers every mail record and
     buckets them into kanban columns based on each record's triage
@@ -408,10 +425,14 @@ def _build_board_content(db_path: str) -> dict[str, str]:
     Raises ``Exception`` when the database cannot be opened (the
     caller should catch it and return a 503).
     """
-    from robotsix_auto_mail.db import init_db
+    from robotsix_auto_mail.db import get_watermark, init_db
 
     conn = init_db(db_path, skip_migrations=True)
     try:
+        # Check whether the triage agent is currently running so the
+        # board can show a visual indicator and disable the button.
+        triage_running = get_watermark(conn, "triage_run:state") == "running"
+
         # Gather every record and every triage decision once.
         all_records = list_records(conn)
         triage_by_mid: dict[str, TriageDecision] = {
@@ -450,6 +471,7 @@ def _build_board_content(db_path: str) -> dict[str, str]:
     return {
         "columns_html": "".join(columns_html_parts),
         "proposals_html": _render_rule_proposals(proposals),
+        "triage_running": triage_running,
     }
 
 
@@ -825,6 +847,31 @@ def _render_rule_proposals(
     )
 
 
+def _run_triage_background(db_path: str) -> None:
+    """Run the triage agent in a background thread, clearing the watermark on exit.
+
+    Opens its own SQLite connection so it never shares a connection with
+    the HTTP request-serve thread.  The ``triage_run:state`` watermark is
+    always set back to ``"idle"`` in a ``finally`` block — even when the
+    triage module cannot be imported or ``run_triage_agent`` raises.
+    """
+    from robotsix_auto_mail.db import init_db, set_watermark
+
+    conn = init_db(db_path, skip_migrations=True)
+    try:
+        try:
+            from robotsix_auto_mail.triage import run_triage_agent
+        except ImportError:
+            return
+        run_triage_agent(conn)
+    except Exception:  # noqa: S110  # nosec B110
+        # Swallow all exceptions — the watermark is always cleared.
+        pass
+    finally:
+        set_watermark(conn, "triage_run:state", "idle")
+        conn.close()
+
+
 class BoardHandler(BaseHTTPRequestHandler):
     """Request handler for the robotsix-auto-mail board server.
 
@@ -1187,23 +1234,32 @@ class BoardHandler(BaseHTTPRequestHandler):
         self._serve_json(result.model_dump(), status=200)
 
     def _handle_run_triage(self) -> None:
-        """Process POST /run-triage — run the LLM triage agent on untriaged mail."""
-        try:
-            from robotsix_auto_mail.triage import TriageError, run_triage_agent
-        except ImportError:
-            self._send_response("Triage agent unavailable", status=503)
-            return
+        """Process POST /run-triage — launch triage agent in a background thread.
 
-        from robotsix_auto_mail.db import init_db
+        Idempotent: if triage is already running the request is a no-op
+        that redirects to ``/board`` immediately.  Otherwise a watermark
+        is set and a daemon thread is spawned to run the agent; the
+        thread clears the watermark in a ``finally`` block so the board
+        always recovers.
+        """
+        import threading
+
+        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
 
         conn = init_db(self.db_path, skip_migrations=True)
         try:
-            run_triage_agent(conn)
-        except TriageError as exc:
-            self._send_response(str(exc), status=503)
-            return
+            if get_watermark(conn, "triage_run:state") == "running":
+                self._redirect("/board", code=302)
+                return
+            set_watermark(conn, "triage_run:state", "running")
         finally:
             conn.close()
+
+        threading.Thread(
+            target=_run_triage_background,
+            args=(self.db_path,),
+            daemon=True,
+        ).start()
 
         self._redirect("/board", code=302)
 
