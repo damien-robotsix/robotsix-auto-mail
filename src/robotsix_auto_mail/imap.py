@@ -361,6 +361,8 @@ class ImapClient(_ProtocolClient):
 
     def _subscribe(self, name: str) -> None:
         """Subscribe to *name*; ignore failure silently."""
+        if self._imap is None:
+            return
         try:
             self._imap.subscribe(name)
         except Exception:  # noqa: S110  # nosec B110
