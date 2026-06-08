@@ -685,10 +685,25 @@ def _render_column(
     cards_html = "".join(
         _render_card(r, triage_by_mid.get(r.message_id)) for r in records
     )
+
+    # Batch-delete button for the TO_DELETE column when it is non-empty.
+    batch_delete_form = ""
+    if action == "TO_DELETE" and records:
+        batch_delete_form = (
+            '<form class="delete-form" method="post" action="/batch-delete"'
+            ' onsubmit="return confirm('
+            "'Permanently delete ALL mail in this column"
+            " from mailbox and database?')\">"
+            '<button type="submit" class="delete-btn">Delete All</button>'
+            "</form>"
+        )
+
     return (
         f'<div class="column">'
         f'<div class="column-header"><h2>{html.escape(title)}</h2>'
-        f'<span class="count">{count}</span></div>'
+        f'<span class="count">{count}</span>'
+        f"{batch_delete_form}"
+        f"</div>"
         f'<div class="cards">{cards_html}</div>'
         f"</div>"
     )
@@ -867,6 +882,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         routes: dict[str, Callable[[], None]] = {
             "/move": self._handle_move,
             "/delete": self._handle_delete,
+            "/batch-delete": self._handle_batch_delete,
             "/rule-action": self._handle_rule_action,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
@@ -1040,6 +1056,60 @@ class BoardHandler(BaseHTTPRequestHandler):
             self._redirect(redirect_to, code=302)
         else:
             self._redirect("/board", code=302)
+
+    def _handle_batch_delete(self) -> None:
+        """Process POST /batch-delete — delete all TO_DELETE mail from IMAP
+        and local DB in a single request.
+
+        All-or-nothing guard: if any IMAP deletion fails the handler
+        returns 502 and **no** local database changes are made.
+        """
+        from robotsix_auto_mail.db import (
+            delete_record_by_message_id,
+            get_record_by_message_id,
+            init_db,
+        )
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            # Collect every TO_DELETE decision and its MailRecord.
+            to_delete_decisions = [
+                d
+                for d in list_triage_decisions(conn)
+                if d.action == "TO_DELETE"
+            ]
+            records: list[MailRecord] = []
+            for decision in to_delete_decisions:
+                record = get_record_by_message_id(conn, decision.message_id)
+                if record is not None:
+                    records.append(record)
+
+            # -- IMAP deletion phase (single connection) ------------------
+            if self.mail_config is not None and any(
+                r.imap_uid is not None for r in records
+            ):
+                from robotsix_auto_mail.imap import ImapClient, ImapError
+
+                try:
+                    with ImapClient(self.mail_config) as client:
+                        client.select_folder(self.mail_config.imap_folder)
+                        for record in records:
+                            if record.imap_uid is not None:
+                                client.delete_message(record.imap_uid)
+                except (ImapError, OSError) as exc:
+                    self._send_response(
+                        f"IMAP deletion failed: {exc}",
+                        status=502,
+                    )
+                    return
+
+            # -- local DB deletion phase ----------------------------------
+            for record in records:
+                delete_record_by_message_id(conn, record.message_id)
+        finally:
+            conn.close()
+
+        self._redirect("/board", code=302)
 
     def _handle_rule_action(self) -> None:
         """Process POST /rule-action — accept/reject a rule proposal."""

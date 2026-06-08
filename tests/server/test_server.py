@@ -20,6 +20,7 @@ from robotsix_auto_mail.server import (
     _build_board_html,
     _build_detail_html,
     _render_card,
+    _render_column,
     _render_rule_card,
 )
 from robotsix_auto_mail.triage import RuleLedgerEntry, TriageDecision
@@ -492,6 +493,24 @@ def _start_test_server(db_path: str, port: int = 0) -> tuple[HTTPServer, int]:
     from robotsix_auto_mail.server import make_board_handler
 
     handler = make_board_handler(db_path)
+    server = HTTPServer(("127.0.0.1", port), handler)
+    assigned_port = server.server_address[1]
+
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, assigned_port
+
+
+def _start_test_server_with_mail_config(
+    db_path: str, mail_config: object, port: int = 0
+) -> tuple[HTTPServer, int]:
+    """Like :func:`_start_test_server` but binds *mail_config* to the handler."""
+    import threading
+    from http.server import HTTPServer
+
+    from robotsix_auto_mail.server import make_board_handler
+
+    handler = make_board_handler(db_path, mail_config=mail_config)
     server = HTTPServer(("127.0.0.1", port), handler)
     assigned_port = server.server_address[1]
 
@@ -2947,5 +2966,241 @@ def test_delete_with_redirect_to() -> None:
             assert resp.headers.get("Location") == "/email/redirect-del?embed=1"
         finally:
             server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# _render_column — batch-delete button in column header
+# ---------------------------------------------------------------------------
+
+
+def _make_record_minimal(message_id: str = "abc") -> object:
+    """Return a minimal MailRecord for _render_column tests."""
+    return _make_record(
+        message_id=message_id,
+        sender="x@x.com",
+        subject="s",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+
+
+def test_render_column_includes_batch_delete_when_to_delete_non_empty() -> None:
+    """_render_column includes batch-delete form when action=TO_DELETE
+    and records is non-empty."""
+    record = _make_record_minimal("bd1")
+    html = _render_column("TO_DELETE", [record], {})
+    assert '<form class="delete-form"' in html
+    assert 'method="post" action="/batch-delete"' in html
+    assert "Permanently delete ALL mail" in html
+    assert '<button type="submit" class="delete-btn">Delete All</button>' in html
+    # The form sits inside the column-header div.
+    assert html.count('class="column-header"') == 1
+
+
+def test_render_column_no_batch_delete_for_other_actions() -> None:
+    """_render_column does NOT include batch-delete form for non-TO_DELETE
+    columns, even when they have records."""
+    record = _make_record_minimal("bd2")
+    for action in ("INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_ANSWER"):
+        html = _render_column(action, [record], {})
+        assert "batch-delete" not in html
+        assert "Delete All" not in html
+
+
+def test_render_column_no_batch_delete_when_empty() -> None:
+    """_render_column does NOT include batch-delete form when TO_DELETE
+    column has zero records."""
+    html = _render_column("TO_DELETE", [], {})
+    assert "batch-delete" not in html
+    assert "Delete All" not in html
+
+
+# ---------------------------------------------------------------------------
+# POST /batch-delete handler integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_batch_delete_success_removes_all_to_delete_records_and_redirects() -> None:
+    """POST /batch-delete deletes every TO_DELETE record and redirects 302."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "bd-del-1",
+                    "sender": "a@b.com",
+                    "subject": "Delete me 1",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+                {
+                    "message_id": "bd-del-2",
+                    "sender": "c@d.com",
+                    "subject": "Delete me 2",
+                    "date": "2025-01-02T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+                {
+                    "message_id": "bd-keep",
+                    "sender": "e@f.com",
+                    "subject": "Keep me",
+                    "date": "2025-01-03T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "bd-del-1", action="TO_DELETE")
+        _seed_triage_decision(db_path, "bd-del-2", action="TO_DELETE")
+        # bd-keep is untriaged → INBOX, should survive.
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(port, "/batch-delete", {})
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+        finally:
+            server.shutdown()
+
+        # Verify the TO_DELETE records are gone.
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+
+        conn = init_db(db_path)
+        try:
+            assert get_record_by_message_id(conn, "bd-del-1") is None
+            assert get_record_by_message_id(conn, "bd-del-2") is None
+            assert get_record_by_message_id(conn, "bd-keep") is not None
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_batch_delete_empty_column_returns_302() -> None:
+    """POST /batch-delete when TO_DELETE is empty → 302, no error."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(port, "/batch-delete", {})
+        assert resp.status == 302
+        assert resp.headers.get("Location") == "/board"
+    finally:
+        server.shutdown()
+
+
+def test_batch_delete_imap_failure_returns_502_db_untouched() -> None:
+    """POST /batch-delete with IMAP failure → 502, local DB untouched."""
+    from unittest import mock
+
+    from robotsix_auto_mail.config import MailConfig
+    from robotsix_auto_mail.db import get_record_by_message_id, init_db
+    from robotsix_auto_mail.imap import ImapError
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "imap-fail-bd",
+                    "sender": "x@x.com",
+                    "subject": "IMAP fail",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "imap-fail-bd", action="TO_DELETE")
+
+        # Give the record an imap_uid so IMAP deletion is attempted.
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (12345, "imap-fail-bd"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch(
+                "robotsix_auto_mail.imap.ImapClient",
+                side_effect=ImapError("Connection refused"),
+            ):
+                resp = _post_to_path(port, "/batch-delete", {})
+            assert resp.status == 502
+
+            # Record must still exist — local DB untouched.
+            conn2 = init_db(db_path)
+            try:
+                assert get_record_by_message_id(conn2, "imap-fail-bd") is not None
+            finally:
+                conn2.close()
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# _build_board_html / _build_board_content — batch-delete button integration
+# ---------------------------------------------------------------------------
+
+
+def test_build_board_html_renders_batch_delete_when_to_delete_has_cards() -> None:
+    """Full board HTML includes the batch-delete button when TO_DELETE
+    column has cards."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "board-bd-1",
+                    "sender": "a@b.com",
+                    "subject": "Board batch delete",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "board-bd-1", action="TO_DELETE")
+
+        html = _build_board_html(db_path)
+        assert "Delete All" in html
+        assert 'action="/batch-delete"' in html
+        assert "Permanently delete ALL mail" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_no_batch_delete_when_to_delete_empty() -> None:
+    """Full board HTML does NOT include the batch-delete button when
+    TO_DELETE column is empty."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        html = _build_board_html(db_path)
+        # The TO_DELETE column exists but has 0 cards → no Delete All button.
+        assert "Delete All" not in html
+        assert 'action="/batch-delete"' not in html
     finally:
         os.unlink(db_path)
