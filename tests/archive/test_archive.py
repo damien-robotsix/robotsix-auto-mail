@@ -184,7 +184,7 @@ def test_setup_archive_first_run_creates_and_persists() -> None:
         assert client.created == expected
         stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
         assert stored is not None
-        assert json.loads(stored) == expected
+        assert json.loads(stored)["folders"] == expected
     finally:
         conn.close()
 
@@ -250,7 +250,7 @@ def test_setup_archive_custom_root_creates_and_persists() -> None:
         assert ARCHIVE_ROOT not in result
         stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
         assert stored is not None
-        assert json.loads(stored) == expected
+        assert json.loads(stored)["folders"] == expected
     finally:
         conn.close()
 
@@ -334,7 +334,7 @@ def test_setup_archive_no_api_key_falls_back_to_root() -> None:
         cls.assert_not_called()
         stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
         assert stored is not None
-        assert json.loads(stored) == [ARCHIVE_ROOT]
+        assert json.loads(stored)["folders"] == [ARCHIVE_ROOT]
     finally:
         conn.close()
 
@@ -414,7 +414,7 @@ def test_setup_archive_namespace_prepends_to_root() -> None:
         assert client.created == expected
         stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
         assert stored is not None
-        assert json.loads(stored) == expected
+        assert json.loads(stored)["folders"] == expected
     finally:
         conn.close()
 

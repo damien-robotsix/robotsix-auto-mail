@@ -3364,13 +3364,19 @@ def test_build_board_html_no_batch_delete_when_to_delete_empty() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _seed_archive_structure(db_path: str, folders: list[str]) -> None:
+def _seed_archive_structure(
+    db_path: str, folders: list[str], delimiter: str = "/"
+) -> None:
     """Write an archive_structure watermark to *db_path*."""
     from robotsix_auto_mail.db import init_db, set_watermark
 
     conn = init_db(db_path)
     try:
-        set_watermark(conn, "archive_structure", json.dumps(folders))
+        set_watermark(
+            conn,
+            "archive_structure",
+            json.dumps({"delimiter": delimiter, "folders": folders}),
+        )
     finally:
         conn.close()
 
@@ -3828,6 +3834,39 @@ def test_build_board_html_to_archive_folder_exists_indicator() -> None:
 
         html = _build_board_html(db_path, archive_root="my-archive")
         # The folder exists so the checkmark should appear
+        assert 'class="archive-exists"' in html
+        assert "&#x2713;" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_folder_exists_non_slash_delimiter() -> None:
+    """Checkmark shown when delimiter is not / (e.g. Dovecot `.`)."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "dot-ap",
+                    "sender": "alice@example.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "dot-ap", action="TO_ARCHIVE")
+        _seed_archive_override(db_path, "dot-ap", "Lists/dev")
+        _seed_archive_structure(
+            db_path,
+            ["my-archive", "my-archive.Lists.dev"],
+            delimiter=".",
+        )
+
+        html = _build_board_html(db_path, archive_root="my-archive")
         assert 'class="archive-exists"' in html
         assert "&#x2713;" in html
     finally:

@@ -1328,8 +1328,12 @@ def run_triage_agent(
     archive_folders: list[str] | None = None
     if archive_raw is not None:
         try:
-            archive_folders = json.loads(archive_raw)
-        except (json.JSONDecodeError, TypeError):
+            data = json.loads(archive_raw)
+            if isinstance(data, list):
+                archive_folders = data
+            else:
+                archive_folders = data["folders"]
+        except (json.JSONDecodeError, TypeError, KeyError):
             archive_folders = None
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --

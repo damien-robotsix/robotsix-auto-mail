@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import typing
 
 import pydantic
 from robotsix_llmio.core import Tier, start_trace
@@ -201,8 +202,10 @@ def setup_archive(
     # -- already-remembered short-circuit --
     remembered = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
     if remembered is not None:
-        parsed: list[str] = json.loads(remembered)
-        return parsed
+        data = json.loads(remembered)
+        if isinstance(data, list):
+            return data  # old format
+        return typing.cast(list[str], data["folders"])  # new format
 
     # -- first run: inspect the mailbox --
     existing = client.list_folders()
@@ -235,5 +238,9 @@ def setup_archive(
             client.create_folder(name)
 
     # -- persist and return --
-    set_watermark(conn, _ARCHIVE_WATERMARK_KEY, json.dumps(structure))
+    set_watermark(
+        conn,
+        _ARCHIVE_WATERMARK_KEY,
+        json.dumps({"delimiter": delimiter, "folders": structure}),
+    )
     return structure
