@@ -10,7 +10,7 @@ from __future__ import annotations
 import functools
 import html
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, quote, unquote
 
@@ -893,7 +893,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         """Send a 400 Bad Request with a plain-text body."""
         self._send_response(message, status=400)
 
-    def _serve_json(self, payload: dict[str, object], status: int = 200) -> None:
+    def _serve_json(self, payload: Mapping[str, object], status: int = 200) -> None:
         """Serialize *payload* as JSON and send it with *status*."""
         self._send_response(
             json.dumps(payload),
