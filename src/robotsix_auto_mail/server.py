@@ -194,6 +194,12 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "</head>\n"
     "<body>\n"
     "<h1>Mail Board</h1>\n"
+    '<form method="post" action="/run-triage"'
+    ' style="display:inline-block; margin-left:1.5rem; vertical-align:middle;">\n'
+    '  <button type="submit"'
+    ' style="font-size:0.85rem; padding:0.25rem 0.75rem; cursor:pointer;">'
+    'Run triage</button>\n'
+    '</form>\n'
     "{{ proposals_html }}\n"
     '<div class="board-wrapper">\n'
     '<div class="board">\n'
@@ -764,6 +770,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/move": self._handle_move,
             "/rule-action": self._handle_rule_action,
             "/config-sync": self._handle_config_sync,
+            "/run-triage": self._handle_run_triage,
         }
         handler = routes.get(self.path)
         if handler is None:
@@ -851,7 +858,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             self._bad_request(f"Invalid triage action: {triage_action!r}")
             return
 
-        conn = init_db(self.db_path)
+        conn = init_db(self.db_path, skip_migrations=True)
         try:
             # Verify the record exists before upserting a triage decision
             # (foreign key would reject it anyway, but we want a clean 404).
@@ -948,6 +955,27 @@ class BoardHandler(BaseHTTPRequestHandler):
             conn.close()
 
         self._serve_json(result.model_dump(), status=200)
+
+    def _handle_run_triage(self) -> None:
+        """Process POST /run-triage — run the LLM triage agent on untriaged mail."""
+        try:
+            from robotsix_auto_mail.triage import TriageError, run_triage_agent
+        except ImportError:
+            self._send_response("Triage agent unavailable", status=503)
+            return
+
+        from robotsix_auto_mail.db import init_db
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            run_triage_agent(conn)
+        except TriageError as exc:
+            self._send_response(str(exc), status=503)
+            return
+        finally:
+            conn.close()
+
+        self._redirect("/board", code=302)
 
     def _serve_email_status(self) -> None:
         """Serve GET /email/{message_id}/status — return triage action as text.
