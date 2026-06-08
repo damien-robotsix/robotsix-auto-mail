@@ -28,6 +28,9 @@ from robotsix_llmio.core import Tier, start_trace
 
 from robotsix_auto_mail.config import load_llm
 from robotsix_auto_mail.db import (
+    VALID_TRIAGE_ACTIONS as VALID_TRIAGE_ACTIONS,
+)
+from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
     get_watermark,
@@ -39,13 +42,6 @@ from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-#: Canonical triage state vocabulary — the five kanban columns.
-#: ``INBOX`` means "not triaged" (no ``triage_decisions`` row, or an
-#: explicit reset).
-VALID_TRIAGE_ACTIONS = frozenset(
-    {"INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
-)
 
 #: Canonical triage action order for the kanban board, left-to-right.
 #: Starts with ``INBOX`` (not triaged / entry column) and ends with
@@ -70,11 +66,11 @@ TRIAGE_ACTION_LABELS: dict[str, str] = {
 #: Maps each triage action to the kanban column its card moves to.
 #: This is a LOCAL board move only — it never touches IMAP.
 TRIAGE_ACTION_TO_STATUS: dict[str, str] = {
-    "INBOX": "to_read",       # not triaged / returned to inbox
-    "HUMAN_TRIAGE": "to_read", # system unsure → human reads/decides
-    "TO_ARCHIVE": "no_action", # FYI, nothing to do
+    "INBOX": "to_read",  # not triaged / returned to inbox
+    "HUMAN_TRIAGE": "to_read",  # system unsure → human reads/decides
+    "TO_ARCHIVE": "no_action",  # FYI, nothing to do
     "TO_DELETE": "no_action",  # user does NOT want real deletion — board column only
-    "TO_ANSWER": "needs_reply", # needs a human reply
+    "TO_ANSWER": "needs_reply",  # needs a human reply
 }
 
 #: Accepted decision sources.
@@ -192,8 +188,7 @@ class TriageDecision(pydantic.BaseModel):
     def _validate_action(cls, v: str) -> str:
         if v not in VALID_TRIAGE_ACTIONS:
             raise ValueError(
-                "action must be one of "
-                f"{sorted(VALID_TRIAGE_ACTIONS)!r}; got {v!r}"
+                f"action must be one of {sorted(VALID_TRIAGE_ACTIONS)!r}; got {v!r}"
             )
         return v
 
@@ -202,8 +197,7 @@ class TriageDecision(pydantic.BaseModel):
     def _validate_source(cls, v: str) -> str:
         if v not in _VALID_TRIAGE_SOURCES:
             raise ValueError(
-                "source must be one of "
-                f"{sorted(_VALID_TRIAGE_SOURCES)!r}; got {v!r}"
+                f"source must be one of {sorted(_VALID_TRIAGE_SOURCES)!r}; got {v!r}"
             )
         return v
 
@@ -247,8 +241,7 @@ class SenderMemory(pydantic.BaseModel):
     def _validate_action(cls, v: str) -> str:
         if v and v not in VALID_TRIAGE_ACTIONS:
             raise ValueError(
-                "action must be one of "
-                f"{sorted(VALID_TRIAGE_ACTIONS)!r}; got {v!r}"
+                f"action must be one of {sorted(VALID_TRIAGE_ACTIONS)!r}; got {v!r}"
             )
         return v
 
@@ -282,8 +275,7 @@ class TriageRule(pydantic.BaseModel):
     def _validate_action(cls, v: str) -> str:
         if v not in VALID_TRIAGE_ACTIONS:
             raise ValueError(
-                "action must be one of "
-                f"{sorted(VALID_TRIAGE_ACTIONS)!r}; got {v!r}"
+                f"action must be one of {sorted(VALID_TRIAGE_ACTIONS)!r}; got {v!r}"
             )
         return v
 
@@ -333,8 +325,7 @@ class RuleLedgerEntry(pydantic.BaseModel):
     def _validate_state(cls, v: str) -> str:
         if v not in _VALID_RULE_STATES:
             raise ValueError(
-                "state must be one of "
-                f"{sorted(_VALID_RULE_STATES)!r}; got {v!r}"
+                f"state must be one of {sorted(_VALID_RULE_STATES)!r}; got {v!r}"
             )
         return v
 
@@ -367,13 +358,11 @@ def set_triage_decision(
     """
     if action not in VALID_TRIAGE_ACTIONS:
         raise TriageError(
-            "action must be one of "
-            f"{sorted(VALID_TRIAGE_ACTIONS)!r}; got {action!r}"
+            f"action must be one of {sorted(VALID_TRIAGE_ACTIONS)!r}; got {action!r}"
         )
     if source not in _VALID_TRIAGE_SOURCES:
         raise TriageError(
-            "source must be one of "
-            f"{sorted(_VALID_TRIAGE_SOURCES)!r}; got {source!r}"
+            f"source must be one of {sorted(_VALID_TRIAGE_SOURCES)!r}; got {source!r}"
         )
     conn.execute(
         """\
@@ -476,12 +465,12 @@ def propose_archive_subfolder(record: MailRecord) -> str:
     No LLM involved — purely deterministic.
     """
     # -- 1. Mailing-list prefix --------------------------------------------
-    m = re.match(r'^\s*\[([^\]]*?)(?:\s+\d+)?\]', record.subject)
+    m = re.match(r"^\s*\[([^\]]*?)(?:\s+\d+)?\]", record.subject)
     if m:
         name = m.group(1).strip()
         if name:
             # Strip trailing colon + digits (e.g. "[list:123]" → "list")
-            name = re.sub(r':\s*\d+$', '', name).strip()
+            name = re.sub(r":\s*\d+$", "", name).strip()
             if name:
                 sanitised = _sanitise_subfolder(name)
                 if sanitised:
@@ -499,8 +488,12 @@ def propose_archive_subfolder(record: MailRecord) -> str:
 
     # -- 3. Date fallback --------------------------------------------------
     date_str = record.date.strip()
-    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S%z",
-                "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S.%f"):
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%d",
+        "%Y-%m-%dT%H:%M:%S.%f",
+    ):
         try:
             dt = datetime.strptime(date_str, fmt)
             return f"{dt.year:04d}/{dt.month:02d}"
@@ -519,8 +512,8 @@ def _sanitise_subfolder(raw: str) -> str:
     """Lowercase *raw*, collapse non-alphanumeric runs to ``-``, strip edges."""
     lowered = raw.lower()
     # Replace runs of non-alphanumeric chars with a single '-'
-    sanitised = re.sub(r'[^a-z0-9]+', '-', lowered)
-    sanitised = sanitised.strip('-')
+    sanitised = re.sub(r"[^a-z0-9]+", "-", lowered)
+    sanitised = sanitised.strip("-")
     return sanitised
 
 
@@ -540,9 +533,7 @@ def _save_archive_overrides(
     conn: sqlite3.Connection, overrides: dict[str, str]
 ) -> None:
     """Persist *overrides* to the watermark table (json round-trip)."""
-    set_watermark(
-        conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY, json.dumps(overrides)
-    )
+    set_watermark(conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY, json.dumps(overrides))
 
 
 def _load_llm_archive_hints(conn: sqlite3.Connection) -> dict[str, str]:
@@ -557,13 +548,9 @@ def _load_llm_archive_hints(conn: sqlite3.Connection) -> dict[str, str]:
     return {k: str(v) for k, v in data.items()}
 
 
-def _save_llm_archive_hints(
-    conn: sqlite3.Connection, hints: dict[str, str]
-) -> None:
+def _save_llm_archive_hints(conn: sqlite3.Connection, hints: dict[str, str]) -> None:
     """Persist *hints* to the watermark table (json round-trip)."""
-    set_watermark(
-        conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY, json.dumps(hints)
-    )
+    set_watermark(conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY, json.dumps(hints))
 
 
 def get_archive_subfolder(
@@ -639,18 +626,13 @@ def _load_memory(conn: sqlite3.Connection) -> dict[str, SenderMemory]:
         return {}
     data: dict[str, object] = json.loads(raw)
     return {
-        sender: SenderMemory.model_validate(entry)
-        for sender, entry in data.items()
+        sender: SenderMemory.model_validate(entry) for sender, entry in data.items()
     }
 
 
-def _save_memory(
-    conn: sqlite3.Connection, memory: dict[str, SenderMemory]
-) -> None:
+def _save_memory(conn: sqlite3.Connection, memory: dict[str, SenderMemory]) -> None:
     """Persist *memory* to the watermark table (json round-trip)."""
-    payload = {
-        sender: entry.model_dump() for sender, entry in memory.items()
-    }
+    payload = {sender: entry.model_dump() for sender, entry in memory.items()}
     set_watermark(conn, _MEMORY_WATERMARK_KEY, json.dumps(payload))
 
 
@@ -667,8 +649,7 @@ def record_human_decision(
     """
     if action not in VALID_TRIAGE_ACTIONS:
         raise TriageError(
-            "action must be one of "
-            f"{sorted(VALID_TRIAGE_ACTIONS)!r}; got {action!r}"
+            f"action must be one of {sorted(VALID_TRIAGE_ACTIONS)!r}; got {action!r}"
         )
     record = get_record_by_message_id(conn, message_id)
     if record is None:
@@ -767,10 +748,7 @@ def _save_rule_ledger(
     conn: sqlite3.Connection, ledger: dict[str, RuleLedgerEntry]
 ) -> None:
     """Persist *ledger* to the watermark table (json round-trip)."""
-    payload = {
-        fingerprint: entry.model_dump()
-        for fingerprint, entry in ledger.items()
-    }
+    payload = {fingerprint: entry.model_dump() for fingerprint, entry in ledger.items()}
     set_watermark(conn, _RULE_LEDGER_WATERMARK_KEY, json.dumps(payload))
 
 
@@ -783,9 +761,7 @@ def _load_active_rules(conn: sqlite3.Connection) -> list[TriageRule]:
     return [TriageRule.model_validate(entry) for entry in data]
 
 
-def _save_active_rules(
-    conn: sqlite3.Connection, rules: list[TriageRule]
-) -> None:
+def _save_active_rules(conn: sqlite3.Connection, rules: list[TriageRule]) -> None:
     """Persist the active-rules list to the watermark table."""
     payload = [rule.model_dump() for rule in rules]
     set_watermark(conn, _RULE_ACTIVE_WATERMARK_KEY, json.dumps(payload))
@@ -824,9 +800,9 @@ def propose_triage_rules(
         by_sender.setdefault(sender, []).append(decision.action)
         domain = _domain_key(record.sender)
         if domain:
-            by_domain.setdefault(domain, {}).setdefault(
-                sender, []
-            ).append(decision.action)
+            by_domain.setdefault(domain, {}).setdefault(sender, []).append(
+                decision.action
+            )
 
     proposals: list[TriageRuleProposal] = []
 
@@ -914,9 +890,7 @@ def record_and_filter_rule_proposals(
     return new_proposals
 
 
-def set_rule_state(
-    conn: sqlite3.Connection, fingerprint: str, state: str
-) -> None:
+def set_rule_state(conn: sqlite3.Connection, fingerprint: str, state: str) -> None:
     """Transition the ledger entry *fingerprint* to *state*.
 
     Accepting (``state == "accepted"``) adds the underlying
@@ -926,15 +900,12 @@ def set_rule_state(
     """
     if state not in _VALID_RULE_STATES:
         raise TriageError(
-            "state must be one of "
-            f"{sorted(_VALID_RULE_STATES)!r}; got {state!r}"
+            f"state must be one of {sorted(_VALID_RULE_STATES)!r}; got {state!r}"
         )
     ledger = _load_rule_ledger(conn)
     entry = ledger.get(fingerprint)
     if entry is None:
-        raise TriageError(
-            f"No triage rule proposal with fingerprint {fingerprint!r}"
-        )
+        raise TriageError(f"No triage rule proposal with fingerprint {fingerprint!r}")
     ledger[fingerprint] = entry.model_copy(update={"state": state})
     _save_rule_ledger(conn, ledger)
 
@@ -950,9 +921,7 @@ def set_rule_state(
             active.append(rule)
             _save_active_rules(conn, active)
     elif present:
-        active = [
-            r for r in active if _rule_fingerprint(r) != fingerprint
-        ]
+        active = [r for r in active if _rule_fingerprint(r) != fingerprint]
         _save_active_rules(conn, active)
 
 
@@ -965,8 +934,7 @@ def list_rule_proposals(
     """
     if state not in _VALID_RULE_STATES:
         raise TriageError(
-            "state must be one of "
-            f"{sorted(_VALID_RULE_STATES)!r}; got {state!r}"
+            f"state must be one of {sorted(_VALID_RULE_STATES)!r}; got {state!r}"
         )
     ledger = _load_rule_ledger(conn)
     pairs = [
@@ -996,9 +964,7 @@ def _rule_matches(rule: TriageRule, record: MailRecord) -> bool:
     return False
 
 
-def apply_triage_rules(
-    conn: sqlite3.Connection, record: MailRecord
-) -> str | None:
+def apply_triage_rules(conn: sqlite3.Connection, record: MailRecord) -> str | None:
     """Return the action of the first active rule matching *record*.
 
     Matches by exact lowercased sender, sender domain, or case-insensitive
@@ -1075,9 +1041,7 @@ def _body_preview(body: str) -> str:
 
 def _build_user_message(records: list) -> str:  # type: ignore[type-arg]
     """Enumerate *records* as ``index | sender | subject | <body preview>``."""
-    lines = [
-        "Messages to triage (index | sender | subject | body preview):"
-    ]
+    lines = ["Messages to triage (index | sender | subject | body preview):"]
     for i, record in enumerate(records, start=1):
         lines.append(
             f"{i} | {record.sender} | {record.subject} | "
@@ -1107,9 +1071,7 @@ def _detect_unsubscribe_for_sender(
     """
     # Pick the most recent record by date (descending), or fall back to
     # the last record in the list.
-    sorted_records = sorted(
-        records, key=lambda r: r.date or "", reverse=True
-    )
+    sorted_records = sorted(records, key=lambda r: r.date or "", reverse=True)
     recent = sorted_records[0] if sorted_records else records[-1]
 
     # -- mechanical fast path: List-Unsubscribe header present -----------
@@ -1224,9 +1186,7 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
             continue
         if sender_key in suggestions:
             continue  # already cached
-        detection = _detect_unsubscribe_for_sender(
-            conn, sender_key, sender_records
-        )
+        detection = _detect_unsubscribe_for_sender(conn, sender_key, sender_records)
         if detection is not None:
             # Only cache if an unsubscribe mechanism was actually found.
             if detection.has_unsubscribe:
@@ -1234,9 +1194,7 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
                 updated = True
 
     if updated:
-        set_watermark(
-            conn, _UNSUBSCRIBE_SUGGESTIONS_KEY, json.dumps(suggestions)
-        )
+        set_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY, json.dumps(suggestions))
 
 
 def run_triage_agent(
