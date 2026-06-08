@@ -908,7 +908,7 @@ provides-extras = ["dev", "llm", "docs"]
 [[package]]
 name = "robotsix-llmio"
 version = "0.1.0"
-source = { git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=main#c3466a346517f40cdf550dfae6c0b2b0f431181f" }
+source = { git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=main#450816adc0aa1bd1a5a2ad6f59997b0807ae8fcc" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic-ai-slim" },

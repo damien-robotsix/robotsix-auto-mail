@@ -20,7 +20,7 @@ import os
 import sqlite3
 
 import pydantic
-from robotsix_llmio.core import Tier
+from robotsix_llmio.core import Tier, start_trace
 
 from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.imap import ImapClient
@@ -136,15 +136,18 @@ def determine_archive_structure(
     user_message = "Existing mailbox folders:\n" + "\n".join(existing_folders)
 
     # -- call LLM --
-    try:
-        result = llm_provider.call_with_retry(
-            lambda: agent_handle.run_sync(user_message),
-            what="archive structure",
-        )
-    except Exception as exc:
-        raise ArchiveError(str(exc)) from exc
-    finally:
-        agent_handle.close()
+    with start_trace("archive structure") as trace:
+        trace.set_input(user_message)
+        try:
+            result = llm_provider.call_with_retry(
+                lambda: agent_handle.run_sync(user_message),
+                what="archive structure",
+            )
+        except Exception as exc:
+            raise ArchiveError(str(exc)) from exc
+        finally:
+            agent_handle.close()
+        trace.set_output(str(result.output))
 
     structure: ArchiveStructure = result.output
     return structure.folders
