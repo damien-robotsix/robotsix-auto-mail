@@ -112,13 +112,6 @@ modules:
       - src/robotsix_auto_mail/archive.py
       - tests/archive/test_archive.py
 
-  - id: fetch
-    description: >-
-      Watermark-aware IMAP fetch logic.
-    paths:
-      - src/robotsix_auto_mail/fetch.py
-      - tests/fetch/test_fetch.py
-
   - id: protocol
     description: >-
       Shared protocol-client base class: common TLS-mode dispatch
