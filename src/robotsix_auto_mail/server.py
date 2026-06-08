@@ -1315,6 +1315,31 @@ class BoardHandler(BaseHTTPRequestHandler):
                         else:
                             dest_folder = archive_root
 
+                        # -- security gate ---------------------------------
+                        # Reject any destination that escapes the archive
+                        # root (must start with root+delimiter or equal the
+                        # root itself) and forbid ".." path segments.
+                        root_prefix = f"{archive_root}{delimiter}"
+                        if (
+                            dest_folder != archive_root
+                            and not dest_folder.startswith(root_prefix)
+                        ):
+                            self._bad_request(
+                                "Archive destination escapes archive root"
+                            )
+                            return
+                        if ".." in dest_folder.split(delimiter):
+                            self._bad_request(
+                                "Archive destination contains '..' "
+                                "path segment"
+                            )
+                            return
+
+                        # -- ensure destination folder hierarchy exists ----
+                        parts = dest_folder.split(delimiter)
+                        for i in range(1, len(parts) + 1):
+                            client.create_folder(delimiter.join(parts[:i]))
+
                         client.move_message(
                             record.imap_uid, dest_folder
                         )

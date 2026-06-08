@@ -30,7 +30,7 @@ import yaml
 # Prefixes exempt from module-registration checks.
 # Add entries here only for directories that must remain in version control
 # but are deliberately not registered under any module.
-_UNCLASSIFIED_EXEMPT_PREFIXES: tuple[str, ...] = (".pip-site",)
+_UNCLASSIFIED_EXEMPT_PREFIXES: tuple[str, ...] = (".pip-site", ".deps")
 # ---------------------------------------------------------------------------
 # Repo location helpers.
 # ---------------------------------------------------------------------------
