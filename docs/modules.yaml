@@ -88,13 +88,6 @@ modules:
       - src/robotsix_auto_mail/db.py
       - tests/db/test_db.py
 
-  - id: status
-    description: >-
-      Mail-processing status read/write layer for the kanban board.
-    paths:
-      - src/robotsix_auto_mail/status.py
-      - tests/status/test_status.py
-
   - id: detect
     description: >-
       MX-record provider detection and auto-configuration lookup

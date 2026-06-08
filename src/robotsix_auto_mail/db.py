@@ -22,9 +22,9 @@ VALID_TRIAGE_ACTIONS = frozenset(
 )
 
 #: The default status assigned to new ``MailRecord`` instances and used as
-#: the SQL DDL default.  Must be a member of
-#: :data:`robotsix_auto_mail.status.STATUS_ORDER`.  Newly-ingested mail lands
-#: in the "To read" column.
+#: the SQL DDL default.  Must be one of the valid kanban statuses
+#: (``needs_reply``, ``waiting``, ``to_read``, ``no_action``, ``done``).
+#: Newly-ingested mail lands in the "To read" column.
 DEFAULT_STATUS: str = "to_read"
 
 #: One-time remap of legacy workflow-internal status values to the new
@@ -334,8 +334,7 @@ def row_to_mailrecord(
 
     The caller is responsible for extracting *col_names* from
     ``cursor.description``.  This helper is pure — it does not touch
-    the cursor or the connection — so both ``db.list_records`` and
-    ``status.list_by_status`` can share it.
+    the cursor or the connection — so ``db.list_records`` can share it.
     """
     data = dict(zip(col_names, row, strict=True))
     return MailRecord(
