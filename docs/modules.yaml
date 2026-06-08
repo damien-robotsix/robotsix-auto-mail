@@ -163,7 +163,7 @@ modules:
       output attribution.
     paths:
       - src/robotsix_auto_mail/tracing.py
-      - tests/test_tracing.py
+      - tests/tracing/test_tracing.py
 
   - id: logging
     description: >-
