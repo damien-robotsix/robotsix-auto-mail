@@ -46,6 +46,26 @@ VALID_TRIAGE_ACTIONS = frozenset(
     {"INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
 )
 
+#: Canonical triage action order for the kanban board, left-to-right.
+#: Starts with ``INBOX`` (not triaged / entry column) and ends with
+#: ``TO_ANSWER`` (action needed).
+TRIAGE_ACTION_ORDER: tuple[str, ...] = (
+    "INBOX",
+    "HUMAN_TRIAGE",
+    "TO_ARCHIVE",
+    "TO_DELETE",
+    "TO_ANSWER",
+)
+
+#: Human-readable column header labels, keyed by triage action.
+TRIAGE_ACTION_LABELS: dict[str, str] = {
+    "INBOX": "Inbox",
+    "HUMAN_TRIAGE": "Human triage",
+    "TO_ARCHIVE": "To archive",
+    "TO_DELETE": "To delete",
+    "TO_ANSWER": "To answer",
+}
+
 #: Maps each triage action to the kanban column its card moves to.
 #: This is a LOCAL board move only — it never touches IMAP.
 TRIAGE_ACTION_TO_STATUS: dict[str, str] = {

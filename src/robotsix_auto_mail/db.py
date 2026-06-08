@@ -101,7 +101,9 @@ CREATE TABLE IF NOT EXISTS triage_decisions (
 # ---------------------------------------------------------------------------
 
 
-def init_db(path: str) -> sqlite3.Connection:
+def init_db(
+    path: str, *, skip_migrations: bool = False,
+) -> sqlite3.Connection:
     """Open (or create) the SQLite database at *path* and set up the schema.
 
     Enables WAL journal mode and foreign-key enforcement.  The caller
@@ -110,6 +112,11 @@ def init_db(path: str) -> sqlite3.Connection:
     The parent directory is created if needed, so a path like
     ``.data/mail.db`` works on a fresh checkout.  The special
     ``":memory:"`` path is left untouched.
+
+    When *skip_migrations* is ``True`` only the schema is ensured;
+    the three startup migration functions are not called.  This is
+    useful for read-only rendering code paths (e.g. the kanban board)
+    that should not trigger repeated data migrations.
     """
     if path != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -117,9 +124,10 @@ def init_db(path: str) -> sqlite3.Connection:
     conn.executescript(_SCHEMA)
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
-    _migrate_legacy_statuses(conn)
-    _migrate_status_to_triage(conn)
-    _migrate_reset_all_triage_to_inbox(conn)
+    if not skip_migrations:
+        _migrate_legacy_statuses(conn)
+        _migrate_status_to_triage(conn)
+        _migrate_reset_all_triage_to_inbox(conn)
     return conn
 
 

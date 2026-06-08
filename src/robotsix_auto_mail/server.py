@@ -18,9 +18,10 @@ import jinja2
 
 from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
-from robotsix_auto_mail.status import STATUS_LABELS, STATUS_ORDER, VALID_STATUSES
 from robotsix_auto_mail.triage import (
-    TRIAGE_ACTION_TO_STATUS,
+    TRIAGE_ACTION_LABELS,
+    TRIAGE_ACTION_ORDER,
+    VALID_TRIAGE_ACTIONS,
     RuleLedgerEntry,
     TriageDecision,
     TriageError,
@@ -41,18 +42,7 @@ from robotsix_auto_mail.triage import (
 # the emitted bytes.
 _JINJA_ENV = jinja2.Environment(autoescape=True)
 
-_BOARD_COLUMNS = STATUS_ORDER
-
-#: Reverse mapping from kanban status column to the triage action a human
-#: move represents.  Used by ``_handle_move`` so a POST to ``/move``
-#: creates (or updates) a ``triage_decisions`` row.
-_STATUS_TO_TRIAGE_ACTION: dict[str, str] = {
-    "needs_reply": "TO_ANSWER",
-    "waiting": "INBOX",          # "waiting" has no canonical equivalent → INBOX
-    "to_read": "HUMAN_TRIAGE",
-    "no_action": "TO_ARCHIVE",
-    "done": "TO_ARCHIVE",        # "done" has no canonical equivalent → TO_ARCHIVE
-}
+_BOARD_COLUMNS = TRIAGE_ACTION_ORDER
 
 _CSS = """\
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -337,13 +327,13 @@ def _build_board_html(db_path: str) -> str:
 
     Opens a fresh database connection, gathers every mail record and
     buckets them into kanban columns based on each record's triage
-    decision.  Cards with no triage decision land in the ``"to_read"``
+    decision.  Cards with no triage decision land in the ``"INBOX"``
     column.  Raises ``Exception`` when the database cannot be opened
     (the caller should catch it and return a 503).
     """
     from robotsix_auto_mail.db import init_db
 
-    conn = init_db(db_path)
+    conn = init_db(db_path, skip_migrations=True)
     try:
         # Gather every record and every triage decision once.
         all_records = list_records(conn)
@@ -351,23 +341,24 @@ def _build_board_html(db_path: str) -> str:
             decision.message_id: decision
             for decision in list_triage_decisions(conn)
         }
-        # Bucket records into columns by triage-decision action →
-        # status mapping.  Untriaged records go in ``"to_read"``.
+        # Bucket records into columns by their triage-decision action.
+        # Untriaged records land in the ``"INBOX"`` column.
         column_buckets: dict[str, list[MailRecord]] = {
-            status: [] for status in _BOARD_COLUMNS
+            action: [] for action in _BOARD_COLUMNS
         }
         for record in all_records:
             decision = triage_by_mid.get(record.message_id)
             if decision is not None:
-                column = TRIAGE_ACTION_TO_STATUS.get(
-                    decision.action, "to_read"
-                )
+                column = decision.action
+                # Guard: an unrecognised action lands in HUMAN_TRIAGE.
+                if column not in column_buckets:
+                    column = "HUMAN_TRIAGE"
             else:
-                column = "to_read"
+                column = "INBOX"
             column_buckets[column].append(record)
 
         columns: list[tuple[str, list[MailRecord]]] = [
-            (status, column_buckets[status]) for status in _BOARD_COLUMNS
+            (action, column_buckets[action]) for action in _BOARD_COLUMNS
         ]
         # List (read-only) the pending deterministic-rule proposals so the
         # board can surface them for human validation.
@@ -377,8 +368,8 @@ def _build_board_html(db_path: str) -> str:
 
     # Build column HTML fragments.
     columns_html_parts = [
-        _render_column(status, records, triage_by_mid)
-        for status, records in columns
+        _render_column(action, records, triage_by_mid)
+        for action, records in columns
     ]
 
     return _BOARD_TEMPLATE.render(
@@ -398,7 +389,7 @@ def _build_detail_html(
     """
     from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
-    conn = init_db(db_path)
+    conn = init_db(db_path, skip_migrations=True)
     try:
         record = get_record_by_message_id(conn, message_id)
         triage_decision = get_triage_decision(conn, message_id)
@@ -429,17 +420,15 @@ def _build_detail_html(
 
     # Status options — drive from triage decision, not mail_records.status.
     if triage_decision is not None:
-        current_status = TRIAGE_ACTION_TO_STATUS.get(
-            triage_decision.action, "to_read"
-        )
+        current_action = triage_decision.action
     else:
-        current_status = "to_read"
+        current_action = "INBOX"
     options_parts: list[str] = []
-    for s in STATUS_ORDER:
-        sel = ' selected' if s == current_status else ''
+    for action in TRIAGE_ACTION_ORDER:
+        sel = ' selected' if action == current_action else ''
         options_parts.append(
-            f'<option value="{html.escape(s)}"{sel}>'
-            f'{html.escape(STATUS_LABELS[s])}</option>'
+            f'<option value="{html.escape(action)}"{sel}>'
+            f'{html.escape(TRIAGE_ACTION_LABELS[action])}</option>'
         )
 
     quoted_mid = quote(record.message_id, safe="")
@@ -454,7 +443,7 @@ def _build_detail_html(
         f'<input type="hidden" name="message_id"'
         f' value="{html.escape(record.message_id)}">'
         f'{redirect_input}'
-        f'<select name="status">{"".join(options_parts)}</select>'
+        f'<select name="triage_action">{"".join(options_parts)}</select>'
         '<button type="submit">Move</button>'
         '</form>'
     )
@@ -559,7 +548,7 @@ def _build_detail_html(
         '</div>\n'
         '<div class="detail-field">'
         '<div class="detail-label">Status</div>'
-        f'<div class="detail-value">{html.escape(STATUS_LABELS[current_status])}'
+        f'<div class="detail-value">{html.escape(TRIAGE_ACTION_LABELS[current_action])}'
         f'{move_form}</div>'
         '</div>\n'
         f'{triage_section}'
@@ -597,12 +586,12 @@ def _build_detail_html(
 
 
 def _render_column(
-    status: str,
+    action: str,
     records: list[MailRecord],
     triage_by_mid: dict[str, TriageDecision],
 ) -> str:
     """Render a single board column (header + cards) as an HTML string."""
-    title = STATUS_LABELS[status]
+    title = TRIAGE_ACTION_LABELS[action]
     count = len(records)
     cards_html = "".join(
         _render_card(r, triage_by_mid.get(r.message_id)) for r in records
@@ -636,28 +625,26 @@ def _render_card(
         body_html = html.escape(body)
 
     # Determine which column this card is currently in based on its
-    # triage decision (or "to_read" when no decision exists).
+    # triage decision (or "INBOX" when no decision exists).
     if decision is not None:
-        current_status = TRIAGE_ACTION_TO_STATUS.get(
-            decision.action, "to_read"
-        )
+        current_action = decision.action
     else:
-        current_status = "to_read"
+        current_action = "INBOX"
 
-    # Build status dropdown with the current column pre-selected.
+    # Build triage-action dropdown with the current column pre-selected.
     options_parts: list[str] = []
-    for s in _BOARD_COLUMNS:
-        sel = ' selected' if s == current_status else ''
+    for action in _BOARD_COLUMNS:
+        sel = ' selected' if action == current_action else ''
         options_parts.append(
-            f'<option value="{html.escape(s)}"{sel}>'
-            f'{html.escape(STATUS_LABELS[s])}</option>'
+            f'<option value="{html.escape(action)}"{sel}>'
+            f'{html.escape(TRIAGE_ACTION_LABELS[action])}</option>'
         )
 
     form_html = (
         '<form class="card-form" method="post" action="/move">'
         f'<input type="hidden" name="message_id"'
         f' value="{html.escape(record.message_id)}">'
-        f'<select name="status">{"".join(options_parts)}</select>'
+        f'<select name="triage_action">{"".join(options_parts)}</select>'
         '<button type="submit">Move</button>'
         '</form>'
     )
@@ -853,18 +840,16 @@ class BoardHandler(BaseHTTPRequestHandler):
 
         # parse_qs returns {key: [value, ...]} — extract first value.
         message_id = (fields.get("message_id") or [""])[0].strip()
-        new_status = (fields.get("status") or [""])[0].strip()
+        triage_action = (fields.get("triage_action") or [""])[0].strip()
         redirect_to = (fields.get("redirect_to") or [""])[0].strip()
 
-        if not message_id or not new_status:
-            self._bad_request("Missing message_id or status")
+        if not message_id or not triage_action:
+            self._bad_request("Missing message_id or triage_action")
             return
 
-        if new_status not in VALID_STATUSES:
-            self._bad_request(f"Invalid status: {new_status!r}")
+        if triage_action not in VALID_TRIAGE_ACTIONS:
+            self._bad_request(f"Invalid triage action: {triage_action!r}")
             return
-
-        triage_action = _STATUS_TO_TRIAGE_ACTION[new_status]
 
         conn = init_db(self.db_path)
         try:
@@ -878,7 +863,7 @@ class BoardHandler(BaseHTTPRequestHandler):
                 message_id,
                 triage_action,
                 source="user",
-                reason=f"moved to {new_status}",
+                reason=f"moved to {triage_action}",
             )
             record_human_decision(conn, message_id, triage_action)
         finally:
@@ -967,7 +952,7 @@ class BoardHandler(BaseHTTPRequestHandler):
     def _serve_email_status(self) -> None:
         """Serve GET /email/{message_id}/status — return triage action as text.
 
-        Returns ``"to_read"`` when the record exists but has no triage
+        Returns ``"INBOX"`` when the record exists but has no triage
         decision.  Returns 404 when the message_id is unknown.
         """
         from robotsix_auto_mail.db import get_record_by_message_id, init_db
@@ -991,7 +976,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             conn.close()
 
         if decision is None:
-            self._send_response("to_read")
+            self._send_response("INBOX")
             return
 
         self._send_response(decision.action)
