@@ -27,6 +27,12 @@ from typing import Any, Callable
 import yaml
 
 # ---------------------------------------------------------------------------
+# Prefixes exempt from module-registration checks.
+# Vendored third-party code (``vendor/``) is intentionally not registered
+# as a module because it is externally maintained and not subject to the
+# project's own module taxonomy.
+_UNCLASSIFIED_EXEMPT_PREFIXES: tuple[str, ...] = ("vendor/", "pip-packages/")
+# ---------------------------------------------------------------------------
 # Repo location helpers.
 # ---------------------------------------------------------------------------
 
@@ -158,12 +164,6 @@ def suggest_module(
 # ====================================================================
 
 
-#: Repo-relative path prefixes that are exempt from the "every file must
-#: be registered" contract.  Use for vendored third-party code and
-#: tool-runtime artifacts that are not application source modules.
-_UNCLASSIFIED_EXEMPT_PREFIXES: tuple[str, ...] = ("pip-packages/",)
-
-
 def _is_exempt_from_classification(path: str) -> bool:
     """True when *path* is explicitly exempt from module registration."""
     return path.startswith(_UNCLASSIFIED_EXEMPT_PREFIXES)
@@ -263,6 +263,13 @@ def run_checks(repo_root: Path | None = None) -> int:
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
+
+    # Drop paths that live under exempt prefixes (vendored code, etc.).
+    tracked_files = [
+        p
+        for p in tracked_files
+        if not p.startswith(_UNCLASSIFIED_EXEMPT_PREFIXES)
+    ]
 
     # -- registered paths ---------------------------------------------------
     modules_path = repo_root / "docs" / "modules.yaml"
