@@ -284,6 +284,7 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "  if (!card) return;\n"
     "  var mid = card.getAttribute('data-message-id');\n"
     "  if (!mid) return;\n"
+    "  if (e.target.closest('form')) return;\n"
     "  e.preventDefault();\n"
     "  var subject = card.getAttribute('data-subject') || '';\n"
     "  openDetail(mid, subject);\n"
