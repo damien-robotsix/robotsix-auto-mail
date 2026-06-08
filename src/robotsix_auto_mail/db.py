@@ -14,6 +14,13 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+#: Canonical triage state vocabulary — the five kanban columns.
+#: ``INBOX`` means "not triaged" (no ``triage_decisions`` row, or an
+#: explicit reset).
+VALID_TRIAGE_ACTIONS = frozenset(
+    {"INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
+)
+
 #: The default status assigned to new ``MailRecord`` instances and used as
 #: the SQL DDL default.  Must be a member of
 #: :data:`robotsix_auto_mail.status.STATUS_ORDER`.  Newly-ingested mail lands
@@ -29,6 +36,11 @@ _LEGACY_STATUS_MIGRATION: dict[str, str] = {
     "triaging": "needs_reply",
     "archive": "no_action",
 }
+
+#: SQL fragment for the triage_decisions CHECK constraint, derived
+#: from :data:`VALID_TRIAGE_ACTIONS` so that the DDL and the runtime
+#: vocabulary cannot drift apart.
+_TRIAGE_ACTION_CHECK_VALUES = ", ".join(repr(a) for a in sorted(VALID_TRIAGE_ACTIONS))
 
 # ---------------------------------------------------------------------------
 # MailRecord
@@ -87,7 +99,7 @@ CREATE TABLE IF NOT EXISTS watermark (
 CREATE TABLE IF NOT EXISTS triage_decisions (
     message_id  TEXT NOT NULL UNIQUE,
     action      TEXT NOT NULL CHECK(action IN (
-                    'INBOX', 'HUMAN_TRIAGE', 'TO_ARCHIVE', 'TO_DELETE', 'TO_ANSWER'
+                    {_TRIAGE_ACTION_CHECK_VALUES}
                 )),
     source      TEXT NOT NULL,
     reason      TEXT NOT NULL DEFAULT '',
