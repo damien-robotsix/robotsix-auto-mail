@@ -112,6 +112,9 @@ def parse_message(
     # -- subject (already decoded by policy.default) --------------------------
     subject: str = str(msg.get("Subject", ""))
 
+    # -- List-Unsubscribe header (RFC 2369 / RFC 8058) ------------------------
+    unsubscribe_header: str = str(msg.get("List-Unsubscribe", ""))
+
     # -- date → ISO 8601 via parsedate_to_datetime ----------------------------
     date_str: str = ""
     raw_date: str | None = msg.get("Date")
@@ -159,6 +162,7 @@ def parse_message(
         body_plain=body_plain,
         body_html=body_html,
         attachments_json=attachments_json,
+        unsubscribe_header=unsubscribe_header,
     )
 
 
