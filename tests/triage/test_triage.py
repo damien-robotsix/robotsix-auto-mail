@@ -13,6 +13,8 @@ import pydantic
 import pytest
 from robotsix_llmio.core import Tier
 
+from tests.conftest import _make_record
+
 from robotsix_auto_mail import status
 from robotsix_auto_mail.db import MailRecord, init_db, insert_record
 from robotsix_auto_mail.triage import (
@@ -31,17 +33,23 @@ from robotsix_auto_mail.triage import (
     _build_memory_guidance,
     _build_triage_system_prompt,
     _load_active_rules,
+    _load_archive_overrides,
+    _load_llm_archive_hints,
     _load_memory,
     _load_rule_ledger,
     _rule_fingerprint,
+    _save_llm_archive_hints,
     apply_triage_rules,
+    get_archive_subfolder,
     get_triage_decision,
     list_rule_proposals,
     list_triage_decisions,
+    propose_archive_subfolder,
     propose_triage_rules,
     record_and_filter_rule_proposals,
     record_human_decision,
     run_triage_agent,
+    set_archive_subfolder_override,
     set_rule_state,
     set_triage_decision,
 )
@@ -1265,5 +1273,323 @@ def test_run_triage_agent_only_unmatched_go_to_llm(
         prompt = handle.run_sync.call_args.args[0]
         assert "carol@example.com" in prompt
         assert "bob@spam.com" not in prompt
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# propose_archive_subfolder
+# ---------------------------------------------------------------------------
+
+
+def test_propose_mailing_list_prefix() -> None:
+    """[python-dev] → Lists/python-dev."""
+    record = _make_record(
+        message_id="<a>",
+        sender="a@b.com",
+        subject="[python-dev] Re: some topic",
+        date="2025-06-01T12:00:00",
+    )
+    assert propose_archive_subfolder(record) == "Lists/python-dev"
+
+
+def test_propose_mailing_list_with_post_id() -> None:
+    """[list:123] → Lists/list."""
+    record = _make_record(
+        message_id="<a>",
+        sender="a@b.com",
+        subject="[list:123] Re: something",
+        date="2025-06-01T12:00:00",
+    )
+    assert propose_archive_subfolder(record) == "Lists/list"
+
+
+def test_propose_mailing_list_with_space_and_id() -> None:
+    """[list 456] → Lists/list."""
+    record = _make_record(
+        message_id="<a>",
+        sender="a@b.com",
+        subject="[list 456] hello",
+        date="2025-06-01T12:00:00",
+    )
+    assert propose_archive_subfolder(record) == "Lists/list"
+
+
+def test_propose_empty_brackets_skipped() -> None:
+    """[] should fall through to next rule."""
+    record = _make_record(
+        message_id="<a>",
+        sender="alice@example.com",
+        subject="[] Re: something",
+        date="2025-06-01T12:00:00",
+    )
+    result = propose_archive_subfolder(record)
+    # Falls through to sender rule → example-com/alice
+    # (dots are collapsed to dashes by sanitisation)
+    assert result == "example-com/alice"
+
+
+def test_propose_sender_domain_and_local_part() -> None:
+    """alice@example.com → example-com/alice."""
+    record = _make_record(
+        message_id="<a>",
+        sender="Alice <alice@example.com>",
+        subject="Hello",
+        date="2025-06-01T12:00:00",
+    )
+    assert propose_archive_subfolder(record) == "example-com/alice"
+
+
+def test_propose_bare_sender_no_brackets() -> None:
+    """bob@example.com → example-com/bob."""
+    record = _make_record(
+        message_id="<a>",
+        sender="bob@example.com",
+        subject="Hi",
+        date="2025-06-01T12:00:00",
+    )
+    assert propose_archive_subfolder(record) == "example-com/bob"
+
+
+def test_propose_sender_no_at_falls_through() -> None:
+    """Sender with no @ falls through to date."""
+    record = _make_record(
+        message_id="<a>",
+        sender="NoEmailName",
+        subject="Hi",
+        date="2025-06-15T12:00:00",
+    )
+    assert propose_archive_subfolder(record) == "2025/06"
+
+
+def test_propose_date_iso() -> None:
+    """ISO date → YYYY/MM."""
+    record = _make_record(
+        message_id="<a>",
+        sender="NoEmail",
+        subject="No list",
+        date="2025-06-01T12:00:00",
+    )
+    assert propose_archive_subfolder(record) == "2025/06"
+
+
+def test_propose_unparseable_date_returns_unknown() -> None:
+    """Unparseable date → 'unknown'."""
+    record = _make_record(
+        message_id="<a>",
+        sender="NoEmail",
+        subject="No list",
+        date="not-a-date",
+    )
+    assert propose_archive_subfolder(record) == "unknown"
+
+
+def test_propose_all_rules_fail_returns_empty() -> None:
+    """If ALL rules fail (impossible with date fallback? only if date is
+    empty and no sender/@domain). Actually date fallback catches empty
+    strings too via 'unknown'."""
+    record = _make_record(
+        message_id="<a>",
+        sender="noemail",
+        subject="no list",
+        date="",
+    )
+    # Date is empty → unparseable → "unknown"
+    assert propose_archive_subfolder(record) == "unknown"
+
+
+def test_propose_sanitises_special_chars() -> None:
+    """Non-alphanumeric chars collapsed to single dash, lowercased."""
+    record = _make_record(
+        message_id="<a>",
+        sender="Alice+Tag <alice+tag@example.com>",
+        subject="[My List!!!] Re: topic",
+        date="2025-06-01T12:00:00",
+    )
+    # List rule wins: "My List!!!" → sanitised to "my-list"
+    assert propose_archive_subfolder(record) == "Lists/my-list"
+
+
+# ---------------------------------------------------------------------------
+# get_archive_subfolder / set_archive_subfolder_override
+# ---------------------------------------------------------------------------
+
+
+def test_archive_override_round_trip() -> None:
+    """Set an override, read it back, clear it, see proposal again."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>", sender="alice@example.com")
+        record = _make_record(
+            message_id="<a@x.com>",
+            sender="alice@example.com",
+            subject="Hello",
+            date="2025-06-01T12:00:00",
+        )
+        # Default → deterministic
+        default = get_archive_subfolder(conn, "<a@x.com>", record)
+        assert default == "example-com/alice"
+
+        # Set override
+        set_archive_subfolder_override(conn, "<a@x.com>", "Custom/Folder")
+        assert get_archive_subfolder(conn, "<a@x.com>", record) == "Custom/Folder"
+
+        # Clear override (empty string)
+        set_archive_subfolder_override(conn, "<a@x.com>", "")
+        assert get_archive_subfolder(conn, "<a@x.com>", record) == "example-com/alice"
+    finally:
+        conn.close()
+
+
+def test_archive_override_persists_across_connections() -> None:
+    """Override written on one connection is visible on another."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        conn1 = init_db(path)
+        _insert_inbox(conn1, "<persist@x.com>")
+        set_archive_subfolder_override(conn1, "<persist@x.com>", "MyPath")
+        conn1.close()
+
+        conn2 = init_db(path)
+        overrides = _load_archive_overrides(conn2)
+        assert overrides.get("<persist@x.com>") == "MyPath"
+        conn2.close()
+    finally:
+        os.unlink(path)
+
+
+def test_archive_llm_hint_priority() -> None:
+    """LLM hint is used when no user override exists."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        record = _make_record(
+            message_id="<a@x.com>",
+            sender="alice@example.com",
+            subject="Hello",
+            date="2025-06-01T12:00:00",
+        )
+
+        # Store an LLM hint
+        hints = {"<a@x.com>": "Lists/python-dev"}
+        _save_llm_archive_hints(conn, hints)
+
+        # LLM hint takes precedence over deterministic
+        assert get_archive_subfolder(conn, "<a@x.com>", record) == "Lists/python-dev"
+
+        # User override takes precedence over LLM hint
+        set_archive_subfolder_override(conn, "<a@x.com>", "Custom")
+        assert get_archive_subfolder(conn, "<a@x.com>", record) == "Custom"
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# _build_triage_system_prompt with archive folders
+# ---------------------------------------------------------------------------
+
+
+def test_system_prompt_with_archive_folders() -> None:
+    """When archive_folders is non-empty, the prompt includes folder list."""
+    prompt = _build_triage_system_prompt(
+        archive_folders=["robotsix-mail-archive", "robotsix-mail-archive/Lists/dev"]
+    )
+    assert "existing sub-folders" in prompt
+    assert "robotsix-mail-archive" in prompt
+    assert "robotsix-mail-archive/Lists/dev" in prompt
+    assert "archive_subfolder" in prompt
+    assert "TO_ARCHIVE" in prompt
+
+
+def test_system_prompt_without_archive_folders() -> None:
+    """When archive_folders is None, prompt is unchanged."""
+    prompt = _build_triage_system_prompt(archive_folders=None)
+    assert "existing sub-folders" not in prompt
+    assert "archive_subfolder" not in prompt
+
+
+def test_system_prompt_with_empty_archive_folders() -> None:
+    """When archive_folders is empty, no archive section is appended."""
+    prompt = _build_triage_system_prompt(archive_folders=[])
+    assert "existing sub-folders" not in prompt
+
+
+# ---------------------------------------------------------------------------
+# run_triage_agent stores LLM hints
+# ---------------------------------------------------------------------------
+
+
+def test_run_triage_agent_stores_llm_hints(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LLM returns archive_subfolder for TO_ARCHIVE → hint persisted."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        result_obj = TriageResult(
+            items=[
+                TriageItem(
+                    index=1, action="TO_ARCHIVE", archive_subfolder="Lists/dev"
+                )
+            ]
+        )
+        _handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            run_triage_agent(conn)
+
+        hints = _load_llm_archive_hints(conn)
+        assert hints.get("<a@x.com>") == "Lists/dev"
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_clears_stale_hints(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A record previously hinted for TO_ARCHIVE moves to INBOX → hint removed."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        # Pre-populate an LLM hint for a record that will be
+        # re-triaged to INBOX.
+        _insert_inbox(conn, "<a@x.com>")
+        _save_llm_archive_hints(conn, {"<a@x.com>": "Lists/old"})
+
+        result_obj = TriageResult(
+            items=[TriageItem(index=1, action="INBOX")]
+        )
+        _handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            run_triage_agent(conn)
+
+        hints = _load_llm_archive_hints(conn)
+        assert "<a@x.com>" not in hints
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_ignores_archive_subfolder_for_non_archive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LLM returns archive_subfolder with action=INBOX → hint NOT stored."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        result_obj = TriageResult(
+            items=[
+                TriageItem(
+                    index=1, action="INBOX", archive_subfolder="should-not-store"
+                )
+            ]
+        )
+        _handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            run_triage_agent(conn)
+
+        hints = _load_llm_archive_hints(conn)
+        assert "<a@x.com>" not in hints
     finally:
         conn.close()

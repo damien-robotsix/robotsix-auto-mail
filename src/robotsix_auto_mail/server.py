@@ -16,7 +16,7 @@ from urllib.parse import parse_qs, quote, unquote
 
 import jinja2
 
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
 from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.triage import (
@@ -26,10 +26,12 @@ from robotsix_auto_mail.triage import (
     RuleLedgerEntry,
     TriageDecision,
     TriageError,
+    get_archive_subfolder,
     get_triage_decision,
     list_rule_proposals,
     list_triage_decisions,
     record_human_decision,
+    set_archive_subfolder_override,
     set_rule_state,
     set_triage_decision,
 )
@@ -204,6 +206,24 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; display: inline; }
   text-align: center; padding: 0.5rem 1rem;
   border-radius: 6px; margin-bottom: 0.75rem;
   font-size: 0.9rem; border: 1px solid #ffecb5;
+}
+
+/* Archive proposal inline section */
+.archive-proposal {
+  margin-top: 0.35rem; font-size: 0.8rem;
+  color: #555; display: flex; align-items: center;
+  gap: 0.25rem; flex-wrap: wrap;
+}
+.archive-path { font-family: monospace; background: #eee;
+  padding: 0.05rem 0.3rem; border-radius: 3px; }
+.archive-exists { color: #2e7d32; font-weight: 600; font-size: 0.75rem; }
+.archive-override-form { display: flex; gap: 0.15rem; align-items: center; }
+.archive-override-form input[type="text"] {
+  font-size: 0.7rem; padding: 0.1rem 0.2rem; border: 1px solid #ccc;
+  border-radius: 3px; width: 160px;
+}
+.archive-override-form button {
+  font-size: 0.7rem; padding: 0.1rem 0.4rem; cursor: pointer;
 }"""
 
 
@@ -415,7 +435,9 @@ def _is_safe_redirect_path(location: str) -> bool:
     return True
 
 
-def _build_board_content(db_path: str) -> dict[str, str | bool]:
+def _build_board_content(
+    db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
+) -> dict[str, str | bool]:
     """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
 
     Opens a fresh database connection, gathers every mail record and
@@ -462,12 +484,52 @@ def _build_board_content(db_path: str) -> dict[str, str | bool]:
         # List (read-only) the pending deterministic-rule proposals so the
         # board can surface them for human validation.
         proposals = list_rule_proposals(conn, "pending")
+
+        # -- archive proposal context -------------------------------------
+        # Read the archive_structure watermark to know which folders exist.
+        archive_raw = get_watermark(conn, "archive_structure")
+        existing_folders: set[str] = set()
+        if archive_raw is not None:
+            try:
+                existing_folders = set(json.loads(archive_raw))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # Load overrides and LLM hints for the TO_ARCHIVE column.
+        from robotsix_auto_mail.triage import (
+            _load_archive_overrides,
+            _load_llm_archive_hints,
+        )
+
+        archive_overrides = _load_archive_overrides(conn)
+        llm_hints = _load_llm_archive_hints(conn)
+
+        # Compute effective subfolder for each TO_ARCHIVE record.
+        archive_subfolders: dict[str, str] = {}
+        folder_exists: dict[str, bool] = {}
+        for record in column_buckets.get("TO_ARCHIVE", []):
+            subfolder = get_archive_subfolder(
+                conn, record.message_id, record
+            )
+            archive_subfolders[record.message_id] = subfolder
+            full_path = (
+                f"{archive_root}/{subfolder}" if subfolder else archive_root
+            )
+            folder_exists[record.message_id] = full_path in existing_folders
     finally:
         conn.close()
 
     # Build column HTML fragments.
     columns_html_parts = [
-        _render_column(action, records, triage_by_mid) for action, records in columns
+        _render_column(
+            action,
+            records,
+            triage_by_mid,
+            archive_subfolders=archive_subfolders if action == "TO_ARCHIVE" else None,
+            existing_folders=folder_exists if action == "TO_ARCHIVE" else None,
+            archive_root=archive_root,
+        )
+        for action, records in columns
     ]
 
     return {
@@ -477,7 +539,9 @@ def _build_board_content(db_path: str) -> dict[str, str | bool]:
     }
 
 
-def _build_board_html(db_path: str) -> str:
+def _build_board_html(
+    db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
+) -> str:
     """Build the full ``/board`` HTML document.
 
     Calls :func:`_build_board_content` and wraps the result in the
@@ -485,7 +549,7 @@ def _build_board_html(db_path: str) -> str:
     database cannot be opened (the caller should catch it and return
     a 503).
     """
-    content = _build_board_content(db_path)
+    content = _build_board_content(db_path, archive_root=archive_root)
     return _BOARD_TEMPLATE.render(css=_CSS, **content)
 
 
@@ -702,12 +766,30 @@ def _render_column(
     action: str,
     records: list[MailRecord],
     triage_by_mid: dict[str, TriageDecision],
+    archive_subfolders: dict[str, str] | None = None,
+    existing_folders: dict[str, bool] | None = None,
+    archive_root: str = DEFAULT_ARCHIVE_ROOT,
 ) -> str:
     """Render a single board column (header + cards) as an HTML string."""
     title = TRIAGE_ACTION_LABELS[action]
     count = len(records)
     cards_html = "".join(
-        _render_card(r, triage_by_mid.get(r.message_id)) for r in records
+        _render_card(
+            r,
+            triage_by_mid.get(r.message_id),
+            archive_subfolder=(
+                archive_subfolders.get(r.message_id)
+                if archive_subfolders is not None
+                else None
+            ),
+            folder_exists=(
+                existing_folders.get(r.message_id)
+                if existing_folders is not None
+                else None
+            ),
+            archive_root=archive_root,
+        )
+        for r in records
     )
 
     # Batch-delete button for the TO_DELETE column when it is non-empty.
@@ -733,12 +815,19 @@ def _render_column(
     )
 
 
-def _render_card(record: MailRecord, decision: TriageDecision | None = None) -> str:
+def _render_card(
+    record: MailRecord,
+    decision: TriageDecision | None = None,
+    archive_subfolder: str | None = None,
+    folder_exists: bool | None = None,
+    archive_root: str = DEFAULT_ARCHIVE_ROOT,
+) -> str:
     """Render a single ``MailRecord`` as a ``.card`` HTML string."""
     sender = html.escape(record.sender)
     subject = html.escape(record.subject) if record.subject.strip() else "(no subject)"
     subject_attr = html.escape(record.subject.strip() or "(no subject)")
     quoted_mid = quote(record.message_id, safe="")
+    escaped_mid = html.escape(record.message_id)
     subject_html = f'<a href="/email/{quoted_mid}">{subject}</a>'
     date_str = html.escape(_format_date(record.date))
 
@@ -769,7 +858,7 @@ def _render_card(record: MailRecord, decision: TriageDecision | None = None) -> 
     form_html = (
         '<form class="card-form" method="post" action="/move">'
         f'<input type="hidden" name="message_id"'
-        f' value="{html.escape(record.message_id)}">'
+        f' value="{escaped_mid}">'
         f'<select name="triage_action">{"".join(options_parts)}</select>'
         '<button type="submit">Move</button>'
         "</form>"
@@ -781,12 +870,43 @@ def _render_card(record: MailRecord, decision: TriageDecision | None = None) -> 
             ' onsubmit="return confirm('
             "'Permanently delete this mail from mailbox and database?')\">"
             f'<input type="hidden" name="message_id"'
-            f' value="{html.escape(record.message_id)}">'
+            f' value="{escaped_mid}">'
             '<button type="submit" class="delete-btn">Delete</button>'
             "</form>"
         )
     else:
         delete_form = ""
+
+    # -- archive proposal section (TO_ARCHIVE cards only) -------------------
+    archive_html = ""
+    if archive_subfolder is not None:
+        escaped_subfolder = html.escape(archive_subfolder)
+        escaped_root = html.escape(archive_root)
+        if archive_subfolder:
+            display_path = f"{escaped_root}/{escaped_subfolder}"
+        else:
+            display_path = escaped_root + "/"
+        exists_indicator = ""
+        if folder_exists:
+            exists_indicator = (
+                '<span class="archive-exists" title="Folder already exists">'
+                "&#x2713;</span>"
+            )
+        archive_html = (
+            '<div class="archive-proposal">'
+            "Archive &rarr; "
+            f'<span class="archive-path">{display_path}</span>'
+            f"{exists_indicator}"
+            '<form class="archive-override-form" method="post"'
+            ' action="/archive-proposal">'
+            f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+            '<input type="text" name="subfolder"'
+            f' value="{escaped_subfolder}"'
+            ' placeholder="subfolder path" size="30">'
+            '<button type="submit">Set</button>'
+            "</form>"
+            "</div>"
+        )
 
     return (
         f'<div class="card" data-message-id="{quoted_mid}"'
@@ -795,6 +915,7 @@ def _render_card(record: MailRecord, decision: TriageDecision | None = None) -> 
         f'<div class="subject">{subject_html}</div>'
         f'<div class="date">{date_str}</div>'
         f'<div class="body-preview">{body_html}</div>'
+        f"{archive_html}"
         f"{form_html}"
         f"{delete_form}"
         f"</div>"
@@ -907,6 +1028,10 @@ class BoardHandler(BaseHTTPRequestHandler):
                 self._serve_email_status,
             ),
             (lambda p: p.startswith("/email/"), self._serve_email_detail),
+            (
+                lambda p: p.startswith("/archive-proposal/"),
+                self._serve_archive_proposal,
+            ),
         ]
         for matches, handler in routes:
             if matches(self.path):
@@ -935,6 +1060,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/rule-action": self._handle_rule_action,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
+            "/archive-proposal": self._handle_archive_proposal,
         }
         handler = routes.get(self.path)
         if handler is None:
@@ -993,8 +1119,13 @@ class BoardHandler(BaseHTTPRequestHandler):
 
     def _serve_board(self) -> None:
         """Render and serve the kanban board HTML."""
+        archive_root = (
+            self.mail_config.archive_root
+            if self.mail_config is not None
+            else DEFAULT_ARCHIVE_ROOT
+        )
         try:
-            body = _build_board_html(self.db_path)
+            body = _build_board_html(self.db_path, archive_root=archive_root)
         except Exception:
             self._send_response("Database unavailable", status=503)
             return
@@ -1003,8 +1134,15 @@ class BoardHandler(BaseHTTPRequestHandler):
 
     def _serve_board_content(self) -> None:
         """Render and serve the board content as JSON."""
+        archive_root = (
+            self.mail_config.archive_root
+            if self.mail_config is not None
+            else DEFAULT_ARCHIVE_ROOT
+        )
         try:
-            payload = _build_board_content(self.db_path)
+            payload = _build_board_content(
+                self.db_path, archive_root=archive_root
+            )
         except Exception:
             self._serve_json({"error": "Database unavailable"}, status=503)
             return
@@ -1262,6 +1400,91 @@ class BoardHandler(BaseHTTPRequestHandler):
             args=(self.db_path,),
             daemon=True,
         ).start()
+
+        self._redirect("/board", code=302)
+
+    def _serve_archive_proposal(self) -> None:
+        """Serve GET /archive-proposal/{message_id} — return JSON with
+        effective subfolder, source, and folder-exists status."""
+        from robotsix_auto_mail.db import get_record_by_message_id, get_watermark, init_db
+        from robotsix_auto_mail.triage import (
+            _load_archive_overrides,
+            _load_llm_archive_hints,
+            propose_archive_subfolder,
+        )
+
+        path = self.path
+        prefix = "/archive-proposal/"
+        message_id = unquote(path[len(prefix):])
+
+        archive_root = (
+            self.mail_config.archive_root
+            if self.mail_config is not None
+            else DEFAULT_ARCHIVE_ROOT
+        )
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            record = get_record_by_message_id(conn, message_id)
+            if record is None:
+                self._not_found()
+                return
+
+            subfolder = get_archive_subfolder(conn, message_id, record)
+            overrides = _load_archive_overrides(conn)
+            hints = _load_llm_archive_hints(conn)
+
+            if message_id in overrides:
+                source = "override"
+                overridden = True
+            elif message_id in hints:
+                source = "llm"
+                overridden = False
+            else:
+                source = "rule"
+                overridden = False
+
+            # Determine folder_exists
+            archive_raw = get_watermark(conn, "archive_structure")
+            existing_folders: set[str] = set()
+            if archive_raw is not None:
+                try:
+                    existing_folders = set(json.loads(archive_raw))
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            full_path = f"{archive_root}/{subfolder}" if subfolder else archive_root
+            folder_exists = full_path in existing_folders
+        finally:
+            conn.close()
+
+        self._serve_json({
+            "subfolder": subfolder,
+            "archive_root": archive_root,
+            "folder_exists": folder_exists,
+            "overridden": overridden,
+            "source": source,
+        })
+
+    def _handle_archive_proposal(self) -> None:
+        """Process POST /archive-proposal — store a user override and redirect."""
+        from robotsix_auto_mail.db import init_db
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
+
+        message_id = (fields.get("message_id") or [""])[0].strip()
+        subfolder = (fields.get("subfolder") or [""])[0].strip()
+
+        if not message_id:
+            self._bad_request("Missing message_id")
+            return
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            set_archive_subfolder_override(conn, message_id, subfolder)
+        finally:
+            conn.close()
 
         self._redirect("/board", code=302)
 

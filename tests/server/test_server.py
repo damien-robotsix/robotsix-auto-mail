@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import tempfile
@@ -3351,5 +3352,526 @@ def test_build_board_html_no_batch_delete_when_to_delete_empty() -> None:
         # The TO_DELETE column exists but has 0 cards → no Delete All button.
         assert "Delete All" not in html
         assert 'action="/batch-delete"' not in html
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# Archive proposal rendering — _render_card / _build_board_html
+# ---------------------------------------------------------------------------
+
+
+def _seed_archive_structure(db_path: str, folders: list[str]) -> None:
+    """Write an archive_structure watermark to *db_path*."""
+    from robotsix_auto_mail.db import init_db, set_watermark
+
+    conn = init_db(db_path)
+    try:
+        set_watermark(conn, "archive_structure", json.dumps(folders))
+    finally:
+        conn.close()
+
+
+def _seed_archive_override(
+    db_path: str, message_id: str, subfolder: str
+) -> None:
+    """Write a user archive subfolder override."""
+    from robotsix_auto_mail.db import init_db
+    from robotsix_auto_mail.triage import _save_archive_overrides
+
+    conn = init_db(db_path)
+    try:
+        overrides = {message_id: subfolder}
+        _save_archive_overrides(conn, overrides)
+    finally:
+        conn.close()
+
+
+def _seed_llm_archive_hint(
+    db_path: str, message_id: str, subfolder: str
+) -> None:
+    """Write an LLM archive subfolder hint."""
+    from robotsix_auto_mail.db import init_db
+    from robotsix_auto_mail.triage import _save_llm_archive_hints
+
+    conn = init_db(db_path)
+    try:
+        hints = {message_id: subfolder}
+        _save_llm_archive_hints(conn, hints)
+    finally:
+        conn.close()
+
+
+def test_render_card_to_archive_shows_archive_proposal() -> None:
+    """TO_ARCHIVE card includes archive-proposal div with path and form."""
+    record = _make_record(
+        message_id="arc1",
+        sender="alice@example.com",
+        subject="Test",
+        date="2025-06-01T12:00:00",
+        body_plain="body",
+    )
+    decision = TriageDecision(
+        message_id="arc1",
+        action="TO_ARCHIVE",
+        source="agent",
+    )
+    html = _render_card(
+        record, decision, archive_subfolder="Lists/dev", archive_root="my-archive"
+    )
+    assert 'class="archive-proposal"' in html
+    assert "Archive &rarr;" in html
+    assert 'class="archive-path"' in html
+    assert "my-archive/Lists/dev" in html
+    assert '<form class="archive-override-form"' in html
+    assert 'action="/archive-proposal"' in html
+    assert 'name="subfolder"' in html
+    assert '<button type="submit">Set</button>' in html
+
+
+def test_render_card_to_archive_with_empty_subfolder_shows_root() -> None:
+    """When subfolder is '', display archive_root/ with no subfolder."""
+    record = _make_record(
+        message_id="arc2",
+        sender="x@x.com",
+        subject="Test",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    decision = TriageDecision(
+        message_id="arc2",
+        action="TO_ARCHIVE",
+        source="agent",
+    )
+    html = _render_card(
+        record, decision, archive_subfolder="", archive_root="my-archive"
+    )
+    assert "my-archive/" in html
+    # No subfolder value in the path span (just the root with trailing /)
+    assert 'class="archive-path">my-archive/</span>' in html
+
+
+def test_render_card_to_archive_shows_folder_exists() -> None:
+    """When folder_exists=True, a checkmark indicator is shown."""
+    record = _make_record(
+        message_id="arc3",
+        sender="x@x.com",
+        subject="Test",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    decision = TriageDecision(
+        message_id="arc3",
+        action="TO_ARCHIVE",
+        source="agent",
+    )
+    html = _render_card(
+        record,
+        decision,
+        archive_subfolder="Lists/dev",
+        folder_exists=True,
+        archive_root="archive",
+    )
+    assert 'class="archive-exists"' in html
+    assert "&#x2713;" in html
+
+
+def test_render_card_to_archive_no_folder_exists_indicator_when_false() -> None:
+    """When folder_exists=False, no checkmark."""
+    record = _make_record(
+        message_id="arc4",
+        sender="x@x.com",
+        subject="Test",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    decision = TriageDecision(
+        message_id="arc4",
+        action="TO_ARCHIVE",
+        source="agent",
+    )
+    html = _render_card(
+        record,
+        decision,
+        archive_subfolder="Lists/dev",
+        folder_exists=False,
+        archive_root="archive",
+    )
+    assert "archive-exists" not in html
+
+
+def test_render_card_non_to_archive_no_proposal() -> None:
+    """Cards in non-TO_ARCHIVE columns have no archive proposal."""
+    record = _make_record(
+        message_id="arc5",
+        sender="x@x.com",
+        subject="Test",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    for action in ("INBOX", "TO_ANSWER", "TO_DELETE", "HUMAN_TRIAGE"):
+        decision = TriageDecision(
+            message_id="arc5",
+            action=action,
+            source="agent",
+        )
+        # archive_subfolder=None → no proposal section rendered
+        html = _render_card(record, decision, archive_subfolder=None)
+        assert '<div class="archive-proposal"' not in html
+
+
+# ---------------------------------------------------------------------------
+# GET /archive-proposal/<mid>
+# ---------------------------------------------------------------------------
+
+
+def test_archive_proposal_endpoint_returns_json() -> None:
+    """GET /archive-proposal/<mid> returns expected JSON shape."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "ap-mid",
+                    "sender": "alice@example.com",
+                    "subject": "Archive me",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "ap-mid", action="TO_ARCHIVE")
+        _seed_archive_structure(
+            db_path,
+            ["my-archive", "my-archive/Lists/dev"],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = urlopen(f"http://127.0.0.1:{port}/archive-proposal/ap-mid")
+            assert resp.status == 200
+            assert resp.headers.get("Content-Type", "").startswith("application/json")
+            body = resp.read().decode("utf-8")
+            payload = json.loads(body)
+            assert "subfolder" in payload
+            assert "archive_root" in payload
+            assert "folder_exists" in payload
+            assert "overridden" in payload
+            assert "source" in payload
+            # Either "rule" (deterministic) or "llm" (no hint stored)
+            assert payload["source"] in ("rule", "llm", "override")
+            assert isinstance(payload["folder_exists"], bool)
+            assert isinstance(payload["overridden"], bool)
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_proposal_endpoint_with_override() -> None:
+    """GET /archive-proposal/<mid> returns source='override' when override exists."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "ap-override",
+                    "sender": "a@b.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "ap-override", action="TO_ARCHIVE")
+        _seed_archive_override(db_path, "ap-override", "Custom/Path")
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = urlopen(f"http://127.0.0.1:{port}/archive-proposal/ap-override")
+            payload = json.loads(resp.read().decode("utf-8"))
+            assert payload["subfolder"] == "Custom/Path"
+            assert payload["source"] == "override"
+            assert payload["overridden"] is True
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_proposal_endpoint_unknown_404() -> None:
+    """GET /archive-proposal/unknown → 404."""
+    import urllib.error
+
+    server, port = _start_test_server(":memory:")
+    try:
+        try:
+            urlopen(f"http://127.0.0.1:{port}/archive-proposal/nonexistent")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 404
+        else:
+            raise AssertionError("Expected HTTPError 404")
+    finally:
+        server.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# POST /archive-proposal
+# ---------------------------------------------------------------------------
+
+
+def test_archive_proposal_post_stores_override_and_redirects() -> None:
+    """POST /archive-proposal persists the override and redirects to /board."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "post-ap",
+                    "sender": "a@b.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/archive-proposal",
+                {"message_id": "post-ap", "subfolder": "My/Path"},
+            )
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+        finally:
+            server.shutdown()
+
+        # Verify override was persisted.
+        from robotsix_auto_mail.triage import _load_archive_overrides
+
+        conn = init_db(db_path)
+        try:
+            overrides = _load_archive_overrides(conn)
+            assert overrides.get("post-ap") == "My/Path"
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_proposal_post_empty_subfolder_clears_override() -> None:
+    """POST with empty subfolder clears the override."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "clear-ap",
+                    "sender": "a@b.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_archive_override(db_path, "clear-ap", "Existing")
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/archive-proposal",
+                {"message_id": "clear-ap", "subfolder": ""},
+            )
+            assert resp.status == 302
+        finally:
+            server.shutdown()
+
+        from robotsix_auto_mail.triage import _load_archive_overrides
+
+        conn = init_db(db_path)
+        try:
+            overrides = _load_archive_overrides(conn)
+            assert "clear-ap" not in overrides
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_proposal_post_missing_message_id_400() -> None:
+    """POST /archive-proposal without message_id returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(port, "/archive-proposal", {"subfolder": "x"})
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# Board integration — archive proposal in full board HTML
+# ---------------------------------------------------------------------------
+
+
+def test_build_board_html_to_archive_card_shows_proposal() -> None:
+    """A card in TO_ARCHIVE column renders archive-proposal inline."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "board-ap",
+                    "sender": "alice@example.com",
+                    "subject": "Archive me",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "board-ap", action="TO_ARCHIVE")
+        _seed_archive_structure(
+            db_path,
+            ["my-archive", "my-archive/example-com/alice"],
+        )
+
+        html = _build_board_html(db_path, archive_root="my-archive")
+        assert 'class="archive-proposal"' in html
+        assert "Archive &rarr;" in html
+        # The subfolder should be example-com/alice (from deterministic rule)
+        assert "example-com/alice" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_to_archive_folder_exists_indicator() -> None:
+    """Checkmark shown when the proposed folder is in archive_structure."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "exists-ap",
+                    "sender": "alice@example.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "exists-ap", action="TO_ARCHIVE")
+        _seed_archive_structure(
+            db_path,
+            ["my-archive", "my-archive/example-com/alice"],
+        )
+
+        html = _build_board_html(db_path, archive_root="my-archive")
+        # The folder exists so the checkmark should appear
+        assert 'class="archive-exists"' in html
+        assert "&#x2713;" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_non_to_archive_no_proposal() -> None:
+    """Cards outside TO_ARCHIVE have no archive-proposal div."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "inbox-ap",
+                    "sender": "x@x.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        # No triage decision → INBOX column
+
+        html = _build_board_html(db_path)
+        assert '<div class="archive-proposal">' not in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_archive_override_reflected() -> None:
+    """User override is reflected in the board HTML."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "override-ap",
+                    "sender": "alice@example.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "override-ap", action="TO_ARCHIVE")
+        _seed_archive_override(db_path, "override-ap", "Custom/Custom")
+
+        html = _build_board_html(db_path, archive_root="my-archive")
+        assert "Custom/Custom" in html
+        # The deterministic "example-com/alice" should NOT appear
+        assert "example-com/alice" not in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_html_archive_root_from_default() -> None:
+    """When archive_root is default, it's shown in the path."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "root-ap",
+                    "sender": "alice@example.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "root-ap", action="TO_ARCHIVE")
+
+        from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
+
+        html = _build_board_html(db_path)  # uses default
+        assert DEFAULT_ARCHIVE_ROOT in html
+        assert "archive-proposal" in html
     finally:
         os.unlink(db_path)
