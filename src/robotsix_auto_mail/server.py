@@ -513,10 +513,26 @@ def _build_board_content(
         # Read the archive_structure watermark to know which folders exist.
         archive_raw = get_watermark(conn, "archive_structure")
         existing_folders: set[str] = set()
+        delimiter: str = "/"
+        effective_root: str = archive_root
         if archive_raw is not None:
             try:
-                existing_folders = set(json.loads(archive_raw))
-            except (json.JSONDecodeError, TypeError):
+                data = json.loads(archive_raw)
+                if isinstance(data, list):
+                    # Old format: bare list of folder names.
+                    existing_folders = set(data)
+                    delimiter = "/"
+                    effective_root = data[0] if data else archive_root
+                else:
+                    # New format: {"delimiter": ..., "folders": [...]}.
+                    existing_folders = set(data["folders"])
+                    delimiter = data.get("delimiter", "/")
+                    effective_root = (
+                        data["folders"][0]
+                        if data["folders"]
+                        else archive_root
+                    )
+            except (json.JSONDecodeError, TypeError, KeyError):
                 pass
 
         # Compute effective subfolder for each TO_ARCHIVE record.
@@ -527,9 +543,11 @@ def _build_board_content(
                 conn, record.message_id, record
             )
             archive_subfolders[record.message_id] = subfolder
-            full_path = (
-                f"{archive_root}/{subfolder}" if subfolder else archive_root
-            )
+            if subfolder:
+                translated = subfolder.replace("/", delimiter)
+                full_path = f"{effective_root}{delimiter}{translated}"
+            else:
+                full_path = effective_root
             folder_exists[record.message_id] = full_path in existing_folders
 
         # -- unsubscribe suggestions for TO_DELETE column -----------------
@@ -1660,12 +1678,32 @@ class BoardHandler(BaseHTTPRequestHandler):
             # Determine folder_exists
             archive_raw = get_watermark(conn, "archive_structure")
             existing_folders: set[str] = set()
+            delimiter: str = "/"
+            effective_root: str = archive_root
             if archive_raw is not None:
                 try:
-                    existing_folders = set(json.loads(archive_raw))
-                except (json.JSONDecodeError, TypeError):
+                    data = json.loads(archive_raw)
+                    if isinstance(data, list):
+                        # Old format: bare list of folder names.
+                        existing_folders = set(data)
+                        delimiter = "/"
+                        effective_root = data[0] if data else archive_root
+                    else:
+                        # New format: {"delimiter": ..., "folders": [...]}.
+                        existing_folders = set(data["folders"])
+                        delimiter = data.get("delimiter", "/")
+                        effective_root = (
+                            data["folders"][0]
+                            if data["folders"]
+                            else archive_root
+                        )
+                except (json.JSONDecodeError, TypeError, KeyError):
                     pass
-            full_path = f"{archive_root}/{subfolder}" if subfolder else archive_root
+            if subfolder:
+                translated = subfolder.replace("/", delimiter)
+                full_path = f"{effective_root}{delimiter}{translated}"
+            else:
+                full_path = effective_root
             folder_exists = full_path in existing_folders
         finally:
             conn.close()
