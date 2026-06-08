@@ -45,8 +45,8 @@ jobs:
       - name: Dependency hygiene (deptry)
         run: uv run --frozen deptry src/ tests/
 
-      - name: Test (pytest)
-        run: uv run --frozen pytest
+      - name: Test (pytest + coverage)
+        run: uv run --frozen pytest --cov --cov-report=term-missing
 
       - name: Check config sync
         run: uv run --frozen python scripts/config/check_config_sync.py

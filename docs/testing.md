@@ -84,6 +84,8 @@ The protocol clients are unit-tested without a live server:
 
 The project convention is that every `src/` module has a matching
 `tests/<module>/` suite, and new code ships with tests in the corresponding
-subdirectory.  There is no numeric coverage threshold configured in
-`pyproject.toml` or CI — the expectation is qualitative: cover the new
-behaviour (including its failure paths) rather than hit a percentage.
+subdirectory.  Coverage is enforced in CI via `pytest-cov` with a
+repo-wide threshold of **80%** (`[tool.coverage.report] fail_under = 80` in
+`pyproject.toml`).  The expectation is still qualitative: cover the new
+behaviour (including its failure paths) — the numeric gate exists to prevent
+silent regressions, not to encourage coverage-driven development.

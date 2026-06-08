@@ -19,6 +19,7 @@ dev = [
     "ruff",
     "mypy",
     "pytest",
+    "pytest-cov>=7.1.0",
     "deptry",
     "hatchling",
     # pyyaml is no longer used by the package itself (YAML loading is delegated
@@ -52,6 +53,15 @@ select = ["E", "F", "I", "S", "B", "N", "RUF"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["src/robotsix_auto_mail"]
+relative_files = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_empty = true
 
 [tool.bandit]
 skips = ["B107"]
