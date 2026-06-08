@@ -413,8 +413,8 @@ def _is_safe_redirect_path(location: str) -> bool:
     return True
 
 
-def _build_board_content(db_path: str) -> dict[str, str]:
-    """Return ``{"columns_html": …, "proposals_html": …}`` for the board.
+def _build_board_content(db_path: str) -> dict[str, str | bool]:
+    """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
 
     Opens a fresh database connection, gathers every mail record and
     buckets them into kanban columns based on each record's triage
