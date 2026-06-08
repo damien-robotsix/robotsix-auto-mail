@@ -15,6 +15,10 @@ site/
 # uv.lock is the source of truth).
 requirements-locked.txt
 
+# uv tool binaries & archives (downloaded by CI-fix sandbox; never commit)
+uv-x86_64-unknown-linux-gnu/
+uv.tgz
+
 # Environment files (may contain credentials)
 .env
 .env.*
