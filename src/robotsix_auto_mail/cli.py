@@ -51,12 +51,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     sub = parser.add_subparsers(dest="command", title="subcommands")
-    sub.add_parser(
-        "probe", help="Probe IMAP and SMTP servers for diagnostics"
-    )
-    ingest_parser = sub.add_parser(
-        "ingest", help="Fetch new mail and store it locally"
-    )
+    sub.add_parser("probe", help="Probe IMAP and SMTP servers for diagnostics")
+    ingest_parser = sub.add_parser("ingest", help="Fetch new mail and store it locally")
     ingest_parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -75,9 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("board", help="Display ingested mail in a read-only board view")
 
-    serve_parser = sub.add_parser(
-        "serve", help="Start the web board server"
-    )
+    serve_parser = sub.add_parser("serve", help="Start the web board server")
     serve_parser.add_argument(
         "--port",
         type=int,
@@ -125,67 +119,78 @@ def build_parser() -> argparse.ArgumentParser:
     config_sync_parser = sub.add_parser(
         "config-sync",
         help="Run the LLM config-drift advisory agent (advisory only; "
-             "does not replace the deterministic check_config_sync.py CI gate)",
+        "does not replace the deterministic check_config_sync.py CI gate)",
     )
     config_sync_parser.add_argument(
-        "--api-key", default=None,
+        "--api-key",
+        default=None,
         help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
     )
     config_sync_parser.add_argument(
-        "--output-format", choices=["text", "json"], default="text",
+        "--output-format",
+        choices=["text", "json"],
+        default="text",
         help="Output format for drift findings (default: %(default)s).",
     )
     config_sync_parser.add_argument(
-        "--dedup", action="store_true", default=False,
+        "--dedup",
+        action="store_true",
+        default=False,
         help="Consult/update the dedup memory ledger so previously-seen "
-             "findings are suppressed. Requires a loadable config (for db_path).",
+        "findings are suppressed. Requires a loadable config (for db_path).",
     )
 
     triage_parser = sub.add_parser(
         "triage",
         help="Run the LLM inbox-triage agent and record advisory action "
-             "statuses (does not move mail in the mailbox)",
+        "statuses (does not move mail in the mailbox)",
     )
     triage_parser.add_argument(
-        "--api-key", default=None,
+        "--api-key",
+        default=None,
         help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
     )
     triage_parser.add_argument(
-        "--output-format", choices=["text", "json"], default="text",
+        "--output-format",
+        choices=["text", "json"],
+        default="text",
         help="Output format for triage decisions (default: %(default)s).",
     )
 
     triage_set_parser = sub.add_parser(
         "triage-set",
         help="Record a user triage decision for a single message "
-             "(advisory; does not move mail in the mailbox)",
+        "(advisory; does not move mail in the mailbox)",
     )
     triage_set_parser.add_argument(
-        "message_id", help="Message-ID of the mail to triage.",
+        "message_id",
+        help="Message-ID of the mail to triage.",
     )
     triage_set_parser.add_argument(
         "action",
-        help="Triage action: INBOX, HUMAN_TRIAGE, TO_ARCHIVE, TO_DELETE, "
-             "or TO_ANSWER.",
+        help="Triage action: INBOX, HUMAN_TRIAGE, TO_ARCHIVE, TO_DELETE, or TO_ANSWER.",
     )
 
     triage_rules_parser = sub.add_parser(
         "triage-rules",
         help="Propose deterministic triage rules from triage history and "
-             "list the accepted (active) rules (advisory; no LLM call)",
+        "list the accepted (active) rules (advisory; no LLM call)",
     )
     triage_rules_parser.add_argument(
-        "--output-format", choices=["text", "json"], default="text",
+        "--output-format",
+        choices=["text", "json"],
+        default="text",
         help="Output format for rule proposals (default: %(default)s).",
     )
 
     triage_rules_set_parser = sub.add_parser(
         "triage-rules-set",
         help="Accept or reject a proposed triage rule by fingerprint; "
-             "accepted rules become active deterministic rules",
+        "accepted rules become active deterministic rules",
     )
     triage_rules_set_parser.add_argument(
-        "fingerprint", help="Fingerprint of the triage rule proposal.",
+        "fingerprint",
+        help="Fingerprint of the triage rule proposal.",
     )
     triage_rules_set_parser.add_argument(
         "state",
@@ -195,10 +200,11 @@ def build_parser() -> argparse.ArgumentParser:
     config_sync_set_parser = sub.add_parser(
         "config-sync-set",
         help="Mark a config-drift finding accepted or rejected so it is "
-             "suppressed by the dedup memory ledger",
+        "suppressed by the dedup memory ledger",
     )
     config_sync_set_parser.add_argument(
-        "fingerprint", help="Fingerprint of the config-drift finding.",
+        "fingerprint",
+        help="Fingerprint of the config-drift finding.",
     )
     config_sync_set_parser.add_argument(
         "state",
@@ -208,9 +214,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _print_header(
-    file: TextIO, title: str, width: int = 60, char: str = "-"
-) -> None:
+def _print_header(file: TextIO, title: str, width: int = 60, char: str = "-") -> None:
     file.write(f"\n{title}\n{char * width}\n")
 
 
@@ -337,8 +341,7 @@ def _cmd_ingest(
 
     interval_minutes = max(1, config.ingest_interval_minutes)
     sys.stdout.write(
-        f"Watch mode: ingesting every {interval_minutes} min "
-        "(Ctrl-C to stop).\n"
+        f"Watch mode: ingesting every {interval_minutes} min (Ctrl-C to stop).\n"
     )
     sys.stdout.flush()
     try:
@@ -356,7 +359,6 @@ def _cmd_ingest(
 
 
 _SEPARATOR = "-" * 60 + "\n"
-
 
 
 def _render_card(record: MailRecord, file: TextIO) -> None:
@@ -513,9 +515,7 @@ def _verify_feedback(config: MailConfig, result: _VerifyResult) -> str:
     return "\n".join(parts)
 
 
-def _prompt_hosts(
-    config: MailConfig, result: _VerifyResult
-) -> MailConfig | None:
+def _prompt_hosts(config: MailConfig, result: _VerifyResult) -> MailConfig | None:
     """Prompt the user for the host(s) that failed to connect.
 
     Returns an updated config, or ``None`` if the user supplied nothing new
@@ -537,9 +537,7 @@ def _prompt_hosts(
         return None
     if not changed:
         return None
-    return dataclasses.replace(
-        config, imap_host=imap_host, smtp_host=smtp_host
-    )
+    return dataclasses.replace(config, imap_host=imap_host, smtp_host=smtp_host)
 
 
 def _get_password(args: argparse.Namespace) -> str | None:
@@ -590,8 +588,7 @@ def _detect_settings(
     provider = autoconfig_lookup(email)
     if provider is not None:
         sys.stderr.write(
-            f"  autoconfig: imap={provider.imap_host} "
-            f"smtp={provider.smtp_host}\n"
+            f"  autoconfig: imap={provider.imap_host} smtp={provider.smtp_host}\n"
         )
     else:
         sys.stderr.write("  autoconfig: no match — checking MX records…\n")
@@ -601,8 +598,7 @@ def _detect_settings(
         provider = provider_from_mx(mx_hosts)
         if provider is not None:
             sys.stderr.write(
-                f"  MX provider: imap={provider.imap_host} "
-                f"smtp={provider.smtp_host}\n"
+                f"  MX provider: imap={provider.imap_host} smtp={provider.smtp_host}\n"
             )
         else:
             sys.stderr.write("  no known provider — asking the LLM…\n")
@@ -616,8 +612,7 @@ def _detect_settings(
                 sys.stderr.write(f"Error: {exc}\n")
                 return None, mx_hosts
             sys.stderr.write(
-                f"  LLM: imap={provider.imap_host} "
-                f"smtp={provider.smtp_host}\n"
+                f"  LLM: imap={provider.imap_host} smtp={provider.smtp_host}\n"
             )
     return provider, mx_hosts
 
@@ -850,10 +845,17 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         return 1
 
     from robotsix_auto_mail.config import load_llm
+
     api_key, _ = load_llm()
     provider, mx_hosts = _detect_settings(
-        args.email, api_key, autoconfig_lookup, mx_lookup,
-        provider_from_mx, detect_provider, DetectionError)
+        args.email,
+        api_key,
+        autoconfig_lookup,
+        mx_lookup,
+        provider_from_mx,
+        detect_provider,
+        DetectionError,
+    )
     if provider is None:
         return 1
     password = _get_password(args)
@@ -875,11 +877,18 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         return 0
     return _verify_and_refine(
         provider,
-        email=args.email, api_key=api_key, mx_hosts=mx_hosts,
-        output_path=Path(args.output), password=password,
-        password_from_args=args.password, no_verify=args.no_verify,
-        provider_to_config=provider_to_config, render_config=render_config,
-        detect_provider=detect_provider, _detection_error=DetectionError)
+        email=args.email,
+        api_key=api_key,
+        mx_hosts=mx_hosts,
+        output_path=Path(args.output),
+        password=password,
+        password_from_args=args.password,
+        no_verify=args.no_verify,
+        provider_to_config=provider_to_config,
+        render_config=render_config,
+        detect_provider=detect_provider,
+        _detection_error=DetectionError,
+    )
 
 
 def _cmd_config_sync(args: argparse.Namespace) -> int:
@@ -1013,14 +1022,10 @@ def _cmd_triage_set(args: argparse.Namespace) -> int:
     conn = init_db(config.db_path)
     try:
         if get_record_by_message_id(conn, args.message_id) is None:
-            sys.stderr.write(
-                f"Error: no mail with message_id {args.message_id!r}\n"
-            )
+            sys.stderr.write(f"Error: no mail with message_id {args.message_id!r}\n")
             return 1
         try:
-            set_triage_decision(
-                conn, args.message_id, args.action, source="user"
-            )
+            set_triage_decision(conn, args.message_id, args.action, source="user")
             record_human_decision(conn, args.message_id, args.action)
         except TriageError as exc:
             sys.stderr.write(f"Error: {exc}\n")
@@ -1074,9 +1079,7 @@ def _cmd_triage_rules(args: argparse.Namespace) -> int:
     else:
         for proposal in new_proposals:
             sys.stdout.write(f"\n{proposal.title}\n")
-            sys.stdout.write(
-                f"  fingerprint: {_rule_fingerprint(proposal)}\n"
-            )
+            sys.stdout.write(f"  fingerprint: {_rule_fingerprint(proposal)}\n")
             sys.stdout.write(f"  confidence: {proposal.confidence}\n")
             sys.stdout.write(
                 f"  rule: {proposal.match_type}={proposal.match_value} "
@@ -1164,8 +1167,7 @@ def _cmd_config_sync_set(args: argparse.Namespace) -> int:
         conn.close()
 
     sys.stdout.write(
-        f"Recorded config-drift finding state: "
-        f"{args.fingerprint} -> {args.state}\n"
+        f"Recorded config-drift finding state: {args.fingerprint} -> {args.state}\n"
     )
     return 0
 
@@ -1179,7 +1181,7 @@ def _cmd_serve(config: MailConfig, *, port: int) -> int:
 
     from robotsix_auto_mail.server import make_board_handler
 
-    handler_class = make_board_handler(config.db_path)
+    handler_class = make_board_handler(config.db_path, mail_config=config)
 
     print(f"Serving board on http://0.0.0.0:{port}/board")
     try:

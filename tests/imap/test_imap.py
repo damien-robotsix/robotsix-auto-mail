@@ -25,7 +25,6 @@ from robotsix_auto_mail.imap import (
 # ---------------------------------------------------------------------------
 
 
-
 def _make_mock_imap_ssl() -> mock.MagicMock:
     """Factory for a mock ``IMAP4_SSL`` instance that behaves correctly."""
     m = mock.MagicMock(spec=imaplib.IMAP4_SSL)
@@ -546,9 +545,9 @@ def test_imap_client_does_not_import_smtp() -> None:
     # The word "smtp" should only appear in docstrings explaining the
     # separation, never in executable code.  Verify there's no import
     # of or call to an SMTP module.
-    assert "import" not in content or "smtp" not in content.lower().split(
-        "import"
-    )[0], "imap.py must not import SMTP"
+    assert (
+        "import" not in content or "smtp" not in content.lower().split("import")[0]
+    ), "imap.py must not import SMTP"
     assert "from robotsix_auto_mail.smtp" not in content.lower()
 
 
@@ -681,9 +680,7 @@ def test_fetch_messages_uses_body_peek(cfg: MailConfig) -> None:
         with ImapClient(cfg) as client:
             client.fetch_messages([1])
 
-    mock_ssl.uid.assert_called_once_with(
-        "FETCH", "1", "(BODY.PEEK[])"
-    )
+    mock_ssl.uid.assert_called_once_with("FETCH", "1", "(BODY.PEEK[])")
 
 
 def test_fetch_messages_multiple_uids_comma_separated(cfg: MailConfig) -> None:
@@ -695,9 +692,7 @@ def test_fetch_messages_multiple_uids_comma_separated(cfg: MailConfig) -> None:
         with ImapClient(cfg) as client:
             client.fetch_messages([10, 20, 30])
 
-    mock_ssl.uid.assert_called_once_with(
-        "FETCH", "10,20,30", "(BODY.PEEK[])"
-    )
+    mock_ssl.uid.assert_called_once_with("FETCH", "10,20,30", "(BODY.PEEK[])")
 
 
 def test_fetch_messages_skips_missing_uids(cfg: MailConfig) -> None:
@@ -765,14 +760,17 @@ def test_fetch_messages_skips_non_tuple_items(cfg: MailConfig) -> None:
     )
 
     def fake_uid(
-    cmd: str, uid_set: str, fetch_spec: str
-) -> tuple[str, list[tuple[bytes, bytes]]]:
+        cmd: str, uid_set: str, fetch_spec: str
+    ) -> tuple[str, list[tuple[bytes, bytes]]]:
         # Return a properly structured response that imaplib will process
         # into (header, body) tuples.
-        return ("OK", [
-            (b"1 (UID 1)", b"body1"),
-            (b"2 (UID 2)", b"body2"),
-        ])
+        return (
+            "OK",
+            [
+                (b"1 (UID 1)", b"body1"),
+                (b"2 (UID 2)", b"body2"),
+            ],
+        )
 
     mock_ssl.uid.side_effect = fake_uid
 
@@ -798,3 +796,54 @@ def test_fetch_messages_header_with_body_size(cfg: MailConfig) -> None:
             result = client.fetch_messages([42])
 
     assert result == [(42, b"abcde")]
+
+
+# ---------------------------------------------------------------------------
+# delete_message
+# ---------------------------------------------------------------------------
+
+
+def test_delete_message_success(cfg: MailConfig) -> None:
+    """delete_message calls UID STORE +FLAGS (\\Deleted) then EXPUNGE."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b""])
+    mock_ssl.expunge.return_value = ("OK", [b""])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.delete_message(42)
+
+    mock_ssl.uid.assert_called_once_with("STORE", "42", "+FLAGS", "(\\Deleted)")
+    mock_ssl.expunge.assert_called_once()
+
+
+def test_delete_message_not_connected(cfg: MailConfig) -> None:
+    """delete_message raises ImapError when not connected."""
+    client = ImapClient(cfg)
+    with pytest.raises(ImapError, match="Not connected"):
+        client.delete_message(1)
+
+
+def test_delete_message_store_fails(cfg: MailConfig) -> None:
+    """delete_message raises ImapError when UID STORE returns non-OK."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("NO", [b"Some error"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapError, match="UID STORE"):
+                client.delete_message(99)
+
+    mock_ssl.expunge.assert_not_called()
+
+
+def test_delete_message_expunge_fails(cfg: MailConfig) -> None:
+    """delete_message raises ImapError when EXPUNGE returns non-OK."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b""])
+    mock_ssl.expunge.return_value = ("NO", [b"Expunge error"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapError, match="EXPUNGE"):
+                client.delete_message(1)

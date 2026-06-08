@@ -355,7 +355,7 @@ def test_build_board_html_structure() -> None:
         assert '<html lang="en">' in html
         assert "<title>Mail Board</title>" in html
         assert '<meta http-equiv="refresh"' not in html
-        assert '<h1>Mail Board</h1>' in html
+        assert "<h1>Mail Board</h1>" in html
         assert 'class="board"' in html
 
         # Exactly 5 columns
@@ -368,8 +368,12 @@ def test_build_board_html_structure() -> None:
         to_delete_pos = html.find("<h2>To delete</h2>")
         to_answer_pos = html.find("<h2>To answer</h2>")
         assert (
-            0 <= inbox_pos < human_triage_pos < to_archive_pos
-            < to_delete_pos < to_answer_pos
+            0
+            <= inbox_pos
+            < human_triage_pos
+            < to_archive_pos
+            < to_delete_pos
+            < to_answer_pos
         )
 
         # m1 is untriaged → INBOX.  m2 has TO_ARCHIVE → TO_ARCHIVE.
@@ -505,7 +509,7 @@ def test_make_board_handler_binds_boardhandler_with_db_path() -> None:
 
     handler = make_board_handler(":memory:")
     assert handler.func is BoardHandler
-    assert handler.keywords == {"db_path": ":memory:"}
+    assert handler.keywords == {"db_path": ":memory:", "mail_config": None}
 
 
 def test_handler_root_redirects() -> None:
@@ -587,6 +591,7 @@ def test_board_content_endpoint_returns_json() -> None:
             assert "application/json" in content_type
             body = resp.read().decode("utf-8")
             import json as _json
+
             payload = _json.loads(body)
             assert isinstance(payload, dict)
             assert "columns_html" in payload
@@ -610,6 +615,7 @@ def test_board_content_endpoint_empty_db_returns_json() -> None:
             assert resp.status == 200
             body = resp.read().decode("utf-8")
             import json as _json
+
             payload = _json.loads(body)
             columns_html = payload["columns_html"]
             counts = re.findall(r'<span class="count">(\d+)</span>', columns_html)
@@ -632,6 +638,7 @@ def test_board_content_db_unavailable_returns_503() -> None:
             assert exc.code == 503
             body = exc.read().decode("utf-8")
             import json as _json
+
             payload = _json.loads(body)
             assert "error" in payload
             assert "Database unavailable" in payload["error"]
@@ -861,9 +868,7 @@ def _post_form_resp(port: int, fields: dict[str, str]) -> HTTPResponse:
     return cast("HTTPResponse", resp)
 
 
-def _post_to_path(
-    port: int, path: str, fields: dict[str, str]
-) -> HTTPResponse:
+def _post_to_path(port: int, path: str, fields: dict[str, str]) -> HTTPResponse:
     """POST url-encoded *fields* to *path* and return the raw response.
 
     Does not follow redirects and captures error responses so 302/400/404
@@ -942,9 +947,7 @@ def test_rule_action_accept_redirects_and_activates() -> None:
         conn = init_db(db_path)
         try:
             active = _load_active_rules(conn)
-            assert any(
-                _rule_fingerprint(r) == fingerprint for r in active
-            )
+            assert any(_rule_fingerprint(r) == fingerprint for r in active)
             assert isinstance(active[0], TriageRule)
         finally:
             conn.close()
@@ -1221,9 +1224,7 @@ def test_email_status_returns_200() -> None:
                 },
             ],
         )
-        _seed_triage_decision(
-            db_path, "<abc123@example.com>", action="TO_ANSWER"
-        )
+        _seed_triage_decision(db_path, "<abc123@example.com>", action="TO_ANSWER")
 
         server, port = _start_test_server(db_path)
         try:
@@ -1338,6 +1339,7 @@ def test_render_card_has_detail_link() -> None:
     assert '<a href="/email/' in html
     # The quoted message_id should appear in the href
     import urllib.parse
+
     quoted = urllib.parse.quote("<abc@example.com>", safe="")
     assert f'href="/email/{quoted}"' in html
     # The visible subject text should be escaped and inside the <a>
@@ -1586,6 +1588,7 @@ def test_handler_email_detail_returns_200() -> None:
         server, port = _start_test_server(db_path)
         try:
             import urllib.request
+
             encoded = urllib.request.pathname2url("<handler-detail@test.com>")
             resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
             assert resp.status == 200
@@ -1605,6 +1608,7 @@ def test_handler_email_detail_unknown_returns_404() -> None:
     server, port = _start_test_server(":memory:")
     try:
         import urllib.error
+
         try:
             urlopen(f"http://127.0.0.1:{port}/email/does-not-exist")
         except urllib.error.HTTPError as exc:
@@ -1618,6 +1622,7 @@ def test_handler_email_detail_unknown_returns_404() -> None:
 def test_handler_email_detail_missing_db_returns_503() -> None:
     """GET /email/{id} returns 503 when DB is unavailable."""
     import urllib.error
+
     server, port = _start_test_server("/dev/null/nonexistent.db")
     try:
         try:
@@ -1654,6 +1659,7 @@ def test_handler_email_detail_xss_prevention() -> None:
         server, port = _start_test_server(db_path)
         try:
             import urllib.request
+
             encoded = urllib.request.pathname2url("<xss-detail@test.com>")
             resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
             body = resp.read().decode("utf-8")
@@ -1687,13 +1693,12 @@ def test_handler_email_detail_does_not_capture_status_route() -> None:
                 },
             ],
         )
-        _seed_triage_decision(
-            db_path, "<status-route@test.com>", action="TO_ARCHIVE"
-        )
+        _seed_triage_decision(db_path, "<status-route@test.com>", action="TO_ARCHIVE")
 
         server, port = _start_test_server(db_path)
         try:
             import urllib.request
+
             encoded = urllib.request.pathname2url("<status-route@test.com>")
             resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}/status")
             assert resp.status == 200
@@ -1739,6 +1744,7 @@ def test_handler_email_detail_with_recipients() -> None:
         server, port = _start_test_server(db_path)
         try:
             import urllib.request
+
             encoded = urllib.request.pathname2url("<with-cc@test.com>")
             resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
             body = resp.read().decode("utf-8")
@@ -1783,6 +1789,7 @@ def test_handler_email_detail_with_attachments() -> None:
         server, port = _start_test_server(db_path)
         try:
             import urllib.request
+
             encoded = urllib.request.pathname2url("<with-attach@test.com>")
             resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
             body = resp.read().decode("utf-8")
@@ -1825,6 +1832,7 @@ def test_handler_email_detail_html_version_note() -> None:
         server, port = _start_test_server(db_path)
         try:
             import urllib.request
+
             encoded = urllib.request.pathname2url("<html-body@test.com>")
             resp = urlopen(f"http://127.0.0.1:{port}/email/{encoded}")
             body = resp.read().decode("utf-8")
@@ -1907,8 +1915,8 @@ def test_build_detail_html_embed_has_redirect_to() -> None:
         assert html is not None
         assert 'name="redirect_to"' in html
         # The redirect_to value should point back to the embed URL
-        assert '/email/' in html
-        assert '?embed=1' in html
+        assert "/email/" in html
+        assert "?embed=1" in html
     finally:
         os.unlink(db_path)
 
@@ -1987,6 +1995,7 @@ def test_render_card_has_data_message_id() -> None:
     assert 'data-message-id="' in html
     # The value should be URL-encoded
     import urllib.parse
+
     quoted = urllib.parse.quote("<test@example.com>", safe="")
     assert f'data-message-id="{quoted}"' in html
 
@@ -2189,7 +2198,9 @@ def test_handler_email_detail_embed_returns_fragment() -> None:
 
         server, port = _start_test_server(db_path)
         try:
-            resp = urlopen(f"http://127.0.0.1:{port}/email/embed-handler@test.com?embed=1")
+            resp = urlopen(
+                f"http://127.0.0.1:{port}/email/embed-handler@test.com?embed=1"
+            )
             assert resp.status == 200
             body = resp.read().decode("utf-8")
             # Fragment — no full-page chrome
@@ -2213,6 +2224,7 @@ def test_handler_email_detail_embed_unknown_returns_404() -> None:
     server, port = _start_test_server(":memory:")
     try:
         import urllib.error
+
         try:
             urlopen(f"http://127.0.0.1:{port}/email/does-not-exist?embed=1")
         except urllib.error.HTTPError as exc:
@@ -2679,6 +2691,7 @@ def test_move_creates_triage_decision() -> None:
     finally:
         os.unlink(db_path)
 
+
 # ---------------------------------------------------------------------------
 # POST /run-triage tests
 # ---------------------------------------------------------------------------
@@ -2703,9 +2716,7 @@ def test_run_triage_no_untriaged_redirects() -> None:
                 },
             ],
         )
-        _seed_triage_decision(
-            db_path, "triaged-msg", action="TO_ARCHIVE"
-        )
+        _seed_triage_decision(db_path, "triaged-msg", action="TO_ARCHIVE")
 
         server, port = _start_test_server(db_path)
         try:
@@ -2748,6 +2759,192 @@ def test_run_triage_no_api_key_returns_503() -> None:
             with mock.patch.dict(_os.environ, {}, clear=True):
                 resp = _post_to_path(port, "/run-triage", {})
             assert resp.status == 503
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# Delete button on TO_DELETE cards
+# ---------------------------------------------------------------------------
+
+
+def test_render_card_includes_delete_form_when_to_delete() -> None:
+    """_render_card includes delete form when decision action is TO_DELETE."""
+    record = _make_record(
+        message_id="abc",
+        sender="x",
+        subject="s",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    decision = TriageDecision(
+        message_id="abc",
+        action="TO_DELETE",
+        source="user",
+    )
+    html = _render_card(record, decision)
+    assert '<form class="delete-form"' in html
+    assert 'method="post" action="/delete"' in html
+    assert 'onsubmit="return confirm(' in html
+    assert "Permanently delete this mail from mailbox and database?" in html
+    assert '<button type="submit" class="delete-btn">Delete</button>' in html
+
+
+def test_render_card_no_delete_form_for_other_actions() -> None:
+    """_render_card does NOT include delete form for non-TO_DELETE actions."""
+    record = _make_record(
+        message_id="abc",
+        sender="x",
+        subject="s",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    for action in ("INBOX", "TO_ARCHIVE", "TO_ANSWER", "HUMAN_TRIAGE"):
+        decision = TriageDecision(
+            message_id="abc",
+            action=action,
+            source="user",
+        )
+        html = _render_card(record, decision)
+        assert '<form class="delete-form"' not in html
+        assert "delete-btn" not in html
+
+
+def test_render_card_no_delete_form_without_decision() -> None:
+    """_render_card does NOT include delete form when no triage decision exists."""
+    record = _make_record(
+        message_id="abc",
+        sender="x",
+        subject="s",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+    )
+    html = _render_card(record)
+    assert '<form class="delete-form"' not in html
+
+
+# ---------------------------------------------------------------------------
+# POST /delete handler integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_delete_success_removes_record_and_redirects() -> None:
+    """POST /delete with valid message_id deletes the record and returns 302."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "del-me",
+                    "sender": "x@x.com",
+                    "subject": "Delete test",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "del-me", action="TO_DELETE")
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(port, "/delete", {"message_id": "del-me"})
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+        finally:
+            server.shutdown()
+
+        # Verify record is gone from the DB.
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+
+        conn = init_db(db_path)
+        try:
+            assert get_record_by_message_id(conn, "del-me") is None
+        finally:
+            conn.close()
+
+        # Verify the board no longer shows the card.
+        server2, port2 = _start_test_server(db_path)
+        try:
+            resp2 = urlopen(f"http://127.0.0.1:{port2}/board")
+            board_html = resp2.read().decode("utf-8")
+            assert "del-me" not in board_html
+            assert "x@x.com" not in board_html
+        finally:
+            server2.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_delete_missing_message_id_returns_400() -> None:
+    """POST /delete without message_id returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(port, "/delete", {})
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
+def test_delete_empty_message_id_returns_400() -> None:
+    """POST /delete with empty message_id returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(port, "/delete", {"message_id": "  "})
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
+def test_delete_unknown_message_id_returns_404() -> None:
+    """POST /delete with nonexistent message_id returns 404."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(
+            port,
+            "/delete",
+            {"message_id": "does-not-exist"},
+        )
+        assert resp.status == 404
+    finally:
+        server.shutdown()
+
+
+def test_delete_with_redirect_to() -> None:
+    """POST /delete with safe redirect_to redirects to that path."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "redirect-del",
+                    "sender": "x@x.com",
+                    "subject": "Redirect delete",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/delete",
+                {
+                    "message_id": "redirect-del",
+                    "redirect_to": "/email/redirect-del?embed=1",
+                },
+            )
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/email/redirect-del?embed=1"
         finally:
             server.shutdown()
     finally:
