@@ -14,7 +14,8 @@ if TYPE_CHECKING:
 
 from tests.conftest import _make_record
 
-from robotsix_auto_mail.db import init_db
+from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.db import MailRecord, init_db
 from robotsix_auto_mail.format import _format_date
 from robotsix_auto_mail.server import (
     _build_board_html,
@@ -502,7 +503,7 @@ def _start_test_server(db_path: str, port: int = 0) -> tuple[HTTPServer, int]:
 
 
 def _start_test_server_with_mail_config(
-    db_path: str, mail_config: object, port: int = 0
+    db_path: str, mail_config: MailConfig, port: int = 0
 ) -> tuple[HTTPServer, int]:
     """Like :func:`_start_test_server` but binds *mail_config* to the handler."""
     import threading
@@ -2975,7 +2976,7 @@ def test_delete_with_redirect_to() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _make_record_minimal(message_id: str = "abc") -> object:
+def _make_record_minimal(message_id: str = "abc") -> MailRecord:
     """Return a minimal MailRecord for _render_column tests."""
     return _make_record(
         message_id=message_id,

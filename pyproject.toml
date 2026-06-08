@@ -63,6 +63,7 @@ robotsix-auto-mail = "robotsix_auto_mail.cli:main"
 strict = true
 python_version = "3.12"
 packages = ["src/robotsix_auto_mail"]
+exclude = ["pip-packages"]
 
 [tool.deptry]
 # Treat everything under [project.optional-dependencies][dev] (ruff, mypy,
