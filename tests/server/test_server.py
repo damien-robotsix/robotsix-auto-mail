@@ -1999,6 +1999,8 @@ def test_build_board_html_has_script_block() -> None:
         assert "Escape" in html
         # Hash change handler
         assert "'hashchange'" in html
+        # Guard: clicks from interactive form controls are not intercepted
+        assert "closest('button, select, input')" in html
     finally:
         os.unlink(db_path)
 

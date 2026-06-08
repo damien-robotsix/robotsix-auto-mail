@@ -279,6 +279,7 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "  if (e.key === 'Escape') closeDetail();\n"
     "});\n"
     "document.querySelector('.board').addEventListener('click', function(e) {\n"
+    "  if (e.target.closest('button, select, input')) return;\n"
     "  var card = e.target.closest('.card');\n"
     "  if (!card) return;\n"
     "  var mid = card.getAttribute('data-message-id');\n"
