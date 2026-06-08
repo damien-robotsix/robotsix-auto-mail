@@ -10,7 +10,7 @@ from __future__ import annotations
 import functools
 import html
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, quote, unquote
 
@@ -50,7 +50,20 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background: #e8e8e8; padding: 1.5rem;
 }
-h1 { margin-bottom: 1rem; font-size: 1.5rem; }
+h1 { margin-bottom: 1rem; font-size: 1.5rem; display: inline; }
+#refresh-btn {
+  display: inline; vertical-align: middle;
+  margin-left: 0.5rem; margin-bottom: 1rem;
+  background: none; border: 1px solid #ccc;
+  border-radius: 4px; font-size: 1rem;
+  cursor: pointer; padding: 0.1rem 0.4rem; color: #666;
+}
+#refresh-btn:hover { background: #eee; color: #000; }
+#refresh-time {
+  display: inline; vertical-align: middle;
+  margin-left: 0.25rem; margin-bottom: 1rem;
+  font-size: 0.75rem; color: #888;
+}
 .board { display: flex; gap: 1rem; overflow-x: auto; }
 .column {
   flex: 1; min-width: 260px; background: #f5f5f5;
@@ -189,11 +202,12 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "<head>\n"
     '<meta charset="utf-8">\n'
     "<title>Mail Board</title>\n"
-    '<meta http-equiv="refresh" content="30">\n'
     "<style>{{ css }}</style>\n"
     "</head>\n"
     "<body>\n"
     "<h1>Mail Board</h1>\n"
+    '<button id="refresh-btn" title="Refresh now">↻</button>\n'
+    '<span id="refresh-time"></span>\n'
     '<form method="post" action="/run-triage"'
     ' style="display:inline-block; margin-left:1.5rem; vertical-align:middle;">\n'
     '  <button type="submit"'
@@ -247,6 +261,52 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "  var subject = card.getAttribute('data-subject') || '';\n"
     "  openDetail(mid, subject);\n"
     "});\n"
+    "\n"
+    "// Board auto-refresh polling\n"
+    "var lastRefresh = Date.now();\n"
+    "var refreshTimer = null;\n"
+    "var refreshDisplayTimer = null;\n"
+    "\n"
+    "function relativeTime(ms) {\n"
+    "  if (ms < 10000) return 'just now';\n"
+    "  var sec = Math.floor(ms / 1000);\n"
+    "  if (sec < 60) return sec + 's ago';\n"
+    "  var min = Math.floor(sec / 60);\n"
+    "  if (min < 60) return min + 'm ago';\n"
+    "  return Math.floor(min / 60) + 'h ago';\n"
+    "}\n"
+    "\n"
+    "function updateRefreshTime() {\n"
+    "  var el = document.getElementById('refresh-time');\n"
+    "  if (el) el.textContent = relativeTime(Date.now() - lastRefresh);\n"
+    "}\n"
+    "\n"
+    "function refreshBoard() {\n"
+    "  if (document.getElementById('side-panel').classList.contains('open')) return;\n"
+    "  fetch('/board-content')\n"
+    "    .then(function(r) {\n"
+    "      if (!r.ok) throw new Error('bad status');\n"
+    "      return r.json();\n"
+    "    })\n"
+    "    .then(function(data) {\n"
+    "      document.querySelector('.board').innerHTML = data.columns_html;\n"
+    "      var proposals = document.querySelector('.rule-proposals');\n"
+    "      if (proposals) proposals.outerHTML = data.proposals_html;\n"
+    "      lastRefresh = Date.now();\n"
+    "      updateRefreshTime();\n"
+    "    })\n"
+    "    .catch(function() { /* silently retry next cycle */ });\n"
+    "}\n"
+    "\n"
+    "document.getElementById('refresh-btn').addEventListener('click', function() {\n"
+    "  refreshBoard();\n"
+    "  clearInterval(refreshTimer);\n"
+    "  refreshTimer = setInterval(refreshBoard, 30000);\n"
+    "});\n"
+    "\n"
+    "refreshTimer = setInterval(refreshBoard, 30000);\n"
+    "refreshDisplayTimer = setInterval(updateRefreshTime, 10000);\n"
+    "updateRefreshTime();\n"
     "</script>\n"
     "</body>\n"
     "</html>"
@@ -291,7 +351,6 @@ _DETAIL_PAGE_TEMPLATE = _JINJA_ENV.from_string(
     "<head>\n"
     '<meta charset="utf-8">\n'
     "<title>Mail: {{ title }}</title>\n"
-    '<meta http-equiv="refresh" content="30">\n'
     "<style>{{ css }}</style>\n"
     "</head>\n"
     "<body>\n"
@@ -328,14 +387,17 @@ def _is_safe_redirect_path(location: str) -> bool:
     return True
 
 
-def _build_board_html(db_path: str) -> str:
-    """Build the full ``/board`` HTML document.
+def _build_board_content(db_path: str) -> dict[str, str]:
+    """Return ``{"columns_html": …, "proposals_html": …}`` for the board.
 
     Opens a fresh database connection, gathers every mail record and
     buckets them into kanban columns based on each record's triage
     decision.  Cards with no triage decision land in the ``"INBOX"``
-    column.  Raises ``Exception`` when the database cannot be opened
-    (the caller should catch it and return a 503).
+    column.  Renders column and rule-proposal HTML fragments and
+    returns them as a plain dict.
+
+    Raises ``Exception`` when the database cannot be opened (the
+    caller should catch it and return a 503).
     """
     from robotsix_auto_mail.db import init_db
 
@@ -378,11 +440,22 @@ def _build_board_html(db_path: str) -> str:
         for action, records in columns
     ]
 
-    return _BOARD_TEMPLATE.render(
-        css=_CSS,
-        columns_html="".join(columns_html_parts),
-        proposals_html=_render_rule_proposals(proposals),
-    )
+    return {
+        "columns_html": "".join(columns_html_parts),
+        "proposals_html": _render_rule_proposals(proposals),
+    }
+
+
+def _build_board_html(db_path: str) -> str:
+    """Build the full ``/board`` HTML document.
+
+    Calls :func:`_build_board_content` and wraps the result in the
+    full-page ``_BOARD_TEMPLATE``.  Raises ``Exception`` when the
+    database cannot be opened (the caller should catch it and return
+    a 503).
+    """
+    content = _build_board_content(db_path)
+    return _BOARD_TEMPLATE.render(css=_CSS, **content)
 
 
 def _build_detail_html(
@@ -740,6 +813,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         routes: list[tuple[Callable[[str], bool], Callable[[], None]]] = [
             (lambda p: p == "/", lambda: self._redirect("/board")),
             (lambda p: p == "/board", self._serve_board),
+            (lambda p: p == "/board-content", self._serve_board_content),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
                 self._serve_email_status,
@@ -819,7 +893,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         """Send a 400 Bad Request with a plain-text body."""
         self._send_response(message, status=400)
 
-    def _serve_json(self, payload: dict[str, object], status: int = 200) -> None:
+    def _serve_json(self, payload: Mapping[str, object], status: int = 200) -> None:
         """Serialize *payload* as JSON and send it with *status*."""
         self._send_response(
             json.dumps(payload),
@@ -836,6 +910,16 @@ class BoardHandler(BaseHTTPRequestHandler):
             return
 
         self._send_response(body, content_type="text/html; charset=utf-8")
+
+    def _serve_board_content(self) -> None:
+        """Render and serve the board content as JSON."""
+        try:
+            payload = _build_board_content(self.db_path)
+        except Exception:
+            self._serve_json({"error": "Database unavailable"}, status=503)
+            return
+
+        self._serve_json(payload)
 
     def _handle_move(self) -> None:
         """Process POST /move — update a card's triage decision and redirect."""

@@ -354,7 +354,7 @@ def test_build_board_html_structure() -> None:
         assert "<!DOCTYPE html>" in html
         assert '<html lang="en">' in html
         assert "<title>Mail Board</title>" in html
-        assert '<meta http-equiv="refresh" content="30">' in html
+        assert '<meta http-equiv="refresh"' not in html
         assert '<h1>Mail Board</h1>' in html
         assert 'class="board"' in html
 
@@ -557,6 +557,86 @@ def test_handler_board_returns_200_and_html() -> None:
         assert "text/html" in content_type
         body = resp.read().decode("utf-8")
         assert "<!DOCTYPE html>" in body
+    finally:
+        server.shutdown()
+
+
+def test_board_content_endpoint_returns_json() -> None:
+    """GET /board-content returns 200 with application/json."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "bc1",
+                    "sender": "a@b.com",
+                    "subject": "Test",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "Body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        server, port = _start_test_server(db_path)
+        try:
+            resp = urlopen(f"http://127.0.0.1:{port}/board-content")
+            assert resp.status == 200
+            content_type = resp.headers.get("Content-Type", "")
+            assert "application/json" in content_type
+            body = resp.read().decode("utf-8")
+            import json as _json
+            payload = _json.loads(body)
+            assert isinstance(payload, dict)
+            assert "columns_html" in payload
+            assert "proposals_html" in payload
+            assert 'class="column"' in payload["columns_html"]
+            assert "Rule proposals" in payload["proposals_html"]
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_board_content_endpoint_empty_db_returns_json() -> None:
+    """GET /board-content with empty DB returns all-zero counts."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        server, port = _start_test_server(db_path)
+        try:
+            resp = urlopen(f"http://127.0.0.1:{port}/board-content")
+            assert resp.status == 200
+            body = resp.read().decode("utf-8")
+            import json as _json
+            payload = _json.loads(body)
+            columns_html = payload["columns_html"]
+            counts = re.findall(r'<span class="count">(\d+)</span>', columns_html)
+            assert counts == ["0", "0", "0", "0", "0"]
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_board_content_db_unavailable_returns_503() -> None:
+    """GET /board-content with bad DB path returns 503 JSON error."""
+    import urllib.error
+
+    server, port = _start_test_server("/dev/null/nonexistent.db")
+    try:
+        try:
+            urlopen(f"http://127.0.0.1:{port}/board-content")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 503
+            body = exc.read().decode("utf-8")
+            import json as _json
+            payload = _json.loads(body)
+            assert "error" in payload
+            assert "Database unavailable" in payload["error"]
+        else:
+            raise AssertionError("Expected HTTPError for 503")
     finally:
         server.shutdown()
 
@@ -1319,6 +1399,31 @@ def test_build_detail_html_basic() -> None:
         # Move form
         assert '<form class="detail-form"' in html
         assert 'method="post" action="/move"' in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_detail_page_no_meta_refresh() -> None:
+    """The standalone detail page must not contain a meta-refresh tag."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<no-meta@test.com>",
+                    "sender": "x@x.com",
+                    "subject": "No Meta Refresh",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        html = _build_detail_html(db_path, "<no-meta@test.com>")
+        assert html is not None
+        assert 'meta http-equiv="refresh"' not in html
     finally:
         os.unlink(db_path)
 
