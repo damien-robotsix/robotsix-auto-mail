@@ -997,7 +997,7 @@ def test_init_db_reset_all_triage_to_inbox(tmp_db_path: str) -> None:
         )
 
     # Capture pre-migration mail content (everything except id and status).
-    pre_content: dict[str, tuple] = {}
+    pre_content: dict[str, tuple[str, ...]] = {}
     for row in conn.execute(
         "SELECT message_id, sender, subject, date, body_plain, "
         "body_html, recipients_json, attachments_json FROM mail_records"
