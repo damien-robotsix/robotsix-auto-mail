@@ -151,10 +151,6 @@ _STATUS_TO_TRIAGE_ACTION: dict[str, str] = {
     "done": "TO_ARCHIVE",
 }
 
-#: Watermark key for the one-time reset-all-triage-to-inbox migration.
-_RESET_TRIAGE_WATERMARK_KEY = "migration.reset_all_triage_to_inbox"
-
-
 def _utc_now_iso() -> str:
     """Return the current UTC time as an ISO-8601 string."""
     return datetime.now(timezone.utc).isoformat()
@@ -192,87 +188,6 @@ WHERE mr.status = ?
 """,
             (action, _utc_now_iso(), old_status),
         )
-    conn.commit()
-
-
-def _migrate_reset_all_triage_to_inbox(conn: sqlite3.Connection) -> None:
-    """One-time migration: reset every mail to INBOX (not triaged).
-
-    Guards against double-execution via the watermark table (key
-    ``"migration.reset_all_triage_to_inbox"``).  Creates backup tables
-    before touching live data so a manual rollback is possible via
-    :func:`_rollback_reset_triage_to_inbox`.
-
-    Sequence:
-    1. Check watermark — if set, return immediately.
-    2. Drop pre-existing backup tables (from a crashed prior run).
-    3. Backup ``triage_decisions`` and non-default ``mail_records.status``.
-    4. ``DELETE`` all rows from ``triage_decisions``.
-    5. ``UPDATE mail_records SET status = 'to_read'``.
-    6. Set the watermark to the current UTC ISO timestamp.
-    7. Single ``commit()`` after all operations succeed.
-    """
-    if get_watermark(conn, _RESET_TRIAGE_WATERMARK_KEY) is not None:
-        return
-
-    # Drop stale backup tables from a crashed prior run.
-    conn.execute("DROP TABLE IF EXISTS triage_decisions_backup")
-    conn.execute("DROP TABLE IF EXISTS mail_records_status_backup")
-
-    # Backup before touching live data.
-    conn.execute(
-        "CREATE TABLE triage_decisions_backup AS "
-        "SELECT * FROM triage_decisions"
-    )
-    conn.execute(
-        "CREATE TABLE mail_records_status_backup AS "
-        "SELECT message_id, status FROM mail_records "
-        "WHERE status != ?",
-        (DEFAULT_STATUS,),
-    )
-
-    # Wipe triage state.
-    conn.execute("DELETE FROM triage_decisions")
-    conn.execute("UPDATE mail_records SET status = ?", (DEFAULT_STATUS,))
-
-    # Mark done.
-    set_watermark(conn, _RESET_TRIAGE_WATERMARK_KEY, _utc_now_iso())
-    conn.commit()
-
-
-def _rollback_reset_triage_to_inbox(conn: sqlite3.Connection) -> None:
-    """Manually roll back the reset-all-triage-to-inbox migration.
-
-    Restores ``triage_decisions`` from ``triage_decisions_backup``,
-    restores ``mail_records.status`` from ``mail_records_status_backup``,
-    drops both backup tables, and clears the watermark.
-
-    For **manual use only** — not called automatically from any
-    production code path.
-    """
-    # Restore triage_decisions from backup.
-    conn.execute("DELETE FROM triage_decisions")
-    conn.execute(
-        "INSERT INTO triage_decisions SELECT * FROM triage_decisions_backup"
-    )
-    conn.execute("DROP TABLE triage_decisions_backup")
-
-    # Restore mail_records.status from backup.
-    rows = conn.execute(
-        "SELECT message_id, status FROM mail_records_status_backup"
-    ).fetchall()
-    for message_id, status in rows:
-        conn.execute(
-            "UPDATE mail_records SET status = ? WHERE message_id = ?",
-            (status, message_id),
-        )
-    conn.execute("DROP TABLE mail_records_status_backup")
-
-    # Clear the watermark so the migration can run again if needed.
-    conn.execute(
-        "DELETE FROM watermark WHERE key = ?",
-        (_RESET_TRIAGE_WATERMARK_KEY,),
-    )
     conn.commit()
 
 
