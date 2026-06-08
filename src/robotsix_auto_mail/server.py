@@ -864,7 +864,7 @@ def _run_triage_background(db_path: str) -> None:
         except ImportError:
             return
         run_triage_agent(conn)
-    except Exception:  # noqa: S110
+    except Exception:  # noqa: S110  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass
     finally:
