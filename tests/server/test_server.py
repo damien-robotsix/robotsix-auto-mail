@@ -4515,3 +4515,217 @@ def test_archive_different_delimiter_creates_correct_levels() -> None:
             server.shutdown()
     finally:
         os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# _handle_archive — namespace prefix
+# ---------------------------------------------------------------------------
+
+
+def test_archive_namespace_creates_folders_with_prefix() -> None:
+    """With archive_namespace set, folders are created under the
+    namespaced effective root."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "ns-mid",
+                    "sender": "x@x.com",
+                    "subject": "ns",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "ns-mid", action="TO_ARCHIVE")
+        _seed_archive_override(db_path, "ns-mid", "Lists/new-list")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (99, "ns-mid"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="my-archive",
+            archive_namespace="INBOX.",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch(
+                "robotsix_auto_mail.imap.ImapClient"
+            ) as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.list_folders.return_value = [
+                    mock.Mock(delimiter="/")
+                ]
+
+                resp = _post_to_path(
+                    port, "/archive", {"message_id": "ns-mid"}
+                )
+
+            assert resp.status == 302
+
+            expected_calls = [
+                mock.call("INBOX.my-archive"),
+                mock.call("INBOX.my-archive/Lists"),
+                mock.call("INBOX.my-archive/Lists/new-list"),
+            ]
+            assert mock_client.create_folder.call_args_list == expected_calls
+            mock_client.move_message.assert_called_once_with(
+                99, "INBOX.my-archive/Lists/new-list"
+            )
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_namespace_security_gate_uses_effective_root() -> None:
+    """The security gate checks against the effective (namespaced) root."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "ns-safe-mid",
+                    "sender": "x@x.com",
+                    "subject": "ns-safe",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "ns-safe-mid", action="TO_ARCHIVE")
+        _seed_archive_override(db_path, "ns-safe-mid", "Lists/ok")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (88, "ns-safe-mid"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="my-archive",
+            archive_namespace="INBOX.",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch(
+                "robotsix_auto_mail.imap.ImapClient"
+            ) as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.list_folders.return_value = [
+                    mock.Mock(delimiter="/")
+                ]
+
+                resp = _post_to_path(
+                    port, "/archive", {"message_id": "ns-safe-mid"}
+                )
+
+            # The effective root is "INBOX.my-archive" and the dest
+            # is "INBOX.my-archive/Lists/ok" — starts-with check passes.
+            assert resp.status == 302
+            mock_client.move_message.assert_called_once()
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_namespace_no_subfolder_creates_only_effective_root() -> None:
+    """Empty subfolder with namespace → only the effective root is created."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "ns-root-mid",
+                    "sender": "x@x.com",
+                    "subject": "ns-root",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "ns-root-mid", action="TO_ARCHIVE")
+        _seed_archive_override(db_path, "ns-root-mid", "")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (77, "ns-root-mid"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="my-archive",
+            archive_namespace="INBOX.",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch(
+                "robotsix_auto_mail.imap.ImapClient"
+            ) as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.list_folders.return_value = [
+                    mock.Mock(delimiter="/")
+                ]
+
+                resp = _post_to_path(
+                    port, "/archive", {"message_id": "ns-root-mid"}
+                )
+
+            assert resp.status == 302
+            mock_client.create_folder.assert_called_once_with(
+                "INBOX.my-archive"
+            )
+            mock_client.move_message.assert_called_once_with(
+                77, "INBOX.my-archive"
+            )
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)

@@ -691,7 +691,9 @@ def test_ingest_calls_setup_archive_before_fetch(
     ingest_mail(conn, imap, cfg)
 
     mock_setup_archive.assert_called_once_with(
-        conn, imap, archive_root=cfg.archive_root, api_key=cfg.llm_api_key
+        conn, imap, archive_root=cfg.archive_root,
+        archive_namespace=cfg.archive_namespace,
+        api_key=cfg.llm_api_key,
     )
     # setup_archive must run before fetch_new_messages.
     call_order = [c[0] for c in manager.mock_calls]
@@ -751,7 +753,9 @@ def test_ingest_passes_configured_archive_root(
     ingest_mail(conn, imap, cfg_custom)
 
     mock_setup_archive.assert_called_once_with(
-        conn, imap, archive_root="custom-archive", api_key=cfg.llm_api_key
+        conn, imap, archive_root="custom-archive",
+        archive_namespace=cfg.archive_namespace,
+        api_key=cfg.llm_api_key,
     )
 
 

@@ -383,3 +383,74 @@ def test_setup_archive_list_folders_error_propagates_and_does_not_persist() -> N
         assert get_watermark(conn, _ARCHIVE_WATERMARK_KEY) is None
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# setup_archive — namespace prefix
+# ---------------------------------------------------------------------------
+
+
+def test_setup_archive_namespace_prepends_to_root() -> None:
+    """archive_namespace is prepended to archive_root for folder names."""
+    conn = init_db(":memory:")
+    try:
+        client = _FakeImapClient([_folder("INBOX"), _folder("Sent")])
+        with mock.patch.dict(
+            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
+        ):
+            with _patch_llm(["Receipts"]):
+                result = setup_archive(
+                    conn,
+                    cast(ImapClient, client),
+                    archive_root="robotsix-mail-archive",
+                    archive_namespace="INBOX.",
+                )
+
+        expected = [
+            "INBOX.robotsix-mail-archive",
+            "INBOX.robotsix-mail-archive/Receipts",
+        ]
+        assert result == expected
+        assert client.created == expected
+        stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
+        assert stored is not None
+        assert json.loads(stored) == expected
+    finally:
+        conn.close()
+
+
+def test_setup_archive_namespace_llm_sees_original_root() -> None:
+    """The LLM prompt receives the original archive_root, not the
+    namespaced version."""
+    conn = init_db(":memory:")
+    try:
+        client = _FakeImapClient([_folder("INBOX")])
+        with mock.patch.dict(
+            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
+        ):
+            with mock.patch(
+                "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
+            ) as cls:
+                mock_run_result = mock.MagicMock()
+                mock_run_result.output = ArchiveStructure(folders=[])
+                mock_handle = mock.MagicMock()
+                mock_handle.run_sync.return_value = mock_run_result
+                provider = cls.return_value
+                provider.build_agent.return_value = mock_handle
+                provider.call_with_retry.side_effect = (
+                    lambda fn, what: fn()
+                )
+
+                setup_archive(
+                    conn,
+                    cast(ImapClient, client),
+                    archive_root="my-archive",
+                    archive_namespace="INBOX.",
+                )
+
+        prompt = provider.build_agent.call_args.kwargs["system_prompt"]
+        # The LLM should see the logical root, not the namespaced one.
+        assert "my-archive" in prompt
+        assert "INBOX.my-archive" not in prompt
+    finally:
+        conn.close()
