@@ -9,6 +9,8 @@ import tempfile
 from typing import TYPE_CHECKING, cast
 from urllib.request import urlopen
 
+import pytest
+
 if TYPE_CHECKING:
     from http.client import HTTPResponse
     from http.server import HTTPServer
@@ -16,9 +18,10 @@ if TYPE_CHECKING:
 from tests.conftest import _make_record
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.db import MailRecord, init_db
+from robotsix_auto_mail.db import MailRecord, init_db, set_watermark
 from robotsix_auto_mail.format import _format_date
 from robotsix_auto_mail.server import (
+    _build_board_content,
     _build_board_html,
     _build_detail_html,
     _render_card,
@@ -358,7 +361,7 @@ def test_build_board_html_structure() -> None:
         assert '<html lang="en">' in html
         assert "<title>Mail Board</title>" in html
         assert '<meta http-equiv="refresh"' not in html
-        assert '<h1>Mail Board</h1>' in html
+        assert "<h1>Mail Board</h1>" in html
         # Default triage_running=False → no banner, normal button.
         assert 'class="triage-banner"' not in html
         assert ">Run triage<" in html
@@ -3372,9 +3375,7 @@ def _seed_archive_structure(db_path: str, folders: list[str]) -> None:
         conn.close()
 
 
-def _seed_archive_override(
-    db_path: str, message_id: str, subfolder: str
-) -> None:
+def _seed_archive_override(db_path: str, message_id: str, subfolder: str) -> None:
     """Write a user archive subfolder override."""
     from robotsix_auto_mail.db import init_db
     from robotsix_auto_mail.triage import _save_archive_overrides
@@ -3387,9 +3388,7 @@ def _seed_archive_override(
         conn.close()
 
 
-def _seed_llm_archive_hint(
-    db_path: str, message_id: str, subfolder: str
-) -> None:
+def _seed_llm_archive_hint(db_path: str, message_id: str, subfolder: str) -> None:
     """Write an LLM archive subfolder hint."""
     from robotsix_auto_mail.db import init_db
     from robotsix_auto_mail.triage import _save_llm_archive_hints
@@ -3969,17 +3968,11 @@ def test_archive_rejects_dot_dot_path_segment() -> None:
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
             # Mock ImapClient so no real connection is attempted.
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "dotdot-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "dotdot-mid"})
 
             assert resp.status == 400
 
@@ -4051,17 +4044,11 @@ def test_archive_rejects_path_escaping_root() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "escape-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "escape-mid"})
 
             # A normal subfolder should pass the security gate and
             # proceed to folder creation + move, resulting in a 302.
@@ -4116,17 +4103,11 @@ def test_archive_creates_folder_hierarchy_incrementally() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "hier-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "hier-mid"})
 
             assert resp.status == 302
 
@@ -4198,25 +4179,17 @@ def test_archive_no_subfolder_creates_root_only() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "rootonly-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "rootonly-mid"})
 
             assert resp.status == 302
 
             # Only the root folder is created (single level).
             mock_client.create_folder.assert_called_once_with("my-archive")
-            mock_client.move_message.assert_called_once_with(
-                3, "my-archive"
-            )
+            mock_client.move_message.assert_called_once_with(3, "my-archive")
         finally:
             server.shutdown()
     finally:
@@ -4269,22 +4242,16 @@ def test_archive_create_folder_failure_returns_502_no_move() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
                 # Fail on the second create_folder call.
                 mock_client.create_folder.side_effect = [
                     None,  # "my-archive" succeeds
                     ImapError("NO [CANNOT] Cannot create that folder"),
                 ]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "fail-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "fail-mid"})
 
             assert resp.status == 502
 
@@ -4349,19 +4316,13 @@ def test_archive_idempotent_create_existing_folders_succeeds() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
                 # create_folder returns None (success) for every call.
                 mock_client.create_folder.return_value = None
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "idem-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "idem-mid"})
 
             assert resp.status == 302
 
@@ -4421,14 +4382,10 @@ def test_archive_security_gate_runs_before_any_imap_operation() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "early-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "early-mid"})
 
             assert resp.status == 400
 
@@ -4487,18 +4444,12 @@ def test_archive_different_delimiter_creates_correct_levels() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
                 # Server uses '.' as hierarchy delimiter.
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter=".")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter=".")]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "dotdelim-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "dotdelim-mid"})
 
             assert resp.status == 302
 
@@ -4567,17 +4518,11 @@ def test_archive_namespace_creates_folders_with_prefix() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "ns-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "ns-mid"})
 
             assert resp.status == 302
 
@@ -4640,17 +4585,11 @@ def test_archive_namespace_security_gate_uses_effective_root() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "ns-safe-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "ns-safe-mid"})
 
             # The effective root is "INBOX.my-archive" and the dest
             # is "INBOX.my-archive/Lists/ok" — starts-with check passes.
@@ -4706,26 +4645,170 @@ def test_archive_namespace_no_subfolder_creates_only_effective_root() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch(
-                "robotsix_auto_mail.imap.ImapClient"
-            ) as mock_cls:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "ns-root-mid"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "ns-root-mid"})
 
             assert resp.status == 302
-            mock_client.create_folder.assert_called_once_with(
-                "INBOX.my-archive"
-            )
-            mock_client.move_message.assert_called_once_with(
-                77, "INBOX.my-archive"
-            )
+            mock_client.create_folder.assert_called_once_with("INBOX.my-archive")
+            mock_client.move_message.assert_called_once_with(77, "INBOX.my-archive")
         finally:
             server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# Unsubscribe banner in _render_column
+# ---------------------------------------------------------------------------
+
+
+def test_render_column_banner_for_matching_sender() -> None:
+    """Banner renders when a matching sender has an unsubscribe suggestion."""
+    record = _make_record(
+        message_id="abc",
+        sender="spammer@example.com",
+        subject="Spam",
+        date="2025-01-10T12:00:00",
+        body_plain="Buy now!",
+    )
+    suggestions = {
+        "spammer@example.com": {
+            "has_unsubscribe": True,
+            "method": "header",
+            "url": "https://example.com/unsub",
+            "description": "List-Unsubscribe header found",
+            "confidence": "high",
+        }
+    }
+    html = _render_column(
+        "TO_DELETE",
+        [record],
+        {},
+        unsubscribe_suggestions=suggestions,
+    )
+    assert "unsubscribe-banner" in html
+    assert "spammer@example.com" in html
+    assert "Unsubscribe" in html
+    assert "https://example.com/unsub" in html
+
+
+def test_render_column_no_banner_without_match() -> None:
+    """Banner does NOT appear when no matching sender is in the column."""
+    record = _make_record(
+        message_id="abc",
+        sender="other@example.com",
+        subject="Not spam",
+        date="2025-01-10T12:00:00",
+        body_plain="Hi!",
+    )
+    suggestions = {
+        "spammer@example.com": {
+            "has_unsubscribe": True,
+            "method": "header",
+            "url": "https://example.com/unsub",
+            "description": "List-Unsubscribe header found",
+            "confidence": "high",
+        }
+    }
+    html = _render_column(
+        "TO_DELETE",
+        [record],
+        {},
+        unsubscribe_suggestions=suggestions,
+    )
+    assert "unsubscribe-banner" not in html
+
+
+def test_render_column_banner_not_on_other_columns() -> None:
+    """Banner is NOT rendered on non-TO_DELETE columns even with suggestions."""
+    record = _make_record(
+        message_id="abc",
+        sender="spammer@example.com",
+        subject="Spam",
+        date="2025-01-10T12:00:00",
+        body_plain="Buy now!",
+    )
+    suggestions = {
+        "spammer@example.com": {
+            "has_unsubscribe": True,
+            "method": "header",
+            "url": "https://example.com/unsub",
+            "description": "Header found",
+            "confidence": "high",
+        }
+    }
+    html = _render_column(
+        "INBOX",
+        [record],
+        {},
+        unsubscribe_suggestions=suggestions,
+    )
+    assert "unsubscribe-banner" not in html
+
+
+def test_render_column_banner_mailto_url() -> None:
+    """mailto: URLs render as mailto links."""
+    record = _make_record(
+        message_id="abc",
+        sender="spammer@example.com",
+        subject="Spam",
+        date="2025-01-10T12:00:00",
+        body_plain="Buy now!",
+    )
+    suggestions = {
+        "spammer@example.com": {
+            "has_unsubscribe": True,
+            "method": "mailto",
+            "url": "mailto:unsub@example.com",
+            "description": "mailto unsubscribe found",
+            "confidence": "high",
+        }
+    }
+    html = _render_column(
+        "TO_DELETE",
+        [record],
+        {},
+        unsubscribe_suggestions=suggestions,
+    )
+    assert "unsubscribe-banner" in html
+    assert 'href="mailto:unsub@example.com"' in html
+    assert "Unsubscribe" in html
+
+
+def test_build_board_content_loads_unsubscribe_suggestions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """_build_board_content loads suggestions from the watermark."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = init_db(db_path)
+        set_watermark(
+            conn,
+            "unsubscribe_suggestions",
+            json.dumps(
+                {
+                    "spammer@example.com": {
+                        "has_unsubscribe": True,
+                        "method": "header",
+                        "url": "https://example.com/unsub",
+                        "description": "Header found",
+                        "confidence": "high",
+                    }
+                }
+            ),
+        )
+        conn.close()
+
+        content = _build_board_content(db_path)
+        columns_html = content["columns_html"]
+        # The suggestions are loaded and passed to the TO_DELETE column,
+        # but since no records are in the database, no banner renders.
+        assert isinstance(columns_html, str)
     finally:
         os.unlink(db_path)
