@@ -80,6 +80,20 @@ call is wrapped in a best-effort `try`/`except` that logs the failure (via
 only persists its watermark on success, a failed run naturally retries on
 the next ingestion.
 
+## Project layout
+
+Static assets (CSS, JS, images) for the web board template live in
+`src/robotsix_auto_mail/static/` and are loaded at module level via
+`Path(__file__).parent / "static" / "<filename>").read_text()`.  Do
+**not** embed CSS or JS as Python string literals in `server.py` —
+the separation keeps the server module navigable and allows CSS/JS
+tooling (linting, syntax highlighting, validation) to apply.
+
+The canonical example is the board stylesheet (line 53 of `server.py`):
+```python
+_CSS = (Path(__file__).parent / "static" / "board.css").read_text()
+```
+
 ## Documentation conventions
 
 When you add or change a user-facing CLI subcommand in
