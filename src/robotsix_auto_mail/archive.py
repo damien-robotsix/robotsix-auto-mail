@@ -163,30 +163,41 @@ def setup_archive(
     client: ImapClient,
     *,
     archive_root: str = ARCHIVE_ROOT,
+    archive_namespace: str = "",
     api_key: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> list[str]:
     """Ensure the managed archive folder structure exists and is remembered.
 
     On the first run (no persisted structure) this lists the mailbox's
-    folders, asks the LLM for an appropriate layout under
-    :data:`ARCHIVE_ROOT`, creates the missing folders, and persists the
-    resulting full-name list in the ``watermark`` table.  On subsequent runs
+    folders, asks the LLM for an appropriate layout under the effective
+    root, creates the missing folders, and persists the resulting
+    full-name list in the ``watermark`` table.  On subsequent runs
     the persisted list is returned directly without listing folders, calling
     the LLM, or creating anything.
 
     When no LLM API key is resolvable the LLM is never called — the archive
-    falls back to just the root folder so ingestion is never blocked.
+    falls back to just the effective root folder so ingestion is never
+    blocked.
 
     Args:
         conn: Open SQLite connection.
         client: Connected IMAP client.
+        archive_root: Logical root folder name (e.g.
+            ``"robotsix-mail-archive"``).
+        archive_namespace: Optional IMAP namespace prefix to prepend to
+            *archive_root* (e.g. ``"INBOX."``).  The effective root
+            becomes ``namespace + archive_root``.
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env var.
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
 
     Returns:
-        The list of full archive folder names that exist after setup.
+        The list of full (namespaced) archive folder names that exist
+        after setup.
     """
+    # Effective root includes the namespace prefix when configured.
+    effective_root = archive_namespace + archive_root
+
     # -- already-remembered short-circuit --
     remembered = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
     if remembered is not None:
@@ -212,10 +223,10 @@ def setup_archive(
         subpaths = []
 
     # -- build the full set of folder names to ensure --
-    structure: list[str] = [archive_root]
+    structure: list[str] = [effective_root]
     for subpath in subpaths:
         translated = subpath.replace("/", delimiter)
-        structure.append(archive_root + delimiter + translated)
+        structure.append(effective_root + delimiter + translated)
 
     # -- create only the missing targets --
     existing_names = {f.name for f in existing}

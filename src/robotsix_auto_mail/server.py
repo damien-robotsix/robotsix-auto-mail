@@ -1288,6 +1288,17 @@ class BoardHandler(BaseHTTPRequestHandler):
                 else DEFAULT_ARCHIVE_ROOT
             )
 
+            # Determine the namespace prefix (empty when unset).
+            namespace = (
+                self.mail_config.archive_namespace
+                if self.mail_config is not None
+                else ""
+            )
+
+            # Effective root: namespace + archive_root (user supplies
+            # the delimiter as part of the namespace, e.g. "INBOX.").
+            effective_root = namespace + archive_root
+
             # -- IMAP move phase (only when IMAP is configured and the
             #    record has a tracked UID) --
             if self.mail_config is not None and record.imap_uid is not None:
@@ -1310,18 +1321,18 @@ class BoardHandler(BaseHTTPRequestHandler):
                         if subfolder:
                             translated = subfolder.replace("/", delimiter)
                             dest_folder = (
-                                f"{archive_root}{delimiter}{translated}"
+                                f"{effective_root}{delimiter}{translated}"
                             )
                         else:
-                            dest_folder = archive_root
+                            dest_folder = effective_root
 
                         # -- security gate ---------------------------------
                         # Reject any destination that escapes the archive
                         # root (must start with root+delimiter or equal the
                         # root itself) and forbid ".." path segments.
-                        root_prefix = f"{archive_root}{delimiter}"
+                        root_prefix = f"{effective_root}{delimiter}"
                         if (
-                            dest_folder != archive_root
+                            dest_folder != effective_root
                             and not dest_folder.startswith(root_prefix)
                         ):
                             self._bad_request(

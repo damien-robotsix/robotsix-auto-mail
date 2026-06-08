@@ -104,6 +104,7 @@ def ingest_mail(
                 db_conn,
                 imap_client,
                 archive_root=config.archive_root,
+                archive_namespace=config.archive_namespace,
                 api_key=config.llm_api_key,
             )
         except Exception:

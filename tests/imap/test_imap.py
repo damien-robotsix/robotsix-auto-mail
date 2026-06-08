@@ -336,13 +336,43 @@ def test_create_folder_genuine_failure(cfg: MailConfig) -> None:
                 client.create_folder("Archive")
 
 
+def test_create_folder_genuine_failure_includes_response_text(
+    cfg: MailConfig,
+) -> None:
+    """Genuine failure error message includes the server's response text."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.create.return_value = ("NO", [b"Permission denied (Failure)"])
+    mock_ssl.list.return_value = ("OK", [b'(\\HasNoChildren) "/" "INBOX"'])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(
+                ImapError,
+                match=r"CREATE 'Archive' failed: NO — Permission denied",
+            ):
+                client.create_folder("Archive")
+
+
 def test_create_folder_already_exists_is_idempotent(cfg: MailConfig) -> None:
-    """Non-OK status but the name appears in LIST → returns None."""
+    """Non-OK with ALREADYEXISTS in response data → returns without LIST."""
     mock_ssl = _make_mock_imap_ssl()
     mock_ssl.create.return_value = (
         "NO",
-        [b"[ALREADYEXISTS] Mailbox already exists"],
+        [b"[ALREADYEXISTS] Mailbox already exists. (Failure)"],
     )
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.create_folder("robotsix-mail-archive")
+
+    # ALREADYEXISTS was detected in the response data – no LIST needed.
+    mock_ssl.list.assert_not_called()
+
+
+def test_create_folder_no_status_in_list_still_ok(cfg: MailConfig) -> None:
+    """Non-OK without ALREADYEXISTS text but folder IS in LIST → returns."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.create.return_value = ("NO", [b"Permission denied"])
     mock_ssl.list.return_value = (
         "OK",
         [b'(\\HasNoChildren) "/" "robotsix-mail-archive"'],
@@ -351,6 +381,9 @@ def test_create_folder_already_exists_is_idempotent(cfg: MailConfig) -> None:
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
         with ImapClient(cfg) as client:
             client.create_folder("robotsix-mail-archive")
+
+    # LIST was called because the response didn't contain ALREADYEXISTS text.
+    mock_ssl.list.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

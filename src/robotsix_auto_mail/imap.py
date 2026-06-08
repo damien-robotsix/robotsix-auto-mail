@@ -340,11 +340,21 @@ class ImapClient(_ProtocolClient):
         status, _data = self._imap.create(name)
         if status == "OK":
             return
-        # Non-OK: the folder may already exist. Re-list and check.
+        # Inspect the response data for an ALREADYEXISTS signal (common on
+        # Dovecot, Courier, etc.).  If the server tells us the folder
+        # already exists we can return immediately without re-listing.
+        response_text = b"".join(_data).decode("utf-8", errors="replace").strip()
+        lowered = response_text.lower()
+        if "alreadyexists" in lowered or "already exists" in lowered:
+            return
+        # Non-OK without an ALREADYEXISTS signal: the folder may still
+        # already exist despite a non-specific NO.  Re-list and check.
         for folder in self.list_folders():
             if folder.name == name:
                 return
-        raise ImapError(f"CREATE '{name}' failed: {status}")
+        raise ImapError(
+            f"CREATE '{name}' failed: {status} — {response_text}"
+        )
 
     def search_uids(self, criteria: str = "ALL") -> list[int]:
         """Issue ``UID SEARCH`` and return matching UIDs.

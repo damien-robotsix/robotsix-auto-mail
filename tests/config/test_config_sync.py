@@ -56,6 +56,7 @@ auth:
 # Self-managed archive folder structure.
 # archive:
 #   root: robotsix-mail-archive
+#   namespace: ""
 #   enabled: true
 
 # Inbox triage agent — runs automatically after each ingest cycle.
@@ -85,6 +86,7 @@ MAIL_PASSWORD=your-password-here
 MAIL_DB_PATH=.data/mail.db
 MAIL_INGEST_INTERVAL=15
 MAIL_ARCHIVE_ROOT=robotsix-mail-archive
+MAIL_ARCHIVE_NAMESPACE=
 MAIL_ARCHIVE_ENABLED=true
 MAIL_TRIAGE_ON_INGEST=true
 LLM_API_KEY=sk-or-v1-…
@@ -108,6 +110,7 @@ _DOCS_YAML_TABLE = """\
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles |
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
+| `archive.namespace` | no | `""` | IMAP namespace prefix for archive folders |
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
 | `llm.api_key` | no | - | LLM provider API key |
@@ -131,6 +134,7 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_DB_PATH` | no | `.data/mail.db` | Filesystem path for the SQLite database |
 | `MAIL_INGEST_INTERVAL` | no | `15` | Minutes between automatic ingest cycles |
 | `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Archive root folder |
+| `MAIL_ARCHIVE_NAMESPACE` | no |  | IMAP namespace prefix for archive folders |
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to manage the archive structure |
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Run inbox triage automatically after ingest |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |

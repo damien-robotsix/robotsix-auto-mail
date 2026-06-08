@@ -165,6 +165,8 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
                DEFAULT_INGEST_INTERVAL_MINUTES, False, False),
     _FieldSpec("archive_root", "MAIL_ARCHIVE_ROOT", "archive.root",
                "str", DEFAULT_ARCHIVE_ROOT, False, False),
+    _FieldSpec("archive_namespace", "MAIL_ARCHIVE_NAMESPACE", "archive.namespace",
+               "str", "", False, False),
     _FieldSpec("archive_enabled", "MAIL_ARCHIVE_ENABLED", "archive.enabled",
                "bool", True, False, False),
     _FieldSpec("triage_on_ingest", "MAIL_TRIAGE_ON_INGEST", "triage.on_ingest",
@@ -219,6 +221,7 @@ class MailConfig:
 
     # Self-managed archive folder structure.
     archive_root: str = DEFAULT_ARCHIVE_ROOT
+    archive_namespace: str = ""
     archive_enabled: bool = True
 
     # Run the inbox triage agent automatically at the end of each ingest.
