@@ -12,7 +12,6 @@ from unittest import mock
 import pydantic
 import pytest
 from robotsix_llmio.core import Tier
-
 from tests.conftest import _make_record
 
 from robotsix_auto_mail import status

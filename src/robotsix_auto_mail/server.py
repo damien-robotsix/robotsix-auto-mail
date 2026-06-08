@@ -495,15 +495,6 @@ def _build_board_content(
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        # Load overrides and LLM hints for the TO_ARCHIVE column.
-        from robotsix_auto_mail.triage import (
-            _load_archive_overrides,
-            _load_llm_archive_hints,
-        )
-
-        archive_overrides = _load_archive_overrides(conn)
-        llm_hints = _load_llm_archive_hints(conn)
-
         # Compute effective subfolder for each TO_ARCHIVE record.
         archive_subfolders: dict[str, str] = {}
         folder_exists: dict[str, bool] = {}
@@ -1406,11 +1397,14 @@ class BoardHandler(BaseHTTPRequestHandler):
     def _serve_archive_proposal(self) -> None:
         """Serve GET /archive-proposal/{message_id} — return JSON with
         effective subfolder, source, and folder-exists status."""
-        from robotsix_auto_mail.db import get_record_by_message_id, get_watermark, init_db
+        from robotsix_auto_mail.db import (
+            get_record_by_message_id,
+            get_watermark,
+            init_db,
+        )
         from robotsix_auto_mail.triage import (
             _load_archive_overrides,
             _load_llm_archive_hints,
-            propose_archive_subfolder,
         )
 
         path = self.path
