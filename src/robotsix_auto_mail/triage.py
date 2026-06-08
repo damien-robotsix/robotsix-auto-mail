@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from email.utils import parseaddr
 
 import pydantic
-from robotsix_llmio.core import Tier
+from robotsix_llmio.core import Tier, start_trace
 
 from robotsix_auto_mail.config import load_llm
 from robotsix_auto_mail.db import (
@@ -989,15 +989,18 @@ def run_triage_agent(
         user_message = f"{guidance}\n\n{user_message}"
 
     # -- call LLM --
-    try:
-        result = llm_provider.call_with_retry(
-            lambda: agent_handle.run_sync(user_message),
-            what="mail triage",
-        )
-    except Exception as exc:
-        raise TriageError(str(exc)) from exc
-    finally:
-        agent_handle.close()
+    with start_trace("mail triage") as trace:
+        trace.set_input(user_message)
+        try:
+            result = llm_provider.call_with_retry(
+                lambda: agent_handle.run_sync(user_message),
+                what="mail triage",
+            )
+        except Exception as exc:
+            raise TriageError(str(exc)) from exc
+        finally:
+            agent_handle.close()
+        trace.set_output(str(result.output))
 
     output: TriageResult = result.output
 

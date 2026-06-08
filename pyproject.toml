@@ -27,10 +27,10 @@ dev = [
     "pyyaml>=6.0",
     "types-PyYAML",
     "types-jinja2",
-    "robotsix-llmio[openrouter-deepseek]",
+    "robotsix-llmio[openrouter-deepseek,tracing]",
 ]
 llm = [
-    "robotsix-llmio[openrouter-deepseek]",
+    "robotsix-llmio[openrouter-deepseek,tracing]",
 ]
 docs = [
     "mkdocs>=1.6",

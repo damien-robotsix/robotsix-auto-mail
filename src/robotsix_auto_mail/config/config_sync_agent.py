@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 import pydantic
-from robotsix_llmio.core import Tier
+from robotsix_llmio.core import Tier, start_trace
 from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
 
 from robotsix_auto_mail.config import _FIELD_SPECS, _REQUIRED, load_llm
@@ -417,15 +417,18 @@ def run_config_sync_agent(
     user_message = _build_user_message(surfaces, field_to_yaml, field_to_env)
 
     # -- call LLM --
-    try:
-        result = llm_provider.call_with_retry(
-            lambda: agent_handle.run_sync(user_message),
-            what="config drift detection",
-        )
-    except Exception as exc:
-        raise ConfigSyncError(str(exc)) from exc
-    finally:
-        agent_handle.close()
+    with start_trace("config drift detection") as trace:
+        trace.set_input(user_message)
+        try:
+            result = llm_provider.call_with_retry(
+                lambda: agent_handle.run_sync(user_message),
+                what="config drift detection",
+            )
+        except Exception as exc:
+            raise ConfigSyncError(str(exc)) from exc
+        finally:
+            agent_handle.close()
+        trace.set_output(str(result.output))
 
     output: ConfigSyncResult = result.output
     if conn is not None:
