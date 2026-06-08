@@ -28,7 +28,9 @@ from robotsix_llmio.core import Tier, start_trace
 
 from robotsix_auto_mail.config import load_llm
 from robotsix_auto_mail.db import (
-    VALID_TRIAGE_ACTIONS,
+    VALID_TRIAGE_ACTIONS as VALID_TRIAGE_ACTIONS,
+)
+from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
     get_watermark,
