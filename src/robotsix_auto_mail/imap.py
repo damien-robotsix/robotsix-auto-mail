@@ -164,6 +164,9 @@ class ImapClient(_ProtocolClient):
             tls_mode=config.imap_tls_mode,
             username=config.username,
             password=config.password,
+            oauth2_token=config.oauth2_token,
+            oauth2_client_id=config.oauth2_client_id,
+            oauth2_client_secret=config.oauth2_client_secret,
         )
 
         self._imap: imaplib.IMAP4 | None = None
@@ -247,12 +250,27 @@ class ImapClient(_ProtocolClient):
         if self._imap is None:
             raise RuntimeError("_authenticate() called before _connect_*()")
         try:
-            self._imap.login(self._username, self._password)
+            if self._oauth2_token:
+                self._imap.authenticate("XOAUTH2", self._imap_xoauth2_cb)
+            else:
+                self._imap.login(self._username, self._password)
         except _IMAP4_ERROR as exc:
             raise ImapAuthError(
                 f"Authentication failed for user {self._username!r} "
                 f"on {self._host}:{self._port}: {exc}"
             ) from exc
+
+    def _imap_xoauth2_cb(self, challenge: bytes) -> bytes | None:
+        """SASL XOAUTH2 callback for ``imaplib.IMAP4.authenticate()``.
+
+        On the initial (empty) challenge returns the XOAUTH2 response
+        string.  On any non-empty challenge (server-side error) cancels
+        with ``None``.
+        """
+        if challenge:
+            return None
+        resp = f"user={self._username}\x01auth=Bearer {self._oauth2_token}\x01\x01"
+        return resp.encode()
 
     def _close_socket(self) -> None:
         """Best-effort socket close when ``logout()`` is not viable."""
@@ -355,9 +373,7 @@ class ImapClient(_ProtocolClient):
             if folder.name == name:
                 self._subscribe(name)
                 return
-        raise ImapError(
-            f"CREATE '{name}' failed: {status} — {response_text}"
-        )
+        raise ImapError(f"CREATE '{name}' failed: {status} — {response_text}")
 
     def _subscribe(self, name: str) -> None:
         """Subscribe to *name*; ignore failure silently."""
@@ -485,9 +501,7 @@ class ImapClient(_ProtocolClient):
         # Copy to destination.
         status, _ = self._imap.uid("COPY", str(uid), dest_folder)
         if status != "OK":
-            raise ImapError(
-                f"UID COPY of {uid} to {dest_folder!r} failed: {status}"
-            )
+            raise ImapError(f"UID COPY of {uid} to {dest_folder!r} failed: {status}")
 
         # Delete the original from the source mailbox.
         self.delete_message(uid)

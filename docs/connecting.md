@@ -178,6 +178,12 @@ smtp:
 auth:
   username: user@example.com
   password: ""  # set your password here, or via the MAIL_PASSWORD env var
+  # OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that
+  # requires modern SASL XOAUTH2.  When oauth2_token is set, password
+  # auth is not used.  See "OAuth2 (XOAUTH2)" section below.
+  # oauth2_token: ""
+  # oauth2_client_id: ""
+  # oauth2_client_secret: ""
 
 # store:
 #   path: .data/mail.db
@@ -203,6 +209,9 @@ auth:
 | `smtp.tls_mode` | no | `"starttls"` | SMTP TLS mode |
 | `auth.username` | yes | – | Login username (typically the full email address) |
 | `auth.password` | no | – | Login password (may instead be supplied via `MAIL_PASSWORD`) |
+| `auth.oauth2_token` | no | – | OAuth2 access token for SASL XOAUTH2 (overrides password auth when set) |
+| `auth.oauth2_client_id` | no | – | OAuth2 client ID (required by some providers alongside the token) |
+| `auth.oauth2_client_secret` | no | – | OAuth2 client secret (required by some providers alongside the token) |
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles (`ingest --watch`) |
 | `archive.root` | no | `"robotsix-mail-archive"` | Root folder for the self-managed archive structure |
@@ -223,6 +232,9 @@ debug output regardless of how they are supplied.
 | `MAIL_SMTP_HOST` | yes | – | SMTP server hostname |
 | `MAIL_USERNAME` | yes | – | Login username (typically the full email address) |
 | `MAIL_PASSWORD` | yes | – | Login password |
+| `MAIL_OAUTH2_TOKEN` | no | – | OAuth2 access token for SASL XOAUTH2 (overrides password auth when set) |
+| `MAIL_OAUTH2_CLIENT_ID` | no | – | OAuth2 client ID |
+| `MAIL_OAUTH2_CLIENT_SECRET` | no | – | OAuth2 client secret |
 | `MAIL_IMAP_PORT` | no | `993` | IMAP server port |
 | `MAIL_IMAP_TLS_MODE` | no | `direct-tls` | TLS negotiation for IMAP — one of `direct-tls`, `starttls`, `none` |
 | `MAIL_SMTP_PORT` | no | `587` | SMTP server port |
@@ -247,6 +259,61 @@ debug output regardless of how they are supplied.
 | `direct-tls` | TLS from the first byte, no plaintext negotiation (IMAP port 993, SMTP port 465) |
 | `starttls` | Plain connection upgraded to TLS via STARTTLS (IMAP port 143, SMTP port 587) |
 | `none` | No TLS at all — **insecure, for local development only** |
+
+### OAuth2 (XOAUTH2)
+
+Gmail deprecated password-based IMAP/SMTP auth in March 2025, and Microsoft 365
+has also deprecated basic auth. These providers (and others) now require
+**SASL XOAUTH2** — an industry-standard OAuth2-based SASL mechanism.
+
+When ``oauth2_token`` is set (in the YAML config or via ``MAIL_OAUTH2_TOKEN``),
+the IMAP and SMTP clients authenticate via XOAUTH2 instead of the legacy
+``login()`` call.  Password auth is only used when no token is present.
+
+#### Obtaining an OAuth2 token
+
+**Gmail / Google Workspace:**
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and
+   create a project (or use an existing one).
+2. Enable the **Gmail API** (not Gmail itself — the API is what OAuth2 scopes
+   connect to) under "APIs & Services" → "Library".
+3. Under "APIs & Services" → "Credentials", create an **OAuth 2.0 Client ID**
+   with application type "Desktop app".  Note the **Client ID** and
+   **Client Secret**.
+4. Use Google's OAuth2 playground or a tool like
+   [`gmail-oauth2-tools`](https://github.com/google/gmail-oauth2-tools) to
+   obtain an access token.  The required scope for IMAP is
+   ``https://mail.google.com/`` (this covers both IMAP and SMTP).
+
+   A minimal offline flow with ``gmail-oauth2-tools``:
+
+   ```sh
+   python oauth2.py --generate_oauth2_token \
+       --client_id=<CLIENT_ID> \
+       --client_secret=<CLIENT_SECRET>
+   ```
+
+5. Set the resulting access token as ``auth.oauth2_token`` (or
+   ``MAIL_OAUTH2_TOKEN``).  If your flow requires it, also set
+   ``auth.oauth2_client_id`` and ``auth.oauth2_client_secret``.
+
+**Microsoft 365 / Outlook.com:**
+
+1. Register an application in the
+   [Azure Portal](https://portal.azure.com/) under "App registrations".
+2. Under "API permissions", add the ``IMAP.AccessAsUser.All`` and
+   ``SMTP.Send`` delegated permissions.
+3. Use the OAuth2 device-code or authorization-code flow with scopes
+   ``https://outlook.office.com/IMAP.AccessAsUser.All`` and
+   ``https://outlook.office.com/SMTP.Send`` (or the combined
+   ``https://outlook.office.com/.default`` for both).
+4. Set the resulting access token as ``auth.oauth2_token``.
+
+**Self-hosted / other providers:**
+
+If your IMAP/SMTP server still accepts password-based ``login()``, leave the
+OAuth2 fields unset — the existing password path works as before.
 
 ### Self-managed archive structure
 
