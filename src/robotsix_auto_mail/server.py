@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, quote, unquote
 
 import jinja2
 
+from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.triage import (
@@ -188,7 +189,15 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; display: inline; }
 .panel-header .close-btn:hover { color: #000; }
 .side-panel iframe {
   flex: 1; border: none; width: 100%;
-}"""
+}
+.delete-btn {
+  background: #d32f2f; color: #fff; border: none;
+  padding: 0.25rem 0.6rem; border-radius: 4px;
+  cursor: pointer; font-size: 0.8rem;
+  margin-top: 0.3rem;
+}
+.delete-btn:hover { background: #b71c1c; }
+"""
 
 
 # Full ``/board`` document.  ``css`` and ``columns_html`` are passed in
@@ -212,8 +221,8 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     ' style="display:inline-block; margin-left:1.5rem; vertical-align:middle;">\n'
     '  <button type="submit"'
     ' style="font-size:0.85rem; padding:0.25rem 0.75rem; cursor:pointer;">'
-    'Run triage</button>\n'
-    '</form>\n'
+    "Run triage</button>\n"
+    "</form>\n"
     "{{ proposals_html }}\n"
     '<div class="board-wrapper">\n'
     '<div class="board">\n'
@@ -318,26 +327,26 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
 # already-escaped inner block.
 _DETAIL_EMBED_TEMPLATE = _JINJA_ENV.from_string(
     "{% autoescape false %}"
-    '<style>\n'
-    '.detail-field { margin-bottom: 0.75rem; }\n'
-    '.detail-label { font-weight: 700; font-size: 0.85rem; color: #666;'
-    ' margin-bottom: 0.15rem; }\n'
-    '.detail-value { font-size: 0.95rem; }\n'
-    '.detail-value pre { margin: 0; white-space: pre-wrap;'
-    ' font-family: inherit; }\n'
-    '.detail-value code { font-size: 0.85rem; background: #eee;'
-    ' padding: 0.1rem 0.3rem; border-radius: 3px; }\n'
-    '.detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem;'
-    ' align-items: center; }\n'
-    '.detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }\n'
-    '.detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem;'
-    ' cursor: pointer; }\n'
-    '.embed-detail { padding: 1rem;'
-    ' font-family: system-ui, -apple-system, sans-serif; }\n'
-    '</style>\n'
+    "<style>\n"
+    ".detail-field { margin-bottom: 0.75rem; }\n"
+    ".detail-label { font-weight: 700; font-size: 0.85rem; color: #666;"
+    " margin-bottom: 0.15rem; }\n"
+    ".detail-value { font-size: 0.95rem; }\n"
+    ".detail-value pre { margin: 0; white-space: pre-wrap;"
+    " font-family: inherit; }\n"
+    ".detail-value code { font-size: 0.85rem; background: #eee;"
+    " padding: 0.1rem 0.3rem; border-radius: 3px; }\n"
+    ".detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem;"
+    " align-items: center; }\n"
+    ".detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }\n"
+    ".detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem;"
+    " cursor: pointer; }\n"
+    ".embed-detail { padding: 1rem;"
+    " font-family: system-ui, -apple-system, sans-serif; }\n"
+    "</style>\n"
     '<div class="embed-detail">\n'
     "{{ fields_html }}"
-    '</div>\n'
+    "</div>\n"
     "{% endautoescape %}"
 )
 
@@ -358,7 +367,7 @@ _DETAIL_PAGE_TEMPLATE = _JINJA_ENV.from_string(
     '<div class="detail-container">\n'
     "<h1>{{ heading }}</h1>\n"
     "{{ fields_html }}"
-    '</div>\n'
+    "</div>\n"
     "</body>\n"
     "</html>"
     "{% endautoescape %}"
@@ -406,8 +415,7 @@ def _build_board_content(db_path: str) -> dict[str, str]:
         # Gather every record and every triage decision once.
         all_records = list_records(conn)
         triage_by_mid: dict[str, TriageDecision] = {
-            decision.message_id: decision
-            for decision in list_triage_decisions(conn)
+            decision.message_id: decision for decision in list_triage_decisions(conn)
         }
         # Bucket records into columns by their triage-decision action.
         # Untriaged records land in the ``"INBOX"`` column.
@@ -436,8 +444,7 @@ def _build_board_content(db_path: str) -> dict[str, str]:
 
     # Build column HTML fragments.
     columns_html_parts = [
-        _render_column(action, records, triage_by_mid)
-        for action, records in columns
+        _render_column(action, records, triage_by_mid) for action, records in columns
     ]
 
     return {
@@ -459,7 +466,10 @@ def _build_board_html(db_path: str) -> str:
 
 
 def _build_detail_html(
-    db_path: str, message_id: str, *, embed: bool = False,
+    db_path: str,
+    message_id: str,
+    *,
+    embed: bool = False,
 ) -> str | None:
     """Build a full HTML detail page for a single ``MailRecord``.
 
@@ -504,10 +514,10 @@ def _build_detail_html(
         current_action = "INBOX"
     options_parts: list[str] = []
     for action in TRIAGE_ACTION_ORDER:
-        sel = ' selected' if action == current_action else ''
+        sel = " selected" if action == current_action else ""
         options_parts.append(
             f'<option value="{html.escape(action)}"{sel}>'
-            f'{html.escape(TRIAGE_ACTION_LABELS[action])}</option>'
+            f"{html.escape(TRIAGE_ACTION_LABELS[action])}</option>"
         )
 
     quoted_mid = quote(record.message_id, safe="")
@@ -521,10 +531,10 @@ def _build_detail_html(
         '<form class="detail-form" method="post" action="/move">'
         f'<input type="hidden" name="message_id"'
         f' value="{html.escape(record.message_id)}">'
-        f'{redirect_input}'
+        f"{redirect_input}"
         f'<select name="triage_action">{"".join(options_parts)}</select>'
         '<button type="submit">Move</button>'
-        '</form>'
+        "</form>"
     )
 
     # Subject for title (truncated to ~60 chars)
@@ -539,7 +549,7 @@ def _build_detail_html(
     if not body or not body.strip():
         body_html = '<span class="detail-value"><em>(no body)</em></span>'
     else:
-        body_html = f'<pre>{html.escape(body)}</pre>'
+        body_html = f"<pre>{html.escape(body)}</pre>"
 
     # Body HTML note
     body_html_note = ""
@@ -548,7 +558,7 @@ def _build_detail_html(
             '<div class="detail-field">'
             '<div class="detail-label">HTML version</div>'
             '<div class="detail-value"><em>HTML version available</em></div>'
-            '</div>'
+            "</div>"
         )
 
     # Recipients
@@ -560,7 +570,7 @@ def _build_detail_html(
             '<div class="detail-field">'
             '<div class="detail-label">CC</div>'
             f'<div class="detail-value">{cc_html}</div>'
-            '</div>'
+            "</div>"
         )
 
     # Attachments
@@ -588,29 +598,29 @@ def _build_detail_html(
             '<div class="detail-field">'
             '<div class="detail-label">IMAP UID</div>'
             f'<div class="detail-value"><code>{record.imap_uid}</code></div>'
-            '</div>'
+            "</div>"
         )
 
     # Triage decision (read-only advisory display).
     if triage_decision is not None:
         triage_value = (
-            f'<strong>{html.escape(triage_decision.action)}</strong>'
+            f"<strong>{html.escape(triage_decision.action)}</strong>"
             f' <span class="triage-source">'
-            f'({html.escape(triage_decision.source)},'
-            f' {html.escape(triage_decision.confidence)})</span>'
+            f"({html.escape(triage_decision.source)},"
+            f" {html.escape(triage_decision.confidence)})</span>"
         )
         if triage_decision.reason:
             triage_value += (
                 f'<div class="triage-reason">'
-                f'{html.escape(triage_decision.reason)}</div>'
+                f"{html.escape(triage_decision.reason)}</div>"
             )
     else:
-        triage_value = '<em>(no triage decision)</em>'
+        triage_value = "<em>(no triage decision)</em>"
     triage_section = (
         '<div class="detail-field">'
         '<div class="detail-label">Triage</div>'
         f'<div class="detail-value">{triage_value}</div>'
-        '</div>\n'
+        "</div>\n"
     )
 
     # The inner detail fields (Sender through IMAP UID) are identical for
@@ -619,38 +629,38 @@ def _build_detail_html(
         '<div class="detail-field">'
         '<div class="detail-label">Sender</div>'
         f'<div class="detail-value"><strong>{html.escape(record.sender)}'
-        '</strong></div>'
-        '</div>\n'
+        "</strong></div>"
+        "</div>\n"
         '<div class="detail-field">'
         '<div class="detail-label">Date</div>'
         f'<div class="detail-value">{date_str}</div>'
-        '</div>\n'
+        "</div>\n"
         '<div class="detail-field">'
         '<div class="detail-label">Status</div>'
         f'<div class="detail-value">{html.escape(TRIAGE_ACTION_LABELS[current_action])}'
-        f'{move_form}</div>'
-        '</div>\n'
-        f'{triage_section}'
+        f"{move_form}</div>"
+        "</div>\n"
+        f"{triage_section}"
         '<div class="detail-field">'
         '<div class="detail-label">To</div>'
         f'<div class="detail-value">{to_html}</div>'
-        '</div>\n'
-        f'{cc_section}'
+        "</div>\n"
+        f"{cc_section}"
         '<div class="detail-field">'
         '<div class="detail-label">Body</div>'
         f'<div class="detail-value">{body_html}</div>'
-        '</div>\n'
-        f'{body_html_note}'
+        "</div>\n"
+        f"{body_html_note}"
         '<div class="detail-field">'
         '<div class="detail-label">Attachments</div>'
         f'<div class="detail-value">{attach_html}</div>'
-        '</div>\n'
+        "</div>\n"
         '<div class="detail-field">'
         '<div class="detail-label">Message ID</div>'
         f'<div class="detail-value"><code>{html.escape(record.message_id)}'
-        '</code></div>'
-        '</div>\n'
-        f'{imap_uid_section}'
+        "</code></div>"
+        "</div>\n"
+        f"{imap_uid_section}"
     )
 
     if embed:
@@ -680,13 +690,11 @@ def _render_column(
         f'<div class="column-header"><h2>{html.escape(title)}</h2>'
         f'<span class="count">{count}</span></div>'
         f'<div class="cards">{cards_html}</div>'
-        f'</div>'
+        f"</div>"
     )
 
 
-def _render_card(
-    record: MailRecord, decision: TriageDecision | None = None
-) -> str:
+def _render_card(record: MailRecord, decision: TriageDecision | None = None) -> str:
     """Render a single ``MailRecord`` as a ``.card`` HTML string."""
     sender = html.escape(record.sender)
     subject = html.escape(record.subject) if record.subject.strip() else "(no subject)"
@@ -713,10 +721,10 @@ def _render_card(
     # Build triage-action dropdown with the current column pre-selected.
     options_parts: list[str] = []
     for action in _BOARD_COLUMNS:
-        sel = ' selected' if action == current_action else ''
+        sel = " selected" if action == current_action else ""
         options_parts.append(
             f'<option value="{html.escape(action)}"{sel}>'
-            f'{html.escape(TRIAGE_ACTION_LABELS[action])}</option>'
+            f"{html.escape(TRIAGE_ACTION_LABELS[action])}</option>"
         )
 
     form_html = (
@@ -725,8 +733,21 @@ def _render_card(
         f' value="{html.escape(record.message_id)}">'
         f'<select name="triage_action">{"".join(options_parts)}</select>'
         '<button type="submit">Move</button>'
-        '</form>'
+        "</form>"
     )
+
+    if current_action == "TO_DELETE":
+        delete_form = (
+            '<form class="delete-form" method="post" action="/delete"'
+            ' onsubmit="return confirm('
+            "'Permanently delete this mail from mailbox and database?')\">"
+            f'<input type="hidden" name="message_id"'
+            f' value="{html.escape(record.message_id)}">'
+            '<button type="submit" class="delete-btn">Delete</button>'
+            "</form>"
+        )
+    else:
+        delete_form = ""
 
     return (
         f'<div class="card" data-message-id="{quoted_mid}"'
@@ -735,8 +756,9 @@ def _render_card(
         f'<div class="subject">{subject_html}</div>'
         f'<div class="date">{date_str}</div>'
         f'<div class="body-preview">{body_html}</div>'
-        f'{form_html}'
-        f'</div>'
+        f"{form_html}"
+        f"{delete_form}"
+        f"</div>"
     )
 
 
@@ -747,9 +769,7 @@ def _render_rule_card(fingerprint: str, entry: RuleLedgerEntry) -> str:
     board templates run under ``{% autoescape false %}`` (see ``_JINJA_ENV``).
     """
     title = html.escape(entry.title)
-    summary = html.escape(
-        f"{entry.match_type}={entry.match_value} -> {entry.action}"
-    )
+    summary = html.escape(f"{entry.match_type}={entry.match_value} -> {entry.action}")
     fp = html.escape(fingerprint)
     return (
         '<div class="rule-card">'
@@ -759,8 +779,8 @@ def _render_rule_card(fingerprint: str, entry: RuleLedgerEntry) -> str:
         f'<input type="hidden" name="fingerprint" value="{fp}">'
         '<button type="submit" name="decision" value="accept">Accept</button>'
         '<button type="submit" name="decision" value="reject">Reject</button>'
-        '</form>'
-        '</div>'
+        "</form>"
+        "</div>"
     )
 
 
@@ -776,20 +796,17 @@ def _render_rule_proposals(
     count = len(proposals)
     if proposals:
         cards_html = "".join(
-            _render_rule_card(fingerprint, entry)
-            for fingerprint, entry in proposals
+            _render_rule_card(fingerprint, entry) for fingerprint, entry in proposals
         )
     else:
-        cards_html = (
-            '<div class="rule-empty">No pending rule proposals</div>'
-        )
+        cards_html = '<div class="rule-empty">No pending rule proposals</div>'
     return (
         '<div class="rule-proposals">'
         '<div class="rule-proposals-header">'
-        '<h2>Rule proposals</h2>'
+        "<h2>Rule proposals</h2>"
         f'<span class="count rule-count">{count}</span></div>'
         f'<div class="rule-cards">{cards_html}</div>'
-        '</div>'
+        "</div>"
     )
 
 
@@ -801,11 +818,18 @@ class BoardHandler(BaseHTTPRequestHandler):
     SQLite database is injected per-instance via ``db_path``.
     """
 
-    def __init__(self, *args: object, db_path: str, **kwargs: object) -> None:
-        # Set the attribute BEFORE calling ``super().__init__`` because
+    def __init__(
+        self,
+        *args: object,
+        db_path: str,
+        mail_config: MailConfig | None = None,
+        **kwargs: object,
+    ) -> None:
+        # Set attributes BEFORE calling ``super().__init__`` because
         # ``BaseHTTPRequestHandler.__init__`` invokes ``handle()``
         # synchronously, which dispatches to ``do_GET``/``do_POST``.
         self.db_path = db_path
+        self.mail_config = mail_config
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
     def do_GET(self) -> None:
@@ -842,6 +866,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         # in-process periodic runner) is explicitly deferred.
         routes: dict[str, Callable[[], None]] = {
             "/move": self._handle_move,
+            "/delete": self._handle_delete,
             "/rule-action": self._handle_rule_action,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
@@ -957,6 +982,57 @@ class BoardHandler(BaseHTTPRequestHandler):
                 reason=f"moved to {triage_action}",
             )
             record_human_decision(conn, message_id, triage_action)
+        finally:
+            conn.close()
+
+        if redirect_to and _is_safe_redirect_path(redirect_to):
+            self._redirect(redirect_to, code=302)
+        else:
+            self._redirect("/board", code=302)
+
+    def _handle_delete(self) -> None:
+        """Process POST /delete — delete mail from IMAP mailbox and local DB."""
+        from robotsix_auto_mail.db import (
+            delete_record_by_message_id,
+            get_record_by_message_id,
+            init_db,
+        )
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
+
+        message_id = (fields.get("message_id") or [""])[0].strip()
+        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+
+        if not message_id:
+            self._bad_request("Missing message_id")
+            return
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            record = get_record_by_message_id(conn, message_id)
+            if record is None:
+                self._not_found()
+                return
+
+            # -- IMAP deletion (when config and UID are both available) --
+            if self.mail_config is not None and record.imap_uid is not None:
+                from robotsix_auto_mail.imap import ImapClient, ImapError
+
+                try:
+                    with ImapClient(self.mail_config) as client:
+                        client.select_folder(self.mail_config.imap_folder)
+                        client.delete_message(record.imap_uid)
+                except (ImapError, OSError) as exc:
+                    self._send_response(
+                        f"IMAP deletion failed: {exc}",
+                        status=502,
+                    )
+                    return
+
+            # -- local DB deletion --
+            delete_record_by_message_id(conn, message_id)
         finally:
             conn.close()
 
@@ -1106,13 +1182,15 @@ class BoardHandler(BaseHTTPRequestHandler):
 
         # Separate path from query string.
         parsed = urlparse(path)
-        message_id = unquote(parsed.path[len(prefix):])
+        message_id = unquote(parsed.path[len(prefix) :])
         qs = parse_qs(parsed.query)
         embed = qs.get("embed", ["0"])[0] == "1"
 
         try:
             detail_html = _build_detail_html(
-                self.db_path, message_id, embed=embed,
+                self.db_path,
+                message_id,
+                embed=embed,
             )
         except Exception:
             self._send_response("Database unavailable", status=503)
@@ -1129,12 +1207,19 @@ class BoardHandler(BaseHTTPRequestHandler):
         pass
 
 
-def make_board_handler(db_path: str) -> functools.partial[BoardHandler]:
+def make_board_handler(
+    db_path: str,
+    mail_config: MailConfig | None = None,
+) -> functools.partial[BoardHandler]:
     """Return a callable that builds a ``BoardHandler`` wired to *db_path*.
 
     ``HTTPServer`` calls the result as ``handler(request, client_address,
-    server)``; the returned ``functools.partial`` binds *db_path* as a
-    keyword argument so the standard three positional args still flow
-    through to ``BoardHandler.__init__``.
+    server)``; the returned ``functools.partial`` binds *db_path* and
+    *mail_config* as keyword arguments so the standard three positional
+    args still flow through to ``BoardHandler.__init__``.
     """
-    return functools.partial(BoardHandler, db_path=db_path)
+    return functools.partial(
+        BoardHandler,
+        db_path=db_path,
+        mail_config=mail_config,
+    )

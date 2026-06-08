@@ -283,9 +283,7 @@ def test_insert_record_persists_data() -> None:
             attachments_json='[{"name": "file.txt"}]',
         )
         rowid = insert_record(conn, record)
-        cur = conn.execute(
-            "SELECT * FROM mail_records WHERE id = ?", (rowid,)
-        )
+        cur = conn.execute("SELECT * FROM mail_records WHERE id = ?", (rowid,))
         row = cur.fetchone()
         assert row is not None
         col_names = [desc[0] for desc in cur.description]
@@ -369,13 +367,9 @@ def test_insert_record_imap_uid_nullable() -> None:
     """imap_uid can be None (NULL in DB)."""
     conn = init_db(":memory:")
     try:
-        record = _make_record(
-            message_id="<no-uid@example.com>", imap_uid=None
-        )
+        record = _make_record(message_id="<no-uid@example.com>", imap_uid=None)
         rowid = insert_record(conn, record)
-        cur = conn.execute(
-            "SELECT imap_uid FROM mail_records WHERE id = ?", (rowid,)
-        )
+        cur = conn.execute("SELECT imap_uid FROM mail_records WHERE id = ?", (rowid,))
         val = cur.fetchone()[0]
         assert val is None
     finally:
@@ -723,9 +717,7 @@ def test_list_untriaged_records_all_untriaged() -> None:
             insert_record(conn, _make_record(message_id=mid))
         result = list_untriaged_records(conn)
         assert len(result) == 3
-        assert [r.message_id for r in result] == [
-            "<a@x.com>", "<b@x.com>", "<c@x.com>"
-        ]
+        assert [r.message_id for r in result] == ["<a@x.com>", "<b@x.com>", "<c@x.com>"]
     finally:
         conn.close()
 
@@ -757,9 +749,7 @@ def test_list_untriaged_records_ordered_by_id() -> None:
         for mid in ("<c@x.com>", "<a@x.com>", "<b@x.com>"):
             insert_record(conn, _make_record(message_id=mid))
         result = list_untriaged_records(conn)
-        assert [r.message_id for r in result] == [
-            "<c@x.com>", "<a@x.com>", "<b@x.com>"
-        ]
+        assert [r.message_id for r in result] == ["<c@x.com>", "<a@x.com>", "<b@x.com>"]
     finally:
         conn.close()
 
@@ -883,5 +873,61 @@ def test_init_db_status_migration_skips_existing_decisions(
         )
         row = cur.fetchone()
         assert row == ("TO_DELETE", "agent", "spam")
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# delete_record_by_message_id
+# ---------------------------------------------------------------------------
+
+
+def test_delete_record_by_message_id_success(tmp_db_path: str) -> None:
+    """Deletes the mail_records row and its triage_decisions row."""
+    from robotsix_auto_mail.db import delete_record_by_message_id
+    from robotsix_auto_mail.triage import get_triage_decision, set_triage_decision
+
+    conn = init_db(tmp_db_path)
+    try:
+        record = _make_record(message_id="<del-me@x.com>")
+        insert_record(conn, record)
+        set_triage_decision(conn, "<del-me@x.com>", "TO_DELETE", source="user")
+
+        result = delete_record_by_message_id(conn, "<del-me@x.com>")
+        assert result is True
+
+        # Both rows are gone.
+        assert get_record_by_message_id(conn, "<del-me@x.com>") is None
+        assert get_triage_decision(conn, "<del-me@x.com>") is None
+    finally:
+        conn.close()
+
+
+def test_delete_record_by_message_id_nonexistent(tmp_db_path: str) -> None:
+    """Returns False when the message_id does not exist."""
+    from robotsix_auto_mail.db import delete_record_by_message_id
+
+    conn = init_db(tmp_db_path)
+    try:
+        result = delete_record_by_message_id(conn, "<no-such@x.com>")
+        assert result is False
+    finally:
+        conn.close()
+
+
+def test_delete_record_by_message_id_no_triage_decision(
+    tmp_db_path: str,
+) -> None:
+    """Deletes the mail_records row even when no triage_decisions row exists."""
+    from robotsix_auto_mail.db import delete_record_by_message_id
+
+    conn = init_db(tmp_db_path)
+    try:
+        record = _make_record(message_id="<no-triage-decision@x.com>")
+        insert_record(conn, record)
+
+        result = delete_record_by_message_id(conn, "<no-triage-decision@x.com>")
+        assert result is True
+        assert get_record_by_message_id(conn, "<no-triage-decision@x.com>") is None
     finally:
         conn.close()

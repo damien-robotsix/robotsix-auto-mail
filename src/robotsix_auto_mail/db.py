@@ -102,7 +102,9 @@ CREATE TABLE IF NOT EXISTS triage_decisions (
 
 
 def init_db(
-    path: str, *, skip_migrations: bool = False,
+    path: str,
+    *,
+    skip_migrations: bool = False,
 ) -> sqlite3.Connection:
     """Open (or create) the SQLite database at *path* and set up the schema.
 
@@ -151,6 +153,7 @@ _STATUS_TO_TRIAGE_ACTION: dict[str, str] = {
     "done": "TO_ARCHIVE",
 }
 
+
 def _utc_now_iso() -> str:
     """Return the current UTC time as an ISO-8601 string."""
     return datetime.now(timezone.utc).isoformat()
@@ -191,9 +194,7 @@ WHERE mr.status = ?
     conn.commit()
 
 
-def insert_record(
-    conn: sqlite3.Connection, record: MailRecord
-) -> int | None:
+def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
     """Insert *record* into ``mail_records``.
 
     Returns the new ``rowid`` on success, or ``None`` when a row with
@@ -234,15 +235,14 @@ VALUES
 
 
 def get_record_by_message_id(
-    conn: sqlite3.Connection, message_id: str,
+    conn: sqlite3.Connection,
+    message_id: str,
 ) -> MailRecord | None:
     """Return the ``MailRecord`` for *message_id*, or ``None`` if not found.
 
     Read-only — does **not** call ``conn.commit()``.
     """
-    cur = conn.execute(
-        "SELECT * FROM mail_records WHERE message_id = ?", (message_id,)
-    )
+    cur = conn.execute("SELECT * FROM mail_records WHERE message_id = ?", (message_id,))
     row = cur.fetchone()
     if row is None:
         return None
@@ -264,11 +264,30 @@ def record_exists(conn: sqlite3.Connection, message_id: str) -> bool:
     return cur.fetchone() is not None
 
 
+def delete_record_by_message_id(conn: sqlite3.Connection, message_id: str) -> bool:
+    """Delete a mail record and its triage decision by *message_id*.
+
+    Deletes from ``triage_decisions`` first (due to the foreign-key
+    constraint referencing ``mail_records``), then from ``mail_records``.
+
+    Returns ``True`` if a ``mail_records`` row was deleted, ``False``
+    if no matching record existed.
+    """
+    conn.execute(
+        "DELETE FROM triage_decisions WHERE message_id = ?",
+        (message_id,),
+    )
+    cur = conn.execute(
+        "DELETE FROM mail_records WHERE message_id = ?",
+        (message_id,),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
 def get_watermark(conn: sqlite3.Connection, key: str) -> str | None:
     """Return the watermark value for *key*, or ``None`` if it hasn't been set."""
-    cur = conn.execute(
-        "SELECT value FROM watermark WHERE key = ?", (key,)
-    )
+    cur = conn.execute("SELECT value FROM watermark WHERE key = ?", (key,))
     row = cur.fetchone()
     return row[0] if row is not None else None
 
@@ -340,9 +359,7 @@ ORDER BY mr.id ASC
     return results
 
 
-def set_watermark(
-    conn: sqlite3.Connection, key: str, value: str
-) -> None:
+def set_watermark(conn: sqlite3.Connection, key: str, value: str) -> None:
     """Upsert a watermark value.
 
     If *key* already exists its value is updated; otherwise a new row

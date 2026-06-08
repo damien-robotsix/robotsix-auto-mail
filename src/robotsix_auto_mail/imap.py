@@ -124,9 +124,7 @@ def _parse_list_line(line: bytes) -> MailboxInfo:
 
     # -- flags -----------------------------------------------------------
     if flags_str.strip():
-        attributes: tuple[str, ...] = tuple(
-            f.strip() for f in flags_str.split()
-        )
+        attributes: tuple[str, ...] = tuple(f.strip() for f in flags_str.split())
     else:
         attributes = ()
 
@@ -210,13 +208,10 @@ class ImapClient(_ProtocolClient):
     def _connect_direct_tls(self) -> None:
         ctx = ssl.create_default_context()
         try:
-            self._imap = imaplib.IMAP4_SSL(
-                self._host, self._port, ssl_context=ctx
-            )
+            self._imap = imaplib.IMAP4_SSL(self._host, self._port, ssl_context=ctx)
         except (OSError, _IMAP4_ERROR) as exc:
             raise ImapConnectionError(
-                f"Direct-TLS connection to {self._host}:{self._port} "
-                f"failed: {exc}"
+                f"Direct-TLS connection to {self._host}:{self._port} failed: {exc}"
             ) from exc
 
     def _connect_starttls(self) -> None:
@@ -225,8 +220,7 @@ class ImapClient(_ProtocolClient):
             self._imap = imaplib.IMAP4(self._host, self._port)
         except (OSError, _IMAP4_ERROR) as exc:
             raise ImapConnectionError(
-                f"Plain connection to {self._host}:{self._port} "
-                f"failed: {exc}"
+                f"Plain connection to {self._host}:{self._port} failed: {exc}"
             ) from exc
 
         # 2. Upgrade to TLS
@@ -238,8 +232,7 @@ class ImapClient(_ProtocolClient):
             # in an unknown state.
             self._close_socket()
             raise ImapTlsError(
-                f"STARTTLS negotiation with {self._host}:{self._port} "
-                f"failed: {exc}"
+                f"STARTTLS negotiation with {self._host}:{self._port} failed: {exc}"
             ) from exc
 
     def _connect_plain(self) -> None:
@@ -247,8 +240,7 @@ class ImapClient(_ProtocolClient):
             self._imap = imaplib.IMAP4(self._host, self._port)
         except (OSError, _IMAP4_ERROR) as exc:
             raise ImapConnectionError(
-                f"Plain (no-TLS) connection to {self._host}:{self._port} "
-                f"failed: {exc}"
+                f"Plain (no-TLS) connection to {self._host}:{self._port} failed: {exc}"
             ) from exc
 
     def _authenticate(self) -> None:
@@ -384,9 +376,7 @@ class ImapClient(_ProtocolClient):
             return []
         return [int(uid) for uid in uid_str.split()]
 
-    def fetch_messages(
-        self, uids: list[int]
-    ) -> list[tuple[int, bytes]]:
+    def fetch_messages(self, uids: list[int]) -> list[tuple[int, bytes]]:
         """Fetch raw message bodies by UID without setting ``\\Seen``.
 
         Uses ``BODY.PEEK[]`` so the server does NOT mark messages as
@@ -431,6 +421,28 @@ class ImapClient(_ProtocolClient):
                 result.append((uid, body))
 
         return result
+
+    def delete_message(self, uid: int) -> None:
+        """Mark *uid* as ``\\Deleted`` and expunge the selected mailbox.
+
+        Raises :class:`ImapError` if not connected or the server
+        returns a non-OK status for either the ``UID STORE`` or the
+        ``EXPUNGE`` operation.
+        """
+        if self._imap is None:
+            raise ImapError("Not connected")
+
+        # Mark the message as deleted.
+        status, _ = self._imap.uid("STORE", str(uid), "+FLAGS", "(\\Deleted)")
+        if status != "OK":
+            raise ImapError(
+                f"UID STORE +FLAGS (\\Deleted) for UID {uid} failed: {status}"
+            )
+
+        # Expunge to remove flagged messages.
+        status, _ = self._imap.expunge()
+        if status != "OK":
+            raise ImapError(f"EXPUNGE failed: {status}")
 
     @staticmethod
     def _parse_uid_from_fetch_header(header: bytes) -> int | None:
