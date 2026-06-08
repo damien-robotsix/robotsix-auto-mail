@@ -16,6 +16,8 @@ from robotsix_llmio.core import Tier
 from robotsix_auto_mail import status
 from robotsix_auto_mail.db import MailRecord, init_db, insert_record
 from robotsix_auto_mail.triage import (
+    TRIAGE_ACTION_LABELS,
+    TRIAGE_ACTION_ORDER,
     TRIAGE_ACTION_TO_STATUS,
     VALID_TRIAGE_ACTIONS,
     RuleLedgerEntry,
@@ -522,6 +524,26 @@ def test_build_triage_system_prompt_mentions_canonical_actions() -> None:
         assert f"`{action}`" in prompt
     assert "`waiting`" not in prompt
     assert "`ignore`" not in prompt
+
+
+def test_triage_action_order_is_canonical_columns() -> None:
+    """TRIAGE_ACTION_ORDER is exactly the five canonical columns in display order."""
+    assert TRIAGE_ACTION_ORDER == (
+        "INBOX",
+        "HUMAN_TRIAGE",
+        "TO_ARCHIVE",
+        "TO_DELETE",
+        "TO_ANSWER",
+    )
+
+
+def test_triage_action_labels_cover_every_action() -> None:
+    """TRIAGE_ACTION_LABELS has exactly the 5 canonical keys, each value non-empty."""
+    assert set(TRIAGE_ACTION_LABELS.keys()) == set(VALID_TRIAGE_ACTIONS)
+    assert len(TRIAGE_ACTION_LABELS) == 5
+    for _action, label in TRIAGE_ACTION_LABELS.items():
+        assert isinstance(label, str) and len(label) > 0
+    assert tuple(TRIAGE_ACTION_LABELS) == TRIAGE_ACTION_ORDER
 
 
 # ---------------------------------------------------------------------------

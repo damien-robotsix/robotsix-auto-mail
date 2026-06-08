@@ -71,10 +71,10 @@ def test_render_card_basic() -> None:
     assert 'method="post" action="/move"' in html
     assert '<input type="hidden" name="message_id"' in html
     assert 'value="abc"' in html
-    assert '<select name="status">' in html
+    assert '<select name="triage_action">' in html
     assert '<button type="submit">Move</button>' in html
-    # Default status is "to_read", so that option is selected.
-    assert '<option value="to_read" selected' in html
+    # Default status is "INBOX", so that option is selected.
+    assert '<option value="INBOX" selected' in html
 
 
 def test_render_card_empty_subject() -> None:
@@ -184,7 +184,7 @@ def test_render_card_html_escapes_body() -> None:
 
 
 def test_render_card_selected_status() -> None:
-    """When no triage decision is passed, the default column is 'to_read'."""
+    """When no triage decision is passed, the default column is 'INBOX'."""
     record = _make_record(
         message_id="test-id",
         sender="x",
@@ -194,9 +194,9 @@ def test_render_card_selected_status() -> None:
         status="done",
     )
     html = _render_card(record)
-    # No decision → selected column is "to_read", not "done".
-    assert '<option value="to_read" selected>To read</option>' in html
-    assert '<option value="done">Done</option>' in html
+    # No decision → selected column is "INBOX", not "done".
+    assert '<option value="INBOX" selected>Inbox</option>' in html
+    assert '<option value="TO_ANSWER">To answer</option>' in html
 
 
 def test_render_card_message_id_with_angle_brackets() -> None:
@@ -346,6 +346,8 @@ def test_build_board_html_structure() -> None:
                 },
             ],
         )
+        # Seed a triage decision so m2 lands in the TO_ARCHIVE column.
+        _seed_triage_decision(db_path, "m2", action="TO_ARCHIVE")
 
         html = _build_board_html(db_path)
 
@@ -356,24 +358,23 @@ def test_build_board_html_structure() -> None:
         assert '<h1>Mail Board</h1>' in html
         assert 'class="board"' in html
 
-        # Exactly 4 columns
+        # Exactly 5 columns
         assert html.count('class="column"') == 5
 
-        # Order: Needs reply, Waiting on them, To read, No action, Done
-        needs_reply_pos = html.find("<h2>Needs reply</h2>")
-        waiting_pos = html.find("<h2>Waiting on them</h2>")
-        to_read_pos = html.find("<h2>To read</h2>")
-        no_action_pos = html.find("<h2>No action</h2>")
-        done_pos = html.find("<h2>Done</h2>")
+        # Order: Inbox, Human triage, To archive, To delete, To answer
+        inbox_pos = html.find("<h2>Inbox</h2>")
+        human_triage_pos = html.find("<h2>Human triage</h2>")
+        to_archive_pos = html.find("<h2>To archive</h2>")
+        to_delete_pos = html.find("<h2>To delete</h2>")
+        to_answer_pos = html.find("<h2>To answer</h2>")
         assert (
-            0 <= needs_reply_pos < waiting_pos < to_read_pos
-            < no_action_pos < done_pos
+            0 <= inbox_pos < human_triage_pos < to_archive_pos
+            < to_delete_pos < to_answer_pos
         )
 
-        # "to_read" stays untriaged → to_read column.
-        # "done" migrates to triage action "TO_ARCHIVE" → no_action column.
+        # m1 is untriaged → INBOX.  m2 has TO_ARCHIVE → TO_ARCHIVE.
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["0", "0", "1", "1", "0"]
+        assert counts == ["1", "0", "1", "0", "0"]
 
         # Cards
         assert "a@b.com" in html
@@ -645,12 +646,10 @@ def test_handler_board_with_data() -> None:
             assert "archive1@test.com" in body
             assert "archive2@test.com" in body
 
-            # After migration:
-            # "to_read" → untriaged (to_read column)
-            # "needs_reply" → "TO_ANSWER" → needs_reply column
-            # "no_action" (x2) → "TO_ARCHIVE" → no_action column
+            # All records are untriaged (no triage_decisions rows) →
+            # they all land in the INBOX column.
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["1", "0", "1", "2", "0"]
+            assert counts == ["4", "0", "0", "0", "0"]
         finally:
             server.shutdown()
     finally:
@@ -956,15 +955,18 @@ def test_move_success_redirects_302() -> None:
 
         server, port = _start_test_server(db_path)
         try:
-            status, body = _post_form(port, {"message_id": "move-me", "status": "done"})
+            status, body = _post_form(
+                port,
+                {"message_id": "move-me", "triage_action": "TO_ARCHIVE"},
+            )
             assert status == 302, f"Expected 302, got {status}: {body}"
 
             # Verify the card actually moved by checking /board.
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             board_html = resp.read().decode("utf-8")
-            # Should be in No action column (done → TO_ARCHIVE → no_action), not Done
+            # Should be in To archive column
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "0", "1", "0"], f"Unexpected counts: {counts}"
+            assert counts == ["0", "0", "1", "0", "0"], f"Unexpected counts: {counts}"
         finally:
             server.shutdown()
     finally:
@@ -992,14 +994,14 @@ def test_move_to_triaging() -> None:
         server, port = _start_test_server(db_path)
         try:
             status, _ = _post_form(
-                port, {"message_id": "m-triaging", "status": "needs_reply"}
+                port, {"message_id": "m-triaging", "triage_action": "TO_ANSWER"}
             )
             assert status == 302
 
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             body = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["1", "0", "0", "0", "0"]
+            assert counts == ["0", "0", "0", "0", "1"]
         finally:
             server.shutdown()
     finally:
@@ -1027,14 +1029,14 @@ def test_move_to_archive() -> None:
         server, port = _start_test_server(db_path)
         try:
             status, _ = _post_form(
-                port, {"message_id": "m-archive", "status": "no_action"}
+                port, {"message_id": "m-archive", "triage_action": "TO_ARCHIVE"}
             )
             assert status == 302
 
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             body = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["0", "0", "0", "1", "0"]
+            assert counts == ["0", "0", "1", "0", "0"]
         finally:
             server.shutdown()
     finally:
@@ -1062,10 +1064,10 @@ def test_move_invalid_status_returns_400() -> None:
         server, port = _start_test_server(db_path)
         try:
             status, body = _post_form(
-                port, {"message_id": "bad-status", "status": "bogus"}
+                port, {"message_id": "bad-status", "triage_action": "bogus"}
             )
             assert status == 400
-            assert "Invalid status: 'bogus'" in body
+            assert "Invalid triage action: 'bogus'" in body
         finally:
             server.shutdown()
     finally:
@@ -1075,9 +1077,9 @@ def test_move_invalid_status_returns_400() -> None:
 def test_move_missing_message_id_returns_400() -> None:
     server, port = _start_test_server(":memory:")
     try:
-        status, body = _post_form(port, {"status": "done"})
+        status, body = _post_form(port, {"triage_action": "TO_ARCHIVE"})
         assert status == 400
-        assert "Missing message_id or status" in body
+        assert "Missing message_id or triage_action" in body
     finally:
         server.shutdown()
 
@@ -1087,7 +1089,7 @@ def test_move_missing_status_returns_400() -> None:
     try:
         status, body = _post_form(port, {"message_id": "anything"})
         assert status == 400
-        assert "Missing message_id or status" in body
+        assert "Missing message_id or triage_action" in body
     finally:
         server.shutdown()
 
@@ -1095,9 +1097,12 @@ def test_move_missing_status_returns_400() -> None:
 def test_move_empty_message_id_returns_400() -> None:
     server, port = _start_test_server(":memory:")
     try:
-        status, body = _post_form(port, {"message_id": "  ", "status": "done"})
+        status, body = _post_form(
+            port,
+            {"message_id": "  ", "triage_action": "TO_ARCHIVE"},
+        )
         assert status == 400
-        assert "Missing message_id or status" in body
+        assert "Missing message_id or triage_action" in body
     finally:
         server.shutdown()
 
@@ -1106,7 +1111,7 @@ def test_move_unknown_message_id_returns_404() -> None:
     server, port = _start_test_server(":memory:")
     try:
         status, body = _post_form(
-            port, {"message_id": "does-not-exist", "status": "done"}
+            port, {"message_id": "does-not-exist", "triage_action": "TO_ARCHIVE"}
         )
         assert status == 404
         assert body == "Not found"
@@ -1136,6 +1141,9 @@ def test_email_status_returns_200() -> None:
                 },
             ],
         )
+        _seed_triage_decision(
+            db_path, "<abc123@example.com>", action="TO_ANSWER"
+        )
 
         server, port = _start_test_server(db_path)
         try:
@@ -1146,7 +1154,6 @@ def test_email_status_returns_200() -> None:
             assert resp.status == 200
             assert resp.headers.get("Content-Type", "").startswith("text/plain")
             body = resp.read().decode("utf-8")
-            # "needs_reply" migrates to triage action "TO_ANSWER".
             assert body == "TO_ANSWER"
         finally:
             server.shutdown()
@@ -1219,12 +1226,12 @@ def test_email_status_simple_message_id() -> None:
                 },
             ],
         )
+        _seed_triage_decision(db_path, "simple-id", action="TO_ARCHIVE")
 
         server, port = _start_test_server(db_path)
         try:
             resp = urlopen(f"http://127.0.0.1:{port}/email/simple-id/status")
             assert resp.status == 200
-            # "done" migrates to triage action "TO_ARCHIVE".
             assert resp.read().decode("utf-8") == "TO_ARCHIVE"
         finally:
             server.shutdown()
@@ -1441,8 +1448,8 @@ def test_build_detail_html_includes_move_form() -> None:
         assert '<form class="detail-form"' in html
         assert 'method="post" action="/move"' in html
         assert 'value="&lt;move-detail@test.com&gt;"' in html
-        # "needs_reply" migrates to triage action "TO_ANSWER" → "needs_reply" column.
-        assert '<option value="needs_reply" selected>Needs reply</option>' in html
+        # "needs_reply" status → no triage decision → INBOX is pre-selected.
+        assert '<option value="INBOX" selected>Inbox</option>' in html
     finally:
         os.unlink(db_path)
 
@@ -1574,6 +1581,9 @@ def test_handler_email_detail_does_not_capture_status_route() -> None:
                     "status": "done",
                 },
             ],
+        )
+        _seed_triage_decision(
+            db_path, "<status-route@test.com>", action="TO_ARCHIVE"
         )
 
         server, port = _start_test_server(db_path)
@@ -1921,7 +1931,7 @@ def test_move_with_redirect_to() -> None:
                 port,
                 {
                     "message_id": "redirect-me",
-                    "status": "done",
+                    "triage_action": "TO_ARCHIVE",
                     "redirect_to": "/email/redirect-me?embed=1",
                 },
             )
@@ -1930,7 +1940,7 @@ def test_move_with_redirect_to() -> None:
             # Also verify normal redirect still works (no redirect_to)
             status2, _body2 = _post_form(
                 port,
-                {"message_id": "redirect-me", "status": "needs_reply"},
+                {"message_id": "redirect-me", "triage_action": "TO_ANSWER"},
             )
             assert status2 == 302
         finally:
@@ -1964,7 +1974,7 @@ def test_move_with_empty_redirect_to_falls_back_to_board() -> None:
                 port,
                 {
                     "message_id": "fallback-me",
-                    "status": "done",
+                    "triage_action": "TO_ARCHIVE",
                     "redirect_to": "",
                 },
             )
@@ -1976,7 +1986,7 @@ def test_move_with_empty_redirect_to_falls_back_to_board() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             board_html = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "0", "1", "0"]
+            assert counts == ["0", "0", "1", "0", "0"]
         finally:
             server.shutdown()
     finally:
@@ -2007,7 +2017,7 @@ def _move_and_get_location(redirect_to: str) -> HTTPResponse:
                 port,
                 {
                     "message_id": "evil-me",
-                    "status": "done",
+                    "triage_action": "TO_ARCHIVE",
                     "redirect_to": redirect_to,
                 },
             )
@@ -2296,7 +2306,7 @@ def test_render_card_with_triage_decision_no_badge() -> None:
     # No triage-badge span.
     assert "triage-badge" not in html
     # Dropdown pre-selects the column matching the decision.
-    assert '<option value="no_action" selected>No action</option>' in html
+    assert '<option value="TO_ARCHIVE" selected>To archive</option>' in html
 
 
 def test_render_card_without_triage_decision_has_no_badge() -> None:
@@ -2327,8 +2337,8 @@ def test_render_card_triage_decision_selects_column() -> None:
         reason="spam",
     )
     html = _render_card(record, decision)
-    # delete → no_action column.
-    assert '<option value="no_action" selected>No action</option>' in html
+    # delete → TO_DELETE column.
+    assert '<option value="TO_DELETE" selected>To delete</option>' in html
 
 
 def test_build_board_html_places_card_by_triage_decision() -> None:
@@ -2352,10 +2362,10 @@ def test_build_board_html_places_card_by_triage_decision() -> None:
         _seed_triage_decision(db_path, "m1", action="TO_ARCHIVE", reason="bulk mail")
 
         html = _build_board_html(db_path)
-        # The card should be in the no_action column (archive → no_action).
-        # Verify by checking the board counts — one card in no_action.
+        # The card should be in the TO_ARCHIVE column.
+        # Verify by checking the board counts.
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["0", "0", "0", "1", "0"]
+        assert counts == ["0", "0", "1", "0", "0"]
     finally:
         os.unlink(db_path)
 
@@ -2510,35 +2520,6 @@ def test_build_detail_html_triage_reason_escaped() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Status → triage action reverse mapping
-# ---------------------------------------------------------------------------
-
-
-def test_status_to_triage_action_mapping() -> None:
-    """Each status in STATUS_ORDER has a reverse mapping to a valid action."""
-    from robotsix_auto_mail.server import _STATUS_TO_TRIAGE_ACTION
-    from robotsix_auto_mail.status import VALID_STATUSES
-    from robotsix_auto_mail.triage import TRIAGE_ACTION_TO_STATUS, VALID_TRIAGE_ACTIONS
-
-    assert set(_STATUS_TO_TRIAGE_ACTION.keys()) == set(VALID_STATUSES)
-    assert all(
-        v in VALID_TRIAGE_ACTIONS for v in _STATUS_TO_TRIAGE_ACTION.values()
-    )
-    # Round-trip: status → action → status should be identity where possible.
-    # Non-canonical statuses ("INBOX", "done") map to canonical actions
-    # that don't round-trip identically.
-    expected_roundtrips = {
-        "needs_reply": "needs_reply",
-        "waiting": "to_read",       # INBOX maps to to_read, not waiting
-        "to_read": "to_read",
-        "no_action": "no_action",
-        "done": "no_action",        # TO_ARCHIVE maps to no_action, not done
-    }
-    for status, action in _STATUS_TO_TRIAGE_ACTION.items():
-        assert TRIAGE_ACTION_TO_STATUS[action] == expected_roundtrips[status]
-
-
-# ---------------------------------------------------------------------------
 # POST /move creates triage_decisions row
 # ---------------------------------------------------------------------------
 
@@ -2566,7 +2547,7 @@ def test_move_creates_triage_decision() -> None:
         server, port = _start_test_server(db_path)
         try:
             status, _body = _post_form(
-                port, {"message_id": "move-triage", "status": "done"}
+                port, {"message_id": "move-triage", "triage_action": "TO_ARCHIVE"}
             )
             assert status == 302
         finally:
@@ -2579,10 +2560,9 @@ def test_move_creates_triage_decision() -> None:
         try:
             decision = get_triage_decision(conn, "move-triage")
             assert decision is not None
-            # done → TO_ARCHIVE (no canonical equivalent)
             assert decision.action == "TO_ARCHIVE"
             assert decision.source == "user"
-            assert decision.reason == "moved to done"
+            assert decision.reason == "moved to TO_ARCHIVE"
             # mail_records.status was NOT updated.
             cur = conn.execute(
                 "SELECT status FROM mail_records WHERE message_id = ?",
