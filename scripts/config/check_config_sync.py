@@ -92,6 +92,11 @@ _ENV_EXCLUDE_STALE: frozenset[str] = frozenset(
         # (via ``os.environ``) and are intentionally not ``MailConfig`` fields.
         "LOG_LEVEL",
         "LOG_FORMAT",
+        # Langfuse tracing vars are read directly from the environment by
+        # ``robotsix_llmio.core.setup_langfuse_tracing``.
+        "LANGFUSE_PUBLIC_KEY",
+        "LANGFUSE_SECRET_KEY",
+        "LANGFUSE_BASE_URL",
     }
 )
 
