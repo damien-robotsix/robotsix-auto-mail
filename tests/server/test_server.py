@@ -3723,6 +3723,48 @@ def test_archive_proposal_post_missing_message_id_400() -> None:
         server.shutdown()
 
 
+def test_archive_proposal_post_dotdot_segment_400() -> None:
+    """POST /archive-proposal with '..' path segment returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(
+            port,
+            "/archive-proposal",
+            {"message_id": "abc", "subfolder": "Lists/../etc"},
+        )
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
+def test_archive_proposal_post_absolute_path_400() -> None:
+    """POST /archive-proposal with absolute path returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(
+            port,
+            "/archive-proposal",
+            {"message_id": "abc", "subfolder": "/etc/passwd"},
+        )
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
+def test_archive_proposal_post_overly_long_subfolder_400() -> None:
+    """POST /archive-proposal with subfolder exceeding 256 chars returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(
+            port,
+            "/archive-proposal",
+            {"message_id": "abc", "subfolder": "x" * 257},
+        )
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
 # ---------------------------------------------------------------------------
 # Board integration — archive proposal in full board HTML
 # ---------------------------------------------------------------------------

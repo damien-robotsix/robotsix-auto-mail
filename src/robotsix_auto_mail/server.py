@@ -1596,6 +1596,17 @@ class BoardHandler(BaseHTTPRequestHandler):
             self._bad_request("Missing message_id")
             return
 
+        if subfolder:
+            if subfolder.startswith("/"):
+                self._bad_request("Subfolder must not be an absolute path")
+                return
+            if any(segment == ".." for segment in subfolder.split("/")):
+                self._bad_request("Subfolder must not contain '..' segments")
+                return
+            if len(subfolder) > 256:
+                self._bad_request("Subfolder exceeds maximum length of 256 characters")
+                return
+
         conn = init_db(self.db_path, skip_migrations=True)
         try:
             set_archive_subfolder_override(conn, message_id, subfolder)
