@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sqlite3
 from datetime import datetime, timezone
 from email.utils import parseaddr
@@ -109,6 +110,12 @@ _RULE_ACTIVE_WATERMARK_KEY = "triage_rules_active"
 #: is proposed for a sender (or, in total, for a domain).
 _RULE_MIN_DECISIONS = 3
 
+#: Watermark key owned by this module for user archive subfolder overrides.
+_ARCHIVE_OVERRIDES_WATERMARK_KEY = "archive_subfolder_overrides"
+
+#: Watermark key owned by this module for LLM-suggested archive subfolders.
+_ARCHIVE_LLM_HINTS_WATERMARK_KEY = "archive_subfolder_llm_hints"
+
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -134,6 +141,10 @@ class TriageItem(pydantic.BaseModel):
     reason: str = pydantic.Field(default="")
     #: Confidence level — one of ``low`` / ``medium`` / ``high``.
     confidence: str = pydantic.Field(default="medium")
+    #: Optional LLM-suggested archive subfolder path relative to the
+    #: archive root (e.g. ``Lists/python-dev``).  Only meaningful when
+    #: ``action`` is ``TO_ARCHIVE``; ignored otherwise.
+    archive_subfolder: str = pydantic.Field(default="")
 
     @pydantic.field_validator("action")
     @classmethod
@@ -421,6 +432,157 @@ def list_triage_decisions(
         )
         for row in cur.fetchall()
     ]
+
+
+# ---------------------------------------------------------------------------
+# Archive subfolder proposal — deterministic + override storage
+# ---------------------------------------------------------------------------
+
+
+def propose_archive_subfolder(record: MailRecord) -> str:
+    """Derive a sensible archive subfolder path for *record*.
+
+    Priority-ordered rules (first match wins; result is lowercased with
+    runs of non-alphanumeric chars collapsed to ``-``, leading/trailing
+    ``-`` stripped):
+
+    1. **Mailing-list prefix** — subject starts with a bracketed token
+       like ``[python-dev]`` or ``[list-name:123]`` → ``Lists/<name>``.
+    2. **Sender domain + local-part** — ``example.com/alice``.
+    3. **Date fallback** — ``YYYY/MM`` from ``record.date``.
+    4. **All-rules-fail** — returns ``""`` (archive into root).
+
+    No LLM involved — purely deterministic.
+    """
+    # -- 1. Mailing-list prefix --------------------------------------------
+    m = re.match(r'^\s*\[([^\]]*?)(?:\s+\d+)?\]', record.subject)
+    if m:
+        name = m.group(1).strip()
+        if name:
+            # Strip trailing colon + digits (e.g. "[list:123]" → "list")
+            name = re.sub(r':\s*\d+$', '', name).strip()
+            if name:
+                sanitised = _sanitise_subfolder(name)
+                if sanitised:
+                    return f"Lists/{sanitised}"
+
+    # -- 2. Sender domain + local-part ------------------------------------
+    sender = record.sender
+    addr = parseaddr(sender)[1]
+    if addr and "@" in addr:
+        local_part, domain = addr.split("@", 1)
+        local = _sanitise_subfolder(local_part.lower())
+        dom = _sanitise_subfolder(domain.lower())
+        if dom and local:
+            return f"{dom}/{local}"
+
+    # -- 3. Date fallback --------------------------------------------------
+    date_str = record.date.strip()
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S%z",
+                "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S.%f"):
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            return f"{dt.year:04d}/{dt.month:02d}"
+        except ValueError:
+            continue
+    # Try ISO-8601 via fromisoformat (Python 3.11+ handles more variants).
+    try:
+        dt = datetime.fromisoformat(date_str)
+        return f"{dt.year:04d}/{dt.month:02d}"
+    except (ValueError, TypeError):
+        pass
+    return "unknown"
+
+
+def _sanitise_subfolder(raw: str) -> str:
+    """Lowercase *raw*, collapse non-alphanumeric runs to ``-``, strip edges."""
+    lowered = raw.lower()
+    # Replace runs of non-alphanumeric chars with a single '-'
+    sanitised = re.sub(r'[^a-z0-9]+', '-', lowered)
+    sanitised = sanitised.strip('-')
+    return sanitised
+
+
+def _load_archive_overrides(conn: sqlite3.Connection) -> dict[str, str]:
+    """Load user overrides from the watermark table.
+
+    Returns ``{message_id: subfolder}``, empty dict on first use.
+    """
+    raw = get_watermark(conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY)
+    if raw is None:
+        return {}
+    data: dict[str, object] = json.loads(raw)
+    return {k: str(v) for k, v in data.items()}
+
+
+def _save_archive_overrides(
+    conn: sqlite3.Connection, overrides: dict[str, str]
+) -> None:
+    """Persist *overrides* to the watermark table (json round-trip)."""
+    set_watermark(
+        conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY, json.dumps(overrides)
+    )
+
+
+def _load_llm_archive_hints(conn: sqlite3.Connection) -> dict[str, str]:
+    """Load LLM archive subfolder hints from the watermark table.
+
+    Returns ``{message_id: subfolder}``, empty dict on first use.
+    """
+    raw = get_watermark(conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY)
+    if raw is None:
+        return {}
+    data: dict[str, object] = json.loads(raw)
+    return {k: str(v) for k, v in data.items()}
+
+
+def _save_llm_archive_hints(
+    conn: sqlite3.Connection, hints: dict[str, str]
+) -> None:
+    """Persist *hints* to the watermark table (json round-trip)."""
+    set_watermark(
+        conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY, json.dumps(hints)
+    )
+
+
+def get_archive_subfolder(
+    conn: sqlite3.Connection, message_id: str, record: MailRecord
+) -> str:
+    """Return the effective archive subfolder for *message_id*.
+
+    Priority chain:
+    1. User override (from ``archive_subfolder_overrides`` watermark).
+    2. LLM hint (from ``archive_subfolder_llm_hints`` watermark).
+    3. Deterministic proposal via :func:`propose_archive_subfolder`.
+    """
+    # 1. User override
+    overrides = _load_archive_overrides(conn)
+    if message_id in overrides:
+        return overrides[message_id]
+
+    # 2. LLM hint
+    hints = _load_llm_archive_hints(conn)
+    if message_id in hints:
+        return hints[message_id]
+
+    # 3. Deterministic proposal
+    return propose_archive_subfolder(record)
+
+
+def set_archive_subfolder_override(
+    conn: sqlite3.Connection, message_id: str, subfolder: str
+) -> None:
+    """Upsert a user override for *message_id* → *subfolder*.
+
+    An empty *subfolder* removes the override, falling back to the
+    priority chain on the next :func:`get_archive_subfolder` call.
+    """
+    overrides = _load_archive_overrides(conn)
+    if subfolder == "":
+        overrides.pop(message_id, None)
+    else:
+        overrides[message_id] = subfolder
+    _save_archive_overrides(conn, overrides)
 
 
 # ---------------------------------------------------------------------------
@@ -833,9 +995,16 @@ def apply_triage_rules(
 # ---------------------------------------------------------------------------
 
 
-def _build_triage_system_prompt() -> str:
-    """Build the LLM system prompt describing the triage task and actions."""
-    return (
+def _build_triage_system_prompt(
+    archive_folders: list[str] | None = None,
+) -> str:
+    """Build the LLM system prompt describing the triage task and actions.
+
+    When *archive_folders* is a non-empty list, appends a paragraph
+    describing the available archive folders and the optional
+    ``archive_subfolder`` field.
+    """
+    prompt = (
         "You are an inbox triage assistant. You are given a numbered list of "
         "incoming mail messages, each with a 1-based index, sender, subject, "
         "and a short body preview. Classify each message into exactly one "
@@ -858,6 +1027,21 @@ def _build_triage_system_prompt() -> str:
         "Return a JSON object with an `items` list. Return ONLY the JSON "
         "object matching the schema — no explanation, no markdown fences."
     )
+    if archive_folders:
+        folder_lines = "\n".join(f"- {f}" for f in archive_folders)
+        prompt += (
+            "\n\nThe user has an archive folder structure with these "
+            "existing sub-folders:\n"
+            f"{folder_lines}\n\n"
+            "When you classify a message as `TO_ARCHIVE`, you may "
+            "optionally set an `archive_subfolder` field with a suggested "
+            "destination path relative to the archive root (e.g. "
+            "`Lists/python-dev`). You may suggest an existing folder from "
+            "the list above, or propose a new folder name that fits the "
+            "message. Leave the field empty or omit it when you have no "
+            "suggestion.\n"
+        )
+    return prompt
 
 
 def _body_preview(body: str) -> str:
@@ -969,6 +1153,16 @@ def run_triage_agent(
             "variable or add an `llm.api_key` entry to your config file"
         )
 
+    # -- read archive structure for the LLM system prompt ------------------
+
+    archive_raw = get_watermark(conn, "archive_structure")
+    archive_folders: list[str] | None = None
+    if archive_raw is not None:
+        try:
+            archive_folders = json.loads(archive_raw)
+        except (json.JSONDecodeError, TypeError):
+            archive_folders = None
+
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
     from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
@@ -977,7 +1171,7 @@ def run_triage_agent(
     llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
-        system_prompt=_build_triage_system_prompt(),
+        system_prompt=_build_triage_system_prompt(archive_folders),
         output_type=PromptedOutput(TriageResult),
     )
 
@@ -1036,4 +1230,23 @@ def run_triage_agent(
                 confidence=confidence,
             )
         )
+
+    # -- store/clear LLM archive subfolder hints -------------------------
+
+    hints = _load_llm_archive_hints(conn)
+    # Clear stale hints: any remaining record whose LLM action is NOT
+    # TO_ARCHIVE should have its hint entry removed.
+    for i, record in enumerate(remaining, start=1):
+        matched = by_index.get(i)
+        if matched is not None and matched.action != "TO_ARCHIVE":
+            hints.pop(record.message_id, None)
+    # Upsert new hints for TO_ARCHIVE items with a non-empty subfolder.
+    for i, record in enumerate(remaining, start=1):
+        matched = by_index.get(i)
+        if matched is not None and matched.action == "TO_ARCHIVE":
+            sub = (matched.archive_subfolder or "").strip()
+            if sub:
+                hints[record.message_id] = sub
+    _save_llm_archive_hints(conn, hints)
+
     return decisions
