@@ -843,7 +843,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         # No interactive prompts or write-action indicators in output.
         captured = capsys.readouterr()
         assert "write" not in captured.out.lower()
-        assert "delete" not in captured.out.lower()
+        assert "TO_DELETE" not in captured.out.lower()
         assert "edit" not in captured.out.lower()
         assert "modify" not in captured.out.lower()
         assert "select an action" not in captured.out.lower()
@@ -1719,10 +1719,10 @@ def test_parser_has_triage_subcommand() -> None:
 
 def test_parser_has_triage_set_subcommand() -> None:
     """The parser knows the triage-set subcommand with positional args."""
-    args = build_parser().parse_args(["triage-set", "<a@x.com>", "answer"])
+    args = build_parser().parse_args(["triage-set", "<a@x.com>", "TO_ANSWER"])
     assert args.command == "triage-set"
     assert args.message_id == "<a@x.com>"
-    assert args.action == "answer"
+    assert args.action == "TO_ANSWER"
 
 
 def test_triage_text_output(
@@ -1731,7 +1731,7 @@ def test_triage_text_output(
     """triage prints decisions and exits 0 (text)."""
     cfg_db = _cfg_with_inbox(tmp_path)
     result = TriageResult(
-        items=[TriageItem(index=1, action="answer", reason="needs reply")]
+        items=[TriageItem(index=1, action="TO_ANSWER", reason="needs reply")]
     )
     with _patch_triage_llm(result), mock.patch(
         "robotsix_auto_mail.cli.load", return_value=cfg_db
@@ -1742,7 +1742,7 @@ def test_triage_text_output(
     out = capsys.readouterr().out
     assert "Inbox Triage" in out
     assert "<a@x.com>" in out
-    assert "answer" in out
+    assert "TO_ANSWER" in out
     assert "needs reply" in out
 
 
@@ -1752,7 +1752,7 @@ def test_triage_json_output(
     """triage --output-format json prints a parseable list and exits 0."""
     cfg_db = _cfg_with_inbox(tmp_path)
     result = TriageResult(
-        items=[TriageItem(index=1, action="archive", confidence="high")]
+        items=[TriageItem(index=1, action="TO_ARCHIVE", confidence="high")]
     )
     with _patch_triage_llm(result), mock.patch(
         "robotsix_auto_mail.cli.load", return_value=cfg_db
@@ -1763,7 +1763,7 @@ def test_triage_json_output(
     payload = json.loads(capsys.readouterr().out)
     assert isinstance(payload, list)
     assert payload[0]["message_id"] == "<a@x.com>"
-    assert payload[0]["action"] == "archive"
+    assert payload[0]["action"] == "TO_ARCHIVE"
     assert payload[0]["source"] == "agent"
 
 
@@ -1816,7 +1816,7 @@ def test_triage_set_success(
 
     cfg_db = _cfg_with_inbox(tmp_path)
     with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
-        rc = main(["triage-set", "<a@x.com>", "archive"])
+        rc = main(["triage-set", "<a@x.com>", "TO_ARCHIVE"])
 
     assert rc == 0
     assert "Recorded user triage decision" in capsys.readouterr().out
@@ -1825,12 +1825,12 @@ def test_triage_set_success(
     try:
         decision = get_triage_decision(conn, "<a@x.com>")
         assert decision is not None
-        assert decision.action == "archive"
+        assert decision.action == "TO_ARCHIVE"
         assert decision.source == "user"
         # The user decision also updates the human-decision memory ledger.
         memory = _load_memory(conn)
         assert "alice@example.com" in memory
-        assert memory["alice@example.com"].action == "archive"
+        assert memory["alice@example.com"].action == "TO_ARCHIVE"
     finally:
         conn.close()
 
@@ -1855,7 +1855,7 @@ def test_triage_set_unknown_message_id(
     """triage-set exits 1 with a clear message when the message_id is unknown."""
     cfg_db = _cfg_with_inbox(tmp_path)
     with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
-        rc = main(["triage-set", "<missing@x.com>", "answer"])
+        rc = main(["triage-set", "<missing@x.com>", "TO_ANSWER"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -1871,7 +1871,7 @@ def test_triage_set_unknown_message_id(
 def _cfg_with_rule_history(
     tmp_path: Path, sender: str = "alice@example.com", count: int = 3
 ) -> MailConfig:
-    """A MailConfig whose DB has *count* consistent 'archive' decisions."""
+    """A MailConfig whose DB has *count* consistent 'TO_ARCHIVE' decisions."""
     from robotsix_auto_mail.db import MailRecord, insert_record
     from robotsix_auto_mail.db import init_db as real_init_db
     from robotsix_auto_mail.triage import set_triage_decision
@@ -1890,7 +1890,7 @@ def _cfg_with_rule_history(
                 body_plain="hi",
             ),
         )
-        set_triage_decision(conn, mid, "archive", source="agent")
+        set_triage_decision(conn, mid, "TO_ARCHIVE", source="agent")
     conn.close()
     return MailConfig(
         imap_host="imap.example.com",
@@ -1932,7 +1932,7 @@ def test_triage_rules_text_output(
     out = capsys.readouterr().out
     assert "Triage Rule Proposals" in out
     assert "alice@example.com" in out
-    assert "archive" in out
+    assert "TO_ARCHIVE" in out
     assert "fingerprint:" in out
     assert "Active rules:" in out
 
@@ -1951,7 +1951,7 @@ def test_triage_rules_json_output(
     proposal = payload["proposals"][0]
     assert proposal["match_type"] == "sender"
     assert proposal["match_value"] == "alice@example.com"
-    assert proposal["action"] == "archive"
+    assert proposal["action"] == "TO_ARCHIVE"
     assert proposal["fingerprint"]
     assert payload["active_rules"] == []
 
@@ -1993,7 +1993,7 @@ def test_triage_rules_set_accept_makes_active(
         active = _load_active_rules(conn)
         assert len(active) == 1
         assert active[0].match_value == "alice@example.com"
-        assert active[0].action == "archive"
+        assert active[0].action == "TO_ARCHIVE"
     finally:
         conn.close()
 

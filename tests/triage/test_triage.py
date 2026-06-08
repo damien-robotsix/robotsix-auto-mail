@@ -89,7 +89,7 @@ def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
 def test_triage_item_defaults() -> None:
     """action defaults to user_triage, confidence to medium, reason to ''."""
     item = TriageItem(index=1)
-    assert item.action == "user_triage"
+    assert item.action == "HUMAN_TRIAGE"
     assert item.confidence == "medium"
     assert item.reason == ""
 
@@ -97,7 +97,7 @@ def test_triage_item_defaults() -> None:
 def test_triage_item_coerces_unknown_action() -> None:
     """An unknown action is coerced to user_triage, not rejected."""
     item = TriageItem(index=1, action="banana")
-    assert item.action == "user_triage"
+    assert item.action == "HUMAN_TRIAGE"
 
 
 def test_triage_item_rejects_index_below_one() -> None:
@@ -124,7 +124,7 @@ def test_triage_decision_rejects_invalid_action() -> None:
 
 def test_triage_decision_rejects_invalid_source() -> None:
     with pytest.raises(pydantic.ValidationError):
-        TriageDecision(message_id="<a>", action="answer", source="robot")
+        TriageDecision(message_id="<a>", action="TO_ANSWER", source="robot")
 
 
 def test_triage_error_is_exception() -> None:
@@ -153,7 +153,7 @@ def test_set_triage_decision_rejects_invalid_source() -> None:
     try:
         _insert_inbox(conn, "<a@x.com>")
         with pytest.raises(TriageError):
-            set_triage_decision(conn, "<a@x.com>", "answer", source="robot")
+            set_triage_decision(conn, "<a@x.com>", "TO_ANSWER", source="robot")
     finally:
         conn.close()
 
@@ -163,13 +163,13 @@ def test_set_triage_decision_upserts() -> None:
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
-        set_triage_decision(conn, "<a@x.com>", "answer", source="agent")
+        set_triage_decision(conn, "<a@x.com>", "TO_ANSWER", source="agent")
         set_triage_decision(
-            conn, "<a@x.com>", "archive", source="user", reason="mine"
+            conn, "<a@x.com>", "TO_ARCHIVE", source="user", reason="mine"
         )
         decision = get_triage_decision(conn, "<a@x.com>")
         assert decision is not None
-        assert decision.action == "archive"
+        assert decision.action == "TO_ARCHIVE"
         assert decision.source == "user"
         assert decision.reason == "mine"
         # Still exactly one row.
@@ -191,8 +191,8 @@ def test_list_triage_decisions_filters_by_source() -> None:
     try:
         _insert_inbox(conn, "<a@x.com>")
         _insert_inbox(conn, "<b@x.com>")
-        set_triage_decision(conn, "<a@x.com>", "answer", source="agent")
-        set_triage_decision(conn, "<b@x.com>", "archive", source="user")
+        set_triage_decision(conn, "<a@x.com>", "TO_ANSWER", source="agent")
+        set_triage_decision(conn, "<b@x.com>", "TO_ARCHIVE", source="user")
         agent_only = list_triage_decisions(conn, source="agent")
         assert [d.message_id for d in agent_only] == ["<a@x.com>"]
         user_only = list_triage_decisions(conn, source="user")
@@ -210,14 +210,14 @@ def test_triage_decision_persists_across_connections() -> None:
         conn1 = init_db(path)
         _insert_inbox(conn1, "<persisted@x.com>")
         set_triage_decision(
-            conn1, "<persisted@x.com>", "answer", source="user"
+            conn1, "<persisted@x.com>", "TO_ANSWER", source="user"
         )
         conn1.close()
 
         conn2 = init_db(path)
         decision = get_triage_decision(conn2, "<persisted@x.com>")
         assert decision is not None
-        assert decision.action == "answer"
+        assert decision.action == "TO_ANSWER"
         assert decision.source == "user"
         conn2.close()
     finally:
@@ -257,8 +257,8 @@ def test_run_triage_agent_happy_path(
         _insert_inbox(conn, "<b@x.com>")
         result_obj = TriageResult(
             items=[
-                TriageItem(index=1, action="answer", confidence="high"),
-                TriageItem(index=2, action="archive", reason="keep"),
+                TriageItem(index=1, action="TO_ANSWER", confidence="high"),
+                TriageItem(index=2, action="TO_ARCHIVE", reason="keep"),
             ]
         )
         handle, patcher = _patch_llm(result_obj)
@@ -266,13 +266,13 @@ def test_run_triage_agent_happy_path(
             out = run_triage_agent(conn)
 
         assert [(d.message_id, d.action) for d in out] == [
-            ("<a@x.com>", "answer"),
-            ("<b@x.com>", "archive"),
+            ("<a@x.com>", "TO_ANSWER"),
+            ("<b@x.com>", "TO_ARCHIVE"),
         ]
         # Persisted with source='agent'.
         stored = list_triage_decisions(conn)
         assert all(d.source == "agent" for d in stored)
-        assert get_triage_decision(conn, "<a@x.com>").action == "answer"  # type: ignore[union-attr]
+        assert get_triage_decision(conn, "<a@x.com>").action == "TO_ANSWER"  # type: ignore[union-attr]
         assert get_triage_decision(conn, "<b@x.com>").reason == "keep"  # type: ignore[union-attr]
         handle.close.assert_called_once()
     finally:
@@ -288,7 +288,7 @@ def test_run_triage_agent_uses_cheap_tier(
     try:
         _insert_inbox(conn, "<a@x.com>")
         _handle, patcher = _patch_llm(
-            TriageResult(items=[TriageItem(index=1, action="answer")])
+            TriageResult(items=[TriageItem(index=1, action="TO_ANSWER")])
         )
         with patcher as cls:
             run_triage_agent(conn)
@@ -312,7 +312,7 @@ def test_run_triage_agent_clamps_unknown_action(
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
             out = run_triage_agent(conn)
-        assert out[0].action == "user_triage"
+        assert out[0].action == "HUMAN_TRIAGE"
     finally:
         conn.close()
 
@@ -328,15 +328,15 @@ def test_run_triage_agent_omitted_record_defaults_user_triage(
         _insert_inbox(conn, "<b@x.com>")
         # Only index 1 returned; index 2 omitted.
         result_obj = TriageResult(
-            items=[TriageItem(index=1, action="answer")]
+            items=[TriageItem(index=1, action="TO_ANSWER")]
         )
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
             out = run_triage_agent(conn)
         by_id = {d.message_id: d.action for d in out}
         assert by_id == {
-            "<a@x.com>": "answer",
-            "<b@x.com>": "user_triage",
+            "<a@x.com>": "TO_ANSWER",
+            "<b@x.com>": "HUMAN_TRIAGE",
         }
     finally:
         conn.close()
@@ -353,24 +353,24 @@ def test_run_triage_agent_only_undecided_skips_decided(
         _insert_inbox(conn, "<b@x.com>")
         # <a@x.com> already has a decision — it must be left untouched.
         set_triage_decision(
-            conn, "<a@x.com>", "archive", source="user", reason="pre"
+            conn, "<a@x.com>", "TO_ARCHIVE", source="user", reason="pre"
         )
         # The LLM sees only the single undecided record at index 1.
         result_obj = TriageResult(
-            items=[TriageItem(index=1, action="answer")]
+            items=[TriageItem(index=1, action="TO_ANSWER")]
         )
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
             out = run_triage_agent(conn, only_undecided=True)
 
         assert [(d.message_id, d.action) for d in out] == [
-            ("<b@x.com>", "answer")
+            ("<b@x.com>", "TO_ANSWER")
         ]
         # The pre-existing decision is unchanged (still user/archive/pre).
         decided = get_triage_decision(conn, "<a@x.com>")
         assert decided is not None
         assert decided.source == "user"
-        assert decided.action == "archive"
+        assert decided.action == "TO_ARCHIVE"
         assert decided.reason == "pre"
     finally:
         conn.close()
@@ -382,8 +382,8 @@ def test_run_triage_agent_only_undecided_all_decided_no_llm() -> None:
     try:
         _insert_inbox(conn, "<a@x.com>")
         _insert_inbox(conn, "<b@x.com>")
-        set_triage_decision(conn, "<a@x.com>", "archive", source="user")
-        set_triage_decision(conn, "<b@x.com>", "ignore", source="user")
+        set_triage_decision(conn, "<a@x.com>", "TO_ARCHIVE", source="user")
+        set_triage_decision(conn, "<b@x.com>", "TO_DELETE", source="user")
         with mock.patch(
             "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
         ) as cls:
@@ -448,7 +448,7 @@ def test_run_triage_agent_moves_status_column(
     try:
         _insert_inbox(conn, "<a@x.com>")
         _handle, patcher = _patch_llm(
-            TriageResult(items=[TriageItem(index=1, action="archive")])
+            TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
         )
         with patcher:
             run_triage_agent(conn)
@@ -471,12 +471,11 @@ def test_triage_action_to_status_mapping_coverage(
     assert set(TRIAGE_ACTION_TO_STATUS) == set(VALID_TRIAGE_ACTIONS)
     assert all(v in status.VALID_STATUSES for v in TRIAGE_ACTION_TO_STATUS.values())
     expected = {
-        "archive": "no_action",
-        "ignore": "done",
-        "delete": "no_action",
-        "answer": "needs_reply",
-        "waiting": "waiting",
-        "user_triage": "to_read",
+        "INBOX": "to_read",
+        "HUMAN_TRIAGE": "to_read",
+        "TO_ARCHIVE": "no_action",
+        "TO_DELETE": "no_action",
+        "TO_ANSWER": "needs_reply",
     }
     for action, column in expected.items():
         assert TRIAGE_ACTION_TO_STATUS[action] == column
@@ -491,7 +490,7 @@ def test_run_triage_agent_performs_no_imap_calls(
     try:
         _insert_inbox(conn, "<a@x.com>")
         _handle, patcher = _patch_llm(
-            TriageResult(items=[TriageItem(index=1, action="archive")])
+            TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
         )
         with (
             patcher,
@@ -502,7 +501,7 @@ def test_run_triage_agent_performs_no_imap_calls(
         # (a) triage decision persisted.
         decision = get_triage_decision(conn, "<a@x.com>")
         assert decision is not None
-        assert decision.action == "archive"
+        assert decision.action == "TO_ARCHIVE"
         # (b) no IMAP constructor was ever called.
         assert imap4.call_count == 0
         assert imap4_ssl.call_count == 0
@@ -512,14 +511,17 @@ def test_run_triage_agent_performs_no_imap_calls(
 
 def test_valid_triage_actions_vocabulary() -> None:
     assert VALID_TRIAGE_ACTIONS == frozenset(
-        {"answer", "archive", "delete", "ignore", "user_triage", "waiting"}
+        {"INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
     )
 
 
-def test_build_triage_system_prompt_mentions_waiting() -> None:
-    """The LLM system prompt describes the `waiting` action."""
+def test_build_triage_system_prompt_mentions_canonical_actions() -> None:
+    """The LLM system prompt describes all five canonical actions."""
     prompt = _build_triage_system_prompt()
-    assert "`waiting`" in prompt
+    for action in ("INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"):
+        assert f"`{action}`" in prompt
+    assert "`waiting`" not in prompt
+    assert "`ignore`" not in prompt
 
 
 # ---------------------------------------------------------------------------
@@ -541,14 +543,14 @@ def test_record_human_decision_creates_entry() -> None:
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>", sender="Alice@Example.com")
-        record_human_decision(conn, "<a@x.com>", "archive")
+        record_human_decision(conn, "<a@x.com>", "TO_ARCHIVE")
         memory = _load_memory(conn)
         assert "alice@example.com" in memory
         entry = memory["alice@example.com"]
         assert isinstance(entry, SenderMemory)
-        assert entry.action == "archive"
+        assert entry.action == "TO_ARCHIVE"
         assert entry.count == 1
-        assert entry.last_action == "archive"
+        assert entry.last_action == "TO_ARCHIVE"
         assert entry.updated_at != ""
     finally:
         conn.close()
@@ -560,12 +562,12 @@ def test_record_human_decision_increments_and_tracks_latest() -> None:
     try:
         _insert_inbox(conn, "<a@x.com>", sender="alice@example.com")
         _insert_inbox(conn, "<b@x.com>", sender="alice@example.com")
-        record_human_decision(conn, "<a@x.com>", "archive")
-        record_human_decision(conn, "<b@x.com>", "delete")
+        record_human_decision(conn, "<a@x.com>", "TO_ARCHIVE")
+        record_human_decision(conn, "<b@x.com>", "TO_DELETE")
         entry = _load_memory(conn)["alice@example.com"]
-        assert entry.action == "delete"
+        assert entry.action == "TO_DELETE"
         assert entry.count == 2
-        assert entry.last_action == "archive"
+        assert entry.last_action == "TO_ARCHIVE"
     finally:
         conn.close()
 
@@ -584,7 +586,7 @@ def test_record_human_decision_unknown_message_is_noop() -> None:
     """An unknown message_id records nothing."""
     conn = init_db(":memory:")
     try:
-        record_human_decision(conn, "<missing@x.com>", "archive")
+        record_human_decision(conn, "<missing@x.com>", "TO_ARCHIVE")
         assert _load_memory(conn) == {}
     finally:
         conn.close()
@@ -597,12 +599,12 @@ def test_memory_persists_across_connections() -> None:
     try:
         conn1 = init_db(path)
         _insert_inbox(conn1, "<a@x.com>", sender="bob@example.com")
-        record_human_decision(conn1, "<a@x.com>", "answer")
+        record_human_decision(conn1, "<a@x.com>", "TO_ANSWER")
         conn1.close()
 
         conn2 = init_db(path)
         entry = _load_memory(conn2)["bob@example.com"]
-        assert entry.action == "answer"
+        assert entry.action == "TO_ANSWER"
         assert entry.count == 1
         conn2.close()
     finally:
@@ -618,7 +620,7 @@ def test_agent_decisions_do_not_update_memory(
     try:
         _insert_inbox(conn, "<a@x.com>")
         _handle, patcher = _patch_llm(
-            TriageResult(items=[TriageItem(index=1, action="archive")])
+            TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
         )
         with patcher:
             run_triage_agent(conn)
@@ -641,10 +643,10 @@ def test_build_memory_guidance_includes_sender_and_action() -> None:
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>", sender="alice@example.com")
-        record_human_decision(conn, "<a@x.com>", "archive")
+        record_human_decision(conn, "<a@x.com>", "TO_ARCHIVE")
         guidance = _build_memory_guidance(conn)
         assert "alice@example.com" in guidance
-        assert "archive" in guidance
+        assert "TO_ARCHIVE" in guidance
     finally:
         conn.close()
 
@@ -657,15 +659,15 @@ def test_run_triage_agent_prompt_includes_guidance(
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>", sender="alice@example.com")
-        record_human_decision(conn, "<a@x.com>", "archive")
+        record_human_decision(conn, "<a@x.com>", "TO_ARCHIVE")
         handle, patcher = _patch_llm(
-            TriageResult(items=[TriageItem(index=1, action="archive")])
+            TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
         )
         with patcher:
             run_triage_agent(conn)
         prompt = handle.run_sync.call_args.args[0]
         assert "alice@example.com" in prompt
-        assert "triaged by the user as `archive`" in prompt
+        assert "triaged by the user as `TO_ARCHIVE`" in prompt
     finally:
         conn.close()
 
@@ -679,7 +681,7 @@ def test_run_triage_agent_prompt_omits_guidance_when_empty(
     try:
         _insert_inbox(conn, "<a@x.com>")
         handle, patcher = _patch_llm(
-            TriageResult(items=[TriageItem(index=1, action="archive")])
+            TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
         )
         with patcher:
             run_triage_agent(conn)
@@ -724,12 +726,12 @@ def test_propose_rules_sender_above_threshold() -> None:
     conn = init_db(":memory:")
     try:
         for i in range(3):
-            _seed_decision(conn, f"<m{i}@x.com>", "alice@example.com", "archive")
+            _seed_decision(conn, f"<m{i}@x.com>", "alice@example.com", "TO_ARCHIVE")
         proposals = propose_triage_rules(conn)
         sender_rules = [p for p in proposals if p.match_type == "sender"]
         assert len(sender_rules) == 1
         assert sender_rules[0].match_value == "alice@example.com"
-        assert sender_rules[0].action == "archive"
+        assert sender_rules[0].action == "TO_ARCHIVE"
         assert sender_rules[0].confidence in {"low", "medium", "high"}
     finally:
         conn.close()
@@ -740,19 +742,19 @@ def test_propose_rules_respects_threshold() -> None:
     conn = init_db(":memory:")
     try:
         for i in range(2):
-            _seed_decision(conn, f"<m{i}@x.com>", "alice@example.com", "archive")
+            _seed_decision(conn, f"<m{i}@x.com>", "alice@example.com", "TO_ARCHIVE")
         assert propose_triage_rules(conn) == []
     finally:
         conn.close()
 
 
 def test_propose_rules_excludes_user_triage() -> None:
-    """``user_triage`` decisions never drive a rule."""
+    """``HUMAN_TRIAGE`` decisions never drive a rule."""
     conn = init_db(":memory:")
     try:
         for i in range(4):
             _seed_decision(
-                conn, f"<m{i}@x.com>", "alice@example.com", "user_triage"
+                conn, f"<m{i}@x.com>", "alice@example.com", "HUMAN_TRIAGE"
             )
         assert propose_triage_rules(conn) == []
     finally:
@@ -763,9 +765,9 @@ def test_propose_rules_inconsistent_no_rule() -> None:
     """A sender with conflicting actions yields no rule."""
     conn = init_db(":memory:")
     try:
-        _seed_decision(conn, "<m0@x.com>", "alice@example.com", "archive")
-        _seed_decision(conn, "<m1@x.com>", "alice@example.com", "archive")
-        _seed_decision(conn, "<m2@x.com>", "alice@example.com", "delete")
+        _seed_decision(conn, "<m0@x.com>", "alice@example.com", "TO_ARCHIVE")
+        _seed_decision(conn, "<m1@x.com>", "alice@example.com", "TO_ARCHIVE")
+        _seed_decision(conn, "<m2@x.com>", "alice@example.com", "TO_DELETE")
         assert propose_triage_rules(conn) == []
     finally:
         conn.close()
@@ -776,14 +778,14 @@ def test_propose_rules_domain_when_multiple_senders() -> None:
     conn = init_db(":memory:")
     try:
         for i in range(2):
-            _seed_decision(conn, f"<a{i}@news.com>", "alice@news.com", "archive")
+            _seed_decision(conn, f"<a{i}@news.com>", "alice@news.com", "TO_ARCHIVE")
         for i in range(2):
-            _seed_decision(conn, f"<b{i}@news.com>", "bob@news.com", "archive")
+            _seed_decision(conn, f"<b{i}@news.com>", "bob@news.com", "TO_ARCHIVE")
         proposals = propose_triage_rules(conn)
         domain_rules = [p for p in proposals if p.match_type == "domain"]
         assert len(domain_rules) == 1
         assert domain_rules[0].match_value == "news.com"
-        assert domain_rules[0].action == "archive"
+        assert domain_rules[0].action == "TO_ARCHIVE"
         # Neither sender hit the per-sender threshold individually.
         assert [p for p in proposals if p.match_type == "sender"] == []
     finally:
@@ -798,12 +800,12 @@ def test_propose_rules_domain_when_multiple_senders() -> None:
 def test_rule_fingerprint_ignores_case_and_whitespace() -> None:
     """Fingerprint is stable under case / surrounding whitespace."""
     a = TriageRule(
-        match_type="sender", match_value="Alice@Example.com", action="archive"
+        match_type="sender", match_value="Alice@Example.com", action="TO_ARCHIVE"
     )
     b = TriageRule(
         match_type="sender",
         match_value="  alice@example.com  ",
-        action="archive",
+        action="TO_ARCHIVE",
     )
     assert _rule_fingerprint(a) == _rule_fingerprint(b)
 
@@ -811,16 +813,16 @@ def test_rule_fingerprint_ignores_case_and_whitespace() -> None:
 def test_rule_fingerprint_distinct_by_identity_fields() -> None:
     """Differing match_type / match_value / action give distinct fingerprints."""
     base = TriageRule(
-        match_type="sender", match_value="alice@example.com", action="archive"
+        match_type="sender", match_value="alice@example.com", action="TO_ARCHIVE"
     )
     diff_action = TriageRule(
-        match_type="sender", match_value="alice@example.com", action="delete"
+        match_type="sender", match_value="alice@example.com", action="TO_DELETE"
     )
     diff_value = TriageRule(
-        match_type="sender", match_value="bob@example.com", action="archive"
+        match_type="sender", match_value="bob@example.com", action="TO_ARCHIVE"
     )
     diff_type = TriageRule(
-        match_type="domain", match_value="alice@example.com", action="archive"
+        match_type="domain", match_value="alice@example.com", action="TO_ARCHIVE"
     )
     fps = {
         _rule_fingerprint(r)
@@ -832,12 +834,12 @@ def test_rule_fingerprint_distinct_by_identity_fields() -> None:
 def test_rule_fingerprint_excludes_presentation() -> None:
     """Presentation fields (title/body/confidence) do not affect identity."""
     rule = TriageRule(
-        match_type="sender", match_value="alice@example.com", action="archive"
+        match_type="sender", match_value="alice@example.com", action="TO_ARCHIVE"
     )
     proposal = TriageRuleProposal(
         match_type="sender",
         match_value="alice@example.com",
-        action="archive",
+        action="TO_ARCHIVE",
         title="some title",
         body="some body",
         confidence="high",
@@ -857,7 +859,7 @@ def test_record_and_filter_dedup_pending() -> None:
         proposal = TriageRuleProposal(
             match_type="sender",
             match_value="alice@example.com",
-            action="archive",
+            action="TO_ARCHIVE",
             title="t",
             body="b",
         )
@@ -874,14 +876,14 @@ def test_record_and_filter_dedup_accepted_and_rejected() -> None:
         accepted = TriageRuleProposal(
             match_type="sender",
             match_value="alice@example.com",
-            action="archive",
+            action="TO_ARCHIVE",
             title="t",
             body="b",
         )
         rejected = TriageRuleProposal(
             match_type="sender",
             match_value="bob@example.com",
-            action="delete",
+            action="TO_DELETE",
             title="t",
             body="b",
         )
@@ -902,7 +904,7 @@ def test_set_rule_state_accept_adds_active() -> None:
         proposal = TriageRuleProposal(
             match_type="domain",
             match_value="news.com",
-            action="archive",
+            action="TO_ARCHIVE",
             title="t",
             body="b",
         )
@@ -914,7 +916,7 @@ def test_set_rule_state_accept_adds_active() -> None:
         assert len(active) == 1
         assert active[0].match_type == "domain"
         assert active[0].match_value == "news.com"
-        assert active[0].action == "archive"
+        assert active[0].action == "TO_ARCHIVE"
         assert _load_rule_ledger(conn)[fingerprint].state == "accepted"
     finally:
         conn.close()
@@ -927,7 +929,7 @@ def test_set_rule_state_reject_not_added() -> None:
         proposal = TriageRuleProposal(
             match_type="sender",
             match_value="alice@example.com",
-            action="delete",
+            action="TO_DELETE",
             title="t",
             body="b",
         )
@@ -945,7 +947,7 @@ def test_set_rule_state_accept_then_reject_removes_active() -> None:
     conn = init_db(":memory:")
     try:
         fingerprint = _accept_rule(
-            conn, "sender", "alice@example.com", "delete"
+            conn, "sender", "alice@example.com", "TO_DELETE"
         )
         assert len(_load_active_rules(conn)) == 1
         set_rule_state(conn, fingerprint, "rejected")
@@ -972,7 +974,7 @@ def test_set_rule_state_invalid_state_raises() -> None:
         proposal = TriageRuleProposal(
             match_type="sender",
             match_value="alice@example.com",
-            action="delete",
+            action="TO_DELETE",
             title="t",
             body="b",
         )
@@ -1000,21 +1002,21 @@ def test_list_rule_proposals_returns_pending_sorted() -> None:
             TriageRuleProposal(
                 match_type="sender",
                 match_value="bob@example.com",
-                action="delete",
+                action="TO_DELETE",
                 title="bob",
                 body="b",
             ),
             TriageRuleProposal(
                 match_type="domain",
                 match_value="news.com",
-                action="archive",
+                action="TO_ARCHIVE",
                 title="news",
                 body="b",
             ),
             TriageRuleProposal(
                 match_type="sender",
                 match_value="alice@example.com",
-                action="archive",
+                action="TO_ARCHIVE",
                 title="alice",
                 body="b",
             ),
@@ -1050,21 +1052,21 @@ def test_list_rule_proposals_excludes_non_pending() -> None:
         pending = TriageRuleProposal(
             match_type="sender",
             match_value="alice@example.com",
-            action="archive",
+            action="TO_ARCHIVE",
             title="alice",
             body="b",
         )
         accepted = TriageRuleProposal(
             match_type="sender",
             match_value="bob@example.com",
-            action="delete",
+            action="TO_DELETE",
             title="bob",
             body="b",
         )
         rejected = TriageRuleProposal(
             match_type="domain",
             match_value="news.com",
-            action="archive",
+            action="TO_ARCHIVE",
             title="news",
             body="b",
         )
@@ -1087,7 +1089,7 @@ def test_list_rule_proposals_filters_by_state() -> None:
         accepted = TriageRuleProposal(
             match_type="sender",
             match_value="bob@example.com",
-            action="delete",
+            action="TO_DELETE",
             title="bob",
             body="b",
         )
@@ -1119,7 +1121,7 @@ def test_rule_ledger_entry_rejects_invalid_state() -> None:
         RuleLedgerEntry(
             match_type="sender",
             match_value="a@b.com",
-            action="archive",
+            action="TO_ARCHIVE",
             state="bogus",
         )
 
@@ -1133,11 +1135,11 @@ def test_apply_triage_rules_matches_sender() -> None:
     """A sender rule matches by exact lowercased sender."""
     conn = init_db(":memory:")
     try:
-        _accept_rule(conn, "sender", "bob@spam.com", "delete")
+        _accept_rule(conn, "sender", "bob@spam.com", "TO_DELETE")
         record = MailRecord(
             message_id="<x>", sender="Bob@Spam.com", subject="hi", date="d"
         )
-        assert apply_triage_rules(conn, record) == "delete"
+        assert apply_triage_rules(conn, record) == "TO_DELETE"
     finally:
         conn.close()
 
@@ -1146,14 +1148,14 @@ def test_apply_triage_rules_matches_domain() -> None:
     """A domain rule matches by the sender's domain."""
     conn = init_db(":memory:")
     try:
-        _accept_rule(conn, "domain", "spam.com", "delete")
+        _accept_rule(conn, "domain", "spam.com", "TO_DELETE")
         record = MailRecord(
             message_id="<x>",
             sender="Whoever <anyone@SPAM.com>",
             subject="hi",
             date="d",
         )
-        assert apply_triage_rules(conn, record) == "delete"
+        assert apply_triage_rules(conn, record) == "TO_DELETE"
     finally:
         conn.close()
 
@@ -1162,14 +1164,14 @@ def test_apply_triage_rules_matches_subject_substring() -> None:
     """A subject_contains rule matches a case-insensitive substring."""
     conn = init_db(":memory:")
     try:
-        _accept_rule(conn, "subject_contains", "invoice", "archive")
+        _accept_rule(conn, "subject_contains", "invoice", "TO_ARCHIVE")
         record = MailRecord(
             message_id="<x>",
             sender="a@b.com",
             subject="Your INVOICE is ready",
             date="d",
         )
-        assert apply_triage_rules(conn, record) == "archive"
+        assert apply_triage_rules(conn, record) == "TO_ARCHIVE"
     finally:
         conn.close()
 
@@ -1178,7 +1180,7 @@ def test_apply_triage_rules_no_match_returns_none() -> None:
     """No active rule matching the record returns None."""
     conn = init_db(":memory:")
     try:
-        _accept_rule(conn, "sender", "bob@spam.com", "delete")
+        _accept_rule(conn, "sender", "bob@spam.com", "TO_DELETE")
         record = MailRecord(
             message_id="<x>", sender="carol@example.com", subject="hi", date="d"
         )
@@ -1199,14 +1201,14 @@ def test_run_triage_agent_rule_match_skips_llm(
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
-        _accept_rule(conn, "sender", "bob@spam.com", "delete")
+        _accept_rule(conn, "sender", "bob@spam.com", "TO_DELETE")
         _insert_inbox(conn, "<bob@spam.com>", sender="bob@spam.com")
         with mock.patch(
             "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
         ) as cls:
             out = run_triage_agent(conn)
         assert len(out) == 1
-        assert out[0].action == "delete"
+        assert out[0].action == "TO_DELETE"
         assert out[0].reason == "matched deterministic rule"
         cls.assert_not_called()
         # Persisted with source='agent'.
@@ -1225,19 +1227,19 @@ def test_run_triage_agent_only_unmatched_go_to_llm(
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
-        _accept_rule(conn, "sender", "bob@spam.com", "delete")
+        _accept_rule(conn, "sender", "bob@spam.com", "TO_DELETE")
         _insert_inbox(conn, "<bob@spam.com>", sender="bob@spam.com")
         _insert_inbox(conn, "<carol@x.com>", sender="carol@example.com")
         # The LLM only sees the single unmatched record at index 1.
         handle, patcher = _patch_llm(
-            TriageResult(items=[TriageItem(index=1, action="answer")])
+            TriageResult(items=[TriageItem(index=1, action="TO_ANSWER")])
         )
         with patcher:
             out = run_triage_agent(conn)
         by_id = {d.message_id: d for d in out}
-        assert by_id["<bob@spam.com>"].action == "delete"
+        assert by_id["<bob@spam.com>"].action == "TO_DELETE"
         assert by_id["<bob@spam.com>"].reason == "matched deterministic rule"
-        assert by_id["<carol@x.com>"].action == "answer"
+        assert by_id["<carol@x.com>"].action == "TO_ANSWER"
         prompt = handle.run_sync.call_args.args[0]
         assert "carol@example.com" in prompt
         assert "bob@spam.com" not in prompt

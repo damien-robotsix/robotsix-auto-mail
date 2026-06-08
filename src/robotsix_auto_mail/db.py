@@ -84,7 +84,9 @@ CREATE TABLE IF NOT EXISTS watermark (
 
 CREATE TABLE IF NOT EXISTS triage_decisions (
     message_id  TEXT NOT NULL UNIQUE,
-    action      TEXT NOT NULL,
+    action      TEXT NOT NULL CHECK(action IN (
+                    'INBOX', 'HUMAN_TRIAGE', 'TO_ARCHIVE', 'TO_DELETE', 'TO_ANSWER'
+                )),
     source      TEXT NOT NULL,
     reason      TEXT NOT NULL DEFAULT '',
     confidence  TEXT NOT NULL DEFAULT 'medium',
@@ -135,10 +137,10 @@ def _migrate_legacy_statuses(conn: sqlite3.Connection) -> None:
 
 
 _STATUS_TO_TRIAGE_ACTION: dict[str, str] = {
-    "needs_reply": "answer",
-    "waiting": "waiting",
-    "no_action": "archive",
-    "done": "ignore",
+    "needs_reply": "TO_ANSWER",
+    "waiting": "INBOX",
+    "no_action": "TO_ARCHIVE",
+    "done": "TO_ARCHIVE",
 }
 
 
