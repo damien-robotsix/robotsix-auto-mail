@@ -12,6 +12,7 @@ from robotsix_auto_mail.db import (
     _RESET_TRIAGE_WATERMARK_KEY,
     _SCHEMA,
     MailRecord,
+    _migrate_reset_all_triage_to_inbox,
     _rollback_reset_triage_to_inbox,
     get_record_by_message_id,
     get_watermark,
@@ -1020,8 +1021,10 @@ def test_init_db_reset_all_triage_to_inbox(tmp_db_path: str) -> None:
     conn.commit()
     conn.close()
 
-    # -- Step 2: re-open via init_db — the migration runs --
-    conn2 = init_db(tmp_db_path)
+    # -- Step 2: re-open via init_db with skip_migrations and invoke the
+    #    migration directly (it no longer auto-fires from init_db) --
+    conn2 = init_db(tmp_db_path, skip_migrations=True)
+    _migrate_reset_all_triage_to_inbox(conn2)
     try:
         # Zero triage_decisions rows.
         assert (
@@ -1097,7 +1100,8 @@ def test_init_db_reset_all_triage_to_inbox(tmp_db_path: str) -> None:
         conn2.close()
 
     # -- Step 3: third open — idempotent (watermark guard) --
-    conn3 = init_db(tmp_db_path)
+    conn3 = init_db(tmp_db_path, skip_migrations=True)
+    _migrate_reset_all_triage_to_inbox(conn3)  # idempotent — watermark guard
     try:
         # Same post-conditions: zero decisions, all to_read.
         assert (

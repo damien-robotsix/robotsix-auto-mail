@@ -2573,3 +2573,77 @@ def test_move_creates_triage_decision() -> None:
             conn.close()
     finally:
         os.unlink(db_path)
+
+# ---------------------------------------------------------------------------
+# POST /run-triage tests
+# ---------------------------------------------------------------------------
+
+
+def test_run_triage_no_untriaged_redirects() -> None:
+    """POST /run-triage returns 302 when all records already have triage
+    decisions (no untriaged records → no LLM call needed)."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "triaged-msg",
+                    "sender": "x@x.com",
+                    "subject": "Already triaged",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(
+            db_path, "triaged-msg", action="TO_ARCHIVE"
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(port, "/run-triage", {})
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_run_triage_no_api_key_returns_503() -> None:
+    """POST /run-triage returns 503 when untriaged records exist but no
+    API key is configured."""
+    import os as _os
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "untriaged-msg",
+                    "sender": "x@x.com",
+                    "subject": "Untriaged mail",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        # No triage_decisions row → record is untriaged.
+
+        server, port = _start_test_server(db_path)
+        try:
+            # Ensure LLM_API_KEY is not set in the server's environment.
+            with mock.patch.dict(_os.environ, {}, clear=True):
+                resp = _post_to_path(port, "/run-triage", {})
+            assert resp.status == 503
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)

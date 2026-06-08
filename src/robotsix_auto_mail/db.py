@@ -127,7 +127,6 @@ def init_db(
     if not skip_migrations:
         _migrate_legacy_statuses(conn)
         _migrate_status_to_triage(conn)
-        _migrate_reset_all_triage_to_inbox(conn)
     return conn
 
 
