@@ -10,6 +10,7 @@ site/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+.coverage
 
 # Ephemeral lockfile export produced by CI for pip-audit (never committed;
 # uv.lock is the source of truth).
