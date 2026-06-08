@@ -158,6 +158,17 @@ def suggest_module(
 # ====================================================================
 
 
+#: Repo-relative path prefixes that are exempt from the "every file must
+#: be registered" contract.  Use for vendored third-party code and
+#: tool-runtime artifacts that are not application source modules.
+_UNCLASSIFIED_EXEMPT_PREFIXES: tuple[str, ...] = ("pip-packages/",)
+
+
+def _is_exempt_from_classification(path: str) -> bool:
+    """True when *path* is explicitly exempt from module registration."""
+    return path.startswith(_UNCLASSIFIED_EXEMPT_PREFIXES)
+
+
 def compute_findings(
     tracked_files: list[str],
     registered: dict[str, list[str]],
@@ -179,6 +190,8 @@ def compute_findings(
 
     # -- unclassified: tracked but not registered ---------------------------
     for path in sorted(tracked_set):
+        if _is_exempt_from_classification(path):
+            continue
         if path not in registered:
             findings.append(
                 {
