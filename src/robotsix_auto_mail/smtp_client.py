@@ -260,7 +260,7 @@ class SmtpClient(_ProtocolClient):
                 f"on {self._host}:{self._port}: {exc}"
             ) from exc
 
-    def _smtp_xoauth2_cb(self, challenge: bytes | None) -> str:
+    def _smtp_xoauth2_cb(self, challenge: bytes | None = None) -> str:
         """SASL XOAUTH2 callback for ``smtplib.SMTP.auth()``.
 
         On the initial solicitation (``None``) returns the XOAUTH2

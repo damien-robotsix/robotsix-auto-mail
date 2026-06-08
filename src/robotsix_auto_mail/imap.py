@@ -260,16 +260,17 @@ class ImapClient(_ProtocolClient):
                 f"on {self._host}:{self._port}: {exc}"
             ) from exc
 
-    def _imap_xoauth2_cb(self, challenge: bytes) -> str:
+    def _imap_xoauth2_cb(self, challenge: bytes) -> bytes | None:
         """SASL XOAUTH2 callback for ``imaplib.IMAP4.authenticate()``.
 
         On the initial (empty) challenge returns the XOAUTH2 response
         string.  On any non-empty challenge (server-side error) cancels
-        with ``\\x01``.
+        with ``None``.
         """
         if challenge:
-            return "\x01"
-        return f"user={self._username}\x01auth=Bearer {self._oauth2_token}\x01\x01"
+            return None
+        resp = f"user={self._username}\x01auth=Bearer {self._oauth2_token}\x01\x01"
+        return resp.encode()
 
     def _close_socket(self) -> None:
         """Best-effort socket close when ``logout()`` is not viable."""
