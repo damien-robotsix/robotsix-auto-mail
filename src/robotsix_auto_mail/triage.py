@@ -116,6 +116,9 @@ _ARCHIVE_OVERRIDES_WATERMARK_KEY = "archive_subfolder_overrides"
 #: Watermark key owned by this module for LLM-suggested archive subfolders.
 _ARCHIVE_LLM_HINTS_WATERMARK_KEY = "archive_subfolder_llm_hints"
 
+#: Watermark key owned by this module for unsubscribe-suggestion cache.
+_UNSUBSCRIBE_SUGGESTIONS_KEY = "unsubscribe_suggestions"
+
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -203,6 +206,24 @@ class TriageDecision(pydantic.BaseModel):
                 f"{sorted(_VALID_TRIAGE_SOURCES)!r}; got {v!r}"
             )
         return v
+
+
+class UnsubscribeDetection(pydantic.BaseModel):
+    """LLM-detected unsubscribe mechanism for a sender.
+
+    Cached in the ``unsubscribe_suggestions`` watermark and rendered
+    as an info banner on the board's TO_DELETE column.
+    """
+
+    has_unsubscribe: bool
+    #: Detection method — ``header`` / ``body_link`` / ``mailto`` / ``none``.
+    method: str = ""
+    #: Unsubscribe URL or ``mailto:`` address.
+    url: str = ""
+    #: Short human-readable summary for the board banner.
+    description: str = ""
+    #: Confidence level — ``low`` / ``medium`` / ``high``.
+    confidence: str = "medium"
 
 
 class SenderMemory(pydantic.BaseModel):
@@ -1070,6 +1091,154 @@ def _build_user_message(records: list) -> str:  # type: ignore[type-arg]
 # ---------------------------------------------------------------------------
 
 
+def _detect_unsubscribe_for_sender(
+    conn: sqlite3.Connection | None,
+    sender: str,
+    records: list[MailRecord],
+) -> UnsubscribeDetection | None:
+    """Check *sender* (lowercased address) for unsubscribe options.
+
+    Picks the most recent record by ``date``.  If its
+    ``unsubscribe_header`` is non-empty, returns a mechanical detection
+    without calling the LLM.  Otherwise calls the LLM to scan the full
+    ``body_plain`` for unsubscribe links / instructions.
+
+    Returns ``None`` on LLM failure so the caller can continue safely.
+    """
+    # Pick the most recent record by date (descending), or fall back to
+    # the last record in the list.
+    sorted_records = sorted(
+        records, key=lambda r: r.date or "", reverse=True
+    )
+    recent = sorted_records[0] if sorted_records else records[-1]
+
+    # -- mechanical fast path: List-Unsubscribe header present -----------
+    header = (recent.unsubscribe_header or "").strip()
+    # Strip angle brackets (RFC 2369 format: <mailto:...> or <https://...>).
+    if header.startswith("<") and header.endswith(">"):
+        header = header[1:-1].strip()
+    if header:
+        method = "mailto" if header.lower().startswith("mailto:") else "header"
+        return UnsubscribeDetection(
+            has_unsubscribe=True,
+            method=method,
+            url=header,
+            description=(
+                "List-Unsubscribe header found"
+                if method == "header"
+                else "mailto unsubscribe address found in header"
+            ),
+            confidence="high",
+        )
+
+    # -- LLM path: scan body for unsubscribe options --------------------
+
+    # Resolve API key with the same precedence as run_triage_agent.
+    resolved_key = os.environ.get("LLM_API_KEY", "")
+    if not resolved_key:
+        resolved_key, _ = load_llm()
+    if not resolved_key:
+        return None
+
+    from pydantic_ai import PromptedOutput
+    from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
+
+    system_prompt = (
+        "You are an unsubscribe-detection assistant. "
+        "Analyze the email body and determine if there is an unsubscribe "
+        "mechanism — a URL, a mailto link, or natural-language instructions "
+        "(e.g. 'reply with UNSUBSCRIBE'). "
+        "Return a structured result with:\n"
+        "- has_unsubscribe: true/false\n"
+        "- method: one of 'body_link', 'mailto', or 'none'\n"
+        "- url: the unsubscribe URL or mailto address (empty if none)\n"
+        "- description: a short human-readable summary\n"
+        "- confidence: 'low', 'medium', or 'high'"
+    )
+
+    user_message = (
+        f"Sender: {recent.sender}\n"
+        f"Subject: {recent.subject}\n\n"
+        f"Body:\n{recent.body_plain}"
+    )
+
+    llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
+    agent_handle = llm_provider.build_agent(
+        tier=Tier.CHEAP,
+        system_prompt=system_prompt,
+        output_type=PromptedOutput(UnsubscribeDetection),
+    )
+
+    try:
+        with start_trace("unsubscribe detection") as trace:
+            trace.set_input(user_message)
+            try:
+                result = llm_provider.call_with_retry(
+                    lambda: agent_handle.run_sync(user_message),
+                    what="unsubscribe detection",
+                )
+            except Exception:
+                return None
+            trace.set_output(str(result.output))
+    finally:
+        agent_handle.close()
+
+    return result.output  # type: ignore[no-any-return]
+
+
+def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
+    """Check TO_DELETE senders for unsubscribe options and cache findings.
+
+    Groups TO_DELETE records by lowercased sender address.  For senders
+    with ≥3 messages, runs :func:`_detect_unsubscribe_for_sender` and
+    caches the result in the ``unsubscribe_suggestions`` watermark.
+    Senders already cached are skipped (idempotent).
+    """
+    # Load all TO_DELETE decisions and resolve to MailRecords.
+    all_decisions = list_triage_decisions(conn)
+    to_delete = [d for d in all_decisions if d.action == "TO_DELETE"]
+    if not to_delete:
+        return
+
+    # Resolve each decision to its MailRecord and group by sender key.
+    by_sender: dict[str, list[MailRecord]] = {}
+    for decision in to_delete:
+        record = get_record_by_message_id(conn, decision.message_id)
+        if record is None:
+            continue
+        key = _sender_key(record.sender)
+        by_sender.setdefault(key, []).append(record)
+
+    # Load existing suggestions cache.
+    raw = get_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY)
+    suggestions: dict[str, object] = {}
+    if raw is not None:
+        try:
+            suggestions = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    updated = False
+    for sender_key, sender_records in by_sender.items():
+        if len(sender_records) < 3:
+            continue
+        if sender_key in suggestions:
+            continue  # already cached
+        detection = _detect_unsubscribe_for_sender(
+            conn, sender_key, sender_records
+        )
+        if detection is not None:
+            # Only cache if an unsubscribe mechanism was actually found.
+            if detection.has_unsubscribe:
+                suggestions[sender_key] = detection.model_dump()
+                updated = True
+
+    if updated:
+        set_watermark(
+            conn, _UNSUBSCRIBE_SUGGESTIONS_KEY, json.dumps(suggestions)
+        )
+
+
 def run_triage_agent(
     conn: sqlite3.Connection,
     *,
@@ -1248,5 +1417,8 @@ def run_triage_agent(
             if sub:
                 hints[record.message_id] = sub
     _save_llm_archive_hints(conn, hints)
+
+    # -- check TO_DELETE senders for unsubscribe options ------------------
+    _check_unsubscribe_for_to_delete(conn)
 
     return decisions

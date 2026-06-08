@@ -12,6 +12,7 @@ import html
 import json
 from collections.abc import Callable, Mapping
 from http.server import BaseHTTPRequestHandler
+from typing import Any
 from urllib.parse import parse_qs, quote, unquote
 
 import jinja2
@@ -26,6 +27,7 @@ from robotsix_auto_mail.triage import (
     RuleLedgerEntry,
     TriageDecision,
     TriageError,
+    _sender_key,
     get_archive_subfolder,
     get_triage_decision,
     list_rule_proposals,
@@ -206,6 +208,20 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; display: inline; }
   text-align: center; padding: 0.5rem 1rem;
   border-radius: 6px; margin-bottom: 0.75rem;
   font-size: 0.9rem; border: 1px solid #ffecb5;
+}
+
+/* Unsubscribe suggestion banner */
+.unsubscribe-banner {
+  background: #e3f2fd; color: #1a3a5c;
+  padding: 0.5rem 0.75rem; margin-bottom: 0.75rem;
+  border-radius: 6px; font-size: 0.85rem;
+  border: 1px solid #bbdefb;
+}
+.unsubscribe-banner a {
+  color: #1565c0; font-weight: 600;
+}
+.unsubscribe-note {
+  font-size: 0.8rem; color: #666;
 }
 
 /* Archive proposal inline section */
@@ -445,7 +461,7 @@ def _is_safe_redirect_path(location: str) -> bool:
 
 def _build_board_content(
     db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
-) -> dict[str, str | bool]:
+) -> dict[str, str | bool | dict[str, dict[str, Any]]]:
     """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
 
     Opens a fresh database connection, gathers every mail record and
@@ -515,6 +531,15 @@ def _build_board_content(
                 f"{archive_root}/{subfolder}" if subfolder else archive_root
             )
             folder_exists[record.message_id] = full_path in existing_folders
+
+        # -- unsubscribe suggestions for TO_DELETE column -----------------
+        suggestions_raw = get_watermark(conn, "unsubscribe_suggestions")
+        unsubscribe_suggestions: dict[str, dict[str, Any]] = {}
+        if suggestions_raw is not None:
+            try:
+                unsubscribe_suggestions = json.loads(suggestions_raw)
+            except (json.JSONDecodeError, TypeError):
+                pass
     finally:
         conn.close()
 
@@ -527,6 +552,9 @@ def _build_board_content(
             archive_subfolders=archive_subfolders if action == "TO_ARCHIVE" else None,
             existing_folders=folder_exists if action == "TO_ARCHIVE" else None,
             archive_root=archive_root,
+            unsubscribe_suggestions=(
+                unsubscribe_suggestions if action == "TO_DELETE" else None
+            ),
         )
         for action, records in columns
     ]
@@ -535,6 +563,7 @@ def _build_board_content(
         "columns_html": "".join(columns_html_parts),
         "proposals_html": _render_rule_proposals(proposals),
         "triage_running": triage_running,
+        "unsubscribe_suggestions": unsubscribe_suggestions,
     }
 
 
@@ -768,10 +797,66 @@ def _render_column(
     archive_subfolders: dict[str, str] | None = None,
     existing_folders: dict[str, bool] | None = None,
     archive_root: str = DEFAULT_ARCHIVE_ROOT,
+    unsubscribe_suggestions: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     """Render a single board column (header + cards) as an HTML string."""
     title = TRIAGE_ACTION_LABELS[action]
     count = len(records)
+
+    # -- unsubscribe banner (TO_DELETE column only) -----------------------
+    unsubscribe_banner_html = ""
+    if action == "TO_DELETE" and unsubscribe_suggestions:
+        banner_parts: list[str] = []
+        seen_senders: set[str] = set()
+        for record in records:
+            key = _sender_key(record.sender)
+            if key in seen_senders:
+                continue
+            seen_senders.add(key)
+            suggestion = unsubscribe_suggestions.get(key)
+            if suggestion is None:
+                continue
+            method = suggestion.get("method", "")
+            url = suggestion.get("url", "")
+            description = suggestion.get("description", "")
+            # Build link based on method / URL scheme.
+            if method == "mailto" or (
+                method == "header" and url.lower().startswith("mailto:")
+            ):
+                link_html = (
+                    f'<a href="{html.escape(url)}">Unsubscribe</a>'
+                )
+                note = ""
+            elif url.startswith("https://") or url.startswith("http://"):
+                note = (
+                    ' <span class="unsubscribe-note">'
+                    f"({html.escape(
+                        'found in email body'
+                        if method == 'body_link'
+                        else 'from header'
+                    )})"
+                    "</span>"
+                )
+                link_html = (
+                    f'<a href="{html.escape(url)}" target="_blank" rel="noopener">'
+                    "Unsubscribe</a>"
+                )
+            else:
+                # No usable URL — just show the description.
+                link_html = ""
+                note = ""
+            banner_parts.append(
+                '<div class="unsubscribe-banner">'
+                '<span class="unsubscribe-icon">📬</span>'
+                " You could unsubscribe from "
+                f"<strong>{html.escape(record.sender)}</strong>"
+                " instead of deleting: "
+                f"{html.escape(description)} "
+                f"{link_html}{note}"
+                "</div>"
+            )
+        unsubscribe_banner_html = "".join(banner_parts)
+
     cards_html = "".join(
         _render_card(
             r,
@@ -809,6 +894,7 @@ def _render_column(
         f'<span class="count">{count}</span>'
         f"{batch_delete_form}"
         f"</div>"
+        f"{unsubscribe_banner_html}"
         f'<div class="cards">{cards_html}</div>'
         f"</div>"
     )

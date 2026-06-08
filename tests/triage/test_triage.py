@@ -5,6 +5,7 @@ These exercise ``src/robotsix_auto_mail/triage.py``.
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from unittest import mock
@@ -15,7 +16,13 @@ from robotsix_llmio.core import Tier
 from tests.conftest import _make_record
 
 from robotsix_auto_mail import status
-from robotsix_auto_mail.db import MailRecord, init_db, insert_record
+from robotsix_auto_mail.db import (
+    MailRecord,
+    get_watermark,
+    init_db,
+    insert_record,
+    set_watermark,
+)
 from robotsix_auto_mail.triage import (
     TRIAGE_ACTION_LABELS,
     TRIAGE_ACTION_ORDER,
@@ -218,9 +225,7 @@ def test_triage_decision_persists_across_connections() -> None:
     try:
         conn1 = init_db(path)
         _insert_inbox(conn1, "<persisted@x.com>")
-        set_triage_decision(
-            conn1, "<persisted@x.com>", "TO_ANSWER", source="user"
-        )
+        set_triage_decision(conn1, "<persisted@x.com>", "TO_ANSWER", source="user")
         conn1.close()
 
         conn2 = init_db(path)
@@ -336,9 +341,7 @@ def test_run_triage_agent_omitted_record_defaults_user_triage(
         _insert_inbox(conn, "<a@x.com>")
         _insert_inbox(conn, "<b@x.com>")
         # Only index 1 returned; index 2 omitted.
-        result_obj = TriageResult(
-            items=[TriageItem(index=1, action="TO_ANSWER")]
-        )
+        result_obj = TriageResult(items=[TriageItem(index=1, action="TO_ANSWER")])
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
             out = run_triage_agent(conn)
@@ -365,16 +368,12 @@ def test_run_triage_agent_only_undecided_skips_decided(
             conn, "<a@x.com>", "TO_ARCHIVE", source="user", reason="pre"
         )
         # The LLM sees only the single undecided record at index 1.
-        result_obj = TriageResult(
-            items=[TriageItem(index=1, action="TO_ANSWER")]
-        )
+        result_obj = TriageResult(items=[TriageItem(index=1, action="TO_ANSWER")])
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
             out = run_triage_agent(conn, only_undecided=True)
 
-        assert [(d.message_id, d.action) for d in out] == [
-            ("<b@x.com>", "TO_ANSWER")
-        ]
+        assert [(d.message_id, d.action) for d in out] == [("<b@x.com>", "TO_ANSWER")]
         # The pre-existing decision is unchanged (still user/archive/pre).
         decided = get_triage_decision(conn, "<a@x.com>")
         assert decided is not None
@@ -725,17 +724,13 @@ def test_run_triage_agent_prompt_omits_guidance_when_empty(
 # ---------------------------------------------------------------------------
 
 
-def _seed_decision(
-    conn: object, message_id: str, sender: str, action: str
-) -> None:
+def _seed_decision(conn: object, message_id: str, sender: str, action: str) -> None:
     """Insert an inbox record and a triage decision for it."""
     _insert_inbox(conn, message_id, sender=sender)
     set_triage_decision(conn, message_id, action, source="agent")  # type: ignore[arg-type]
 
 
-def _accept_rule(
-    conn: object, match_type: str, match_value: str, action: str
-) -> str:
+def _accept_rule(conn: object, match_type: str, match_value: str, action: str) -> str:
     """Record + accept a rule proposal; return its fingerprint."""
     proposal = TriageRuleProposal(
         match_type=match_type,
@@ -782,9 +777,7 @@ def test_propose_rules_excludes_user_triage() -> None:
     conn = init_db(":memory:")
     try:
         for i in range(4):
-            _seed_decision(
-                conn, f"<m{i}@x.com>", "alice@example.com", "HUMAN_TRIAGE"
-            )
+            _seed_decision(conn, f"<m{i}@x.com>", "alice@example.com", "HUMAN_TRIAGE")
         assert propose_triage_rules(conn) == []
     finally:
         conn.close()
@@ -853,10 +846,7 @@ def test_rule_fingerprint_distinct_by_identity_fields() -> None:
     diff_type = TriageRule(
         match_type="domain", match_value="alice@example.com", action="TO_ARCHIVE"
     )
-    fps = {
-        _rule_fingerprint(r)
-        for r in (base, diff_action, diff_value, diff_type)
-    }
+    fps = {_rule_fingerprint(r) for r in (base, diff_action, diff_value, diff_type)}
     assert len(fps) == 4
 
 
@@ -919,9 +909,7 @@ def test_record_and_filter_dedup_accepted_and_rejected() -> None:
         record_and_filter_rule_proposals(conn, [accepted, rejected])
         set_rule_state(conn, _rule_fingerprint(accepted), "accepted")
         set_rule_state(conn, _rule_fingerprint(rejected), "rejected")
-        assert (
-            record_and_filter_rule_proposals(conn, [accepted, rejected]) == []
-        )
+        assert record_and_filter_rule_proposals(conn, [accepted, rejected]) == []
     finally:
         conn.close()
 
@@ -975,9 +963,7 @@ def test_set_rule_state_accept_then_reject_removes_active() -> None:
     """Rejecting a previously-accepted rule removes it from the active set."""
     conn = init_db(":memory:")
     try:
-        fingerprint = _accept_rule(
-            conn, "sender", "alice@example.com", "TO_DELETE"
-        )
+        fingerprint = _accept_rule(conn, "sender", "alice@example.com", "TO_DELETE")
         assert len(_load_active_rules(conn)) == 1
         set_rule_state(conn, fingerprint, "rejected")
         assert _load_active_rules(conn) == []
@@ -1104,9 +1090,7 @@ def test_list_rule_proposals_excludes_non_pending() -> None:
         set_rule_state(conn, _rule_fingerprint(rejected), "rejected")
 
         result = list_rule_proposals(conn, "pending")
-        assert [entry.match_value for _, entry in result] == [
-            "alice@example.com"
-        ]
+        assert [entry.match_value for _, entry in result] == ["alice@example.com"]
     finally:
         conn.close()
 
@@ -1529,9 +1513,7 @@ def test_run_triage_agent_stores_llm_hints(
         _insert_inbox(conn, "<a@x.com>")
         result_obj = TriageResult(
             items=[
-                TriageItem(
-                    index=1, action="TO_ARCHIVE", archive_subfolder="Lists/dev"
-                )
+                TriageItem(index=1, action="TO_ARCHIVE", archive_subfolder="Lists/dev")
             ]
         )
         _handle, patcher = _patch_llm(result_obj)
@@ -1556,9 +1538,7 @@ def test_run_triage_agent_clears_stale_hints(
         _insert_inbox(conn, "<a@x.com>")
         _save_llm_archive_hints(conn, {"<a@x.com>": "Lists/old"})
 
-        result_obj = TriageResult(
-            items=[TriageItem(index=1, action="INBOX")]
-        )
+        result_obj = TriageResult(items=[TriageItem(index=1, action="INBOX")])
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
             run_triage_agent(conn)
@@ -1590,5 +1570,388 @@ def test_run_triage_agent_ignores_archive_subfolder_for_non_archive(
 
         hints = _load_llm_archive_hints(conn)
         assert "<a@x.com>" not in hints
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# UnsubscribeDetection model
+# ---------------------------------------------------------------------------
+
+
+def test_unsubscribe_detection_defaults() -> None:
+    """method defaults to '', url to '', description to '', confidence to 'medium'."""
+    from robotsix_auto_mail.triage import UnsubscribeDetection
+
+    d = UnsubscribeDetection(has_unsubscribe=True)
+    assert d.has_unsubscribe is True
+    assert d.method == ""
+    assert d.url == ""
+    assert d.description == ""
+    assert d.confidence == "medium"
+
+
+def test_unsubscribe_detection_requires_has_unsubscribe() -> None:
+    """has_unsubscribe is a required field."""
+    from robotsix_auto_mail.triage import UnsubscribeDetection
+
+    with pytest.raises(pydantic.ValidationError):
+        UnsubscribeDetection()  # type: ignore[call-arg]
+
+
+# ---------------------------------------------------------------------------
+# _detect_unsubscribe_for_sender — fast path (header present)
+# ---------------------------------------------------------------------------
+
+
+def test_detect_unsubscribe_fast_path_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When unsubscribe_header is non-empty, return detection without LLM call."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    from robotsix_auto_mail.triage import _detect_unsubscribe_for_sender
+
+    records = [
+        _make_record(
+            message_id="<1@x.com>",
+            sender="sender@example.com",
+            subject="Newsletter",
+            date="2025-06-01T12:00:00",
+            body_plain="Hello world",
+            unsubscribe_header="<https://example.com/unsub>",
+        ),
+        _make_record(
+            message_id="<2@x.com>",
+            sender="sender@example.com",
+            subject="Newsletter #2",
+            date="2025-06-02T12:00:00",
+            body_plain="Hello again",
+            unsubscribe_header="<https://example.com/unsub>",
+        ),
+    ]
+    with mock.patch(
+        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
+    ) as cls:
+        result = _detect_unsubscribe_for_sender(
+            None,  # conn not used in fast path
+            "sender@example.com",
+            records,
+        )
+    assert result is not None
+    assert result.has_unsubscribe is True
+    assert result.method == "header"
+    assert result.url == "https://example.com/unsub"
+    assert result.confidence == "high"
+    cls.assert_not_called()
+
+
+def test_detect_unsubscribe_fast_path_mailto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """mailto: unsubscribe_header is detected as method='mailto'."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    from robotsix_auto_mail.triage import _detect_unsubscribe_for_sender
+
+    records = [
+        _make_record(
+            message_id="<1@x.com>",
+            sender="sender@example.com",
+            subject="Newsletter",
+            date="2025-06-01T12:00:00",
+            body_plain="Hello",
+            unsubscribe_header="<mailto:unsub@example.com>",
+        ),
+    ]
+    with mock.patch(
+        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
+    ) as cls:
+        result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
+    assert result is not None
+    assert result.has_unsubscribe is True
+    assert result.method == "mailto"
+    assert "mailto:" in result.url
+    assert result.url == "mailto:unsub@example.com"
+    cls.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _detect_unsubscribe_for_sender — LLM path
+# ---------------------------------------------------------------------------
+
+
+def test_detect_unsubscribe_llm_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When no header, LLM is called with full body_plain."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    from robotsix_auto_mail.triage import (
+        UnsubscribeDetection,
+        _detect_unsubscribe_for_sender,
+    )
+
+    records = [
+        _make_record(
+            message_id="<1@x.com>",
+            sender="sender@example.com",
+            subject="Newsletter",
+            date="2025-06-01T12:00:00",
+            body_plain="Click here to unsubscribe: https://example.com/optout",
+            unsubscribe_header="",
+        ),
+    ]
+
+    mock_result_obj = UnsubscribeDetection(
+        has_unsubscribe=True,
+        method="body_link",
+        url="https://example.com/optout",
+        description="Unsubscribe link found in body",
+        confidence="medium",
+    )
+    mock_run_result = mock.MagicMock()
+    mock_run_result.output = mock_result_obj
+    mock_handle = mock.MagicMock()
+    mock_handle.run_sync.return_value = mock_run_result
+    mock_provider = mock.MagicMock()
+    mock_provider.build_agent.return_value = mock_handle
+    mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
+
+    with mock.patch(
+        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+        return_value=mock_provider,
+    ):
+        result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
+
+    assert result is not None
+    assert result.has_unsubscribe is True
+    assert result.method == "body_link"
+    assert result.url == "https://example.com/optout"
+
+    # Verify the system prompt mentions "unsubscribe".
+    build_agent_call = mock_provider.build_agent.call_args
+    system_prompt = build_agent_call.kwargs["system_prompt"]
+    assert "unsubscribe" in system_prompt.lower()
+
+    # Verify the user message contains the full body_plain.
+    user_message = mock_handle.run_sync.call_args.args[0]
+    assert "Click here to unsubscribe" in user_message
+    assert "sender@example.com" in user_message
+    assert "Newsletter" in user_message
+
+
+def test_detect_unsubscribe_llm_failure_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """On LLM failure, _detect_unsubscribe_for_sender returns None gracefully."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    from robotsix_auto_mail.triage import _detect_unsubscribe_for_sender
+
+    records = [
+        _make_record(
+            message_id="<1@x.com>",
+            sender="sender@example.com",
+            subject="Newsletter",
+            date="2025-06-01T12:00:00",
+            body_plain="Hello",
+            unsubscribe_header="",
+        ),
+    ]
+
+    mock_handle = mock.MagicMock()
+    mock_handle.run_sync.side_effect = RuntimeError("LLM exploded")
+    mock_provider = mock.MagicMock()
+    mock_provider.build_agent.return_value = mock_handle
+    # Simulate call_with_retry propagating the exception.
+    mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
+
+    with mock.patch(
+        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+        return_value=mock_provider,
+    ):
+        result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _check_unsubscribe_for_to_delete
+# ---------------------------------------------------------------------------
+
+
+def test_check_unsubscribe_for_to_delete_populates_watermark(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """3+ TO_DELETE records from same sender → watermark entry created."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    from robotsix_auto_mail.triage import (
+        _UNSUBSCRIBE_SUGGESTIONS_KEY,
+        _check_unsubscribe_for_to_delete,
+    )
+
+    conn = init_db(":memory:")
+    try:
+        # Insert 3 records from the same sender and mark them TO_DELETE.
+        for i in range(3):
+            mid = f"<{i}@spam.com>"
+            record = _make_record(
+                message_id=mid,
+                sender="spammer@example.com",
+                subject=f"Spam {i}",
+                date=f"2025-06-0{i + 1}T12:00:00",
+                body_plain="Buy now!",
+                unsubscribe_header="<https://unsub.example.com/optout>",
+            )
+            insert_record(conn, record)
+            set_triage_decision(conn, mid, "TO_DELETE", source="agent", reason="spam")
+
+        _check_unsubscribe_for_to_delete(conn)
+
+        raw = get_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY)
+        assert raw is not None
+        suggestions = json.loads(raw)
+        assert "spammer@example.com" in suggestions
+        entry = suggestions["spammer@example.com"]
+        assert entry["has_unsubscribe"] is True
+        assert entry["method"] == "header"
+    finally:
+        conn.close()
+
+
+def test_check_unsubscribe_threshold_not_met(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Only 2 TO_DELETE records → no watermark entry created."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    from robotsix_auto_mail.triage import (
+        _UNSUBSCRIBE_SUGGESTIONS_KEY,
+        _check_unsubscribe_for_to_delete,
+    )
+
+    conn = init_db(":memory:")
+    try:
+        for i in range(2):
+            mid = f"<{i}@spam.com>"
+            record = _make_record(
+                message_id=mid,
+                sender="spammer@example.com",
+                subject=f"Spam {i}",
+                date=f"2025-06-0{i + 1}T12:00:00",
+                body_plain="Buy now!",
+                unsubscribe_header="<https://unsub.example.com/optout>",
+            )
+            insert_record(conn, record)
+            set_triage_decision(conn, mid, "TO_DELETE", source="agent", reason="spam")
+
+        with mock.patch(
+            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
+        ) as cls:
+            _check_unsubscribe_for_to_delete(conn)
+        cls.assert_not_called()
+
+        raw = get_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY)
+        assert raw is None
+    finally:
+        conn.close()
+
+
+def test_check_unsubscribe_caching_skips_llm(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pre-populated watermark entry → LLM NOT called again."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    from robotsix_auto_mail.triage import (
+        _UNSUBSCRIBE_SUGGESTIONS_KEY,
+        _check_unsubscribe_for_to_delete,
+    )
+
+    conn = init_db(":memory:")
+    try:
+        # Pre-populate the watermark.
+        set_watermark(
+            conn,
+            _UNSUBSCRIBE_SUGGESTIONS_KEY,
+            json.dumps(
+                {
+                    "spammer@example.com": {
+                        "has_unsubscribe": True,
+                        "method": "header",
+                        "url": "<https://unsub.example.com/optout>",
+                        "description": "Already cached",
+                        "confidence": "high",
+                    }
+                }
+            ),
+        )
+
+        # Insert 3 records and mark TO_DELETE.
+        for i in range(3):
+            mid = f"<{i}@spam.com>"
+            record = _make_record(
+                message_id=mid,
+                sender="spammer@example.com",
+                subject=f"Spam {i}",
+                date=f"2025-06-0{i + 1}T12:00:00",
+                body_plain="Buy now!",
+                unsubscribe_header="<https://unsub.example.com/optout>",
+            )
+            insert_record(conn, record)
+            set_triage_decision(conn, mid, "TO_DELETE", source="agent", reason="spam")
+
+        with mock.patch(
+            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
+        ) as cls:
+            _check_unsubscribe_for_to_delete(conn)
+        # LLM provider should NOT be called — caching fast path.
+        cls.assert_not_called()
+    finally:
+        conn.close()
+
+
+def test_check_unsubscribe_multiple_senders(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Multiple senders above threshold each get checked independently."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    from robotsix_auto_mail.triage import (
+        _UNSUBSCRIBE_SUGGESTIONS_KEY,
+        _check_unsubscribe_for_to_delete,
+    )
+
+    conn = init_db(":memory:")
+    try:
+        # Sender A: 3 records with header.
+        for i in range(3):
+            mid = f"<a{i}@x.com>"
+            record = _make_record(
+                message_id=mid,
+                sender="spammer-a@example.com",
+                subject=f"Spam A {i}",
+                date=f"2025-06-0{i + 1}T12:00:00",
+                body_plain="Buy A!",
+                unsubscribe_header="<https://a.example.com/unsub>",
+            )
+            insert_record(conn, record)
+            set_triage_decision(conn, mid, "TO_DELETE", source="agent", reason="spam")
+
+        # Sender B: 3 records with header.
+        for i in range(3):
+            mid = f"<b{i}@x.com>"
+            record = _make_record(
+                message_id=mid,
+                sender="spammer-b@example.com",
+                subject=f"Spam B {i}",
+                date=f"2025-06-0{i + 1}T12:00:00",
+                body_plain="Buy B!",
+                unsubscribe_header="<https://b.example.com/unsub>",
+            )
+            insert_record(conn, record)
+            set_triage_decision(conn, mid, "TO_DELETE", source="agent", reason="spam")
+
+        _check_unsubscribe_for_to_delete(conn)
+
+        raw = get_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY)
+        assert raw is not None
+        suggestions = json.loads(raw)
+        assert "spammer-a@example.com" in suggestions
+        assert "spammer-b@example.com" in suggestions
     finally:
         conn.close()
