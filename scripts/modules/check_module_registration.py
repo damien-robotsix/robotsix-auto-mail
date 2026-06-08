@@ -28,10 +28,9 @@ import yaml
 
 # ---------------------------------------------------------------------------
 # Prefixes exempt from module-registration checks.
-# Vendored third-party code (``vendor/``) is intentionally not registered
-# as a module because it is externally maintained and not subject to the
-# project's own module taxonomy.
-_UNCLASSIFIED_EXEMPT_PREFIXES: tuple[str, ...] = ("vendor/",)
+# Add entries here only for directories that must remain in version control
+# but are deliberately not registered under any module.
+_UNCLASSIFIED_EXEMPT_PREFIXES: tuple[str, ...] = ()
 # ---------------------------------------------------------------------------
 # Repo location helpers.
 # ---------------------------------------------------------------------------
