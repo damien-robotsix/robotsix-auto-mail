@@ -339,6 +339,7 @@ class ImapClient(_ProtocolClient):
             raise ImapError("Not connected")
         status, _data = self._imap.create(name)
         if status == "OK":
+            self._subscribe(name)
             return
         # Inspect the response data for an ALREADYEXISTS signal (common on
         # Dovecot, Courier, etc.).  If the server tells us the folder
@@ -346,15 +347,24 @@ class ImapClient(_ProtocolClient):
         response_text = b"".join(_data).decode("utf-8", errors="replace").strip()
         lowered = response_text.lower()
         if "alreadyexists" in lowered or "already exists" in lowered:
+            self._subscribe(name)
             return
         # Non-OK without an ALREADYEXISTS signal: the folder may still
         # already exist despite a non-specific NO.  Re-list and check.
         for folder in self.list_folders():
             if folder.name == name:
+                self._subscribe(name)
                 return
         raise ImapError(
             f"CREATE '{name}' failed: {status} — {response_text}"
         )
+
+    def _subscribe(self, name: str) -> None:
+        """Subscribe to *name*; ignore failure silently."""
+        try:
+            self._imap.subscribe(name)
+        except Exception:  # noqa: S110  # nosec B110
+            pass
 
     def search_uids(self, criteria: str = "ALL") -> list[int]:
         """Issue ``UID SEARCH`` and return matching UIDs.

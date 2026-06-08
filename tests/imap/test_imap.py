@@ -315,6 +315,7 @@ def test_create_folder_success(cfg: MailConfig) -> None:
             client.create_folder("robotsix-mail-archive")
 
     mock_ssl.create.assert_called_once_with("robotsix-mail-archive")
+    mock_ssl.subscribe.assert_called_once_with("robotsix-mail-archive")
 
 
 def test_create_folder_not_connected(cfg: MailConfig) -> None:
@@ -335,6 +336,8 @@ def test_create_folder_genuine_failure(cfg: MailConfig) -> None:
             with pytest.raises(ImapError, match="CREATE 'Archive' failed"):
                 client.create_folder("Archive")
 
+    mock_ssl.subscribe.assert_not_called()
+
 
 def test_create_folder_genuine_failure_includes_response_text(
     cfg: MailConfig,
@@ -352,6 +355,8 @@ def test_create_folder_genuine_failure_includes_response_text(
             ):
                 client.create_folder("Archive")
 
+    mock_ssl.subscribe.assert_not_called()
+
 
 def test_create_folder_already_exists_is_idempotent(cfg: MailConfig) -> None:
     """Non-OK with ALREADYEXISTS in response data → returns without LIST."""
@@ -367,6 +372,7 @@ def test_create_folder_already_exists_is_idempotent(cfg: MailConfig) -> None:
 
     # ALREADYEXISTS was detected in the response data - no LIST needed.
     mock_ssl.list.assert_not_called()
+    mock_ssl.subscribe.assert_called_once_with("robotsix-mail-archive")
 
 
 def test_create_folder_no_status_in_list_still_ok(cfg: MailConfig) -> None:
@@ -384,6 +390,22 @@ def test_create_folder_no_status_in_list_still_ok(cfg: MailConfig) -> None:
 
     # LIST was called because the response didn't contain ALREADYEXISTS text.
     mock_ssl.list.assert_called_once()
+    mock_ssl.subscribe.assert_called_once_with("robotsix-mail-archive")
+
+
+def test_create_folder_subscribe_failure_is_graceful(
+    cfg: MailConfig,
+) -> None:
+    """CREATE OK but SUBSCRIBE fails → error is caught, create_folder succeeds."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.create.return_value = ("OK", [b"Create completed"])
+    mock_ssl.subscribe.side_effect = imaplib.IMAP4.error("SUBSCRIBE failed")
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.create_folder("robotsix-mail-archive")
+
+    mock_ssl.subscribe.assert_called_once_with("robotsix-mail-archive")
 
 
 # ---------------------------------------------------------------------------
