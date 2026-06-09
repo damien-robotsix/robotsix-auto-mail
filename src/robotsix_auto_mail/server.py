@@ -70,22 +70,22 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "<h1>Mail Board</h1>\n"
     '<button id="refresh-btn" title="Refresh now">↻</button>\n'
     '<span id="refresh-time"></span>\n'
-    '{% if triage_running %}'
+    "{% if triage_running %}"
     '<div class="triage-banner">'
-    'Triage is currently running. The board will refresh automatically.'
-    '</div>\n'
+    "Triage is currently running. The board will refresh automatically."
+    "</div>\n"
     '<button type="submit" disabled'
     ' style="font-size:0.85rem; padding:0.25rem 0.75rem;'
     ' cursor:not-allowed; opacity:0.6;">'
-    'Triage running\u2026</button>\n'
-    '{% else %}'
+    "Triage running\u2026</button>\n"
+    "{% else %}"
     '<form method="post" action="/run-triage"'
     ' style="display:inline-block; margin-left:1.5rem; vertical-align:middle;">\n'
     '  <button type="submit"'
     ' style="font-size:0.85rem; padding:0.25rem 0.75rem; cursor:pointer;">'
-    'Run triage</button>\n'
-    '</form>\n'
-    '{% endif %}'
+    "Run triage</button>\n"
+    "</form>\n"
+    "{% endif %}"
     "{{ proposals_html }}\n"
     '<div class="board-wrapper">\n'
     '<div class="board">\n'
@@ -330,9 +330,7 @@ def _build_board_content(
                     existing_folders = set(data["folders"])
                     delimiter = data.get("delimiter", "/")
                     effective_root = (
-                        data["folders"][0]
-                        if data["folders"]
-                        else archive_root
+                        data["folders"][0] if data["folders"] else archive_root
                     )
             except (json.JSONDecodeError, TypeError, KeyError):
                 pass
@@ -341,9 +339,7 @@ def _build_board_content(
         archive_subfolders: dict[str, str] = {}
         folder_exists: dict[str, bool] = {}
         for record in column_buckets.get("TO_ARCHIVE", []):
-            subfolder = get_archive_subfolder(
-                conn, record.message_id, record
-            )
+            subfolder = get_archive_subfolder(conn, record.message_id, record)
             archive_subfolders[record.message_id] = subfolder
             if subfolder:
                 translated = subfolder.replace("/", delimiter)
@@ -387,9 +383,7 @@ def _build_board_content(
     }
 
 
-def _build_board_html(
-    db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
-) -> str:
+def _build_board_html(db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT) -> str:
     """Build the full ``/board`` HTML document.
 
     Calls :func:`_build_board_content` and wraps the result in the
@@ -643,18 +637,18 @@ def _render_column(
             if method == "mailto" or (
                 method == "header" and url.lower().startswith("mailto:")
             ):
-                link_html = (
-                    f'<a href="{html.escape(url)}">Unsubscribe</a>'
-                )
+                link_html = f'<a href="{html.escape(url)}">Unsubscribe</a>'
                 note = ""
             elif url.startswith("https://") or url.startswith("http://"):
                 note = (
                     ' <span class="unsubscribe-note">'
-                    f"({html.escape(
-                        'found in email body'
-                        if method == 'body_link'
-                        else 'from header'
-                    )})"
+                    f"({
+                        html.escape(
+                            'found in email body'
+                            if method == 'body_link'
+                            else 'from header'
+                        )
+                    })"
                     "</span>"
                 )
                 link_html = (
@@ -1053,9 +1047,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             else DEFAULT_ARCHIVE_ROOT
         )
         try:
-            payload = _build_board_content(
-                self.db_path, archive_root=archive_root
-            )
+            payload = _build_board_content(self.db_path, archive_root=archive_root)
         except Exception:
             self._serve_json({"error": "Database unavailable"}, status=503)
             return
@@ -1157,6 +1149,57 @@ class BoardHandler(BaseHTTPRequestHandler):
         else:
             self._redirect("/board", code=302)
 
+    def _imap_archive_move(
+        self,
+        mail_config: MailConfig,
+        imap_uid: int,
+        effective_root: str,
+        subfolder: str | None,
+    ) -> None:
+        """Move a message to the archive folder via IMAP.
+
+        Raises ValueError on security-policy violations (caller should
+        return 400).  Raises ImapError or OSError on IMAP/IO failures
+        (caller should return 502).
+        """
+        from robotsix_auto_mail.imap import ImapClient
+
+        with ImapClient(mail_config) as client:
+            client.select_folder(mail_config.imap_folder)
+
+            # Determine the IMAP hierarchy delimiter.
+            existing = client.list_folders()
+            delimiter = next(
+                (f.delimiter for f in existing if f.delimiter),
+                "/",
+            )
+
+            # Build the destination IMAP folder name.
+            if subfolder:
+                translated = subfolder.replace("/", delimiter)
+                dest_folder = f"{effective_root}{delimiter}{translated}"
+            else:
+                dest_folder = effective_root
+
+            # -- security gate ---------------------------------
+            # Reject any destination that escapes the archive
+            # root (must start with root+delimiter or equal the
+            # root itself) and forbid ".." path segments.
+            root_prefix = f"{effective_root}{delimiter}"
+            if dest_folder != effective_root and not dest_folder.startswith(
+                root_prefix
+            ):
+                raise ValueError("Archive destination escapes archive root")
+            if ".." in dest_folder.split(delimiter):
+                raise ValueError("Archive destination contains '..' path segment")
+
+            # -- ensure destination folder hierarchy exists ----
+            parts = dest_folder.split(delimiter)
+            for i in range(1, len(parts) + 1):
+                client.create_folder(delimiter.join(parts[:i]))
+
+            client.move_message(imap_uid, dest_folder)
+
     def _handle_archive(self) -> None:
         """Process POST /archive — move mail to archive folder via IMAP
         and remove it from the local database.
@@ -1208,58 +1251,18 @@ class BoardHandler(BaseHTTPRequestHandler):
             # -- IMAP move phase (only when IMAP is configured and the
             #    record has a tracked UID) --
             if self.mail_config is not None and record.imap_uid is not None:
-                from robotsix_auto_mail.imap import ImapClient, ImapError
+                from robotsix_auto_mail.imap import ImapError
 
                 try:
-                    with ImapClient(self.mail_config) as client:
-                        client.select_folder(
-                            self.mail_config.imap_folder
-                        )
-
-                        # Determine the IMAP hierarchy delimiter.
-                        existing = client.list_folders()
-                        delimiter = next(
-                            (f.delimiter for f in existing if f.delimiter),
-                            "/",
-                        )
-
-                        # Build the destination IMAP folder name.
-                        if subfolder:
-                            translated = subfolder.replace("/", delimiter)
-                            dest_folder = (
-                                f"{effective_root}{delimiter}{translated}"
-                            )
-                        else:
-                            dest_folder = effective_root
-
-                        # -- security gate ---------------------------------
-                        # Reject any destination that escapes the archive
-                        # root (must start with root+delimiter or equal the
-                        # root itself) and forbid ".." path segments.
-                        root_prefix = f"{effective_root}{delimiter}"
-                        if (
-                            dest_folder != effective_root
-                            and not dest_folder.startswith(root_prefix)
-                        ):
-                            self._bad_request(
-                                "Archive destination escapes archive root"
-                            )
-                            return
-                        if ".." in dest_folder.split(delimiter):
-                            self._bad_request(
-                                "Archive destination contains '..' "
-                                "path segment"
-                            )
-                            return
-
-                        # -- ensure destination folder hierarchy exists ----
-                        parts = dest_folder.split(delimiter)
-                        for i in range(1, len(parts) + 1):
-                            client.create_folder(delimiter.join(parts[:i]))
-
-                        client.move_message(
-                            record.imap_uid, dest_folder
-                        )
+                    self._imap_archive_move(
+                        self.mail_config,
+                        record.imap_uid,
+                        effective_root,
+                        subfolder,
+                    )
+                except ValueError as exc:
+                    self._bad_request(str(exc))
+                    return
                 except (ImapError, OSError) as exc:
                     self._send_response(
                         f"IMAP archive failed: {exc}",
@@ -1291,9 +1294,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         try:
             # Collect every TO_DELETE decision and its MailRecord.
             to_delete_decisions = [
-                d
-                for d in list_triage_decisions(conn)
-                if d.action == "TO_DELETE"
+                d for d in list_triage_decisions(conn) if d.action == "TO_DELETE"
             ]
             records: list[MailRecord] = []
             for decision in to_delete_decisions:
@@ -1448,7 +1449,7 @@ class BoardHandler(BaseHTTPRequestHandler):
 
         path = self.path
         prefix = "/archive-proposal/"
-        message_id = unquote(path[len(prefix):])
+        message_id = unquote(path[len(prefix) :])
 
         archive_root = (
             self.mail_config.archive_root
@@ -1495,9 +1496,7 @@ class BoardHandler(BaseHTTPRequestHandler):
                         existing_folders = set(data["folders"])
                         delimiter = data.get("delimiter", "/")
                         effective_root = (
-                            data["folders"][0]
-                            if data["folders"]
-                            else archive_root
+                            data["folders"][0] if data["folders"] else archive_root
                         )
                 except (json.JSONDecodeError, TypeError, KeyError):
                     pass
@@ -1510,13 +1509,15 @@ class BoardHandler(BaseHTTPRequestHandler):
         finally:
             conn.close()
 
-        self._serve_json({
-            "subfolder": subfolder,
-            "archive_root": archive_root,
-            "folder_exists": folder_exists,
-            "overridden": overridden,
-            "source": source,
-        })
+        self._serve_json(
+            {
+                "subfolder": subfolder,
+                "archive_root": archive_root,
+                "folder_exists": folder_exists,
+                "overridden": overridden,
+                "source": source,
+            }
+        )
 
     def _handle_archive_proposal(self) -> None:
         """Process POST /archive-proposal — store a user override and redirect."""
