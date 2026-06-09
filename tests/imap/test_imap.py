@@ -9,6 +9,7 @@ from dataclasses import FrozenInstanceError
 from unittest import mock
 
 import pytest
+from tests.conftest import _make_mock_imap, _make_mock_imap_ssl
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import (
@@ -19,35 +20,6 @@ from robotsix_auto_mail.imap import (
     ImapTlsError,
     MailboxInfo,
 )
-
-# ---------------------------------------------------------------------------
-# Fixtures / helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_mock_imap_ssl() -> mock.MagicMock:
-    """Factory for a mock ``IMAP4_SSL`` instance that behaves correctly."""
-    m = mock.MagicMock(spec=imaplib.IMAP4_SSL)
-    m.login.return_value = ("OK", [b"Logged in"])
-    m.list.return_value = ("OK", [])
-    m.select.return_value = ("OK", [b"5"])
-    m.logout.return_value = ("OK", [b"Logged out"])
-    # A mock socket so close_socket has something to close.
-    m.sock = mock.MagicMock()
-    return m
-
-
-def _make_mock_imap() -> mock.MagicMock:
-    """Factory for a mock ``IMAP4`` instance (plain, for STARTTLS / none)."""
-    m = mock.MagicMock(spec=imaplib.IMAP4)
-    m.login.return_value = ("OK", [b"Logged in"])
-    m.list.return_value = ("OK", [])
-    m.select.return_value = ("OK", [b"5"])
-    m.logout.return_value = ("OK", [b"Logged out"])
-    m.starttls.return_value = ("OK", [b"Begin TLS"])
-    m.sock = mock.MagicMock()
-    return m
-
 
 # ---------------------------------------------------------------------------
 # Exception hierarchy
