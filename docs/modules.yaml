@@ -224,4 +224,5 @@ modules:
       - .robotsix-mill/periodic/langfuse_cleanup.yaml
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/survey.yaml
+      - .robotsix-mill/periodic/cost_reconciliation.yaml
       - .robotsix-mill/periodic/test_gap.yaml
