@@ -15,7 +15,6 @@ import pytest
 from robotsix_llmio.core import Tier
 from tests.conftest import _make_record
 
-from robotsix_auto_mail import status
 from robotsix_auto_mail.db import (
     MailRecord,
     get_watermark,
@@ -477,7 +476,10 @@ def test_triage_action_to_status_mapping_coverage(
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     # Keys agree with the action vocabulary; values are valid columns.
     assert set(TRIAGE_ACTION_TO_STATUS) == set(VALID_TRIAGE_ACTIONS)
-    assert all(v in status.VALID_STATUSES for v in TRIAGE_ACTION_TO_STATUS.values())
+    assert all(
+        v in {"needs_reply", "waiting", "to_read", "no_action", "done"}
+        for v in TRIAGE_ACTION_TO_STATUS.values()
+    )
     expected = {
         "INBOX": "to_read",
         "HUMAN_TRIAGE": "to_read",
