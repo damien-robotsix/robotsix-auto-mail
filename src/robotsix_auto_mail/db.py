@@ -18,7 +18,15 @@ from pathlib import Path
 #: ``INBOX`` means "not triaged" (no ``triage_decisions`` row, or an
 #: explicit reset).
 VALID_TRIAGE_ACTIONS = frozenset(
-    {"INBOX", "HUMAN_TRIAGE", "PENDING_ACTION", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
+    {
+        "INBOX",
+        "HUMAN_TRIAGE",
+        "PENDING_ACTION",
+        "TO_ARCHIVE",
+        "TO_DELETE",
+        "TO_ANSWER",
+        "DRAFT_READY",
+    }
 )
 
 #: The default status assigned to new ``MailRecord`` instances and used as
@@ -68,6 +76,7 @@ class MailRecord:
     attachments_json: str = "[]"
     unsubscribe_header: str = ""
     notes: str = ""
+    draft_text: str = ""
 
     id: int = 0  # assigned by DB; ignored on insert
 
@@ -90,7 +99,8 @@ CREATE TABLE IF NOT EXISTS mail_records (
     attachments_json TEXT   NOT NULL,
     unsubscribe_header TEXT NOT NULL DEFAULT '',
     status          TEXT    NOT NULL DEFAULT '{DEFAULT_STATUS}',
-    notes           TEXT    NOT NULL DEFAULT ''
+    notes           TEXT    NOT NULL DEFAULT '',
+    draft_text      TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS watermark (
@@ -147,6 +157,7 @@ def init_db(
         _migrate_status_to_triage(conn)
         _migrate_add_unsubscribe_header(conn)
         _migrate_add_notes(conn)
+        _migrate_add_draft_text(conn)
     return conn
 
 
@@ -236,8 +247,22 @@ def _migrate_add_notes(conn: sqlite3.Connection) -> None:
     """
     try:
         conn.execute(
-            "ALTER TABLE mail_records "
-            "ADD COLUMN notes TEXT NOT NULL DEFAULT ''"
+            "ALTER TABLE mail_records ADD COLUMN notes TEXT NOT NULL DEFAULT ''"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
+
+def _migrate_add_draft_text(conn: sqlite3.Connection) -> None:
+    """Add ``draft_text`` column to ``mail_records`` for existing DBs.
+
+    Idempotent: if the column already exists the ``ALTER TABLE`` raises
+    ``sqlite3.OperationalError`` which is caught and ignored.
+    """
+    try:
+        conn.execute(
+            "ALTER TABLE mail_records ADD COLUMN draft_text TEXT NOT NULL DEFAULT ''"
         )
         conn.commit()
     except sqlite3.OperationalError:
@@ -258,11 +283,11 @@ def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
 INSERT INTO mail_records
     (imap_uid, message_id, sender, subject, date,
      recipients_json, body_plain, body_html, attachments_json,
-     unsubscribe_header, status, notes)
+     unsubscribe_header, status, notes, draft_text)
 VALUES
     (:imap_uid, :message_id, :sender, :subject, :date,
      :recipients_json, :body_plain, :body_html, :attachments_json,
-     :unsubscribe_header, :status, :notes)
+     :unsubscribe_header, :status, :notes, :draft_text)
 """,
             {
                 "imap_uid": record.imap_uid,
@@ -277,6 +302,7 @@ VALUES
                 "unsubscribe_header": record.unsubscribe_header,
                 "status": record.status,
                 "notes": record.notes,
+                "draft_text": record.draft_text,
             },
         )
     except sqlite3.IntegrityError:
@@ -327,6 +353,22 @@ def update_notes(conn: sqlite3.Connection, message_id: str, notes: str) -> bool:
     cur = conn.execute(
         "UPDATE mail_records SET notes = ? WHERE message_id = ?",
         (notes, message_id),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def update_draft_text(
+    conn: sqlite3.Connection, message_id: str, draft_text: str
+) -> bool:
+    """Update ``mail_records.draft_text`` for *message_id*.
+
+    Returns ``True`` if a row was updated, ``False`` if no matching
+    ``message_id`` exists.
+    """
+    cur = conn.execute(
+        "UPDATE mail_records SET draft_text = ? WHERE message_id = ?",
+        (draft_text, message_id),
     )
     conn.commit()
     return cur.rowcount > 0
@@ -384,6 +426,7 @@ def row_to_mailrecord(
         attachments_json=data["attachments_json"],
         unsubscribe_header=data["unsubscribe_header"],
         notes=data["notes"],
+        draft_text=data["draft_text"],
         id=data["id"],
     )
 

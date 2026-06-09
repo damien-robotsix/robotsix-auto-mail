@@ -56,6 +56,7 @@ TRIAGE_ACTION_ORDER: tuple[str, ...] = (
     "TO_ARCHIVE",
     "TO_DELETE",
     "TO_ANSWER",
+    "DRAFT_READY",
 )
 
 #: Human-readable column header labels, keyed by triage action.
@@ -66,6 +67,7 @@ TRIAGE_ACTION_LABELS: dict[str, str] = {
     "TO_ARCHIVE": "To archive",
     "TO_DELETE": "To delete",
     "TO_ANSWER": "To answer",
+    "DRAFT_READY": "Draft ready",
 }
 
 #: Maps each triage action to the kanban column its card moves to.
@@ -77,6 +79,7 @@ TRIAGE_ACTION_TO_STATUS: dict[str, str] = {
     "TO_ARCHIVE": "no_action",  # FYI, nothing to do
     "TO_DELETE": "no_action",  # user does NOT want real deletion — board column only
     "TO_ANSWER": "needs_reply",  # needs a human reply
+    "DRAFT_READY": "needs_reply",  # draft composed, ready for review/send
 }
 
 #: Actions the LLM triage agent may assign.  ``INBOX`` is intentionally
@@ -86,7 +89,10 @@ TRIAGE_ACTION_TO_STATUS: dict[str, str] = {
 #: in the Human-triage column instead of silently staying in Inbox.  Users
 #: may still move a card to Inbox manually; this constraint applies only to
 #: agent-generated decisions.
-_AGENT_SELECTABLE_ACTIONS: frozenset[str] = VALID_TRIAGE_ACTIONS - {"INBOX"}
+_AGENT_SELECTABLE_ACTIONS: frozenset[str] = VALID_TRIAGE_ACTIONS - {
+    "INBOX",
+    "DRAFT_READY",
+}
 
 #: Accepted decision sources.
 _VALID_TRIAGE_SOURCES = frozenset({"agent", "user"})
