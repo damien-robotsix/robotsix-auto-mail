@@ -216,6 +216,7 @@ modules:
       - .robotsix-mill/config.yaml
       - .robotsix-mill/periodic/audit.yaml
       - .robotsix-mill/periodic/bc_check.yaml
+      - .robotsix-mill/periodic/data_dir_audit.yaml
       - .robotsix-mill/periodic/completeness_check.yaml
       - .robotsix-mill/periodic/copy_paste.yaml
       - .robotsix-mill/periodic/health.yaml
