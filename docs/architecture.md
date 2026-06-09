@@ -28,7 +28,7 @@ The runtime modules group into logical layers.
 
 ### Protocol clients
 
-`_base_client.py` defines the shared `_ProtocolClient` abstract base, which
+`protocol/__init__.py` defines the shared `_ProtocolClient` abstract base, which
 holds the five common config fields (host, port, tls_mode, username,
 password) and the `_dispatch_tls()` dispatch loop.  Two concrete subclasses
 implement the protocol-specific steps:
