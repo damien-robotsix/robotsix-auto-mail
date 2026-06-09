@@ -1323,7 +1323,7 @@ def test_move_to_archive_llm_failure_still_redirects() -> None:
                 )
                 assert status == 302, f"Expected 302, got {status}: {body}"
 
-                # Card still landed in TO_ARCHIVE column
+                # Should be in To archive column — the only non-empty one.
                 resp = urlopen(f"http://127.0.0.1:{port}/board")
                 board_html = resp.read().decode("utf-8")
                 counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
