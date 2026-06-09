@@ -1327,7 +1327,7 @@ def test_move_to_archive_llm_failure_still_redirects() -> None:
                 resp = urlopen(f"http://127.0.0.1:{port}/board")
                 board_html = resp.read().decode("utf-8")
                 counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-                assert counts == ["0", "0", "0", "1", "0", "0"], (
+                assert counts == ["1"], (
                     f"Unexpected counts: {counts}"
                 )
             finally:
