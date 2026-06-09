@@ -526,9 +526,14 @@ def test_run_triage_agent_performs_no_imap_calls(
 
 
 def test_valid_triage_actions_vocabulary() -> None:
-    assert VALID_TRIAGE_ACTIONS == frozenset(
-        {"INBOX", "HUMAN_TRIAGE", "PENDING_ACTION", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
-    )
+    assert VALID_TRIAGE_ACTIONS == frozenset({
+        "INBOX",
+        "HUMAN_TRIAGE",
+        "PENDING_ACTION",
+        "TO_ARCHIVE",
+        "TO_DELETE",
+        "TO_ANSWER",
+    })
 
 
 def test_build_triage_system_prompt_mentions_canonical_actions() -> None:

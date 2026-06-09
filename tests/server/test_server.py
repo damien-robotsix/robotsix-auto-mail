@@ -1085,7 +1085,9 @@ def test_move_success_redirects_302() -> None:
             board_html = resp.read().decode("utf-8")
             # Should be in To archive column
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "0", "1", "0", "0"], f"Unexpected counts: {counts}"
+            assert counts == ["0", "0", "0", "1", "0", "0"], (
+                f"Unexpected counts: {counts}"
+            )
         finally:
             server.shutdown()
     finally:
