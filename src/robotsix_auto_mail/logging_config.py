@@ -13,6 +13,7 @@ the same renderer.
 
 from __future__ import annotations
 
+import datetime
 import logging
 import os
 import sys
@@ -67,7 +68,7 @@ def setup_logging() -> None:
     structlog.configure(
         processors=processors,
         logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.make_filtering_bound_logger(level),
+        wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
         cache_logger_on_first_use=False,
     )
 
@@ -75,3 +76,33 @@ def setup_logging() -> None:
     # pipeline; set the root logger level from LOG_LEVEL.
     logging.basicConfig(format="%(message)s", level=level, stream=sys.stdout)
     logging.getLogger().setLevel(level)
+
+    # -- file handler --------------------------------------------------------
+    # Always DEBUG; survives independently of LOG_LEVEL (which only governs
+    # stdout).  Date-stamped filenames give natural daily rollover without
+    # a rotation library.
+    log_file_dir = os.environ.get("LOG_FILE_DIR", ".mail_log").strip()
+    if log_file_dir:
+        root = logging.getLogger()
+        if not any(isinstance(h, logging.FileHandler) for h in root.handlers):
+            try:
+                os.makedirs(log_file_dir, exist_ok=True)
+            except OSError:
+                print(
+                    f"LOG_FILE_DIR is set to {log_file_dir!r} but the"
+                    f" directory could not be created; file logging"
+                    f" disabled.",
+                    file=sys.stderr,
+                )
+            else:
+                today = datetime.date.today().isoformat()  # YYYY-MM-DD
+                log_path = os.path.join(log_file_dir, f"mail-{today}.log")
+                file_handler = logging.FileHandler(log_path)
+                file_handler.setLevel(logging.DEBUG)
+                file_handler.setFormatter(logging.Formatter("%(message)s"))
+                root.addHandler(file_handler)
+                # Lower the root logger to DEBUG so the file handler
+                # receives all events.  The StreamHandler added by
+                # basicConfig retains its own level filter (LOG_LEVEL),
+                # so stdout stays at the configured verbosity.
+                root.setLevel(logging.DEBUG)

@@ -39,3 +39,7 @@ config/mail.local.yaml
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Runtime log directory — bind-mounted and persisted on the host.
+/.mail_log/*
+!/.mail_log/.gitkeep

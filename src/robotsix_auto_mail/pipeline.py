@@ -176,6 +176,12 @@ def ingest_mail(
     #    dry run, and any archive failure (LLM/network/IMAP) must not
     #    abort ingestion — setup_archive only persists its watermark on
     #    success, so a failed run naturally retries next time.
+    _logger.info(
+        "ingest_begin",
+        dry_run=dry_run,
+        archive_enabled=config.archive_enabled,
+        triage_on_ingest=config.triage_on_ingest,
+    )
     if not dry_run and config.archive_enabled:
         try:
             setup_archive(
@@ -185,12 +191,14 @@ def ingest_mail(
                 archive_namespace=config.archive_namespace,
                 api_key=config.llm_api_key,
             )
+            _logger.info("archive_setup_done")
         except Exception:
             _logger.exception("archive_setup_failed")
 
     # 1. Fetch raw messages (read-only on DB).
     messages = fetch_new_messages(db_conn, imap_client, config)
     total_fetched = len(messages)
+    _logger.debug("fetch_done", count=total_fetched)
 
     if total_fetched == 0:
         return IngestResult(
@@ -219,16 +227,35 @@ def ingest_mail(
                     error=str(exc) if str(exc) else repr(exc),
                 )
             )
+            _logger.debug(
+                "message_processing",
+                uid=uid,
+                message_id="",
+                action="error",
+                error=str(exc) if str(exc) else repr(exc),
+            )
             continue
 
         # -- Deduplication check ---------------------------------------------
         if record_exists(db_conn, record.message_id):
             skipped += 1
+            _logger.debug(
+                "message_processing",
+                uid=uid,
+                message_id=record.message_id,
+                action="skipped",
+            )
             continue
 
         # -- Store (skip in dry-run) -----------------------------------------
         if dry_run:
             stored += 1
+            _logger.debug(
+                "message_processing",
+                uid=uid,
+                message_id=record.message_id,
+                action="stored",
+            )
             continue
 
         try:
@@ -241,15 +268,34 @@ def ingest_mail(
                     error=str(exc) if str(exc) else repr(exc),
                 )
             )
+            _logger.debug(
+                "message_processing",
+                uid=uid,
+                message_id=record.message_id,
+                action="error",
+                error=str(exc) if str(exc) else repr(exc),
+            )
             continue
 
         if rowid is not None:
             stored += 1
+            _logger.debug(
+                "message_processing",
+                uid=uid,
+                message_id=record.message_id,
+                action="stored",
+            )
         else:
             # Belts-and-suspenders: record_exists said False but insert
             # still returned None (race / concurrent writer).  Count as
             # skipped.
             skipped += 1
+            _logger.debug(
+                "message_processing",
+                uid=uid,
+                message_id=record.message_id,
+                action="skipped",
+            )
 
     # 3. Advance watermark to the highest UID seen (skip in dry-run).
     if max_uid > 0 and not dry_run:
@@ -270,8 +316,18 @@ def ingest_mail(
                 only_undecided=True,
             )
             triaged = len(decisions)
+            _logger.info("triage_done", decisions=triaged)
         except Exception:
             _logger.exception("triage_failed")
+
+    _logger.info(
+        "batch_summary",
+        total_fetched=total_fetched,
+        stored=stored,
+        skipped=skipped,
+        error_count=len(errors),
+        triaged=triaged,
+    )
 
     return IngestResult(
         total_fetched=total_fetched,

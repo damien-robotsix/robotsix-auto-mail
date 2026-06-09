@@ -44,6 +44,8 @@ services:
       # host (git-ignored), mounted at the default store location
       # (.data, under WORKDIR) inside the container.
       - ./.mail_data:/home/mailbot/.data
+      # Log bind-mount — persistent debug logs survive container restarts.
+      - ./.mail_log:/home/mailbot/.mail_log
 
   # -----------------------------------------------------------------------
   # board — long-running kanban-board daemon
@@ -64,3 +66,4 @@ services:
     volumes:
       - ./config:/home/mailbot/config
       - ./.mail_data:/home/mailbot/.data
+      - ./.mail_log:/home/mailbot/.mail_log

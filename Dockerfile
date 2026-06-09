@@ -39,8 +39,8 @@ COPY --from=builder /usr/local/bin/robotsix-auto-mail /usr/local/bin/robotsix-au
 
 RUN groupadd --gid 1000 mailbot && \
     useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash mailbot && \
-    mkdir -p /home/mailbot/.data /home/mailbot/config && \
-    chown mailbot:mailbot /home/mailbot/.data /home/mailbot/config
+    mkdir -p /home/mailbot/.data /home/mailbot/config /home/mailbot/.mail_log && \
+    chown mailbot:mailbot /home/mailbot/.data /home/mailbot/config /home/mailbot/.mail_log
 
 COPY --chown=mailbot:mailbot entrypoint.sh /usr/local/bin/entrypoint.sh
 
