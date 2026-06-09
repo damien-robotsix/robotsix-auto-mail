@@ -1161,7 +1161,7 @@ class BoardHandler(BaseHTTPRequestHandler):
                         propose_archive_subfolder_llm(
                             conn, record, self.mail_config.llm_api_key
                         )
-                except Exception:  # noqa: S110
+                except Exception:  # noqa: S110  # nosec B110
                     pass  # Non-fatal: board falls back to deterministic proposal
         finally:
             conn.close()
