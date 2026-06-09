@@ -3393,6 +3393,80 @@ def test_render_column_no_batch_delete_when_empty() -> None:
 
 
 # ---------------------------------------------------------------------------
+# _render_column — force-triage button in column header (AC 11-17)
+# ---------------------------------------------------------------------------
+
+
+def test_render_column_includes_force_triage_when_human_triage_non_empty() -> None:
+    """_render_column includes force-triage form when action=HUMAN_TRIAGE
+    and records is non-empty."""
+    record = _make_record_minimal("ft1")
+    html = _render_column("HUMAN_TRIAGE", [record], {})
+    assert '<form class="force-triage-form"' in html
+    assert 'action="/force-triage-column"' in html
+    assert "Force Triage" in html
+    assert 'value="HUMAN_TRIAGE"' in html
+
+
+def test_render_column_includes_both_forms_when_to_delete_non_empty() -> None:
+    """_render_column for TO_DELETE with records includes both batch-delete
+    and force-triage forms."""
+    record = _make_record_minimal("ft2")
+    html = _render_column("TO_DELETE", [record], {})
+    assert '<form class="delete-form"' in html
+    assert '<form class="force-triage-form"' in html
+    assert "Delete All" in html
+    assert "Force Triage" in html
+
+
+def test_render_column_no_force_triage_when_inbox() -> None:
+    """_render_column for INBOX does NOT include force-triage form."""
+    record = _make_record_minimal("ft3")
+    html = _render_column("INBOX", [record], {})
+    assert "force-triage-form" not in html
+    assert "Force Triage" not in html
+
+
+def test_render_column_no_force_triage_when_empty() -> None:
+    """_render_column does NOT include force-triage form when column has
+    zero records."""
+    html = _render_column("HUMAN_TRIAGE", [], {})
+    assert "force-triage-form" not in html
+    assert "Force Triage" not in html
+
+
+def test_render_column_force_triage_on_all_non_inbox_columns() -> None:
+    """Every non-INBOX column with records gets the force-triage button."""
+    record = _make_record_minimal("ft4")
+    for action in (
+        "HUMAN_TRIAGE",
+        "PENDING_ACTION",
+        "TO_ARCHIVE",
+        "TO_DELETE",
+        "TO_ANSWER",
+    ):
+        html = _render_column(action, [record], {})
+        assert '<form class="force-triage-form"' in html, f"missing for {action}"
+        assert "Force Triage" in html, f"missing for {action}"
+
+
+def test_render_column_force_triage_confirm_shows_title_and_count() -> None:
+    """The confirmation dialog includes the human-readable title and
+    record count."""
+    record = _make_record_minimal("ft5")
+    html = _render_column("HUMAN_TRIAGE", [record, record], {})
+    assert "Re-triage all 2 items in Human triage?" in html
+
+
+def test_render_column_force_triage_hidden_input_is_raw_action() -> None:
+    """The hidden input value is the raw triage action string, not the
+    display label."""
+    record = _make_record_minimal("ft6")
+    html = _render_column("HUMAN_TRIAGE", [record], {})
+    assert '<input type="hidden" name="action" value="HUMAN_TRIAGE">' in html
+
+
+# ---------------------------------------------------------------------------
 # POST /batch-delete handler integration tests
 # ---------------------------------------------------------------------------
 

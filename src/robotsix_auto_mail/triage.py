@@ -479,6 +479,29 @@ def list_triage_decisions(
     ]
 
 
+def delete_triage_decisions_by_action(conn: sqlite3.Connection, action: str) -> int:
+    """Delete all triage decision rows for *action*.
+
+    :param conn: SQLite connection (must be writable).
+    :param action: A member of ``VALID_TRIAGE_ACTIONS`` (case-sensitive).
+        Must not be ``"INBOX"`` — inbox records have no triage decision
+        row by definition.
+    :returns: Number of rows deleted.
+    :raises TriageError: If *action* is not a valid triage action.
+    :raises TriageError: If *action* is ``"INBOX"``.
+    """
+    if action not in VALID_TRIAGE_ACTIONS:
+        raise TriageError(f"Invalid triage action: {action!r}")
+    if action == "INBOX":
+        raise TriageError(
+            "Cannot delete triage decisions for action='INBOX': "
+            "INBOX records have no triage decision rows."
+        )
+    cur = conn.execute("DELETE FROM triage_decisions WHERE action = ?", (action,))
+    conn.commit()
+    return cur.rowcount
+
+
 # ---------------------------------------------------------------------------
 # Archive subfolder proposal — deterministic + override storage
 # ---------------------------------------------------------------------------
