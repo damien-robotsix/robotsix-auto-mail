@@ -369,29 +369,17 @@ def test_build_board_html_structure() -> None:
         assert ">Run triage<" in control
         assert 'class="board"' in html
 
-        # Exactly 6 columns
-        assert html.count('class="column"') == 6
+        # Only non-empty columns rendered: INBOX (m1) + TO_ARCHIVE (m2)
+        assert html.count('class="column"') == 2
 
-        # Order: Inbox, Human triage, Pending action, To archive, To delete, To answer
+        # Order: Inbox, To archive (only non-empty columns)
         inbox_pos = html.find("<h2>Inbox</h2>")
-        human_triage_pos = html.find("<h2>Human triage</h2>")
-        pending_action_pos = html.find("<h2>Pending action</h2>")
         to_archive_pos = html.find("<h2>To archive</h2>")
-        to_delete_pos = html.find("<h2>To delete</h2>")
-        to_answer_pos = html.find("<h2>To answer</h2>")
-        assert (
-            0
-            <= inbox_pos
-            < human_triage_pos
-            < pending_action_pos
-            < to_archive_pos
-            < to_delete_pos
-            < to_answer_pos
-        )
+        assert 0 <= inbox_pos < to_archive_pos
 
         # m1 is untriaged → INBOX.  m2 has TO_ARCHIVE → TO_ARCHIVE.
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["1", "0", "0", "1", "0", "0"]
+        assert counts == ["1", "1"]
 
         # Cards
         assert "a@b.com" in html
@@ -405,15 +393,14 @@ def test_build_board_html_empty_db() -> None:
     os.close(fd)
     try:
         html = _build_board_html(db_path)
-        assert 'class="column"' in html
+        assert 'class="empty-board"' in html
+        assert 'No mail yet.' in html
+        assert 'class="column"' not in html
         # Default triage_running=False → no banner, normal button.  Scope to
         # the rendered control: the refresh JS embeds both state variants.
         control = html.split('id="triage-control">', 1)[1].split("</span>", 1)[0]
         assert 'class="triage-banner"' not in control
         assert ">Run triage<" in control
-        # All counts should be 0
-        counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["0", "0", "0", "0", "0", "0"]
     finally:
         os.unlink(db_path)
 
@@ -641,7 +628,7 @@ def test_board_content_endpoint_returns_json() -> None:
 
 
 def test_board_content_endpoint_empty_db_returns_json() -> None:
-    """GET /board-content with empty DB returns all-zero counts."""
+    """GET /board-content with empty DB returns empty-board placeholder."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
@@ -654,8 +641,9 @@ def test_board_content_endpoint_empty_db_returns_json() -> None:
 
             payload = _json.loads(body)
             columns_html = payload["columns_html"]
-            counts = re.findall(r'<span class="count">(\d+)</span>', columns_html)
-            assert counts == ["0", "0", "0", "0", "0", "0"]
+            assert 'class="empty-board"' in columns_html
+            assert 'No mail yet.' in columns_html
+            assert 'class="column"' not in columns_html
         finally:
             server.shutdown()
     finally:
@@ -770,9 +758,9 @@ def test_handler_board_with_data() -> None:
             assert "archive2@test.com" in body
 
             # All records are untriaged (no triage_decisions rows) →
-            # they all land in the INBOX column.
+            # they all land in the INBOX column — the only non-empty column.
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["4", "0", "0", "0", "0", "0"]
+            assert counts == ["4"]
         finally:
             server.shutdown()
     finally:
@@ -1083,9 +1071,9 @@ def test_move_success_redirects_302() -> None:
             # Verify the card actually moved by checking /board.
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             board_html = resp.read().decode("utf-8")
-            # Should be in To archive column
+            # Should be in To archive column — the only non-empty one.
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "0", "1", "0", "0"], (
+            assert counts == ["1"], (
                 f"Unexpected counts: {counts}"
             )
         finally:
@@ -1122,7 +1110,7 @@ def test_move_to_triaging() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             body = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["0", "0", "0", "0", "0", "1"]
+            assert counts == ["1"]
         finally:
             server.shutdown()
     finally:
@@ -1157,7 +1145,7 @@ def test_move_to_archive() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             body = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["0", "0", "0", "1", "0", "0"]
+            assert counts == ["1"]
         finally:
             server.shutdown()
     finally:
@@ -2140,7 +2128,7 @@ def test_move_with_empty_redirect_to_falls_back_to_board() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             board_html = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "0", "1", "0", "0"]
+            assert counts == ["1"]
         finally:
             server.shutdown()
     finally:
@@ -2519,10 +2507,9 @@ def test_build_board_html_places_card_by_triage_decision() -> None:
         _seed_triage_decision(db_path, "m1", action="TO_ARCHIVE", reason="bulk mail")
 
         html = _build_board_html(db_path)
-        # The card should be in the TO_ARCHIVE column.
-        # Verify by checking the board counts.
+        # The card should be in the TO_ARCHIVE column — the only non-empty one.
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["0", "0", "0", "1", "0", "0"]
+        assert counts == ["1"]
     finally:
         os.unlink(db_path)
 

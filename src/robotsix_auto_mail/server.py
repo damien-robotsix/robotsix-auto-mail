@@ -323,7 +323,9 @@ def _build_board_content(
             column_buckets[column].append(record)
 
         columns: list[tuple[str, list[MailRecord]]] = [
-            (action, column_buckets[action]) for action in _BOARD_COLUMNS
+            (action, column_buckets[action])
+            for action in _BOARD_COLUMNS
+            if column_buckets[action]
         ]
         # List (read-only) the pending deterministic-rule proposals so the
         # board can surface them for human validation.
@@ -393,8 +395,13 @@ def _build_board_content(
         for action, records in columns
     ]
 
+    if not columns_html_parts:
+        columns_html = '<div class="empty-board">No mail yet.</div>'
+    else:
+        columns_html = "".join(columns_html_parts)
+
     return {
-        "columns_html": "".join(columns_html_parts),
+        "columns_html": columns_html,
         "proposals_html": _render_rule_proposals(proposals),
         "triage_running": triage_running,
         "unsubscribe_suggestions": unsubscribe_suggestions,
