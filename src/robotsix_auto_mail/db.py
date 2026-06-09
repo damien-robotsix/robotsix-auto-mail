@@ -14,7 +14,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-#: Canonical triage state vocabulary — the five kanban columns.
+#: Canonical triage state vocabulary — the six kanban columns.
 #: ``INBOX`` means "not triaged" (no ``triage_decisions`` row, or an
 #: explicit reset).
 VALID_TRIAGE_ACTIONS = frozenset(
