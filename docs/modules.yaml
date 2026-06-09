@@ -94,7 +94,7 @@ modules:
       MX-record provider detection and auto-configuration lookup
       (Mozilla ISPDB, autoconfig XML, LLM fallback).
     paths:
-      - src/robotsix_auto_mail/detect.py
+      - src/robotsix_auto_mail/detect/__init__.py
       - tests/detect/test_detect.py
 
   - id: archive
