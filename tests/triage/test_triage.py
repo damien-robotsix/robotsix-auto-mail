@@ -526,27 +526,35 @@ def test_run_triage_agent_performs_no_imap_calls(
 
 
 def test_valid_triage_actions_vocabulary() -> None:
-    assert VALID_TRIAGE_ACTIONS == frozenset(
-        {"INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
-    )
+    assert VALID_TRIAGE_ACTIONS == frozenset({
+        "INBOX",
+        "HUMAN_TRIAGE",
+        "PENDING_ACTION",
+        "TO_ARCHIVE",
+        "TO_DELETE",
+        "TO_ANSWER",
+    })
 
 
-def test_build_triage_system_prompt_mentions_agent_actions() -> None:
-    """The LLM system prompt describes the four agent-selectable actions and
-    must NOT offer ``INBOX`` (reserved for not-yet-triaged mail)."""
+def test_build_triage_system_prompt_mentions_canonical_actions() -> None:
+    """The LLM system prompt describes the four agent-selectable actions.
+    ``INBOX`` (reserved for not-yet-triaged mail) and ``PENDING_ACTION``
+    (human-only) are intentionally omitted from the prompt."""
     prompt = _build_triage_system_prompt()
     for action in ("HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"):
         assert f"`{action}`" in prompt
     assert "`INBOX`" not in prompt
+    assert "`PENDING_ACTION`" not in prompt
     assert "`waiting`" not in prompt
     assert "`ignore`" not in prompt
 
 
 def test_triage_action_order_is_canonical_columns() -> None:
-    """TRIAGE_ACTION_ORDER is exactly the five canonical columns in display order."""
+    """TRIAGE_ACTION_ORDER is exactly the six canonical columns in display order."""
     assert TRIAGE_ACTION_ORDER == (
         "INBOX",
         "HUMAN_TRIAGE",
+        "PENDING_ACTION",
         "TO_ARCHIVE",
         "TO_DELETE",
         "TO_ANSWER",
@@ -554,9 +562,9 @@ def test_triage_action_order_is_canonical_columns() -> None:
 
 
 def test_triage_action_labels_cover_every_action() -> None:
-    """TRIAGE_ACTION_LABELS has exactly the 5 canonical keys, each value non-empty."""
+    """TRIAGE_ACTION_LABELS has exactly the 6 canonical keys, each value non-empty."""
     assert set(TRIAGE_ACTION_LABELS.keys()) == set(VALID_TRIAGE_ACTIONS)
-    assert len(TRIAGE_ACTION_LABELS) == 5
+    assert len(TRIAGE_ACTION_LABELS) == 6
     for _action, label in TRIAGE_ACTION_LABELS.items():
         assert isinstance(label, str) and len(label) > 0
     assert tuple(TRIAGE_ACTION_LABELS) == TRIAGE_ACTION_ORDER

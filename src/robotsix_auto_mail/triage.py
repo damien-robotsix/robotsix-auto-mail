@@ -52,6 +52,7 @@ from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT
 TRIAGE_ACTION_ORDER: tuple[str, ...] = (
     "INBOX",
     "HUMAN_TRIAGE",
+    "PENDING_ACTION",
     "TO_ARCHIVE",
     "TO_DELETE",
     "TO_ANSWER",
@@ -61,6 +62,7 @@ TRIAGE_ACTION_ORDER: tuple[str, ...] = (
 TRIAGE_ACTION_LABELS: dict[str, str] = {
     "INBOX": "Inbox",
     "HUMAN_TRIAGE": "Human triage",
+    "PENDING_ACTION": "Pending action",
     "TO_ARCHIVE": "To archive",
     "TO_DELETE": "To delete",
     "TO_ANSWER": "To answer",
@@ -71,6 +73,7 @@ TRIAGE_ACTION_LABELS: dict[str, str] = {
 TRIAGE_ACTION_TO_STATUS: dict[str, str] = {
     "INBOX": "to_read",  # not triaged / returned to inbox
     "HUMAN_TRIAGE": "to_read",  # system unsure → human reads/decides
+    "PENDING_ACTION": "waiting",  # awaiting external event / feedback
     "TO_ARCHIVE": "no_action",  # FYI, nothing to do
     "TO_DELETE": "no_action",  # user does NOT want real deletion — board column only
     "TO_ANSWER": "needs_reply",  # needs a human reply

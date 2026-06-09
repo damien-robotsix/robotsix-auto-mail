@@ -369,12 +369,13 @@ def test_build_board_html_structure() -> None:
         assert ">Run triage<" in control
         assert 'class="board"' in html
 
-        # Exactly 5 columns
-        assert html.count('class="column"') == 5
+        # Exactly 6 columns
+        assert html.count('class="column"') == 6
 
-        # Order: Inbox, Human triage, To archive, To delete, To answer
+        # Order: Inbox, Human triage, Pending action, To archive, To delete, To answer
         inbox_pos = html.find("<h2>Inbox</h2>")
         human_triage_pos = html.find("<h2>Human triage</h2>")
+        pending_action_pos = html.find("<h2>Pending action</h2>")
         to_archive_pos = html.find("<h2>To archive</h2>")
         to_delete_pos = html.find("<h2>To delete</h2>")
         to_answer_pos = html.find("<h2>To answer</h2>")
@@ -382,6 +383,7 @@ def test_build_board_html_structure() -> None:
             0
             <= inbox_pos
             < human_triage_pos
+            < pending_action_pos
             < to_archive_pos
             < to_delete_pos
             < to_answer_pos
@@ -389,7 +391,7 @@ def test_build_board_html_structure() -> None:
 
         # m1 is untriaged → INBOX.  m2 has TO_ARCHIVE → TO_ARCHIVE.
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["1", "0", "1", "0", "0"]
+        assert counts == ["1", "0", "0", "1", "0", "0"]
 
         # Cards
         assert "a@b.com" in html
@@ -411,7 +413,7 @@ def test_build_board_html_empty_db() -> None:
         assert ">Run triage<" in control
         # All counts should be 0
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["0", "0", "0", "0", "0"]
+        assert counts == ["0", "0", "0", "0", "0", "0"]
     finally:
         os.unlink(db_path)
 
@@ -653,7 +655,7 @@ def test_board_content_endpoint_empty_db_returns_json() -> None:
             payload = _json.loads(body)
             columns_html = payload["columns_html"]
             counts = re.findall(r'<span class="count">(\d+)</span>', columns_html)
-            assert counts == ["0", "0", "0", "0", "0"]
+            assert counts == ["0", "0", "0", "0", "0", "0"]
         finally:
             server.shutdown()
     finally:
@@ -770,7 +772,7 @@ def test_handler_board_with_data() -> None:
             # All records are untriaged (no triage_decisions rows) →
             # they all land in the INBOX column.
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["4", "0", "0", "0", "0"]
+            assert counts == ["4", "0", "0", "0", "0", "0"]
         finally:
             server.shutdown()
     finally:
@@ -1083,7 +1085,9 @@ def test_move_success_redirects_302() -> None:
             board_html = resp.read().decode("utf-8")
             # Should be in To archive column
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "1", "0", "0"], f"Unexpected counts: {counts}"
+            assert counts == ["0", "0", "0", "1", "0", "0"], (
+                f"Unexpected counts: {counts}"
+            )
         finally:
             server.shutdown()
     finally:
@@ -1118,7 +1122,7 @@ def test_move_to_triaging() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             body = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["0", "0", "0", "0", "1"]
+            assert counts == ["0", "0", "0", "0", "0", "1"]
         finally:
             server.shutdown()
     finally:
@@ -1153,7 +1157,7 @@ def test_move_to_archive() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             body = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', body)
-            assert counts == ["0", "0", "1", "0", "0"]
+            assert counts == ["0", "0", "0", "1", "0", "0"]
         finally:
             server.shutdown()
     finally:
@@ -2136,7 +2140,7 @@ def test_move_with_empty_redirect_to_falls_back_to_board() -> None:
             resp = urlopen(f"http://127.0.0.1:{port}/board")
             board_html = resp.read().decode("utf-8")
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["0", "0", "1", "0", "0"]
+            assert counts == ["0", "0", "0", "1", "0", "0"]
         finally:
             server.shutdown()
     finally:
@@ -2518,7 +2522,7 @@ def test_build_board_html_places_card_by_triage_decision() -> None:
         # The card should be in the TO_ARCHIVE column.
         # Verify by checking the board counts.
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
-        assert counts == ["0", "0", "1", "0", "0"]
+        assert counts == ["0", "0", "0", "1", "0", "0"]
     finally:
         os.unlink(db_path)
 
@@ -4923,5 +4927,283 @@ def test_build_board_content_loads_unsubscribe_suggestions(
         # The suggestions are loaded and passed to the TO_DELETE column,
         # but since no records are in the database, no banner renders.
         assert isinstance(columns_html, str)
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# POST /save-notes tests
+# ---------------------------------------------------------------------------
+
+
+def test_save_notes_persists_and_redirects() -> None:
+    """POST /save-notes with message_id and notes persists and returns 302."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "notes-test-1",
+                    "sender": "x@x.com",
+                    "subject": "Notes test",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/save-notes",
+                {
+                    "message_id": "notes-test-1",
+                    "notes": "Waiting for Alice's feedback",
+                },
+            )
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+        finally:
+            server.shutdown()
+
+        # Verify notes persisted in DB.
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+
+        conn = init_db(db_path)
+        try:
+            record = get_record_by_message_id(conn, "notes-test-1")
+            assert record is not None
+            assert record.notes == "Waiting for Alice's feedback"
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_save_notes_nonexistent_message_id_returns_404() -> None:
+    """POST /save-notes with nonexistent message_id returns 404."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(
+            port,
+            "/save-notes",
+            {"message_id": "does-not-exist", "notes": "whatever"},
+        )
+        assert resp.status == 404
+    finally:
+        server.shutdown()
+
+
+def test_save_notes_empty_message_id_returns_400() -> None:
+    """POST /save-notes with empty message_id returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(port, "/save-notes", {"message_id": "  ", "notes": "x"})
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
+def test_save_notes_missing_message_id_returns_400() -> None:
+    """POST /save-notes without message_id returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(port, "/save-notes", {"notes": "x"})
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
+def test_save_notes_with_redirect_to() -> None:
+    """POST /save-notes with safe redirect_to uses it."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "notes-redirect",
+                    "sender": "x@x.com",
+                    "subject": "Notes redirect",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/save-notes",
+                {
+                    "message_id": "notes-redirect",
+                    "notes": "updated",
+                    "redirect_to": "/email/notes-redirect?embed=1",
+                },
+            )
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/email/notes-redirect?embed=1"
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# _render_card notes indicator tests
+# ---------------------------------------------------------------------------
+
+
+def test_render_card_includes_notes_indicator_when_notes_present() -> None:
+    """_render_card includes .card-notes-indicator when record.notes is non-empty."""
+    record = _make_record(
+        message_id="abc",
+        sender="alice@example.com",
+        subject="Hello",
+        date="2025-01-10T12:00:00",
+        body_plain="This is the body.",
+        notes="Waiting for feedback from Bob",
+    )
+    html = _render_card(record)
+    assert 'class="card-notes-indicator"' in html
+    assert "📝" in html
+    assert "Waiting for feedback from Bob" in html
+
+
+def test_render_card_no_notes_indicator_when_notes_empty() -> None:
+    """_render_card does NOT include .card-notes-indicator when notes is empty."""
+    record = _make_record(
+        message_id="abc",
+        sender="alice@example.com",
+        subject="Hello",
+        date="2025-01-10T12:00:00",
+        body_plain="This is the body.",
+        notes="",
+    )
+    html = _render_card(record)
+    assert "card-notes-indicator" not in html
+
+
+def test_render_card_notes_indicator_truncates_long_notes() -> None:
+    """Notes indicator truncates to ~40 chars in the visible preview."""
+    long_note = "A" * 80
+    record = _make_record(
+        message_id="abc",
+        sender="x",
+        subject="s",
+        date="2025-01-01T00:00:00",
+        body_plain="body",
+        notes=long_note,
+    )
+    html = _render_card(record)
+    # Should contain truncated version with ellipsis
+    assert "A" * 40 + "…" in html
+    # Full note present in title attribute
+    assert f'title="{long_note}"' in html
+
+
+# ---------------------------------------------------------------------------
+# _build_detail_html notes section tests
+# ---------------------------------------------------------------------------
+
+
+def test_build_detail_html_includes_notes_section() -> None:
+    """Detail HTML includes Notes textarea and Save button after Body section."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<notes-detail@test.com>",
+                    "sender": "x@x.com",
+                    "subject": "Notes Detail",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        html = _build_detail_html(db_path, "<notes-detail@test.com>")
+        assert html is not None
+        # Notes label
+        assert ">Notes</div>" in html
+        # Textarea with class detail-notes
+        assert 'class="detail-notes"' in html
+        assert 'name="notes"' in html
+        # Save form
+        assert '<form class="detail-form" method="post" action="/save-notes">' in html
+        assert '<button type="submit">Save</button>' in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_notes_prefilled() -> None:
+    """Notes textarea is pre-filled with existing record.notes."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "INSERT INTO mail_records "
+                "(message_id, sender, subject, date, recipients_json, "
+                "body_plain, body_html, attachments_json, status, notes) "
+                "VALUES (?, ?, ?, ?, '{}', ?, '', '[]', ?, ?)",
+                (
+                    "<prefill-notes@test.com>",
+                    "x@x.com",
+                    "Prefill Notes",
+                    "2025-01-01T00:00:00",
+                    "body",
+                    "to_read",
+                    "Existing note text",
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        html = _build_detail_html(db_path, "<prefill-notes@test.com>")
+        assert html is not None
+        assert "Existing note text" in html
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_detail_html_notes_section_embed_has_redirect_to() -> None:
+    """embed=True includes redirect_to in the save-notes form."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "<notes-embed@test.com>",
+                    "sender": "x@x.com",
+                    "subject": "Notes Embed",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        html = _build_detail_html(db_path, "<notes-embed@test.com>", embed=True)
+        assert html is not None
+        # The save-notes form should have redirect_to hidden input
+        assert 'name="redirect_to"' in html
+        assert "?embed=1" in html
+        assert 'action="/save-notes"' in html
     finally:
         os.unlink(db_path)

@@ -92,6 +92,79 @@ def test_mailrecord_status_explicit() -> None:
     assert record.status == "needs_reply"
 
 
+def test_mailrecord_notes_default() -> None:
+    """notes defaults to '' when not provided."""
+    record = MailRecord(
+        message_id="<notes-default@example.com>",
+        sender="x@x.com",
+        subject="S",
+        date="2025-01-01",
+    )
+    assert record.notes == ""
+
+
+def test_mailrecord_notes_explicit() -> None:
+    """notes can be set explicitly."""
+    record = MailRecord(
+        message_id="<notes-explicit@example.com>",
+        sender="x@x.com",
+        subject="S",
+        date="2025-01-01",
+        notes="Follow up with Alice",
+    )
+    assert record.notes == "Follow up with Alice"
+
+
+def test_insert_record_round_trips_notes() -> None:
+    """insert_record + get_record_by_message_id round-trips the notes field."""
+    conn = init_db(":memory:")
+    try:
+        record = MailRecord(
+            message_id="<notes-rt@example.com>",
+            sender="x@x.com",
+            subject="S",
+            date="2025-01-01",
+            notes="Wait for reply",
+        )
+        insert_record(conn, record)
+        result = get_record_by_message_id(conn, "<notes-rt@example.com>")
+        assert result is not None
+        assert result.notes == "Wait for reply"
+    finally:
+        conn.close()
+
+
+def test_update_notes_sets_and_persists() -> None:
+    """update_notes sets notes on an existing record, verifiable via get_record."""
+    from robotsix_auto_mail.db import update_notes
+
+    conn = init_db(":memory:")
+    try:
+        record = _make_record(message_id="<update-me@x.com>")
+        insert_record(conn, record)
+
+        result = update_notes(conn, "<update-me@x.com>", "new note text")
+        assert result is True
+
+        record2 = get_record_by_message_id(conn, "<update-me@x.com>")
+        assert record2 is not None
+        assert record2.notes == "new note text"
+    finally:
+        conn.close()
+
+
+def test_update_notes_nonexistent_returns_false() -> None:
+    """update_notes returns False for a nonexistent message_id."""
+    from robotsix_auto_mail.db import update_notes
+
+    conn = init_db(":memory:")
+    try:
+        result = update_notes(conn, "<nonexistent@x.com>", "whatever")
+        assert result is False
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # init_db
 # ---------------------------------------------------------------------------
@@ -125,6 +198,7 @@ def test_init_db_creates_mail_records_table() -> None:
             "attachments_json": "TEXT",
             "unsubscribe_header": "TEXT",
             "status": "TEXT",
+            "notes": "TEXT",
         }
         for name, type_ in expected.items():
             assert name in cols, f"Column {name} missing"
@@ -484,6 +558,7 @@ def test_list_records_returns_all_fields() -> None:
             body_plain="Plain text body.",
             body_html="<p>HTML body.</p>",
             attachments_json=attachments_json_val,
+            notes="test notes",
         )
         insert_record(conn, record)
         results = list_records(conn)
@@ -502,6 +577,7 @@ def test_list_records_returns_all_fields() -> None:
             '{"filename": "f2.txt", "size": 512}]'
         )
         assert r.status == "to_read"
+        assert r.notes == "test notes"
         assert r.id is not None and r.id > 0
     finally:
         conn.close()
