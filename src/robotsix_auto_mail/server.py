@@ -190,7 +190,7 @@ def _build_board_content(
         unsubscribe_suggestions=unsubscribe_suggestions,
         record_notes=record_notes,
     )
-    assert isinstance(adapter, robotsix_board.BoardAdapter)  # noqa: S101
+    assert isinstance(adapter, robotsix_board.BoardAdapter)  # noqa: S101 # nosec B101 - intentional Protocol-compliance check
 
     # Build column HTML fragments using library CSS class names.
     columns_html_parts: list[str] = []

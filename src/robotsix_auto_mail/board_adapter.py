@@ -103,7 +103,7 @@ def _verify_protocol() -> None:
         unsubscribe_suggestions={},
         record_notes={},
     )
-    assert isinstance(adapter, BoardAdapter), (  # noqa: S101
+    assert isinstance(adapter, BoardAdapter), (  # noqa: S101 # nosec B101 - intentional Protocol-compliance check
         "MailBoardAdapter does not satisfy BoardAdapter Protocol"
     )
 
