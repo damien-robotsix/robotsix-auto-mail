@@ -18,7 +18,7 @@ from pathlib import Path
 #: ``INBOX`` means "not triaged" (no ``triage_decisions`` row, or an
 #: explicit reset).
 VALID_TRIAGE_ACTIONS = frozenset(
-    {"INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
+    {"INBOX", "HUMAN_TRIAGE", "PENDING_ACTION", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"}
 )
 
 #: The default status assigned to new ``MailRecord`` instances and used as
@@ -67,6 +67,7 @@ class MailRecord:
     body_html: str = ""
     attachments_json: str = "[]"
     unsubscribe_header: str = ""
+    notes: str = ""
 
     id: int = 0  # assigned by DB; ignored on insert
 
@@ -88,7 +89,8 @@ CREATE TABLE IF NOT EXISTS mail_records (
     body_html       TEXT    NOT NULL,
     attachments_json TEXT   NOT NULL,
     unsubscribe_header TEXT NOT NULL DEFAULT '',
-    status          TEXT    NOT NULL DEFAULT '{DEFAULT_STATUS}'
+    status          TEXT    NOT NULL DEFAULT '{DEFAULT_STATUS}',
+    notes           TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS watermark (
@@ -144,6 +146,7 @@ def init_db(
         _migrate_legacy_statuses(conn)
         _migrate_status_to_triage(conn)
         _migrate_add_unsubscribe_header(conn)
+        _migrate_add_notes(conn)
     return conn
 
 
@@ -225,6 +228,22 @@ def _migrate_add_unsubscribe_header(conn: sqlite3.Connection) -> None:
         pass
 
 
+def _migrate_add_notes(conn: sqlite3.Connection) -> None:
+    """Add ``notes`` column to ``mail_records`` for existing DBs.
+
+    Idempotent: if the column already exists the ``ALTER TABLE`` raises
+    ``sqlite3.OperationalError`` which is caught and ignored.
+    """
+    try:
+        conn.execute(
+            "ALTER TABLE mail_records "
+            "ADD COLUMN notes TEXT NOT NULL DEFAULT ''"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
+
 def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
     """Insert *record* into ``mail_records``.
 
@@ -239,11 +258,11 @@ def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
 INSERT INTO mail_records
     (imap_uid, message_id, sender, subject, date,
      recipients_json, body_plain, body_html, attachments_json,
-     unsubscribe_header, status)
+     unsubscribe_header, status, notes)
 VALUES
     (:imap_uid, :message_id, :sender, :subject, :date,
      :recipients_json, :body_plain, :body_html, :attachments_json,
-     :unsubscribe_header, :status)
+     :unsubscribe_header, :status, :notes)
 """,
             {
                 "imap_uid": record.imap_uid,
@@ -257,6 +276,7 @@ VALUES
                 "attachments_json": record.attachments_json,
                 "unsubscribe_header": record.unsubscribe_header,
                 "status": record.status,
+                "notes": record.notes,
             },
         )
     except sqlite3.IntegrityError:
@@ -296,6 +316,20 @@ def record_exists(conn: sqlite3.Connection, message_id: str) -> bool:
         (message_id,),
     )
     return cur.fetchone() is not None
+
+
+def update_notes(conn: sqlite3.Connection, message_id: str, notes: str) -> bool:
+    """Update ``mail_records.notes`` for *message_id*.
+
+    Returns ``True`` if a row was updated, ``False`` if no matching
+    ``message_id`` exists.
+    """
+    cur = conn.execute(
+        "UPDATE mail_records SET notes = ? WHERE message_id = ?",
+        (notes, message_id),
+    )
+    conn.commit()
+    return cur.rowcount > 0
 
 
 def delete_record_by_message_id(conn: sqlite3.Connection, message_id: str) -> bool:
@@ -349,6 +383,7 @@ def row_to_mailrecord(
         body_html=data["body_html"],
         attachments_json=data["attachments_json"],
         unsubscribe_header=data["unsubscribe_header"],
+        notes=data["notes"],
         id=data["id"],
     )
 

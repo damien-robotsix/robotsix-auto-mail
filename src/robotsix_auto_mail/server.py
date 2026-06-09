@@ -509,6 +509,24 @@ def _build_detail_html(
             "</div>"
         )
 
+    # Notes section (textarea + Save form).
+    escaped_notes = html.escape(record.notes)
+    notes_section = (
+        '<div class="detail-field">'
+        '<div class="detail-label">Notes</div>'
+        '<div class="detail-value">'
+        '<form class="detail-form" method="post" action="/save-notes">'
+        f'<input type="hidden" name="message_id"'
+        f' value="{html.escape(record.message_id)}">'
+        f"{redirect_input}"
+        '<textarea class="detail-notes" name="notes" rows="4"'
+        f' style="width:100%;box-sizing:border-box;">{escaped_notes}</textarea>'
+        '<button type="submit">Save</button>'
+        "</form>"
+        "</div>"
+        "</div>\n"
+    )
+
     # Recipients
     to_html = html.escape(", ".join(to_list)) if to_list else "<em>(none)</em>"
     cc_section = ""
@@ -599,6 +617,7 @@ def _build_detail_html(
         f'<div class="detail-value">{body_html}</div>'
         "</div>\n"
         f"{body_html_note}"
+        f"{notes_section}"
         '<div class="detail-field">'
         '<div class="detail-label">Attachments</div>'
         f'<div class="detail-value">{attach_html}</div>'
@@ -772,6 +791,17 @@ def _render_card(
             f"{html.escape(TRIAGE_ACTION_LABELS[action])}</option>"
         )
 
+    # Notes indicator — shown only when notes are present.
+    notes_indicator = ""
+    if record.notes:
+        escaped_notes = html.escape(record.notes)
+        truncated = escaped_notes[:40] + ("…" if len(escaped_notes) > 40 else "")
+        notes_indicator = (
+            '<span class="card-notes-indicator"'
+            f' title="{escaped_notes}">'
+            f"\U0001f4dd {truncated}</span>"
+        )
+
     form_html = (
         '<form class="card-form" method="post" action="/move">'
         f'<input type="hidden" name="message_id"'
@@ -839,6 +869,7 @@ def _render_card(
         f'<div class="subject">{subject_html}</div>'
         f'<div class="date">{date_str}</div>'
         f'<div class="body-preview">{body_html}</div>'
+        f"{notes_indicator}"
         f"{archive_html}"
         f"{form_html}"
         f"{delete_form}"
@@ -998,6 +1029,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
             "/archive-proposal": self._handle_archive_proposal,
+            "/save-notes": self._handle_save_notes,
         }
         handler = routes.get(self.path)
         if handler is None:
@@ -1582,6 +1614,47 @@ class BoardHandler(BaseHTTPRequestHandler):
             conn.close()
 
         self._redirect("/board", code=302)
+
+    def _handle_save_notes(self) -> None:
+        """Process POST /save-notes — persist notes for a mail record."""
+        from robotsix_auto_mail.db import (
+            get_record_by_message_id,
+            init_db,
+            update_notes,
+        )
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
+
+        message_id = (fields.get("message_id") or [""])[0].strip()
+        notes = (fields.get("notes") or [""])[0]
+        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+
+        if not message_id:
+            self._bad_request("Missing message_id")
+            return
+
+        # Verify the record exists (read-only check).
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            if get_record_by_message_id(conn, message_id) is None:
+                self._not_found()
+                return
+        finally:
+            conn.close()
+
+        # Persist the notes.
+        conn = init_db(self.db_path)
+        try:
+            update_notes(conn, message_id, notes)
+        finally:
+            conn.close()
+
+        if redirect_to and _is_safe_redirect_path(redirect_to):
+            self._redirect(redirect_to, code=302)
+        else:
+            self._redirect("/board", code=302)
 
     def _serve_email_status(self) -> None:
         """Serve GET /email/{message_id}/status — return triage action as text.
