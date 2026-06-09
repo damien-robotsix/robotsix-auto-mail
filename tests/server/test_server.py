@@ -362,9 +362,11 @@ def test_build_board_html_structure() -> None:
         assert "<title>Mail Board</title>" in html
         assert '<meta http-equiv="refresh"' not in html
         assert "<h1>Mail Board</h1>" in html
-        # Default triage_running=False → no banner, normal button.
-        assert 'class="triage-banner"' not in html
-        assert ">Run triage<" in html
+        # Default triage_running=False → no banner, normal button.  Scope to
+        # the rendered control: the refresh JS embeds both state variants.
+        control = html.split('id="triage-control">', 1)[1].split("</span>", 1)[0]
+        assert 'class="triage-banner"' not in control
+        assert ">Run triage<" in control
         assert 'class="board"' in html
 
         # Exactly 5 columns
@@ -402,9 +404,11 @@ def test_build_board_html_empty_db() -> None:
     try:
         html = _build_board_html(db_path)
         assert 'class="column"' in html
-        # Default triage_running=False → no banner, normal button.
-        assert 'class="triage-banner"' not in html
-        assert ">Run triage<" in html
+        # Default triage_running=False → no banner, normal button.  Scope to
+        # the rendered control: the refresh JS embeds both state variants.
+        control = html.split('id="triage-control">', 1)[1].split("</span>", 1)[0]
+        assert 'class="triage-banner"' not in control
+        assert ">Run triage<" in control
         # All counts should be 0
         counts = re.findall(r'<span class="count">(\d+)</span>', html)
         assert counts == ["0", "0", "0", "0", "0"]
@@ -2839,12 +2843,16 @@ def test_build_board_html_shows_triage_running() -> None:
 
         html = _build_board_html(db_path)
 
-        assert 'class="triage-banner"' in html
-        assert "Triage is currently running" in html
-        assert "Triage running…" in html
-        assert "disabled" in html  # the button has the disabled attribute
-        # The normal Run triage text must NOT appear.
-        assert ">Run triage<" not in html
+        # Scope to the rendered control: the refresh JS embeds both state
+        # variants (including the idle "Run triage" form), so assert on the
+        # server-rendered <span id="triage-control"> content only.
+        control = html.split('id="triage-control">', 1)[1].split("</span>", 1)[0]
+        assert 'class="triage-banner"' in control
+        assert "Triage is currently running" in control
+        assert "Triage running…" in control
+        assert "disabled" in control  # the button has the disabled attribute
+        # The normal Run triage text must NOT appear in the rendered control.
+        assert ">Run triage<" not in control
     finally:
         os.unlink(db_path)
 
@@ -2931,6 +2939,72 @@ def test_run_triage_background_clears_watermark() -> None:
                     break
                 time.sleep(0.05)
             assert state == "idle", f"Watermark didn't clear: {state!r}"
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_run_triage_background_generates_rule_proposals() -> None:
+    """After triage, the background thread derives deterministic rule
+    proposals from triage history and records them as pending so the board
+    can surface them."""
+    import time
+
+    from robotsix_auto_mail.db import get_watermark
+    from robotsix_auto_mail.db import init_db as _init_db
+    from robotsix_auto_mail.triage import list_rule_proposals
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        # Three already-triaged messages from one sender, all TO_ARCHIVE —
+        # enough consistent evidence (>= _RULE_MIN_DECISIONS) for a sender
+        # rule proposal.  All have decisions, so triage finds zero untriaged
+        # records and returns immediately (no LLM call).
+        inserts = [
+            {
+                "message_id": f"msg-{i}",
+                "sender": "alice@example.com",
+                "subject": f"Newsletter {i}",
+                "date": "2025-01-01T00:00:00",
+                "body_plain": "body",
+                "status": "no_action",
+            }
+            for i in range(3)
+        ]
+        _populate_db(db_path, inserts)
+        for i in range(3):
+            _seed_triage_decision(db_path, f"msg-{i}", action="TO_ARCHIVE")
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(port, "/run-triage", {})
+            assert resp.status == 302
+
+            # Poll until the watermark clears (no LLM call → fast).
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                conn = _init_db(db_path, skip_migrations=True)
+                try:
+                    state = get_watermark(conn, "triage_run:state")
+                finally:
+                    conn.close()
+                if state != "running":
+                    break
+                time.sleep(0.05)
+
+            conn = _init_db(db_path, skip_migrations=True)
+            try:
+                proposals = list_rule_proposals(conn, "pending")
+            finally:
+                conn.close()
+            assert any(
+                entry.match_type == "sender"
+                and entry.match_value == "alice@example.com"
+                and entry.action == "TO_ARCHIVE"
+                for _fingerprint, entry in proposals
+            ), f"Expected a sender rule proposal, got {proposals!r}"
         finally:
             server.shutdown()
     finally:

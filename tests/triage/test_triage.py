@@ -115,6 +115,12 @@ def test_triage_item_coerces_unknown_action() -> None:
     assert item.action == "HUMAN_TRIAGE"
 
 
+def test_triage_item_coerces_inbox_action() -> None:
+    """The agent may not assign INBOX; it is coerced to HUMAN_TRIAGE."""
+    item = TriageItem(index=1, action="INBOX")
+    assert item.action == "HUMAN_TRIAGE"
+
+
 def test_triage_item_rejects_index_below_one() -> None:
     """index must be >= 1."""
     with pytest.raises(pydantic.ValidationError):
@@ -525,11 +531,13 @@ def test_valid_triage_actions_vocabulary() -> None:
     )
 
 
-def test_build_triage_system_prompt_mentions_canonical_actions() -> None:
-    """The LLM system prompt describes all five canonical actions."""
+def test_build_triage_system_prompt_mentions_agent_actions() -> None:
+    """The LLM system prompt describes the four agent-selectable actions and
+    must NOT offer ``INBOX`` (reserved for not-yet-triaged mail)."""
     prompt = _build_triage_system_prompt()
-    for action in ("INBOX", "HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"):
+    for action in ("HUMAN_TRIAGE", "TO_ARCHIVE", "TO_DELETE", "TO_ANSWER"):
         assert f"`{action}`" in prompt
+    assert "`INBOX`" not in prompt
     assert "`waiting`" not in prompt
     assert "`ignore`" not in prompt
 
@@ -1531,16 +1539,17 @@ def test_run_triage_agent_stores_llm_hints(
 def test_run_triage_agent_clears_stale_hints(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A record previously hinted for TO_ARCHIVE moves to INBOX → hint removed."""
+    """A record previously hinted for TO_ARCHIVE is re-triaged to a
+    non-archive action → hint removed."""
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
-        # Pre-populate an LLM hint for a record that will be
-        # re-triaged to INBOX.
+        # Pre-populate an LLM hint for a record that will be re-triaged to
+        # a non-TO_ARCHIVE action.
         _insert_inbox(conn, "<a@x.com>")
         _save_llm_archive_hints(conn, {"<a@x.com>": "Lists/old"})
 
-        result_obj = TriageResult(items=[TriageItem(index=1, action="INBOX")])
+        result_obj = TriageResult(items=[TriageItem(index=1, action="HUMAN_TRIAGE")])
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
             run_triage_agent(conn)
@@ -1554,7 +1563,8 @@ def test_run_triage_agent_clears_stale_hints(
 def test_run_triage_agent_ignores_archive_subfolder_for_non_archive(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """LLM returns archive_subfolder with action=INBOX → hint NOT stored."""
+    """LLM returns archive_subfolder with a non-archive action → hint NOT
+    stored."""
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
@@ -1562,7 +1572,9 @@ def test_run_triage_agent_ignores_archive_subfolder_for_non_archive(
         result_obj = TriageResult(
             items=[
                 TriageItem(
-                    index=1, action="INBOX", archive_subfolder="should-not-store"
+                    index=1,
+                    action="HUMAN_TRIAGE",
+                    archive_subfolder="should-not-store",
                 )
             ]
         )

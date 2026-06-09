@@ -70,6 +70,7 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "<h1>Mail Board</h1>\n"
     '<button id="refresh-btn" title="Refresh now">↻</button>\n'
     '<span id="refresh-time"></span>\n'
+    '<span id="triage-control">'
     "{% if triage_running %}"
     '<div class="triage-banner">'
     "Triage is currently running. The board will refresh automatically."
@@ -86,6 +87,7 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "Run triage</button>\n"
     "</form>\n"
     "{% endif %}"
+    "</span>"
     "{{ proposals_html }}\n"
     '<div class="board-wrapper">\n'
     '<div class="board">\n'
@@ -166,6 +168,22 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "      document.querySelector('.board').innerHTML = data.columns_html;\n"
     "      var proposals = document.querySelector('.rule-proposals');\n"
     "      if (proposals) proposals.outerHTML = data.proposals_html;\n"
+    "      var tc = document.getElementById('triage-control');\n"
+    "      if (tc) {\n"
+    "        if (data.triage_running) {\n"
+    "          tc.innerHTML = '<div class=\"triage-banner\">Triage is"
+    " currently running. The board will refresh automatically.</div>'\n"
+    "            + '<button type=\"submit\" disabled style=\"font-size:0.85rem;"
+    " padding:0.25rem 0.75rem; cursor:not-allowed; opacity:0.6;\">Triage"
+    " running…</button>';\n"
+    "        } else {\n"
+    "          tc.innerHTML = '<form method=\"post\" action=\"/run-triage\""
+    " style=\"display:inline-block; margin-left:1.5rem;"
+    " vertical-align:middle;\">'\n"
+    "            + '<button type=\"submit\" style=\"font-size:0.85rem;"
+    " padding:0.25rem 0.75rem; cursor:pointer;\">Run triage</button></form>';\n"
+    "        }\n"
+    "      }\n"
     "      lastRefresh = Date.now();\n"
     "      updateRefreshTime();\n"
     "    })\n"
@@ -880,8 +898,11 @@ def _run_triage_background(db_path: str) -> None:
     """Run the triage agent in a background thread, clearing the watermark on exit.
 
     Opens its own SQLite connection so it never shares a connection with
-    the HTTP request-serve thread.  The ``triage_run:state`` watermark is
-    always set back to ``"idle"`` in a ``finally`` block — even when the
+    the HTTP request-serve thread.  After triaging, derives fresh
+    deterministic rule proposals from the updated triage history (no LLM)
+    and records the genuinely-new ones as ``pending`` so the board can
+    surface them for human validation.  The ``triage_run:state`` watermark
+    is always set back to ``"idle"`` in a ``finally`` block — even when the
     triage module cannot be imported or ``run_triage_agent`` raises.
     """
     from robotsix_auto_mail.db import init_db, set_watermark
@@ -889,10 +910,19 @@ def _run_triage_background(db_path: str) -> None:
     conn = init_db(db_path, skip_migrations=True)
     try:
         try:
-            from robotsix_auto_mail.triage import run_triage_agent
+            from robotsix_auto_mail.triage import (
+                propose_triage_rules,
+                record_and_filter_rule_proposals,
+                run_triage_agent,
+            )
         except ImportError:
             return
         run_triage_agent(conn)
+        # Surface freshly-derived rule proposals on the board.  This is a
+        # deterministic, LLM-free scan of triage history, so it is cheap to
+        # run on every triage pass; record_and_filter only writes the
+        # ledger when there is a genuinely-new proposal.
+        record_and_filter_rule_proposals(conn, propose_triage_rules(conn))
     except Exception:  # noqa: S110  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass

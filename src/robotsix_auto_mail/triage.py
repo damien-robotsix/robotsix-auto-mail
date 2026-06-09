@@ -1,10 +1,13 @@
 """LLM-driven inbox triage agent and local triage-decision persistence.
 
 The triage agent classifies each ingested inbox ``MailRecord`` into one of
-five canonical *triage actions* — ``INBOX`` / ``HUMAN_TRIAGE`` /
-``TO_ARCHIVE`` / ``TO_DELETE`` / ``TO_ANSWER`` — with ``HUMAN_TRIAGE`` as
-the explicit "the system does not know what to do" fallback.  These actions
-are stored in the ``triage_decisions`` table.  Triage performs **NO IMAP /
+four agent-selectable *triage actions* — ``HUMAN_TRIAGE`` / ``TO_ARCHIVE``
+/ ``TO_DELETE`` / ``TO_ANSWER`` — with ``HUMAN_TRIAGE`` as the explicit
+"the system does not know what to do" fallback.  The fifth action,
+``INBOX``, is reserved for not-yet-triaged mail (the board entry column)
+and may only be set by a human moving a card — the agent never assigns it
+(see :data:`_AGENT_SELECTABLE_ACTIONS`).  These actions are stored in the
+``triage_decisions`` table.  Triage performs **NO IMAP /
 mailbox side effects** whatsoever: the kanban is a local-only board, so
 moving a card never touches the original mailbox (no archive / delete /
 move / expunge / append / store).
@@ -73,6 +76,15 @@ TRIAGE_ACTION_TO_STATUS: dict[str, str] = {
     "TO_ANSWER": "needs_reply",  # needs a human reply
 }
 
+#: Actions the LLM triage agent may assign.  ``INBOX`` is intentionally
+#: excluded: it is reserved for not-yet-triaged mail (the board entry
+#: column).  When the agent is unsure it must use ``HUMAN_TRIAGE`` rather
+#: than parking mail back in the inbox, so undecided mail always surfaces
+#: in the Human-triage column instead of silently staying in Inbox.  Users
+#: may still move a card to Inbox manually; this constraint applies only to
+#: agent-generated decisions.
+_AGENT_SELECTABLE_ACTIONS: frozenset[str] = VALID_TRIAGE_ACTIONS - {"INBOX"}
+
 #: Accepted decision sources.
 _VALID_TRIAGE_SOURCES = frozenset({"agent", "user"})
 
@@ -134,7 +146,8 @@ class TriageItem(pydantic.BaseModel):
     """One classified mail in the LLM response, referenced by 1-based index."""
 
     index: int = pydantic.Field(..., ge=1)
-    #: Triage action.  Unknown / empty values are coerced to ``HUMAN_TRIAGE``
+    #: Triage action.  Unknown / empty values — and ``INBOX``, which the
+    #: agent is not allowed to assign — are coerced to ``HUMAN_TRIAGE``
     #: rather than failing the whole batch.
     action: str = pydantic.Field(default="HUMAN_TRIAGE")
     reason: str = pydantic.Field(default="")
@@ -148,7 +161,7 @@ class TriageItem(pydantic.BaseModel):
     @pydantic.field_validator("action")
     @classmethod
     def _coerce_action(cls, v: str) -> str:
-        if v not in VALID_TRIAGE_ACTIONS:
+        if v not in _AGENT_SELECTABLE_ACTIONS:
             return "HUMAN_TRIAGE"
         return v
 
@@ -997,7 +1010,6 @@ def _build_triage_system_prompt(
         "and a short body preview. Classify each message into exactly one "
         "action status:\n"
         "\n"
-        "- `INBOX`: return to inbox; no action needed, not triaged.\n"
         "- `HUMAN_TRIAGE`: you are NOT confident what to do — defer to a "
         "human.\n"
         "- `TO_ARCHIVE`: keep the message for reference but no reply is "
@@ -1341,7 +1353,7 @@ def run_triage_agent(
             action, reason, confidence = "HUMAN_TRIAGE", "", "medium"
         else:
             action = matched.action
-            if action not in VALID_TRIAGE_ACTIONS:
+            if action not in _AGENT_SELECTABLE_ACTIONS:
                 action = "HUMAN_TRIAGE"
             reason, confidence = matched.reason, matched.confidence
         set_triage_decision(
