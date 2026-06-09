@@ -13,6 +13,7 @@ from typing import Any
 from unittest import mock
 
 import pytest
+from tests.conftest import _make_mock_imap_ssl, _make_mock_smtp
 
 from robotsix_auto_mail.cli import _VerifyResult, build_parser, main
 from robotsix_auto_mail.config import MailConfig
@@ -29,40 +30,6 @@ from robotsix_auto_mail.triage import (
     TriageItem,
     TriageResult,
 )
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-
-def _make_mock_imap_ssl() -> mock.MagicMock:
-    m = mock.MagicMock(spec=imaplib.IMAP4_SSL)
-    m.welcome = b"* OK IMAP4 ready"
-    m.capabilities = ("IMAP4rev1", "STARTTLS", "AUTH=PLAIN")
-    m.login.return_value = ("OK", [b"Logged in"])
-    m.list.return_value = (
-        "OK",
-        [
-            b'(\\HasNoChildren) "/" "INBOX"',
-            b'(\\HasChildren \\Noselect) "/" "[Gmail]"',
-        ],
-    )
-    m.select.return_value = ("OK", [b"5"])
-    m.logout.return_value = ("OK", [b"Logged out"])
-    m.sock = mock.MagicMock()
-    return m
-
-
-def _make_mock_smtp() -> mock.MagicMock:
-    m = mock.MagicMock(spec=smtplib.SMTP)
-    m.ehlo_resp = b"250-smtp.example.com\n250 STARTTLS"
-    m.esmtp_features = {"STARTTLS": "", "AUTH": "PLAIN LOGIN"}
-    m.login.return_value = (235, b"2.7.0 Authentication successful")
-    m.send_message.return_value = {}
-    m.noop.return_value = (250, b"OK")
-    return m
-
 
 # ---------------------------------------------------------------------------
 # ImapClient / SmtpClient property defaults
@@ -102,19 +69,15 @@ def test_version_flag(capsys: pytest.CaptureFixture[str]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_probe_success(
-    cfg: MailConfig, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_probe_success(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) -> None:
     """probe exits 0 and prints IMAP + SMTP metadata when both succeed."""
     mock_imap = _make_mock_imap_ssl()
     mock_smtp = _make_mock_smtp()
 
-    with mock.patch(
-        "imaplib.IMAP4_SSL", return_value=mock_imap
-    ), mock.patch(
-        "smtplib.SMTP", return_value=mock_smtp
-    ), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
+        mock.patch("smtplib.SMTP", return_value=mock_smtp),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         rc = main(["probe"])
 
@@ -149,19 +112,15 @@ def test_probe_imap_failure_smtp_ok(
 ) -> None:
     """When IMAP fails, SMTP is still probed and exit code is 1."""
     mock_imap = mock.MagicMock(spec=imaplib.IMAP4_SSL)
-    mock_imap.login.side_effect = imaplib.IMAP4.error(
-        "AUTHENTICATIONFAILED"
-    )
+    mock_imap.login.side_effect = imaplib.IMAP4.error("AUTHENTICATIONFAILED")
     mock_imap.sock = mock.MagicMock()
 
     mock_smtp = _make_mock_smtp()
 
-    with mock.patch(
-        "imaplib.IMAP4_SSL", return_value=mock_imap
-    ), mock.patch(
-        "smtplib.SMTP", return_value=mock_smtp
-    ), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
+        mock.patch("smtplib.SMTP", return_value=mock_smtp),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         rc = main(["probe"])
 
@@ -193,12 +152,10 @@ def test_probe_smtp_failure_imap_ok(
         535, b"5.7.8 Authentication failed"
     )
 
-    with mock.patch(
-        "imaplib.IMAP4_SSL", return_value=mock_imap
-    ), mock.patch(
-        "smtplib.SMTP", return_value=mock_smtp
-    ), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
+        mock.patch("smtplib.SMTP", return_value=mock_smtp),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         rc = main(["probe"])
 
@@ -220,25 +177,19 @@ def test_probe_smtp_failure_imap_ok(
 # ---------------------------------------------------------------------------
 
 
-def test_probe_both_fail(
-    cfg: MailConfig, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_probe_both_fail(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) -> None:
     """When both fail, exit code is 1 and both errors are reported."""
     mock_imap = mock.MagicMock(spec=imaplib.IMAP4_SSL)
     mock_imap.login.side_effect = imaplib.IMAP4.error("BAD")
     mock_imap.sock = mock.MagicMock()
 
     mock_smtp = mock.MagicMock(spec=smtplib.SMTP)
-    mock_smtp.login.side_effect = smtplib.SMTPAuthenticationError(
-        535, b"bad creds"
-    )
+    mock_smtp.login.side_effect = smtplib.SMTPAuthenticationError(535, b"bad creds")
 
-    with mock.patch(
-        "imaplib.IMAP4_SSL", return_value=mock_imap
-    ), mock.patch(
-        "smtplib.SMTP", return_value=mock_smtp
-    ), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
+        mock.patch("smtplib.SMTP", return_value=mock_smtp),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         rc = main(["probe"])
 
@@ -260,12 +211,10 @@ def test_probe_never_calls_send_message(
     mock_imap = _make_mock_imap_ssl()
     mock_smtp = _make_mock_smtp()
 
-    with mock.patch(
-        "imaplib.IMAP4_SSL", return_value=mock_imap
-    ), mock.patch(
-        "smtplib.SMTP", return_value=mock_smtp
-    ), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
+        mock.patch("smtplib.SMTP", return_value=mock_smtp),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         main(["probe"])
 
@@ -283,11 +232,13 @@ def test_probe_imap_connection_refused(
     """probe handles IMAP connection-refused gracefully."""
     mock_smtp = _make_mock_smtp()
 
-    with mock.patch(
-        "imaplib.IMAP4_SSL",
-        side_effect=ConnectionRefusedError("Connection refused"),
-    ), mock.patch("smtplib.SMTP", return_value=mock_smtp), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch(
+            "imaplib.IMAP4_SSL",
+            side_effect=ConnectionRefusedError("Connection refused"),
+        ),
+        mock.patch("smtplib.SMTP", return_value=mock_smtp),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         rc = main(["probe"])
 
@@ -308,13 +259,13 @@ def test_probe_smtp_connection_refused(
     """probe handles SMTP connection-refused gracefully."""
     mock_imap = _make_mock_imap_ssl()
 
-    with mock.patch(
-        "imaplib.IMAP4_SSL", return_value=mock_imap
-    ), mock.patch(
-        "smtplib.SMTP",
-        side_effect=ConnectionRefusedError("Connection refused"),
-    ), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
+        mock.patch(
+            "smtplib.SMTP",
+            side_effect=ConnectionRefusedError("Connection refused"),
+        ),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         rc = main(["probe"])
 
@@ -351,10 +302,10 @@ def test_probe_imap_tls_failure(
 
     mock_smtp = _make_mock_smtp()
 
-    with mock.patch("imaplib.IMAP4", return_value=mock_imap), mock.patch(
-        "smtplib.SMTP", return_value=mock_smtp
-    ), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch("imaplib.IMAP4", return_value=mock_imap),
+        mock.patch("smtplib.SMTP", return_value=mock_smtp),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         rc = main(["probe"])
 
@@ -378,10 +329,10 @@ def test_probe_smtp_tls_failure(
     mock_smtp.ehlo_or_helo_if_needed.return_value = (250, b"OK")
     mock_smtp.starttls.side_effect = ssl.SSLError("certificate verify failed")
 
-    with mock.patch(
-        "imaplib.IMAP4_SSL", return_value=mock_imap
-    ), mock.patch("smtplib.SMTP", return_value=mock_smtp), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
+        mock.patch("smtplib.SMTP", return_value=mock_smtp),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         rc = main(["probe"])
 
@@ -408,12 +359,10 @@ def test_probe_imap_auth_failure(
 
     mock_smtp = _make_mock_smtp()
 
-    with mock.patch(
-        "imaplib.IMAP4_SSL", return_value=mock_imap
-    ), mock.patch(
-        "smtplib.SMTP", return_value=mock_smtp
-    ), mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg
+    with (
+        mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
+        mock.patch("smtplib.SMTP", return_value=mock_smtp),
+        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
     ):
         rc = main(["probe"])
 
@@ -536,19 +485,16 @@ def test_board_takes_no_extra_args() -> None:
         parser.parse_args(["board", "--foo"])
 
 
-def test_board_empty_inbox(
-    cfg: MailConfig, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_board_empty_inbox(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) -> None:
     """board prints a friendly message when the database is empty."""
     from robotsix_auto_mail.db import init_db as real_init_db
 
     conn = real_init_db(":memory:")  # schema lives in db.py — no DDL duplication
     # Keep conn open — _cmd_board's finally block closes it.
 
-    with mock.patch(
-        "robotsix_auto_mail.cli.load", return_value=cfg
-    ), mock.patch(
-        "robotsix_auto_mail.cli.init_db", return_value=conn
+    with (
+        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
     ):
         rc = main(["board"])
 
@@ -579,9 +525,15 @@ VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?)
 """,
         (
-            1, "<a@x.com>", "alice@example.com", "Hello",
-            "2025-06-01T14:30:00", '{"to":[],"cc":[]}',
-            "Just checking in!", "", "[]",
+            1,
+            "<a@x.com>",
+            "alice@example.com",
+            "Hello",
+            "2025-06-01T14:30:00",
+            '{"to":[],"cc":[]}',
+            "Just checking in!",
+            "",
+            "[]",
         ),
     )
     conn.execute(
@@ -593,18 +545,23 @@ VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?)
 """,
         (
-            2, "<b@x.com>", "bob@example.com", "Hi",
-            "2025-06-02T09:15:00", '{"to":[],"cc":[]}',
-            "See you at 10.\n\n--Bob", "", "[]",
+            2,
+            "<b@x.com>",
+            "bob@example.com",
+            "Hi",
+            "2025-06-02T09:15:00",
+            '{"to":[],"cc":[]}',
+            "See you at 10.\n\n--Bob",
+            "",
+            "[]",
         ),
     )
     conn.commit()
     # Keep conn open — _cmd_board's finally block closes it.
 
-    with mock.patch(
-        "robotsix_auto_mail.cli.load", return_value=cfg
-    ), mock.patch(
-        "robotsix_auto_mail.cli.init_db", return_value=conn
+    with (
+        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
     ):
         rc = main(["board"])
 
@@ -655,9 +612,15 @@ VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?)
 """,
         (
-            1, "<a@x.com>", "a@x.com", "150 chars",
-            "2025-06-01T14:30:00", '{"to":[],"cc":[]}',
-            body_150, "", "[]",
+            1,
+            "<a@x.com>",
+            "a@x.com",
+            "150 chars",
+            "2025-06-01T14:30:00",
+            '{"to":[],"cc":[]}',
+            body_150,
+            "",
+            "[]",
         ),
     )
     conn.execute(
@@ -669,17 +632,22 @@ VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?)
 """,
         (
-            2, "<b@x.com>", "b@x.com", "200 chars",
-            "2025-06-02T09:15:00", '{"to":[],"cc":[]}',
-            body_200, "", "[]",
+            2,
+            "<b@x.com>",
+            "b@x.com",
+            "200 chars",
+            "2025-06-02T09:15:00",
+            '{"to":[],"cc":[]}',
+            body_200,
+            "",
+            "[]",
         ),
     )
     conn.commit()
 
-    with mock.patch(
-        "robotsix_auto_mail.cli.load", return_value=cfg
-    ), mock.patch(
-        "robotsix_auto_mail.cli.init_db", return_value=conn
+    with (
+        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
     ):
         rc = main(["board"])
 
@@ -722,10 +690,9 @@ def test_board_header_uses_print_header(
     conn = real_init_db(":memory:")  # schema lives in db.py — no DDL duplication
     # Keep conn open — _cmd_board's finally block closes it.
 
-    with mock.patch(
-        "robotsix_auto_mail.cli.load", return_value=cfg
-    ), mock.patch(
-        "robotsix_auto_mail.cli.init_db", return_value=conn
+    with (
+        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
     ):
         main(["board"])
 
@@ -754,14 +721,26 @@ def test_board_does_not_mutate_database(
 
         # Pre-populate with 2 records whose values we can snapshot.
         row1 = (
-            10, "<x@a.com>", "alice@x.com", "Hello",
-            "2025-01-01T12:00:00", '{"to":["bob@x.com"],"cc":[]}',
-            "Body A", "<p>Body A</p>", '[{"name":"a.txt"}]',
+            10,
+            "<x@a.com>",
+            "alice@x.com",
+            "Hello",
+            "2025-01-01T12:00:00",
+            '{"to":["bob@x.com"],"cc":[]}',
+            "Body A",
+            "<p>Body A</p>",
+            '[{"name":"a.txt"}]',
         )
         row2 = (
-            20, "<y@b.com>", "bob@x.com", "Hi",
-            "2025-01-02T13:00:00", '{"to":["carol@x.com"],"cc":[]}',
-            "Body B", "<p>Body B</p>", "[]",
+            20,
+            "<y@b.com>",
+            "bob@x.com",
+            "Hi",
+            "2025-01-02T13:00:00",
+            '{"to":["carol@x.com"],"cc":[]}',
+            "Body B",
+            "<p>Body B</p>",
+            "[]",
         )
         conn.execute(
             """\
@@ -811,9 +790,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             db_path=db_path,
         )
 
-        with mock.patch(
-            "robotsix_auto_mail.cli.load", return_value=cfg_with_db
-        ):
+        with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_with_db):
             rc = main(["board"])
 
         assert rc == 0
@@ -833,8 +810,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ):
             for col in b_row:
                 assert a_row[col] == b_row[col], (
-                    f"Row {i} column {col} changed: "
-                    f"{b_row[col]!r} -> {a_row[col]!r}"
+                    f"Row {i} column {col} changed: {b_row[col]!r} -> {a_row[col]!r}"
                 )
 
         # Watermark table must be untouched.
@@ -899,12 +875,10 @@ def test_detect_missing_pydantic_ai(capsys: pytest.CaptureFixture[str]) -> None:
 @pytest.fixture
 def no_autoconfig() -> object:
     """Force autoconfig + MX detection to miss so tests reach the LLM path."""
-    with mock.patch(
-        "robotsix_auto_mail.detect.autoconfig_lookup", return_value=None
-    ), mock.patch(
-        "robotsix_auto_mail.detect.mx_lookup", return_value=[]
-    ), mock.patch(
-        "robotsix_auto_mail.detect.provider_from_mx", return_value=None
+    with (
+        mock.patch("robotsix_auto_mail.detect.autoconfig_lookup", return_value=None),
+        mock.patch("robotsix_auto_mail.detect.mx_lookup", return_value=[]),
+        mock.patch("robotsix_auto_mail.detect.provider_from_mx", return_value=None),
     ):
         yield
 
@@ -919,8 +893,12 @@ def _auth_fail_result() -> object:
     from robotsix_auto_mail.cli import _VerifyResult
 
     return _VerifyResult(
-        imap_ok=False, smtp_ok=False, imap_auth=True, smtp_auth=True,
-        imap_error="auth", smtp_error="auth",
+        imap_ok=False,
+        smtp_ok=False,
+        imap_auth=True,
+        smtp_auth=True,
+        imap_error="auth",
+        smtp_error="auth",
     )
 
 
@@ -929,7 +907,9 @@ def _host_fail_result() -> object:
     from robotsix_auto_mail.cli import _VerifyResult
 
     return _VerifyResult(
-        imap_ok=False, smtp_ok=True, imap_error="connection refused",
+        imap_ok=False,
+        smtp_ok=True,
+        imap_error="connection refused",
     )
 
 
@@ -943,14 +923,14 @@ def test_detect_happy_path(
         smtp_host="smtp.gmail.com",
     )
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
-    ), mock.patch("getpass.getpass", return_value="testpass"), mock.patch.dict(
-        os.environ, {"LLM_API_KEY": "sk-test"}
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass", return_value="testpass"),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(
-            ["detect", "user@gmail.com", "--output", str(output), "--no-verify"]
-        )
+        rc = main(["detect", "user@gmail.com", "--output", str(output), "--no-verify"])
 
     assert rc == 0
     content = output.read_text()
@@ -975,17 +955,21 @@ def test_detect_password_supplied(
         smtp_host="smtp.gmail.com",
     )
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
-    ), mock.patch("getpass.getpass") as mock_getpass, mock.patch.dict(
-        os.environ, {"LLM_API_KEY": "sk-test"}
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass") as mock_getpass,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
             [
                 "detect",
                 "user@gmail.com",
-                "--output", str(output),
-                "--password", "cli-pass",
+                "--output",
+                str(output),
+                "--password",
+                "cli-pass",
                 "--no-verify",
             ]
         )
@@ -1008,10 +992,12 @@ def test_detect_empty_password(
         smtp_host="smtp.gmail.com",
     )
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
-    ), mock.patch("getpass.getpass", return_value=""), mock.patch.dict(
-        os.environ, {"LLM_API_KEY": "sk-test"}
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass", return_value=""),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(["detect", "user@gmail.com", "--output", str(output)])
 
@@ -1032,9 +1018,12 @@ def test_detect_stdout(
         smtp_host="smtp.gmail.com",
     )
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(["detect", "user@gmail.com", "--stdout"])
 
     assert rc == 0
@@ -1058,12 +1047,13 @@ def test_detect_stdout_redacts_password(
         smtp_host="smtp.gmail.com",
     )
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
-        rc = main(
-            ["detect", "user@gmail.com", "--stdout", "--password", "cli-pass"]
-        )
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(["detect", "user@gmail.com", "--stdout", "--password", "cli-pass"])
 
     assert rc == 0
     captured = capsys.readouterr()
@@ -1076,10 +1066,13 @@ def test_detect_detection_error(
     capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
     """detect exits 1 when DetectionError is raised (and autoconfig missed)."""
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider",
-        side_effect=DetectionError("test error"),
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider",
+            side_effect=DetectionError("test error"),
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(["detect", "user@gmail.com", "--stdout"])
 
     assert rc == 1
@@ -1103,15 +1096,11 @@ def test_detect_llm_model_env(
         os.environ,
         {"LLM_MODEL": "test-model", "LLM_API_KEY": "sk-test"},
     ):
-        with mock.patch(
-            "robotsix_auto_mail.detect.detect_provider", mock_dp
-        ):
+        with mock.patch("robotsix_auto_mail.detect.detect_provider", mock_dp):
             rc = main(["detect", "user@x.com", "--stdout"])
 
     assert rc == 0
-    mock_dp.assert_called_once_with(
-        "user@x.com", api_key="sk-test", mx_hosts=[]
-    )
+    mock_dp.assert_called_once_with("user@x.com", api_key="sk-test", mx_hosts=[])
 
 
 def test_detect_uses_autoconfig_when_available(
@@ -1125,17 +1114,22 @@ def test_detect_uses_autoconfig_when_available(
     )
     mock_llm = mock.MagicMock()
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.autoconfig_lookup",
-        return_value=autoconf_provider,
-    ), mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", mock_llm
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.autoconfig_lookup",
+            return_value=autoconf_provider,
+        ),
+        mock.patch("robotsix_auto_mail.detect.detect_provider", mock_llm),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(
             [
-                "detect", "user@custom.net",
-                "--output", str(output),
-                "--password", "pw",
+                "detect",
+                "user@custom.net",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
                 "--no-verify",
             ]
         )
@@ -1151,22 +1145,25 @@ def test_detect_verifies_connection_on_success(
 ) -> None:
     """After writing the config, detect verifies by connecting (default)."""
     output = tmp_path / "cfg.yaml"
-    mock_provider = MailProvider(
-        imap_host="imap.gmail.com", smtp_host="smtp.gmail.com"
-    )
+    mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
-    ), mock.patch(
-        "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
-    ) as mock_verify, mock.patch.dict(
-        os.environ, {"LLM_API_KEY": "sk-test"}
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
+        ) as mock_verify,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
             [
-                "detect", "user@gmail.com",
-                "--output", str(output),
-                "--password", "pw",
+                "detect",
+                "user@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
             ]
         )
 
@@ -1181,23 +1178,28 @@ def test_detect_verify_failure_returns_1(
 ) -> None:
     """A failed verification (auth, no retries) surfaces as exit code 1."""
     output = tmp_path / "cfg.yaml"
-    mock_provider = MailProvider(
-        imap_host="imap.gmail.com", smtp_host="smtp.gmail.com"
-    )
+    mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     # --password ⇒ no interactive password retry budget, so an auth-only
     # failure ends the loop immediately.
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
-    ), mock.patch(
-        "robotsix_auto_mail.cli._verify_config",
-        return_value=_auth_fail_result(),
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config",
+            return_value=_auth_fail_result(),
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(
             [
-                "detect", "user@gmail.com",
-                "--output", str(output),
-                "--password", "pw",
+                "detect",
+                "user@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
             ]
         )
 
@@ -1206,25 +1208,26 @@ def test_detect_verify_failure_returns_1(
     assert "Verification FAILED" in capsys.readouterr().err
 
 
-def test_detect_no_verify_skips_check(
-    tmp_path: Path, no_autoconfig: object
-) -> None:
+def test_detect_no_verify_skips_check(tmp_path: Path, no_autoconfig: object) -> None:
     """--no-verify writes the config without connecting."""
     output = tmp_path / "cfg.yaml"
-    mock_provider = MailProvider(
-        imap_host="imap.gmail.com", smtp_host="smtp.gmail.com"
-    )
+    mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
-    ), mock.patch(
-        "robotsix_auto_mail.cli._verify_config"
-    ) as mock_verify, mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("robotsix_auto_mail.cli._verify_config") as mock_verify,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(
             [
-                "detect", "user@gmail.com",
-                "--output", str(output),
-                "--password", "pw",
+                "detect",
+                "user@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
                 "--no-verify",
             ]
         )
@@ -1241,18 +1244,25 @@ def test_detect_refines_host_with_llm_on_connection_failure(
     bad = MailProvider(imap_host="imap.bad.net", smtp_host="smtp.gmail.com")
     good = MailProvider(imap_host="imap.good.net", smtp_host="smtp.gmail.com")
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider",
-        side_effect=[bad, good],
-    ) as mock_dp, mock.patch(
-        "robotsix_auto_mail.cli._verify_config",
-        side_effect=[_host_fail_result(), _ok_result()],
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider",
+            side_effect=[bad, good],
+        ) as mock_dp,
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config",
+            side_effect=[_host_fail_result(), _ok_result()],
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(
             [
-                "detect", "user@gmail.com",
-                "--output", str(output),
-                "--password", "pw",
+                "detect",
+                "user@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
             ]
         )
 
@@ -1272,20 +1282,26 @@ def test_detect_prompts_for_host_when_llm_cannot_fix(
     output = tmp_path / "cfg.yaml"
     bad = MailProvider(imap_host="imap.bad.net", smtp_host="smtp.gmail.com")
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider",
-        side_effect=[bad, DetectionError("llm down")],
-    ), mock.patch(
-        "robotsix_auto_mail.cli._verify_config",
-        side_effect=[_host_fail_result(), _ok_result()],
-    ), mock.patch(
-        "builtins.input", return_value="mail.manual.net"
-    ) as mock_input, mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider",
+            side_effect=[bad, DetectionError("llm down")],
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config",
+            side_effect=[_host_fail_result(), _ok_result()],
+        ),
+        mock.patch("builtins.input", return_value="mail.manual.net") as mock_input,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(
             [
-                "detect", "user@gmail.com",
-                "--output", str(output),
-                "--password", "pw",
+                "detect",
+                "user@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
             ]
         )
 
@@ -1316,18 +1332,22 @@ llm:
   model: anthropic/claude-3-haiku
 """
     )
-    mock_provider = MailProvider(
-        imap_host="imap.gmail.com", smtp_host="smtp.gmail.com"
-    )
+    mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
-    with mock.patch(
-        "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(
             [
-                "detect", "user@gmail.com",
-                "--output", str(output),
-                "--password", "pw",
+                "detect",
+                "user@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
                 "--no-verify",
             ]
         )
@@ -1360,10 +1380,11 @@ def test_ingest_watch_loops_then_stops_on_interrupt(
     """Watch mode runs a cycle, then exits 0 when interrupted during sleep."""
     from robotsix_auto_mail.cli import _cmd_ingest
 
-    with mock.patch(
-        "robotsix_auto_mail.cli._ingest_cycle", return_value=0
-    ) as mock_cycle, mock.patch(
-        "robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt
+    with (
+        mock.patch(
+            "robotsix_auto_mail.cli._ingest_cycle", return_value=0
+        ) as mock_cycle,
+        mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
     ):
         rc = _cmd_ingest(cfg, watch=True)
 
@@ -1378,11 +1399,12 @@ def test_ingest_watch_survives_cycle_error(
     """A failing cycle is logged and does not abort the watch loop."""
     from robotsix_auto_mail.cli import _cmd_ingest
 
-    with mock.patch(
-        "robotsix_auto_mail.cli._ingest_cycle",
-        side_effect=RuntimeError("boom"),
-    ), mock.patch(
-        "robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt
+    with (
+        mock.patch(
+            "robotsix_auto_mail.cli._ingest_cycle",
+            side_effect=RuntimeError("boom"),
+        ),
+        mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
     ):
         rc = _cmd_ingest(cfg, watch=True)
 
@@ -1431,9 +1453,7 @@ def _patch_config_sync_llm(
 
 def test_parser_has_config_sync_subcommand() -> None:
     """The parser knows the config-sync subcommand with expected defaults."""
-    args = build_parser().parse_args(
-        ["config-sync", "--output-format", "json"]
-    )
+    args = build_parser().parse_args(["config-sync", "--output-format", "json"])
     assert args.command == "config-sync"
     assert args.output_format == "json"
     assert args.dedup is False
@@ -1454,8 +1474,9 @@ def test_config_sync_text_output(
             )
         ]
     )
-    with _patch_config_sync_llm(result), mock.patch.dict(
-        os.environ, {"LLM_API_KEY": "sk-test"}
+    with (
+        _patch_config_sync_llm(result),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(["config-sync"])
 
@@ -1480,8 +1501,9 @@ def test_config_sync_json_output(
             )
         ]
     )
-    with _patch_config_sync_llm(result), mock.patch.dict(
-        os.environ, {"LLM_API_KEY": "sk-test"}
+    with (
+        _patch_config_sync_llm(result),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(["config-sync", "--output-format", "json"])
 
@@ -1497,8 +1519,9 @@ def test_config_sync_no_drift(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """An empty result prints the no-drift message and returns 0."""
-    with _patch_config_sync_llm(ConfigSyncResult(proposals=[])), mock.patch.dict(
-        os.environ, {"LLM_API_KEY": "sk-test"}
+    with (
+        _patch_config_sync_llm(ConfigSyncResult(proposals=[])),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(["config-sync"])
 
@@ -1526,8 +1549,9 @@ def test_config_sync_api_key_precedence(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """--api-key overrides LLM_API_KEY env when constructing the provider."""
-    with _patch_config_sync_llm(ConfigSyncResult(proposals=[])) as cls, (
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-env"})
+    with (
+        _patch_config_sync_llm(ConfigSyncResult(proposals=[])) as cls,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-env"}),
     ):
         rc = main(["config-sync", "--api-key", "sk-cli"])
 
@@ -1546,11 +1570,12 @@ def test_config_sync_dedup_forwards_conn(
         password="s3cret",
         db_path=str(tmp_path / "ledger.db"),
     )
-    with mock.patch(
-        "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
-        return_value=ConfigSyncResult(proposals=[]),
-    ) as mock_agent, mock.patch(
-        "robotsix_auto_mail.cli.load", return_value=cfg_with_db
+    with (
+        mock.patch(
+            "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
+            return_value=ConfigSyncResult(proposals=[]),
+        ) as mock_agent,
+        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_with_db),
     ):
         rc = main(["config-sync", "--dedup"])
 
@@ -1560,9 +1585,7 @@ def test_config_sync_dedup_forwards_conn(
 
 def test_parser_has_config_sync_set_subcommand() -> None:
     """The parser knows the config-sync-set subcommand with positional args."""
-    args = build_parser().parse_args(
-        ["config-sync-set", "abc123", "accepted"]
-    )
+    args = build_parser().parse_args(["config-sync-set", "abc123", "accepted"])
     assert args.command == "config-sync-set"
     assert args.fingerprint == "abc123"
     assert args.state == "accepted"
@@ -1725,17 +1748,17 @@ def test_parser_has_triage_set_subcommand() -> None:
     assert args.action == "TO_ANSWER"
 
 
-def test_triage_text_output(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_triage_text_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """triage prints decisions and exits 0 (text)."""
     cfg_db = _cfg_with_inbox(tmp_path)
     result = TriageResult(
         items=[TriageItem(index=1, action="TO_ANSWER", reason="needs reply")]
     )
-    with _patch_triage_llm(result), mock.patch(
-        "robotsix_auto_mail.cli.load", return_value=cfg_db
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        _patch_triage_llm(result),
+        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(["triage"])
 
     assert rc == 0
@@ -1746,17 +1769,17 @@ def test_triage_text_output(
     assert "needs reply" in out
 
 
-def test_triage_json_output(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_triage_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """triage --output-format json prints a parseable list and exits 0."""
     cfg_db = _cfg_with_inbox(tmp_path)
     result = TriageResult(
         items=[TriageItem(index=1, action="TO_ARCHIVE", confidence="high")]
     )
-    with _patch_triage_llm(result), mock.patch(
-        "robotsix_auto_mail.cli.load", return_value=cfg_db
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        _patch_triage_llm(result),
+        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(["triage", "--output-format", "json"])
 
     assert rc == 0
@@ -1767,9 +1790,7 @@ def test_triage_json_output(
     assert payload[0]["source"] == "agent"
 
 
-def test_triage_empty_inbox(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_triage_empty_inbox(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """triage prints a friendly message when there is no inbox mail."""
     cfg_db = MailConfig(
         imap_host="imap.example.com",
@@ -1778,11 +1799,13 @@ def test_triage_empty_inbox(
         password="s3cret",
         db_path=str(tmp_path / "empty.db"),
     )
-    with mock.patch(
-        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-    ) as cls, mock.patch(
-        "robotsix_auto_mail.cli.load", return_value=cfg_db
-    ), mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}):
+    with (
+        mock.patch(
+            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
+        ) as cls,
+        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
         rc = main(["triage"])
 
     assert rc == 0
@@ -1790,15 +1813,16 @@ def test_triage_empty_inbox(
     cls.assert_not_called()
 
 
-def test_triage_error_path(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_triage_error_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """A TriageError returns 1 and writes an Error: line to stderr."""
     cfg_db = _cfg_with_inbox(tmp_path)
-    with mock.patch(
-        "robotsix_auto_mail.triage.run_triage_agent",
-        side_effect=TriageError("llm exploded"),
-    ), mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with (
+        mock.patch(
+            "robotsix_auto_mail.triage.run_triage_agent",
+            side_effect=TriageError("llm exploded"),
+        ),
+        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db),
+    ):
         rc = main(["triage"])
 
     assert rc == 1
@@ -1807,9 +1831,7 @@ def test_triage_error_path(
     assert "llm exploded" in err
 
 
-def test_triage_set_success(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_triage_set_success(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """triage-set records a user decision and exits 0."""
     from robotsix_auto_mail.db import init_db as real_init_db
     from robotsix_auto_mail.triage import _load_memory, get_triage_decision
@@ -1903,18 +1925,14 @@ def _cfg_with_rule_history(
 
 def test_parser_has_triage_rules_subcommand() -> None:
     """The parser knows triage-rules with its output-format default."""
-    args = build_parser().parse_args(
-        ["triage-rules", "--output-format", "json"]
-    )
+    args = build_parser().parse_args(["triage-rules", "--output-format", "json"])
     assert args.command == "triage-rules"
     assert args.output_format == "json"
 
 
 def test_parser_has_triage_rules_set_subcommand() -> None:
     """The parser knows triage-rules-set with positional args."""
-    args = build_parser().parse_args(
-        ["triage-rules-set", "abc123", "accepted"]
-    )
+    args = build_parser().parse_args(["triage-rules-set", "abc123", "accepted"])
     assert args.command == "triage-rules-set"
     assert args.fingerprint == "abc123"
     assert args.state == "accepted"
@@ -1981,9 +1999,7 @@ def test_triage_rules_set_accept_makes_active(
     cfg_db = _cfg_with_rule_history(tmp_path)
     with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
         main(["triage-rules", "--output-format", "json"])
-        fingerprint = json.loads(capsys.readouterr().out)["proposals"][0][
-            "fingerprint"
-        ]
+        fingerprint = json.loads(capsys.readouterr().out)["proposals"][0]["fingerprint"]
         rc = main(["triage-rules-set", fingerprint, "accepted"])
 
     assert rc == 0

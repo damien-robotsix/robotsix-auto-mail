@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import imaplib
 import os
+import smtplib
 import socket
 import sqlite3
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 import pytest
 
@@ -114,3 +117,57 @@ def _make_record(**overrides: str | int | None) -> MailRecord:
         unsubscribe_header=_opt_str("unsubscribe_header", ""),
         notes=_opt_str("notes", ""),
     )
+
+
+# ---------------------------------------------------------------------------
+# Mock IMAP / SMTP factories
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_imap_ssl() -> mock.MagicMock:
+    m = mock.MagicMock(spec=imaplib.IMAP4_SSL)
+    m.welcome = b"* OK IMAP4 ready"
+    m.capabilities = ("IMAP4rev1", "STARTTLS", "AUTH=PLAIN")
+    m.login.return_value = ("OK", [b"Logged in"])
+    m.list.return_value = (
+        "OK",
+        [
+            b'(\\HasNoChildren) "/" "INBOX"',
+            b'(\\HasChildren \\Noselect) "/" "[Gmail]"',
+        ],
+    )
+    m.select.return_value = ("OK", [b"5"])
+    m.logout.return_value = ("OK", [b"Logged out"])
+    m.sock = mock.MagicMock()
+    return m
+
+
+def _make_mock_imap() -> mock.MagicMock:
+    """Factory for a mock ``IMAP4`` instance (plain, for STARTTLS / none)."""
+    m = mock.MagicMock(spec=imaplib.IMAP4)
+    m.login.return_value = ("OK", [b"Logged in"])
+    m.list.return_value = ("OK", [])
+    m.select.return_value = ("OK", [b"5"])
+    m.logout.return_value = ("OK", [b"Logged out"])
+    m.starttls.return_value = ("OK", [b"Begin TLS"])
+    m.sock = mock.MagicMock()
+    return m
+
+
+def _make_mock_smtp() -> mock.MagicMock:
+    m = mock.MagicMock(spec=smtplib.SMTP)
+    m.ehlo_resp = b"250-smtp.example.com\n250 STARTTLS"
+    m.esmtp_features = {"STARTTLS": "", "AUTH": "PLAIN LOGIN"}
+    m.login.return_value = (235, b"2.7.0 Authentication successful")
+    m.send_message.return_value = {}
+    m.noop.return_value = (250, b"OK")
+    return m
+
+
+def _make_mock_smtp_ssl() -> mock.MagicMock:
+    """Factory for a mock ``SMTP_SSL`` instance."""
+    m = mock.MagicMock(spec=smtplib.SMTP_SSL)
+    m.login.return_value = (235, b"2.7.0 Authentication successful")
+    m.send_message.return_value = {}
+    m.noop.return_value = (250, b"OK")
+    return m

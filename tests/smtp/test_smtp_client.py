@@ -9,6 +9,7 @@ from email.mime.text import MIMEText
 from unittest import mock
 
 import pytest
+from tests.conftest import _make_mock_smtp, _make_mock_smtp_ssl
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.smtp_client import (
@@ -19,29 +20,6 @@ from robotsix_auto_mail.smtp_client import (
     SmtpSendError,
     SmtpTlsError,
 )
-
-# ---------------------------------------------------------------------------
-# Fixtures / helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_mock_smtp_ssl() -> mock.MagicMock:
-    """Factory for a mock ``SMTP_SSL`` instance."""
-    m = mock.MagicMock(spec=smtplib.SMTP_SSL)
-    m.login.return_value = (235, b"2.7.0 Authentication successful")
-    m.send_message.return_value = {}
-    m.noop.return_value = (250, b"OK")
-    return m
-
-
-def _make_mock_smtp() -> mock.MagicMock:
-    """Factory for a mock ``SMTP`` instance (plain, for STARTTLS / none)."""
-    m = mock.MagicMock(spec=smtplib.SMTP)
-    m.login.return_value = (235, b"2.7.0 Authentication successful")
-    m.send_message.return_value = {}
-    m.noop.return_value = (250, b"OK")
-    return m
-
 
 # ---------------------------------------------------------------------------
 # Exception hierarchy
