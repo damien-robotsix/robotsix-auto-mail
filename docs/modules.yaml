@@ -79,7 +79,7 @@ modules:
       (answer / archive / delete / ignore / user_triage) stored in the
       triage_decisions table without moving mail in the mailbox.
     paths:
-      - src/robotsix_auto_mail/triage.py
+      - src/robotsix_auto_mail/triage/__init__.py
       - tests/triage/test_triage.py
 
   - id: db
