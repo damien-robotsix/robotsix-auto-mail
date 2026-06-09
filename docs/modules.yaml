@@ -103,7 +103,7 @@ modules:
       proposal rooted at robotsix-mail-archive, remembered via the
       watermark table.
     paths:
-      - src/robotsix_auto_mail/archive.py
+      - src/robotsix_auto_mail/archive/__init__.py
       - tests/archive/test_archive.py
 
   - id: protocol
