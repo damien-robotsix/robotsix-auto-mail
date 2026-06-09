@@ -14,6 +14,7 @@ modules:
       Project root, package identity, build configuration, and roadmap.
     paths:
       - .mail_data/.gitkeep
+      - .mail_log/.gitkeep
       - src/robotsix_auto_mail/__init__.py
       - src/robotsix_auto_mail/format.py
       - tests/core/test_format.py
