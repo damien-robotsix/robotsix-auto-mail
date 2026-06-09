@@ -46,6 +46,7 @@ from robotsix_auto_mail.triage import (
     _rule_fingerprint,
     _save_llm_archive_hints,
     apply_triage_rules,
+    delete_triage_decisions_by_action,
     get_archive_subfolder,
     get_triage_decision,
     list_rule_proposals,
@@ -251,6 +252,64 @@ def test_triage_decision_persists_across_connections() -> None:
         conn2.close()
     finally:
         os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# delete_triage_decisions_by_action
+# ---------------------------------------------------------------------------
+
+
+def test_delete_triage_decisions_by_action_happy_path() -> None:
+    """Happy path: deletes all decisions for one action, returns count."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _insert_inbox(conn, "<b@x.com>")
+        _insert_inbox(conn, "<c@x.com>")
+        set_triage_decision(conn, "<a@x.com>", "HUMAN_TRIAGE", source="user")
+        set_triage_decision(conn, "<b@x.com>", "HUMAN_TRIAGE", source="user")
+        set_triage_decision(conn, "<c@x.com>", "TO_ARCHIVE", source="user")
+
+        deleted = delete_triage_decisions_by_action(conn, "HUMAN_TRIAGE")
+        assert deleted == 2
+        remaining = list_triage_decisions(conn)
+        assert len(remaining) == 1
+        assert remaining[0].action == "TO_ARCHIVE"
+    finally:
+        conn.close()
+
+
+def test_delete_triage_decisions_by_action_rejects_inbox() -> None:
+    """action='INBOX' raises TriageError."""
+    conn = init_db(":memory:")
+    try:
+        with pytest.raises(TriageError, match="INBOX"):
+            delete_triage_decisions_by_action(conn, "INBOX")
+    finally:
+        conn.close()
+
+
+def test_delete_triage_decisions_by_action_invalid_action() -> None:
+    """Invalid action raises TriageError."""
+    conn = init_db(":memory:")
+    try:
+        with pytest.raises(TriageError, match="Invalid triage action"):
+            delete_triage_decisions_by_action(conn, "BOGUS")
+    finally:
+        conn.close()
+
+
+def test_delete_triage_decisions_by_action_no_matching_rows() -> None:
+    """Zero matching rows returns 0, no error."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        set_triage_decision(conn, "<a@x.com>", "TO_ARCHIVE", source="user")
+        deleted = delete_triage_decisions_by_action(conn, "HUMAN_TRIAGE")
+        assert deleted == 0
+        assert len(list_triage_decisions(conn)) == 1
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------

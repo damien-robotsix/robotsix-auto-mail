@@ -776,11 +776,24 @@ def _render_column(
             "</form>"
         )
 
+    force_triage_form = ""
+    if action != "INBOX" and records:
+        force_triage_form = (
+            '<form class="force-triage-form" method="post"'
+            ' action="/force-triage-column"'
+            ' onsubmit="return confirm('
+            f"'Re-triage all {count} items in {html.escape(title)}?')\">"
+            f'<input type="hidden" name="action" value="{html.escape(action)}">'
+            '<button type="submit" class="force-triage-btn">Force Triage</button>'
+            "</form>"
+        )
+
     return (
         f'<div class="column">'
         f'<div class="column-header"><h2>{html.escape(title)}</h2>'
         f'<span class="count">{count}</span>'
         f"{batch_delete_form}"
+        f"{force_triage_form}"
         f"</div>"
         f"{unsubscribe_banner_html}"
         f'<div class="cards">{cards_html}</div>'
@@ -1088,6 +1101,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/rule-action": self._handle_rule_action,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
+            "/force-triage-column": self._handle_force_triage_column,
             "/archive-proposal": self._handle_archive_proposal,
             "/save-notes": self._handle_save_notes,
             "/save-draft": self._handle_save_draft,
@@ -1550,6 +1564,78 @@ class BoardHandler(BaseHTTPRequestHandler):
 
         from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
 
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            if get_watermark(conn, "triage_run:state") == "running":
+                self._redirect("/board", code=302)
+                return
+            set_watermark(conn, "triage_run:state", "running")
+        finally:
+            conn.close()
+
+        threading.Thread(
+            target=_run_triage_background,
+            args=(self.db_path,),
+            daemon=True,
+        ).start()
+
+        self._redirect("/board", code=302)
+
+    def _handle_force_triage_column(self) -> None:
+        """Process POST /force-triage-column — reset triage decisions for
+        one column, then launch the triage agent in a background thread.
+
+        Follows the same pattern as :meth:`_handle_run_triage`: decisions
+        are deleted, then the global agent is spawned (or joined if
+        already running).  The watermark guard ensures only one triage
+        run is in flight at a time.
+        """
+        import threading
+        import urllib.parse
+
+        from robotsix_auto_mail.db import (
+            VALID_TRIAGE_ACTIONS,
+            get_watermark,
+            init_db,
+            set_watermark,
+        )
+        from robotsix_auto_mail.triage import (
+            TriageError,
+            delete_triage_decisions_by_action,
+        )
+
+        # -- parse body ---------------------------------------------------
+        content_length = int(self.headers.get("content-length", "0"))
+        raw_body = self.rfile.read(content_length) if content_length else b""
+        params = urllib.parse.parse_qs(raw_body.decode("utf-8"))
+        action_list = params.get("action", [])
+        if not action_list or not action_list[0].strip():
+            self._bad_request("Missing 'action' parameter")
+            return
+        action = action_list[0].strip()
+        if action not in VALID_TRIAGE_ACTIONS:
+            self._bad_request(f"Invalid triage action: {action!r}")
+            return
+
+        # -- clear decisions ----------------------------------------------
+        try:
+            conn = init_db(self.db_path, skip_migrations=True)
+            try:
+                delete_triage_decisions_by_action(conn, action)
+            finally:
+                conn.close()
+        except TriageError as exc:
+            self._bad_request(str(exc))
+            return
+        except Exception as exc:
+            self._send_response(
+                json.dumps({"error": str(exc)}).encode(),
+                status=503,
+                content_type="application/json",
+            )
+            return
+
+        # -- launch triage (same pattern as _handle_run_triage) -----------
         conn = init_db(self.db_path, skip_migrations=True)
         try:
             if get_watermark(conn, "triage_run:state") == "running":

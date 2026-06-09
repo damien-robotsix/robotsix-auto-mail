@@ -159,6 +159,16 @@ h1 { margin-bottom: 1rem; font-size: 1.5rem; display: inline; }
   margin-top: 0.3rem;
 }
 .delete-btn:hover { background: #b71c1c; }
+.force-triage-form {
+  display: inline;
+}
+.force-triage-btn {
+  background: #1976d2; color: #fff; border: none;
+  padding: 0.25rem 0.6rem; border-radius: 4px;
+  cursor: pointer; font-size: 0.75rem;
+  margin-top: 0.3rem; margin-left: 0.3rem;
+}
+.force-triage-btn:hover { background: #1565c0; }
 
 /* Triage-running indicator */
 .triage-banner {
