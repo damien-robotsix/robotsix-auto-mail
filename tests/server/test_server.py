@@ -394,7 +394,7 @@ def test_build_board_html_empty_db() -> None:
     try:
         html = _build_board_html(db_path)
         assert 'class="empty-board"' in html
-        assert 'No mail yet.' in html
+        assert "No mail yet." in html
         assert 'class="column"' not in html
         # Default triage_running=False → no banner, normal button.  Scope to
         # the rendered control: the refresh JS embeds both state variants.
@@ -642,7 +642,7 @@ def test_board_content_endpoint_empty_db_returns_json() -> None:
             payload = _json.loads(body)
             columns_html = payload["columns_html"]
             assert 'class="empty-board"' in columns_html
-            assert 'No mail yet.' in columns_html
+            assert "No mail yet." in columns_html
             assert 'class="column"' not in columns_html
         finally:
             server.shutdown()
@@ -805,12 +805,14 @@ def test_handler_xss_prevention() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _post_form(port: int, fields: dict[str, str]) -> tuple[int, str]:
-    """POST url-encoded *fields* to /move and return (status, body)."""
+def _post_form(
+    port: int, fields: dict[str, str], path: str = "/move"
+) -> tuple[int, str]:
+    """POST url-encoded *fields* to *path* on the test server."""
     import urllib.request
 
     data = urllib.parse.urlencode(fields).encode("utf-8")
-    url = f"http://127.0.0.1:{port}/move"
+    url = f"http://127.0.0.1:{port}{path}"
 
     # Don't follow redirects, and capture 400/404 bodies.
     class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -847,8 +849,10 @@ def _post_form(port: int, fields: dict[str, str]) -> tuple[int, str]:
     return resp.status, body
 
 
-def _post_form_resp(port: int, fields: dict[str, str]) -> HTTPResponse:
-    """POST url-encoded *fields* to /move and return the raw response.
+def _post_form_resp(
+    port: int, fields: dict[str, str], path: str = "/move"
+) -> HTTPResponse:
+    """POST url-encoded *fields* to *path* and return the raw response.
 
     Like :func:`_post_form` but returns the response object so the raw
     ``Location``/headers can be inspected (does not follow redirects).
@@ -856,7 +860,7 @@ def _post_form_resp(port: int, fields: dict[str, str]) -> HTTPResponse:
     import urllib.request
 
     data = urllib.parse.urlencode(fields).encode("utf-8")
-    url = f"http://127.0.0.1:{port}/move"
+    url = f"http://127.0.0.1:{port}{path}"
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(
@@ -1073,9 +1077,7 @@ def test_move_success_redirects_302() -> None:
             board_html = resp.read().decode("utf-8")
             # Should be in To archive column — the only non-empty one.
             counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-            assert counts == ["1"], (
-                f"Unexpected counts: {counts}"
-            )
+            assert counts == ["1"], f"Unexpected counts: {counts}"
         finally:
             server.shutdown()
     finally:
@@ -1327,9 +1329,7 @@ def test_move_to_archive_llm_failure_still_redirects() -> None:
                 resp = urlopen(f"http://127.0.0.1:{port}/board")
                 board_html = resp.read().decode("utf-8")
                 counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
-                assert counts == ["1"], (
-                    f"Unexpected counts: {counts}"
-                )
+                assert counts == ["1"], f"Unexpected counts: {counts}"
             finally:
                 server.shutdown()
     finally:
@@ -2143,7 +2143,7 @@ def test_build_board_html_has_script_block() -> None:
     os.close(fd)
     try:
         html = _build_board_html(db_path)
-        assert "function openDetail(messageId, subject)" in html
+        assert "function openDetail(messageId, subject, focusDraft)" in html
         assert "function closeDetail()" in html
         assert "'/email/' + messageId + '?embed=1'" in html
         assert "classList.add('open')" in html
@@ -5351,3 +5351,129 @@ def test_build_detail_html_notes_section_embed_has_redirect_to() -> None:
         assert 'action="/save-notes"' in html
     finally:
         os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# DRAFT_READY / save-draft tests
+# ---------------------------------------------------------------------------
+
+
+def test_move_to_draft_ready() -> None:
+    """POST /move with triage_action=DRAFT_READY moves to the DRAFT_READY column."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "draft-move",
+                    "sender": "x@x.com",
+                    "subject": "Draft move test",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            status, body = _post_form(
+                port,
+                {"message_id": "draft-move", "triage_action": "DRAFT_READY"},
+                path="/move",
+            )
+            assert status == 302, f"Expected 302, got {status}: {body}"
+
+            # Verify the DRAFT_READY column appears with count=1.
+            resp = urlopen(f"http://127.0.0.1:{port}/board")
+            board_html = resp.read().decode("utf-8")
+            # The DRAFT_READY column header should be "Draft ready"
+            assert "<h2>Draft ready</h2>" in board_html
+            counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
+            assert "1" in counts, f"Unexpected counts: {counts}"
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_save_draft_moves_to_draft_ready() -> None:
+    """POST /save-draft persists draft_text and moves the card to DRAFT_READY."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        # Populate and pre-move to TO_ANSWER.
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "save-draft-test",
+                    "sender": "y@y.com",
+                    "subject": "Save draft test",
+                    "date": "2025-02-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        server, port = _start_test_server(db_path)
+        try:
+            # Move to TO_ANSWER first.
+            status, _ = _post_form(
+                port,
+                {"message_id": "save-draft-test", "triage_action": "TO_ANSWER"},
+                path="/move",
+            )
+            assert status == 302
+
+            # Now save a draft.
+            status, body = _post_form(
+                port,
+                {
+                    "message_id": "save-draft-test",
+                    "draft_text": "Hello, this is a draft reply.",
+                },
+                path="/save-draft",
+            )
+            assert status == 302, f"Expected 302, got {status}: {body}"
+
+            # Verify via direct DB query.
+            conn = init_db(db_path)
+            try:
+                cur = conn.execute(
+                    "SELECT draft_text FROM mail_records WHERE message_id = ?",
+                    ("save-draft-test",),
+                )
+                row = cur.fetchone()
+                assert row is not None
+                assert row[0] == "Hello, this is a draft reply."
+
+                from robotsix_auto_mail.triage import get_triage_decision
+
+                decision = get_triage_decision(conn, "save-draft-test")
+                assert decision is not None
+                assert decision.action == "DRAFT_READY"
+                assert decision.source == "user"
+            finally:
+                conn.close()
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_save_draft_missing_message_id_returns_400() -> None:
+    """POST /save-draft without message_id returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        status, body = _post_form(
+            port,
+            {"draft_text": "some text"},
+            path="/save-draft",
+        )
+        assert status == 400
+        assert "Missing message_id" in body
+    finally:
+        server.shutdown()

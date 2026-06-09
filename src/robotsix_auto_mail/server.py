@@ -103,9 +103,10 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     '<iframe src="" title="Mail detail"></iframe>\n'
     "</div>\n"
     "<script>\n"
-    "function openDetail(messageId, subject) {\n"
-    "  document.querySelector('.side-panel iframe').src"
-    " = '/email/' + messageId + '?embed=1';\n"
+    "function openDetail(messageId, subject, focusDraft) {\n"
+    "  var src = '/email/' + messageId + '?embed=1';\n"
+    "  if (focusDraft) src += '&draft=1';\n"
+    "  document.querySelector('.side-panel iframe').src = src;\n"
     "  document.querySelector('.side-panel').classList.add('open');\n"
     "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
     "  document.querySelector('.panel-title').textContent = subject || '';\n"
@@ -426,6 +427,7 @@ def _build_detail_html(
     message_id: str,
     *,
     embed: bool = False,
+    focus_draft: bool = False,
 ) -> str | None:
     """Build a full HTML detail page for a single ``MailRecord``.
 
@@ -535,6 +537,32 @@ def _build_detail_html(
         "</div>\n"
     )
 
+    # Draft section — visible when current_action is TO_ANSWER or DRAFT_READY,
+    # or when focus_draft is True (forced via ?draft=1).
+    draft_section = ""
+    if current_action in ("TO_ANSWER", "DRAFT_READY") or focus_draft:
+        escaped_draft = html.escape(record.draft_text)
+        button_label = (
+            "Update draft"
+            if current_action == "DRAFT_READY"
+            else "Save draft &amp; move to draft ready"
+        )
+        draft_section = (
+            '<div class="detail-field">'
+            '<div class="detail-label">Draft reply</div>'
+            '<div class="detail-value">'
+            '<form class="detail-form" method="post" action="/save-draft">'
+            f'<input type="hidden" name="message_id"'
+            f' value="{html.escape(record.message_id)}">'
+            f"{redirect_input}"
+            '<textarea class="detail-draft" name="draft_text" rows="8"'
+            f' style="width:100%;box-sizing:border-box;">{escaped_draft}</textarea>'
+            f'<button type="submit">{button_label}</button>'
+            "</form>"
+            "</div>"
+            "</div>\n"
+        )
+
     # Recipients
     to_html = html.escape(", ".join(to_list)) if to_list else "<em>(none)</em>"
     cc_section = ""
@@ -626,6 +654,7 @@ def _build_detail_html(
         "</div>\n"
         f"{body_html_note}"
         f"{notes_section}"
+        f"{draft_section}"
         '<div class="detail-field">'
         '<div class="detail-label">Attachments</div>'
         f'<div class="detail-value">{attach_html}</div>'
@@ -810,6 +839,27 @@ def _render_card(
             f"\U0001f4dd {truncated}</span>"
         )
 
+    # Draft indicator — shown on DRAFT_READY cards with draft text.
+    draft_indicator = ""
+    if current_action == "DRAFT_READY" and record.draft_text:
+        escaped_draft = html.escape(record.draft_text)
+        truncated = escaped_draft[:40] + ("…" if len(escaped_draft) > 40 else "")
+        draft_indicator = (
+            '<span class="card-draft-indicator"'
+            f' title="{escaped_draft}">'
+            f"\u2709\ufe0f {truncated}</span>"
+        )
+
+    # Draft reply button — only on TO_ANSWER cards.
+    draft_button = ""
+    if current_action == "TO_ANSWER":
+        draft_button = (
+            '<button type="button"'
+            ' class="draft-reply-btn"'
+            f" onclick=\"openDetail('{escaped_mid}', '{subject_attr}', true)\""
+            ">Draft reply</button>"
+        )
+
     form_html = (
         '<form class="card-form" method="post" action="/move">'
         f'<input type="hidden" name="message_id"'
@@ -878,8 +928,10 @@ def _render_card(
         f'<div class="date">{date_str}</div>'
         f'<div class="body-preview">{body_html}</div>'
         f"{notes_indicator}"
+        f"{draft_indicator}"
         f"{archive_html}"
         f"{form_html}"
+        f"{draft_button}"
         f"{delete_form}"
         f"</div>"
     )
@@ -1038,6 +1090,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/run-triage": self._handle_run_triage,
             "/archive-proposal": self._handle_archive_proposal,
             "/save-notes": self._handle_save_notes,
+            "/save-draft": self._handle_save_draft,
         }
         handler = routes.get(self.path)
         if handler is None:
@@ -1674,6 +1727,58 @@ class BoardHandler(BaseHTTPRequestHandler):
         else:
             self._redirect("/board", code=302)
 
+    def _handle_save_draft(self) -> None:
+        """Process POST /save-draft — persist draft text and move to DRAFT_READY."""
+        from robotsix_auto_mail.db import (
+            get_record_by_message_id,
+            init_db,
+            update_draft_text,
+        )
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
+
+        message_id = (fields.get("message_id") or [""])[0].strip()
+        draft_text = (fields.get("draft_text") or [""])[0]
+        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+
+        if not message_id:
+            self._bad_request("Missing message_id")
+            return
+
+        # Verify the record exists (read-only check).
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            if get_record_by_message_id(conn, message_id) is None:
+                self._not_found()
+                return
+        finally:
+            conn.close()
+
+        # Persist draft text and move to DRAFT_READY.
+        conn = init_db(self.db_path)
+        try:
+            update_draft_text(conn, message_id, draft_text)
+
+            current = get_triage_decision(conn, message_id)
+            if current is None or current.action != "DRAFT_READY":
+                set_triage_decision(
+                    conn,
+                    message_id,
+                    "DRAFT_READY",
+                    source="user",
+                    reason="draft saved",
+                )
+                record_human_decision(conn, message_id, "DRAFT_READY")
+        finally:
+            conn.close()
+
+        if redirect_to and _is_safe_redirect_path(redirect_to):
+            self._redirect(redirect_to, code=302)
+        else:
+            self._redirect("/board", code=302)
+
     def _serve_email_status(self) -> None:
         """Serve GET /email/{message_id}/status — return triage action as text.
 
@@ -1722,12 +1827,14 @@ class BoardHandler(BaseHTTPRequestHandler):
         message_id = unquote(parsed.path[len(prefix) :])
         qs = parse_qs(parsed.query)
         embed = qs.get("embed", ["0"])[0] == "1"
+        focus_draft = qs.get("draft", ["0"])[0] == "1"
 
         try:
             detail_html = _build_detail_html(
                 self.db_path,
                 message_id,
                 embed=embed,
+                focus_draft=focus_draft,
             )
         except Exception:
             self._send_response("Database unavailable", status=503)

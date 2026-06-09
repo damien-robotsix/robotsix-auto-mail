@@ -145,6 +145,14 @@ def test_triage_decision_rejects_invalid_action() -> None:
         TriageDecision(message_id="<a>", action="banana", source="user")
 
 
+def test_triage_decision_accepts_draft_ready_action() -> None:
+    """DRAFT_READY is a valid triage action."""
+    decision = TriageDecision(
+        message_id="<draft@test.com>", action="DRAFT_READY", source="user"
+    )
+    assert decision.action == "DRAFT_READY"
+
+
 def test_triage_decision_rejects_invalid_source() -> None:
     with pytest.raises(pydantic.ValidationError):
         TriageDecision(message_id="<a>", action="TO_ANSWER", source="robot")
@@ -536,6 +544,7 @@ def test_valid_triage_actions_vocabulary() -> None:
             "TO_ARCHIVE",
             "TO_DELETE",
             "TO_ANSWER",
+            "DRAFT_READY",
         }
     )
 
@@ -554,7 +563,7 @@ def test_build_triage_system_prompt_mentions_canonical_actions() -> None:
 
 
 def test_triage_action_order_is_canonical_columns() -> None:
-    """TRIAGE_ACTION_ORDER is exactly the six canonical columns in display order."""
+    """TRIAGE_ACTION_ORDER is exactly the seven canonical columns in display order."""
     assert TRIAGE_ACTION_ORDER == (
         "INBOX",
         "HUMAN_TRIAGE",
@@ -562,13 +571,14 @@ def test_triage_action_order_is_canonical_columns() -> None:
         "TO_ARCHIVE",
         "TO_DELETE",
         "TO_ANSWER",
+        "DRAFT_READY",
     )
 
 
 def test_triage_action_labels_cover_every_action() -> None:
-    """TRIAGE_ACTION_LABELS has exactly the 6 canonical keys, each value non-empty."""
+    """TRIAGE_ACTION_LABELS has exactly the 7 canonical keys, each value non-empty."""
     assert set(TRIAGE_ACTION_LABELS.keys()) == set(VALID_TRIAGE_ACTIONS)
-    assert len(TRIAGE_ACTION_LABELS) == 6
+    assert len(TRIAGE_ACTION_LABELS) == 7
     for _action, label in TRIAGE_ACTION_LABELS.items():
         assert isinstance(label, str) and len(label) > 0
     assert tuple(TRIAGE_ACTION_LABELS) == TRIAGE_ACTION_ORDER

@@ -199,6 +199,7 @@ def test_init_db_creates_mail_records_table() -> None:
             "unsubscribe_header": "TEXT",
             "status": "TEXT",
             "notes": "TEXT",
+            "draft_text": "TEXT",
         }
         for name, type_ in expected.items():
             assert name in cols, f"Column {name} missing"
