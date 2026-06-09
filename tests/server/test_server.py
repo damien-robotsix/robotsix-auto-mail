@@ -1228,6 +1228,163 @@ def test_move_unknown_message_id_returns_404() -> None:
         server.shutdown()
 
 
+def test_move_to_archive_triggers_llm() -> None:
+    """Moving to TO_ARCHIVE triggers the LLM provider."""
+    from unittest import mock
+
+    from robotsix_auto_mail.config import MailConfig
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "llm-trigger",
+                    "sender": "dev@python.org",
+                    "subject": "PEP discussion",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "Let's talk about the new PEP.",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="user",
+            password="pass",
+            llm_api_key="sk-test",
+        )
+
+        with mock.patch(
+            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
+        ) as mock_provider_cls:
+            server, port = _start_test_server_with_mail_config(db_path, mail_config)
+            try:
+                status, body = _post_form(
+                    port,
+                    {"message_id": "llm-trigger", "triage_action": "TO_ARCHIVE"},
+                )
+                assert status == 302, f"Expected 302, got {status}: {body}"
+                # LLM provider should have been instantiated
+                mock_provider_cls.assert_called_once()
+            finally:
+                server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_move_to_archive_llm_failure_still_redirects() -> None:
+    """LLM call fails → POST still returns 302."""
+    from unittest import mock
+
+    from robotsix_auto_mail.config import MailConfig
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "llm-fail",
+                    "sender": "x@x.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="user",
+            password="pass",
+            llm_api_key="sk-test",
+        )
+
+        mock_provider = mock.MagicMock()
+        mock_provider.build_agent.side_effect = RuntimeError("LLM crashed")
+
+        with mock.patch(
+            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+            return_value=mock_provider,
+        ):
+            server, port = _start_test_server_with_mail_config(db_path, mail_config)
+            try:
+                status, body = _post_form(
+                    port,
+                    {"message_id": "llm-fail", "triage_action": "TO_ARCHIVE"},
+                )
+                assert status == 302, f"Expected 302, got {status}: {body}"
+
+                # Card still landed in TO_ARCHIVE column
+                resp = urlopen(f"http://127.0.0.1:{port}/board")
+                board_html = resp.read().decode("utf-8")
+                counts = re.findall(r'<span class="count">(\d+)</span>', board_html)
+                assert counts == ["0", "0", "0", "1", "0", "0"], (
+                    f"Unexpected counts: {counts}"
+                )
+            finally:
+                server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_move_to_other_column_skips_llm() -> None:
+    """Moving to TO_ANSWER does NOT trigger the LLM."""
+    from unittest import mock
+
+    from robotsix_auto_mail.config import MailConfig
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "skip-llm",
+                    "sender": "x@x.com",
+                    "subject": "Question",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "Can you help?",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="user",
+            password="pass",
+            llm_api_key="sk-test",
+        )
+
+        with mock.patch(
+            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
+        ) as mock_provider_cls:
+            server, port = _start_test_server_with_mail_config(db_path, mail_config)
+            try:
+                status, body = _post_form(
+                    port,
+                    {"message_id": "skip-llm", "triage_action": "TO_ANSWER"},
+                )
+                assert status == 302, f"Expected 302, got {status}: {body}"
+                # LLM provider should NOT have been instantiated
+                mock_provider_cls.assert_not_called()
+            finally:
+                server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
 # ---------------------------------------------------------------------------
 # GET /email/{message_id}/status tests
 # ---------------------------------------------------------------------------

@@ -33,6 +33,7 @@ from robotsix_auto_mail.triage import (
     get_triage_decision,
     list_rule_proposals,
     list_triage_decisions,
+    propose_archive_subfolder_llm,
     record_human_decision,
     set_archive_subfolder_override,
     set_rule_state,
@@ -171,16 +172,16 @@ _BOARD_TEMPLATE = _JINJA_ENV.from_string(
     "      var tc = document.getElementById('triage-control');\n"
     "      if (tc) {\n"
     "        if (data.triage_running) {\n"
-    "          tc.innerHTML = '<div class=\"triage-banner\">Triage is"
+    '          tc.innerHTML = \'<div class="triage-banner">Triage is'
     " currently running. The board will refresh automatically.</div>'\n"
-    "            + '<button type=\"submit\" disabled style=\"font-size:0.85rem;"
-    " padding:0.25rem 0.75rem; cursor:not-allowed; opacity:0.6;\">Triage"
+    '            + \'<button type="submit" disabled style="font-size:0.85rem;'
+    ' padding:0.25rem 0.75rem; cursor:not-allowed; opacity:0.6;">Triage'
     " running…</button>';\n"
     "        } else {\n"
-    "          tc.innerHTML = '<form method=\"post\" action=\"/run-triage\""
-    " style=\"display:inline-block; margin-left:1.5rem;"
+    '          tc.innerHTML = \'<form method="post" action="/run-triage"'
+    ' style="display:inline-block; margin-left:1.5rem;'
     " vertical-align:middle;\">'\n"
-    "            + '<button type=\"submit\" style=\"font-size:0.85rem;"
+    '            + \'<button type="submit" style="font-size:0.85rem;'
     " padding:0.25rem 0.75rem; cursor:pointer;\">Run triage</button></form>';\n"
     "        }\n"
     "      }\n"
@@ -1148,7 +1149,8 @@ class BoardHandler(BaseHTTPRequestHandler):
         try:
             # Verify the record exists before upserting a triage decision
             # (foreign key would reject it anyway, but we want a clean 404).
-            if get_record_by_message_id(conn, message_id) is None:
+            record = get_record_by_message_id(conn, message_id)
+            if record is None:
                 self._not_found()
                 return
             set_triage_decision(
@@ -1159,6 +1161,15 @@ class BoardHandler(BaseHTTPRequestHandler):
                 reason=f"moved to {triage_action}",
             )
             record_human_decision(conn, message_id, triage_action)
+
+            if triage_action == "TO_ARCHIVE":
+                try:
+                    if record is not None and self.mail_config is not None:
+                        propose_archive_subfolder_llm(
+                            conn, record, self.mail_config.llm_api_key
+                        )
+                except Exception:  # noqa: S110  # nosec B110
+                    pass  # Non-fatal: board falls back to deterministic proposal
         finally:
             conn.close()
 
