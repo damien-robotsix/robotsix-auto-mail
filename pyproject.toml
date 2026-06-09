@@ -9,7 +9,7 @@ requires-python = ">=3.14,<3.15"
 dependencies = [
     "urllib3>=2.0",
     "pydantic>=2.0",
-    "jinja2>=3.1",
+    "robotsix-board",
     "structlog>=24.1",
     "robotsix-yaml-config",
 ]
@@ -27,7 +27,6 @@ dev = [
     # scripts/config/check_config_sync.py, which imports `yaml` directly.
     "pyyaml>=6.0",
     "types-PyYAML",
-    "types-jinja2",
     "robotsix-llmio[openrouter-deepseek,tracing]",
 ]
 llm = [
@@ -75,6 +74,10 @@ python_version = "3.12"
 packages = ["src/robotsix_auto_mail"]
 exclude = [".pip-site", ".deps"]
 
+[[tool.mypy.overrides]]
+module = "robotsix_board"
+ignore_missing_imports = true
+
 [tool.deptry]
 # Treat everything under [project.optional-dependencies][dev] (ruff, mypy,
 # pytest, hatchling, types-PyYAML, robotsix-llmio, deptry) as dev-only.
@@ -88,5 +91,6 @@ optional_dependencies_dev_groups = ["dev", "docs"]
 DEP003 = ["pydantic_ai"]
 
 [tool.uv.sources]
+robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "main" }
 robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }

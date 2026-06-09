@@ -9,15 +9,16 @@ from __future__ import annotations
 
 import functools
 import html
+import importlib.resources
 import json
 from collections.abc import Callable, Mapping
 from http.server import BaseHTTPRequestHandler
-from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote
 
-import jinja2
+import robotsix_board
 
+from robotsix_auto_mail.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
 from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
@@ -40,223 +41,17 @@ from robotsix_auto_mail.triage import (
     set_triage_decision,
 )
 
-# Jinja2 environment for the board/detail pages.  ``autoescape`` is enabled
-# at the environment level (so the security default is safe), but each
-# template wraps its body in ``{% autoescape false %}`` because every
-# interpolated value is already escaped in Python via ``html.escape`` (which
-# uses ``&quot;``/``&#x27;`` for quotes) — letting Jinja2 autoescape would
-# both double-escape and switch to ``markupsafe`` quote sequences, changing
-# the emitted bytes.
-_JINJA_ENV = jinja2.Environment(autoescape=True)
+# -- Static assets from robotsix_board -------------------------------------
+# Pre-loaded at module level so _serve_static never touches the filesystem.
+_STATIC_BOARD_JS = (
+    importlib.resources.files("robotsix_board") / "static" / "board.js"
+).read_text()
+_STATIC_BOARD_CSS = (
+    importlib.resources.files("robotsix_board") / "static" / "board.css"
+).read_text()
 
+# -- Constants --------------------------------------------------------------
 _BOARD_COLUMNS = TRIAGE_ACTION_ORDER
-
-_CSS = (Path(__file__).parent / "static" / "board.css").read_text()
-
-
-# Full ``/board`` document.  ``css`` and ``columns_html`` are passed in
-# already-rendered (and, where applicable, ``html.escape``-d) so the template
-# only assembles the surrounding chrome.  The body is wrapped in
-# ``{% autoescape false %}`` to emit the pre-escaped values verbatim.
-_BOARD_TEMPLATE = _JINJA_ENV.from_string(
-    "{% autoescape false %}"
-    "<!DOCTYPE html>\n"
-    '<html lang="en">\n'
-    "<head>\n"
-    '<meta charset="utf-8">\n'
-    "<title>Mail Board</title>\n"
-    "<style>{{ css }}</style>\n"
-    "</head>\n"
-    "<body>\n"
-    "<h1>Mail Board</h1>\n"
-    '<button id="refresh-btn" title="Refresh now">↻</button>\n'
-    '<span id="refresh-time"></span>\n'
-    '<span id="triage-control">'
-    "{% if triage_running %}"
-    '<div class="triage-banner">'
-    "Triage is currently running. The board will refresh automatically."
-    "</div>\n"
-    '<button type="submit" disabled'
-    ' style="font-size:0.85rem; padding:0.25rem 0.75rem;'
-    ' cursor:not-allowed; opacity:0.6;">'
-    "Triage running\u2026</button>\n"
-    "{% else %}"
-    '<form method="post" action="/run-triage"'
-    ' style="display:inline-block; margin-left:1.5rem; vertical-align:middle;">\n'
-    '  <button type="submit"'
-    ' style="font-size:0.85rem; padding:0.25rem 0.75rem; cursor:pointer;">'
-    "Run triage</button>\n"
-    "</form>\n"
-    "{% endif %}"
-    "</span>"
-    "{{ proposals_html }}\n"
-    '<div class="board-wrapper">\n'
-    '<div class="board">\n'
-    "{{ columns_html }}"
-    "\n</div>\n"
-    "</div>\n"
-    '<div class="side-panel" id="side-panel">\n'
-    '<div class="panel-header">\n'
-    '<span class="panel-title"></span>\n'
-    '<button class="close-btn" onclick="closeDetail()">&times;</button>\n'
-    "</div>\n"
-    '<iframe src="" title="Mail detail"></iframe>\n'
-    "</div>\n"
-    "<script>\n"
-    "function openDetail(messageId, subject, focusDraft) {\n"
-    "  var src = '/email/' + messageId + '?embed=1';\n"
-    "  if (focusDraft) src += '&draft=1';\n"
-    "  document.querySelector('.side-panel iframe').src = src;\n"
-    "  document.querySelector('.side-panel').classList.add('open');\n"
-    "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
-    "  document.querySelector('.panel-title').textContent = subject || '';\n"
-    "  location.hash = messageId;\n"
-    "}\n"
-    "function closeDetail() {\n"
-    "  document.querySelector('.side-panel').classList.remove('open');\n"
-    "  document.querySelector('.board-wrapper').classList.remove('panel-open');\n"
-    "  document.querySelector('.side-panel iframe').src = '';\n"
-    "  location.hash = '';\n"
-    "}\n"
-    "if (location.hash) {\n"
-    "  var mid = location.hash.slice(1);\n"
-    "  if (mid) openDetail(mid);\n"
-    "}\n"
-    "window.addEventListener('hashchange', function() {\n"
-    "  if (!location.hash) closeDetail();\n"
-    "});\n"
-    "window.addEventListener('keydown', function(e) {\n"
-    "  if (e.key === 'Escape') closeDetail();\n"
-    "});\n"
-    "document.querySelector('.board').addEventListener('click', function(e) {\n"
-    "  if (e.target.closest('button, select, input')) return;\n"
-    "  var card = e.target.closest('.card');\n"
-    "  if (!card) return;\n"
-    "  var mid = card.getAttribute('data-message-id');\n"
-    "  if (!mid) return;\n"
-    "  if (e.target.closest('form')) return;\n"
-    "  e.preventDefault();\n"
-    "  var subject = card.getAttribute('data-subject') || '';\n"
-    "  openDetail(mid, subject);\n"
-    "});\n"
-    "\n"
-    "// Board auto-refresh polling\n"
-    "var lastRefresh = Date.now();\n"
-    "var refreshTimer = null;\n"
-    "var refreshDisplayTimer = null;\n"
-    "\n"
-    "function relativeTime(ms) {\n"
-    "  if (ms < 10000) return 'just now';\n"
-    "  var sec = Math.floor(ms / 1000);\n"
-    "  if (sec < 60) return sec + 's ago';\n"
-    "  var min = Math.floor(sec / 60);\n"
-    "  if (min < 60) return min + 'm ago';\n"
-    "  return Math.floor(min / 60) + 'h ago';\n"
-    "}\n"
-    "\n"
-    "function updateRefreshTime() {\n"
-    "  var el = document.getElementById('refresh-time');\n"
-    "  if (el) el.textContent = relativeTime(Date.now() - lastRefresh);\n"
-    "}\n"
-    "\n"
-    "function refreshBoard() {\n"
-    "  if (document.getElementById('side-panel').classList.contains('open')) return;\n"
-    "  fetch('/board-content')\n"
-    "    .then(function(r) {\n"
-    "      if (!r.ok) throw new Error('bad status');\n"
-    "      return r.json();\n"
-    "    })\n"
-    "    .then(function(data) {\n"
-    "      document.querySelector('.board').innerHTML = data.columns_html;\n"
-    "      var proposals = document.querySelector('.rule-proposals');\n"
-    "      if (proposals) proposals.outerHTML = data.proposals_html;\n"
-    "      var tc = document.getElementById('triage-control');\n"
-    "      if (tc) {\n"
-    "        if (data.triage_running) {\n"
-    '          tc.innerHTML = \'<div class="triage-banner">Triage is'
-    " currently running. The board will refresh automatically.</div>'\n"
-    '            + \'<button type="submit" disabled style="font-size:0.85rem;'
-    ' padding:0.25rem 0.75rem; cursor:not-allowed; opacity:0.6;">Triage'
-    " running…</button>';\n"
-    "        } else {\n"
-    '          tc.innerHTML = \'<form method="post" action="/run-triage"'
-    ' style="display:inline-block; margin-left:1.5rem;'
-    " vertical-align:middle;\">'\n"
-    '            + \'<button type="submit" style="font-size:0.85rem;'
-    " padding:0.25rem 0.75rem; cursor:pointer;\">Run triage</button></form>';\n"
-    "        }\n"
-    "      }\n"
-    "      lastRefresh = Date.now();\n"
-    "      updateRefreshTime();\n"
-    "    })\n"
-    "    .catch(function() { /* silently retry next cycle */ });\n"
-    "}\n"
-    "\n"
-    "document.getElementById('refresh-btn').addEventListener('click', function() {\n"
-    "  refreshBoard();\n"
-    "  clearInterval(refreshTimer);\n"
-    "  refreshTimer = setInterval(refreshBoard, 30000);\n"
-    "});\n"
-    "\n"
-    "refreshTimer = setInterval(refreshBoard, 30000);\n"
-    "refreshDisplayTimer = setInterval(updateRefreshTime, 10000);\n"
-    "updateRefreshTime();\n"
-    "</script>\n"
-    "</body>\n"
-    "</html>"
-    "{% endautoescape %}"
-)
-
-
-# Embedded (iframe) detail fragment.  ``fields_html`` is the shared,
-# already-escaped inner block.
-_DETAIL_EMBED_TEMPLATE = _JINJA_ENV.from_string(
-    "{% autoescape false %}"
-    "<style>\n"
-    ".detail-field { margin-bottom: 0.75rem; }\n"
-    ".detail-label { font-weight: 700; font-size: 0.85rem; color: #666;"
-    " margin-bottom: 0.15rem; }\n"
-    ".detail-value { font-size: 0.95rem; }\n"
-    ".detail-value pre { margin: 0; white-space: pre-wrap;"
-    " font-family: inherit; }\n"
-    ".detail-value code { font-size: 0.85rem; background: #eee;"
-    " padding: 0.1rem 0.3rem; border-radius: 3px; }\n"
-    ".detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem;"
-    " align-items: center; }\n"
-    ".detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }\n"
-    ".detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem;"
-    " cursor: pointer; }\n"
-    ".embed-detail { padding: 1rem;"
-    " font-family: system-ui, -apple-system, sans-serif; }\n"
-    "</style>\n"
-    '<div class="embed-detail">\n'
-    "{{ fields_html }}"
-    "</div>\n"
-    "{% endautoescape %}"
-)
-
-
-# Full standalone detail document.  ``title``/``heading`` are passed in
-# already ``html.escape``-d; ``css`` and ``fields_html`` are trusted markup.
-_DETAIL_PAGE_TEMPLATE = _JINJA_ENV.from_string(
-    "{% autoescape false %}"
-    "<!DOCTYPE html>\n"
-    '<html lang="en">\n'
-    "<head>\n"
-    '<meta charset="utf-8">\n'
-    "<title>Mail: {{ title }}</title>\n"
-    "<style>{{ css }}</style>\n"
-    "</head>\n"
-    "<body>\n"
-    '<a class="back-link" href="/board">← Back to board</a>\n'
-    '<div class="detail-container">\n'
-    "<h1>{{ heading }}</h1>\n"
-    "{{ fields_html }}"
-    "</div>\n"
-    "</body>\n"
-    "</html>"
-    "{% endautoescape %}"
-)
 
 
 def _is_safe_redirect_path(location: str) -> bool:
@@ -378,33 +173,297 @@ def _build_board_content(
                 unsubscribe_suggestions = json.loads(suggestions_raw)
             except (json.JSONDecodeError, TypeError):
                 pass
+
+        # Build record_notes map for notes indicators.
+        record_notes: dict[str, str] = {
+            r.message_id: r.notes for r in all_records if r.notes
+        }
     finally:
         conn.close()
 
-    # Build column HTML fragments.
-    columns_html_parts = [
-        _render_column(
-            action,
-            records,
-            triage_by_mid,
-            archive_subfolders=archive_subfolders if action == "TO_ARCHIVE" else None,
-            existing_folders=folder_exists if action == "TO_ARCHIVE" else None,
-            archive_root=archive_root,
-            unsubscribe_suggestions=(
-                unsubscribe_suggestions if action == "TO_DELETE" else None
-            ),
+    # Build the adapter for protocol compliance.
+    adapter = MailBoardAdapter(
+        triage_by_mid={mid: d.action for mid, d in triage_by_mid.items()},
+        archive_subfolders=archive_subfolders,
+        folder_exists=folder_exists,
+        archive_root=archive_root,
+        unsubscribe_suggestions=unsubscribe_suggestions,
+        record_notes=record_notes,
+    )
+    assert isinstance(adapter, robotsix_board.BoardAdapter)  # noqa: S101
+
+    # Build column HTML fragments using library CSS class names.
+    columns_html_parts: list[str] = []
+    for action, records in columns:
+        label = TRIAGE_ACTION_LABELS[action]
+        count = len(records)
+
+        # -- unsubscribe banner (TO_DELETE column only) -------------------
+        unsubscribe_banner_html = ""
+        if action == "TO_DELETE" and unsubscribe_suggestions:
+            banner_parts: list[str] = []
+            seen_senders: set[str] = set()
+            for record in records:
+                key = _sender_key(record.sender)
+                if key in seen_senders:
+                    continue
+                seen_senders.add(key)
+                suggestion = unsubscribe_suggestions.get(key)
+                if suggestion is None:
+                    continue
+                method = suggestion.get("method", "")
+                url = suggestion.get("url", "")
+                description = suggestion.get("description", "")
+                if method == "mailto" or (
+                    method == "header" and url.lower().startswith("mailto:")
+                ):
+                    link_html = f'<a href="{html.escape(url)}">Unsubscribe</a>'
+                    note = ""
+                elif url.startswith("https://") or url.startswith("http://"):
+                    note = (
+                        ' <span class="unsubscribe-note">'
+                        f"({
+                            html.escape(
+                                'found in email body'
+                                if method == 'body_link'
+                                else 'from header'
+                            )
+                        })"
+                        "</span>"
+                    )
+                    link_html = (
+                        f'<a href="{html.escape(url)}" target="_blank" rel="noopener">'
+                        "Unsubscribe</a>"
+                    )
+                else:
+                    link_html = ""
+                    note = ""
+                banner_parts.append(
+                    '<div class="unsubscribe-banner">'
+                    '<span class="unsubscribe-icon">\U0001f4ec</span>'
+                    " You could unsubscribe from "
+                    f"<strong>{html.escape(record.sender)}</strong>"
+                    " instead of deleting: "
+                    f"{html.escape(description)} "
+                    f"{link_html}{note}"
+                    "</div>"
+                )
+            unsubscribe_banner_html = "".join(banner_parts)
+
+        # -- render each card -------------------------------------------------
+        cards_html_parts: list[str] = []
+        for record in records:
+            decision = triage_by_mid.get(record.message_id)
+            if decision is not None:
+                current_action = decision.action
+            else:
+                current_action = "INBOX"
+
+            escaped_sender = html.escape(record.sender)
+            subject_str = record.subject.strip() or "(no subject)"
+            escaped_subject = html.escape(subject_str)
+            subject_attr = escaped_subject
+            escaped_mid = html.escape(record.message_id)
+            quoted_mid = quote(record.message_id, safe="")
+            date_str = html.escape(_format_date(record.date))
+
+            # Body preview
+            body = record.body_plain
+            if not body or not body.strip():
+                body_html_render = '<span class="no-body">(no body)</span>'
+            elif len(body) > _BODY_PREVIEW_LIMIT:
+                body_html_render = html.escape(body[:_BODY_PREVIEW_LIMIT]) + "\u2026"
+            else:
+                body_html_render = html.escape(body)
+
+            # Move form options
+            options_parts: list[str] = []
+            for opt_action in _BOARD_COLUMNS:
+                sel = " selected" if opt_action == current_action else ""
+                options_parts.append(
+                    f'<option value="{html.escape(opt_action)}"{sel}>'
+                    f"{html.escape(TRIAGE_ACTION_LABELS[opt_action])}</option>"
+                )
+
+            # Notes indicator
+            notes_indicator = ""
+            if record.notes:
+                escaped_notes = html.escape(record.notes)
+                truncated = escaped_notes[:40] + (
+                    "\u2026" if len(escaped_notes) > 40 else ""
+                )
+                notes_indicator = (
+                    '<span class="card-notes-indicator"'
+                    f' title="{escaped_notes}">'
+                    f"\U0001f4dd {truncated}</span>"
+                )
+
+            # Draft indicator
+            draft_indicator = ""
+            if current_action == "DRAFT_READY" and record.draft_text:
+                escaped_draft = html.escape(record.draft_text)
+                truncated = escaped_draft[:40] + (
+                    "\u2026" if len(escaped_draft) > 40 else ""
+                )
+                draft_indicator = (
+                    '<span class="card-draft-indicator"'
+                    f' title="{escaped_draft}">'
+                    f"\u2709\ufe0f {truncated}</span>"
+                )
+
+            # Draft reply button
+            draft_button = ""
+            if current_action == "TO_ANSWER":
+                draft_button = (
+                    '<button type="button"'
+                    ' class="draft-reply-btn"'
+                    f" onclick=\"openDetail('{escaped_mid}', '{subject_attr}', true)\""
+                    ">Draft reply</button>"
+                )
+
+            # Delete form (TO_DELETE only)
+            delete_form = ""
+            if current_action == "TO_DELETE":
+                delete_form = (
+                    '<form class="delete-form" method="post" action="/delete"'
+                    ' onsubmit="return confirm('
+                    "'Permanently delete this mail from mailbox and database?')\">"
+                    f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+                    '<button type="submit" class="delete-btn">Delete</button>'
+                    "</form>"
+                )
+
+            # Archive proposal section (TO_ARCHIVE only)
+            archive_html = ""
+            if action == "TO_ARCHIVE":
+                arc_subfolder = archive_subfolders.get(record.message_id)
+                if arc_subfolder is not None:
+                    escaped_subfolder = html.escape(arc_subfolder)
+                    escaped_root = html.escape(archive_root)
+                    if arc_subfolder:
+                        display_path = f"{escaped_root}/{escaped_subfolder}"
+                    else:
+                        display_path = escaped_root + "/"
+                    exists_indicator = ""
+                    if folder_exists.get(record.message_id):
+                        exists_indicator = (
+                            '<span class="archive-exists"'
+                            ' title="Folder already exists">'
+                            "&#x2713;</span>"
+                        )
+                    archive_html = (
+                        '<div class="archive-proposal">'
+                        "Archive &rarr; "
+                        f'<span class="archive-path">{display_path}</span>'
+                        f"{exists_indicator}"
+                        '<form class="archive-override-form" method="post"'
+                        ' action="/archive-proposal">'
+                        f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+                        '<input type="text" name="subfolder"'
+                        f' value="{escaped_subfolder}"'
+                        ' placeholder="subfolder path" size="30">'
+                        '<button type="submit">Set</button>'
+                        "</form>"
+                        '<form class="archive-confirm-form" method="post"'
+                        ' action="/archive"'
+                        ' onsubmit="return confirm('
+                        f"'Archive this mail to {display_path}?')\">"
+                        f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+                        '<button type="submit" class="archive-btn">Archive</button>'
+                        "</form>"
+                        "</div>"
+                    )
+
+            # Assemble card HTML
+            cards_html_parts.append(
+                '<div class="board-card"'
+                f' data-message-id="{quoted_mid}"'
+                f' data-subject="{subject_attr}"'
+                f' data-card-id="{escaped_mid}">'
+                '<div class="board-card-title">'
+                f"{escaped_sender}: {escaped_subject}</div>"
+                '<div class="board-card-timestamps">'
+                f'<span class="board-timestamp">date: {date_str}</span>'
+                "</div>"
+                f'<div class="body-preview">{body_html_render}</div>'
+                f"{notes_indicator}"
+                f"{draft_indicator}"
+                f"{archive_html}"
+                '<form class="board-card-move" method="post" action="/move">'
+                f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+                f'<select class="board-move-select" name="triage_action">'
+                f"{''.join(options_parts)}</select>"
+                '<button type="submit" class="board-move-submit">Move</button>'
+                "</form>"
+                f"{draft_button}"
+                f"{delete_form}"
+                "</div>"
+            )
+
+        # Batch-delete button for TO_DELETE column
+        batch_delete_form = ""
+        if action == "TO_DELETE" and records:
+            batch_delete_form = (
+                '<form class="delete-form" method="post" action="/batch-delete"'
+                ' onsubmit="return confirm('
+                "'Permanently delete ALL mail in this column"
+                " from mailbox and database?')\">"
+                '<button type="submit" class="delete-btn">Delete All</button>'
+                "</form>"
+            )
+
+        force_triage_form = ""
+        if action != "INBOX" and records:
+            force_triage_form = (
+                '<form class="force-triage-form" method="post"'
+                ' action="/force-triage-column"'
+                ' onsubmit="return confirm('
+                f"'Re-triage all {count} items in {html.escape(label)}?')\">"
+                f'<input type="hidden" name="action" value="{html.escape(action)}">'
+                '<button type="submit" class="force-triage-btn">Force Triage</button>'
+                "</form>"
+            )
+
+        columns_html_parts.append(
+            f'<div class="board-column" data-status="{html.escape(action)}">'
+            '<div class="board-column-header">'
+            f'<h2 class="board-column-label">{html.escape(label)}</h2>'
+            f'<span class="board-column-count">{count}</span>'
+            f"{batch_delete_form}"
+            f"{force_triage_form}"
+            "</div>"
+            f"{unsubscribe_banner_html}"
+            '<div class="board-column-cards">'
+            f"{''.join(cards_html_parts)}"
+            "</div>"
+            "</div>"
         )
-        for action, records in columns
-    ]
 
     if not columns_html_parts:
         columns_html = '<div class="empty-board">No mail yet.</div>'
     else:
         columns_html = "".join(columns_html_parts)
 
+    # -- rule proposals --------------------------------------------------------
+    proposals_count = len(proposals)
+    if proposals:
+        rule_cards_html = "".join(
+            _render_rule_card(fingerprint, entry) for fingerprint, entry in proposals
+        )
+    else:
+        rule_cards_html = '<div class="rule-empty">No pending rule proposals</div>'
+    proposals_html = (
+        '<div class="rule-proposals">'
+        '<div class="rule-proposals-header">'
+        "<h2>Rule proposals</h2>"
+        f'<span class="count rule-count">{proposals_count}</span></div>'
+        f'<div class="rule-cards">{rule_cards_html}</div>'
+        "</div>"
+    )
+
     return {
         "columns_html": columns_html,
-        "proposals_html": _render_rule_proposals(proposals),
+        "proposals_html": proposals_html,
         "triage_running": triage_running,
         "unsubscribe_suggestions": unsubscribe_suggestions,
     }
@@ -413,13 +472,169 @@ def _build_board_content(
 def _build_board_html(db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT) -> str:
     """Build the full ``/board`` HTML document.
 
-    Calls :func:`_build_board_content` and wraps the result in the
-    full-page ``_BOARD_TEMPLATE``.  Raises ``Exception`` when the
-    database cannot be opened (the caller should catch it and return
-    a 503).
+    Calls :func:`_build_board_content` and wraps the result in a minimal
+    HTML5 page shell (Python f-strings, no Jinja2).  Raises ``Exception``
+    when the database cannot be opened (the caller should catch it and
+    return a 503).
     """
     content = _build_board_content(db_path, archive_root=archive_root)
-    return _BOARD_TEMPLATE.render(css=_CSS, **content)
+
+    triage_control_html: str
+    if content["triage_running"]:
+        triage_control_html = (
+            '<div class="triage-banner">'
+            "Triage is currently running. The board will refresh automatically."
+            "</div>\n"
+            '<button type="submit" disabled'
+            ' style="font-size:0.85rem; padding:0.25rem 0.75rem;'
+            ' cursor:not-allowed; opacity:0.6;">'
+            "Triage running\u2026</button>"
+        )
+    else:
+        triage_control_html = (
+            '<form method="post" action="/run-triage"'
+            ' style="display:inline-block;'
+            ' margin-left:1.5rem; vertical-align:middle;">\n'
+            '  <button type="submit"'
+            ' style="font-size:0.85rem; padding:0.25rem 0.75rem; cursor:pointer;">'
+            "Run triage</button>\n"
+            "</form>"
+        )
+
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="utf-8">\n'
+        "<title>Mail Board</title>\n"
+        '<link rel="stylesheet" href="/static/board.css">\n'
+        "</head>\n"
+        "<body>\n"
+        "<h1>Mail Board</h1>\n"
+        '<button id="refresh-btn" title="Refresh now">\u21bb</button>\n'
+        '<span id="refresh-time"></span>\n'
+        f'<span id="triage-control">{triage_control_html}</span>\n'
+        f"{content['proposals_html']}\n"
+        '<div class="board-wrapper">\n'
+        '<div class="board">\n'
+        f"{content['columns_html']}"
+        "\n</div>\n"
+        "</div>\n"
+        # Side-panel skeleton (auto-mail's iframe-based pattern, not
+        # the library's #drawer).
+        '<div class="side-panel" id="side-panel">\n'
+        '<div class="panel-header">\n'
+        '<span class="panel-title"></span>\n'
+        '<button class="close-btn" onclick="closeDetail()">&times;</button>\n'
+        "</div>\n"
+        '<iframe src="" title="Mail detail"></iframe>\n'
+        "</div>\n"
+        "<script>\n"
+        "function openDetail(messageId, subject, focusDraft) {\n"
+        "  var src = '/email/' + messageId + '?embed=1';\n"
+        "  if (focusDraft) src += '&draft=1';\n"
+        "  document.querySelector('.side-panel iframe').src = src;\n"
+        "  document.querySelector('.side-panel').classList.add('open');\n"
+        "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
+        "  document.querySelector('.panel-title').textContent = subject || '';\n"
+        "  location.hash = messageId;\n"
+        "}\n"
+        "function closeDetail() {\n"
+        "  document.querySelector('.side-panel').classList.remove('open');\n"
+        "  document.querySelector('.board-wrapper').classList.remove('panel-open');\n"
+        "  document.querySelector('.side-panel iframe').src = '';\n"
+        "  location.hash = '';\n"
+        "}\n"
+        "if (location.hash) {\n"
+        "  var mid = location.hash.slice(1);\n"
+        "  if (mid) openDetail(mid);\n"
+        "}\n"
+        "window.addEventListener('hashchange', function() {\n"
+        "  if (!location.hash) closeDetail();\n"
+        "});\n"
+        "window.addEventListener('keydown', function(e) {\n"
+        "  if (e.key === 'Escape') closeDetail();\n"
+        "});\n"
+        "document.querySelector('.board').addEventListener('click', function(e) {\n"
+        "  if (e.target.closest('button, select, input')) return;\n"
+        "  var card = e.target.closest('.board-card');\n"
+        "  if (!card) return;\n"
+        "  var mid = card.getAttribute('data-message-id');\n"
+        "  if (!mid) return;\n"
+        "  if (e.target.closest('form')) return;\n"
+        "  e.preventDefault();\n"
+        "  var subject = card.getAttribute('data-subject') || '';\n"
+        "  openDetail(mid, subject);\n"
+        "});\n"
+        "\n"
+        "// Board auto-refresh polling\n"
+        "var lastRefresh = Date.now();\n"
+        "var refreshTimer = null;\n"
+        "var refreshDisplayTimer = null;\n"
+        "\n"
+        "function relativeTime(ms) {\n"
+        "  if (ms < 10000) return 'just now';\n"
+        "  var sec = Math.floor(ms / 1000);\n"
+        "  if (sec < 60) return sec + 's ago';\n"
+        "  var min = Math.floor(sec / 60);\n"
+        "  if (min < 60) return min + 'm ago';\n"
+        "  return Math.floor(min / 60) + 'h ago';\n"
+        "}\n"
+        "\n"
+        "function updateRefreshTime() {\n"
+        "  var el = document.getElementById('refresh-time');\n"
+        "  if (el) el.textContent = relativeTime(Date.now() - lastRefresh);\n"
+        "}\n"
+        "\n"
+        "function refreshBoard() {\n"
+        "  if (document.getElementById('side-panel')"
+        ".classList.contains('open')) return;\n"
+        "  fetch('/board-content')\n"
+        "    .then(function(r) {\n"
+        "      if (!r.ok) throw new Error('bad status');\n"
+        "      return r.json();\n"
+        "    })\n"
+        "    .then(function(data) {\n"
+        "      document.querySelector('.board').innerHTML = data.columns_html;\n"
+        "      var proposals = document.querySelector('.rule-proposals');\n"
+        "      if (proposals) proposals.outerHTML = data.proposals_html;\n"
+        "      var tc = document.getElementById('triage-control');\n"
+        "      if (tc) {\n"
+        "        if (data.triage_running) {\n"
+        '          tc.innerHTML = \'<div class="triage-banner">Triage is'
+        " currently running. The board will refresh automatically.</div>'"
+        '            + \'<button type="submit" disabled style="font-size:0.85rem;'
+        ' padding:0.25rem 0.75rem; cursor:not-allowed; opacity:0.6;">Triage'
+        " running\\u2026</button>';\n"
+        "        } else {\n"
+        '          tc.innerHTML = \'<form method="post" action="/run-triage"'
+        ' style="display:inline-block; margin-left:1.5rem;'
+        " vertical-align:middle;\\\">'"
+        '            + \'<button type="submit" style="font-size:0.85rem;'
+        " padding:0.25rem 0.75rem; cursor:pointer;\\\">Run triage</button></form>';\n"
+        "        }\n"
+        "      }\n"
+        "      lastRefresh = Date.now();\n"
+        "      updateRefreshTime();\n"
+        "    })\n"
+        "    .catch(function() { /* silently retry next cycle */ });\n"
+        "}\n"
+        "\n"
+        "document.getElementById('refresh-btn')"
+        ".addEventListener('click', function() {\n"
+        "  refreshBoard();\n"
+        "  clearInterval(refreshTimer);\n"
+        "  refreshTimer = setInterval(refreshBoard, 30000);\n"
+        "});\n"
+        "\n"
+        "refreshTimer = setInterval(refreshBoard, 30000);\n"
+        "refreshDisplayTimer = setInterval(updateRefreshTime, 10000);\n"
+        "updateRefreshTime();\n"
+        "</script>\n"
+        '<script src="/static/board.js"></script>\n'
+        "</body>\n"
+        "</html>"
+    )
 
 
 def _build_detail_html(
@@ -497,7 +712,7 @@ def _build_detail_html(
 
     # Subject for title (truncated to ~60 chars)
     raw_subject = record.subject.strip() or "(no subject)"
-    title_subject = raw_subject[:60] + ("…" if len(raw_subject) > 60 else "")
+    title_subject = raw_subject[:60] + ("\u2026" if len(raw_subject) > 60 else "")
 
     # Date
     date_str = html.escape(_format_date(record.date))
@@ -505,9 +720,9 @@ def _build_detail_html(
     # Body plain
     body = record.body_plain
     if not body or not body.strip():
-        body_html = '<span class="detail-value"><em>(no body)</em></span>'
+        body_html_render = '<span class="detail-value"><em>(no body)</em></span>'
     else:
-        body_html = f"<pre>{html.escape(body)}</pre>"
+        body_html_render = f"<pre>{html.escape(body)}</pre>"
 
     # Body HTML note
     body_html_note = ""
@@ -650,7 +865,7 @@ def _build_detail_html(
         f"{cc_section}"
         '<div class="detail-field">'
         '<div class="detail-label">Body</div>'
-        f'<div class="detail-value">{body_html}</div>'
+        f'<div class="detail-value">{body_html_render}</div>'
         "</div>\n"
         f"{body_html_note}"
         f"{notes_section}"
@@ -668,285 +883,48 @@ def _build_detail_html(
     )
 
     if embed:
-        return _DETAIL_EMBED_TEMPLATE.render(fields_html=fields_html)
-
-    return _DETAIL_PAGE_TEMPLATE.render(
-        title=html.escape(title_subject),
-        css=_CSS,
-        heading=html.escape(record.subject.strip() or "(no subject)"),
-        fields_html=fields_html,
-    )
-
-
-def _render_column(
-    action: str,
-    records: list[MailRecord],
-    triage_by_mid: dict[str, TriageDecision],
-    archive_subfolders: dict[str, str] | None = None,
-    existing_folders: dict[str, bool] | None = None,
-    archive_root: str = DEFAULT_ARCHIVE_ROOT,
-    unsubscribe_suggestions: dict[str, dict[str, Any]] | None = None,
-) -> str:
-    """Render a single board column (header + cards) as an HTML string."""
-    title = TRIAGE_ACTION_LABELS[action]
-    count = len(records)
-
-    # -- unsubscribe banner (TO_DELETE column only) -----------------------
-    unsubscribe_banner_html = ""
-    if action == "TO_DELETE" and unsubscribe_suggestions:
-        banner_parts: list[str] = []
-        seen_senders: set[str] = set()
-        for record in records:
-            key = _sender_key(record.sender)
-            if key in seen_senders:
-                continue
-            seen_senders.add(key)
-            suggestion = unsubscribe_suggestions.get(key)
-            if suggestion is None:
-                continue
-            method = suggestion.get("method", "")
-            url = suggestion.get("url", "")
-            description = suggestion.get("description", "")
-            # Build link based on method / URL scheme.
-            if method == "mailto" or (
-                method == "header" and url.lower().startswith("mailto:")
-            ):
-                link_html = f'<a href="{html.escape(url)}">Unsubscribe</a>'
-                note = ""
-            elif url.startswith("https://") or url.startswith("http://"):
-                note = (
-                    ' <span class="unsubscribe-note">'
-                    f"({
-                        html.escape(
-                            'found in email body'
-                            if method == 'body_link'
-                            else 'from header'
-                        )
-                    })"
-                    "</span>"
-                )
-                link_html = (
-                    f'<a href="{html.escape(url)}" target="_blank" rel="noopener">'
-                    "Unsubscribe</a>"
-                )
-            else:
-                # No usable URL — just show the description.
-                link_html = ""
-                note = ""
-            banner_parts.append(
-                '<div class="unsubscribe-banner">'
-                '<span class="unsubscribe-icon">📬</span>'
-                " You could unsubscribe from "
-                f"<strong>{html.escape(record.sender)}</strong>"
-                " instead of deleting: "
-                f"{html.escape(description)} "
-                f"{link_html}{note}"
-                "</div>"
-            )
-        unsubscribe_banner_html = "".join(banner_parts)
-
-    cards_html = "".join(
-        _render_card(
-            r,
-            triage_by_mid.get(r.message_id),
-            archive_subfolder=(
-                archive_subfolders.get(r.message_id)
-                if archive_subfolders is not None
-                else None
-            ),
-            folder_exists=(
-                existing_folders.get(r.message_id)
-                if existing_folders is not None
-                else None
-            ),
-            archive_root=archive_root,
-        )
-        for r in records
-    )
-
-    # Batch-delete button for the TO_DELETE column when it is non-empty.
-    batch_delete_form = ""
-    if action == "TO_DELETE" and records:
-        batch_delete_form = (
-            '<form class="delete-form" method="post" action="/batch-delete"'
-            ' onsubmit="return confirm('
-            "'Permanently delete ALL mail in this column"
-            " from mailbox and database?')\">"
-            '<button type="submit" class="delete-btn">Delete All</button>'
-            "</form>"
+        # Embedded (iframe) detail fragment — inline style + fields.
+        return (
+            "<style>\n"
+            ".detail-field { margin-bottom: 0.75rem; }\n"
+            ".detail-label { font-weight: 700; font-size: 0.85rem; color: #666;"
+            " margin-bottom: 0.15rem; }\n"
+            ".detail-value { font-size: 0.95rem; }\n"
+            ".detail-value pre { margin: 0; white-space: pre-wrap;"
+            " font-family: inherit; }\n"
+            ".detail-value code { font-size: 0.85rem; background: #eee;"
+            " padding: 0.1rem 0.3rem; border-radius: 3px; }\n"
+            ".detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem;"
+            " align-items: center; }\n"
+            ".detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }\n"
+            ".detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem;"
+            " cursor: pointer; }\n"
+            ".embed-detail { padding: 1rem;"
+            " font-family: system-ui, -apple-system, sans-serif; }\n"
+            "</style>\n"
+            '<div class="embed-detail">\n'
+            f"{fields_html}"
+            "</div>\n"
         )
 
-    force_triage_form = ""
-    if action != "INBOX" and records:
-        force_triage_form = (
-            '<form class="force-triage-form" method="post"'
-            ' action="/force-triage-column"'
-            ' onsubmit="return confirm('
-            f"'Re-triage all {count} items in {html.escape(title)}?')\">"
-            f'<input type="hidden" name="action" value="{html.escape(action)}">'
-            '<button type="submit" class="force-triage-btn">Force Triage</button>'
-            "</form>"
-        )
-
+    # Full standalone detail page.
+    escaped_heading = html.escape(record.subject.strip() or "(no subject)")
     return (
-        f'<div class="column">'
-        f'<div class="column-header"><h2>{html.escape(title)}</h2>'
-        f'<span class="count">{count}</span>'
-        f"{batch_delete_form}"
-        f"{force_triage_form}"
-        f"</div>"
-        f"{unsubscribe_banner_html}"
-        f'<div class="cards">{cards_html}</div>'
-        f"</div>"
-    )
-
-
-def _render_card(
-    record: MailRecord,
-    decision: TriageDecision | None = None,
-    archive_subfolder: str | None = None,
-    folder_exists: bool | None = None,
-    archive_root: str = DEFAULT_ARCHIVE_ROOT,
-) -> str:
-    """Render a single ``MailRecord`` as a ``.card`` HTML string."""
-    sender = html.escape(record.sender)
-    subject = html.escape(record.subject) if record.subject.strip() else "(no subject)"
-    subject_attr = html.escape(record.subject.strip() or "(no subject)")
-    quoted_mid = quote(record.message_id, safe="")
-    escaped_mid = html.escape(record.message_id)
-    subject_html = f'<a href="/email/{quoted_mid}">{subject}</a>'
-    date_str = html.escape(_format_date(record.date))
-
-    body = record.body_plain
-    if not body or not body.strip():
-        body_html = '<span class="no-body">(no body)</span>'
-    elif len(body) > _BODY_PREVIEW_LIMIT:
-        body_html = html.escape(body[:_BODY_PREVIEW_LIMIT]) + "…"
-    else:
-        body_html = html.escape(body)
-
-    # Determine which column this card is currently in based on its
-    # triage decision (or "INBOX" when no decision exists).
-    if decision is not None:
-        current_action = decision.action
-    else:
-        current_action = "INBOX"
-
-    # Build triage-action dropdown with the current column pre-selected.
-    options_parts: list[str] = []
-    for action in _BOARD_COLUMNS:
-        sel = " selected" if action == current_action else ""
-        options_parts.append(
-            f'<option value="{html.escape(action)}"{sel}>'
-            f"{html.escape(TRIAGE_ACTION_LABELS[action])}</option>"
-        )
-
-    # Notes indicator — shown only when notes are present.
-    notes_indicator = ""
-    if record.notes:
-        escaped_notes = html.escape(record.notes)
-        truncated = escaped_notes[:40] + ("…" if len(escaped_notes) > 40 else "")
-        notes_indicator = (
-            '<span class="card-notes-indicator"'
-            f' title="{escaped_notes}">'
-            f"\U0001f4dd {truncated}</span>"
-        )
-
-    # Draft indicator — shown on DRAFT_READY cards with draft text.
-    draft_indicator = ""
-    if current_action == "DRAFT_READY" and record.draft_text:
-        escaped_draft = html.escape(record.draft_text)
-        truncated = escaped_draft[:40] + ("…" if len(escaped_draft) > 40 else "")
-        draft_indicator = (
-            '<span class="card-draft-indicator"'
-            f' title="{escaped_draft}">'
-            f"\u2709\ufe0f {truncated}</span>"
-        )
-
-    # Draft reply button — only on TO_ANSWER cards.
-    draft_button = ""
-    if current_action == "TO_ANSWER":
-        draft_button = (
-            '<button type="button"'
-            ' class="draft-reply-btn"'
-            f" onclick=\"openDetail('{escaped_mid}', '{subject_attr}', true)\""
-            ">Draft reply</button>"
-        )
-
-    form_html = (
-        '<form class="card-form" method="post" action="/move">'
-        f'<input type="hidden" name="message_id"'
-        f' value="{escaped_mid}">'
-        f'<select name="triage_action">{"".join(options_parts)}</select>'
-        '<button type="submit">Move</button>'
-        "</form>"
-    )
-
-    if current_action == "TO_DELETE":
-        delete_form = (
-            '<form class="delete-form" method="post" action="/delete"'
-            ' onsubmit="return confirm('
-            "'Permanently delete this mail from mailbox and database?')\">"
-            f'<input type="hidden" name="message_id"'
-            f' value="{escaped_mid}">'
-            '<button type="submit" class="delete-btn">Delete</button>'
-            "</form>"
-        )
-    else:
-        delete_form = ""
-
-    # -- archive proposal section (TO_ARCHIVE cards only) -------------------
-    archive_html = ""
-    if archive_subfolder is not None:
-        escaped_subfolder = html.escape(archive_subfolder)
-        escaped_root = html.escape(archive_root)
-        if archive_subfolder:
-            display_path = f"{escaped_root}/{escaped_subfolder}"
-        else:
-            display_path = escaped_root + "/"
-        exists_indicator = ""
-        if folder_exists:
-            exists_indicator = (
-                '<span class="archive-exists" title="Folder already exists">'
-                "&#x2713;</span>"
-            )
-        archive_html = (
-            '<div class="archive-proposal">'
-            "Archive &rarr; "
-            f'<span class="archive-path">{display_path}</span>'
-            f"{exists_indicator}"
-            '<form class="archive-override-form" method="post"'
-            ' action="/archive-proposal">'
-            f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-            '<input type="text" name="subfolder"'
-            f' value="{escaped_subfolder}"'
-            ' placeholder="subfolder path" size="30">'
-            '<button type="submit">Set</button>'
-            "</form>"
-            '<form class="archive-confirm-form" method="post"'
-            ' action="/archive"'
-            ' onsubmit="return confirm('
-            f"'Archive this mail to {display_path}?')\">"
-            f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-            '<button type="submit" class="archive-btn">Archive</button>'
-            "</form>"
-            "</div>"
-        )
-
-    return (
-        f'<div class="card" data-message-id="{quoted_mid}"'
-        f' data-subject="{subject_attr}">'
-        f'<div class="sender">{sender}</div>'
-        f'<div class="subject">{subject_html}</div>'
-        f'<div class="date">{date_str}</div>'
-        f'<div class="body-preview">{body_html}</div>'
-        f"{notes_indicator}"
-        f"{draft_indicator}"
-        f"{archive_html}"
-        f"{form_html}"
-        f"{draft_button}"
-        f"{delete_form}"
-        f"</div>"
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="utf-8">\n'
+        f"<title>Mail: {title_subject}</title>\n"
+        '<link rel="stylesheet" href="/static/board.css">\n'
+        "</head>\n"
+        "<body>\n"
+        '<a class="back-link" href="/board">\u2190 Back to board</a>\n'
+        '<div class="detail-container">\n'
+        f"<h1>{escaped_heading}</h1>\n"
+        f"{fields_html}"
+        "</div>\n"
+        "</body>\n"
+        "</html>"
     )
 
 
@@ -954,7 +932,7 @@ def _render_rule_card(fingerprint: str, entry: RuleLedgerEntry) -> str:
     """Render one pending rule proposal as a ``.rule-card`` HTML string.
 
     Every interpolated value is passed through ``html.escape`` because the
-    board templates run under ``{% autoescape false %}`` (see ``_JINJA_ENV``).
+    board pages use manual f-strings (no Jinja2 autoescape).
     """
     title = html.escape(entry.title)
     summary = html.escape(f"{entry.match_type}={entry.match_value} -> {entry.action}")
@@ -968,32 +946,6 @@ def _render_rule_card(fingerprint: str, entry: RuleLedgerEntry) -> str:
         '<button type="submit" name="decision" value="accept">Accept</button>'
         '<button type="submit" name="decision" value="reject">Reject</button>'
         "</form>"
-        "</div>"
-    )
-
-
-def _render_rule_proposals(
-    proposals: list[tuple[str, RuleLedgerEntry]],
-) -> str:
-    """Render the "Rule proposals" board section as an HTML string.
-
-    Shows one ``_render_rule_card`` per pending proposal, or an explicit
-    empty-state message when there are none.  The count badge reuses the
-    existing ``.count`` styling.
-    """
-    count = len(proposals)
-    if proposals:
-        cards_html = "".join(
-            _render_rule_card(fingerprint, entry) for fingerprint, entry in proposals
-        )
-    else:
-        cards_html = '<div class="rule-empty">No pending rule proposals</div>'
-    return (
-        '<div class="rule-proposals">'
-        '<div class="rule-proposals-header">'
-        "<h2>Rule proposals</h2>"
-        f'<span class="count rule-count">{count}</span></div>'
-        f'<div class="rule-cards">{cards_html}</div>'
         "</div>"
     )
 
@@ -1063,6 +1015,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             (lambda p: p == "/", lambda: self._redirect("/board")),
             (lambda p: p == "/board", self._serve_board),
             (lambda p: p == "/board-content", self._serve_board_content),
+            (lambda p: p.startswith("/static/"), self._serve_static),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
                 self._serve_email_status,
@@ -1190,6 +1143,21 @@ class BoardHandler(BaseHTTPRequestHandler):
             return
 
         self._serve_json(payload)
+
+    def _serve_static(self) -> None:
+        """Serve static assets from the robotsix_board package."""
+        if self.path == "/static/board.js":
+            self._send_response(
+                _STATIC_BOARD_JS,
+                content_type="text/javascript; charset=utf-8",
+            )
+        elif self.path == "/static/board.css":
+            self._send_response(
+                _STATIC_BOARD_CSS,
+                content_type="text/css; charset=utf-8",
+            )
+        else:
+            self._not_found()
 
     def _handle_move(self) -> None:
         """Process POST /move — update a card's triage decision and redirect."""
