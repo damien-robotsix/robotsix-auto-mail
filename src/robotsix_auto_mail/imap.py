@@ -17,8 +17,8 @@ import shlex
 import ssl
 from typing import Any
 
-from robotsix_auto_mail._base_client import _ProtocolClient
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.protocol import _ProtocolClient
 
 # Store a reference to IMAP4.error *before* any mocking can replace
 # IMAP4 and turn ``IMAP4.error`` into a MagicMock attribute.  Using

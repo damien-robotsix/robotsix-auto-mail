@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail._base_client import _ProtocolClient
+from robotsix_auto_mail.protocol import _ProtocolClient
 
 
 class _FakeClient(_ProtocolClient):

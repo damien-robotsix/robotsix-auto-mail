@@ -111,7 +111,7 @@ modules:
       Shared protocol-client base class: common TLS-mode dispatch
       and config fields for the IMAP and SMTP clients.
     paths:
-      - src/robotsix_auto_mail/_base_client.py
+      - src/robotsix_auto_mail/protocol/__init__.py
       - tests/protocol/test_base_client.py
 
   - id: imap
