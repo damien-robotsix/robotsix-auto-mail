@@ -122,8 +122,7 @@ class LedgerEntry(pydantic.BaseModel):
     def _validate_state(cls, v: str) -> str:
         if v not in _VALID_LEDGER_STATES:
             raise ValueError(
-                "state must be one of "
-                f"{sorted(_VALID_LEDGER_STATES)!r}; got {v!r}"
+                f"state must be one of {sorted(_VALID_LEDGER_STATES)!r}; got {v!r}"
             )
         return v
 
@@ -143,9 +142,7 @@ def _proposal_fingerprint(proposal: DriftProposal) -> str:
     treat the same finding as new every time and defeat dedup entirely.
     """
     raw = (
-        f"{proposal.affected_field.strip().lower()}"
-        "\x00"
-        f"{proposal.title.strip().lower()}"
+        f"{proposal.affected_field.strip().lower()}\x00{proposal.title.strip().lower()}"
     )
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
@@ -165,14 +162,9 @@ def _load_ledger(conn: sqlite3.Connection) -> dict[str, LedgerEntry]:
     }
 
 
-def _save_ledger(
-    conn: sqlite3.Connection, ledger: dict[str, LedgerEntry]
-) -> None:
+def _save_ledger(conn: sqlite3.Connection, ledger: dict[str, LedgerEntry]) -> None:
     """Persist *ledger* to the watermark table (json round-trip)."""
-    payload = {
-        fingerprint: entry.model_dump()
-        for fingerprint, entry in ledger.items()
-    }
+    payload = {fingerprint: entry.model_dump() for fingerprint, entry in ledger.items()}
     set_watermark(conn, _LEDGER_WATERMARK_KEY, json.dumps(payload))
 
 
@@ -205,9 +197,7 @@ def record_and_filter_proposals(
     return new_proposals
 
 
-def set_finding_state(
-    conn: sqlite3.Connection, fingerprint: str, state: str
-) -> None:
+def set_finding_state(conn: sqlite3.Connection, fingerprint: str, state: str) -> None:
     """Transition the ledger entry *fingerprint* to *state*.
 
     Intended for the CLI / Web API slices to mark a finding ``accepted`` or
@@ -216,15 +206,12 @@ def set_finding_state(
     """
     if state not in _VALID_LEDGER_STATES:
         raise ConfigSyncError(
-            "state must be one of "
-            f"{sorted(_VALID_LEDGER_STATES)!r}; got {state!r}"
+            f"state must be one of {sorted(_VALID_LEDGER_STATES)!r}; got {state!r}"
         )
     ledger = _load_ledger(conn)
     entry = ledger.get(fingerprint)
     if entry is None:
-        raise ConfigSyncError(
-            f"No ledger finding with fingerprint {fingerprint!r}"
-        )
+        raise ConfigSyncError(f"No ledger finding with fingerprint {fingerprint!r}")
     ledger[fingerprint] = entry.model_copy(update={"state": state})
     _save_ledger(conn, ledger)
 
@@ -241,9 +228,7 @@ def _default_repo_root() -> Path:
 
 def _render_mailconfig_surface() -> str:
     """Render the ``MailConfig`` dataclass surface from ``_FIELD_SPECS``."""
-    lines = [
-        "MailConfig fields (field | yaml_path | env_key | kind | default):"
-    ]
+    lines = ["MailConfig fields (field | yaml_path | env_key | kind | default):"]
     for spec in _FIELD_SPECS:
         if spec.default is _REQUIRED:
             default = "<required>"
@@ -264,9 +249,7 @@ def _read_config_surfaces(repo_root: Path) -> dict[str, str]:
         try:
             surfaces[rel] = path.read_text()
         except OSError as exc:
-            raise ConfigSyncError(
-                f"Cannot read config surface {path}: {exc}"
-            ) from exc
+            raise ConfigSyncError(f"Cannot read config surface {path}: {exc}") from exc
     surfaces["MailConfig dataclass"] = _render_mailconfig_surface()
     return surfaces
 
@@ -315,7 +298,7 @@ def _build_config_sync_system_prompt() -> str:
         "the mapping, an inconsistent default between surfaces, or "
         "contradictory documentation. Each proposal has a `title`, a `body` "
         "explaining the drift, an `affected_field` (the `MailConfig` field "
-        "name, or \"\" if cross-cutting), and a `confidence` of `low`, "
+        'name, or "" if cross-cutting), and a `confidence` of `low`, '
         "`medium`, or `high`.\n"
         "\n"
         "Return a JSON object with a `proposals` field. Return an EMPTY "

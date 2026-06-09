@@ -66,6 +66,7 @@ class ArchiveStructure(pydantic.BaseModel):
 # System prompt
 # ---------------------------------------------------------------------------
 
+
 def _build_archive_system_prompt(archive_root: str) -> str:
     """Build the LLM system prompt, rooted at *archive_root*."""
     return (
@@ -209,9 +210,7 @@ def setup_archive(
 
     # -- first run: inspect the mailbox --
     existing = client.list_folders()
-    delimiter = next(
-        (f.delimiter for f in existing if f.delimiter), "/"
-    )
+    delimiter = next((f.delimiter for f in existing if f.delimiter), "/")
 
     # -- determine relative sub-paths (LLM, or fall back to root only) --
     resolved_key = api_key or os.environ.get("LLM_API_KEY", "")

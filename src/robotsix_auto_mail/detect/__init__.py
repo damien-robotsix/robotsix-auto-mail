@@ -127,8 +127,13 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="smtp.office365.com",
         mx_needles=("outlook.com", "office365.com", "protection.outlook.com"),
         domain_patterns=(
-            "outlook.com", "outlook.*", "hotmail.com", "hotmail.*",
-            "live.com", "live.*", "msn.com",
+            "outlook.com",
+            "outlook.*",
+            "hotmail.com",
+            "hotmail.*",
+            "live.com",
+            "live.*",
+            "msn.com",
         ),
         in_managed_hosting=True,
     ),
@@ -299,25 +304,25 @@ def _build_mx_providers() -> list[tuple[tuple[str, ...], MailProvider | None]]:
     result: list[tuple[tuple[str, ...], MailProvider | None]] = []
     for entry in _PROVIDER_DB:
         if entry.mx_needles and entry.imap_host:
-            result.append((
-                entry.mx_needles,
-                MailProvider(
-                    imap_host=entry.imap_host,
-                    smtp_host=entry.smtp_host,
-                    imap_port=entry.imap_port,
-                    imap_tls_mode=entry.imap_tls_mode,
-                    smtp_port=entry.smtp_port,
-                    smtp_tls_mode=entry.smtp_tls_mode,
-                ),
-            ))
+            result.append(
+                (
+                    entry.mx_needles,
+                    MailProvider(
+                        imap_host=entry.imap_host,
+                        smtp_host=entry.smtp_host,
+                        imap_port=entry.imap_port,
+                        imap_tls_mode=entry.imap_tls_mode,
+                        smtp_port=entry.smtp_port,
+                        smtp_tls_mode=entry.smtp_tls_mode,
+                    ),
+                )
+            )
     for needles in _GATEWAY_MX_NEEDLES:
         result.append((needles, None))
     return result
 
 
-_MX_PROVIDERS: list[tuple[tuple[str, ...], MailProvider | None]] = (
-    _build_mx_providers()
-)
+_MX_PROVIDERS: list[tuple[tuple[str, ...], MailProvider | None]] = _build_mx_providers()
 
 
 # ---------------------------------------------------------------------------
@@ -391,12 +396,13 @@ def _build_system_prompt() -> str:
         "\n"
         "| Provider | IMAP Host | IMAP Port | IMAP TLS | SMTP Host | "
         "SMTP Port | SMTP TLS |\n"
-        "|---|---|---|---|---|---|---|\n"
-        + "\n".join(table_rows) + "\n"
+        "|---|---|---|---|---|---|---|\n" + "\n".join(table_rows) + "\n"
         "\n"
         "**Domain heuristics (when the domain isn't in the table above):**\n"
-        + "\n".join(heuristic_lines) + "\n"
-        + netease_line + "\n"
+        + "\n".join(heuristic_lines)
+        + "\n"
+        + netease_line
+        + "\n"
         "- For self-hosted / custom domains (e.g. `@example.com`): the "
         "typical pattern is `imap.<domain>` port 993 and `smtp.<domain>` "
         "port 587 — but many custom domains are hosted by a managed "
@@ -555,8 +561,7 @@ def _autoconfig_urls(email_address: str) -> list[str]:
         # Mozilla ISPDB — central database keyed by domain.
         f"https://autoconfig.thunderbird.net/v1.1/{domain}",
         # Provider-hosted autoconfig (the Thunderbird autoconfig protocol).
-        f"https://autoconfig.{domain}/mail/config-v1.1.xml"
-        f"?emailaddress={quoted}",
+        f"https://autoconfig.{domain}/mail/config-v1.1.xml?emailaddress={quoted}",
     ]
 
 
@@ -654,7 +659,9 @@ def mx_lookup(email_address: str, *, timeout: float = 5.0) -> list[str]:
     url = f"{_DOH_RESOLVER}?name={urllib.parse.quote(domain)}&type=MX"
     try:
         resp = _HTTP.request(
-            "GET", url, timeout=timeout,
+            "GET",
+            url,
+            timeout=timeout,
             headers={"Accept": "application/dns-json"},
         )
         if resp.status != 200:

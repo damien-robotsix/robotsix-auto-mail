@@ -142,9 +142,7 @@ def test_file_handler_uncreatable_path_does_not_crash(
 
     # The root logger should still have a StreamHandler for stdout.
     root = logging.getLogger()
-    stream_handlers = [
-        h for h in root.handlers if isinstance(h, logging.StreamHandler)
-    ]
+    stream_handlers = [h for h in root.handlers if isinstance(h, logging.StreamHandler)]
     assert stream_handlers, "expected a stdout StreamHandler to exist"
 
 
@@ -159,7 +157,5 @@ def test_empty_log_file_dir_disables_file_logging(
     setup_logging()
 
     root = logging.getLogger()
-    file_handlers = [
-        h for h in root.handlers if isinstance(h, logging.FileHandler)
-    ]
+    file_handlers = [h for h in root.handlers if isinstance(h, logging.FileHandler)]
     assert not file_handlers, "expected no FileHandler for empty LOG_FILE_DIR"

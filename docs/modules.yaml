@@ -167,6 +167,7 @@ modules:
       a read/write web UI.
     paths:
       - src/robotsix_auto_mail/server.py
+      - src/robotsix_auto_mail/board_adapter.py
       - tests/server/test_server.py
 
   - id: docs

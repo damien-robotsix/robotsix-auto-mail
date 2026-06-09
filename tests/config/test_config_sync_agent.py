@@ -222,9 +222,7 @@ def test_fingerprint_stable_across_body_wording() -> None:
 
 def test_fingerprint_ignores_case_and_whitespace() -> None:
     """Fingerprint normalises case and surrounding whitespace."""
-    a = DriftProposal(
-        title="Default Mismatch", body="x", affected_field="imap_folder"
-    )
+    a = DriftProposal(title="Default Mismatch", body="x", affected_field="imap_folder")
     b = DriftProposal(
         title="  default mismatch  ", body="y", affected_field=" imap_folder "
     )
@@ -234,9 +232,7 @@ def test_fingerprint_ignores_case_and_whitespace() -> None:
 def test_fingerprint_distinct_for_different_findings() -> None:
     """Different title or affected_field => different fingerprint."""
     base = DriftProposal(title="t", body="b", affected_field="imap_folder")
-    other_title = DriftProposal(
-        title="other", body="b", affected_field="imap_folder"
-    )
+    other_title = DriftProposal(title="other", body="b", affected_field="imap_folder")
     other_field = DriftProposal(title="t", body="b", affected_field="db_path")
     assert _proposal_fingerprint(base) != _proposal_fingerprint(other_title)
     assert _proposal_fingerprint(base) != _proposal_fingerprint(other_field)
@@ -312,9 +308,7 @@ def test_set_finding_state_suppresses_reproposal() -> None:
     try:
         proposal = _drift("accept-me")
         record_and_filter_proposals(conn, [proposal])
-        set_finding_state(
-            conn, _proposal_fingerprint(proposal), "accepted"
-        )
+        set_finding_state(conn, _proposal_fingerprint(proposal), "accepted")
         out = record_and_filter_proposals(conn, [proposal])
         assert out == []
     finally:
@@ -328,9 +322,7 @@ def test_set_finding_state_rejects_invalid_state() -> None:
         proposal = _drift("x")
         record_and_filter_proposals(conn, [proposal])
         with pytest.raises(ConfigSyncError):
-            set_finding_state(
-                conn, _proposal_fingerprint(proposal), "bogus"
-            )
+            set_finding_state(conn, _proposal_fingerprint(proposal), "bogus")
     finally:
         conn.close()
 

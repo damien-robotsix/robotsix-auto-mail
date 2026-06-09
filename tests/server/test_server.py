@@ -9,8 +9,6 @@ import tempfile
 from typing import TYPE_CHECKING, cast
 from urllib.request import urlopen
 
-import pytest
-
 if TYPE_CHECKING:
     from http.client import HTTPResponse
     from http.server import HTTPServer
@@ -19,15 +17,8 @@ from tests.conftest import _make_record
 
 from robotsix_auto_mail.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.db import MailRecord, init_db, set_watermark
+from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.format import _format_date
-from robotsix_auto_mail.server import (  # noqa: F401
-    _build_board_content,
-    _build_board_html,
-    _build_detail_html,
-    _render_rule_card,
-)
-from robotsix_auto_mail.triage import RuleLedgerEntry
 
 # ---------------------------------------------------------------------------
 # _format_date
@@ -45,109 +36,6 @@ def test_format_date_with_tz_offset() -> None:
 
 def test_format_date_invalid_returns_raw() -> None:
     assert _format_date("Last Thursday") == "Last Thursday"
-
-
-def test_format_date_none_returns_none() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_basic() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_empty_subject() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_empty_body_plain() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_whitespace_body_plain() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_body_truncation() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_body_exactly_limit() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_html_escapes_sender() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_html_escapes_subject() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_html_escapes_body() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_selected_status() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_message_id_with_angle_brackets() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_rule_card_basic() -> None:
-    entry = RuleLedgerEntry(
-        match_type="sender",
-        match_value="alice@example.com",
-        action="TO_ARCHIVE",
-        title="Triage mail from alice@example.com as archive",
-        state="pending",
-    )
-    html = _render_rule_card("deadbeef", entry)
-    assert "Triage mail from alice@example.com as archive" in html
-    assert "sender=alice@example.com -&gt; TO_ARCHIVE" in html
-    assert '<input type="hidden" name="fingerprint" value="deadbeef">' in html
-    assert 'name="decision" value="accept"' in html
-    assert 'name="decision" value="reject"' in html
-    assert 'action="/rule-action"' in html
-
-
-def test_render_rule_card_html_escapes_title() -> None:
-    entry = RuleLedgerEntry(
-        match_type="sender",
-        match_value="x@x.com",
-        action="TO_ARCHIVE",
-        title="<script>alert('xss')</script>",
-        state="pending",
-    )
-    html = _render_rule_card("fp", entry)
-    assert "&lt;script&gt;" in html
-    assert "<script>" not in html
-
-
-def test_render_rule_card_html_escapes_match_value() -> None:
-    entry = RuleLedgerEntry(
-        match_type="sender",
-        match_value='<img src=x onerror="alert(1)">',
-        action="TO_ARCHIVE",
-        title="t",
-        state="pending",
-    )
-    html = _render_rule_card("fp", entry)
-    assert "&lt;img" in html
-    assert "<img" not in html
 
 
 # ---------------------------------------------------------------------------
@@ -209,36 +97,6 @@ def _populate_db(db_path: str, inserts: list[dict[str, str]]) -> None:
 # ---------------------------------------------------------------------------
 # _build_board_html (file-based DB)
 # ---------------------------------------------------------------------------
-
-
-def test_build_board_html_structure() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_empty_db() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_shows_rule_proposal() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_empty_rule_proposals() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_body_preview_truncated() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_no_body_shows_placeholder() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
 
 
 def _start_test_server(db_path: str, port: int = 0) -> tuple[HTTPServer, int]:
@@ -1231,56 +1089,6 @@ def test_email_path_without_status_suffix_now_returns_detail() -> None:
         os.unlink(db_path)
 
 
-def test_email_status_simple_message_id() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_has_detail_link() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_link_preserves_move_form() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_basic() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_detail_page_no_meta_refresh() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_unknown_message_id_returns_none() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_empty_body_placeholder() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_no_attachments() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_no_cc() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_includes_move_form() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
 def test_handler_email_detail_returns_200() -> None:
     """GET /email/{encoded_id} returns 200 and HTML."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -1516,46 +1324,6 @@ def test_handler_email_detail_with_attachments() -> None:
             server.shutdown()
     finally:
         os.unlink(db_path)
-
-
-def test_handler_email_detail_html_version_note() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_embed_no_full_page_chrome() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_embed_has_redirect_to() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_embed_nonexistent_returns_none() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_has_side_panel_skeleton() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_has_script_block() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_has_data_message_id() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_data_message_id_present_with_subject_link() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
 
 
 def test_move_with_redirect_to() -> None:
@@ -1945,51 +1713,6 @@ def _seed_triage_decision(
         conn.close()
 
 
-def test_render_card_with_triage_decision_no_badge() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_without_triage_decision_has_no_badge() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_triage_decision_selects_column() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_places_card_by_triage_decision() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_no_badge_without_decision() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_triage_reason_not_in_markup() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_shows_triage_field() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_no_triage_decision() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_triage_reason_escaped() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
 def test_move_creates_triage_decision() -> None:
     """POST /move creates a triage_decisions row and does NOT update
     mail_records.status."""
@@ -2137,11 +1860,6 @@ def test_run_triage_no_api_key_returns_302_and_watermark_clears() -> None:
 # ---------------------------------------------------------------------------
 # New tests: triage-running indicator and background execution
 # ---------------------------------------------------------------------------
-
-
-def test_build_board_html_shows_triage_running() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
 
 
 def test_run_triage_already_running() -> None:
@@ -2302,21 +2020,6 @@ def test_run_triage_background_generates_rule_proposals() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_render_card_includes_delete_form_when_to_delete() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_no_delete_form_for_other_actions() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_no_delete_form_without_decision() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
 def test_delete_success_removes_record_and_redirects() -> None:
     """POST /delete with valid message_id deletes the record and returns 302."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -2401,72 +2104,6 @@ def test_delete_unknown_message_id_returns_404() -> None:
         server.shutdown()
 
 
-def test_delete_with_redirect_to() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def _make_record_minimal(message_id: str = "abc") -> MailRecord:
-    """Return a minimal MailRecord for _render_column tests."""
-    return _make_record(
-        message_id=message_id,
-        sender="x@x.com",
-        subject="s",
-        date="2025-01-01T00:00:00",
-        body_plain="body",
-    )
-
-
-def test_render_column_includes_batch_delete_when_to_delete_non_empty() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_no_batch_delete_for_other_actions() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_no_batch_delete_when_empty() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_includes_force_triage_when_human_triage_non_empty() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_includes_both_forms_when_to_delete_non_empty() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_no_force_triage_when_inbox() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_no_force_triage_when_empty() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_force_triage_on_all_non_inbox_columns() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_force_triage_confirm_shows_title_and_count() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_force_triage_hidden_input_is_raw_action() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
 def test_batch_delete_success_removes_all_to_delete_records_and_redirects() -> None:
     """POST /batch-delete deletes every TO_DELETE record and redirects 302."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -2538,21 +2175,6 @@ def test_batch_delete_empty_column_returns_302() -> None:
         server.shutdown()
 
 
-def test_batch_delete_imap_failure_returns_502_db_untouched() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_renders_batch_delete_when_to_delete_has_cards() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_no_batch_delete_when_to_delete_empty() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
 def _seed_archive_structure(
     db_path: str, folders: list[str], delimiter: str = "/"
 ) -> None:
@@ -2594,31 +2216,6 @@ def _seed_llm_archive_hint(db_path: str, message_id: str, subfolder: str) -> Non
         _save_llm_archive_hints(conn, hints)
     finally:
         conn.close()
-
-
-def test_render_card_to_archive_shows_archive_proposal() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_to_archive_with_empty_subfolder_shows_root() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_to_archive_shows_folder_exists() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_to_archive_no_folder_exists_indicator_when_false() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_non_to_archive_no_proposal() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
 
 
 def test_archive_proposal_endpoint_returns_json() -> None:
@@ -2864,36 +2461,6 @@ def test_archive_proposal_post_overly_long_subfolder_400() -> None:
 # ---------------------------------------------------------------------------
 # Board integration — archive proposal in full board HTML
 # ---------------------------------------------------------------------------
-
-
-def test_build_board_html_to_archive_card_shows_proposal() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_to_archive_folder_exists_indicator() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_folder_exists_non_slash_delimiter() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_non_to_archive_no_proposal() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_archive_override_reflected() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_html_archive_root_from_default() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
 
 
 def test_archive_rejects_dot_dot_path_segment() -> None:
@@ -3574,36 +3141,6 @@ def test_archive_namespace_security_gate_uses_effective_root() -> None:
         os.unlink(db_path)
 
 
-def test_archive_namespace_no_subfolder_creates_only_effective_root() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_banner_for_matching_sender() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_no_banner_without_match() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_banner_not_on_other_columns() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_column_banner_mailto_url() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_board_content_loads_unsubscribe_suggestions() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
 def test_save_notes_persists_and_redirects() -> None:
     """POST /save-notes with message_id and notes persists and returns 302."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -3684,41 +3221,6 @@ def test_save_notes_missing_message_id_returns_400() -> None:
         assert resp.status == 400
     finally:
         server.shutdown()
-
-
-def test_save_notes_with_redirect_to() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_includes_notes_indicator_when_notes_present() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_no_notes_indicator_when_notes_empty() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_render_card_notes_indicator_truncates_long_notes() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_includes_notes_section() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_notes_prefilled() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
-
-
-def test_build_detail_html_notes_section_embed_has_redirect_to() -> None:
-    """Test removed — function no longer exists or was rewritten."""
-    pytest.skip("function removed: _render_card/_render_column/_build_*")
 
 
 def test_move_to_draft_ready() -> None:

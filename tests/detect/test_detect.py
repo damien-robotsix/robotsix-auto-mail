@@ -403,9 +403,7 @@ def test_detect_provider_passes_api_key_arg() -> None:
             "robotsix_auto_mail.detect.OpenRouterDeepseekProvider",
             mock_provider_cls,
         ):
-            result = detect_provider(
-                "user@example.com", api_key="sk-arg-key"
-            )
+            result = detect_provider("user@example.com", api_key="sk-arg-key")
 
         assert result.imap_host == "imap.example.com"
         mock_provider_cls.assert_called_once_with(api_key="sk-arg-key")
@@ -417,9 +415,7 @@ def test_detect_provider_llm_call_error() -> None:
         mock_handle = mock.MagicMock()
         mock_provider = mock.MagicMock()
         mock_provider.build_agent.return_value = mock_handle
-        mock_provider.call_with_retry.side_effect = RuntimeError(
-            "LLM API timeout"
-        )
+        mock_provider.call_with_retry.side_effect = RuntimeError("LLM API timeout")
 
         with mock.patch(
             "robotsix_auto_mail.detect.OpenRouterDeepseekProvider",
@@ -519,9 +515,7 @@ def test_detection_error_chain() -> None:
 
 def test_autoconfig_lookup_parses_ispdb() -> None:
     """A valid clientConfig document is parsed into a MailProvider."""
-    with mock.patch(
-        "urllib3.PoolManager.request", return_value=_FakeResp(_ISPDB_XML)
-    ):
+    with mock.patch("urllib3.PoolManager.request", return_value=_FakeResp(_ISPDB_XML)):
         provider = autoconfig_lookup("user@example.net")
     assert provider is not None
     assert provider.imap_host == "imap.example.net"
@@ -580,9 +574,7 @@ _MX_JSON = (
 
 def test_mx_lookup_parses_and_sorts() -> None:
     """MX records are parsed and returned lowest-preference first."""
-    with mock.patch(
-        "urllib3.PoolManager.request", return_value=_FakeResp(_MX_JSON)
-    ):
+    with mock.patch("urllib3.PoolManager.request", return_value=_FakeResp(_MX_JSON)):
         hosts = mx_lookup("user@example.net")
     assert hosts == ["mx1.example.net", "mx2.example.net"]
 
@@ -672,8 +664,7 @@ def test_mx_providers_covers_all_needles() -> None:
                 found = True
                 break
         assert found, (
-            f"No _MX_PROVIDERS entry for {entry.label} with "
-            f"needles={entry.mx_needles}"
+            f"No _MX_PROVIDERS entry for {entry.label} with needles={entry.mx_needles}"
         )
 
 
@@ -701,12 +692,10 @@ def test_consistency_mx_vs_prompt() -> None:
 
         # The prompt should contain the same imap_host and smtp_host
         assert entry.imap_host in _DETECT_SYSTEM_PROMPT, (
-            f"imap_host '{entry.imap_host}' for '{entry.label}' missing "
-            f"from prompt"
+            f"imap_host '{entry.imap_host}' for '{entry.label}' missing from prompt"
         )
         assert entry.smtp_host in _DETECT_SYSTEM_PROMPT, (
-            f"smtp_host '{entry.smtp_host}' for '{entry.label}' missing "
-            f"from prompt"
+            f"smtp_host '{entry.smtp_host}' for '{entry.label}' missing from prompt"
         )
         # And the MX MailProvider must match the registry
         assert mx_provider.imap_host == entry.imap_host, (
