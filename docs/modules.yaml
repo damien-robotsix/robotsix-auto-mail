@@ -225,3 +225,4 @@ modules:
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/survey.yaml
       - .robotsix-mill/periodic/test_gap.yaml
+      - .robotsix-mill/periodic/trace_review.yaml
