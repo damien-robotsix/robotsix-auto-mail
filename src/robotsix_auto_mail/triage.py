@@ -262,6 +262,19 @@ class SenderMemory(pydantic.BaseModel):
         return v
 
 
+class ArchiveSubfolderProposal(pydantic.BaseModel):
+    """Structured LLM output for a per-mail archive subfolder proposal."""
+
+    subfolder: str = pydantic.Field(
+        default="",
+        description=(
+            "Proposed archive subfolder path relative to the archive root "
+            "(e.g. 'Lists/python-dev' or 'Receipts/2025').  "
+            "Empty string if no suitable folder can be determined."
+        ),
+    )
+
+
 class TriageRule(pydantic.BaseModel):
     """A deterministic triage rule mapping a match condition to an action.
 
@@ -607,6 +620,108 @@ def set_archive_subfolder_override(
     else:
         overrides[message_id] = subfolder
     _save_archive_overrides(conn, overrides)
+
+
+def propose_archive_subfolder_llm(
+    conn: sqlite3.Connection,
+    record: MailRecord,
+    api_key: str,
+) -> None:
+    """Run a cheap LLM to propose an archive subfolder for *record*
+    and persist the hint.  Best-effort — failures are silently
+    swallowed so the board falls back to the deterministic proposal.
+    """
+    # -- resolve API key --
+    resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
+    if not resolved_key:
+        return  # No API key → silently return
+
+    # -- load existing archive folders from watermark --
+    archive_raw = get_watermark(conn, "archive_structure")
+    existing_folders: list[str] = []
+    if archive_raw is not None:
+        try:
+            data = json.loads(archive_raw)
+            if isinstance(data, list):
+                existing_folders = data
+            else:
+                existing_folders = data["folders"]
+        except (json.JSONDecodeError, TypeError, KeyError):
+            existing_folders = []
+
+    # -- load sender memory for this sender --
+    memory = _load_memory(conn)
+    sender_memory_entry = memory.get(_sender_key(record.sender))
+
+    # -- build system prompt --
+    system_prompt = (
+        "You are an assistant that proposes archive subfolders for email.\n"
+        "Given a mail message, pick the best existing archive folder for it, "
+        "or propose a new folder name if none of the existing ones fit.\n"
+        "Return ONLY a JSON object with a single `subfolder` field — no "
+        "explanation, no markdown fences.\n"
+    )
+    if existing_folders:
+        folder_lines = "\n".join(f"- {f}" for f in existing_folders)
+        system_prompt += (
+            "\nExisting archive folders:\n"
+            f"{folder_lines}\n"
+            "You may pick one of these or propose a new one.\n"
+        )
+    if sender_memory_entry is not None:
+        system_prompt += (
+            f"\nSender guidance: mail from {record.sender} was previously "
+            f"triaged as `{sender_memory_entry.action}` "
+            f"({sender_memory_entry.count} times). "
+            "Use this to inform your folder proposal.\n"
+        )
+
+    # -- build user message --
+    body_snippet = record.body_plain[:1000] if record.body_plain else ""
+    user_message = (
+        f"Sender: {record.sender}\n"
+        f"Subject: {record.subject}\n"
+        f"Body (first 1000 chars):\n{body_snippet}"
+    )
+
+    # -- lazy imports so the rest of the CLI works without pydantic_ai --
+    from pydantic_ai import PromptedOutput
+    from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
+
+    try:
+        llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
+        agent_handle = llm_provider.build_agent(
+            tier=Tier.CHEAP,
+            system_prompt=system_prompt,
+            output_type=PromptedOutput(ArchiveSubfolderProposal),
+        )
+
+        try:
+            with start_trace("archive subfolder proposal") as trace:
+                trace.set_input(user_message)
+                try:
+                    result = llm_provider.call_with_retry(
+                        lambda: agent_handle.run_sync(user_message),
+                        what="archive subfolder proposal",
+                    )
+                except Exception:
+                    return  # LLM call failed → silently return
+                trace.set_output(str(result.output))
+        finally:
+            agent_handle.close()
+
+        proposed: ArchiveSubfolderProposal = result.output
+        subfolder = proposed.subfolder.strip()
+        if not subfolder:
+            return  # Empty proposal → don't pollute the watermark
+
+        # -- persist the hint --
+        hints = _load_llm_archive_hints(conn)
+        hints[record.message_id] = subfolder
+        _save_llm_archive_hints(conn, hints)
+    except Exception:
+        # Any failure (import error, pydantic validation, etc.) → silently return
+        return
 
 
 # ---------------------------------------------------------------------------
