@@ -265,9 +265,7 @@ def run_checks(repo_root: Path | None = None) -> int:
 
     # Drop paths that live under exempt prefixes (vendored code, etc.).
     tracked_files = [
-        p
-        for p in tracked_files
-        if not p.startswith(_UNCLASSIFIED_EXEMPT_PREFIXES)
+        p for p in tracked_files if not p.startswith(_UNCLASSIFIED_EXEMPT_PREFIXES)
     ]
 
     # -- registered paths ---------------------------------------------------

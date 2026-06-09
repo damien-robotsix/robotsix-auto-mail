@@ -169,9 +169,7 @@ def test_setup_archive_first_run_creates_and_persists() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX"), _folder("Sent")])
-        with mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
-        ):
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
             with _patch_llm(["Receipts", "Work/2024"]):
                 result = setup_archive(conn, cast(ImapClient, client))
 
@@ -194,9 +192,7 @@ def test_setup_archive_translates_delimiter() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX", delimiter=".")])
-        with mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
-        ):
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
             with _patch_llm(["Work/2024"]):
                 result = setup_archive(conn, cast(ImapClient, client))
         assert result == [ARCHIVE_ROOT, f"{ARCHIVE_ROOT}.Work.2024"]
@@ -209,12 +205,8 @@ def test_setup_archive_skips_existing_folders() -> None:
     """Folders already present on the server are not recreated."""
     conn = init_db(":memory:")
     try:
-        client = _FakeImapClient(
-            [_folder("INBOX"), _folder(ARCHIVE_ROOT)]
-        )
-        with mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
-        ):
+        client = _FakeImapClient([_folder("INBOX"), _folder(ARCHIVE_ROOT)])
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
             with _patch_llm(["Receipts"]):
                 result = setup_archive(conn, cast(ImapClient, client))
         assert result == [ARCHIVE_ROOT, f"{ARCHIVE_ROOT}/Receipts"]
@@ -229,9 +221,7 @@ def test_setup_archive_custom_root_creates_and_persists() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX"), _folder("Sent")])
-        with mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
-        ):
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
             with _patch_llm(["Receipts", "Work/2024"]):
                 result = setup_archive(
                     conn,
@@ -260,9 +250,7 @@ def test_setup_archive_custom_root_passed_to_llm() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX")])
-        with mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
-        ):
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
             with mock.patch(
                 "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
             ) as cls:
@@ -272,9 +260,7 @@ def test_setup_archive_custom_root_passed_to_llm() -> None:
                 mock_handle.run_sync.return_value = mock_run_result
                 provider = cls.return_value
                 provider.build_agent.return_value = mock_handle
-                provider.call_with_retry.side_effect = (
-                    lambda fn, what: fn()
-                )
+                provider.call_with_retry.side_effect = lambda fn, what: fn()
 
                 setup_archive(
                     conn,
@@ -298,9 +284,7 @@ def test_setup_archive_subsequent_run_short_circuits() -> None:
     conn = init_db(":memory:")
     try:
         persisted = [ARCHIVE_ROOT, f"{ARCHIVE_ROOT}/Receipts"]
-        set_watermark(
-            conn, _ARCHIVE_WATERMARK_KEY, json.dumps(persisted)
-        )
+        set_watermark(conn, _ARCHIVE_WATERMARK_KEY, json.dumps(persisted))
         client = mock.MagicMock()
         with mock.patch(
             "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
@@ -354,9 +338,7 @@ def test_setup_archive_create_folder_error_propagates_and_does_not_persist() -> 
                 raise ImapError("CREATE failed: NO")
 
         client = _FailingCreateClient([_folder("INBOX")])
-        with mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
-        ):
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
             with _patch_llm(["Receipts"]):
                 with pytest.raises(ImapError):
                     setup_archive(conn, cast(ImapClient, client))
@@ -375,9 +357,7 @@ def test_setup_archive_list_folders_error_propagates_and_does_not_persist() -> N
                 raise ImapError("LIST failed")
 
         client = _FailingListClient([])
-        with mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
-        ):
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
             with pytest.raises(ImapError):
                 setup_archive(conn, cast(ImapClient, client))
         assert get_watermark(conn, _ARCHIVE_WATERMARK_KEY) is None
@@ -395,9 +375,7 @@ def test_setup_archive_namespace_prepends_to_root() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX"), _folder("Sent")])
-        with mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
-        ):
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
             with _patch_llm(["Receipts"]):
                 result = setup_archive(
                     conn,
@@ -425,9 +403,7 @@ def test_setup_archive_namespace_llm_sees_original_root() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX")])
-        with mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}, clear=True
-        ):
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
             with mock.patch(
                 "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
             ) as cls:
@@ -437,9 +413,7 @@ def test_setup_archive_namespace_llm_sees_original_root() -> None:
                 mock_handle.run_sync.return_value = mock_run_result
                 provider = cls.return_value
                 provider.build_agent.return_value = mock_handle
-                provider.call_with_retry.side_effect = (
-                    lambda fn, what: fn()
-                )
+                provider.call_with_retry.side_effect = lambda fn, what: fn()
 
                 setup_archive(
                     conn,

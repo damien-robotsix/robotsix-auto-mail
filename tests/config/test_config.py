@@ -733,9 +733,7 @@ def test_from_env_still_requires_mail_password() -> None:
 
 def test_llm_defaults_when_absent() -> None:
     """llm fields default to empty key + the default model."""
-    cfg = MailConfig(
-        imap_host="i", smtp_host="s", username="u", password="p"
-    )
+    cfg = MailConfig(imap_host="i", smtp_host="s", username="u", password="p")
     assert cfg.llm_api_key == ""
     assert cfg.llm_model == DEFAULT_LLM_MODEL
 
@@ -848,9 +846,7 @@ def test_load_llm_default_model_when_nothing_set() -> None:
 
 def test_ingest_interval_default() -> None:
     """ingest_interval_minutes defaults to 15."""
-    cfg = MailConfig(
-        imap_host="i", smtp_host="s", username="u", password="p"
-    )
+    cfg = MailConfig(imap_host="i", smtp_host="s", username="u", password="p")
     assert cfg.ingest_interval_minutes == 15
 
 
@@ -924,9 +920,7 @@ ingest:
 
 def test_archive_defaults() -> None:
     """archive_root / archive_enabled fall back to their defaults."""
-    cfg = MailConfig(
-        imap_host="i", smtp_host="s", username="u", password="p"
-    )
+    cfg = MailConfig(imap_host="i", smtp_host="s", username="u", password="p")
     assert cfg.archive_root == "robotsix-mail-archive"
     assert cfg.archive_enabled is True
 
@@ -1052,9 +1046,7 @@ archive:
 
 def test_triage_on_ingest_default() -> None:
     """triage_on_ingest falls back to True when nothing overrides it."""
-    cfg = MailConfig(
-        imap_host="i", smtp_host="s", username="u", password="p"
-    )
+    cfg = MailConfig(imap_host="i", smtp_host="s", username="u", password="p")
     assert cfg.triage_on_ingest is True
 
 

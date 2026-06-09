@@ -31,7 +31,6 @@ from robotsix_auto_mail.pipeline import (
 # ---------------------------------------------------------------------------
 
 
-
 def _mock_imap_client() -> mock.MagicMock:
     """Return a MagicMock that looks enough like an ImapClient."""
     return mock.MagicMock(spec=ImapClient)
@@ -78,9 +77,7 @@ def test_ingest_error_empty_message_id() -> None:
 
 
 def test_ingest_result_is_frozen() -> None:
-    result = IngestResult(
-        total_fetched=3, stored=2, skipped=1, errors=[]
-    )
+    result = IngestResult(total_fetched=3, stored=2, skipped=1, errors=[])
     assert result.total_fetched == 3
     assert result.stored == 2
     assert result.skipped == 1
@@ -90,9 +87,7 @@ def test_ingest_result_is_frozen() -> None:
 
 
 def test_ingest_result_defaults() -> None:
-    result = IngestResult(
-        total_fetched=0, stored=0, skipped=0, errors=[]
-    )
+    result = IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
     assert result.total_fetched == 0
     assert result.errors == []
 
@@ -247,9 +242,7 @@ def test_ingest_crash_before_watermark_no_duplicates(
     # "Crash" scenario: store messages but don't update watermark.
     # We simulate this by calling ingest_mail with a patched
     # update_watermark that is a no-op on the first call.
-    with mock.patch(
-        "robotsix_auto_mail.pipeline.update_watermark"
-    ) as mock_update:
+    with mock.patch("robotsix_auto_mail.pipeline.update_watermark") as mock_update:
         # First: update_watermark does nothing (crash simulation).
         mock_update.side_effect = lambda c, u: None
 
@@ -884,15 +877,15 @@ def test_ingest_calls_setup_archive_before_fetch(
     ingest_mail(conn, imap, cfg)
 
     mock_setup_archive.assert_called_once_with(
-        conn, imap, archive_root=cfg.archive_root,
+        conn,
+        imap,
+        archive_root=cfg.archive_root,
         archive_namespace=cfg.archive_namespace,
         api_key=cfg.llm_api_key,
     )
     # setup_archive must run before fetch_new_messages.
     call_order = [c[0] for c in manager.mock_calls]
-    assert call_order.index("setup_archive") < call_order.index(
-        "fetch_new_messages"
-    )
+    assert call_order.index("setup_archive") < call_order.index("fetch_new_messages")
 
 
 @mock.patch("robotsix_auto_mail.pipeline.setup_archive")
@@ -946,7 +939,9 @@ def test_ingest_passes_configured_archive_root(
     ingest_mail(conn, imap, cfg_custom)
 
     mock_setup_archive.assert_called_once_with(
-        conn, imap, archive_root="custom-archive",
+        conn,
+        imap,
+        archive_root="custom-archive",
         archive_namespace=cfg.archive_namespace,
         api_key=cfg.llm_api_key,
     )
@@ -1132,9 +1127,7 @@ def test_cli_ingest_with_errors_exits_zero(
     mock_imap_cls.return_value.__enter__.return_value = mock_imap
 
     # Mock ingest_mail return.
-    with mock.patch(
-        "robotsix_auto_mail.cli.ingest_mail"
-    ) as mock_ingest:
+    with mock.patch("robotsix_auto_mail.cli.ingest_mail") as mock_ingest:
         mock_ingest.return_value = IngestResult(
             total_fetched=12,
             stored=10,
@@ -1191,9 +1184,7 @@ def test_cli_ingest_success_no_errors(
     mock_imap = mock.MagicMock(spec=ImapClient)
     mock_imap_cls.return_value.__enter__.return_value = mock_imap
 
-    with mock.patch(
-        "robotsix_auto_mail.cli.ingest_mail"
-    ) as mock_ingest:
+    with mock.patch("robotsix_auto_mail.cli.ingest_mail") as mock_ingest:
         mock_ingest.return_value = IngestResult(
             total_fetched=5,
             stored=5,
@@ -1266,9 +1257,7 @@ def test_cli_ingest_dry_run_passes_flag(
     mock_imap = mock.MagicMock(spec=ImapClient)
     mock_imap_cls.return_value.__enter__.return_value = mock_imap
 
-    with mock.patch(
-        "robotsix_auto_mail.cli.ingest_mail"
-    ) as mock_ingest:
+    with mock.patch("robotsix_auto_mail.cli.ingest_mail") as mock_ingest:
         mock_ingest.return_value = IngestResult(
             total_fetched=3,
             stored=3,

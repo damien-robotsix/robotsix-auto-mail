@@ -201,9 +201,7 @@ def ingest_mail(
     _logger.debug("fetch_done", count=total_fetched)
 
     if total_fetched == 0:
-        return IngestResult(
-            total_fetched=0, stored=0, skipped=0, errors=[]
-        )
+        return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
 
     # 2. Process each message.
     stored = 0
