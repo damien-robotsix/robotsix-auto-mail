@@ -16,8 +16,6 @@ from http.server import BaseHTTPRequestHandler
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote
 
-import robotsix_board
-
 from robotsix_auto_mail.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
 from robotsix_auto_mail.db import MailRecord, list_records
@@ -119,11 +117,6 @@ def _build_board_content(
                 column = "INBOX"
             column_buckets[column].append(record)
 
-        columns: list[tuple[str, list[MailRecord]]] = [
-            (action, column_buckets[action])
-            for action in _BOARD_COLUMNS
-            if column_buckets[action]
-        ]
         # List (read-only) the pending deterministic-rule proposals so the
         # board can surface them for human validation.
         proposals = list_rule_proposals(conn, "pending")
@@ -190,12 +183,24 @@ def _build_board_content(
         unsubscribe_suggestions=unsubscribe_suggestions,
         record_notes=record_notes,
     )
-    assert isinstance(adapter, robotsix_board.BoardAdapter)  # noqa: S101 # nosec B101 - intentional Protocol-compliance check
+    # The adapter is the single source of truth for the base column/card
+    # scaffold data (column order + labels, card title, triage badge,
+    # timestamps, move-form endpoint).  Protocol compliance is already
+    # guaranteed by the import-time ``_verify_protocol()`` check in
+    # ``board_adapter``, so no inline ``isinstance`` assert is needed here.
+    # auto-mail's custom per-card/per-column widgets are layered on top of
+    # this adapter-sourced base further below.
+    column_labels = dict(adapter.columns())
+    columns: list[tuple[str, list[MailRecord]]] = [
+        (action, column_buckets[action])
+        for action, _label in adapter.columns()
+        if column_buckets[action]
+    ]
 
     # Build column HTML fragments using library CSS class names.
     columns_html_parts: list[str] = []
     for action, records in columns:
-        label = TRIAGE_ACTION_LABELS[action]
+        label = column_labels[action]
         count = len(records)
 
         # -- unsubscribe banner (TO_DELETE column only) -------------------
@@ -259,13 +264,20 @@ def _build_board_content(
             else:
                 current_action = "INBOX"
 
-            escaped_sender = html.escape(record.sender)
             subject_str = record.subject.strip() or "(no subject)"
             escaped_subject = html.escape(subject_str)
             subject_attr = escaped_subject
             escaped_mid = html.escape(record.message_id)
             quoted_mid = quote(record.message_id, safe="")
-            date_str = html.escape(_format_date(record.date))
+            # Base scaffold data sourced from the adapter (single source of
+            # truth) rather than recomputed inline.
+            card_title_html = html.escape(adapter.card_title(record))
+            card_badges_html = "".join(
+                f'<span class="board-badge">{html.escape(badge)}</span>'
+                for badge in adapter.card_badges(record)
+            )
+            date_str = html.escape(adapter.card_timestamps(record)["date"])
+            move_url, move_method = adapter.move_endpoint(record)
 
             # Body preview
             body = record.body_plain
@@ -381,7 +393,8 @@ def _build_board_content(
                 f' data-subject="{subject_attr}"'
                 f' data-card-id="{escaped_mid}">'
                 '<div class="board-card-title">'
-                f"{escaped_sender}: {escaped_subject}</div>"
+                f"{card_title_html}</div>"
+                f'<div class="board-card-badges">{card_badges_html}</div>'
                 '<div class="board-card-timestamps">'
                 f'<span class="board-timestamp">date: {date_str}</span>'
                 "</div>"
@@ -389,7 +402,8 @@ def _build_board_content(
                 f"{notes_indicator}"
                 f"{draft_indicator}"
                 f"{archive_html}"
-                '<form class="board-card-move" method="post" action="/move">'
+                f'<form class="board-card-move" method="{html.escape(move_method)}"'
+                f' action="{html.escape(move_url)}">'
                 f'<input type="hidden" name="message_id" value="{escaped_mid}">'
                 f'<select class="board-move-select" name="triage_action">'
                 f"{''.join(options_parts)}</select>"
