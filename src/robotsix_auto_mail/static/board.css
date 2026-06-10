@@ -1,0 +1,240 @@
+/* Auto-mail app-layer board styles.
+ *
+ * Loaded AFTER the robotsix_board library stylesheet (served at
+ * /static/board.css) so these rules cascade over the library defaults.
+ * This file styles ONLY the auto-mail-specific widgets the library does
+ * not provide (drawer chrome, archive/rule/draft/delete widgets, the
+ * detail page, banners) plus a scroll fix that counteracts the library's
+ * ``.board { min-height: 100vh }`` rule.  It deliberately does NOT
+ * re-style the library-owned grid classes (.board / .board-column /
+ * .board-card).
+ */
+
+/* -- page chrome ---------------------------------------------------------- */
+#refresh-btn {
+  display: inline; vertical-align: middle;
+  margin-left: 0.5rem; margin-bottom: 1rem;
+  background: none; border: 1px solid #ccc;
+  border-radius: 4px; font-size: 1rem;
+  cursor: pointer; padding: 0.1rem 0.4rem; color: #666;
+}
+#refresh-btn:hover { background: #eee; color: #000; }
+#refresh-time {
+  display: inline; vertical-align: middle;
+  margin-left: 0.25rem; margin-bottom: 1rem;
+  font-size: 0.75rem; color: #888;
+}
+
+/* -- scroll fix ----------------------------------------------------------- */
+/* The library sets ``.board { min-height: 100vh }`` which pushes the
+ * horizontal scrollbar off-screen below the fold.  Constrain the
+ * board-wrapper as a flex column and let the inner board region shrink
+ * (min-height: 0) so the scrollbar stays in view.  Layered here in the
+ * app stylesheet rather than forking the library file. */
+.board-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  transition: margin-right 0.3s ease;
+}
+.board-wrapper > .board {
+  min-height: 0;
+}
+.board-wrapper.panel-open {
+  margin-right: 45vw;
+}
+
+/* -- body preview / card indicators -------------------------------------- */
+.body-preview { font-size: 0.85rem; color: #444; margin-top: 0.25rem; }
+.no-body { font-style: italic; color: #999; }
+.card-notes-indicator {
+  font-size: 0.8rem; color: #888; margin-top: 0.2rem;
+  display: block; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-draft-indicator {
+  display: block; font-size: 0.8rem; color: #888; margin-top: 0.2rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* -- rule proposals section ---------------------------------------------- */
+.rule-proposals {
+  background: #f5f5f5; border-radius: 8px;
+  padding: 0.75rem; margin-bottom: 1rem;
+}
+.rule-proposals-header {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 0.75rem; padding-bottom: 0.5rem;
+  border-bottom: 2px solid #ddd;
+}
+.rule-proposals-header h2 { font-size: 1rem; font-weight: 600; }
+.rule-cards { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.rule-card {
+  background: #fff; border: 1px solid #ddd;
+  border-radius: 6px; padding: 0.6rem 0.75rem; min-width: 260px;
+}
+.rule-card .rule-title { font-weight: 700; }
+.rule-card .rule-summary {
+  font-size: 0.85rem; color: #444; margin-top: 0.25rem;
+}
+.rule-form { margin-top: 0.4rem; display: flex; gap: 0.25rem; }
+.rule-form button { font-size: 0.75rem; padding: 0.1rem 0.5rem; cursor: pointer; }
+.rule-empty { font-style: italic; color: #999; }
+
+/* -- detail page --------------------------------------------------------- */
+.back-link {
+    display: inline-block; margin-bottom: 1rem;
+    color: #333; text-decoration: none;
+}
+.back-link:hover { text-decoration: underline; }
+.detail-container { max-width: 800px; }
+.detail-field { margin-bottom: 0.75rem; }
+.detail-label {
+    font-weight: 700; font-size: 0.85rem;
+    color: #666; margin-bottom: 0.15rem;
+}
+.detail-value { font-size: 0.95rem; }
+.detail-value pre { margin: 0; white-space: pre-wrap; font-family: inherit; }
+.detail-value code {
+    font-size: 0.85rem; background: #eee;
+    padding: 0.1rem 0.3rem; border-radius: 3px;
+}
+.detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem; align-items: center; }
+.detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }
+.detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem; cursor: pointer; }
+.detail-form textarea {
+    width: 100%; font-family: inherit; font-size: 0.9rem;
+    border: 1px solid #ccc; border-radius: 4px; padding: 0.5rem;
+    box-sizing: border-box; resize: vertical;
+}
+.detail-notes {
+  font-size: 0.95rem; font-family: inherit;
+  padding: 0.3rem; border: 1px solid #ccc;
+  border-radius: 4px; resize: vertical;
+}
+.detail-draft {
+    width: 100%; min-height: 8em; font-family: inherit; font-size: 0.9rem;
+    border: 1px solid #ccc; border-radius: 4px; padding: 0.5rem;
+    box-sizing: border-box;
+}
+
+/* -- side panel (auto-mail iframe drawer, not the library #drawer) ------- */
+.side-panel {
+  position: fixed;
+  top: 0; right: 0;
+  width: 45vw; max-width: 100vw; height: 100vh;
+  background: #fff;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+  border-left: 1px solid #ddd;
+  z-index: 1000;
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+}
+.side-panel.open {
+  transform: translateX(0);
+}
+.panel-header {
+  display: flex; justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #ddd;
+  background: #f5f5f5;
+}
+.panel-header .panel-title {
+  font-weight: 600; font-size: 0.95rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.panel-header .close-btn {
+  background: none; border: none;
+  font-size: 1.25rem; cursor: pointer;
+  padding: 0 0.25rem; line-height: 1; color: #666;
+}
+.panel-header .close-btn:hover { color: #000; }
+.side-panel iframe {
+  flex: 1; border: none; width: 100%;
+}
+
+/* -- delete / force-triage buttons --------------------------------------- */
+.delete-btn {
+  background: #d32f2f; color: #fff; border: none;
+  padding: 0.25rem 0.6rem; border-radius: 4px;
+  cursor: pointer; font-size: 0.8rem;
+  margin-top: 0.3rem;
+}
+.delete-btn:hover { background: #b71c1c; }
+.force-triage-form {
+  display: inline;
+}
+.force-triage-btn {
+  background: #1976d2; color: #fff; border: none;
+  padding: 0.25rem 0.6rem; border-radius: 4px;
+  cursor: pointer; font-size: 0.75rem;
+  margin-top: 0.3rem; margin-left: 0.3rem;
+}
+.force-triage-btn:hover { background: #1565c0; }
+
+/* -- triage-running indicator -------------------------------------------- */
+.triage-banner {
+  background: #fff3cd; color: #664d03;
+  text-align: center; padding: 0.5rem 1rem;
+  border-radius: 6px; margin-bottom: 0.75rem;
+  font-size: 0.9rem; border: 1px solid #ffecb5;
+}
+
+/* -- unsubscribe suggestion banner --------------------------------------- */
+.unsubscribe-banner {
+  background: #e3f2fd; color: #1a3a5c;
+  padding: 0.5rem 0.75rem; margin-bottom: 0.75rem;
+  border-radius: 6px; font-size: 0.85rem;
+  border: 1px solid #bbdefb;
+}
+.unsubscribe-banner a {
+  color: #1565c0; font-weight: 600;
+}
+.unsubscribe-note {
+  font-size: 0.8rem; color: #666;
+}
+
+/* -- archive proposal inline section ------------------------------------- */
+.archive-proposal {
+  margin-top: 0.35rem; font-size: 0.8rem;
+  color: #555; display: flex; align-items: center;
+  gap: 0.25rem; flex-wrap: wrap;
+}
+.archive-path { font-family: monospace; background: #eee;
+  padding: 0.05rem 0.3rem; border-radius: 3px; }
+.archive-exists { color: #2e7d32; font-weight: 600; font-size: 0.75rem; }
+.archive-override-form { display: flex; gap: 0.15rem; align-items: center; }
+.archive-override-form input[type="text"] {
+  font-size: 0.7rem; padding: 0.1rem 0.2rem; border: 1px solid #ccc;
+  border-radius: 3px; width: 160px;
+}
+.archive-override-form button {
+  font-size: 0.7rem; padding: 0.1rem 0.4rem; cursor: pointer;
+}
+.archive-confirm-form { display: flex; gap: 0.15rem; align-items: center; }
+.archive-btn {
+  background: #2e7d32; color: #fff; border: none;
+  padding: 0.25rem 0.6rem; border-radius: 4px;
+  cursor: pointer; font-size: 0.75rem;
+}
+.archive-btn:hover { background: #1b5e20; }
+
+/* -- draft reply button -------------------------------------------------- */
+.draft-reply-btn {
+    font-size: 0.75rem; padding: 0.1rem 0.5rem; cursor: pointer;
+    background: #2563eb; color: #fff; border: none;
+    border-radius: 4px; margin-left: 0.25rem;
+}
+.draft-reply-btn:hover { background: #1d4ed8; }
+
+/* -- empty board placeholder --------------------------------------------- */
+.empty-board {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6b7280;
+    font-size: 1.125rem;
+}
