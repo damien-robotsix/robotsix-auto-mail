@@ -166,7 +166,7 @@ modules:
       HTTP kanban board server exposing the mail database as
       a read/write web UI.
     paths:
-      - src/robotsix_auto_mail/server.py
+      - src/robotsix_auto_mail/server/__init__.py
       - src/robotsix_auto_mail/board_adapter.py
       - tests/server/test_server.py
 
