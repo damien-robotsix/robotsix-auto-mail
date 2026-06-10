@@ -433,6 +433,7 @@ class _VerifyResult:
 
     @property
     def ok(self) -> bool:
+        """True when both IMAP and SMTP connection checks succeeded."""
         return self.imap_ok and self.smtp_ok
 
     @property
