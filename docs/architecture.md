@@ -34,7 +34,7 @@ password) and the `_dispatch_tls()` dispatch loop.  Two concrete subclasses
 implement the protocol-specific steps:
 
 - `imap.py` — a stdlib `imaplib` wrapper.
-- `smtp_client.py` — a stdlib `smtplib` sending client.
+- `smtp/__init__.py` — a stdlib `smtplib` sending client.
 
 ### Ingestion
 

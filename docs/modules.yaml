@@ -139,7 +139,7 @@ modules:
     description: >-
       SMTP sending client.
     paths:
-      - src/robotsix_auto_mail/smtp_client.py
+      - src/robotsix_auto_mail/smtp/__init__.py
       - tests/smtp/test_smtp_client.py
 
   - id: tracing

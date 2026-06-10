@@ -722,7 +722,7 @@ def test_pipeline_imports_from_expected_modules() -> None:
     assert "from robotsix_auto_mail.parser import" in content
     assert "from robotsix_auto_mail.config import" in content
     # Must not import smtp_client.
-    assert "smtp_client" not in content
+    assert "from robotsix_auto_mail.smtp import" not in content
 
 
 # ---------------------------------------------------------------------------
