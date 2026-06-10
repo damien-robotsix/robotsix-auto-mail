@@ -1108,7 +1108,7 @@ provides-extras = ["dev", "llm", "docs"]
 [[package]]
 name = "robotsix-board"
 version = "0.1.0"
-source = { git = "https://github.com/damien-robotsix/robotsix-board.git?rev=main#ace225286f030f34ed71b33dbda5694074eccc77" }
+source = { git = "https://github.com/damien-robotsix/robotsix-board.git?rev=main#a364bf5116dcea5c35b036d158d2f3e47b8caeec" }
 
 [[package]]
 name = "robotsix-llmio"
