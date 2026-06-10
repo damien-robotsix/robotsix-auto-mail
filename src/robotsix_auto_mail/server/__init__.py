@@ -705,10 +705,22 @@ def _render_draft_section(
         if current_action == "DRAFT_READY"
         else "Save draft &amp; move to draft ready"
     )
+    generate_label = (
+        "Regenerate with AI" if current_action == "DRAFT_READY" else "Generate with AI"
+    )
+    generate_form = (
+        '<form class="detail-form" method="post" action="/generate-draft">'
+        f'<input type="hidden" name="message_id"'
+        f' value="{html.escape(record.message_id)}">'
+        f"{redirect_input}"
+        f'<button type="submit" class="draft-reply-btn">{generate_label}</button>'
+        "</form>"
+    )
     return (
         '<div class="detail-field">'
         '<div class="detail-label">Draft reply</div>'
         '<div class="detail-value">'
+        f"{generate_form}"
         '<form class="detail-form" method="post" action="/save-draft">'
         f'<input type="hidden" name="message_id"'
         f' value="{html.escape(record.message_id)}">'
@@ -954,6 +966,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/archive-proposal": self._handle_archive_proposal,
             "/save-notes": self._handle_save_notes,
             "/save-draft": self._handle_save_draft,
+            "/generate-draft": self._handle_generate_draft,
         }
         handler = routes.get(self.path)
         if handler is None:
@@ -1716,6 +1729,80 @@ class BoardHandler(BaseHTTPRequestHandler):
             self._redirect(redirect_to, code=302)
         else:
             self._redirect("/board", code=302)
+
+    def _handle_generate_draft(self) -> None:
+        """Process POST /generate-draft — LLM-generate a draft reply.
+
+        Lazily imports the optional LLM-backed draft generator so the rest
+        of the server works without ``pydantic_ai`` installed.  On a missing
+        optional extra (``ImportError``) the handler degrades gracefully by
+        redirecting back to the detail/board view (the manual textarea stays
+        usable) rather than returning a 503 — a full-page POST cannot render
+        a clean JSON error.  Generation failures are likewise swallowed so
+        the existing draft/manual form remains available.
+        """
+        from robotsix_auto_mail.db import init_db
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
+
+        message_id = (fields.get("message_id") or [""])[0].strip()
+        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+
+        if not message_id:
+            self._bad_request("Missing message_id")
+            return
+
+        try:
+            from robotsix_auto_mail.draft import (
+                DraftGenerationError,
+                generate_draft_reply,
+            )
+        except ImportError:
+            # Optional LLM extra not installed — degrade silently.
+            self._redirect_generate_draft(message_id, redirect_to)
+            return
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            try:
+                generate_draft_reply(
+                    conn,
+                    message_id,
+                    api_key=(
+                        self.mail_config.llm_api_key if self.mail_config else None
+                    ),
+                )
+            except DraftGenerationError:
+                # Generation failed — degrade gracefully (existing draft /
+                # manual form stays); fall through to the redirect.
+                pass
+            else:
+                set_triage_decision(
+                    conn,
+                    message_id,
+                    "DRAFT_READY",
+                    source="user",
+                    reason="draft generated",
+                )
+        finally:
+            conn.close()
+
+        self._redirect_generate_draft(message_id, redirect_to)
+
+    def _redirect_generate_draft(self, message_id: str, redirect_to: str) -> None:
+        """Redirect after /generate-draft to *redirect_to* or the board panel.
+
+        When *redirect_to* is a safe relative path it is used (returning the
+        iframe to the embed detail view).  Otherwise a server-side trusted
+        ``/board#{message_id}`` redirect re-opens the side panel on the now
+        ``DRAFT_READY`` card.
+        """
+        if redirect_to and _is_safe_redirect_path(redirect_to):
+            self._redirect(redirect_to, 302)
+        else:
+            self._redirect(f"/board#{quote(message_id)}", 302)
 
     def _serve_email_status(self) -> None:
         """Serve GET /email/{message_id}/status — return triage action as text.

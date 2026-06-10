@@ -3351,6 +3351,94 @@ def test_save_draft_missing_message_id_returns_400() -> None:
         server.shutdown()
 
 
+def test_generate_draft_generates_and_moves_to_draft_ready() -> None:
+    """POST /generate-draft stores an LLM draft and moves to DRAFT_READY."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "gen-draft-test",
+                    "sender": "y@y.com",
+                    "subject": "Question",
+                    "date": "2025-02-01T00:00:00",
+                    "body_plain": "Can we meet?",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="user",
+            password="pass",
+            llm_api_key="sk-test",
+        )
+
+        mock_run_result = mock.MagicMock()
+        mock_run_result.output = mock.MagicMock(draft_text="Yes, [your time].")
+        mock_handle = mock.MagicMock()
+        mock_handle.run_sync.return_value = mock_run_result
+        mock_provider = mock.MagicMock()
+        mock_provider.build_agent.return_value = mock_handle
+        mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
+
+        with mock.patch(
+            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+            return_value=mock_provider,
+        ):
+            server, port = _start_test_server_with_mail_config(db_path, mail_config)
+            try:
+                status, body = _post_form(
+                    port,
+                    {"message_id": "gen-draft-test"},
+                    path="/generate-draft",
+                )
+                assert status == 302, f"Expected 302, got {status}: {body}"
+            finally:
+                server.shutdown()
+
+        conn = init_db(db_path)
+        try:
+            cur = conn.execute(
+                "SELECT draft_text FROM mail_records WHERE message_id = ?",
+                ("gen-draft-test",),
+            )
+            row = cur.fetchone()
+            assert row is not None
+            assert row[0] == "Yes, [your time]."
+
+            from robotsix_auto_mail.triage import get_triage_decision
+
+            decision = get_triage_decision(conn, "gen-draft-test")
+            assert decision is not None
+            assert decision.action == "DRAFT_READY"
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_generate_draft_missing_message_id_returns_400() -> None:
+    """POST /generate-draft without message_id returns 400."""
+    server, port = _start_test_server(":memory:")
+    try:
+        status, body = _post_form(
+            port,
+            {},
+            path="/generate-draft",
+        )
+        assert status == 400
+        assert "Missing message_id" in body
+    finally:
+        server.shutdown()
+
+
 # ===========================================================================
 # MailBoardAdapter tests
 # ===========================================================================

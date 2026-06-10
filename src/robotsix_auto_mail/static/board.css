@@ -248,6 +248,7 @@ body {
     border-radius: 4px; margin-left: 0.25rem;
 }
 .draft-reply-btn:hover { background: #1d4ed8; }
+.draft-reply-form { display: inline; }
 
 /* -- empty board placeholder --------------------------------------------- */
 .empty-board {
