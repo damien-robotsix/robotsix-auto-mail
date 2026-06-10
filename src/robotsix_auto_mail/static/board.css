@@ -10,6 +10,14 @@
  * .board-card).
  */
 
+/* -- page background ------------------------------------------------------ */
+/* The UI background defaults to black; pair it with a light foreground so
+ * page chrome and headings stay legible over the dark backdrop. */
+body {
+  background: #000;
+  color: #eee;
+}
+
 /* -- page chrome ---------------------------------------------------------- */
 #refresh-btn {
   display: inline; vertical-align: middle;
