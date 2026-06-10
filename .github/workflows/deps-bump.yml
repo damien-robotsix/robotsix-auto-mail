@@ -1,0 +1,66 @@
+name: Weekly deps bump
+
+# Proactively advance the locked dependency revisions on a schedule.
+# Because [tool.uv.sources] keeps the git sources at `rev = "main"`, the
+# committed uv.lock only moves when someone runs `uv lock --upgrade`.
+# Nothing does this automatically, so a `board@main` advance never reaches
+# auto-mail until a human intervenes. This workflow re-resolves the lock
+# weekly and opens a CI-gated PR so dependency-rev movement is reviewed and
+# tested (auto-mail's suite, incl.
+# tests/server/test_server.py::test_mailboardadapter_satisfies_protocol)
+# before it merges — never via silent `@main` drift.
+#
+# Distinct from lockfile.yml: that reacts to pyproject.toml edits by pushing
+# a re-locked uv.lock directly to main; this proactively upgrades git/PyPI
+# revs on a schedule via a CI-gated PR. Both coexist.
+on:
+  schedule:
+    # Mondays at 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  uv-lock-upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+
+      # Re-resolve git `@main` sources to their latest commits and bump PyPI
+      # deps within constraints, updating uv.lock in place.
+      - name: Upgrade lockfile
+        run: uv lock --upgrade
+
+      # Open a PR ONLY when uv.lock actually changed. The PR MUST be created
+      # with a PAT/app token (NOT the default GITHUB_TOKEN): PRs created or
+      # pushed with GITHUB_TOKEN do not trigger pull_request/push workflow
+      # runs (GitHub's recursion guard), which would defeat the CI gate that
+      # catches Protocol-breaking dependency changes before merge. The
+      # operator must create the DEPS_BUMP_TOKEN secret (see
+      # docs/dependencies.md).
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.DEPS_BUMP_TOKEN }}
+          add-paths: uv.lock
+          branch: deps/uv-lock-upgrade
+          delete-branch: true
+          commit-message: "chore(deps): weekly uv lock --upgrade"
+          title: "chore(deps): weekly uv lock --upgrade"
+          body: |
+            Automated weekly `uv lock --upgrade`: re-resolves the git
+            `@main` sources to their latest commits and bumps PyPI deps
+            within constraints.
+
+            CI runs auto-mail's full suite on this PR so dependency-rev
+            movement (e.g. a `robotsix-board` Protocol change) is caught
+            before merge — never via silent `@main` drift.
+          labels: |
+            dependencies
+            automated

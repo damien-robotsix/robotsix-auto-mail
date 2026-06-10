@@ -21,13 +21,29 @@ RUN apt-get update && \
 # only non-PyPI dep (robotsix-llmio) is declared there.
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
 
-COPY pyproject.toml .
+# uv.lock is the committed single source of truth for resolved git
+# revs; it MUST be in the build context so the export step below reads
+# the pinned commits instead of re-resolving `@main` at build time.
+COPY pyproject.toml uv.lock ./
 COPY src/ src/
 
+# Install the EXACT revisions pinned in uv.lock (no fresh resolution),
+# so two builds with no repo change install identical git revs — closing
+# the unpinned-`@main` drift. Plain `uv pip install ".[llm]"` re-resolves
+# and does NOT read uv.lock, so it cannot be used here.
+#   - `uv export --frozen` reads uv.lock as-is and emits pinned git URLs
+#     (`...?rev=main#<sha>`); --no-emit-project drops the local project so
+#     it is not installed via the requirements file; --no-hashes avoids the
+#     hash/VCS conflict (uv cannot hash a git checkout); --extra llm keeps
+#     the previous `.[llm]` selection.
+#   - the project itself is then installed with --no-deps so its deps are
+#     NOT re-resolved.
 # --system installs into the image's system Python (the same
 # /usr/local/lib/python3.14/site-packages/ path the production
 # stage copies from), matching the previous `pip install` layout.
-RUN uv pip install --system --no-cache-dir ".[llm]"
+RUN uv export --frozen --no-emit-project --no-hashes --extra llm -o /tmp/requirements.txt && \
+    uv pip install --system --no-cache-dir -r /tmp/requirements.txt && \
+    uv pip install --system --no-cache-dir --no-deps .
 
 # ---------------------------------------------------------------------------
 # Production stage — minimal runtime image with only the installed artifacts
