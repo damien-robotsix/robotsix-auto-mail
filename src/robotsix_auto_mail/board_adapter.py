@@ -194,14 +194,20 @@ class MailBoardAdapter:
                 f"✉️ {truncated}</span>"
             )
 
-        # Draft-reply button (TO_ANSWER only).
+        # Draft-reply button (TO_ANSWER only) — a single click POSTs to
+        # /generate-draft so the LLM prepares a draft reply.  No
+        # ``redirect_to`` is sent, so the handler falls back to the trusted
+        # ``/board#{message_id}`` redirect that re-opens the panel showing
+        # the generated draft.
         draft_button = ""
         if current_action == "TO_ANSWER":
             draft_button = (
-                '<button type="button"'
-                ' class="draft-reply-btn"'
-                f" onclick=\"openDetail('{escaped_mid}', '{subject_attr}', true)\""
-                ">Draft reply</button>"
+                '<form class="draft-reply-form" method="post"'
+                ' action="/generate-draft">'
+                f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+                '<button type="submit" class="draft-reply-btn">'
+                "Draft reply</button>"
+                "</form>"
             )
 
         # Delete form (TO_DELETE only).
