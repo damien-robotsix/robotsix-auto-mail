@@ -13,13 +13,15 @@ import importlib.resources
 import json
 from collections.abc import Callable, Mapping
 from http.server import BaseHTTPRequestHandler
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs, quote, unquote
+
+from robotsix_board import render_board
 
 from robotsix_auto_mail.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
 from robotsix_auto_mail.db import MailRecord, list_records
-from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
+from robotsix_auto_mail.format import _format_date
 from robotsix_auto_mail.triage import (
     TRIAGE_ACTION_LABELS,
     TRIAGE_ACTION_ORDER,
@@ -27,7 +29,6 @@ from robotsix_auto_mail.triage import (
     RuleLedgerEntry,
     TriageDecision,
     TriageError,
-    _sender_key,
     get_archive_subfolder,
     get_triage_decision,
     list_rule_proposals,
@@ -78,6 +79,64 @@ def _is_safe_redirect_path(location: str) -> bool:
     if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in location):
         return False
     return True
+
+
+class _NonEmptyColumnsAdapter:
+    """Adapter view exposing only the populated columns to ``render_board``.
+
+    auto-mail hides empty columns, but ``render_board`` renders one column
+    per :meth:`MailBoardAdapter.columns` entry.  This thin wrapper scopes
+    ``columns()`` to *status_keys* (the non-empty columns, in board order)
+    and delegates every other attribute — the ``card_*`` scaffold methods,
+    ``move_endpoint`` and the ``card_extra_html`` / ``column_extra_html``
+    raw-HTML hooks — to the wrapped :class:`MailBoardAdapter`.
+    """
+
+    def __init__(self, adapter: MailBoardAdapter, status_keys: list[str]) -> None:
+        self._adapter = adapter
+        self._status_keys = status_keys
+
+    def columns(self) -> list[tuple[str, str]]:
+        labels = dict(self._adapter.columns())
+        return [(key, labels[key]) for key in self._status_keys]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._adapter, name)
+
+
+def _render_board_columns(
+    adapter: MailBoardAdapter, cards: Mapping[str, list[MailRecord]]
+) -> str:
+    """Return the inner ``.board-column`` markup produced by ``render_board``.
+
+    ``render_board`` wraps the columns in a ``<div id="board" class="board">``
+    element and appends a ``#drawer`` shell that auto-mail does not use (it
+    has its own ``.side-panel``).  Both the ``/board`` page shell and the
+    ``/board-content`` refresh endpoint expect just the inner column markup
+    — to be injected into auto-mail's own ``.board`` wrapper — so this
+    helper strips the library's outer wrapper and drawer.  Returns the
+    empty-board placeholder when no column is populated.
+    """
+    ordered = [key for key, _label in adapter.columns() if key in cards]
+    if not ordered:
+        return '<div class="empty-board">No mail yet.</div>'
+    full = render_board(cast("Any", _NonEmptyColumnsAdapter(adapter, ordered)), cards)
+    open_tag = '<div id="board" class="board">'
+    drawer = (
+        '<div id="drawer" class="drawer hidden">'
+        '<div class="drawer-content"></div>'
+        "</div>"
+    )
+    inner = full
+    if inner.startswith(open_tag):
+        inner = inner[len(open_tag) :]
+    drawer_idx = inner.rfind(drawer)
+    if drawer_idx != -1:
+        inner = inner[:drawer_idx]
+    inner = inner.rstrip()
+    if inner.endswith("</div>"):
+        inner = inner[: -len("</div>")]
+    return inner.strip("\n")
 
 
 def _build_board_content(
@@ -180,7 +239,10 @@ def _build_board_content(
     finally:
         conn.close()
 
-    # Build the adapter for protocol compliance.
+    # Build the board adapter — the single source of truth for both the
+    # base column/card scaffold (the protocol methods) and auto-mail's
+    # custom per-card / per-column widgets, which the library appends via
+    # the duck-typed ``card_extra_html`` / ``column_extra_html`` hooks.
     adapter = MailBoardAdapter(
         triage_by_mid={mid: d.action for mid, d in triage_by_mid.items()},
         archive_subfolders=archive_subfolders,
@@ -188,281 +250,17 @@ def _build_board_content(
         archive_root=archive_root,
         unsubscribe_suggestions=unsubscribe_suggestions,
         record_notes=record_notes,
+        column_records=column_buckets,
     )
-    # The adapter is the single source of truth for the base column/card
-    # scaffold data (column order + labels, card title, triage badge,
-    # timestamps, move-form endpoint).  Protocol compliance is already
-    # guaranteed by the import-time ``_verify_protocol()`` check in
-    # ``board_adapter``, so no inline ``isinstance`` assert is needed here.
-    # auto-mail's custom per-card/per-column widgets are layered on top of
-    # this adapter-sourced base further below.
-    column_labels = dict(adapter.columns())
-    columns: list[tuple[str, list[MailRecord]]] = [
-        (action, column_buckets[action])
-        for action, _label in adapter.columns()
+    # auto-mail hides empty columns, so only the populated buckets are
+    # handed to ``render_board`` (which renders one column per adapter
+    # column).
+    cards: dict[str, list[MailRecord]] = {
+        action: column_buckets[action]
+        for action in _BOARD_COLUMNS
         if column_buckets[action]
-    ]
-
-    # Build column HTML fragments using library CSS class names.
-    columns_html_parts: list[str] = []
-    for action, records in columns:
-        label = column_labels[action]
-        count = len(records)
-
-        # -- unsubscribe banner (TO_DELETE column only) -------------------
-        unsubscribe_banner_html = ""
-        if action == "TO_DELETE" and unsubscribe_suggestions:
-            banner_parts: list[str] = []
-            seen_senders: set[str] = set()
-            for record in records:
-                key = _sender_key(record.sender)
-                if key in seen_senders:
-                    continue
-                seen_senders.add(key)
-                suggestion = unsubscribe_suggestions.get(key)
-                if suggestion is None:
-                    continue
-                method = suggestion.get("method", "")
-                url = suggestion.get("url", "")
-                description = suggestion.get("description", "")
-                if method == "mailto" or (
-                    method == "header" and url.lower().startswith("mailto:")
-                ):
-                    link_html = f'<a href="{html.escape(url)}">Unsubscribe</a>'
-                    note = ""
-                elif url.startswith("https://") or url.startswith("http://"):
-                    note = (
-                        ' <span class="unsubscribe-note">'
-                        f"({
-                            html.escape(
-                                'found in email body'
-                                if method == 'body_link'
-                                else 'from header'
-                            )
-                        })"
-                        "</span>"
-                    )
-                    link_html = (
-                        f'<a href="{html.escape(url)}" target="_blank" rel="noopener">'
-                        "Unsubscribe</a>"
-                    )
-                else:
-                    link_html = ""
-                    note = ""
-                banner_parts.append(
-                    '<div class="unsubscribe-banner">'
-                    '<span class="unsubscribe-icon">\U0001f4ec</span>'
-                    " You could unsubscribe from "
-                    f"<strong>{html.escape(record.sender)}</strong>"
-                    " instead of deleting: "
-                    f"{html.escape(description)} "
-                    f"{link_html}{note}"
-                    "</div>"
-                )
-            unsubscribe_banner_html = "".join(banner_parts)
-
-        # -- render each card -------------------------------------------------
-        cards_html_parts: list[str] = []
-        for record in records:
-            decision = triage_by_mid.get(record.message_id)
-            if decision is not None:
-                current_action = decision.action
-            else:
-                current_action = "INBOX"
-
-            subject_str = record.subject.strip() or "(no subject)"
-            escaped_subject = html.escape(subject_str)
-            subject_attr = escaped_subject
-            escaped_mid = html.escape(record.message_id)
-            quoted_mid = quote(record.message_id, safe="")
-            # Base scaffold data sourced from the adapter (single source of
-            # truth) rather than recomputed inline.
-            card_title_html = html.escape(adapter.card_title(record))
-            card_badges_html = "".join(
-                f'<span class="board-badge">{html.escape(badge)}</span>'
-                for badge in adapter.card_badges(record)
-            )
-            date_str = html.escape(adapter.card_timestamps(record)["date"])
-            move_url, move_method = adapter.move_endpoint(record)
-
-            # Body preview
-            body = record.body_plain
-            if not body or not body.strip():
-                body_html_render = '<span class="no-body">(no body)</span>'
-            elif len(body) > _BODY_PREVIEW_LIMIT:
-                body_html_render = html.escape(body[:_BODY_PREVIEW_LIMIT]) + "\u2026"
-            else:
-                body_html_render = html.escape(body)
-
-            # Move form options
-            options_parts: list[str] = []
-            for opt_action in _BOARD_COLUMNS:
-                sel = " selected" if opt_action == current_action else ""
-                options_parts.append(
-                    f'<option value="{html.escape(opt_action)}"{sel}>'
-                    f"{html.escape(TRIAGE_ACTION_LABELS[opt_action])}</option>"
-                )
-
-            # Notes indicator
-            notes_indicator = ""
-            if record.notes:
-                escaped_notes = html.escape(record.notes)
-                truncated = escaped_notes[:40] + (
-                    "\u2026" if len(escaped_notes) > 40 else ""
-                )
-                notes_indicator = (
-                    '<span class="card-notes-indicator"'
-                    f' title="{escaped_notes}">'
-                    f"\U0001f4dd {truncated}</span>"
-                )
-
-            # Draft indicator
-            draft_indicator = ""
-            if current_action == "DRAFT_READY" and record.draft_text:
-                escaped_draft = html.escape(record.draft_text)
-                truncated = escaped_draft[:40] + (
-                    "\u2026" if len(escaped_draft) > 40 else ""
-                )
-                draft_indicator = (
-                    '<span class="card-draft-indicator"'
-                    f' title="{escaped_draft}">'
-                    f"\u2709\ufe0f {truncated}</span>"
-                )
-
-            # Draft reply button
-            draft_button = ""
-            if current_action == "TO_ANSWER":
-                draft_button = (
-                    '<button type="button"'
-                    ' class="draft-reply-btn"'
-                    f" onclick=\"openDetail('{escaped_mid}', '{subject_attr}', true)\""
-                    ">Draft reply</button>"
-                )
-
-            # Delete form (TO_DELETE only)
-            delete_form = ""
-            if current_action == "TO_DELETE":
-                delete_form = (
-                    '<form class="delete-form" method="post" action="/delete"'
-                    ' onsubmit="return confirm('
-                    "'Permanently delete this mail from mailbox and database?')\">"
-                    f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-                    '<button type="submit" class="delete-btn">Delete</button>'
-                    "</form>"
-                )
-
-            # Archive proposal section (TO_ARCHIVE only)
-            archive_html = ""
-            if action == "TO_ARCHIVE":
-                arc_subfolder = archive_subfolders.get(record.message_id)
-                if arc_subfolder is not None:
-                    escaped_subfolder = html.escape(arc_subfolder)
-                    escaped_root = html.escape(archive_root)
-                    if arc_subfolder:
-                        display_path = f"{escaped_root}/{escaped_subfolder}"
-                    else:
-                        display_path = escaped_root + "/"
-                    exists_indicator = ""
-                    if folder_exists.get(record.message_id):
-                        exists_indicator = (
-                            '<span class="archive-exists"'
-                            ' title="Folder already exists">'
-                            "&#x2713;</span>"
-                        )
-                    archive_html = (
-                        '<div class="archive-proposal">'
-                        "Archive &rarr; "
-                        f'<span class="archive-path">{display_path}</span>'
-                        f"{exists_indicator}"
-                        '<form class="archive-override-form" method="post"'
-                        ' action="/archive-proposal">'
-                        f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-                        '<input type="text" name="subfolder"'
-                        f' value="{escaped_subfolder}"'
-                        ' placeholder="subfolder path" size="30">'
-                        '<button type="submit">Set</button>'
-                        "</form>"
-                        '<form class="archive-confirm-form" method="post"'
-                        ' action="/archive"'
-                        ' onsubmit="return confirm('
-                        f"'Archive this mail to {display_path}?')\">"
-                        f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-                        '<button type="submit" class="archive-btn">Archive</button>'
-                        "</form>"
-                        "</div>"
-                    )
-
-            # Assemble card HTML
-            cards_html_parts.append(
-                '<div class="board-card"'
-                f' data-message-id="{quoted_mid}"'
-                f' data-subject="{subject_attr}"'
-                f' data-card-id="{escaped_mid}">'
-                '<div class="board-card-title">'
-                f"{card_title_html}</div>"
-                f'<div class="board-card-badges">{card_badges_html}</div>'
-                '<div class="board-card-timestamps">'
-                f'<span class="board-timestamp">date: {date_str}</span>'
-                "</div>"
-                f'<div class="body-preview">{body_html_render}</div>'
-                f"{notes_indicator}"
-                f"{draft_indicator}"
-                f"{archive_html}"
-                f'<form class="board-card-move" method="{html.escape(move_method)}"'
-                f' action="{html.escape(move_url)}">'
-                f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-                f'<select class="board-move-select" name="triage_action">'
-                f"{''.join(options_parts)}</select>"
-                '<button type="submit" class="board-move-submit">Move</button>'
-                "</form>"
-                f"{draft_button}"
-                f"{delete_form}"
-                "</div>"
-            )
-
-        # Batch-delete button for TO_DELETE column
-        batch_delete_form = ""
-        if action == "TO_DELETE" and records:
-            batch_delete_form = (
-                '<form class="delete-form" method="post" action="/batch-delete"'
-                ' onsubmit="return confirm('
-                "'Permanently delete ALL mail in this column"
-                " from mailbox and database?')\">"
-                '<button type="submit" class="delete-btn">Delete All</button>'
-                "</form>"
-            )
-
-        force_triage_form = ""
-        if action != "INBOX" and records:
-            force_triage_form = (
-                '<form class="force-triage-form" method="post"'
-                ' action="/force-triage-column"'
-                ' onsubmit="return confirm('
-                f"'Re-triage all {count} items in {html.escape(label)}?')\">"
-                f'<input type="hidden" name="action" value="{html.escape(action)}">'
-                '<button type="submit" class="force-triage-btn">Force Triage</button>'
-                "</form>"
-            )
-
-        columns_html_parts.append(
-            f'<div class="board-column" data-status="{html.escape(action)}">'
-            '<div class="board-column-header">'
-            f'<h2 class="board-column-label">{html.escape(label)}</h2>'
-            f'<span class="board-column-count">{count}</span>'
-            f"{batch_delete_form}"
-            f"{force_triage_form}"
-            "</div>"
-            f"{unsubscribe_banner_html}"
-            '<div class="board-column-cards">'
-            f"{''.join(cards_html_parts)}"
-            "</div>"
-            "</div>"
-        )
-
-    if not columns_html_parts:
-        columns_html = '<div class="empty-board">No mail yet.</div>'
-    else:
-        columns_html = "".join(columns_html_parts)
+    }
+    columns_html = _render_board_columns(adapter, cards)
 
     # -- rule proposals --------------------------------------------------------
     proposals_count = len(proposals)
@@ -580,11 +378,12 @@ def _build_board_html(db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT) ->
         "  if (e.target.closest('button, select, input')) return;\n"
         "  var card = e.target.closest('.board-card');\n"
         "  if (!card) return;\n"
-        "  var mid = card.getAttribute('data-message-id');\n"
+        "  var meta = card.querySelector('.card-extra');\n"
+        "  var mid = meta && meta.getAttribute('data-message-id');\n"
         "  if (!mid) return;\n"
         "  if (e.target.closest('form')) return;\n"
         "  e.preventDefault();\n"
-        "  var subject = card.getAttribute('data-subject') || '';\n"
+        "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
         "  openDetail(mid, subject);\n"
         "});\n"
         "\n"

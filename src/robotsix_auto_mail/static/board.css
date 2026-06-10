@@ -18,6 +18,17 @@ body {
   color: #eee;
 }
 
+/* -- move form ------------------------------------------------------------ */
+/* render_board emits a generic move form (a direct child of .board-card)
+ * whose <select> targets only the currently-visible columns.  auto-mail
+ * hides empty columns, so that form cannot move a card into an empty
+ * column; suppress it and rely on auto-mail's own move form (rendered
+ * inside .card-extra via card_extra_html), which offers every triage
+ * action. */
+.board-card > form.board-card-move {
+  display: none;
+}
+
 /* -- page chrome ---------------------------------------------------------- */
 #refresh-btn {
   display: inline; vertical-align: middle;
