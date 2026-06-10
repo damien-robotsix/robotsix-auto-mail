@@ -26,7 +26,7 @@ from robotsix_auto_mail.db import (
 )
 from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
-from robotsix_auto_mail.logging_config import setup_logging
+from robotsix_auto_mail.logging import setup_logging
 from robotsix_auto_mail.pipeline import IngestResult, ingest_mail
 from robotsix_auto_mail.smtp import (
     SmtpAuthError,
