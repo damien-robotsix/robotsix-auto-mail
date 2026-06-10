@@ -685,13 +685,6 @@ def _build_detail_html(
         current_action = triage_decision.action
     else:
         current_action = "INBOX"
-    options_parts: list[str] = []
-    for action in TRIAGE_ACTION_ORDER:
-        sel = " selected" if action == current_action else ""
-        options_parts.append(
-            f'<option value="{html.escape(action)}"{sel}>'
-            f"{html.escape(TRIAGE_ACTION_LABELS[action])}</option>"
-        )
 
     quoted_mid = quote(record.message_id, safe="")
     redirect_input = ""
@@ -700,15 +693,7 @@ def _build_detail_html(
             '<input type="hidden" name="redirect_to"'
             f' value="/email/{html.escape(quoted_mid)}?embed=1">'
         )
-    move_form = (
-        '<form class="detail-form" method="post" action="/move">'
-        f'<input type="hidden" name="message_id"'
-        f' value="{html.escape(record.message_id)}">'
-        f"{redirect_input}"
-        f'<select name="triage_action">{"".join(options_parts)}</select>'
-        '<button type="submit">Move</button>'
-        "</form>"
-    )
+    move_form = _render_move_form(record, current_action, redirect_input)
 
     # Subject for title (truncated to ~60 chars)
     raw_subject = record.subject.strip() or "(no subject)"
@@ -717,128 +702,15 @@ def _build_detail_html(
     # Date
     date_str = html.escape(_format_date(record.date))
 
-    # Body plain
-    body = record.body_plain
-    if not body or not body.strip():
-        body_html_render = '<span class="detail-value"><em>(no body)</em></span>'
-    else:
-        body_html_render = f"<pre>{html.escape(body)}</pre>"
-
-    # Body HTML note
-    body_html_note = ""
-    if record.body_html.strip():
-        body_html_note = (
-            '<div class="detail-field">'
-            '<div class="detail-label">HTML version</div>'
-            '<div class="detail-value"><em>HTML version available</em></div>'
-            "</div>"
-        )
-
-    # Notes section (textarea + Save form).
-    escaped_notes = html.escape(record.notes)
-    notes_section = (
-        '<div class="detail-field">'
-        '<div class="detail-label">Notes</div>'
-        '<div class="detail-value">'
-        '<form class="detail-form" method="post" action="/save-notes">'
-        f'<input type="hidden" name="message_id"'
-        f' value="{html.escape(record.message_id)}">'
-        f"{redirect_input}"
-        '<textarea class="detail-notes" name="notes" rows="4"'
-        f' style="width:100%;box-sizing:border-box;">{escaped_notes}</textarea>'
-        '<button type="submit">Save</button>'
-        "</form>"
-        "</div>"
-        "</div>\n"
+    body_html_render, body_html_note = _render_body(record)
+    notes_section = _render_notes_section(record, redirect_input)
+    draft_section = _render_draft_section(
+        record, current_action, focus_draft, redirect_input
     )
-
-    # Draft section — visible when current_action is TO_ANSWER or DRAFT_READY,
-    # or when focus_draft is True (forced via ?draft=1).
-    draft_section = ""
-    if current_action in ("TO_ANSWER", "DRAFT_READY") or focus_draft:
-        escaped_draft = html.escape(record.draft_text)
-        button_label = (
-            "Update draft"
-            if current_action == "DRAFT_READY"
-            else "Save draft &amp; move to draft ready"
-        )
-        draft_section = (
-            '<div class="detail-field">'
-            '<div class="detail-label">Draft reply</div>'
-            '<div class="detail-value">'
-            '<form class="detail-form" method="post" action="/save-draft">'
-            f'<input type="hidden" name="message_id"'
-            f' value="{html.escape(record.message_id)}">'
-            f"{redirect_input}"
-            '<textarea class="detail-draft" name="draft_text" rows="8"'
-            f' style="width:100%;box-sizing:border-box;">{escaped_draft}</textarea>'
-            f'<button type="submit">{button_label}</button>'
-            "</form>"
-            "</div>"
-            "</div>\n"
-        )
-
-    # Recipients
-    to_html = html.escape(", ".join(to_list)) if to_list else "<em>(none)</em>"
-    cc_section = ""
-    if cc_list:
-        cc_html = html.escape(", ".join(cc_list))
-        cc_section = (
-            '<div class="detail-field">'
-            '<div class="detail-label">CC</div>'
-            f'<div class="detail-value">{cc_html}</div>'
-            "</div>"
-        )
-
-    # Attachments
-    if attachments and isinstance(attachments, list) and len(attachments) > 0:
-        attach_parts: list[str] = []
-        for a in attachments:
-            if isinstance(a, dict):
-                fname = html.escape(str(a.get("filename", "?")))
-                fsize = a.get("size")
-                if fsize is not None and isinstance(fsize, (int, float)):
-                    fsize_str = f" ({int(fsize):,} bytes)"
-                else:
-                    fsize_str = ""
-                attach_parts.append(f"{fname}{fsize_str}")
-            else:
-                attach_parts.append(html.escape(str(a)))
-        attach_html = ", ".join(attach_parts)
-    else:
-        attach_html = "<em>(none)</em>"
-
-    # IMAP UID
-    imap_uid_section = ""
-    if record.imap_uid is not None:
-        imap_uid_section = (
-            '<div class="detail-field">'
-            '<div class="detail-label">IMAP UID</div>'
-            f'<div class="detail-value"><code>{record.imap_uid}</code></div>'
-            "</div>"
-        )
-
-    # Triage decision (read-only advisory display).
-    if triage_decision is not None:
-        triage_value = (
-            f"<strong>{html.escape(triage_decision.action)}</strong>"
-            f' <span class="triage-source">'
-            f"({html.escape(triage_decision.source)},"
-            f" {html.escape(triage_decision.confidence)})</span>"
-        )
-        if triage_decision.reason:
-            triage_value += (
-                f'<div class="triage-reason">'
-                f"{html.escape(triage_decision.reason)}</div>"
-            )
-    else:
-        triage_value = "<em>(no triage decision)</em>"
-    triage_section = (
-        '<div class="detail-field">'
-        '<div class="detail-label">Triage</div>'
-        f'<div class="detail-value">{triage_value}</div>'
-        "</div>\n"
-    )
+    to_html, cc_section = _render_recipients(to_list, cc_list)
+    attach_html = _render_attachments(attachments)
+    imap_uid_section = _render_imap_uid_section(record)
+    triage_section = _render_triage_section(triage_decision)
 
     # The inner detail fields (Sender through IMAP UID) are identical for
     # the embedded fragment and the full standalone page.
@@ -925,6 +797,175 @@ def _build_detail_html(
         "</div>\n"
         "</body>\n"
         "</html>"
+    )
+
+
+def _render_move_form(
+    record: MailRecord, current_action: str, redirect_input: str
+) -> str:
+    """Render the Status ``<option>`` list and the ``/move`` form."""
+    options_parts: list[str] = []
+    for action in TRIAGE_ACTION_ORDER:
+        sel = " selected" if action == current_action else ""
+        options_parts.append(
+            f'<option value="{html.escape(action)}"{sel}>'
+            f"{html.escape(TRIAGE_ACTION_LABELS[action])}</option>"
+        )
+    return (
+        '<form class="detail-form" method="post" action="/move">'
+        f'<input type="hidden" name="message_id"'
+        f' value="{html.escape(record.message_id)}">'
+        f"{redirect_input}"
+        f'<select name="triage_action">{"".join(options_parts)}</select>'
+        '<button type="submit">Move</button>'
+        "</form>"
+    )
+
+
+def _render_body(record: MailRecord) -> tuple[str, str]:
+    """Return ``(body_html_render, body_html_note)`` for a record's body."""
+    body = record.body_plain
+    if not body or not body.strip():
+        body_html_render = '<span class="detail-value"><em>(no body)</em></span>'
+    else:
+        body_html_render = f"<pre>{html.escape(body)}</pre>"
+
+    body_html_note = ""
+    if record.body_html.strip():
+        body_html_note = (
+            '<div class="detail-field">'
+            '<div class="detail-label">HTML version</div>'
+            '<div class="detail-value"><em>HTML version available</em></div>'
+            "</div>"
+        )
+    return body_html_render, body_html_note
+
+
+def _render_notes_section(record: MailRecord, redirect_input: str) -> str:
+    """Render the Notes textarea + ``/save-notes`` form."""
+    escaped_notes = html.escape(record.notes)
+    return (
+        '<div class="detail-field">'
+        '<div class="detail-label">Notes</div>'
+        '<div class="detail-value">'
+        '<form class="detail-form" method="post" action="/save-notes">'
+        f'<input type="hidden" name="message_id"'
+        f' value="{html.escape(record.message_id)}">'
+        f"{redirect_input}"
+        '<textarea class="detail-notes" name="notes" rows="4"'
+        f' style="width:100%;box-sizing:border-box;">{escaped_notes}</textarea>'
+        '<button type="submit">Save</button>'
+        "</form>"
+        "</div>"
+        "</div>\n"
+    )
+
+
+def _render_draft_section(
+    record: MailRecord,
+    current_action: str,
+    focus_draft: bool,
+    redirect_input: str,
+) -> str:
+    """Render the Draft reply ``/save-draft`` form, or ``""`` when hidden.
+
+    Visible when *current_action* is TO_ANSWER or DRAFT_READY, or when
+    *focus_draft* is True (forced via ?draft=1).
+    """
+    if not (current_action in ("TO_ANSWER", "DRAFT_READY") or focus_draft):
+        return ""
+    escaped_draft = html.escape(record.draft_text)
+    button_label = (
+        "Update draft"
+        if current_action == "DRAFT_READY"
+        else "Save draft &amp; move to draft ready"
+    )
+    return (
+        '<div class="detail-field">'
+        '<div class="detail-label">Draft reply</div>'
+        '<div class="detail-value">'
+        '<form class="detail-form" method="post" action="/save-draft">'
+        f'<input type="hidden" name="message_id"'
+        f' value="{html.escape(record.message_id)}">'
+        f"{redirect_input}"
+        '<textarea class="detail-draft" name="draft_text" rows="8"'
+        f' style="width:100%;box-sizing:border-box;">{escaped_draft}</textarea>'
+        f'<button type="submit">{button_label}</button>'
+        "</form>"
+        "</div>"
+        "</div>\n"
+    )
+
+
+def _render_recipients(to_list: list[str], cc_list: list[str]) -> tuple[str, str]:
+    """Return ``(to_html, cc_section)`` for a record's recipients."""
+    to_html = html.escape(", ".join(to_list)) if to_list else "<em>(none)</em>"
+    cc_section = ""
+    if cc_list:
+        cc_html = html.escape(", ".join(cc_list))
+        cc_section = (
+            '<div class="detail-field">'
+            '<div class="detail-label">CC</div>'
+            f'<div class="detail-value">{cc_html}</div>'
+            "</div>"
+        )
+    return to_html, cc_section
+
+
+def _render_attachments(attachments: list[Any]) -> str:
+    """Render the attachments summary string."""
+    if attachments and isinstance(attachments, list) and len(attachments) > 0:
+        attach_parts: list[str] = []
+        for a in attachments:
+            if isinstance(a, dict):
+                fname = html.escape(str(a.get("filename", "?")))
+                fsize = a.get("size")
+                if fsize is not None and isinstance(fsize, (int, float)):
+                    fsize_str = f" ({int(fsize):,} bytes)"
+                else:
+                    fsize_str = ""
+                attach_parts.append(f"{fname}{fsize_str}")
+            else:
+                attach_parts.append(html.escape(str(a)))
+        attach_html = ", ".join(attach_parts)
+    else:
+        attach_html = "<em>(none)</em>"
+    return attach_html
+
+
+def _render_imap_uid_section(record: MailRecord) -> str:
+    """Render the IMAP UID field, or ``""`` when the record has no UID."""
+    if record.imap_uid is None:
+        return ""
+    return (
+        '<div class="detail-field">'
+        '<div class="detail-label">IMAP UID</div>'
+        f'<div class="detail-value"><code>{record.imap_uid}</code></div>'
+        "</div>"
+    )
+
+
+def _render_triage_section(triage_decision: TriageDecision | None) -> str:
+    """Render the read-only triage advisory field."""
+    if triage_decision is not None:
+        triage_value = (
+            f"<strong>{html.escape(triage_decision.action)}</strong>"
+            f' <span class="triage-source">'
+            f"({html.escape(triage_decision.source)},"
+            f" {html.escape(triage_decision.confidence)})</span>"
+        )
+        if triage_decision.reason:
+            triage_value += (
+                f'<div class="triage-reason">'
+                f"{html.escape(triage_decision.reason)}</div>"
+            )
+    else:
+        triage_value = "<em>(no triage decision)</em>"
+    return (
+        '<div class="detail-field">'
+        '<div class="detail-label">Triage</div>'
+        f'<div class="detail-value">{triage_value}</div>'
+        "</div>\n"
     )
 
 
