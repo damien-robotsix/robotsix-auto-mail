@@ -185,7 +185,6 @@ modules:
       - docs/testing.md
       - docs/troubleshooting.md
       - docs/modules.yaml
-      - docs/modules.schema.yaml
       - docs/decisions/0001-programming-language.md
 
   - id: ci
@@ -204,8 +203,6 @@ modules:
       - .pre-commit-config.yaml
       - .secrets.baseline
       - renovate.json
-      - scripts/modules/check_module_registration.py
-      - tests/modules/test_module_registration.py
 
   - id: mill
     description: >-

@@ -12,6 +12,7 @@ dependencies = [
     "robotsix-board",
     "structlog>=24.1",
     "robotsix-yaml-config",
+    "robotsix-modules",
 ]
 
 [project.optional-dependencies]
@@ -94,3 +95,4 @@ DEP003 = ["pydantic_ai"]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "main" }
 robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }
+robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "main" }
