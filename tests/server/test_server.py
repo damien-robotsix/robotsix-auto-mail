@@ -38,6 +38,10 @@ def test_format_date_invalid_returns_raw() -> None:
     assert _format_date("Last Thursday") == "Last Thursday"
 
 
+def test_format_date_none_returns_none() -> None:
+    assert _format_date(None) is None  # type: ignore[arg-type]
+
+
 # ---------------------------------------------------------------------------
 # Helpers for tests that need a file-based DB
 # ---------------------------------------------------------------------------
