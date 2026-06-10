@@ -25,7 +25,6 @@ from robotsix_auto_mail.db import (
 from robotsix_auto_mail.triage import (
     TRIAGE_ACTION_LABELS,
     TRIAGE_ACTION_ORDER,
-    TRIAGE_ACTION_TO_STATUS,
     VALID_TRIAGE_ACTIONS,
     ArchiveSubfolderProposal,
     RuleLedgerEntry,
@@ -542,28 +541,6 @@ def test_run_triage_agent_moves_status_column(
         assert row[0] == "to_read"
     finally:
         conn.close()
-
-
-def test_triage_action_to_status_mapping_coverage(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Each action maps to a valid kanban column."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
-    # Keys agree with the action vocabulary; values are valid columns.
-    assert set(TRIAGE_ACTION_TO_STATUS) == set(VALID_TRIAGE_ACTIONS)
-    assert all(
-        v in {"needs_reply", "waiting", "to_read", "no_action", "done"}
-        for v in TRIAGE_ACTION_TO_STATUS.values()
-    )
-    expected = {
-        "INBOX": "to_read",
-        "HUMAN_TRIAGE": "to_read",
-        "TO_ARCHIVE": "no_action",
-        "TO_DELETE": "no_action",
-        "TO_ANSWER": "needs_reply",
-    }
-    for action, column in expected.items():
-        assert TRIAGE_ACTION_TO_STATUS[action] == column
 
 
 def test_run_triage_agent_performs_no_imap_calls(

@@ -70,18 +70,6 @@ TRIAGE_ACTION_LABELS: dict[str, str] = {
     "DRAFT_READY": "Draft ready",
 }
 
-#: Maps each triage action to the kanban column its card moves to.
-#: This is a LOCAL board move only — it never touches IMAP.
-TRIAGE_ACTION_TO_STATUS: dict[str, str] = {
-    "INBOX": "to_read",  # not triaged / returned to inbox
-    "HUMAN_TRIAGE": "to_read",  # system unsure → human reads/decides
-    "PENDING_ACTION": "waiting",  # awaiting external event / feedback
-    "TO_ARCHIVE": "no_action",  # FYI, nothing to do
-    "TO_DELETE": "no_action",  # user does NOT want real deletion — board column only
-    "TO_ANSWER": "needs_reply",  # needs a human reply
-    "DRAFT_READY": "needs_reply",  # draft composed, ready for review/send
-}
-
 #: Actions the LLM triage agent may assign.  ``INBOX`` is intentionally
 #: excluded: it is reserved for not-yet-triaged mail (the board entry
 #: column).  When the agent is unsure it must use ``HUMAN_TRIAGE`` rather
