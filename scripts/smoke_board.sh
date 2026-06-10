@@ -73,44 +73,54 @@ if [[ "${ready}" -ne 1 ]]; then
     exit 1
 fi
 
-# Helper: fetch a route, return body on stdout, set REPLY_STATUS to HTTP code.
+# Helper: fetch a route into temp files. Writes the response body to
+# ${BODY_FILE} and the HTTP status code to ${STATUS_FILE}. Both are read
+# back by the caller in the parent shell — the status is NOT returned via a
+# variable, because `fetch` is invoked outside a command substitution so no
+# subshell can swallow the assignment.
+BODY_FILE="${TMP_DIR}/body.out"
+STATUS_FILE="${TMP_DIR}/status.out"
+
 fetch() {
     local path="$1"
-    local body_file="${TMP_DIR}/body.out"
-    REPLY_STATUS="$(curl -s -o "${body_file}" -w '%{http_code}' "${BASE}${path}")"
-    cat "${body_file}"
+    curl -s -o "${BODY_FILE}" -w '%{http_code}' "${BASE}${path}" >"${STATUS_FILE}"
 }
 
 # --- Assertion 1: GET /board -> 200 + DOM markers ---
-body="$(fetch /board)"
-if [[ "${REPLY_STATUS}" != "200" ]]; then
-    diagnose "GET /board" "${REPLY_STATUS}" "expected HTTP 200"
+fetch /board
+status="$(cat "${STATUS_FILE}")"
+body="$(cat "${BODY_FILE}")"
+if [[ "${status}" != "200" ]]; then
+    diagnose "GET /board" "${status}" "expected HTTP 200"
     exit 1
 fi
 if [[ "${body}" != *"<title>Mail Board</title>"* ]]; then
-    diagnose "GET /board" "${REPLY_STATUS}" "missing marker: <title>Mail Board</title>"
+    diagnose "GET /board" "${status}" "missing marker: <title>Mail Board</title>"
     exit 1
 fi
 if [[ "${body}" != *'class="board"'* ]]; then
-    diagnose "GET /board" "${REPLY_STATUS}" 'missing marker: class="board"'
+    diagnose "GET /board" "${status}" 'missing marker: class="board"'
     exit 1
 fi
 
 # --- Assertion 2: GET /board-content -> 200 + JSON key columns_html ---
-body="$(fetch /board-content)"
-if [[ "${REPLY_STATUS}" != "200" ]]; then
-    diagnose "GET /board-content" "${REPLY_STATUS}" "expected HTTP 200"
+fetch /board-content
+status="$(cat "${STATUS_FILE}")"
+body="$(cat "${BODY_FILE}")"
+if [[ "${status}" != "200" ]]; then
+    diagnose "GET /board-content" "${status}" "expected HTTP 200"
     exit 1
 fi
 if [[ "${body}" != *'"columns_html"'* ]]; then
-    diagnose "GET /board-content" "${REPLY_STATUS}" 'missing JSON key: columns_html'
+    diagnose "GET /board-content" "${status}" 'missing JSON key: columns_html'
     exit 1
 fi
 
 # --- Assertion 3: GET /static/board.css -> 200 (robotsix_board assets) ---
-fetch /static/board.css >/dev/null
-if [[ "${REPLY_STATUS}" != "200" ]]; then
-    diagnose "GET /static/board.css" "${REPLY_STATUS}" "expected HTTP 200 (robotsix_board static assets)"
+fetch /static/board.css
+status="$(cat "${STATUS_FILE}")"
+if [[ "${status}" != "200" ]]; then
+    diagnose "GET /static/board.css" "${status}" "expected HTTP 200 (robotsix_board static assets)"
     exit 1
 fi
 
