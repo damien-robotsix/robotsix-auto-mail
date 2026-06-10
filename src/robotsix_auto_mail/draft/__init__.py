@@ -111,7 +111,7 @@ def generate_draft_reply(
 
     # -- lazy imports so the module loads without pydantic_ai installed --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import start_trace
+    from robotsix_llmio.core import run_agent
     from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
 
     # -- resolve API key (arg -> config.load_llm()) --
@@ -133,16 +133,13 @@ def generate_draft_reply(
             system_prompt=_build_draft_system_prompt(),
             output_type=PromptedOutput(DraftResult),
         )
-        try:
-            with start_trace("mail draft") as trace:
-                trace.set_input(user_message)
-                result = llm_provider.call_with_retry(
-                    lambda: agent_handle.run_sync(user_message),
-                    what="mail draft",
-                )
-                trace.set_output(str(result.output))
-        finally:
-            agent_handle.close()
+        result = run_agent(
+            agent_handle,
+            lambda: agent_handle.run_sync(user_message),
+            label="mail draft",
+            what="mail draft",
+            trace_input=user_message,
+        )
     except DraftGenerationError:
         raise
     except Exception as exc:

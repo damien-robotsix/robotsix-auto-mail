@@ -22,7 +22,7 @@ from xml.etree import ElementTree  # nosec B405
 import pydantic
 import urllib3
 import urllib3.exceptions
-from robotsix_llmio.core import Tier, start_trace
+from robotsix_llmio.core import Tier, run_agent
 from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
 
 from robotsix_auto_mail.config import (
@@ -514,18 +514,16 @@ def detect_provider(
         )
 
     # -- call LLM --
-    with start_trace("email provider detection") as trace:
-        trace.set_input(user_message)
-        try:
-            result = llm_provider.call_with_retry(
-                lambda: agent_handle.run_sync(user_message),
-                what="email provider detection",
-            )
-        except Exception as exc:
-            raise DetectionError(str(exc)) from exc
-        finally:
-            agent_handle.close()
-        trace.set_output(str(result.output))
+    try:
+        result = run_agent(
+            agent_handle,
+            lambda: agent_handle.run_sync(user_message),
+            label="email provider detection",
+            what="email provider detection",
+            trace_input=user_message,
+        )
+    except Exception as exc:
+        raise DetectionError(str(exc)) from exc
 
     # -- extract and convert --
     detected: DetectedProvider = result.output

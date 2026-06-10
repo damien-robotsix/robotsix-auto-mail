@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from email.utils import parseaddr
 
 import pydantic
-from robotsix_llmio.core import Tier, start_trace
+from robotsix_llmio.core import Tier, run_agent
 
 from robotsix_auto_mail.config import load_llm
 from robotsix_auto_mail.db import (
@@ -714,18 +714,15 @@ def propose_archive_subfolder_llm(
         )
 
         try:
-            with start_trace("archive subfolder proposal") as trace:
-                trace.set_input(user_message)
-                try:
-                    result = llm_provider.call_with_retry(
-                        lambda: agent_handle.run_sync(user_message),
-                        what="archive subfolder proposal",
-                    )
-                except Exception:
-                    return  # LLM call failed → silently return
-                trace.set_output(str(result.output))
-        finally:
-            agent_handle.close()
+            result = run_agent(
+                agent_handle,
+                lambda: agent_handle.run_sync(user_message),
+                label="archive subfolder proposal",
+                what="archive subfolder proposal",
+                trace_input=user_message,
+            )
+        except Exception:
+            return  # LLM call failed → silently return
 
         proposed: ArchiveSubfolderProposal = result.output
         subfolder = proposed.subfolder.strip()
@@ -1279,18 +1276,15 @@ def _detect_unsubscribe_for_sender(
     )
 
     try:
-        with start_trace("unsubscribe detection") as trace:
-            trace.set_input(user_message)
-            try:
-                result = llm_provider.call_with_retry(
-                    lambda: agent_handle.run_sync(user_message),
-                    what="unsubscribe detection",
-                )
-            except Exception:
-                return None
-            trace.set_output(str(result.output))
-    finally:
-        agent_handle.close()
+        result = run_agent(
+            agent_handle,
+            lambda: agent_handle.run_sync(user_message),
+            label="unsubscribe detection",
+            what="unsubscribe detection",
+            trace_input=user_message,
+        )
+    except Exception:
+        return None
 
     return result.output  # type: ignore[no-any-return]
 
@@ -1461,18 +1455,16 @@ def run_triage_agent(
         user_message = f"{guidance}\n\n{user_message}"
 
     # -- call LLM --
-    with start_trace("mail triage") as trace:
-        trace.set_input(user_message)
-        try:
-            result = llm_provider.call_with_retry(
-                lambda: agent_handle.run_sync(user_message),
-                what="mail triage",
-            )
-        except Exception as exc:
-            raise TriageError(str(exc)) from exc
-        finally:
-            agent_handle.close()
-        trace.set_output(str(result.output))
+    try:
+        result = run_agent(
+            agent_handle,
+            lambda: agent_handle.run_sync(user_message),
+            label="mail triage",
+            what="mail triage",
+            trace_input=user_message,
+        )
+    except Exception as exc:
+        raise TriageError(str(exc)) from exc
 
     output: TriageResult = result.output
 

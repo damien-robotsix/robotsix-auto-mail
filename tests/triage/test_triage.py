@@ -507,7 +507,7 @@ def test_run_triage_agent_llm_failure_wrapped(
         mock_handle = mock.MagicMock()
         mock_provider = mock.MagicMock()
         mock_provider.build_agent.return_value = mock_handle
-        mock_provider.call_with_retry.side_effect = RuntimeError("timeout")
+        mock_handle.run_sync.side_effect = RuntimeError("timeout")
         with mock.patch(
             "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
             return_value=mock_provider,
