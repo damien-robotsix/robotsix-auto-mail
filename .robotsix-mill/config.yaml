@@ -1,2 +1,8 @@
 test_command: pytest -q
 languages: [python]
+smoke_command: bash scripts/smoke_board.sh
+smoke_paths:
+  - src/robotsix_auto_mail/server/**
+  - src/robotsix_auto_mail/board_adapter.py
+  - src/robotsix_auto_mail/cli/**
+  - scripts/smoke_board.sh
