@@ -149,7 +149,7 @@ modules:
       triage, config_sync_agent) with named root spans carrying input and
       output attribution.
     paths:
-      - src/robotsix_auto_mail/tracing.py
+      - src/robotsix_auto_mail/tracing/__init__.py
       - tests/tracing/test_tracing.py
 
   - id: logging
