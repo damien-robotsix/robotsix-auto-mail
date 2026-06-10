@@ -24,7 +24,7 @@ from robotsix_auto_mail.config.config_sync_agent import (
 )
 from robotsix_auto_mail.detect import DetectionError, MailProvider
 from robotsix_auto_mail.imap import ImapClient
-from robotsix_auto_mail.smtp_client import SmtpClient
+from robotsix_auto_mail.smtp import SmtpClient
 from robotsix_auto_mail.triage import (
     TriageError,
     TriageItem,

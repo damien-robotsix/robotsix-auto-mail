@@ -12,7 +12,7 @@ import pytest
 from tests.conftest import _make_mock_smtp, _make_mock_smtp_ssl
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.smtp_client import (
+from robotsix_auto_mail.smtp import (
     SmtpAuthError,
     SmtpClient,
     SmtpConnectionError,
@@ -597,7 +597,7 @@ def test_context_manager_direct_tls_flow(cfg: MailConfig) -> None:
 
 def test_smtp_client_does_not_import_imap() -> None:
     """The smtp_client module must not reference the IMAP module."""
-    import robotsix_auto_mail.smtp_client as mod
+    import robotsix_auto_mail.smtp as mod
 
     source = mod.__file__
     assert source is not None
