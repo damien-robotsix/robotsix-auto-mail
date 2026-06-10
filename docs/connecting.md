@@ -600,6 +600,20 @@ message, including the **Triage** field with the decision action, reason, source
 (agent or user), and confidence level. If no decision has been recorded, the
 Triage field shows "(no triage decision)".
 
+**Draft generation.**  For messages marked "Needs reply" (TO_ANSWER triage action),
+the detail drawer shows a **Draft reply** section with two interfaces:
+- A **Generate with AI** button (when no draft exists) or **Regenerate with AI** 
+  button (when a draft already exists) that uses an LLM to prepare a concise, 
+  professional reply draft in the same language as the incoming message. The 
+  generated draft appears in a textarea below the button, ready for review and 
+  manual editing.
+- A **Save draft** form to persist your (edited) draft text and move the card to 
+  "Draft ready" status.
+
+On the board card itself, a **Draft reply** button (visible only for TO_ANSWER 
+cards) is a shortcut — click it to immediately generate a draft and re-open the 
+detail drawer to show the result.
+
 The board is the interface: no separate client is needed.
 
 The page includes `<meta http-equiv="refresh" content="30">`, so the board
