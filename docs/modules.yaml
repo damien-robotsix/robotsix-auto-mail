@@ -180,6 +180,7 @@ modules:
     paths:
       - docs/CHANGELOG.md
       - docs/CONTRIBUTING.md
+      - docs/dependencies.md
       - docs/index.md
       - mkdocs.yml
       - docs/architecture.md
@@ -201,6 +202,7 @@ modules:
       - .github/codeql/codeql-config.yml
       - .github/workflows/ci.yml
       - .github/workflows/codeql.yml
+      - .github/workflows/deps-bump.yml
       - .github/workflows/docs.yml
       - .github/workflows/lockfile.yml
       - .github/workflows/release.yml
