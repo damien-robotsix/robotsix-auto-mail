@@ -168,6 +168,7 @@ modules:
       test that boots the server and asserts its key routes.
     paths:
       - src/robotsix_auto_mail/server/__init__.py
+      - src/robotsix_auto_mail/static/board.css
       - src/robotsix_auto_mail/board_adapter.py
       - tests/server/test_server.py
       - tests/board_adapter/test_board_adapter.py

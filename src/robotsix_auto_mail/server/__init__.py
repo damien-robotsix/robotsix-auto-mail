@@ -47,6 +47,12 @@ _STATIC_BOARD_JS = (
 _STATIC_BOARD_CSS = (
     importlib.resources.files("robotsix_board") / "static" / "board.css"
 ).read_text()
+# Auto-mail's app-layer stylesheet, served at /static/automail/board.css so
+# it does not collide with the library's /static/board.css.  Loaded after
+# the library CSS so its rules cascade over the library defaults.
+_STATIC_AUTOMAIL_BOARD_CSS = (
+    importlib.resources.files("robotsix_auto_mail") / "static" / "board.css"
+).read_text()
 
 # -- Constants --------------------------------------------------------------
 _BOARD_COLUMNS = TRIAGE_ACTION_ORDER
@@ -522,6 +528,7 @@ def _build_board_html(db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT) ->
         '<meta charset="utf-8">\n'
         "<title>Mail Board</title>\n"
         '<link rel="stylesheet" href="/static/board.css">\n'
+        '<link rel="stylesheet" href="/static/automail/board.css">\n'
         "</head>\n"
         "<body>\n"
         "<h1>Mail Board</h1>\n"
@@ -769,8 +776,12 @@ def _build_detail_html(
     )
 
     if embed:
-        # Embedded (iframe) detail fragment — inline style + fields.
+        # Embedded (iframe) detail fragment — app stylesheet + inline
+        # style + fields.  The fragment is loaded as its own document
+        # inside the drawer iframe, so it links the app stylesheet to
+        # stay styled.
         return (
+            '<link rel="stylesheet" href="/static/automail/board.css">\n'
             "<style>\n"
             ".detail-field { margin-bottom: 0.75rem; }\n"
             ".detail-label { font-weight: 700; font-size: 0.85rem; color: #666;"
@@ -802,6 +813,7 @@ def _build_detail_html(
         '<meta charset="utf-8">\n'
         f"<title>Mail: {title_subject}</title>\n"
         '<link rel="stylesheet" href="/static/board.css">\n'
+        '<link rel="stylesheet" href="/static/automail/board.css">\n'
         "</head>\n"
         "<body>\n"
         '<a class="back-link" href="/board">\u2190 Back to board</a>\n'
@@ -1239,6 +1251,11 @@ class BoardHandler(BaseHTTPRequestHandler):
         elif self.path == "/static/board.css":
             self._send_response(
                 _STATIC_BOARD_CSS,
+                content_type="text/css; charset=utf-8",
+            )
+        elif self.path == "/static/automail/board.css":
+            self._send_response(
+                _STATIC_AUTOMAIL_BOARD_CSS,
                 content_type="text/css; charset=utf-8",
             )
         else:
