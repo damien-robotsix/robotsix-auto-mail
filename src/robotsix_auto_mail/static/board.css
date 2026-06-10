@@ -106,6 +106,7 @@ body {
 }
 .back-link:hover { text-decoration: underline; }
 .detail-container { max-width: 800px; }
+.embed-detail { padding: 1rem; font-family: system-ui, -apple-system, sans-serif; }
 .detail-field { margin-bottom: 0.75rem; }
 .detail-label {
     font-weight: 700; font-size: 0.85rem;

@@ -3994,6 +3994,11 @@ def test_handler_email_detail_embed_no_chrome() -> None:
             assert "<!DOCTYPE html>" not in body
             assert "<html" not in body
             assert 'class="embed-detail"' in body
+            # The embed fragment must rely solely on the linked app
+            # stylesheet — no inline <style> block (it would duplicate
+            # rules already defined in board.css).
+            assert "<style>" not in body
+            assert 'href="/static/automail/board.css"' in body
         finally:
             server.shutdown()
     finally:

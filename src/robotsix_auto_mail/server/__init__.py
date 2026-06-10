@@ -575,29 +575,11 @@ def _build_detail_html(
     )
 
     if embed:
-        # Embedded (iframe) detail fragment — app stylesheet + inline
-        # style + fields.  The fragment is loaded as its own document
-        # inside the drawer iframe, so it links the app stylesheet to
-        # stay styled.
+        # Embedded (iframe) detail fragment — app stylesheet + fields.
+        # The fragment is loaded as its own document inside the drawer
+        # iframe, so it links the app stylesheet to stay styled.
         return (
             '<link rel="stylesheet" href="/static/automail/board.css">\n'
-            "<style>\n"
-            ".detail-field { margin-bottom: 0.75rem; }\n"
-            ".detail-label { font-weight: 700; font-size: 0.85rem; color: #a0a0c0;"
-            " margin-bottom: 0.15rem; }\n"
-            ".detail-value { font-size: 0.95rem; }\n"
-            ".detail-value pre { margin: 0; white-space: pre-wrap;"
-            " font-family: inherit; }\n"
-            ".detail-value code { font-size: 0.85rem; background: #0f3460;"
-            " color: #c0c0e0; padding: 0.1rem 0.3rem; border-radius: 3px; }\n"
-            ".detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem;"
-            " align-items: center; }\n"
-            ".detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }\n"
-            ".detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem;"
-            " cursor: pointer; }\n"
-            ".embed-detail { padding: 1rem;"
-            " font-family: system-ui, -apple-system, sans-serif; }\n"
-            "</style>\n"
             '<div class="embed-detail">\n'
             f"{fields_html}"
             "</div>\n"
