@@ -17,6 +17,7 @@ nav:
   - Ingestion: ingestion.md
   - Connecting: connecting.md
   - Deployment: deployment.md
+  - Dependencies: dependencies.md
   - Testing: testing.md
   - Troubleshooting: troubleshooting.md
   - Contributing: CONTRIBUTING.md
