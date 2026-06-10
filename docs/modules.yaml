@@ -118,7 +118,7 @@ modules:
     description: >-
       Low-level IMAP client (stdlib imaplib wrapper).
     paths:
-      - src/robotsix_auto_mail/imap.py
+      - src/robotsix_auto_mail/imap/__init__.py
       - tests/imap/test_imap.py
 
   - id: parser
