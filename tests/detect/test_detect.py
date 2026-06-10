@@ -415,7 +415,7 @@ def test_detect_provider_llm_call_error() -> None:
         mock_handle = mock.MagicMock()
         mock_provider = mock.MagicMock()
         mock_provider.build_agent.return_value = mock_handle
-        mock_provider.call_with_retry.side_effect = RuntimeError("LLM API timeout")
+        mock_handle.run_sync.side_effect = RuntimeError("LLM API timeout")
 
         with mock.patch(
             "robotsix_auto_mail.detect.OpenRouterDeepseekProvider",
