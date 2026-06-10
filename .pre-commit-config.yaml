@@ -20,12 +20,10 @@ repos:
           - urllib3>=2.0
           - types-PyYAML
 
-  - repo: https://github.com/python-jsonschema/check-jsonschema
-    # keep in sync (latest stable release)
-    rev: 0.37.2
+  - repo: https://github.com/damien-robotsix/robotsix-modules
+    rev: v0.2.0
     hooks:
-      - id: check-jsonschema
-        args: ["--schemafile", "docs/modules.schema.yaml"]
+      - id: robotsix-modules-validate
         files: ^docs/modules\.yaml$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
