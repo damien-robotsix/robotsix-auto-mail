@@ -2,12 +2,29 @@
 ``robotsix_board``.
 
 Maps auto-mail's data model (``MailRecord``, ``TriageDecision``) onto the
-eight-method adapter protocol so the shared board library can inspect a
-card, build a column header, and populate a move form.  Per-card custom
-content (delete button, archive proposal, notes/draft indicators,
-draft-reply button, ``data-message-id``/``data-subject`` attributes) is
-handled by the manual board rendering in ``server.py`` rather than the
-library's generic ``render_board()``.
+eight-method adapter protocol.  The server (``server/__init__.py``) uses
+the adapter as the single source of truth for the *base* column/card
+scaffold data — column order + labels (``columns``), per-card title
+(``card_title``), triage badge (``card_badges``), timestamps
+(``card_timestamps``) and the move-form endpoint (``move_endpoint``).
+
+The library's generic ``render_board()`` is intentionally **not**
+invoked.  ``render_board()`` passes every adapter return value through
+``html.escape(..., quote=True)`` and exposes no per-card raw-HTML
+extra-content hook, so auto-mail's custom per-card/per-column widgets —
+the archive-proposal selector with override/confirm forms, the delete
+button, the draft-reply button, the unsubscribe banner, the
+batch-delete and force-triage forms, notes/draft indicators,
+``data-message-id``/``data-subject`` attributes and the body preview —
+which are structural HTML (forms, buttons, banners) rather than escaped
+text, cannot pass through it.  auto-mail therefore server-renders the
+fragments itself, layering those widgets on top of the adapter-sourced
+base.
+
+Full library-driven rendering via ``render_board()`` is blocked on a
+robotsix-board enhancement — a per-card raw-HTML extra-content hook —
+which is the path to true adoption and belongs in
+``github.com/damien-robotsix/robotsix-board`` rather than this repo.
 """
 
 from __future__ import annotations
@@ -28,7 +45,12 @@ class MailBoardAdapter:
     method without touching the database.  Auto-mail-specific data
     (archive subfolders, folder-exists map, unsubscribe suggestions,
     notes) is also stored for use by the manual board rendering in
-    ``server.py``.
+    ``server/__init__.py``.
+
+    The server consumes the protocol methods directly to build the base
+    column/card scaffold; it does **not** call ``render_board()`` (see the
+    module docstring for why — escaping + the absence of a per-card
+    raw-HTML hook).
     """
 
     def __init__(
@@ -87,7 +109,13 @@ class MailBoardAdapter:
         return "/move/{card_id}/{target_status}"
 
     def render_mode(self) -> RenderMode:
-        """Return ``RenderMode.SERVER_FRAGMENTS``."""
+        """Return ``RenderMode.SERVER_FRAGMENTS``.
+
+        This is the closest of the two ``RenderMode`` values, since
+        auto-mail server-renders HTML fragments.  It is advisory only:
+        the library's ``render_board()`` is not invoked at all (see the
+        module docstring), so the value is never consumed by the library.
+        """
         return RenderMode.SERVER_FRAGMENTS
 
 
