@@ -93,9 +93,7 @@ jobs:
         run: uv run --frozen python scripts/modules/check_module_registration.py
 
       - name: SAST (bandit)
-        run: |
-          uv pip install 'bandit[toml]'
-          uv run --frozen bandit -r src/ -f json -c pyproject.toml
+        run: uvx --from 'bandit[toml]' bandit -r src/ -f json -c pyproject.toml
 
       - name: Secret scanning (TruffleHog)
         uses: trufflesecurity/trufflehog@main
