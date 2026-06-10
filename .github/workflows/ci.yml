@@ -43,13 +43,13 @@ jobs:
         run: uv run --frozen ruff check .
 
       - name: Type check (mypy)
-        run: uv run --frozen mypy .
+        run: uv run --frozen mypy --strict .
 
       - name: Dependency hygiene (deptry)
         run: uv run --frozen deptry src/ tests/
 
       - name: Test (pytest + coverage)
-        run: uv run --frozen pytest --cov --cov-report=term-missing --cov-report=xml
+        run: uv run --frozen pytest --cov --cov-fail-under=80 --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage report
         if: always()
