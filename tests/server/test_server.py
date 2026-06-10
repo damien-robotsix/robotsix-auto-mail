@@ -3744,8 +3744,8 @@ def test_handler_static_automail_board_css_returns_200() -> None:
         assert ".side-panel" in body
         assert ".side-panel.open" in body
         assert ".board-wrapper" in body
-        # The UI background defaults to black.
-        assert "background: #000" in body
+        # The UI background is a dark shade harmonizing with the board palette.
+        assert "background: #121626" in body
     finally:
         server.shutdown()
 
