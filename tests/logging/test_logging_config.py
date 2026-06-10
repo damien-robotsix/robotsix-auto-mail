@@ -7,7 +7,7 @@ import os
 import pytest
 import structlog
 
-from robotsix_auto_mail.logging_config import setup_logging
+from robotsix_auto_mail.logging import setup_logging
 
 # ---------------------------------------------------------------------------
 # Helpers

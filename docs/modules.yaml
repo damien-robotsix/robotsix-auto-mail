@@ -158,8 +158,8 @@ modules:
       setup_logging() entry point bridging stdlib logging into a
       shared JSON/console renderer.
     paths:
-      - src/robotsix_auto_mail/logging_config.py
-      - tests/logging_config/test_logging_config.py
+      - src/robotsix_auto_mail/logging/__init__.py
+      - tests/logging/test_logging_config.py
 
   - id: server
     description: >-
