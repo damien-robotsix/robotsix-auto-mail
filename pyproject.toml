@@ -12,7 +12,6 @@ dependencies = [
     "robotsix-board",
     "structlog>=24.1",
     "robotsix-yaml-config",
-    "robotsix-modules",
 ]
 
 [project.optional-dependencies]
@@ -29,6 +28,10 @@ dev = [
     "pyyaml>=6.0",
     "types-PyYAML",
     "robotsix-llmio[openrouter-deepseek,tracing]",
+    # robotsix-modules provides the CLI used by CI / pre-commit to validate and
+    # check registration of docs/modules.yaml. It is tooling only (never imported
+    # by the package), so it lives in the dev extra (exempt from deptry DEP002).
+    "robotsix-modules",
 ]
 llm = [
     "robotsix-llmio[openrouter-deepseek,tracing]",

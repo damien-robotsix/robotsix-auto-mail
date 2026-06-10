@@ -225,3 +225,14 @@ modules:
       - .robotsix-mill/periodic/cost_reconciliation.yaml
       - .robotsix-mill/periodic/test_gap.yaml
       - .robotsix-mill/periodic/trace_review.yaml
+
+  - id: vendored
+    description: >-
+      Vendored, version-controlled third-party dependency snapshots used
+      for offline installs in CI/sandbox environments. These are not
+      first-party source; they were previously exempt from registration
+      via the local check script and are claimed here so the
+      robotsix-modules registration check accounts for every tracked file.
+    paths:
+      - .deps/**/*
+      - .pip-site/**/*
