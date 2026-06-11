@@ -11,6 +11,7 @@ import time as time
 
 from robotsix_auto_mail import __version__
 from robotsix_auto_mail.cli.commands import (
+    _cmd_auth_login,
     _cmd_board,
     _cmd_config_sync,
     _cmd_config_sync_set,
@@ -345,6 +346,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print the migrated YAML to stdout without writing any file.",
     )
 
+    auth_parser = sub.add_parser(
+        "auth", help="Authenticate accounts (OAuth2 device-code login)"
+    )
+    auth_sub = auth_parser.add_subparsers(dest="auth_command", title="auth subcommands")
+    login_parser = auth_sub.add_parser(
+        "login", help="Run the OAuth2 device-code login for an account"
+    )
+    login_parser.add_argument(
+        "--account",
+        metavar="ID",
+        default=None,
+        help="Account id to authenticate.",
+    )
+
     return parser
 
 
@@ -423,6 +438,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "config-sync-set":
         return _cmd_config_sync_set(args)
+
+    if args.command == "auth":
+        if args.auth_command == "login":
+            return _cmd_auth_login(args)
+        # No auth subcommand given — print the auth help and exit 1.
+        for action in parser._actions:
+            if isinstance(action, argparse._SubParsersAction):
+                action.choices["auth"].print_help(sys.stderr)
+                break
+        return 1
 
     # No command given — print help and exit 1.
     parser.print_help(sys.stderr)

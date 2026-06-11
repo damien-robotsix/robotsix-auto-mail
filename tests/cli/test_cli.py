@@ -2801,3 +2801,132 @@ def test_ingest_account_and_all_accounts_mutually_exclusive() -> None:
     with pytest.raises(SystemExit) as exc:
         build_parser().parse_args(["ingest", "--account", "a", "--all-accounts"])
     assert exc.value.code == 2
+
+
+# ---------------------------------------------------------------------------
+# auth login
+# ---------------------------------------------------------------------------
+
+
+def _ms_accounts(tmp_path: Path) -> MailAccountsConfig:
+    """Build a one-account container whose account uses the microsoft provider."""
+    config = MailConfig(
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        username="me@contoso.com",
+        password="",
+        oauth2_provider="microsoft",
+        db_path=str(tmp_path / "ms" / "mail.db"),
+    )
+    return MailAccountsConfig(
+        accounts=(MailAccount(account_id="ms", config=config, label=None),),
+        default_account_id="ms",
+    )
+
+
+def test_parser_has_auth_login_subcommand() -> None:
+    """build_parser registers `auth login --account ID`."""
+    args = build_parser().parse_args(["auth", "login", "--account", "ms"])
+    assert args.command == "auth"
+    assert args.auth_command == "login"
+    assert args.account == "ms"
+
+
+def test_auth_login_help_renders(capsys: pytest.CaptureFixture[str]) -> None:
+    """`auth --help` and `auth login --help` render without error."""
+    for argv in (["auth", "--help"], ["auth", "login", "--help"]):
+        with pytest.raises(SystemExit) as exc:
+            build_parser().parse_args(argv)
+        assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "login" in out
+
+
+def test_auth_without_subcommand_prints_help_and_exits_1(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Bare `auth` prints the auth help to stderr and exits non-zero."""
+    rc = main(["auth"])
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "login" in err
+
+
+def test_auth_login_single_account_runs_flow(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """With one account and no --account, the device-code flow runs and the
+    cache location is printed."""
+    accounts = _ms_accounts(tmp_path)
+    with (
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
+    ):
+        rc = main(["auth", "login"])
+
+    assert rc == 0
+    mock_login.assert_called_once_with(accounts.get("ms").config)
+    out = capsys.readouterr().out
+    assert "msal_cache.json" in out
+
+
+def test_auth_login_ambiguous_account_errors(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Omitting --account with multiple accounts errors and lists the ids."""
+    accounts = _two_accounts(tmp_path)
+    with mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts):
+        rc = main(["auth", "login"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "personal" in err and "work" in err
+
+
+def test_auth_login_unknown_account_errors(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An unknown --account id errors with the valid ids and exits non-zero."""
+    accounts = _ms_accounts(tmp_path)
+    with mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts):
+        rc = main(["auth", "login", "--account", "nope"])
+
+    assert rc == 1
+    assert "nope" in capsys.readouterr().err
+
+
+def test_auth_login_non_microsoft_account_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A non-OAuth2 account is rejected with a clear message and non-zero exit."""
+    accounts = _two_accounts(tmp_path)
+    with mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts):
+        rc = main(["auth", "login", "--account", "work"])
+
+    assert rc == 1
+    assert "OAuth2" in capsys.readouterr().err
+
+
+def test_auth_login_missing_msal_errors(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A missing `msal` dependency yields the pip-install hint and non-zero exit."""
+    from robotsix_auto_mail.config import ConfigurationError
+
+    accounts = _ms_accounts(tmp_path)
+    with (
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
+        mock.patch(
+            "robotsix_auto_mail.oauth2.device_code_login",
+            side_effect=ConfigurationError(
+                "Microsoft OAuth2 (oauth2_provider='microsoft') requires the "
+                "'msal' package, which is not installed. Install it with: "
+                "pip install 'robotsix-auto-mail[microsoft]'"
+            ),
+        ),
+    ):
+        rc = main(["auth", "login", "--account", "ms"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "robotsix-auto-mail[microsoft]" in err
