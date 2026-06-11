@@ -18,6 +18,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lint Dockerfile (hadolint)
+        uses: hadolint/hadolint-action@v3.3.0  # v3.3.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+
       # Passing python-version to setup-uv sets UV_PYTHON for the job,
       # overriding the pinned .python-version, and setup-uv downloads + caches
       # the requested interpreter automatically — so the per-version core

@@ -12,6 +12,10 @@ WORKDIR /build
 # git is required at build time: the only non-PyPI dep
 # (robotsix-llmio) is a git source in [tool.uv.sources], so uv
 # clones it during install. The slim base image has no git.
+# DL3008: git apt version is intentionally unpinned — the exact Debian
+# version shifts with every base-image apt index refresh, so pinning it
+# would break reproducible builds on each upstream update.
+# hadolint ignore=DL3008
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git && \
     rm -rf /var/lib/apt/lists/*
