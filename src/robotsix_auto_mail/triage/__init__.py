@@ -33,6 +33,9 @@ from robotsix_auto_mail.triage._constants import (
     _AGENT_SELECTABLE_ACTIONS as _AGENT_SELECTABLE_ACTIONS,
 )
 from robotsix_auto_mail.triage._constants import (
+    _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY as _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY,
+)
+from robotsix_auto_mail.triage._constants import (
     _ARCHIVE_LLM_HINTS_WATERMARK_KEY as _ARCHIVE_LLM_HINTS_WATERMARK_KEY,
 )
 from robotsix_auto_mail.triage._constants import (
@@ -102,6 +105,9 @@ from robotsix_auto_mail.triage.classifier import (
     _load_active_rules as _load_active_rules,
 )
 from robotsix_auto_mail.triage.classifier import (
+    _load_archive_folder_memory as _load_archive_folder_memory,
+)
+from robotsix_auto_mail.triage.classifier import (
     _load_archive_overrides as _load_archive_overrides,
 )
 from robotsix_auto_mail.triage.classifier import (
@@ -124,6 +130,9 @@ from robotsix_auto_mail.triage.classifier import (
 )
 from robotsix_auto_mail.triage.classifier import (
     _save_active_rules as _save_active_rules,
+)
+from robotsix_auto_mail.triage.classifier import (
+    _save_archive_folder_memory as _save_archive_folder_memory,
 )
 from robotsix_auto_mail.triage.classifier import (
     _save_archive_overrides as _save_archive_overrides,
@@ -162,6 +171,9 @@ from robotsix_auto_mail.triage.classifier import (
     record_and_filter_rule_proposals as record_and_filter_rule_proposals,
 )
 from robotsix_auto_mail.triage.classifier import (
+    record_archive_folder_choice as record_archive_folder_choice,
+)
+from robotsix_auto_mail.triage.classifier import (
     record_human_decision as record_human_decision,
 )
 from robotsix_auto_mail.triage.classifier import (
@@ -169,6 +181,9 @@ from robotsix_auto_mail.triage.classifier import (
 )
 from robotsix_auto_mail.triage.classifier import (
     set_rule_state as set_rule_state,
+)
+from robotsix_auto_mail.triage.persistence import (
+    ArchiveFolderMemory as ArchiveFolderMemory,
 )
 from robotsix_auto_mail.triage.persistence import (
     ArchiveSubfolderProposal as ArchiveSubfolderProposal,
@@ -224,6 +239,7 @@ __all__ = [
     "TRIAGE_ACTION_ORDER",
     "VALID_TRIAGE_ACTIONS",
     "_AGENT_SELECTABLE_ACTIONS",
+    "_ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY",
     "_ARCHIVE_LLM_HINTS_WATERMARK_KEY",
     "_ARCHIVE_OVERRIDES_WATERMARK_KEY",
     "_MEMORY_WATERMARK_KEY",
@@ -235,6 +251,7 @@ __all__ = [
     "_VALID_RULE_MATCH_TYPES",
     "_VALID_RULE_STATES",
     "_VALID_TRIAGE_SOURCES",
+    "ArchiveFolderMemory",
     "ArchiveSubfolderProposal",
     "RuleLedgerEntry",
     "SenderMemory",
@@ -254,6 +271,7 @@ __all__ = [
     "_detect_unsubscribe_for_sender",
     "_domain_key",
     "_load_active_rules",
+    "_load_archive_folder_memory",
     "_load_archive_overrides",
     "_load_llm_archive_hints",
     "_load_memory",
@@ -262,6 +280,7 @@ __all__ = [
     "_rule_matches",
     "_sanitise_subfolder",
     "_save_active_rules",
+    "_save_archive_folder_memory",
     "_save_archive_overrides",
     "_save_llm_archive_hints",
     "_save_memory",
@@ -279,6 +298,7 @@ __all__ = [
     "propose_archive_subfolder_llm",
     "propose_triage_rules",
     "record_and_filter_rule_proposals",
+    "record_archive_folder_choice",
     "record_human_decision",
     "run_triage_agent",
     "set_archive_subfolder_override",

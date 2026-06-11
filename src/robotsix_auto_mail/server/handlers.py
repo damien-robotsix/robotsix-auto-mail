@@ -31,6 +31,7 @@ from robotsix_auto_mail.triage import (
     get_triage_decision,
     list_triage_decisions,
     propose_archive_subfolder_llm,
+    record_archive_folder_choice,
     record_human_decision,
     set_archive_subfolder_override,
     set_rule_state,
@@ -429,6 +430,14 @@ class BoardHandler(BaseHTTPRequestHandler):
                 )
                 return False
 
+        # -- record the human-confirmed archive-folder choice (best-effort),
+        #    BEFORE the local row is deleted so the memory survives --
+        if subfolder:
+            try:
+                record_archive_folder_choice(conn, record, subfolder)
+            except Exception:  # noqa: S110  # nosec B110
+                pass  # Non-fatal: memory is advisory only
+
         # -- local DB cleanup --
         delete_record_by_message_id(conn, record.message_id)
         return True
@@ -762,7 +771,7 @@ class BoardHandler(BaseHTTPRequestHandler):
 
     def _handle_archive_proposal(self) -> None:
         """Process POST /archive-proposal — store a user override and redirect."""
-        from robotsix_auto_mail.db import init_db
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
         content_length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(content_length).decode("utf-8")
@@ -789,6 +798,15 @@ class BoardHandler(BaseHTTPRequestHandler):
         conn = init_db(self.db_path, skip_migrations=True)
         try:
             set_archive_subfolder_override(conn, message_id, subfolder)
+            # -- record the human-confirmed folder choice (best-effort);
+            #    an empty subfolder (clearing the override) records nothing --
+            if subfolder:
+                try:
+                    record = get_record_by_message_id(conn, message_id)
+                    if record is not None:
+                        record_archive_folder_choice(conn, record, subfolder)
+                except Exception:  # noqa: S110  # nosec B110
+                    pass  # Non-fatal: memory is advisory only
         finally:
             conn.close()
 

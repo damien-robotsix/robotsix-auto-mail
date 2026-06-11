@@ -29,6 +29,8 @@ from robotsix_auto_mail.triage._constants import (
 )
 from robotsix_auto_mail.triage.classifier import (
     _build_memory_guidance,
+    _domain_key,
+    _load_archive_folder_memory,
     _load_llm_archive_hints,
     _save_llm_archive_hints,
     _sender_key,
@@ -52,12 +54,17 @@ from robotsix_auto_mail.triage.persistence import (
 
 def _build_triage_system_prompt(
     archive_folders: list[str] | None = None,
+    archive_folder_history: list[str] | None = None,
 ) -> str:
     """Build the LLM system prompt describing the triage task and actions.
 
     When *archive_folders* is a non-empty list, appends a paragraph
     describing the available archive folders and the optional
-    ``archive_subfolder`` field.
+    ``archive_subfolder`` field.  When *archive_folder_history* is a
+    non-empty list of guidance lines (one per sender/domain with a recorded
+    archive-folder choice), the ``TO_ARCHIVE`` paragraph additionally lists
+    those previously-used folders and instructs the model to prefer reusing
+    an existing project folder for ongoing projects.
     """
     prompt = (
         "You are an inbox triage assistant. You are given a numbered list of "
@@ -99,6 +106,15 @@ def _build_triage_system_prompt(
             "message. Leave the field empty or omit it when you have no "
             "suggestion.\n"
         )
+        if archive_folder_history:
+            history_lines = "\n".join(archive_folder_history)
+            prompt += (
+                "\nArchive-folder history for senders in this batch:\n"
+                f"{history_lines}\n"
+                "Prefer reusing an existing project folder when the message "
+                "relates to an ongoing project, rather than inventing a new "
+                "folder or a date bucket.\n"
+            )
     return prompt
 
 
@@ -366,6 +382,31 @@ def run_triage_agent(
         except (json.JSONDecodeError, TypeError, KeyError):
             archive_folders = None
 
+    # -- per-sender/domain archive-folder history guidance ---------------
+    folder_memory = _load_archive_folder_memory(conn)
+    archive_folder_history: list[str] = []
+    if folder_memory:
+        seen_keys: set[str] = set()
+        for record in remaining:
+            sender_key = _sender_key(record.sender)
+            sender_entry = folder_memory.get(sender_key)
+            if sender_entry is not None and sender_key not in seen_keys:
+                seen_keys.add(sender_key)
+                archive_folder_history.append(
+                    f"- Mail from `{sender_key}` was previously archived to "
+                    f"`{sender_entry.subfolder}`."
+                )
+            domain = _domain_key(record.sender)
+            domain_entry = folder_memory.get(domain) if domain else None
+            if domain_entry is not None and domain not in seen_keys:
+                seen_keys.add(domain)
+                times = "time" if domain_entry.count == 1 else "times"
+                archive_folder_history.append(
+                    f"- Other mail from senders at domain `{domain}` was "
+                    f"previously archived to `{domain_entry.subfolder}` "
+                    f"({domain_entry.count} {times})."
+                )
+
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
     from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
@@ -374,7 +415,9 @@ def run_triage_agent(
     llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
-        system_prompt=_build_triage_system_prompt(archive_folders),
+        system_prompt=_build_triage_system_prompt(
+            archive_folders, archive_folder_history or None
+        ),
         output_type=PromptedOutput(TriageResult),
     )
 
