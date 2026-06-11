@@ -31,13 +31,19 @@ from robotsix_auto_mail.cli.config import (
     _prompt_hosts as _prompt_hosts,
 )
 from robotsix_auto_mail.cli.config import (
-    _refine_manual,
-    _refine_password,
-    _refine_with_llm,
-    _VerifyResult,
+    _refine_manual as _refine_manual,
+)
+from robotsix_auto_mail.cli.config import (
+    _refine_password as _refine_password,
+)
+from robotsix_auto_mail.cli.config import (
+    _refine_with_llm as _refine_with_llm,
 )
 from robotsix_auto_mail.cli.config import (
     _verify_config as _verify_config,
+)
+from robotsix_auto_mail.cli.config import (
+    _VerifyResult as _VerifyResult,
 )
 from robotsix_auto_mail.config import load as load
 from robotsix_auto_mail.db import init_db as init_db

@@ -242,6 +242,7 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
         try:
             suggestions = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
+            # Malformed suggestions-cache JSON — keep the empty dict above.
             pass
 
     updated = False

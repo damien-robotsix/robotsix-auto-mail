@@ -132,6 +132,8 @@ def _build_board_content(
                         data["folders"][0] if data["folders"] else archive_root
                     )
             except (json.JSONDecodeError, TypeError, KeyError):
+                # Malformed archive_structure watermark — keep the empty
+                # folder set / "/" delimiter / archive_root defaults set above.
                 pass
 
         # Compute effective subfolder for each TO_ARCHIVE record.
@@ -154,6 +156,8 @@ def _build_board_content(
             try:
                 unsubscribe_suggestions = json.loads(suggestions_raw)
             except (json.JSONDecodeError, TypeError):
+                # Malformed unsubscribe_suggestions watermark — leave the
+                # empty suggestions dict initialised above.
                 pass
 
         # Build record_notes map for notes indicators.

@@ -106,6 +106,7 @@ def propose_archive_subfolder(record: MailRecord) -> str:
         dt = datetime.fromisoformat(date_str)
         return f"{dt.year:04d}/{dt.month:02d}"
     except (ValueError, TypeError):
+        # Unparseable date string — fall through to the "unknown" bucket.
         pass
     return "unknown"
 
