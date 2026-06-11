@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Final, NamedTuple
 
@@ -349,61 +351,10 @@ class MailConfig:
             ConfigurationError: If any required variable is missing or
                 any value is invalid.
         """
-        missing: list[str] = []
-        errors: list[str] = []
-        kwargs: dict[str, Any] = {}
-
-        for spec in _FIELD_SPECS:
-            raw = os.environ.get(spec.env_key, "")
-            if not raw:
-                if spec.required_in_env:
-                    missing.append(spec.env_key)
-                    kwargs[spec.field_name] = ""
-                else:
-                    kwargs[spec.field_name] = spec.default
-                continue
-            if spec.kind == "str":
-                kwargs[spec.field_name] = raw
-            elif spec.kind == "int":
-                try:
-                    kwargs[spec.field_name] = int(raw)
-                except ValueError:
-                    errors.append(f"{spec.env_key} must be an integer, got {raw!r}")
-                    kwargs[spec.field_name] = spec.default
-            elif spec.kind == "bool":
-                try:
-                    kwargs[spec.field_name] = _parse_bool(spec.env_key, raw)
-                except ConfigurationError as exc:
-                    errors.append(exc.message)
-                    kwargs[spec.field_name] = spec.default
-            else:  # "tls_mode"
-                if raw not in _VALID_TLS_MODES:
-                    errors.append(
-                        f"{spec.env_key} must be one of "
-                        f"{sorted(_VALID_TLS_MODES)!r}, got {raw!r}"
-                    )
-                kwargs[spec.field_name] = raw
-
-        # -- final validation ----------------------------------------------
-
-        msgs: list[str] = []
-        if missing:
-            msgs.append(
-                "Missing required environment variable(s): "
-                + ", ".join(sorted(missing))
-            )
-        msgs.extend(errors)
-        if msgs:
-            # If *only* missing-required-field errors (no invalid
-            # values), flag the error so load() can safely fall back to
-            # the YAML file.  Invalid values mean the user explicitly set
-            # an env var — falling back would silently swallow their typo.
-            raise ConfigurationError(
-                "\n".join(msgs),
-                missing_only=bool(missing and not errors),
-            )
-
-        return cls(**kwargs)
+        return _build_config_from_env(
+            lambda spec: os.environ.get(spec.env_key, ""),
+            lambda spec: spec.env_key,
+        )
 
     @classmethod
     def _parse_config_dict(
@@ -669,3 +620,396 @@ def _get_bool(section: dict[str, object], key: str, default: bool) -> bool:
             f"Config key {key!r} must be a boolean, got {type(value).__name__}"
         )
     return value
+
+
+# ---------------------------------------------------------------------------
+# Shared per-field environment parsing
+# ---------------------------------------------------------------------------
+
+
+def _build_config_from_env(
+    raw_for: Callable[[_FieldSpec], str],
+    label_for: Callable[[_FieldSpec], str],
+) -> MailConfig:
+    """Build a ``MailConfig`` from a per-field environment source.
+
+    ``raw_for(spec)`` returns the raw string value for a field (``""`` when
+    absent); ``label_for(spec)`` returns the variable name used in error
+    messages.  Factored out so both ``MailConfig.from_env`` and the
+    namespaced multi-account loader (``MailAccountsConfig.from_env``) share
+    exactly the same required-field / default / coercion / validation logic
+    rather than duplicating it.
+    """
+    missing: list[str] = []
+    errors: list[str] = []
+    kwargs: dict[str, Any] = {}
+
+    for spec in _FIELD_SPECS:
+        raw = raw_for(spec)
+        label = label_for(spec)
+        if not raw:
+            if spec.required_in_env:
+                missing.append(label)
+                kwargs[spec.field_name] = ""
+            else:
+                kwargs[spec.field_name] = spec.default
+            continue
+        if spec.kind == "str":
+            kwargs[spec.field_name] = raw
+        elif spec.kind == "int":
+            try:
+                kwargs[spec.field_name] = int(raw)
+            except ValueError:
+                errors.append(f"{label} must be an integer, got {raw!r}")
+                kwargs[spec.field_name] = spec.default
+        elif spec.kind == "bool":
+            try:
+                kwargs[spec.field_name] = _parse_bool(label, raw)
+            except ConfigurationError as exc:
+                errors.append(exc.message)
+                kwargs[spec.field_name] = spec.default
+        else:  # "tls_mode"
+            if raw not in _VALID_TLS_MODES:
+                errors.append(
+                    f"{label} must be one of {sorted(_VALID_TLS_MODES)!r}, got {raw!r}"
+                )
+            kwargs[spec.field_name] = raw
+
+    # -- final validation --------------------------------------------------
+
+    msgs: list[str] = []
+    if missing:
+        msgs.append(
+            "Missing required environment variable(s): " + ", ".join(sorted(missing))
+        )
+    msgs.extend(errors)
+    if msgs:
+        # If *only* missing-required-field errors (no invalid values), flag
+        # the error so load()/load_accounts() can safely fall back to the
+        # YAML file.  Invalid values mean the user explicitly set an env var
+        # — falling back would silently swallow their typo.
+        raise ConfigurationError(
+            "\n".join(msgs),
+            missing_only=bool(missing and not errors),
+        )
+
+    return MailConfig(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Multi-account model
+# ---------------------------------------------------------------------------
+
+# Per-account stable identifier charset.  It is used in SQLite filenames and
+# (later in the epic) in URLs / board selectors, so keep it filesystem- and
+# URL-safe.
+_ACCOUNT_ID_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9._-]+$")
+
+# Prefix for the namespaced multi-account environment scheme.
+_ENV_ACCOUNTS_PREFIX = "MAIL_ACCOUNTS_"
+
+# Matches ``MAIL_ACCOUNTS_<n>_<FIELD>`` and captures the integer index.
+_ENV_ACCOUNT_INDEX_RE: Final[re.Pattern[str]] = re.compile(r"^MAIL_ACCOUNTS_(\d+)_")
+
+
+@dataclasses.dataclass(frozen=True)
+class MailAccount:
+    """One named mailbox: a stable ``account_id`` plus its ``MailConfig``.
+
+    ``label`` is an optional human-friendly display name.  ``account_id`` is
+    a stable identifier (e.g. ``"personal"``) used in the account's SQLite
+    filename and, later in the epic, in URLs / board selectors — so it must
+    be non-empty and match ``^[A-Za-z0-9._-]+$``.
+    """
+
+    account_id: str
+    config: MailConfig
+    label: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.account_id:
+            raise ConfigurationError("account_id must be non-empty")
+        if not _ACCOUNT_ID_RE.match(self.account_id):
+            raise ConfigurationError(
+                f"account_id {self.account_id!r} must match {_ACCOUNT_ID_RE.pattern!r}"
+            )
+
+
+@dataclasses.dataclass(frozen=True)
+class MailAccountsConfig:
+    """An ordered collection of :class:`MailAccount`s plus a default id.
+
+    One SQLite DB per account
+    -------------------------
+    Multiple accounts are modelled as N independent :class:`MailConfig`
+    instances, each carrying its **own** ``db_path``, rather than adding an
+    ``account_id`` column to every table.  The rationale:
+
+    - Per-account state (triage decisions, ``SenderMemory``, archive
+      watermarks — all keyed by ``message_id`` in each DB) is naturally
+      isolated with zero schema migration.
+    - Each :class:`MailConfig` already owns a ``db_path`` field, so no new
+      per-row plumbing is required.
+    - The cost is one SQLite file per account; uniqueness of ``db_path``
+      across accounts is therefore enforced at load time (see
+      ``__post_init__``).
+
+    Validation (all raise :class:`ConfigurationError`): at least one
+    account; all ``account_id``s unique; all ``MailConfig.db_path``s unique
+    across accounts; ``default_account_id`` resolves to a known account.
+    """
+
+    accounts: tuple[MailAccount, ...]
+    default_account_id: str
+
+    def __post_init__(self) -> None:
+        if not self.accounts:
+            raise ConfigurationError("at least one account is required")
+
+        ids = [account.account_id for account in self.accounts]
+        duplicate_ids = sorted({i for i in ids if ids.count(i) > 1})
+        if duplicate_ids:
+            raise ConfigurationError(f"duplicate account_id(s): {duplicate_ids!r}")
+
+        db_paths = [account.config.db_path for account in self.accounts]
+        duplicate_paths = sorted({p for p in db_paths if db_paths.count(p) > 1})
+        if duplicate_paths:
+            raise ConfigurationError(
+                f"duplicate db_path(s) across accounts: {duplicate_paths!r}"
+            )
+
+        if self.default_account_id not in ids:
+            raise ConfigurationError(
+                f"default_account_id {self.default_account_id!r} is not one "
+                f"of the configured accounts: {ids!r}"
+            )
+
+    def get(self, account_id: str) -> MailAccount:
+        """Return the account with *account_id*.
+
+        Raises:
+            ConfigurationError: When no account matches (the message lists
+                the valid ids).
+        """
+        for account in self.accounts:
+            if account.account_id == account_id:
+                return account
+        raise ConfigurationError(
+            f"unknown account_id {account_id!r}; valid ids: {list(self.ids())!r}"
+        )
+
+    @property
+    def default(self) -> MailAccount:
+        """Return the :class:`MailAccount` for ``default_account_id``."""
+        return self.get(self.default_account_id)
+
+    def ids(self) -> tuple[str, ...]:
+        """Return the ordered tuple of account ids."""
+        return tuple(account.account_id for account in self.accounts)
+
+    # -- loaders -----------------------------------------------------------
+
+    @classmethod
+    def from_yaml(
+        cls, path: str | Path, *, validate: bool = True
+    ) -> MailAccountsConfig:
+        """Build a ``MailAccountsConfig`` from a YAML file.
+
+        Two shapes are recognised:
+
+        * **Multi-account** — a top-level ``accounts:`` list.  Each entry is
+          a mapping with ``id`` (required str), optional ``label`` (str) and
+          the usual nested config sections (``imap``, ``smtp``, ``auth``,
+          ``store``, ``llm``, ``ingest``, ``archive``, ``triage``) parsed by
+          the same helper as the single-account loader.  An optional
+          top-level ``default_account:`` names the default (absent → the
+          first entry).  When an entry omits ``store.path`` the per-account
+          default ``".data/mail-<id>.db"`` is used so DBs never collide.
+        * **Legacy single-account** — no top-level ``accounts:`` key.  The
+          whole file is parsed via :meth:`MailConfig.from_yaml` and wrapped
+          in a one-element container with ``account_id="default"`` (keeping
+          the historical ``".data/mail.db"`` default).
+
+        ``validate=False`` skips per-account required-field checks (mirroring
+        :meth:`MailConfig._parse_config_dict`) but still enforces id /
+        db_path uniqueness.
+
+        Raises:
+            ConfigurationError: On invalid structure or failed validation.
+            FileNotFoundError: If *path* does not exist.
+        """
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Config file not found: {path}")
+
+        try:
+            data = read_yaml_file(path)
+        except YamlConfigError as exc:
+            raise ConfigurationError(f"Invalid YAML in {path}: {exc}") from exc
+
+        accounts_raw = data.get("accounts") if isinstance(data, dict) else None
+        if accounts_raw is None:
+            # Legacy single-account shape — reuse the existing loader verbatim.
+            cfg = MailConfig.from_yaml(path, validate=validate)
+            return cls(
+                accounts=(MailAccount(account_id="default", config=cfg, label=None),),
+                default_account_id="default",
+            )
+
+        if not isinstance(accounts_raw, list):
+            raise ConfigurationError("Config key 'accounts' must be a list")
+        if not accounts_raw:
+            raise ConfigurationError("'accounts' must contain at least one account")
+
+        accounts: list[MailAccount] = []
+        for entry in accounts_raw:
+            if not isinstance(entry, dict):
+                raise ConfigurationError("each 'accounts' entry must be a mapping")
+            raw_id = entry.get("id")
+            if not isinstance(raw_id, str) or not raw_id:
+                raise ConfigurationError(
+                    "each account requires a non-empty string 'id'"
+                )
+            raw_label = entry.get("label")
+            if raw_label is not None and not isinstance(raw_label, str):
+                raise ConfigurationError(f"account {raw_id!r} 'label' must be a string")
+            store_section = entry.get("store")
+            has_store_path = isinstance(store_section, dict) and "path" in store_section
+            cfg = MailConfig._parse_config_dict(entry, path, validate=validate)
+            if not has_store_path:
+                cfg = dataclasses.replace(cfg, db_path=f".data/mail-{raw_id}.db")
+            accounts.append(MailAccount(account_id=raw_id, config=cfg, label=raw_label))
+
+        raw_default = data.get("default_account")
+        if raw_default is None:
+            default_id = accounts[0].account_id
+        elif isinstance(raw_default, str):
+            default_id = raw_default
+        else:
+            raise ConfigurationError("'default_account' must be a string")
+
+        return cls(accounts=tuple(accounts), default_account_id=default_id)
+
+    @classmethod
+    def from_env(cls) -> MailAccountsConfig:
+        """Build a ``MailAccountsConfig`` from environment variables.
+
+        Two shapes are recognised:
+
+        * **Namespaced multi-account** — any ``MAIL_ACCOUNTS_<n>_*`` var is
+          present.  For each contiguous index ``n`` starting at 0, one
+          account is built from the namespaced vars.  A field whose
+          single-account env var is ``MAIL_<X>`` becomes
+          ``MAIL_ACCOUNTS_<n>_<X>``; the two LLM fields become
+          ``MAIL_ACCOUNTS_<n>_LLM_API_KEY`` / ``..._LLM_MODEL``.  Two extra
+          vars: ``MAIL_ACCOUNTS_<n>_ID`` (required) and
+          ``MAIL_ACCOUNTS_<n>_LABEL`` (optional).  A missing ``store.path``
+          yields the per-account default ``".data/mail-<id>.db"``.  An
+          optional ``MAIL_ACCOUNTS_DEFAULT`` names the default id.  A gap in
+          the index sequence raises :class:`ConfigurationError`.
+        * **Legacy single-account** — no ``MAIL_ACCOUNTS_*`` vars.  Delegates
+          to :meth:`MailConfig.from_env` and wraps the result as the
+          one-element ``"default"`` container.
+
+        Raises:
+            ConfigurationError: On invalid values, an id gap, or an invalid
+                account id.
+        """
+        present_indices = sorted(
+            {
+                int(match.group(1))
+                for key in os.environ
+                if (match := _ENV_ACCOUNT_INDEX_RE.match(key))
+            }
+        )
+        if not present_indices:
+            cfg = MailConfig.from_env()
+            return cls(
+                accounts=(MailAccount(account_id="default", config=cfg, label=None),),
+                default_account_id="default",
+            )
+
+        accounts: list[MailAccount] = []
+        index = 0
+        while any(
+            key.startswith(f"{_ENV_ACCOUNTS_PREFIX}{index}_") for key in os.environ
+        ):
+            accounts.append(_build_account_from_env(index))
+            index += 1
+
+        # Contiguity: every present index must be < the count we consumed.
+        if present_indices[-1] >= index:
+            raise ConfigurationError(
+                f"non-contiguous MAIL_ACCOUNTS_* indices: consumed 0..{index - 1} "
+                f"but index {present_indices[-1]} is also set (gap before it)"
+            )
+
+        raw_default = os.environ.get("MAIL_ACCOUNTS_DEFAULT")
+        default_id = raw_default if raw_default else accounts[0].account_id
+        return cls(accounts=tuple(accounts), default_account_id=default_id)
+
+
+def _build_account_from_env(index: int) -> MailAccount:
+    """Build one :class:`MailAccount` from ``MAIL_ACCOUNTS_<index>_*`` vars."""
+    prefix = f"{_ENV_ACCOUNTS_PREFIX}{index}_"
+
+    def namespaced(env_key: str) -> str:
+        suffix = env_key[len("MAIL_") :] if env_key.startswith("MAIL_") else env_key
+        return f"{prefix}{suffix}"
+
+    cfg = _build_config_from_env(
+        lambda spec: os.environ.get(namespaced(spec.env_key), ""),
+        lambda spec: namespaced(spec.env_key),
+    )
+
+    account_id = os.environ.get(f"{prefix}ID", "")
+    if not os.environ.get(namespaced("MAIL_DB_PATH")):
+        cfg = dataclasses.replace(cfg, db_path=f".data/mail-{account_id}.db")
+    raw_label = os.environ.get(f"{prefix}LABEL")
+    label = raw_label if raw_label else None
+    return MailAccount(account_id=account_id, config=cfg, label=label)
+
+
+def load_accounts() -> MailAccountsConfig:
+    """Load ``MailAccountsConfig`` through the same cascade as :func:`load`.
+
+    1.  Call :meth:`MailAccountsConfig.from_env`.  If the environment fully
+        describes the accounts (namespaced multi-account, or a complete
+        single-account env), return immediately — env wins.
+    2.  Otherwise, if *only* required fields are missing (no invalid values),
+        fall back to the YAML config file at ``MAIL_CONFIG_PATH`` (default
+        ``config/mail.local.yaml``).  A multi-account file is parsed directly;
+        a legacy single-account file is routed through :func:`load` so that
+        ``MAIL_*`` env vars still override its values field-by-field
+        (preserving today's single-account behaviour) before being wrapped in
+        the one-element ``"default"`` container.
+
+    If :meth:`MailAccountsConfig.from_env` fails because of an *invalid* value
+    (e.g. a non-integer port), the error is re-raised immediately rather than
+    silently falling back to the file.
+    """
+    try:
+        return MailAccountsConfig.from_env()
+    except ConfigurationError as exc:
+        if not exc.missing_only:
+            raise
+
+    config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
+    if config_path.exists():
+        try:
+            data = read_yaml_file(config_path)
+        except YamlConfigError as exc:
+            raise ConfigurationError(f"Invalid YAML in {config_path}: {exc}") from exc
+    else:
+        data = {}
+
+    if isinstance(data, dict) and isinstance(data.get("accounts"), list):
+        return MailAccountsConfig.from_yaml(config_path)
+
+    # Legacy single-account fallback: route through load() so _merge_env
+    # applies env overrides on top of the file exactly as it does today.
+    cfg = load()
+    return MailAccountsConfig(
+        accounts=(MailAccount(account_id="default", config=cfg, label=None),),
+        default_account_id="default",
+    )
