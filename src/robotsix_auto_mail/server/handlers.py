@@ -24,7 +24,10 @@ from robotsix_auto_mail.server._constants import (
     _is_safe_redirect_path,
     _parse_archive_structure,
 )
-from robotsix_auto_mail.server.adapters import _run_triage_background
+from robotsix_auto_mail.server.adapters import (
+    _run_folder_triage_background,
+    _run_triage_background,
+)
 from robotsix_auto_mail.server.views import (
     _build_board_content,
     _build_board_html,
@@ -91,6 +94,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             (lambda p: p == "/", lambda: self._redirect("/board")),
             (lambda p: p == "/board", self._serve_board),
             (lambda p: p == "/board-content", self._serve_board_content),
+            (lambda p: p == "/folders", self._serve_folders),
             (lambda p: p.startswith("/static/"), self._serve_static),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
@@ -132,6 +136,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/rule-action": self._handle_rule_action,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
+            "/run-folder-triage": self._handle_run_folder_triage,
             "/force-triage-column": self._handle_force_triage_column,
             "/archive-proposal": self._handle_archive_proposal,
             "/save-notes": self._handle_save_notes,
@@ -303,6 +308,42 @@ class BoardHandler(BaseHTTPRequestHandler):
             )
         else:
             self._not_found()
+
+    def _serve_folders(self) -> None:
+        """Serve GET /folders — list IMAP mailbox folders as JSON.
+
+        Folder enumeration is deliberately served from this async
+        endpoint (not during the synchronous ``/board`` render) so a slow
+        or unreachable IMAP server never blocks the single-threaded board
+        page.  Returns 503 when IMAP is unconfigured and 502 on an
+        ``ImapError``.
+        """
+        if self.mail_config is None:
+            self._send_response(
+                json.dumps({"error": "IMAP not configured"}).encode(),
+                status=503,
+                content_type="application/json",
+            )
+            return
+
+        from robotsix_auto_mail.imap import ImapClient, ImapError
+
+        try:
+            with ImapClient(self.mail_config) as client:
+                folders = [info.name for info in client.list_folders()]
+        except ImapError as exc:
+            self._send_response(
+                json.dumps({"error": str(exc)}).encode(),
+                status=502,
+                content_type="application/json",
+            )
+            return
+
+        self._send_response(
+            json.dumps({"folders": folders}).encode(),
+            status=200,
+            content_type="application/json",
+        )
 
     def _handle_move(self) -> None:
         """Process POST /move — update a card's triage decision and redirect."""
@@ -710,6 +751,52 @@ class BoardHandler(BaseHTTPRequestHandler):
         threading.Thread(
             target=_run_triage_background,
             args=(self.db_path,),
+            daemon=True,
+        ).start()
+
+        self._redirect("/board", code=302)
+
+    def _handle_run_folder_triage(self) -> None:
+        """Process POST /run-folder-triage — one-shot triage over a folder.
+
+        Mirrors :meth:`_handle_run_triage` but ingests a named IMAP
+        folder (supplied per-request via the ``folder`` param) before
+        running the triage agent.  Requires IMAP to be configured;
+        validates the ``folder`` param; guards on the shared
+        ``triage_run:state`` watermark (idempotent when already running);
+        spawns a daemon thread and redirects to ``/board``.
+        """
+        import threading
+        import urllib.parse
+
+        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
+
+        content_length = int(self.headers.get("content-length", "0"))
+        raw_body = self.rfile.read(content_length) if content_length else b""
+        params = urllib.parse.parse_qs(raw_body.decode("utf-8"))
+        folder_list = params.get("folder", [])
+        if not folder_list or not folder_list[0].strip():
+            self._bad_request("Missing 'folder' parameter")
+            return
+        folder = folder_list[0].strip()
+
+        if self.mail_config is None:
+            self._bad_request("Folder triage requires IMAP configuration")
+            return
+        mail_config = self.mail_config
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            if get_watermark(conn, "triage_run:state") == "running":
+                self._redirect("/board", code=302)
+                return
+            set_watermark(conn, "triage_run:state", "running")
+        finally:
+            conn.close()
+
+        threading.Thread(
+            target=_run_folder_triage_background,
+            args=(self.db_path, mail_config, folder),
             daemon=True,
         ).start()
 

@@ -281,7 +281,17 @@ def _build_board_html(
             "</div>"
         )
     else:
-        triage_control_html = ""
+        triage_control_html = (
+            '<form class="folder-triage-form" method="post"'
+            ' action="/run-folder-triage"'
+            ' onsubmit="return confirm('
+            "'Run a one-shot triage over the selected folder?')\">"
+            '<select id="folder-picker" name="folder">'
+            '<option value="">Select a folder…</option>'
+            "</select>"
+            '<button type="submit">Triage Folder</button>'
+            "</form>"
+        )
 
     return (
         "<!DOCTYPE html>\n"
@@ -379,6 +389,28 @@ def _build_board_html(
         "}\n"
         "\n"
         "refreshTimer = setInterval(refreshBoard, 30000);\n"
+        "\n"
+        "// Populate the folder picker from the async /folders endpoint so\n"
+        "// the synchronous /board render never blocks on IMAP.\n"
+        "function populateFolderPicker() {\n"
+        "  var picker = document.getElementById('folder-picker');\n"
+        "  if (!picker) return;\n"
+        f"  fetch('/folders{fetch_qs}')\n"
+        "    .then(function(r) {\n"
+        "      if (!r.ok) throw new Error('bad status');\n"
+        "      return r.json();\n"
+        "    })\n"
+        "    .then(function(data) {\n"
+        "      (data.folders || []).forEach(function(name) {\n"
+        "        var opt = document.createElement('option');\n"
+        "        opt.value = name;\n"
+        "        opt.textContent = name;\n"
+        "        picker.appendChild(opt);\n"
+        "      });\n"
+        "    })\n"
+        "    .catch(function() { /* leave placeholder; form unusable */ });\n"
+        "}\n"
+        "populateFolderPicker();\n"
         "</script>\n"
         '<script src="/static/board.js"></script>\n'
         "</body>\n"
