@@ -48,7 +48,6 @@ from robotsix_auto_mail.cli.config import (
 from robotsix_auto_mail.cli.config import (
     _VerifyResult as _VerifyResult,
 )
-from robotsix_auto_mail.config import load as load
 from robotsix_auto_mail.config import load_accounts as load_accounts
 from robotsix_auto_mail.db import init_db as init_db
 from robotsix_auto_mail.imap import ImapClient as ImapClient
