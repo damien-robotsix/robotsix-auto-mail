@@ -6,4 +6,3 @@ smoke_paths:
   - src/robotsix_auto_mail/board_adapter.py
   - src/robotsix_auto_mail/cli/**
   - scripts/smoke_board.sh
-deployed_log_folder: /home/robotsix/projects/Robotsix/robotsix-auto-mail/.mail_log
