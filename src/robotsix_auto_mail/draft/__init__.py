@@ -53,6 +53,11 @@ def _build_draft_system_prompt() -> str:
         "that are not present in the incoming email. When a specific detail "
         "the user must supply is needed, leave a clear `[placeholder]` "
         "marker describing what to fill in (e.g. `[your availability]`).\n"
+        "- The user message MAY include a `User notes / instructions` "
+        "section written by the person who will send this reply. Treat "
+        "these notes as authoritative guidance and follow them. Facts and "
+        "decisions explicitly stated in the notes are NOT considered "
+        "invented — use the details the user supplied there.\n"
         "- Keep the tone polite and professional.\n"
         "- End with a neutral sign-off placeholder (e.g. `[Your name]`).\n"
         "\n"
@@ -70,13 +75,19 @@ def _build_draft_user_message(record: MailRecord) -> str:
         # empty.  Plaintext is the primary field; keep this simple.
         body = " ".join(record.body_html.split())
     body = body[:_BODY_CHAR_LIMIT]
-    return (
+    message = (
         f"Subject: {record.subject}\n"
         f"From: {record.sender}\n"
         f"Recipients: {record.recipients_json}\n"
         "\n"
         f"Body:\n{body}"
     )
+    if record.notes.strip():
+        message += (
+            "\n\nUser notes / instructions (from the person who will send "
+            f"this reply — follow them):\n{record.notes}"
+        )
+    return message
 
 
 def generate_draft_reply(

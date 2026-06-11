@@ -19,6 +19,7 @@ from robotsix_auto_mail.db import (
 from robotsix_auto_mail.draft import (
     DraftGenerationError,
     DraftResult,
+    _build_draft_user_message,
     generate_draft_reply,
 )
 
@@ -55,6 +56,7 @@ def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
         date="2025-06-01T12:00:00",
         status=overrides.get("status", "to_read"),
         body_plain=overrides.get("body_plain", "Can we meet next week?"),
+        notes=overrides.get("notes", ""),
     )
     insert_record(conn, record)  # type: ignore[arg-type]
 
@@ -75,6 +77,33 @@ def test_generate_draft_reply_returns_and_persists() -> None:
         assert record is not None
         assert record.draft_text == "Sure, [your availability]. [Your name]"
         mock_handle.close.assert_called_once()
+    finally:
+        conn.close()
+
+
+def test_build_draft_user_message_includes_notes() -> None:
+    """Non-empty notes are appended under a labelled section."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "mid-notes", notes="decline politely")
+        record = get_record_by_message_id(conn, "mid-notes")
+        assert record is not None
+        message = _build_draft_user_message(record)
+        assert "User notes / instructions" in message
+        assert "decline politely" in message
+    finally:
+        conn.close()
+
+
+def test_build_draft_user_message_omits_empty_notes() -> None:
+    """Empty/whitespace notes produce no notes section."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "mid-empty", notes="   ")
+        record = get_record_by_message_id(conn, "mid-empty")
+        assert record is not None
+        message = _build_draft_user_message(record)
+        assert "User notes / instructions" not in message
     finally:
         conn.close()
 
