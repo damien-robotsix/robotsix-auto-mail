@@ -616,6 +616,19 @@ On the board card itself, a **Draft reply** button (visible only for TO_ANSWER
 cards) is a shortcut — click it to immediately generate a draft and re-open the 
 detail drawer to show the result.
 
+**Sending replies.**  Once a draft is saved (the card moves to "Draft ready" status),
+two additional buttons appear in the detail drawer:
+- **Reply & archive** — sends the draft text as a reply to the original sender via SMTP,
+  then archives the original message (moves it to the IMAP archive folder and removes it from
+  the local database). The card disappears from the board after sending.
+- **Reply to all & archive** — sends the draft to the original sender and includes all
+  recipients from the original message (the `To` and `Cc` lists, excluding your own address
+  and duplicates). After sending, the message is archived and the card is removed.
+
+The reply always includes threading headers (`In-Reply-To` and `References`) so it appears
+as a conversation thread in the recipient's mail client. The subject is automatically prefixed
+with "Re: " unless it already starts with that (case-insensitive).
+
 The board is the interface: no separate client is needed.
 
 The page includes `<meta http-equiv="refresh" content="30">`, so the board
