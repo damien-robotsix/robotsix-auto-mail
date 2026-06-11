@@ -643,6 +643,7 @@ $ robotsix-auto-mail serve
 
 | Option | Default | Purpose |
 |---|---|---|
+| `--account` | – | Account id to serve; when omitted, the container's default account is served. This account is used as the default for requests that omit `?account=`. |
 | `--port` | `8080` | Port to listen on |
 
 ### The board page
@@ -731,6 +732,54 @@ The board is the interface: no separate client is needed.
 
 The page includes `<meta http-equiv="refresh" content="30">`, so the board
 auto-refreshes every 30 seconds.
+
+### Multi-account request routing
+
+When multiple accounts are configured (via `config/mail.accounts.yaml` or
+environment variables), the `serve` command hosts all accounts at a single
+HTTP server address. Per-request account selection determines which account's
+database and mail config are used to handle each request.
+
+**Account selection precedence** (checked in this order):
+
+1. **Explicit query parameter** — `?account=<id>` (e.g. `/board?account=work`)
+2. **Cookie** — an `account` cookie set by a prior successful query param selection
+3. **Default account** — either the account passed via `serve --account <id>`, or the container's `default_account` from the config
+
+When the HTTP response succeeds with an explicit `?account=<id>`, a `Set-Cookie: account=<id>; Path=/` header is sent so the selection persists across the board's cookie-less JavaScript fetches and POST→redirect flows. This allows the browser to stay on the chosen account without explicit URL parameters on every request.
+
+**Error handling:**
+
+- An explicit `?account=<unknown-id>` returns a 404 (hard failure).
+- A stale or unknown id supplied only via cookie is silently ignored — the default account is served instead (cookies must never hard-fail a request).
+
+**Single-account behavior:** When only one account is configured, the
+precedence is satisfied immediately (the single account is always the
+default); multi-account selection is invisible to the user.
+
+**Example multi-account setup:**
+
+```sh
+# Config with two accounts
+cat config/mail.accounts.yaml
+# default_account: personal
+# accounts:
+#   - id: personal
+#   - id: work
+
+# Start the server (personal is the default)
+robotsix-auto-mail serve
+# Listening on http://0.0.0.0:8080/board
+
+# Users can select accounts:
+# - http://localhost:8080/board (uses personal account)
+# - http://localhost:8080/board?account=work (switches to work account, sets cookie)
+# - Subsequent requests without ?account= will use the work cookie until cleared
+
+# Or pick a different default at startup:
+robotsix-auto-mail serve --account work
+# Now requests without ?account= default to work
+```
 
 ### Contrast with `board`
 

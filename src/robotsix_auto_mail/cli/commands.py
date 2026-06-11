@@ -619,16 +619,27 @@ def _cmd_config_sync_set(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_serve(config: MailConfig, *, port: int) -> int:
+def _cmd_serve(
+    accounts: MailAccountsConfig, *, default_account_id: str, port: int
+) -> int:
     """Run the serve subcommand: start the web board HTTP server.
 
-    Returns 0 on clean shutdown, 1 if the port is already in use.
+    The full *accounts* container drives per-request account resolution;
+    *default_account_id* names the account served when a request omits
+    ``?account=``.  Returns 0 on clean shutdown, 1 if the port is already
+    in use.
     """
     from http.server import HTTPServer
 
     from robotsix_auto_mail.server import make_board_handler
 
-    handler_class = make_board_handler(config.db_path, mail_config=config)
+    default = accounts.get(default_account_id)
+    handler_class = make_board_handler(
+        default.config.db_path,
+        mail_config=default.config,
+        accounts=accounts,
+        default_account_id=default_account_id,
+    )
 
     print(f"Serving board on http://0.0.0.0:{port}/board")
     try:

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 from tests.conftest import _make_record
 
 from robotsix_auto_mail.board_adapter import MailBoardAdapter
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.format import _format_date
 
@@ -4675,3 +4675,331 @@ def test_send_draft_buttons_rendered_only_when_draft_ready() -> None:
             server.shutdown()
     finally:
         os.unlink(db_path)
+
+
+# ---------------------------------------------------------------------------
+# Multi-account request routing + DB isolation
+# ---------------------------------------------------------------------------
+
+
+def _account_config(db_path: str) -> MailConfig:
+    """A MailConfig bound to *db_path* that never touches the LLM/archive layers."""
+    return MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="me@example.com",
+        password="s3cret",
+        db_path=db_path,
+        archive_enabled=False,
+        triage_on_ingest=False,
+    )
+
+
+def _start_test_server_with_accounts(
+    accounts: MailAccountsConfig,
+    default_account_id: str,
+    port: int = 0,
+) -> tuple[HTTPServer, int]:
+    """Start an HTTPServer wired to a multi-account container."""
+    import threading
+    from http.server import HTTPServer
+
+    from robotsix_auto_mail.server import make_board_handler
+
+    default = accounts.get(default_account_id)
+    handler = make_board_handler(
+        default.config.db_path,
+        mail_config=default.config,
+        accounts=accounts,
+        default_account_id=default_account_id,
+    )
+    server = HTTPServer(("127.0.0.1", port), handler)
+    assigned_port = server.server_address[1]
+
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, assigned_port
+
+
+def _two_account_setup(
+    db_a: str, db_b: str, default_account_id: str = "A"
+) -> MailAccountsConfig:
+    """Build a two-account container with seeded, distinct records per DB."""
+    _populate_db(
+        db_a,
+        [
+            {
+                "message_id": "msg-a",
+                "sender": "alice@a.com",
+                "subject": "From A",
+                "date": "2025-01-01T00:00:00",
+                "body_plain": "Body A",
+                "status": "to_read",
+            },
+        ],
+    )
+    _populate_db(
+        db_b,
+        [
+            {
+                "message_id": "msg-b",
+                "sender": "bob@b.com",
+                "subject": "From B",
+                "date": "2025-01-02T00:00:00",
+                "body_plain": "Body B",
+                "status": "to_read",
+            },
+        ],
+    )
+    return MailAccountsConfig(
+        accounts=(
+            MailAccount(account_id="A", config=_account_config(db_a), label=None),
+            MailAccount(account_id="B", config=_account_config(db_b), label=None),
+        ),
+        default_account_id=default_account_id,
+    )
+
+
+def _get(url: str, cookie: str | None = None) -> tuple[int, str, dict[str, str]]:
+    """GET *url* (optionally with a Cookie header); return status, body, headers."""
+    from urllib.request import Request
+
+    req = Request(url)  # noqa: S310
+    if cookie is not None:
+        req.add_header("Cookie", cookie)
+    resp = urlopen(req)  # noqa: S310
+    try:
+        return resp.status, resp.read().decode("utf-8"), dict(resp.headers)
+    finally:
+        resp.close()
+
+
+def test_make_board_handler_with_accounts_adds_keywords() -> None:
+    """With accounts, the partial carries the extra resolution keywords."""
+    from robotsix_auto_mail.server import make_board_handler
+
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        handler = make_board_handler(
+            db_a,
+            mail_config=accounts.get("A").config,
+            accounts=accounts,
+            default_account_id="A",
+        )
+        assert handler.keywords["accounts"] is accounts
+        assert handler.keywords["default_account_id"] == "A"
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_query_string_tolerant_routing() -> None:
+    """GET /board?account=A and POST /move?account=A dispatch (not 404)."""
+    from urllib.request import Request
+
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            status, _body, _hdrs = _get(f"http://127.0.0.1:{port}/board?account=A")
+            assert status == 200
+
+            data = b"message_id=msg-a&triage_action=INBOX"
+            req = Request(
+                f"http://127.0.0.1:{port}/move?account=A",
+                data=data,
+                method="POST",
+            )
+            resp = urlopen(req)  # noqa: S310
+            try:
+                # 301 redirect on success, not 404.
+                assert resp.status in (200, 301)
+            finally:
+                resp.close()
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_get_routing_isolates_accounts() -> None:
+    """GET /board-content?account=<id> serves only that account's records."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            _s, body_a, _h = _get(f"http://127.0.0.1:{port}/board-content?account=A")
+            assert "alice@a.com" in body_a
+            assert "bob@b.com" not in body_a
+
+            _s, body_b, _h = _get(f"http://127.0.0.1:{port}/board-content?account=B")
+            assert "bob@b.com" in body_b
+            assert "alice@a.com" not in body_b
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_get_default_account_no_param() -> None:
+    """GET /board-content with no param serves the container default account."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b, default_account_id="B")
+        server, port = _start_test_server_with_accounts(accounts, "B")
+        try:
+            _s, body, _h = _get(f"http://127.0.0.1:{port}/board-content")
+            assert "bob@b.com" in body
+            assert "alice@a.com" not in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def _triage_action(db_path: str, message_id: str) -> str | None:
+    """Return the stored triage action for *message_id*, or None."""
+    conn = init_db(db_path)
+    try:
+        cur = conn.execute(
+            "SELECT action FROM triage_decisions WHERE message_id = ?",
+            (message_id,),
+        )
+        row = cur.fetchone()
+        return None if row is None else cast(str, row[0])
+    finally:
+        conn.close()
+
+
+def test_post_move_isolates_accounts() -> None:
+    """POST /move?account=B writes only to B's DB; A's DB is untouched."""
+    from urllib.request import Request
+
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            data = b"message_id=msg-b&triage_action=TO_ANSWER"
+            req = Request(
+                f"http://127.0.0.1:{port}/move?account=B",
+                data=data,
+                method="POST",
+            )
+            resp = urlopen(req)  # noqa: S310
+            resp.close()
+
+            assert _triage_action(db_b, "msg-b") == "TO_ANSWER"
+            # Account A's DB is untouched (no decision for msg-a).
+            assert _triage_action(db_a, "msg-a") is None
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_unknown_explicit_account_is_404() -> None:
+    """Explicit ?account=bogus → 404 on both GET and POST."""
+    from urllib.error import HTTPError
+    from urllib.request import Request
+
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            try:
+                urlopen(f"http://127.0.0.1:{port}/board?account=bogus").close()
+                raise AssertionError("expected 404")
+            except HTTPError as exc:
+                assert exc.code == 404
+
+            req = Request(
+                f"http://127.0.0.1:{port}/move?account=bogus",
+                data=b"message_id=msg-a&triage_action=read",
+                method="POST",
+            )
+            try:
+                urlopen(req).close()  # noqa: S310
+                raise AssertionError("expected 404")
+            except HTTPError as exc:
+                assert exc.code == 404
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_stale_cookie_falls_back_to_default() -> None:
+    """A stale/unknown id from the cookie is ignored — default served, no 404."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b, default_account_id="A")
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            status, body, _h = _get(
+                f"http://127.0.0.1:{port}/board-content",
+                cookie="account=bogus",
+            )
+            assert status == 200
+            assert "alice@a.com" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_cookie_persistence() -> None:
+    """GET /board?account=B sets the cookie; a cookie-only request serves B."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b, default_account_id="A")
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            _s, _body, headers = _get(f"http://127.0.0.1:{port}/board?account=B")
+            assert headers.get("Set-Cookie") == "account=B; Path=/"
+
+            _s, body, _h = _get(
+                f"http://127.0.0.1:{port}/board-content",
+                cookie="account=B",
+            )
+            assert "bob@b.com" in body
+            assert "alice@a.com" not in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
