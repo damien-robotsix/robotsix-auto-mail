@@ -455,9 +455,9 @@ def detect_provider(
 
     Args:
         email_address: The email address to detect provider settings for.
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default) maps to
-            ``deepseek/deepseek-v4-flash``; ``Tier.DEFAULT`` maps to
-            ``deepseek/deepseek-v4-pro``.
+        tier: LLM tier to use.  The concrete model for each tier is
+            resolved by the configured provider backend (see
+            :func:`robotsix_llmio.core.get_provider`).
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
         feedback: Optional description of a previous failed attempt (which
