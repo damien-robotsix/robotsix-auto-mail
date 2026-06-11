@@ -44,7 +44,6 @@ docs = [
 [tool.ruff]
 target-version = "py312"
 src = ["src"]
-extend-exclude = [".pip-site", ".deps"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "S", "B", "N", "RUF"]
@@ -76,7 +75,6 @@ robotsix-auto-mail = "robotsix_auto_mail.cli:main"
 strict = true
 python_version = "3.12"
 packages = ["src/robotsix_auto_mail"]
-exclude = [".pip-site", ".deps"]
 
 [[tool.mypy.overrides]]
 module = "robotsix_board"

@@ -8,5 +8,3 @@
 # is suppressed at the source.
 paths-ignore:
   - tests
-  - .pip-site
-  - .deps
