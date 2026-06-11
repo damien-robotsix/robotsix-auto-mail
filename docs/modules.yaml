@@ -52,6 +52,8 @@ modules:
       CLI entry point exposing probe and ingest subcommands.
     paths:
       - src/robotsix_auto_mail/cli/__init__.py
+      - src/robotsix_auto_mail/cli/commands.py
+      - src/robotsix_auto_mail/cli/config.py
       - tests/cli/test_cli.py
 
   - id: config
@@ -80,6 +82,10 @@ modules:
       triage_decisions table without moving mail in the mailbox.
     paths:
       - src/robotsix_auto_mail/triage/__init__.py
+      - src/robotsix_auto_mail/triage/_constants.py
+      - src/robotsix_auto_mail/triage/agent.py
+      - src/robotsix_auto_mail/triage/classifier.py
+      - src/robotsix_auto_mail/triage/persistence.py
       - tests/triage/test_triage.py
 
   - id: draft
@@ -177,6 +183,10 @@ modules:
       test that boots the server and asserts its key routes.
     paths:
       - src/robotsix_auto_mail/server/__init__.py
+      - src/robotsix_auto_mail/server/_constants.py
+      - src/robotsix_auto_mail/server/adapters.py
+      - src/robotsix_auto_mail/server/handlers.py
+      - src/robotsix_auto_mail/server/views.py
       - src/robotsix_auto_mail/static/board.css
       - src/robotsix_auto_mail/board_adapter.py
       - tests/server/test_server.py
