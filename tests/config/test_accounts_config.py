@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from pathlib import Path
 from unittest import mock
 
@@ -119,25 +120,23 @@ def test_accounts_unknown_default_raises() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_from_yaml_single_account_backward_compat(tmp_path: Path) -> None:
-    """A mono-shaped file still loads (deprecated) as a 'default' container."""
+def test_from_yaml_single_account_rejected(tmp_path: Path) -> None:
+    """A mono-shaped YAML file is rejected with an actionable error."""
     path = tmp_path / "mail.local.yaml"
     path.write_text(
         "imap:\n  host: imap.example.com\n"
         "smtp:\n  host: smtp.example.com\n"
         "auth:\n  username: user@example.com\n  password: s3cret\n"
     )
-    with pytest.warns(DeprecationWarning, match="migrate-config"):
-        accounts = MailAccountsConfig.from_yaml(str(path))
-    assert len(accounts.accounts) == 1
-    only = accounts.accounts[0]
-    assert only.account_id == "default"
-    assert only.label is None
-    assert only.config.db_path == ".data/mail.db"
-    assert accounts.default.account_id == "default"
+    with pytest.raises(ConfigurationError) as excinfo:
+        MailAccountsConfig.from_yaml(str(path))
+    message = str(excinfo.value)
+    assert "migrate-config" in message
+    assert "detect" in message
 
 
-def test_from_env_single_account_backward_compat() -> None:
+def test_from_env_single_account_loads_silently() -> None:
+    """A complete ``MAIL_*`` env loads as the 'default' account, no warning."""
     env = {
         "MAIL_IMAP_HOST": "imap.example.com",
         "MAIL_SMTP_HOST": "smtp.example.com",
@@ -145,7 +144,8 @@ def test_from_env_single_account_backward_compat() -> None:
         "MAIL_PASSWORD": "s3cret",
     }
     with mock.patch.dict(os.environ, env, clear=True):
-        with pytest.warns(DeprecationWarning, match="migrate-config"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
             accounts = MailAccountsConfig.from_env()
         assert accounts.ids() == ("default",)
         only = accounts.accounts[0]
@@ -407,7 +407,8 @@ def test_load_accounts_env_first_single() -> None:
     assert accounts.default.config.imap_host == "imap.env.com"
 
 
-def test_load_accounts_falls_back_to_single_yaml(tmp_path: Path) -> None:
+def test_load_accounts_single_yaml_rejected(tmp_path: Path) -> None:
+    """A mono YAML file is rejected by ``load_accounts`` with an actionable error."""
     yaml_file = tmp_path / "mail.local.yaml"
     yaml_file.write_text(
         """\
@@ -422,33 +423,11 @@ auth:
     )
     env = {"MAIL_CONFIG_PATH": str(yaml_file)}
     with mock.patch.dict(os.environ, env, clear=True):
-        accounts = load_accounts()
-    assert accounts.ids() == ("default",)
-    assert accounts.default.config.imap_host == "imap.file.com"
-
-
-def test_load_accounts_single_yaml_env_overrides(tmp_path: Path) -> None:
-    """Legacy fallback still routes through _merge_env for field overrides."""
-    yaml_file = tmp_path / "mail.local.yaml"
-    yaml_file.write_text(
-        """\
-imap:
-  host: imap.file.com
-smtp:
-  host: smtp.file.com
-auth:
-  username: file_user
-  password: file_pass
-"""
-    )
-    env = {
-        "MAIL_CONFIG_PATH": str(yaml_file),
-        "MAIL_IMAP_HOST": "imap.env.com",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        accounts = load_accounts()
-    assert accounts.default.config.imap_host == "imap.env.com"
-    assert accounts.default.config.smtp_host == "smtp.file.com"
+        with pytest.raises(ConfigurationError) as excinfo:
+            load_accounts()
+    message = str(excinfo.value)
+    assert "robotsix-auto-mail migrate-config" in message
+    assert "robotsix-auto-mail detect" in message
 
 
 def test_load_accounts_falls_back_to_multi_yaml() -> None:

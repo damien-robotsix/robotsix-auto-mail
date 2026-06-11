@@ -16,7 +16,6 @@ import json
 import logging
 import os
 import re
-import warnings
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, Final, NamedTuple
@@ -30,30 +29,23 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Deprecation of the single-account ("mono") config shape
+# Removal of the single-account ("mono") YAML file config shape
 # ---------------------------------------------------------------------------
 
 
-def _warn_deprecated_mono_shape(source: str) -> None:
-    """Emit a deprecation signal for the legacy single-account config shape.
+def _mono_shape_error(path: Path) -> str:
+    """Return the actionable error for a removed single-account YAML file.
 
-    *source* names where the deprecated shape was found (a file path or the
-    environment scheme).  The same actionable message is raised as a
-    :class:`DeprecationWarning` *and* logged at ``warning`` level so it
-    surfaces both in test assertions and at CLI startup (``main()`` loads the
-    config best-effort during tracing init).
-
-    The single-account shape is retained for now; removal happens in a later
-    ticket once operator configs have been migrated via ``migrate-config``.
+    The single-account ("mono") YAML file shape is no longer supported. The
+    message names *path* and both remediation commands: ``migrate-config``
+    (convert the existing file) and ``detect`` (regenerate from scratch).
     """
-    message = (
-        f"{source} uses the deprecated single-account config shape; run "
-        "`robotsix-auto-mail migrate-config` to convert it to the "
-        "multi-account `accounts:` shape. The single-account shape will be "
-        "removed in a future release."
+    return (
+        f"Config {path} uses the single-account config shape, which is no "
+        "longer supported. Run `robotsix-auto-mail migrate-config` to convert "
+        "this file to the multi-account `accounts:` shape, or "
+        "`robotsix-auto-mail detect` to regenerate it."
     )
-    warnings.warn(message, DeprecationWarning, stacklevel=3)
-    logger.warning(message)
 
 
 # ---------------------------------------------------------------------------
@@ -551,56 +543,14 @@ def load() -> MailConfig:
     """Load the **default account's** :class:`MailConfig`.
 
     Delegates to :func:`load_accounts` and returns the default account's
-    config.  This works against both the multi-account shape (the default,
-    or first, account is used) and a deprecated single-account file/env
-    (loaded via the compat path, which also emits a deprecation warning).
+    config.  This works against the multi-account shape (the default, or
+    first, account is used) and a single-account ``MAIL_*`` environment.
 
     Kept as a thin convenience for the best-effort Langfuse tracing init in
     ``cli.main()`` and for ``load_llm``-style callers that only need one
     representative account's settings.
     """
     return load_accounts().default.config
-
-
-def _load_mono_config() -> MailConfig:
-    """Resolve a single ``MailConfig`` through the cascade defaults → file → env.
-
-    1.  Call ``MailConfig.from_env()``.  If all required fields are
-        present in the environment, return immediately (env wins).
-    2.  Otherwise, if *only* required fields are missing (no invalid
-        values), load the YAML config file at ``MAIL_CONFIG_PATH``
-        (defaulting to ``config/mail.local.yaml``).
-    3.  *Re-apply* environment variables on top, so any ``MAIL_*`` var
-        that IS set overrides the corresponding file value field-by-field.
-
-    Defaults live in the ``MailConfig`` dataclass — fields absent from
-    both the file and the environment fall back to those.
-
-    If ``from_env()`` fails because of an invalid value (e.g. a
-    non-integer port), the error is re-raised immediately — the user
-    explicitly set an env var and a typo should not be silently
-    swallowed by a file fallback.
-
-    This is the legacy single-account resolver; :func:`load_accounts` wraps
-    its result in the one-element ``"default"`` container for the deprecated
-    mono shape.
-    """
-    # — attempt from_env alone —
-    try:
-        return MailConfig.from_env()
-    except ConfigurationError as exc:
-        if not exc.missing_only:
-            raise
-
-    # — load the YAML config file —
-    config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
-    try:
-        file_cfg = MailConfig.from_yaml(config_path)
-    except FileNotFoundError:
-        raise ConfigurationError(f"Config file not found: {config_path}") from None
-
-    # — env vars override file values field-by-field —
-    return _merge_env(file_cfg)
 
 
 def load_llm() -> str:
@@ -621,8 +571,8 @@ def load_llm() -> str:
         if config_path.exists():
             try:
                 # Read the default (or first) account's ``llm:`` section. A
-                # deprecated mono file is routed through the compat path (which
-                # also emits a deprecation warning).
+                # single-account ("mono") file raises ``ConfigurationError``
+                # (caught below) — the LLM key then degrades to env-only.
                 accounts = MailAccountsConfig.from_yaml(config_path, validate=False)
                 file_cfg: MailConfig | None = accounts.default.config
             except (ConfigurationError, FileNotFoundError, OSError):
@@ -631,26 +581,6 @@ def load_llm() -> str:
                 api_key = api_key or file_cfg.llm_api_key
 
     return api_key
-
-
-def _merge_env(base: MailConfig) -> MailConfig:
-    """Return a new ``MailConfig`` where any set env var overrides *base*."""
-    kwargs: dict[str, Any] = {}
-    for spec in _FIELD_SPECS:
-        raw = os.environ.get(spec.env_key, "")
-        if raw:
-            if spec.kind == "int":
-                kwargs[spec.field_name] = _parse_int(spec.env_key, raw)
-            elif spec.kind == "bool":
-                kwargs[spec.field_name] = _parse_bool(spec.env_key, raw)
-            elif spec.kind == "tls_mode":
-                _check_tls_mode(spec.env_key, raw)
-                kwargs[spec.field_name] = raw
-            else:
-                kwargs[spec.field_name] = raw
-        else:
-            kwargs[spec.field_name] = getattr(base, spec.field_name)
-    return MailConfig(**kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -933,14 +863,9 @@ class MailAccountsConfig:
 
         accounts_raw = data.get("accounts") if isinstance(data, dict) else None
         if accounts_raw is None:
-            # Legacy single-account shape — reuse the existing loader verbatim.
-            # Deprecated: emit a migration signal but keep loading successfully.
-            _warn_deprecated_mono_shape(f"Config {path}")
-            cfg = MailConfig.from_yaml(path, validate=validate)
-            return cls(
-                accounts=(MailAccount(account_id="default", config=cfg, label=None),),
-                default_account_id="default",
-            )
+            # The single-account ("mono") YAML file shape is no longer
+            # supported — reject it with an actionable error.
+            raise ConfigurationError(_mono_shape_error(path))
 
         if not isinstance(accounts_raw, list):
             raise ConfigurationError("Config key 'accounts' must be a list")
@@ -993,9 +918,10 @@ class MailAccountsConfig:
           yields the per-account default ``".data/<id>/mail.db"``.  An
           optional ``MAIL_ACCOUNTS_DEFAULT`` names the default id.  A gap in
           the index sequence raises :class:`ConfigurationError`.
-        * **Legacy single-account** — no ``MAIL_ACCOUNTS_*`` vars.  Delegates
+        * **Single-account** — no ``MAIL_ACCOUNTS_*`` vars.  Delegates
           to :meth:`MailConfig.from_env` and wraps the result as the
-          one-element ``"default"`` container.
+          one-element ``"default"`` container (a supported isolated-boot
+          mechanism, loaded silently).
 
         Raises:
             ConfigurationError: On invalid values, an id gap, or an invalid
@@ -1009,10 +935,10 @@ class MailAccountsConfig:
             }
         )
         if not present_indices:
+            # Single-account ``MAIL_*`` env is a supported isolated-boot
+            # mechanism — load it silently as the one-element "default"
+            # container.
             cfg = MailConfig.from_env()
-            # Deprecated: a complete single-account env was supplied. Keep
-            # loading but steer the operator to the multi-account scheme.
-            _warn_deprecated_mono_shape("The environment (MAIL_* variables)")
             return cls(
                 accounts=(MailAccount(account_id="default", config=cfg, label=None),),
                 default_account_id="default",
@@ -1068,10 +994,9 @@ def load_accounts() -> MailAccountsConfig:
     2.  Otherwise, if *only* required fields are missing (no invalid values),
         fall back to the YAML config file at ``MAIL_CONFIG_PATH`` (default
         ``config/mail.local.yaml``).  A multi-account file is parsed directly;
-        a legacy single-account file is routed through :func:`load` so that
-        ``MAIL_*`` env vars still override its values field-by-field
-        (preserving today's single-account behaviour) before being wrapped in
-        the one-element ``"default"`` container.
+        a single-account ("mono") file is no longer supported and raises an
+        actionable :class:`ConfigurationError` naming ``migrate-config`` and
+        ``detect``.
 
     If :meth:`MailAccountsConfig.from_env` fails because of an *invalid* value
     (e.g. a non-integer port), the error is re-raised immediately rather than
@@ -1095,16 +1020,12 @@ def load_accounts() -> MailAccountsConfig:
     if isinstance(data, dict) and isinstance(data.get("accounts"), list):
         return MailAccountsConfig.from_yaml(config_path)
 
-    # Legacy single-account fallback: resolve the mono config (so _merge_env
-    # applies env overrides on top of the file exactly as it does today) and
-    # wrap it.  Deprecated — emit a migration signal naming the source.
-    cfg = _load_mono_config()
-    source = f"Config {config_path}" if config_path.exists() else "The environment"
-    _warn_deprecated_mono_shape(source)
-    return MailAccountsConfig(
-        accounts=(MailAccount(account_id="default", config=cfg, label=None),),
-        default_account_id="default",
-    )
+    if config_path.exists():
+        # The single-account ("mono") YAML file shape is no longer supported.
+        raise ConfigurationError(_mono_shape_error(config_path))
+
+    # No usable env and no config file — surface the env's missing-field error.
+    return MailAccountsConfig.from_env()
 
 
 # ---------------------------------------------------------------------------

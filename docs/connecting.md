@@ -107,9 +107,10 @@ is set to that id when the file is new.
 file **appends** the newly-detected account, preserving the other accounts
 already in the file. If the resolved `id` already exists, `detect` refuses
 (exit 1) rather than clobbering it — pass `--id <new-id>` to add a distinct
-account. If the output file is still in the deprecated mono shape, the existing
-configuration is converted to a `default` account before the new one is
-appended (run `migrate-config` first if you prefer to convert it explicitly).
+account. If the output file is still in the single-account ("mono") shape —
+which is no longer supported at runtime — the existing configuration is
+converted to a `default` account before the new one is appended (run
+`migrate-config` first if you prefer to convert it explicitly).
 
 ### Scripting usage
 
@@ -167,9 +168,11 @@ interactive prompt appears (requires a TTY — use `docker compose run` without
 
 ## The migrate-config command
 
-The single-account ("mono") config shape is **deprecated**. A mono file still
-loads, but emits a `DeprecationWarning` at startup. To convert it to the
-multi-account `accounts:` shape, run:
+The single-account ("mono") config shape is **removed**. A mono YAML file no
+longer loads at runtime — it fails with an actionable error pointing at
+`migrate-config` (to convert the existing file) and `detect` (to regenerate it
+from scratch). To convert an existing mono file to the multi-account
+`accounts:` shape, run:
 
 ```sh
 robotsix-auto-mail migrate-config
@@ -367,9 +370,10 @@ OAuth2 fields unset — the existing password path works as before.
 `robotsix-auto-mail` can manage more than one mailbox at once. Multiple
 accounts are modelled as N independent configurations — each account is a
 complete set of the connection settings described above, plus a stable
-`id` and an optional human-friendly `label`. The single-account shapes
-documented above continue to work unchanged; multi-account is purely
-additive.
+`id` and an optional human-friendly `label`. The `accounts:` list is the only
+supported runtime config-file shape; the single-account `MAIL_*` environment
+described above is retained for isolated boots, but a single-account ("mono")
+YAML **file** is no longer loaded (see below).
 
 **One SQLite DB per account.** Rather than tagging every database row with an
 `account_id`, each account carries its **own** `store.path` (SQLite database
@@ -381,11 +385,13 @@ uniqueness is enforced when the configuration loads. When an account omits
 `store.path`, it defaults to a dedicated per-account folder `.data/<id>/mail.db`,
 which is unique per account and created automatically on first DB use.
 
-> The legacy single-account ("mono") shape — top-level `imap:` / `smtp:` /
-> `auth:` sections with no `accounts:` key — is **deprecated** but still loads
-> (it emits a `DeprecationWarning` at startup). Run
+> The single-account ("mono") YAML **file** shape — top-level `imap:` /
+> `smtp:` / `auth:` sections with no `accounts:` key — is **no longer
+> supported**: such a file fails to load with an actionable error. Run
 > [`robotsix-auto-mail migrate-config`](#the-migrate-config-command) to convert
-> an old config to the multi-account shape.
+> an old config to the multi-account shape, or
+> [`robotsix-auto-mail detect`](#scripting-usage) to regenerate it. (The
+> single-account `MAIL_*` **environment** is unaffected and remains supported.)
 
 **YAML shape.** A multi-account YAML file uses a top-level `accounts:` list
 instead of the single-account top-level sections. Each list entry is a
