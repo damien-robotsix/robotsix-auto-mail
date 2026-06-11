@@ -8,3 +8,4 @@ smoke_paths:
   - scripts/smoke_board.sh
 extra_sandbox_packages:
   - pip:structlog
+  - pip:pytest
