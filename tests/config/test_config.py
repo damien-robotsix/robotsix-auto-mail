@@ -562,86 +562,6 @@ def test_load_env_only() -> None:
         assert cfg.password == "env_pass"
 
 
-def test_load_fallback_to_yaml(tmp_path: Path) -> None:
-    """No env vars → load() falls back to the YAML file at given path."""
-    yaml_file = tmp_path / "test.yaml"
-    yaml_file.write_text(
-        """\
-imap:
-  host: imap.file.com
-
-smtp:
-  host: smtp.file.com
-
-auth:
-  username: file_user
-  password: file_pass
-"""
-    )
-    env: dict[str, str] = {"MAIL_CONFIG_PATH": str(yaml_file)}
-    with mock.patch.dict(os.environ, env, clear=True):
-        cfg = load()
-        assert cfg.imap_host == "imap.file.com"
-        assert cfg.smtp_host == "smtp.file.com"
-        assert cfg.username == "file_user"
-        assert cfg.password == "file_pass"
-
-
-def test_load_env_overrides_file(tmp_path: Path) -> None:
-    """Single env var overrides the corresponding YAML field."""
-    yaml_file = tmp_path / "test.yaml"
-    yaml_file.write_text(
-        """\
-imap:
-  host: imap.file.com
-
-smtp:
-  host: smtp.file.com
-
-auth:
-  username: file_user
-  password: file_pass
-"""
-    )
-    env: dict[str, str] = {
-        "MAIL_CONFIG_PATH": str(yaml_file),
-        "MAIL_IMAP_HOST": "imap.env.com",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        cfg = load()
-        # env wins for IMAP host
-        assert cfg.imap_host == "imap.env.com"
-        # SMTP still from file
-        assert cfg.smtp_host == "smtp.file.com"
-        assert cfg.username == "file_user"
-
-
-def test_load_env_overrides_file_folder(tmp_path: Path) -> None:
-    """MAIL_IMAP_FOLDER env var overrides the YAML folder."""
-    yaml_file = tmp_path / "test.yaml"
-    yaml_file.write_text(
-        """\
-imap:
-  host: imap.file.com
-  folder: INBOX
-
-smtp:
-  host: smtp.file.com
-
-auth:
-  username: file_user
-  password: file_pass
-"""
-    )
-    env: dict[str, str] = {
-        "MAIL_CONFIG_PATH": str(yaml_file),
-        "MAIL_IMAP_FOLDER": "Archive",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        cfg = load()
-        assert cfg.imap_folder == "Archive"
-
-
 def test_load_missing_config_file() -> None:
     """No env vars AND no config file → ConfigurationError."""
     env: dict[str, str] = {
@@ -650,52 +570,6 @@ def test_load_missing_config_file() -> None:
     with mock.patch.dict(os.environ, env, clear=True):
         with pytest.raises(ConfigurationError):
             load()
-
-
-def test_load_file_supplies_defaults_env_overrides(tmp_path: Path) -> None:
-    """load() takes file values, with env winning field-by-field and
-    dataclass defaults filling the rest."""
-    local_file = tmp_path / "mail.local.yaml"
-    local_file.write_text(
-        """\
-imap:
-  host: imap.file.com
-
-smtp:
-  host: smtp.from.local.com
-
-auth:
-  username: file_user
-  password: file_pass
-
-store:
-  path: /file/path/mail.db
-"""
-    )
-
-    env: dict[str, str] = {
-        "MAIL_CONFIG_PATH": str(local_file),
-        "MAIL_SMTP_HOST": "smtp.from.env.com",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        cfg = load()
-
-    # imap.host from the file.
-    assert cfg.imap_host == "imap.file.com"
-    # SMTP from file, overridden by env.
-    assert cfg.smtp_host == "smtp.from.env.com"
-    # Auth from file.
-    assert cfg.username == "file_user"
-    assert cfg.password == "file_pass"
-    # port / tls_mode fall back to dataclass defaults (not in file/env).
-    assert cfg.imap_port == 993
-    assert cfg.imap_tls_mode == "direct-tls"
-    assert cfg.smtp_port == 587
-    assert cfg.smtp_tls_mode == "starttls"
-    # db_path from file.
-    assert cfg.db_path == "/file/path/mail.db"
-    # imap_folder falls back to the default.
-    assert cfg.imap_folder == "INBOX"
 
 
 # ---------------------------------------------------------------------------
@@ -910,12 +784,14 @@ def test_load_llm_env_wins() -> None:
 
 
 def test_load_llm_falls_back_to_file(tmp_path: Path) -> None:
-    """load_llm reads the llm: section when env vars are absent."""
+    """load_llm reads the default account's llm: section when env is absent."""
     yaml_file = tmp_path / "mail.local.yaml"
     yaml_file.write_text(
         """\
-llm:
-  api_key: sk-from-file
+accounts:
+  - id: default
+    llm:
+      api_key: sk-from-file
 """
     )
     env: dict[str, str] = {"MAIL_CONFIG_PATH": str(yaml_file)}
@@ -975,33 +851,6 @@ def test_from_env_reads_ingest_interval() -> None:
     }
     with mock.patch.dict(os.environ, env, clear=True):
         assert MailConfig.from_env().ingest_interval_minutes == 30
-
-
-def test_load_env_overrides_ingest_interval(tmp_path: Path) -> None:
-    """MAIL_INGEST_INTERVAL overrides the file's ingest.interval_minutes."""
-    yaml_file = tmp_path / "mail.local.yaml"
-    yaml_file.write_text(
-        """\
-imap:
-  host: imap.file.com
-
-smtp:
-  host: smtp.file.com
-
-auth:
-  username: u
-  password: p
-
-ingest:
-  interval_minutes: 5
-"""
-    )
-    env: dict[str, str] = {
-        "MAIL_CONFIG_PATH": str(yaml_file),
-        "MAIL_INGEST_INTERVAL": "9",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        assert load().ingest_interval_minutes == 9
 
 
 # ---------------------------------------------------------------------------
@@ -1097,37 +946,6 @@ archive:
         MailConfig.from_yaml(yaml_file)
     msg = str(exc.value)
     assert "enabled" in msg
-
-
-def test_load_env_overrides_archive_fields(tmp_path: Path) -> None:
-    """MAIL_ARCHIVE_* env vars override the file's archive section."""
-    yaml_file = tmp_path / "mail.local.yaml"
-    yaml_file.write_text(
-        """\
-imap:
-  host: imap.file.com
-
-smtp:
-  host: smtp.file.com
-
-auth:
-  username: u
-  password: p
-
-archive:
-  root: file-archive
-  enabled: true
-"""
-    )
-    env: dict[str, str] = {
-        "MAIL_CONFIG_PATH": str(yaml_file),
-        "MAIL_ARCHIVE_ROOT": "env-archive",
-        "MAIL_ARCHIVE_ENABLED": "false",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        cfg = load()
-        assert cfg.archive_root == "env-archive"
-        assert cfg.archive_enabled is False
 
 
 # ---------------------------------------------------------------------------

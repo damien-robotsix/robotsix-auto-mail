@@ -510,7 +510,8 @@ def test_accounts_example_duplicate_ids(tmp_path: Path) -> None:
 
 
 def test_accounts_example_no_accounts_key(tmp_path: Path) -> None:
-    """A single-account-shaped doc (no `accounts:` key) surfaces a finding."""
+    """A single-account-shaped doc (no `accounts:` key) is rejected with the
+    actionable error naming `migrate-config` and `detect`."""
     mono = (
         "imap:\n  host: imap.example.com\n"
         "smtp:\n  host: smtp.example.com\n"
@@ -520,6 +521,11 @@ def test_accounts_example_no_accounts_key(tmp_path: Path) -> None:
     path.write_text(mono)
     findings = check_accounts_example(path)
     assert findings
+    load_errors = [f for f in findings if f["type"] == "accounts-load-error"]
+    assert load_errors
+    message = load_errors[0]["message"]
+    assert "migrate-config" in message
+    assert "detect" in message
 
 
 def test_accounts_example_colliding_db_paths(tmp_path: Path) -> None:
