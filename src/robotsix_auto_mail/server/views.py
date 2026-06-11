@@ -626,6 +626,27 @@ def _render_draft_section(
         f'<button type="submit" class="draft-reply-btn">{generate_label}</button>'
         "</form>"
     )
+    # Only offer Reply / Reply-to-all once a draft has been saved
+    # (DRAFT_READY).  Each form sends the saved draft via SMTP and then
+    # archives the original message.
+    send_forms = ""
+    if current_action == "DRAFT_READY":
+        send_forms = (
+            '<form class="detail-form" method="post" action="/send-draft">'
+            f'<input type="hidden" name="message_id"'
+            f' value="{html.escape(record.message_id)}">'
+            f"{redirect_input}"
+            '<input type="hidden" name="reply_mode" value="reply">'
+            '<button type="submit">Reply &amp; archive</button>'
+            "</form>"
+            '<form class="detail-form" method="post" action="/send-draft">'
+            f'<input type="hidden" name="message_id"'
+            f' value="{html.escape(record.message_id)}">'
+            f"{redirect_input}"
+            '<input type="hidden" name="reply_mode" value="reply_all">'
+            '<button type="submit">Reply to all &amp; archive</button>'
+            "</form>"
+        )
     return (
         '<div class="detail-field">'
         '<div class="detail-label">Draft reply</div>'
@@ -639,6 +660,7 @@ def _render_draft_section(
         f' style="width:100%;box-sizing:border-box;">{escaped_draft}</textarea>'
         f'<button type="submit">{button_label}</button>'
         "</form>"
+        f"{send_forms}"
         "</div>"
         "</div>\n"
     )

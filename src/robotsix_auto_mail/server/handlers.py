@@ -6,6 +6,7 @@ import functools
 import json
 from collections.abc import Callable, Mapping
 from http.server import BaseHTTPRequestHandler
+from typing import Any
 from urllib.parse import parse_qs, quote, unquote
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
@@ -108,6 +109,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/archive-proposal": self._handle_archive_proposal,
             "/save-notes": self._handle_save_notes,
             "/save-draft": self._handle_save_draft,
+            "/send-draft": self._handle_send_draft,
             "/generate-draft": self._handle_generate_draft,
         }
         handler = routes.get(self.path)
@@ -371,15 +373,71 @@ class BoardHandler(BaseHTTPRequestHandler):
 
             client.move_message(imap_uid, dest_folder)
 
+    def _archive_and_delete(self, conn: Any, record: MailRecord) -> bool:
+        """Archive *record*'s message via IMAP, then delete its local row.
+
+        Shared by :meth:`_handle_archive` and :meth:`_handle_send_draft`.
+        Computes the effective archive root + subfolder, performs the IMAP
+        move (only when IMAP is configured and the record has a tracked
+        UID), then removes the local database record.
+
+        Returns ``True`` on success.  On a security-policy violation it
+        sends a 400 and returns ``False``; on an IMAP/IO failure it sends a
+        502 and returns ``False`` — in both error cases the local record is
+        left intact.
+        """
+        from robotsix_auto_mail.db import delete_record_by_message_id
+
+        # Compute the effective archive subfolder.
+        subfolder = get_archive_subfolder(conn, record.message_id, record)
+
+        # Determine the archive root.
+        archive_root = (
+            self.mail_config.archive_root
+            if self.mail_config is not None
+            else DEFAULT_ARCHIVE_ROOT
+        )
+
+        # Determine the namespace prefix (empty when unset).
+        namespace = (
+            self.mail_config.archive_namespace if self.mail_config is not None else ""
+        )
+
+        # Effective root: namespace + archive_root (user supplies
+        # the delimiter as part of the namespace, e.g. "INBOX.").
+        effective_root = namespace + archive_root
+
+        # -- IMAP move phase (only when IMAP is configured and the
+        #    record has a tracked UID) --
+        if self.mail_config is not None and record.imap_uid is not None:
+            from robotsix_auto_mail.imap import ImapError
+
+            try:
+                self._imap_archive_move(
+                    self.mail_config,
+                    record.imap_uid,
+                    effective_root,
+                    subfolder,
+                )
+            except ValueError as exc:
+                self._bad_request(str(exc))
+                return False
+            except (ImapError, OSError) as exc:
+                self._send_response(
+                    f"IMAP archive failed: {exc}",
+                    status=502,
+                )
+                return False
+
+        # -- local DB cleanup --
+        delete_record_by_message_id(conn, record.message_id)
+        return True
+
     def _handle_archive(self) -> None:
         """Process POST /archive — move mail to archive folder via IMAP
         and remove it from the local database.
         """
-        from robotsix_auto_mail.db import (
-            delete_record_by_message_id,
-            get_record_by_message_id,
-            init_db,
-        )
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
         content_length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(content_length).decode("utf-8")
@@ -398,51 +456,8 @@ class BoardHandler(BaseHTTPRequestHandler):
                 self._not_found()
                 return
 
-            # Compute the effective archive subfolder.
-            subfolder = get_archive_subfolder(conn, message_id, record)
-
-            # Determine the archive root.
-            archive_root = (
-                self.mail_config.archive_root
-                if self.mail_config is not None
-                else DEFAULT_ARCHIVE_ROOT
-            )
-
-            # Determine the namespace prefix (empty when unset).
-            namespace = (
-                self.mail_config.archive_namespace
-                if self.mail_config is not None
-                else ""
-            )
-
-            # Effective root: namespace + archive_root (user supplies
-            # the delimiter as part of the namespace, e.g. "INBOX.").
-            effective_root = namespace + archive_root
-
-            # -- IMAP move phase (only when IMAP is configured and the
-            #    record has a tracked UID) --
-            if self.mail_config is not None and record.imap_uid is not None:
-                from robotsix_auto_mail.imap import ImapError
-
-                try:
-                    self._imap_archive_move(
-                        self.mail_config,
-                        record.imap_uid,
-                        effective_root,
-                        subfolder,
-                    )
-                except ValueError as exc:
-                    self._bad_request(str(exc))
-                    return
-                except (ImapError, OSError) as exc:
-                    self._send_response(
-                        f"IMAP archive failed: {exc}",
-                        status=502,
-                    )
-                    return
-
-            # -- local DB cleanup --
-            delete_record_by_message_id(conn, message_id)
+            if not self._archive_and_delete(conn, record):
+                return
         finally:
             conn.close()
 
@@ -864,6 +879,113 @@ class BoardHandler(BaseHTTPRequestHandler):
                     reason="draft saved",
                 )
                 record_human_decision(conn, message_id, "DRAFT_READY")
+        finally:
+            conn.close()
+
+        if redirect_to and _is_safe_redirect_path(redirect_to):
+            self._redirect(redirect_to, code=302)
+        else:
+            self._redirect("/board", code=302)
+
+    def _handle_send_draft(self) -> None:
+        """Process POST /send-draft — send the saved draft via SMTP, then
+        archive the original message (IMAP move + local DB delete).
+
+        Mirrors :meth:`_handle_save_draft` for form parsing/validation and
+        reuses :meth:`_archive_and_delete` for the archive phase.  After a
+        successful send the original record is removed from the board, just
+        like the Archive action.
+        """
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
+
+        message_id = (fields.get("message_id") or [""])[0].strip()
+        reply_mode = (fields.get("reply_mode") or [""])[0].strip()
+        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+
+        if not message_id:
+            self._bad_request("Missing message_id")
+            return
+
+        # Validate reply mode up-front (cheap, no DB access).
+        if reply_mode not in ("reply", "reply_all"):
+            self._bad_request(f"Invalid reply_mode: {reply_mode!r}")
+            return
+
+        # SMTP must be configured to send anything.
+        if self.mail_config is None or not self.mail_config.smtp_host:
+            self._bad_request("SMTP is not configured")
+            return
+        mail_config = self.mail_config
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            record = get_record_by_message_id(conn, message_id)
+            if record is None:
+                self._not_found()
+                return
+
+            if not record.draft_text.strip():
+                self._bad_request("Draft is empty; nothing to send")
+                return
+
+            # -- compute recipients ------------------------------------
+            from_addr = mail_config.username
+            to_addr = record.sender
+
+            cc: list[str] | None = None
+            if reply_mode == "reply_all":
+                try:
+                    recipients = json.loads(record.recipients_json)
+                except (json.JSONDecodeError, TypeError):
+                    recipients = {}
+                orig_to = (
+                    recipients.get("to", []) if isinstance(recipients, dict) else []
+                )
+                orig_cc = (
+                    recipients.get("cc", []) if isinstance(recipients, dict) else []
+                )
+                # Union of original To + Cc, excluding self and the sender
+                # (already in To), deduplicated case-insensitively while
+                # preserving order.
+                cc_list: list[str] = []
+                seen: set[str] = set()
+                excluded = {from_addr.lower(), to_addr.lower()}
+                for addr in [*orig_to, *orig_cc]:
+                    if not isinstance(addr, str):
+                        continue
+                    lowered = addr.lower()
+                    if lowered in excluded or lowered in seen:
+                        continue
+                    seen.add(lowered)
+                    cc_list.append(addr)
+                cc = cc_list or None
+
+            # -- subject (prepend "Re: " unless already present) -------
+            subject = record.subject
+            if not subject.lower().startswith("re:"):
+                subject = f"Re: {subject}"
+
+            # -- send via SMTP -----------------------------------------
+            from robotsix_auto_mail.smtp import SmtpClient
+
+            with SmtpClient(mail_config) as client:
+                client.send(
+                    from_addr=from_addr,
+                    to_addr=to_addr,
+                    subject=subject,
+                    body=record.draft_text,
+                    cc=cc,
+                    in_reply_to=record.message_id,
+                    references=record.message_id,
+                )
+
+            # -- archive the original message + delete local record ----
+            if not self._archive_and_delete(conn, record):
+                return
         finally:
             conn.close()
 

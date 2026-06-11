@@ -408,6 +408,36 @@ def test_send_constructs_mime_and_calls_send_message(cfg: MailConfig) -> None:
     assert call_kwargs["to_addrs"] == ["user@example.com"]
 
 
+def test_send_with_cc_and_threading_headers(cfg: MailConfig) -> None:
+    """send() with cc/in_reply_to/references sets the headers and adds the
+    Cc recipients to the SMTP envelope."""
+    mock_smtp = _make_mock_smtp()
+
+    with mock.patch("smtplib.SMTP", return_value=mock_smtp):
+        client = SmtpClient(cfg)
+        client.connect()
+        client.send(
+            from_addr="bot@example.com",
+            to_addr="user@example.com",
+            subject="Hello",
+            body="Test body",
+            cc=["a@x.com"],
+            in_reply_to="<id>",
+            references="<id>",
+        )
+
+    mock_smtp.send_message.assert_called_once()
+    call_args, call_kwargs = mock_smtp.send_message.call_args
+
+    msg = call_args[0]
+    assert msg["Cc"] == "a@x.com"
+    assert msg["In-Reply-To"] == "<id>"
+    assert msg["References"] == "<id>"
+
+    # Envelope recipients must include both the To and Cc addresses.
+    assert call_kwargs["to_addrs"] == ["user@example.com", "a@x.com"]
+
+
 def test_send_body_is_utf8_encoded(cfg: MailConfig) -> None:
     """send() properly encodes non-ASCII bodies."""
     mock_smtp = _make_mock_smtp()
