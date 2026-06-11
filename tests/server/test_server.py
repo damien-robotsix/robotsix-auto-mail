@@ -4071,3 +4071,369 @@ def test_served_css_orders_column_extra_top_above_cards_above_banner() -> None:
         assert ".unsubscribe-banner { order: 3; }" in body
     finally:
         server.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# /send-draft
+# ---------------------------------------------------------------------------
+
+
+def _seed_draft_record(
+    db_path: str,
+    message_id: str,
+    *,
+    sender: str,
+    subject: str,
+    draft_text: str,
+    recipients_json: str = '{"to": [], "cc": []}',
+    imap_uid: int | None = None,
+    action: str = "DRAFT_READY",
+) -> None:
+    """Insert a mail record with a saved draft and a triage decision."""
+    conn = init_db(db_path)
+    try:
+        conn.execute(
+            "INSERT INTO mail_records "
+            "(message_id, sender, subject, date, recipients_json, "
+            "body_plain, body_html, attachments_json, status, "
+            "draft_text, imap_uid) "
+            "VALUES (?, ?, ?, ?, ?, 'body', '', '[]', 'to_read', ?, ?)",
+            (
+                message_id,
+                sender,
+                subject,
+                "2025-01-01T00:00:00",
+                recipients_json,
+                draft_text,
+                imap_uid,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    if action:
+        _seed_triage_decision(db_path, message_id, action=action)
+
+
+def _dummy_send_mail_config() -> MailConfig:
+    """A fully-populated MailConfig usable for /send-draft tests."""
+    return MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="pass",
+        archive_root="my-archive",
+    )
+
+
+def test_send_draft_reply_sends_and_archives() -> None:
+    """POST /send-draft reply → sends mail, archives + deletes the record."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_draft_record(
+            db_path,
+            "send-reply-mid",
+            sender="alice@other.com",
+            subject="Question",
+            draft_text="Here is my reply.",
+            imap_uid=5,
+        )
+        _seed_archive_override(db_path, "send-reply-mid", "")
+
+        server, port = _start_test_server_with_mail_config(
+            db_path, _dummy_send_mail_config()
+        )
+        try:
+            with (
+                mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
+            ):
+                imap_client = imap_cls.return_value.__enter__.return_value
+                imap_client.list_folders.return_value = [mock.Mock(delimiter="/")]
+
+                resp = _post_to_path(
+                    port,
+                    "/send-draft",
+                    {"message_id": "send-reply-mid", "reply_mode": "reply"},
+                )
+
+                assert resp.status == 302
+                assert resp.headers.get("Location") == "/board"
+
+                send_mock = smtp_cls.return_value.__enter__.return_value.send
+                send_mock.assert_called_once()
+                kwargs = send_mock.call_args.kwargs
+                assert kwargs["from_addr"] == "user@example.com"
+                assert kwargs["to_addr"] == "alice@other.com"
+                assert kwargs["subject"].startswith("Re: ")
+                assert kwargs["body"] == "Here is my reply."
+                assert not kwargs["cc"]
+
+                # IMAP archive move was invoked.
+                imap_client.move_message.assert_called_once_with(5, "my-archive")
+
+            # Record was deleted — the detail page is now 404.
+            import urllib.error
+
+            try:
+                urlopen(f"http://127.0.0.1:{port}/email/send-reply-mid")
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 404
+            else:
+                raise AssertionError("Expected 404 after record deletion")
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_send_draft_reply_all_cc_recipients() -> None:
+    """POST /send-draft reply_all → cc is original to+cc minus self/sender."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_draft_record(
+            db_path,
+            "send-all-mid",
+            sender="sender@test.com",
+            subject="Group thread",
+            draft_text="Reply to everyone.",
+            recipients_json=(
+                '{"to": ["sender@test.com", "carol@x.com", "user@example.com"],'
+                ' "cc": ["dave@x.com", "Carol@x.com"]}'
+            ),
+            imap_uid=9,
+        )
+        _seed_archive_override(db_path, "send-all-mid", "")
+
+        server, port = _start_test_server_with_mail_config(
+            db_path, _dummy_send_mail_config()
+        )
+        try:
+            with (
+                mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
+            ):
+                imap_client = imap_cls.return_value.__enter__.return_value
+                imap_client.list_folders.return_value = [mock.Mock(delimiter="/")]
+
+                resp = _post_to_path(
+                    port,
+                    "/send-draft",
+                    {"message_id": "send-all-mid", "reply_mode": "reply_all"},
+                )
+
+                assert resp.status == 302
+                send_mock = smtp_cls.return_value.__enter__.return_value.send
+                kwargs = send_mock.call_args.kwargs
+                # Self (username) and the sender (already in To) are
+                # excluded; duplicates removed; order preserved.
+                assert kwargs["cc"] == ["carol@x.com", "dave@x.com"]
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_send_draft_subject_not_double_prefixed() -> None:
+    """A subject already starting with 'Re:' is not double-prefixed."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_draft_record(
+            db_path,
+            "send-re-mid",
+            sender="alice@other.com",
+            subject="RE: existing",
+            draft_text="Reply body.",
+            imap_uid=2,
+        )
+        _seed_archive_override(db_path, "send-re-mid", "")
+
+        server, port = _start_test_server_with_mail_config(
+            db_path, _dummy_send_mail_config()
+        )
+        try:
+            with (
+                mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
+            ):
+                imap_client = imap_cls.return_value.__enter__.return_value
+                imap_client.list_folders.return_value = [mock.Mock(delimiter="/")]
+
+                _post_to_path(
+                    port,
+                    "/send-draft",
+                    {"message_id": "send-re-mid", "reply_mode": "reply"},
+                )
+
+                send_mock = smtp_cls.return_value.__enter__.return_value.send
+                assert send_mock.call_args.kwargs["subject"] == "RE: existing"
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_send_draft_validation_errors() -> None:
+    """Validation failures return 4xx and never send/archive/delete."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_draft_record(
+            db_path,
+            "send-valid-mid",
+            sender="alice@other.com",
+            subject="Subject",
+            draft_text="A draft.",
+            imap_uid=4,
+        )
+        # A record with an empty draft for the empty-draft check.
+        _seed_draft_record(
+            db_path,
+            "send-empty-mid",
+            sender="alice@other.com",
+            subject="Subject",
+            draft_text="   ",
+            imap_uid=6,
+        )
+
+        server, port = _start_test_server_with_mail_config(
+            db_path, _dummy_send_mail_config()
+        )
+        try:
+            with (
+                mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
+            ):
+                # Missing message_id → 400.
+                assert (
+                    _post_to_path(port, "/send-draft", {"reply_mode": "reply"}).status
+                    == 400
+                )
+                # Unknown message_id → 404.
+                assert (
+                    _post_to_path(
+                        port,
+                        "/send-draft",
+                        {"message_id": "nope", "reply_mode": "reply"},
+                    ).status
+                    == 404
+                )
+                # Empty draft_text → 400.
+                assert (
+                    _post_to_path(
+                        port,
+                        "/send-draft",
+                        {"message_id": "send-empty-mid", "reply_mode": "reply"},
+                    ).status
+                    == 400
+                )
+                # Invalid reply_mode → 400.
+                assert (
+                    _post_to_path(
+                        port,
+                        "/send-draft",
+                        {"message_id": "send-valid-mid", "reply_mode": "bogus"},
+                    ).status
+                    == 400
+                )
+
+                # No mail sent, no archive move performed.
+                smtp_cls.return_value.__enter__.return_value.send.assert_not_called()
+                imap_move = imap_cls.return_value.__enter__.return_value.move_message
+                imap_move.assert_not_called()
+
+            # Records still present.
+            assert (
+                urlopen(f"http://127.0.0.1:{port}/email/send-valid-mid").status == 200
+            )
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_send_draft_missing_smtp_config_returns_400() -> None:
+    """POST /send-draft with no SMTP config → 400, nothing sent."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_draft_record(
+            db_path,
+            "send-nosmtp-mid",
+            sender="alice@other.com",
+            subject="Subject",
+            draft_text="A draft.",
+        )
+        # No mail_config bound → SMTP not configured.
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/send-draft",
+                {"message_id": "send-nosmtp-mid", "reply_mode": "reply"},
+            )
+            assert resp.status == 400
+            # Record untouched.
+            assert (
+                urlopen(f"http://127.0.0.1:{port}/email/send-nosmtp-mid").status == 200
+            )
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_send_draft_buttons_rendered_only_when_draft_ready() -> None:
+    """The detail page renders both /send-draft forms only for DRAFT_READY."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_draft_record(
+            db_path,
+            "ui-ready-mid",
+            sender="alice@other.com",
+            subject="Ready",
+            draft_text="A draft.",
+            action="DRAFT_READY",
+        )
+        _seed_draft_record(
+            db_path,
+            "ui-answer-mid",
+            sender="bob@other.com",
+            subject="Answer",
+            draft_text="",
+            action="TO_ANSWER",
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            ready = (
+                urlopen(f"http://127.0.0.1:{port}/email/ui-ready-mid")
+                .read()
+                .decode("utf-8")
+            )
+            assert 'action="/send-draft"' in ready
+            assert 'name="reply_mode" value="reply"' in ready
+            assert 'name="reply_mode" value="reply_all"' in ready
+
+            answer = (
+                urlopen(f"http://127.0.0.1:{port}/email/ui-answer-mid")
+                .read()
+                .decode("utf-8")
+            )
+            assert 'action="/send-draft"' not in answer
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)

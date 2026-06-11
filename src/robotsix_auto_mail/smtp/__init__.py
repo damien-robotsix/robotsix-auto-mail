@@ -143,6 +143,9 @@ class SmtpClient(_ProtocolClient):
         to_addr: str,
         subject: str,
         body: str,
+        cc: list[str] | None = None,
+        in_reply_to: str | None = None,
+        references: str | None = None,
     ) -> None:
         """Compose and transmit a plain-text MIME message.
 
@@ -151,6 +154,12 @@ class SmtpClient(_ProtocolClient):
             to_addr: ``To`` header value (single recipient).
             subject: ``Subject`` header value.
             body: Plain-text message body (UTF-8).
+            cc: Optional Cc recipients.  When non-empty, a ``Cc`` header is
+                set and these addresses are added to the SMTP envelope so
+                they actually receive the mail.
+            in_reply_to: Optional ``In-Reply-To`` header value (the
+                original message's ``Message-ID``) for threading.
+            references: Optional ``References`` header value for threading.
 
         Raises:
             SmtpError: The client is not connected.
@@ -164,9 +173,17 @@ class SmtpClient(_ProtocolClient):
         msg["To"] = to_addr
         msg["Subject"] = subject
         msg["Date"] = formatdate(localtime=True)
+        if cc:
+            msg["Cc"] = ", ".join(cc)
+        if in_reply_to is not None:
+            msg["In-Reply-To"] = in_reply_to
+        if references is not None:
+            msg["References"] = references
+
+        to_addrs = [to_addr, *cc] if cc else [to_addr]
 
         try:
-            self._smtp.send_message(msg, from_addr=from_addr, to_addrs=[to_addr])
+            self._smtp.send_message(msg, from_addr=from_addr, to_addrs=to_addrs)
         except _SMTP_EXCEPTION as exc:
             raise SmtpSendError(
                 f"Failed to send message to {to_addr!r}: {exc}"
