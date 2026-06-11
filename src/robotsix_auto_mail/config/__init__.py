@@ -12,9 +12,12 @@ win field-by-field).
 from __future__ import annotations
 
 import dataclasses
+import json
+import logging
 import os
 import re
-from collections.abc import Callable
+import warnings
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, Final, NamedTuple
 
@@ -22,6 +25,36 @@ from robotsix_yaml_config import (  # type: ignore[import-untyped]
     YamlConfigError,
     read_yaml_file,
 )
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Deprecation of the single-account ("mono") config shape
+# ---------------------------------------------------------------------------
+
+
+def _warn_deprecated_mono_shape(source: str) -> None:
+    """Emit a deprecation signal for the legacy single-account config shape.
+
+    *source* names where the deprecated shape was found (a file path or the
+    environment scheme).  The same actionable message is raised as a
+    :class:`DeprecationWarning` *and* logged at ``warning`` level so it
+    surfaces both in test assertions and at CLI startup (``main()`` loads the
+    config best-effort during tracing init).
+
+    The single-account shape is retained for now; removal happens in a later
+    ticket once operator configs have been migrated via ``migrate-config``.
+    """
+    message = (
+        f"{source} uses the deprecated single-account config shape; run "
+        "`robotsix-auto-mail migrate-config` to convert it to the "
+        "multi-account `accounts:` shape. The single-account shape will be "
+        "removed in a future release."
+    )
+    warnings.warn(message, DeprecationWarning, stacklevel=3)
+    logger.warning(message)
+
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -523,7 +556,22 @@ assert _spec_names == _dc_names, (  # noqa: S101  # nosec B101
 
 
 def load() -> MailConfig:
-    """Load ``MailConfig`` through a single cascade: defaults → file → env.
+    """Load the **default account's** :class:`MailConfig`.
+
+    Delegates to :func:`load_accounts` and returns the default account's
+    config.  This works against both the multi-account shape (the default,
+    or first, account is used) and a deprecated single-account file/env
+    (loaded via the compat path, which also emits a deprecation warning).
+
+    Kept as a thin convenience for the best-effort Langfuse tracing init in
+    ``cli.main()`` and for ``load_llm``-style callers that only need one
+    representative account's settings.
+    """
+    return load_accounts().default.config
+
+
+def _load_mono_config() -> MailConfig:
+    """Resolve a single ``MailConfig`` through the cascade defaults → file → env.
 
     1.  Call ``MailConfig.from_env()``.  If all required fields are
         present in the environment, return immediately (env wins).
@@ -540,6 +588,10 @@ def load() -> MailConfig:
     non-integer port), the error is re-raised immediately — the user
     explicitly set an env var and a typo should not be silently
     swallowed by a file fallback.
+
+    This is the legacy single-account resolver; :func:`load_accounts` wraps
+    its result in the one-element ``"default"`` container for the deprecated
+    mono shape.
     """
     # — attempt from_env alone —
     try:
@@ -578,7 +630,11 @@ def load_llm() -> tuple[str, str]:
         config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
         if config_path.exists():
             try:
-                file_cfg = MailConfig.from_yaml(config_path, validate=False)
+                # Read the default (or first) account's ``llm:`` section. A
+                # deprecated mono file is routed through the compat path (which
+                # also emits a deprecation warning).
+                accounts = MailAccountsConfig.from_yaml(config_path, validate=False)
+                file_cfg: MailConfig | None = accounts.default.config
             except (ConfigurationError, FileNotFoundError, OSError):
                 file_cfg = None
             if file_cfg is not None:
@@ -863,7 +919,7 @@ class MailAccountsConfig:
           the same helper as the single-account loader.  An optional
           top-level ``default_account:`` names the default (absent → the
           first entry).  When an entry omits ``store.path`` the per-account
-          default ``".data/mail-<id>.db"`` is used so DBs never collide.
+          default ``".data/<id>/mail.db"`` is used so DBs never collide.
         * **Legacy single-account** — no top-level ``accounts:`` key.  The
           whole file is parsed via :meth:`MailConfig.from_yaml` and wrapped
           in a one-element container with ``account_id="default"`` (keeping
@@ -889,6 +945,8 @@ class MailAccountsConfig:
         accounts_raw = data.get("accounts") if isinstance(data, dict) else None
         if accounts_raw is None:
             # Legacy single-account shape — reuse the existing loader verbatim.
+            # Deprecated: emit a migration signal but keep loading successfully.
+            _warn_deprecated_mono_shape(f"Config {path}")
             cfg = MailConfig.from_yaml(path, validate=validate)
             return cls(
                 accounts=(MailAccount(account_id="default", config=cfg, label=None),),
@@ -916,7 +974,7 @@ class MailAccountsConfig:
             has_store_path = isinstance(store_section, dict) and "path" in store_section
             cfg = MailConfig._parse_config_dict(entry, path, validate=validate)
             if not has_store_path:
-                cfg = dataclasses.replace(cfg, db_path=f".data/mail-{raw_id}.db")
+                cfg = dataclasses.replace(cfg, db_path=f".data/{raw_id}/mail.db")
             accounts.append(MailAccount(account_id=raw_id, config=cfg, label=raw_label))
 
         raw_default = data.get("default_account")
@@ -943,7 +1001,7 @@ class MailAccountsConfig:
           ``MAIL_ACCOUNTS_<n>_LLM_API_KEY`` / ``..._LLM_MODEL``.  Two extra
           vars: ``MAIL_ACCOUNTS_<n>_ID`` (required) and
           ``MAIL_ACCOUNTS_<n>_LABEL`` (optional).  A missing ``store.path``
-          yields the per-account default ``".data/mail-<id>.db"``.  An
+          yields the per-account default ``".data/<id>/mail.db"``.  An
           optional ``MAIL_ACCOUNTS_DEFAULT`` names the default id.  A gap in
           the index sequence raises :class:`ConfigurationError`.
         * **Legacy single-account** — no ``MAIL_ACCOUNTS_*`` vars.  Delegates
@@ -963,6 +1021,9 @@ class MailAccountsConfig:
         )
         if not present_indices:
             cfg = MailConfig.from_env()
+            # Deprecated: a complete single-account env was supplied. Keep
+            # loading but steer the operator to the multi-account scheme.
+            _warn_deprecated_mono_shape("The environment (MAIL_* variables)")
             return cls(
                 accounts=(MailAccount(account_id="default", config=cfg, label=None),),
                 default_account_id="default",
@@ -1003,7 +1064,7 @@ def _build_account_from_env(index: int) -> MailAccount:
 
     account_id = os.environ.get(f"{prefix}ID", "")
     if not os.environ.get(namespaced("MAIL_DB_PATH")):
-        cfg = dataclasses.replace(cfg, db_path=f".data/mail-{account_id}.db")
+        cfg = dataclasses.replace(cfg, db_path=f".data/{account_id}/mail.db")
     raw_label = os.environ.get(f"{prefix}LABEL")
     label = raw_label if raw_label else None
     return MailAccount(account_id=account_id, config=cfg, label=label)
@@ -1045,10 +1106,122 @@ def load_accounts() -> MailAccountsConfig:
     if isinstance(data, dict) and isinstance(data.get("accounts"), list):
         return MailAccountsConfig.from_yaml(config_path)
 
-    # Legacy single-account fallback: route through load() so _merge_env
-    # applies env overrides on top of the file exactly as it does today.
-    cfg = load()
+    # Legacy single-account fallback: resolve the mono config (so _merge_env
+    # applies env overrides on top of the file exactly as it does today) and
+    # wrap it.  Deprecated — emit a migration signal naming the source.
+    cfg = _load_mono_config()
+    source = f"Config {config_path}" if config_path.exists() else "The environment"
+    _warn_deprecated_mono_shape(source)
     return MailAccountsConfig(
         accounts=(MailAccount(account_id="default", config=cfg, label=None),),
         default_account_id="default",
     )
+
+
+# ---------------------------------------------------------------------------
+# Multi-account YAML rendering
+# ---------------------------------------------------------------------------
+
+
+def _yaml_scalar(value: object) -> str:
+    """Render *value* as a YAML scalar.
+
+    Booleans and integers are emitted bare; strings are always double-quoted
+    (a valid, lossless YAML representation that safely escapes any special
+    characters, empty strings, and values that would otherwise be parsed as a
+    non-string).
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    return json.dumps(str(value))
+
+
+def _render_account_block(account: MailAccount, indent: str) -> list[str]:
+    """Render one :class:`MailAccount` as a YAML list item under ``accounts:``.
+
+    The mandatory ``imap`` / ``smtp`` / ``auth`` / ``store`` sections are
+    always emitted; the optional sections (``llm`` / ``ingest`` / ``archive``
+    / ``triage`` / ``langfuse`` and the OAuth2 fields) are emitted only when
+    they carry a non-default value, so freshly-detected configs stay terse
+    while migrated configs preserve any customised value.
+    """
+    cfg = account.config
+    defaults = MailConfig(imap_host="", smtp_host="", username="", password="")
+    item = indent + "  "
+    lines = [f"{indent}- id: {_yaml_scalar(account.account_id)}"]
+    if account.label:
+        lines.append(f"{item}label: {_yaml_scalar(account.label)}")
+    lines.append(f"{item}imap:")
+    lines.append(f"{item}  host: {_yaml_scalar(cfg.imap_host)}")
+    lines.append(f"{item}  port: {cfg.imap_port}")
+    lines.append(f"{item}  tls_mode: {_yaml_scalar(cfg.imap_tls_mode)}")
+    lines.append(f"{item}  folder: {_yaml_scalar(cfg.imap_folder)}")
+    lines.append(f"{item}smtp:")
+    lines.append(f"{item}  host: {_yaml_scalar(cfg.smtp_host)}")
+    lines.append(f"{item}  port: {cfg.smtp_port}")
+    lines.append(f"{item}  tls_mode: {_yaml_scalar(cfg.smtp_tls_mode)}")
+    lines.append(f"{item}auth:")
+    lines.append(f"{item}  username: {_yaml_scalar(cfg.username)}")
+    lines.append(f"{item}  password: {_yaml_scalar(cfg.password)}")
+    if cfg.oauth2_token:
+        lines.append(f"{item}  oauth2_token: {_yaml_scalar(cfg.oauth2_token)}")
+    if cfg.oauth2_client_id:
+        lines.append(f"{item}  oauth2_client_id: {_yaml_scalar(cfg.oauth2_client_id)}")
+    if cfg.oauth2_client_secret:
+        lines.append(
+            f"{item}  oauth2_client_secret: {_yaml_scalar(cfg.oauth2_client_secret)}"
+        )
+    lines.append(f"{item}store:")
+    lines.append(f"{item}  path: {_yaml_scalar(cfg.db_path)}")
+    if cfg.llm_api_key or cfg.llm_model != defaults.llm_model:
+        lines.append(f"{item}llm:")
+        lines.append(f"{item}  api_key: {_yaml_scalar(cfg.llm_api_key)}")
+        lines.append(f"{item}  model: {_yaml_scalar(cfg.llm_model)}")
+    if cfg.ingest_interval_minutes != defaults.ingest_interval_minutes:
+        lines.append(f"{item}ingest:")
+        lines.append(f"{item}  interval_minutes: {cfg.ingest_interval_minutes}")
+    if (
+        cfg.archive_root != defaults.archive_root
+        or cfg.archive_namespace != defaults.archive_namespace
+        or cfg.archive_enabled != defaults.archive_enabled
+    ):
+        lines.append(f"{item}archive:")
+        lines.append(f"{item}  root: {_yaml_scalar(cfg.archive_root)}")
+        lines.append(f"{item}  namespace: {_yaml_scalar(cfg.archive_namespace)}")
+        lines.append(f"{item}  enabled: {_yaml_scalar(cfg.archive_enabled)}")
+    if cfg.triage_on_ingest != defaults.triage_on_ingest:
+        lines.append(f"{item}triage:")
+        lines.append(f"{item}  on_ingest: {_yaml_scalar(cfg.triage_on_ingest)}")
+    if cfg.langfuse_public_key or cfg.langfuse_secret_key or cfg.langfuse_base_url:
+        lines.append(f"{item}langfuse:")
+        lines.append(f"{item}  public_key: {_yaml_scalar(cfg.langfuse_public_key)}")
+        lines.append(f"{item}  secret_key: {_yaml_scalar(cfg.langfuse_secret_key)}")
+        lines.append(f"{item}  base_url: {_yaml_scalar(cfg.langfuse_base_url)}")
+    return lines
+
+
+def render_accounts_yaml(
+    accounts: Sequence[MailAccount],
+    default_account_id: str,
+    *,
+    banner: str = "",
+) -> str:
+    """Render *accounts* as a multi-account YAML config file.
+
+    Emits a top-level ``default_account:`` followed by an ``accounts:`` list.
+    Used by ``detect`` (to write/append a detected account) and by
+    ``migrate-config`` (to convert a deprecated single-account file).
+    """
+    lines: list[str] = []
+    if banner:
+        lines.append(banner.rstrip("\n"))
+        lines.append("")
+    lines.append(f"default_account: {_yaml_scalar(default_account_id)}")
+    lines.append("")
+    lines.append("accounts:")
+    for account in accounts:
+        lines.extend(_render_account_block(account, "  "))
+        lines.append("")
+    return "\n".join(lines).rstrip("\n") + "\n"

@@ -1,62 +1,80 @@
-# Example local configuration for robotsix-auto-mail.
+# Example configuration for robotsix-auto-mail (multi-account shape).
 #
 # Copy this file to config/mail.local.yaml and fill in your real values.
 # config/mail.local.yaml is git-ignored so credentials never land in the repo.
 #
+# Each account is an independent mailbox with its own stable `id`, optional
+# human-friendly `label`, and its own SQLite database (`store.path`). Every
+# account MUST use a distinct store.path; when omitted it defaults to
+# `.data/<id>/mail.db`, which is unique per account.
+#
 # Any field you omit falls back to its built-in default (shown commented
-# below). Any MAIL_* environment variable that is set overrides the
-# corresponding value here.
+# below). The namespaced MAIL_ACCOUNTS_<n>_* environment variables override
+# the corresponding value here.
+#
+# NOTE: the legacy single-account shape (top-level imap:/smtp:/auth: with no
+# `accounts:` key) is DEPRECATED but still loads. Run
+# `robotsix-auto-mail migrate-config` to convert an old config to this shape.
 
-imap:
-  host: imap.example.com
-  # port: 993
-  # tls_mode: direct-tls
-  # folder: INBOX
+# Optional: name the default account. Absent → the first entry below.
+default_account: personal
 
-smtp:
-  host: smtp.example.com
-  # port: 587
-  # tls_mode: starttls
+accounts:
+  - id: personal
+    label: Personal Gmail
+    imap:
+      host: imap.gmail.com
+      # port: 993
+      # tls_mode: direct-tls
+      # folder: INBOX
+    smtp:
+      host: smtp.gmail.com
+      # port: 587
+      # tls_mode: starttls
+    auth:
+      username: me@gmail.com
+      password: ""  # set your password here, or via MAIL_ACCOUNTS_0_PASSWORD
+      # OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that
+      # requires modern SASL XOAUTH2 instead of password-based login().
+      # When oauth2_token is set, password auth is not used.
+      # oauth2_token: ""          # or via MAIL_ACCOUNTS_0_OAUTH2_TOKEN
+      # oauth2_client_id: ""      # or via MAIL_ACCOUNTS_0_OAUTH2_CLIENT_ID
+      # oauth2_client_secret: ""  # or via MAIL_ACCOUNTS_0_OAUTH2_CLIENT_SECRET
+    store:
+      path: .data/personal/mail.db
+    # Automatic ingestion (used by `ingest --watch`). How often, in minutes,
+    # to fetch new mail. Overridable via MAIL_ACCOUNTS_0_INGEST_INTERVAL.
+    # ingest:
+    #   interval_minutes: 15
+    # Self-managed archive folder structure.
+    # archive:
+    #   root: robotsix-mail-archive
+    #   namespace: ""
+    #   enabled: true
+    # Inbox triage agent — runs automatically after each ingest cycle.
+    # triage:
+    #   on_ingest: true
+    # LLM provider — used by the `detect` command and future LLM-assisted mail
+    # processing. The LLM_API_KEY / LLM_MODEL environment variables override
+    # these values.
+    # llm:
+    #   api_key: sk-or-v1-…
+    #   model: deepseek/deepseek-v4-flash
+    # Langfuse observability — optional. When public_key/secret_key are set,
+    # every LLM agent run is traced to the configured Langfuse project.
+    # langfuse:
+    #   public_key: ""
+    #   secret_key: ""
+    #   base_url: ""
 
-auth:
-  username: user@example.com
-  password: ""  # set your password here, or via the MAIL_PASSWORD env var
-  # OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that
-  # requires modern SASL XOAUTH2 instead of password-based login().
-  # When oauth2_token is set, password auth is not used.
-  # oauth2_token: ""       # or via MAIL_OAUTH2_TOKEN env var
-  # oauth2_client_id: ""   # or via MAIL_OAUTH2_CLIENT_ID env var
-  # oauth2_client_secret: ""  # or via MAIL_OAUTH2_CLIENT_SECRET env var
-
-# store:
-#   path: .data/mail.db
-
-# Automatic ingestion (used by `ingest --watch`, the default Docker service).
-# How often, in minutes, to fetch new mail. Overridable via MAIL_INGEST_INTERVAL.
-# ingest:
-#   interval_minutes: 15
-
-# Self-managed archive folder structure.
-# archive:
-#   root: robotsix-mail-archive
-#   namespace: ""
-#   enabled: true
-
-# Inbox triage agent — runs automatically after each ingest cycle.
-# triage:
-#   on_ingest: true
-
-# LLM provider — used by the `detect` command and future LLM-assisted mail
-# processing. Optional; the LLM_API_KEY / LLM_MODEL environment variables
-# override these values.
-# llm:
-#   api_key: sk-or-v1-…
-#   model: deepseek/deepseek-v4-flash
-
-# Langfuse observability — optional. When public_key/secret_key are set,
-# every LLM agent run is traced to the configured Langfuse project. The
-# MAIL_LANGFUSE_* environment variables override these values.
-# langfuse:
-#   public_key:
-#   secret_key:
-#   base_url:
+  - id: work
+    label: Work mailbox
+    imap:
+      host: imap.work.example.com
+    smtp:
+      host: smtp.work.example.com
+    auth:
+      username: me@work.example.com
+      password: ""  # set here, or via MAIL_ACCOUNTS_1_PASSWORD
+    store:
+      path: .data/work/mail.db

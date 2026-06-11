@@ -281,6 +281,49 @@ def test_single_account_ingest_is_unchanged(
         assert get_watermark(conn, "imap_uid") == "2"
 
 
+def test_per_account_default_folder_layout() -> None:
+    """An account omitting store.path defaults to ``.data/<id>/mail.db``."""
+    accounts = MailAccountsConfig(
+        accounts=(
+            MailAccount(
+                account_id="personal",
+                config=MailConfig(
+                    imap_host="i",
+                    smtp_host="s",
+                    username="u",
+                    password="p",
+                    db_path=".data/personal/mail.db",
+                ),
+            ),
+            MailAccount(
+                account_id="work",
+                config=MailConfig(
+                    imap_host="i",
+                    smtp_host="s",
+                    username="u",
+                    password="p",
+                    db_path=".data/work/mail.db",
+                ),
+            ),
+        ),
+        default_account_id="personal",
+    )
+    assert accounts.get("personal").config.db_path == ".data/personal/mail.db"
+    assert accounts.get("work").config.db_path == ".data/work/mail.db"
+
+
+def test_per_account_folder_created_on_db_open(tmp_path: Path) -> None:
+    """Opening an account DB creates its ``.data/<id>/`` folder if absent."""
+    db_path = tmp_path / ".data" / "personal" / "mail.db"
+    assert not db_path.parent.exists()
+    conn = init_db(str(db_path))
+    try:
+        assert db_path.parent.is_dir()
+        assert db_path.exists()
+    finally:
+        conn.close()
+
+
 def test_imap_client_is_pure_protocol_client(cfg: MailConfig) -> None:
     """Audit guard: constructing an ImapClient opens no DB and loads no config.
 

@@ -24,64 +24,73 @@ from robotsix_auto_mail.config import MailAccountsConfig  # noqa: E402
 # ---------------------------------------------------------------------------
 
 _YAML_EXAMPLE = """\
-# Example local configuration for robotsix-auto-mail.
+# Example multi-account configuration for robotsix-auto-mail.
 #
 # Copy this file to config/mail.local.yaml and fill in your real values.
 # config/mail.local.yaml is git-ignored so credentials never land in the repo.
 #
 # Any field you omit falls back to its built-in default (shown commented
-# below). Any MAIL_* environment variable that is set overrides the
+# below). The MAIL_ACCOUNTS_<n>_* environment variables override the
 # corresponding value here.
 
-imap:
-  host: imap.example.com
-  # port: 993
-  # tls_mode: direct-tls
-  # folder: INBOX
+default_account: personal
 
-smtp:
-  host: smtp.example.com
-  # port: 587
-  # tls_mode: starttls
+accounts:
+  - id: personal
+    label: Personal
+    imap:
+      host: imap.example.com
+      # port: 993
+      # tls_mode: direct-tls
+      # folder: INBOX
+    smtp:
+      host: smtp.example.com
+      # port: 587
+      # tls_mode: starttls
+    auth:
+      username: user@example.com
+      password: ""  # set your password here, or via MAIL_ACCOUNTS_0_PASSWORD
+      # OAuth2 / XOAUTH2 — optional; see docs/connecting.md.
+      # oauth2_token: ""
+      # oauth2_client_id: ""
+      # oauth2_client_secret: ""
+    store:
+      path: .data/personal/mail.db
+    # Automatic ingestion (used by `ingest --watch`). How often, in minutes,
+    # to fetch new mail. Overridable via MAIL_ACCOUNTS_0_INGEST_INTERVAL.
+    # ingest:
+    #   interval_minutes: 15
+    # Self-managed archive folder structure.
+    # archive:
+    #   root: robotsix-mail-archive
+    #   namespace: ""
+    #   enabled: true
+    # Inbox triage agent — runs automatically after each ingest cycle.
+    # triage:
+    #   on_ingest: true
+    # LLM provider — used by the `detect` command and future LLM-assisted
+    # mail processing. The LLM_API_KEY / LLM_MODEL environment variables
+    # override these values.
+    # llm:
+    #   api_key: sk-or-v1-…
+    #   model: deepseek/deepseek-v4-flash
+    # Langfuse observability — optional; enables LLM agent tracing.
+    # langfuse:
+    #   public_key: ""
+    #   secret_key: ""
+    #   base_url: ""
 
-auth:
-  username: user@example.com
-  password: ""  # set your password here, or via the MAIL_PASSWORD env var
-  # OAuth2 / XOAUTH2 — optional; see docs/connecting.md.
-  # oauth2_token: ""
-  # oauth2_client_id: ""
-  # oauth2_client_secret: ""
-
-# store:
-#   path: .data/mail.db
-
-# Automatic ingestion (used by `ingest --watch`, the default Docker service).
-# How often, in minutes, to fetch new mail. Overridable via MAIL_INGEST_INTERVAL.
-# ingest:
-#   interval_minutes: 15
-
-# Self-managed archive folder structure.
-# archive:
-#   root: robotsix-mail-archive
-#   namespace: ""
-#   enabled: true
-
-# Inbox triage agent — runs automatically after each ingest cycle.
-# triage:
-#   on_ingest: true
-
-# LLM provider — used by the `detect` command and future LLM-assisted mail
-# processing. Optional; the LLM_API_KEY / LLM_MODEL environment variables
-# override these values.
-# llm:
-#   api_key: sk-or-v1-…
-#   model: deepseek/deepseek-v4-flash
-
-# Langfuse observability — optional; enables LLM agent tracing.
-# langfuse:
-#   public_key: ""
-#   secret_key: ""
-#   base_url: ""
+  - id: work
+    label: Work
+    imap:
+      host: imap.work.example.com
+    smtp:
+      host: smtp.work.example.com
+    auth:
+      username: user@work.example.com
+      password: ""
+    store:
+      path: .data/work/mail.db
 """
 
 _ENV_EXAMPLE = """\
@@ -237,7 +246,6 @@ def test_run_checks_happy(tmp_path: Path) -> None:
     repo = tmp_path
     (repo / "config").mkdir(parents=True)
     (repo / "config" / "mail.local.example.yaml").write_text(_YAML_EXAMPLE)
-    (repo / "config" / "mail.accounts.example.yaml").write_text(_ACCOUNTS_EXAMPLE)
     (repo / ".env.example").write_text(_ENV_EXAMPLE)
     (repo / "docs").mkdir()
     (repo / "docs" / "connecting.md").write_text(
@@ -253,7 +261,7 @@ def test_run_checks_happy(tmp_path: Path) -> None:
 
 def test_yaml_missing_key() -> None:
     """Removing a commented-out key reports missing-from-yaml."""
-    modified = _YAML_EXAMPLE.replace("  # port: 993\n", "")
+    modified = _YAML_EXAMPLE.replace("      # port: 993\n", "")
     findings = check_yaml_example(modified)
     assert any(
         f["type"] == "missing-from-yaml" and f["key"] == "imap.port" for f in findings
@@ -491,8 +499,8 @@ def test_accounts_example_happy() -> None:
 
 
 def test_accounts_example_shipped_file_clean() -> None:
-    """The shipped config/mail.accounts.example.yaml produces no findings."""
-    findings = check_accounts_example("config/mail.accounts.example.yaml")
+    """The shipped config/mail.local.example.yaml produces no findings."""
+    findings = check_accounts_example("config/mail.local.example.yaml")
     assert findings == []
 
 
@@ -505,9 +513,16 @@ def test_accounts_example_duplicate_ids(tmp_path: Path) -> None:
     assert findings
 
 
-def test_accounts_example_no_accounts_key() -> None:
+def test_accounts_example_no_accounts_key(tmp_path: Path) -> None:
     """A single-account-shaped doc (no `accounts:` key) surfaces a finding."""
-    findings = check_accounts_example(_YAML_EXAMPLE)
+    mono = (
+        "imap:\n  host: imap.example.com\n"
+        "smtp:\n  host: smtp.example.com\n"
+        'auth:\n  username: user@example.com\n  password: ""\n'
+    )
+    path = tmp_path / "mono.yaml"
+    path.write_text(mono)
+    findings = check_accounts_example(path)
     assert findings
 
 
@@ -545,7 +560,7 @@ def test_run_checks_real_repo() -> None:
 
 def test_shipped_accounts_example_loads() -> None:
     """The shipped multi-account example loads as a valid container."""
-    config = MailAccountsConfig.from_yaml("config/mail.accounts.example.yaml")
+    config = MailAccountsConfig.from_yaml("config/mail.local.example.yaml")
     assert len(config.accounts) >= 2
     ids = config.ids()
     assert len(set(ids)) == len(ids)

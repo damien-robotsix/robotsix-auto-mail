@@ -16,6 +16,7 @@ from robotsix_auto_mail.cli.commands import (
     _cmd_config_sync_set,
     _cmd_detect,
     _cmd_ingest,
+    _cmd_migrate_config,
     _cmd_probe,
     _cmd_serve,
     _cmd_triage,
@@ -149,6 +150,17 @@ def build_parser() -> argparse.ArgumentParser:
     detect_parser.add_argument(
         "email",
         help="Email address to detect provider settings for",
+    )
+    detect_parser.add_argument(
+        "--id",
+        dest="id",
+        default=None,
+        metavar="ID",
+        help=(
+            "Account id for the detected account. Defaults to a sanitised id "
+            "derived from the email address. Used as the multi-account "
+            "`accounts:` entry id and the `.data/<id>/mail.db` store folder."
+        ),
     )
     detect_parser.add_argument(
         "--password",
@@ -309,6 +321,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ledger state: pending, accepted, or rejected.",
     )
 
+    migrate_config_parser = sub.add_parser(
+        "migrate-config",
+        help="Convert a deprecated single-account config file into the "
+        "multi-account `accounts:` shape (writes a .bak backup)",
+    )
+    migrate_config_parser.add_argument(
+        "--config",
+        default=None,
+        metavar="PATH",
+        help="Config file to migrate (default: the canonical config path).",
+    )
+    migrate_config_parser.add_argument(
+        "--id",
+        dest="id",
+        default=None,
+        metavar="ID",
+        help="Account id for the migrated single account (default: 'default').",
+    )
+    migrate_config_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Print the migrated YAML to stdout without writing any file.",
+    )
+
     return parser
 
 
@@ -363,6 +400,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "detect":
         return _cmd_detect(args)
+
+    if args.command == "migrate-config":
+        return _cmd_migrate_config(args)
 
     if args.command == "config-sync":
         return _cmd_config_sync(args)

@@ -4,12 +4,18 @@
 Cross-references the canonical ``MailConfig`` field list (obtained via
 ``dataclasses.fields()``) against three user-facing artifacts:
 
-1. ``config/mail.local.example.yaml``
+1. ``config/mail.local.example.yaml`` (the single, canonical multi-account
+   example)
 2. ``.env.example``
 3. ``docs/connecting.md``
 
-It additionally validates the multi-account example
-``config/mail.accounts.example.yaml`` against ``MailAccountsConfig``.
+The merged ``config/mail.local.example.yaml`` is checked two ways: its
+representative (first) account's nested sections plus the commented optional
+sections are cross-referenced against every ``MailConfig`` field (field
+drift), and the whole file is validated structurally against
+``MailAccountsConfig`` (>= 2 accounts, unique non-empty ids, unique per-account
+``db_path``s, a valid ``default_account``, and no account silently falling back
+to a legacy ``.data/mail.db`` / ``.data/mail-<id>.db`` default).
 
 Exits 0 when in sync, 1 when drift is found, 2 on a script-level error.
 """
@@ -259,40 +265,43 @@ def _values_match(
 
 
 def _scan_commented_yaml(text: str) -> dict[str, str]:
-    """Extract commented-out key=value pairs from YAML *text*.
+    """Extract commented-out ``section.key: value`` pairs from YAML *text*.
+
+    Indentation-agnostic so it works for the multi-account example, where the
+    config sections are nested under ``accounts:`` list entries.  An active
+    (uncommented) or commented ``<section>:`` header — a lowercase word
+    followed by a colon and nothing else — sets the current section; a
+    subsequent commented ``<key>: <value>`` line (with a non-empty value) is
+    recorded under it.  Keys whose commented value is empty are intentionally
+    not supported (they are indistinguishable from a section header), so the
+    example writes ``""`` for otherwise-empty optional values.
 
     Returns a ``{dotted.path: raw_value_string}`` dict.
     """
     result: dict[str, str] = {}
     current_section: str | None = None
-    in_commented_section = False
+
+    section_re = re.compile(r"^\s*([a-z][a-z0-9_]*):\s*$")
+    commented_section_re = re.compile(r"^\s*#\s*([a-z][a-z0-9_]*):\s*$")
+    commented_key_re = re.compile(r"^\s*#\s*([a-z][a-z0-9_]*):\s*(.+)$")
 
     for line in text.splitlines():
-        # Active section header: ``section_name:`` at indent 0.
-        m = re.match(r"^(\w+):\s*(?:#.*)?$", line)
+        # Active (uncommented) section header.
+        if not line.lstrip().startswith("#"):
+            m = section_re.match(line)
+            if m:
+                current_section = m.group(1)
+            continue
+
+        # Commented section header (checked before commented key so an
+        # empty-valued line is treated as a header, never a key).
+        m = commented_section_re.match(line)
         if m:
             current_section = m.group(1)
-            in_commented_section = False
             continue
 
-        # Commented section header: ``# section_name:`` at indent 0.
-        m = re.match(r"^# (\w+):\s*$", line)
-        if m:
-            current_section = m.group(1)
-            in_commented_section = True
-            continue
-
-        if current_section is None:
-            continue
-
-        if in_commented_section:
-            # ``#   key: value``
-            m = re.match(r"^#   (\w+):\s*(.*)$", line)
-        else:
-            # ``  # key: value``
-            m = re.match(r"^  # (\w+):\s*(.*)$", line)
-
-        if m:
+        m = commented_key_re.match(line)
+        if m and current_section is not None:
             key = m.group(1)
             value = m.group(2).strip()
             result[f"{current_section}.{key}"] = value
@@ -300,50 +309,68 @@ def _scan_commented_yaml(text: str) -> dict[str, str]:
     return result
 
 
+# ``store.path`` is intentionally per-account in the multi-account example
+# (``.data/<id>/mail.db``) and therefore legitimately differs from the
+# single-account ``MailConfig`` default — its presence is checked (field
+# drift) but its value is not compared against the default.
+_SKIP_DEFAULT_CHECK: frozenset[str] = frozenset({"store.path"})
+
+
 def check_yaml_example(
     text: str,
     path: str = "config/mail.local.example.yaml",
 ) -> list[dict[str, Any]]:
-    """Check *text* (the YAML example file) against ``MailConfig``.
+    """Check the merged multi-account example *text* against ``MailConfig``.
+
+    The representative (first) account's structured sections plus the file's
+    commented optional sections are cross-referenced against every
+    ``FIELD_TO_YAML`` key, so adding a new ``MailConfig`` field without
+    reflecting it in the example still fails the gate.  Commented defaults are
+    additionally value-checked against the ``MailConfig`` defaults.
 
     Returns a list of finding dicts.
     """
     findings: list[dict[str, Any]] = []
 
-    # -- structured parse (uncommented keys) --------------------------------
+    # -- structured parse ---------------------------------------------------
     try:
         data: Any = yaml.safe_load(text)
     except yaml.YAMLError:
         return [{"artifact": path, "type": "yaml-parse-error"}]
 
-    if data is None:
-        data = {}
     if not isinstance(data, dict):
         return [{"artifact": path, "type": "yaml-parse-error"}]
 
-    # -- text scan (commented-out keys) -------------------------------------
-    commented = _scan_commented_yaml(text)
+    accounts = data.get("accounts")
+    if not isinstance(accounts, list) or not accounts:
+        return [
+            {
+                "artifact": path,
+                "type": "yaml-not-multi-account",
+                "message": "expected a non-empty top-level 'accounts:' list",
+            }
+        ]
+    representative = accounts[0]
+    if not isinstance(representative, dict):
+        return [{"artifact": path, "type": "yaml-parse-error"}]
 
-    # -- collect all YAML keys (both sources) -------------------------------
-    all_yaml_keys: set[str] = set()
+    # -- structured keys of the representative account ----------------------
+    structured: dict[str, Any] = {}
 
-    # Add structured keys (nested paths).
     def _collect_paths(d: dict[str, Any], prefix: str) -> None:
         for k, v in d.items():
             full = f"{prefix}.{k}" if prefix else k
-            all_yaml_keys.add(full)
             if isinstance(v, dict):
                 _collect_paths(v, full)
+            else:
+                structured[full] = v
 
-    _collect_paths(data, "")
+    for section, value in representative.items():
+        if isinstance(value, dict):
+            _collect_paths(value, section)
 
-    # Add commented-out keys.
-    all_yaml_keys.update(commented.keys())
-
-    # Build reverse mapping: YAML path → field name.
-    yaml_to_field: dict[str, str] = {}
-    for field_name, ypath in FIELD_TO_YAML.items():
-        yaml_to_field[ypath] = field_name
+    # -- text scan (commented-out optional keys) ----------------------------
+    commented = _scan_commented_yaml(text)
 
     # -- check each MailConfig field ----------------------------------------
     field_defaults: dict[str, Any] = {}
@@ -351,7 +378,7 @@ def check_yaml_example(
         field_defaults[f.name] = _field_default(f)
 
     for field_name, ypath in FIELD_TO_YAML.items():
-        has_structured = _get_nested(data, ypath) is not _MISSING_SENTINEL
+        has_structured = ypath in structured
         has_commented = ypath in commented
 
         if not has_structured and not has_commented:
@@ -368,9 +395,11 @@ def check_yaml_example(
         default = field_defaults[field_name]
         if default is dataclasses.MISSING:
             continue  # required field — presence check was enough
+        if ypath in _SKIP_DEFAULT_CHECK:
+            continue  # per-account value; presence check was enough
 
         if has_structured:
-            actual = _get_nested(data, ypath)
+            actual = structured[ypath]
             if not _values_match(actual, default):
                 findings.append(
                     {
@@ -395,14 +424,15 @@ def check_yaml_example(
                 )
 
     # -- stale YAML keys ----------------------------------------------------
-    for ypath in all_yaml_keys:
-        if ypath not in yaml_to_field:
-            # Only flag leaf keys that look like config values (skip
-            # parent dicts like "imap", "smtp", etc.)
-            if "." not in ypath:
-                # Top-level keys like "imap" are sections, not fields.
-                # We don't flag them as stale.
-                continue
+    # Any leaf ``section.key`` (structured or commented) that does not map to
+    # a known ``MailConfig`` field is flagged so an example cannot document a
+    # key the code no longer reads.
+    known_paths = set(FIELD_TO_YAML.values())
+    for ypath in {*structured, *commented}:
+        if "." not in ypath:
+            # Top-level account keys (``id``, ``label``) are not config fields.
+            continue
+        if ypath not in known_paths:
             findings.append(
                 {
                     "artifact": path,
@@ -747,8 +777,13 @@ def check_docs_connecting(
 
 
 # ====================================================================
-# Check 4 — config/mail.accounts.example.yaml (multi-account example)
+# Check 4 — structural validation of the merged multi-account example
 # ====================================================================
+
+# Legacy per-account default path form (``.data/mail-<id>.db``), replaced by
+# the per-account folder form ``.data/<id>/mail.db``.  No account may silently
+# fall back to either this or the single-account ``.data/mail.db`` default.
+_LEGACY_FLAT_DB_PATH_RE = re.compile(r"^\.data/mail-[^/]+\.db$")
 
 
 def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
@@ -818,10 +853,12 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
             }
         )
 
-    # No account may fall back to the legacy single-account ".data/mail.db";
-    # each must get its unique ".data/mail-<id>.db" default.
+    # No account may fall back to the legacy single-account ".data/mail.db"
+    # nor the legacy flat ".data/mail-<id>.db" form; each must use the
+    # per-account folder default ".data/<id>/mail.db" (or an explicit path).
     for account in config.accounts:
-        if account.config.db_path == DEFAULT_DB_PATH:
+        db_path = account.config.db_path
+        if db_path == DEFAULT_DB_PATH or _LEGACY_FLAT_DB_PATH_RE.match(db_path):
             findings.append(
                 {
                     "artifact": label,
@@ -835,7 +872,7 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
 
 def check_accounts_example(
     text_or_path: str | Path,
-    path: str = "config/mail.accounts.example.yaml",
+    path: str = "config/mail.local.example.yaml",
 ) -> list[dict[str, Any]]:
     """Check the multi-account example against ``MailAccountsConfig``.
 
@@ -852,7 +889,7 @@ def check_accounts_example(
 
     # Treat the argument as YAML text.
     with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_file = Path(tmp_dir) / "mail.accounts.example.yaml"
+        tmp_file = Path(tmp_dir) / "mail.local.example.yaml"
         tmp_file.write_text(str(text_or_path))
         return _check_accounts_path(tmp_file, path)
 
@@ -888,7 +925,6 @@ def run_checks(
     yaml_path = repo_root / "config" / "mail.local.example.yaml"
     env_path = repo_root / ".env.example"
     docs_path = repo_root / "docs" / "connecting.md"
-    accounts_path = repo_root / "config" / "mail.accounts.example.yaml"
 
     try:
         yaml_text = yaml_path.read_text()
@@ -926,24 +962,12 @@ def run_checks(
         print(f"ERROR: cannot read {docs_path}: {exc}", file=sys.stderr)
         return 2
 
-    try:
-        accounts_text = accounts_path.read_text()
-    except FileNotFoundError:
-        print(
-            f"ERROR: {accounts_path} not found — cannot run accounts-example check",
-            file=sys.stderr,
-        )
-        return 2
-    except OSError as exc:
-        print(f"ERROR: cannot read {accounts_path}: {exc}", file=sys.stderr)
-        return 2
-
     # -- run checks ---------------------------------------------------------
     findings: list[dict[str, Any]] = []
     findings.extend(check_yaml_example(yaml_text, str(yaml_path)))
     findings.extend(check_env_example(env_text, str(env_path)))
     findings.extend(check_docs_connecting(docs_text, str(docs_path)))
-    findings.extend(check_accounts_example(accounts_text, str(accounts_path)))
+    findings.extend(check_accounts_example(yaml_path, str(yaml_path)))
 
     # -- report -------------------------------------------------------------
     if not findings:

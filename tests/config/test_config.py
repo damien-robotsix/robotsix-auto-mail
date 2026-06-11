@@ -12,6 +12,7 @@ import pytest
 from robotsix_auto_mail.config import (
     DEFAULT_LLM_MODEL,
     ConfigurationError,
+    MailAccountsConfig,
     MailConfig,
     load,
     load_llm,
@@ -260,15 +261,16 @@ def test_from_env_invalid_smtp_tls_mode() -> None:
 
 
 def test_from_yaml_example_file() -> None:
-    """The bundled example YAML file is valid and parses correctly."""
-    cfg = MailConfig.from_yaml("config/mail.local.example.yaml")
-    assert cfg.imap_host == "imap.example.com"
+    """The bundled multi-account example is valid and parses correctly."""
+    accounts = MailAccountsConfig.from_yaml("config/mail.local.example.yaml")
+    cfg = accounts.default.config
+    assert cfg.imap_host == "imap.gmail.com"
     assert cfg.imap_port == 993
     assert cfg.imap_tls_mode == "direct-tls"
-    assert cfg.smtp_host == "smtp.example.com"
+    assert cfg.smtp_host == "smtp.gmail.com"
     assert cfg.smtp_port == 587
     assert cfg.smtp_tls_mode == "starttls"
-    assert cfg.username == "user@example.com"
+    assert cfg.username == "me@gmail.com"
     assert cfg.password == ""
     assert cfg.imap_folder == "INBOX"
 

@@ -96,12 +96,23 @@ robotsix-auto-mail detect user@gmail.com
 ```
 
 This auto-detects settings, prompts for the password interactively, writes a
-single `config/mail.local.yaml` with the password included, and then verifies
+multi-account `config/mail.local.yaml` (a top-level `default_account:` plus an
+`accounts:` list with one entry) with the password included, and then verifies
 the settings by connecting to the IMAP and SMTP servers (the same check as the
 `probe` command). Pass `--no-verify` to skip that connection check.
 
-Re-running `detect` over an existing file updates the mail fields but
-preserves the `llm:` section, so your API key is not lost.
+The detected account's `id` is derived from the email address (a sanitised
+`local-part-domain` form) unless you pass `--id <id>` explicitly; its store
+defaults to the per-account folder `.data/<id>/mail.db`, and `default_account`
+is set to that id when the file is new.
+
+**Appending accounts.** Re-running `detect` against an existing multi-account
+file **appends** the newly-detected account, preserving the other accounts
+already in the file. If the resolved `id` already exists, `detect` refuses
+(exit 1) rather than clobbering it — pass `--id <new-id>` to add a distinct
+account. If the output file is still in the deprecated mono shape, the existing
+configuration is converted to a `default` account before the new one is
+appended (run `migrate-config` first if you prefer to convert it explicitly).
 
 ### Scripting usage
 
@@ -116,6 +127,7 @@ robotsix-auto-mail detect user@gmail.com \
 | Option | Required | Default | Purpose |
 |---|---|---|---|
 | `EMAIL` (positional) | yes | – | Email address to detect settings for |
+| `--id ID` | no | (derived from email) | Account id for the detected account (the `accounts:` entry id and `.data/<id>/mail.db` store folder) |
 | `--password` | no | (prompted) | Password to write into the config file |
 | `--output PATH` | no | `config/mail.local.yaml` | Write mail config to this path |
 | `--stdout` | no | – | Print config to stdout instead of writing to file; password is intentionally omitted (must be filled in manually or via `MAIL_PASSWORD`); no verification is performed |
@@ -155,6 +167,36 @@ interactive prompt appears (requires a TTY — use `docker compose run` without
   environment variable before running other commands.
 - For users who prefer manual config, the traditional approach (editing
   `config/mail.local.yaml` by hand) is unaffected and fully supported.
+
+## The migrate-config command
+
+The single-account ("mono") config shape is **deprecated**. A mono file still
+loads, but emits a `DeprecationWarning` at startup. To convert it to the
+multi-account `accounts:` shape, run:
+
+```sh
+robotsix-auto-mail migrate-config
+```
+
+This reads the canonical config file (`config/mail.local.yaml` by default, or
+`--config PATH`), rewrites it into a one-entry `accounts:` container that
+**preserves every value verbatim**, and sets `default_account` to the migrated
+account's id. Before overwriting, it writes a backup of the original to
+`<path>.bak`.
+
+| Option | Required | Default | Purpose |
+|---|---|---|---|
+| `--config PATH` | no | the canonical config path | Config file to migrate |
+| `--id ID` | no | `default` | Account id assigned to the migrated single account |
+| `--dry-run` | no | – | Print the migrated YAML to stdout without writing the file or the backup |
+
+Behaviour:
+
+- A file already in the multi-account shape is left untouched (a clear
+  "already migrated" message is printed; exit 0).
+- A missing file is an error (exit 1).
+- A migrated account that had no explicit `store.path` gets the per-account
+  default `.data/<id>/mail.db`; an explicit `store.path` is preserved.
 
 ## Configuration keys
 
@@ -342,8 +384,14 @@ watermarks) is therefore naturally isolated with zero schema changes, and the
 existing per-config `store.path` is the only plumbing needed. The cost is one
 SQLite file per account, so every account's `store.path` must be unique —
 uniqueness is enforced when the configuration loads. When an account omits
-`store.path`, it defaults to `.data/mail-<id>.db`, which is unique per
-account (the single-account default stays `.data/mail.db`).
+`store.path`, it defaults to a dedicated per-account folder `.data/<id>/mail.db`,
+which is unique per account and created automatically on first DB use.
+
+> The legacy single-account ("mono") shape — top-level `imap:` / `smtp:` /
+> `auth:` sections with no `accounts:` key — is **deprecated** but still loads
+> (it emits a `DeprecationWarning` at startup). Run
+> [`robotsix-auto-mail migrate-config`](#the-migrate-config-command) to convert
+> an old config to the multi-account shape.
 
 **YAML shape.** A multi-account YAML file uses a top-level `accounts:` list
 instead of the single-account top-level sections. Each list entry is a
@@ -351,8 +399,8 @@ mapping with a required string `id`, an optional `label`, and the usual
 nested `imap` / `smtp` / `auth` / `store` (and optional `llm` / `ingest` /
 `archive` / `triage`) sections — parsed exactly as in the single-account
 file. An optional top-level `default_account:` names the default account;
-when omitted, the first entry is the default. A complete example ships in
-`config/mail.accounts.example.yaml`:
+when omitted, the first entry is the default. The canonical example ships in
+`config/mail.local.example.yaml`:
 
 ```yaml
 default_account: personal
@@ -367,7 +415,7 @@ accounts:
     auth:
       username: me@gmail.com
     store:
-      path: .data/mail-personal.db
+      path: .data/personal/mail.db
 
   - id: work
     label: Work mailbox
@@ -378,7 +426,7 @@ accounts:
     auth:
       username: me@work.example.com
     store:
-      path: .data/mail-work.db
+      path: .data/work/mail.db
 ```
 
 **Environment-variable scheme.** Each per-field environment variable is
@@ -392,7 +440,7 @@ extra namespaced variables describe the account itself: `MAIL_ACCOUNTS_<n>_ID`
 `MAIL_ACCOUNTS_<n>_LABEL` (optional). Account indices must be contiguous
 starting at 0 (a gap raises an error). An optional `MAIL_ACCOUNTS_DEFAULT`
 names the default account id. As with `store.path` in YAML, an account whose
-`MAIL_ACCOUNTS_<n>_DB_PATH` is unset defaults to `.data/mail-<id>.db`.
+`MAIL_ACCOUNTS_<n>_DB_PATH` is unset defaults to `.data/<id>/mail.db`.
 
 ### Self-managed archive structure
 

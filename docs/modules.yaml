@@ -71,7 +71,6 @@ modules:
       - .env.example
       - config/.gitkeep
       - config/mail.local.example.yaml
-      - config/mail.accounts.example.yaml
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
       - tests/config/test_config_sync_agent.py
