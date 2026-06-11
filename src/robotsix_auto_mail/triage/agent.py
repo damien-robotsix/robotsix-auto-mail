@@ -285,6 +285,152 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
         set_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY, json.dumps(suggestions))
 
 
+def _apply_deterministic_triage(
+    conn: sqlite3.Connection,
+    records: list[MailRecord],
+) -> tuple[list[TriageDecision], list[MailRecord]]:
+    """Apply deterministic rules, persisting matches and returning the remainder."""
+    decisions: list[TriageDecision] = []
+    remaining: list[MailRecord] = []
+    for record in records:
+        matched_action = apply_triage_rules(conn, record)
+        if matched_action is None:
+            remaining.append(record)
+            continue
+        set_triage_decision(
+            conn,
+            record.message_id,
+            matched_action,
+            source="agent",
+            reason="matched deterministic rule",
+        )
+        decisions.append(
+            TriageDecision(
+                message_id=record.message_id,
+                action=matched_action,
+                source="agent",
+                reason="matched deterministic rule",
+                confidence="medium",
+            )
+        )
+    return decisions, remaining
+
+
+def _resolve_llm_api_key(api_key: str | None) -> str:
+    """Resolve the LLM key (arg -> LLM_API_KEY env -> config), raising if absent."""
+    resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
+    if not resolved_key:
+        resolved_key = load_llm()
+    if not resolved_key:
+        raise TriageError(
+            "No LLM API key found — set the LLM_API_KEY environment "
+            "variable or add an `llm.api_key` entry to your config file"
+        )
+    return resolved_key
+
+
+def _load_archive_guidance(
+    conn: sqlite3.Connection,
+    remaining: list[MailRecord],
+) -> tuple[list[str] | None, list[str]]:
+    """Load archive folders and per-sender/domain archive-folder history hints."""
+    archive_raw = get_watermark(conn, "archive_structure")
+    archive_folders: list[str] | None = None
+    if archive_raw is not None:
+        try:
+            data = json.loads(archive_raw)
+            if isinstance(data, list):
+                archive_folders = data
+            else:
+                archive_folders = data["folders"]
+        except (json.JSONDecodeError, TypeError, KeyError):
+            archive_folders = None
+
+    folder_memory = _load_archive_folder_memory(conn)
+    archive_folder_history: list[str] = []
+    if folder_memory:
+        seen_keys: set[str] = set()
+        for record in remaining:
+            sender_key = _sender_key(record.sender)
+            sender_entry = folder_memory.get(sender_key)
+            if sender_entry is not None and sender_key not in seen_keys:
+                seen_keys.add(sender_key)
+                archive_folder_history.append(
+                    f"- Mail from `{sender_key}` was previously archived to "
+                    f"`{sender_entry.subfolder}`."
+                )
+            domain = _domain_key(record.sender)
+            domain_entry = folder_memory.get(domain) if domain else None
+            if domain_entry is not None and domain not in seen_keys:
+                seen_keys.add(domain)
+                times = "time" if domain_entry.count == 1 else "times"
+                archive_folder_history.append(
+                    f"- Other mail from senders at domain `{domain}` was "
+                    f"previously archived to `{domain_entry.subfolder}` "
+                    f"({domain_entry.count} {times})."
+                )
+    return archive_folders, archive_folder_history
+
+
+def _persist_llm_triage_results(
+    conn: sqlite3.Connection,
+    remaining: list[MailRecord],
+    by_index: dict[int, TriageItem],
+) -> list[TriageDecision]:
+    """Map LLM items back to records, clamp/default actions, and persist them."""
+    decisions: list[TriageDecision] = []
+    for i, record in enumerate(remaining, start=1):
+        matched = by_index.get(i)
+        if matched is None:
+            action, reason, confidence = "HUMAN_TRIAGE", "", "medium"
+        else:
+            action = matched.action
+            if action not in _AGENT_SELECTABLE_ACTIONS:
+                action = "HUMAN_TRIAGE"
+            reason, confidence = matched.reason, matched.confidence
+        set_triage_decision(
+            conn,
+            record.message_id,
+            action,
+            source="agent",
+            reason=reason,
+            confidence=confidence,
+        )
+        decisions.append(
+            TriageDecision(
+                message_id=record.message_id,
+                action=action,
+                source="agent",
+                reason=reason,
+                confidence=confidence,
+            )
+        )
+    return decisions
+
+
+def _update_archive_hints(
+    conn: sqlite3.Connection,
+    remaining: list[MailRecord],
+    by_index: dict[int, TriageItem],
+) -> None:
+    """Clear stale TO_ARCHIVE subfolder hints and upsert new ones."""
+    hints = _load_llm_archive_hints(conn)
+    # Clear stale hints: any remaining record whose LLM action is NOT
+    # TO_ARCHIVE should have its hint entry removed.
+    for i, record in enumerate(remaining, start=1):
+        matched = by_index.get(i)
+        if matched is not None and matched.action != "TO_ARCHIVE":
+            hints.pop(record.message_id, None)
+    # Upsert new hints for TO_ARCHIVE items with a non-empty subfolder.
+    for i, record in enumerate(remaining, start=1):
+        matched = by_index.get(i)
+        if matched is not None and matched.action == "TO_ARCHIVE":
+            sub = (matched.archive_subfolder or "").strip()
+            if sub:
+                hints[record.message_id] = sub
+    _save_llm_archive_hints(conn, hints)
+
+
 def run_triage_agent(
     conn: sqlite3.Connection,
     *,
@@ -330,82 +476,17 @@ def run_triage_agent(
         return []
 
     # -- deterministic rule fast-path: triage matching mail without the LLM --
-    decisions: list[TriageDecision] = []
-    remaining = []
-    for record in records:
-        matched_action = apply_triage_rules(conn, record)
-        if matched_action is None:
-            remaining.append(record)
-            continue
-        set_triage_decision(
-            conn,
-            record.message_id,
-            matched_action,
-            source="agent",
-            reason="matched deterministic rule",
-        )
-        decisions.append(
-            TriageDecision(
-                message_id=record.message_id,
-                action=matched_action,
-                source="agent",
-                reason="matched deterministic rule",
-                confidence="medium",
-            )
-        )
+    decisions, remaining = _apply_deterministic_triage(conn, records)
 
     # Every inbox record was triaged deterministically — no LLM call needed.
     if not remaining:
         return decisions
 
     # -- resolve API key (arg -> LLM_API_KEY env -> config.llm_api_key) --
-    resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
-    if not resolved_key:
-        resolved_key = load_llm()
-    if not resolved_key:
-        raise TriageError(
-            "No LLM API key found — set the LLM_API_KEY environment "
-            "variable or add an `llm.api_key` entry to your config file"
-        )
+    resolved_key = _resolve_llm_api_key(api_key)
 
-    # -- read archive structure for the LLM system prompt ------------------
-
-    archive_raw = get_watermark(conn, "archive_structure")
-    archive_folders: list[str] | None = None
-    if archive_raw is not None:
-        try:
-            data = json.loads(archive_raw)
-            if isinstance(data, list):
-                archive_folders = data
-            else:
-                archive_folders = data["folders"]
-        except (json.JSONDecodeError, TypeError, KeyError):
-            archive_folders = None
-
-    # -- per-sender/domain archive-folder history guidance ---------------
-    folder_memory = _load_archive_folder_memory(conn)
-    archive_folder_history: list[str] = []
-    if folder_memory:
-        seen_keys: set[str] = set()
-        for record in remaining:
-            sender_key = _sender_key(record.sender)
-            sender_entry = folder_memory.get(sender_key)
-            if sender_entry is not None and sender_key not in seen_keys:
-                seen_keys.add(sender_key)
-                archive_folder_history.append(
-                    f"- Mail from `{sender_key}` was previously archived to "
-                    f"`{sender_entry.subfolder}`."
-                )
-            domain = _domain_key(record.sender)
-            domain_entry = folder_memory.get(domain) if domain else None
-            if domain_entry is not None and domain not in seen_keys:
-                seen_keys.add(domain)
-                times = "time" if domain_entry.count == 1 else "times"
-                archive_folder_history.append(
-                    f"- Other mail from senders at domain `{domain}` was "
-                    f"previously archived to `{domain_entry.subfolder}` "
-                    f"({domain_entry.count} {times})."
-                )
+    # -- read archive structure + per-sender/domain history for the prompt --
+    archive_folders, archive_folder_history = _load_archive_guidance(conn, remaining)
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
@@ -448,50 +529,10 @@ def run_triage_agent(
         if 1 <= item.index <= len(remaining) and item.index not in by_index:
             by_index[item.index] = item
 
-    for i, record in enumerate(remaining, start=1):
-        matched = by_index.get(i)
-        if matched is None:
-            action, reason, confidence = "HUMAN_TRIAGE", "", "medium"
-        else:
-            action = matched.action
-            if action not in _AGENT_SELECTABLE_ACTIONS:
-                action = "HUMAN_TRIAGE"
-            reason, confidence = matched.reason, matched.confidence
-        set_triage_decision(
-            conn,
-            record.message_id,
-            action,
-            source="agent",
-            reason=reason,
-            confidence=confidence,
-        )
-        decisions.append(
-            TriageDecision(
-                message_id=record.message_id,
-                action=action,
-                source="agent",
-                reason=reason,
-                confidence=confidence,
-            )
-        )
+    decisions.extend(_persist_llm_triage_results(conn, remaining, by_index))
 
     # -- store/clear LLM archive subfolder hints -------------------------
-
-    hints = _load_llm_archive_hints(conn)
-    # Clear stale hints: any remaining record whose LLM action is NOT
-    # TO_ARCHIVE should have its hint entry removed.
-    for i, record in enumerate(remaining, start=1):
-        matched = by_index.get(i)
-        if matched is not None and matched.action != "TO_ARCHIVE":
-            hints.pop(record.message_id, None)
-    # Upsert new hints for TO_ARCHIVE items with a non-empty subfolder.
-    for i, record in enumerate(remaining, start=1):
-        matched = by_index.get(i)
-        if matched is not None and matched.action == "TO_ARCHIVE":
-            sub = (matched.archive_subfolder or "").strip()
-            if sub:
-                hints[record.message_id] = sub
-    _save_llm_archive_hints(conn, hints)
+    _update_archive_hints(conn, remaining, by_index)
 
     # -- check TO_DELETE senders for unsubscribe options ------------------
     _check_unsubscribe_for_to_delete(conn)
