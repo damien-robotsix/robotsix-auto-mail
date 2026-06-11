@@ -45,13 +45,6 @@ button:hover { background: #1a4d7a; }
   display: none;
 }
 
-/* -- page chrome ---------------------------------------------------------- */
-#refresh-time {
-  display: inline; vertical-align: middle;
-  margin-left: 0.25rem; margin-bottom: 1rem;
-  font-size: 0.75rem; color: #606080;
-}
-
 /* -- scroll fix ----------------------------------------------------------- */
 /* The library sets ``.board { min-height: 100vh }`` which pushes the
  * horizontal scrollbar off-screen below the fold.  Constrain the
