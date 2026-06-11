@@ -11,7 +11,7 @@ jobs:
   # replaces the inline ruff/mypy/deptry/pytest+coverage/bandit steps that used
   # to be hand-rolled here.
   ci:
-    uses: damien-robotsix/robotsix-mill/.github/workflows/python-ci.yml@main
+    uses: damien-robotsix/robotsix-mill/.github/workflows/python-ci.yml@87e551ff05d57ac2a6f451023f7ed31b68bb0596  # main
     with:
       python-version: "3.14"
       install-extras: "dev"
@@ -60,7 +60,7 @@ jobs:
   # call replaces the inline TruffleHog secret-scan / pip-audit / CycloneDX
   # SBOM steps that used to be hand-rolled here.
   security:
-    uses: damien-robotsix/robotsix-mill/.github/workflows/python-security.yml@main
+    uses: damien-robotsix/robotsix-mill/.github/workflows/python-security.yml@87e551ff05d57ac2a6f451023f7ed31b68bb0596  # main
     with:
       python-version: "3.14"
       install-extras: "dev"
