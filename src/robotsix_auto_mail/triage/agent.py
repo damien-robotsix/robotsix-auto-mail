@@ -79,7 +79,11 @@ def _build_triage_system_prompt(
         "`low`, `medium`, or `high`. Prefer `HUMAN_TRIAGE` over guessing.\n"
         "\n"
         "Return a JSON object with an `items` list. Return ONLY the JSON "
-        "object matching the schema — no explanation, no markdown fences."
+        "object matching the schema — no explanation, no markdown fences.\n"
+        "\n"
+        "When a message is marked as already answered (a reply has already "
+        "been sent), it should normally be classified `TO_ARCHIVE`, unless "
+        "the reply content indicates the thread still needs further action."
     )
     if archive_folders:
         folder_lines = "\n".join(f"- {f}" for f in archive_folders)
@@ -110,10 +114,13 @@ def _build_user_message(records: list) -> str:  # type: ignore[type-arg]
     """Enumerate *records* as ``index | sender | subject | <body preview>``."""
     lines = ["Messages to triage (index | sender | subject | body preview):"]
     for i, record in enumerate(records, start=1):
-        lines.append(
+        line = (
             f"{i} | {record.sender} | {record.subject} | "
             f"{_body_preview(record.body_plain)}"
         )
+        if record.sent_reply_text:
+            line += f" | ANSWERED — reply sent: {_body_preview(record.sent_reply_text)}"
+        lines.append(line)
     return "\n".join(lines)
 
 
