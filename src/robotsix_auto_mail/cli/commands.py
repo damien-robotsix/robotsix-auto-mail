@@ -6,7 +6,6 @@ import argparse
 import errno
 import json
 import sys
-import time
 from pathlib import Path
 from typing import TextIO
 
@@ -169,7 +168,7 @@ def _cmd_ingest(
                 sys.stderr.write(f"Ingest cycle failed: {exc}\n")
             sys.stdout.write(f"Next ingest in {interval_minutes} min.\n")
             sys.stdout.flush()
-            time.sleep(interval_minutes * 60)
+            _cli.time.sleep(interval_minutes * 60)
     except KeyboardInterrupt:
         sys.stdout.write("\nWatch stopped.\n")
         return 0
