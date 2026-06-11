@@ -225,6 +225,7 @@ modules:
       - .github/workflows/docs.yml
       - .github/workflows/lockfile.yml
       - .github/workflows/release.yml
+      - .hadolint.yaml
       - .pre-commit-config.yaml
       - .secrets.baseline
       - renovate.json
