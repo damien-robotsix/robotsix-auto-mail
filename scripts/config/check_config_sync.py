@@ -54,6 +54,9 @@ FIELD_TO_YAML: dict[str, str] = {
     "archive_namespace": "archive.namespace",
     "archive_enabled": "archive.enabled",
     "triage_on_ingest": "triage.on_ingest",
+    "langfuse_public_key": "langfuse.public_key",
+    "langfuse_secret_key": "langfuse.secret_key",
+    "langfuse_base_url": "langfuse.base_url",
 }
 
 FIELD_TO_ENV: dict[str, str] = {
@@ -77,6 +80,9 @@ FIELD_TO_ENV: dict[str, str] = {
     "archive_namespace": "MAIL_ARCHIVE_NAMESPACE",
     "archive_enabled": "MAIL_ARCHIVE_ENABLED",
     "triage_on_ingest": "MAIL_TRIAGE_ON_INGEST",
+    "langfuse_public_key": "MAIL_LANGFUSE_PUBLIC_KEY",
+    "langfuse_secret_key": "MAIL_LANGFUSE_SECRET_KEY",
+    "langfuse_base_url": "MAIL_LANGFUSE_BASE_URL",
 }
 
 # ---------------------------------------------------------------------------

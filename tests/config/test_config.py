@@ -87,6 +87,33 @@ def test_mailconfig_str_redacts_password() -> None:
     assert "<redacted>" in s
 
 
+def test_mailconfig_langfuse_defaults_empty() -> None:
+    """Langfuse fields default to empty strings when unset."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="u",
+        password="p",
+    )
+    assert cfg.langfuse_public_key == ""
+    assert cfg.langfuse_secret_key == ""
+    assert cfg.langfuse_base_url == ""
+
+
+def test_mailconfig_repr_redacts_langfuse_secret_key() -> None:
+    """repr() must NOT include the langfuse_secret_key value."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="u",
+        password="p",
+        langfuse_secret_key="sk-lf-supersecret",
+    )
+    r = repr(cfg)
+    assert "sk-lf-supersecret" not in r
+    assert "<redacted>" in r
+
+
 # ---------------------------------------------------------------------------
 # from_env
 # ---------------------------------------------------------------------------
@@ -289,6 +316,88 @@ auth:
     )
     cfg = MailConfig.from_yaml(yaml_file)
     assert cfg.imap_folder == "Archive"
+
+
+def test_from_yaml_langfuse_section(tmp_path: Path) -> None:
+    """A langfuse: YAML section populates the three langfuse fields."""
+    yaml_file = tmp_path / "langfuse.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  host: imap.example.com
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: u
+  password: p
+
+langfuse:
+  public_key: pk-lf-yaml
+  secret_key: sk-lf-yaml
+  base_url: https://langfuse.example.net
+"""
+    )
+    cfg = MailConfig.from_yaml(yaml_file)
+    assert cfg.langfuse_public_key == "pk-lf-yaml"
+    assert cfg.langfuse_secret_key == "sk-lf-yaml"
+    assert cfg.langfuse_base_url == "https://langfuse.example.net"
+
+
+def test_from_yaml_langfuse_defaults_when_absent(tmp_path: Path) -> None:
+    """Missing langfuse: section → empty-string defaults."""
+    yaml_file = tmp_path / "no_langfuse.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  host: imap.example.com
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: u
+  password: p
+"""
+    )
+    cfg = MailConfig.from_yaml(yaml_file)
+    assert cfg.langfuse_public_key == ""
+    assert cfg.langfuse_secret_key == ""
+    assert cfg.langfuse_base_url == ""
+
+
+def test_from_env_langfuse_vars() -> None:
+    """MAIL_LANGFUSE_* env vars populate the langfuse fields."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "u",
+        "MAIL_PASSWORD": "p",
+        "MAIL_LANGFUSE_PUBLIC_KEY": "pk-lf-env",
+        "MAIL_LANGFUSE_SECRET_KEY": "sk-lf-env",
+        "MAIL_LANGFUSE_BASE_URL": "https://langfuse.env.net",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = MailConfig.from_env()
+        assert cfg.langfuse_public_key == "pk-lf-env"
+        assert cfg.langfuse_secret_key == "sk-lf-env"
+        assert cfg.langfuse_base_url == "https://langfuse.env.net"
+
+
+def test_from_env_langfuse_defaults_when_absent() -> None:
+    """MAIL_LANGFUSE_* env vars absent → empty-string defaults."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "u",
+        "MAIL_PASSWORD": "p",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = MailConfig.from_env()
+        assert cfg.langfuse_public_key == ""
+        assert cfg.langfuse_secret_key == ""
+        assert cfg.langfuse_base_url == ""
 
 
 def test_from_yaml_missing_required_fields(tmp_path: Path) -> None:
