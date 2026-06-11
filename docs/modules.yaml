@@ -62,7 +62,8 @@ modules:
       the deterministic drift-detection script, and the optional
       LLM-driven drift-advisory agent. Together they keep the
       MailConfig dataclass, env example, YAML example, and
-      connecting docs in sync.
+      connecting docs in sync. Also covers multi-account loading
+      (MailAccountsConfig) and per-account SQLite DB isolation.
     paths:
       - src/robotsix_auto_mail/config/__init__.py
       - src/robotsix_auto_mail/config/config_sync_agent.py
@@ -70,9 +71,12 @@ modules:
       - .env.example
       - config/.gitkeep
       - config/mail.local.example.yaml
+      - config/mail.accounts.example.yaml
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
       - tests/config/test_config_sync_agent.py
+      - tests/config/test_accounts_config.py
+      - tests/multi_account/test_account_isolation.py
 
   - id: triage
     description: >-

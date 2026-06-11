@@ -8,6 +8,9 @@ Cross-references the canonical ``MailConfig`` field list (obtained via
 2. ``.env.example``
 3. ``docs/connecting.md``
 
+It additionally validates the multi-account example
+``config/mail.accounts.example.yaml`` against ``MailAccountsConfig``.
+
 Exits 0 when in sync, 1 when drift is found, 2 on a script-level error.
 """
 
@@ -16,6 +19,7 @@ from __future__ import annotations
 import dataclasses
 import re
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +31,12 @@ import yaml
 _SRC = Path(__file__).resolve().parent.parent.parent / "src"
 sys.path.insert(0, str(_SRC))
 
-from robotsix_auto_mail.config import MailConfig  # noqa: E402
+from robotsix_auto_mail.config import (  # noqa: E402
+    DEFAULT_DB_PATH,
+    ConfigurationError,
+    MailAccountsConfig,
+    MailConfig,
+)
 
 # ---------------------------------------------------------------------------
 # Hard-coded field mappings (second pair of eyes on the mapping logic).
@@ -738,6 +747,117 @@ def check_docs_connecting(
 
 
 # ====================================================================
+# Check 4 — config/mail.accounts.example.yaml (multi-account example)
+# ====================================================================
+
+
+def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
+    """Validate the multi-account example loaded from *load_path*.
+
+    *label* is the artifact name used in finding dicts.
+    """
+    findings: list[dict[str, Any]] = []
+
+    try:
+        config = MailAccountsConfig.from_yaml(load_path)
+    except (ConfigurationError, FileNotFoundError) as exc:
+        findings.append(
+            {
+                "artifact": label,
+                "type": "accounts-load-error",
+                "message": str(exc),
+            }
+        )
+        return findings
+
+    # Must be the *multi*-account example.
+    if len(config.accounts) < 2:
+        findings.append(
+            {
+                "artifact": label,
+                "type": "accounts-too-few",
+                "message": f"expected >= 2 accounts, got {len(config.accounts)}",
+            }
+        )
+
+    # Account ids: unique and non-empty.
+    ids = [account.account_id for account in config.accounts]
+    if any(not account_id for account_id in ids):
+        findings.append({"artifact": label, "type": "accounts-empty-id"})
+    duplicate_ids = sorted({i for i in ids if ids.count(i) > 1})
+    if duplicate_ids:
+        findings.append(
+            {
+                "artifact": label,
+                "type": "accounts-duplicate-id",
+                "key": str(duplicate_ids),
+            }
+        )
+
+    # Per-account db_paths: unique.
+    db_paths = [account.config.db_path for account in config.accounts]
+    duplicate_paths = sorted({p for p in db_paths if db_paths.count(p) > 1})
+    if duplicate_paths:
+        findings.append(
+            {
+                "artifact": label,
+                "type": "accounts-duplicate-db-path",
+                "key": str(duplicate_paths),
+            }
+        )
+
+    # The default account id must resolve to a real account.
+    try:
+        _ = config.default
+    except ConfigurationError as exc:
+        findings.append(
+            {
+                "artifact": label,
+                "type": "accounts-bad-default",
+                "message": str(exc),
+            }
+        )
+
+    # No account may fall back to the legacy single-account ".data/mail.db";
+    # each must get its unique ".data/mail-<id>.db" default.
+    for account in config.accounts:
+        if account.config.db_path == DEFAULT_DB_PATH:
+            findings.append(
+                {
+                    "artifact": label,
+                    "type": "accounts-legacy-db-path",
+                    "key": account.account_id,
+                }
+            )
+
+    return findings
+
+
+def check_accounts_example(
+    text_or_path: str | Path,
+    path: str = "config/mail.accounts.example.yaml",
+) -> list[dict[str, Any]]:
+    """Check the multi-account example against ``MailAccountsConfig``.
+
+    *text_or_path* may be either a filesystem path to the example file or
+    the raw YAML text (which is written to a temporary file so the
+    path-based ``MailAccountsConfig.from_yaml`` loader can read it).  *path*
+    is the artifact label used in the returned finding dicts.
+
+    Returns a list of finding dicts (empty when the example is consistent).
+    """
+    source = Path(text_or_path)
+    if source.exists():
+        return _check_accounts_path(source, path)
+
+    # Treat the argument as YAML text.
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_file = Path(tmp_dir) / "mail.accounts.example.yaml"
+        tmp_file.write_text(str(text_or_path))
+        return _check_accounts_path(tmp_file, path)
+
+
+# ====================================================================
 # Main entry point
 # ====================================================================
 
@@ -750,7 +870,7 @@ def _repo_root() -> Path:
 def run_checks(
     repo_root: Path | None = None,
 ) -> int:
-    """Run all three checks.  Returns exit code 0, 1, or 2.
+    """Run all config-sync checks.  Returns exit code 0, 1, or 2.
 
     Args:
         repo_root: Path to the repository root.  Defaults to auto-detection.
@@ -768,6 +888,7 @@ def run_checks(
     yaml_path = repo_root / "config" / "mail.local.example.yaml"
     env_path = repo_root / ".env.example"
     docs_path = repo_root / "docs" / "connecting.md"
+    accounts_path = repo_root / "config" / "mail.accounts.example.yaml"
 
     try:
         yaml_text = yaml_path.read_text()
@@ -805,11 +926,24 @@ def run_checks(
         print(f"ERROR: cannot read {docs_path}: {exc}", file=sys.stderr)
         return 2
 
+    try:
+        accounts_text = accounts_path.read_text()
+    except FileNotFoundError:
+        print(
+            f"ERROR: {accounts_path} not found — cannot run accounts-example check",
+            file=sys.stderr,
+        )
+        return 2
+    except OSError as exc:
+        print(f"ERROR: cannot read {accounts_path}: {exc}", file=sys.stderr)
+        return 2
+
     # -- run checks ---------------------------------------------------------
     findings: list[dict[str, Any]] = []
     findings.extend(check_yaml_example(yaml_text, str(yaml_path)))
     findings.extend(check_env_example(env_text, str(env_path)))
     findings.extend(check_docs_connecting(docs_text, str(docs_path)))
+    findings.extend(check_accounts_example(accounts_text, str(accounts_path)))
 
     # -- report -------------------------------------------------------------
     if not findings:
