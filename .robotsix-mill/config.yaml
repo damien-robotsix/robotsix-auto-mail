@@ -6,3 +6,5 @@ smoke_paths:
   - src/robotsix_auto_mail/board_adapter.py
   - src/robotsix_auto_mail/cli/**
   - scripts/smoke_board.sh
+extra_sandbox_packages:
+  - pip:structlog

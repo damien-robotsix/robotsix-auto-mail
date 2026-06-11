@@ -43,3 +43,8 @@ config/mail.local.yaml
 # Runtime log directory — bind-mounted and persisted on the host.
 /.mail_log/*
 !/.mail_log/.gitkeep
+
+# Vendored third-party dependency snapshots must never be committed; the
+# sandbox env (or extra_sandbox_packages) supplies runtime deps instead.
+.deps/
+.pip-site/

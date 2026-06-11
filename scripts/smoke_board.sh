@@ -53,11 +53,12 @@ export MAIL_DB_PATH="${TMP_DIR}/smoke.db"
 # Launch the server in the background, capturing stdout/stderr for diagnosis.
 # Prefer `uv run --frozen` when available; the mill test-gate sandbox has no
 # `uv` binary, so fall back to launching via the installed package layout with
-# PYTHONPATH pointing at the repo source and vendored dependency dirs.
+# PYTHONPATH pointing at the repo source and relying on the sandbox-installed
+# runtime packages for dependencies.
 if command -v uv >/dev/null 2>&1; then
     uv run --frozen robotsix-auto-mail serve --port "${PORT}" >"${LOG_FILE}" 2>&1 &
 else
-    PYTHONPATH="src:.deps:.pip-site" python -c 'import sys; from robotsix_auto_mail.cli import main; sys.exit(main())' serve --port "${PORT}" >"${LOG_FILE}" 2>&1 &
+    PYTHONPATH="src" python -c 'import sys; from robotsix_auto_mail.cli import main; sys.exit(main())' serve --port "${PORT}" >"${LOG_FILE}" 2>&1 &
 fi
 SERVER_PID=$!
 
