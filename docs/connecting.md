@@ -604,9 +604,11 @@ Triage field shows "(no triage decision)".
 the detail drawer shows a **Draft reply** section with two interfaces:
 - A **Generate with AI** button (when no draft exists) or **Regenerate with AI** 
   button (when a draft already exists) that uses an LLM to prepare a concise, 
-  professional reply draft in the same language as the incoming message. The 
-  generated draft appears in a textarea below the button, ready for review and 
-  manual editing.
+  professional reply draft in the same language as the incoming message. The LLM 
+  incorporates any notes or instructions you have written in the **Notes** field 
+  — use them to guide the draft (e.g., "decline politely", "mention invoice paid", 
+  "propose Tuesday afternoon"). The generated draft appears in a textarea below 
+  the button, ready for review and manual editing.
 - A **Save draft** form to persist your (edited) draft text and move the card to 
   "Draft ready" status.
 
