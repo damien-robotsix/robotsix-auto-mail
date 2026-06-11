@@ -1,0 +1,30 @@
+name: pre-commit
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pre-commit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files --verbose
+        env:
+          # Skip hooks already enforced by the reusable python-ci spine
+          # (ruff/ruff-format/mypy/bandit) and the repo-checks job
+          # (hadolint-docker/check-config-sync/robotsix-modules-validate),
+          # leaving this job responsible only for the hooks with no other
+          # CI coverage: detect-secrets, file-hygiene, private-key, large-files.
+          SKIP: ruff,ruff-format,mypy,bandit,hadolint-docker,check-config-sync,robotsix-modules-validate
