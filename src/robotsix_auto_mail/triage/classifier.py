@@ -3,7 +3,7 @@
 Archive-subfolder proposals (deterministic + override storage + optional
 LLM hints), persistent human-decision memory, and deterministic triage
 rule proposal / dedup / application.  The ``pydantic_ai`` /
-``OpenRouterDeepseekProvider`` imports stay lazy inside
+LLM-provider imports stay lazy inside
 ``propose_archive_subfolder_llm`` to keep module-load time low.
 """
 
@@ -341,10 +341,10 @@ def propose_archive_subfolder_llm(
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
+    from robotsix_llmio.core import get_provider
 
     try:
-        llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
+        llm_provider = get_provider(api_key=resolved_key)
         agent_handle = llm_provider.build_agent(
             tier=Tier.CHEAP,
             system_prompt=system_prompt,

@@ -35,7 +35,6 @@ services:
     environment:
       MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml
       LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_MODEL: ${LLM_MODEL:-deepseek/deepseek-v4-flash}
 
     volumes:
       # Config bind-mount — YAML files available without image rebuild.

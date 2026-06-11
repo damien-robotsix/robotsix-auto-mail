@@ -367,7 +367,7 @@ def test_detect_provider_success() -> None:
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_auto_mail.detect.OpenRouterDeepseekProvider",
+            "robotsix_auto_mail.detect.get_provider",
             return_value=mock_provider,
         ):
             result = detect_provider("user@example.com")
@@ -400,7 +400,7 @@ def test_detect_provider_passes_api_key_arg() -> None:
         mock_provider_cls = mock.MagicMock(return_value=mock_provider)
 
         with mock.patch(
-            "robotsix_auto_mail.detect.OpenRouterDeepseekProvider",
+            "robotsix_auto_mail.detect.get_provider",
             mock_provider_cls,
         ):
             result = detect_provider("user@example.com", api_key="sk-arg-key")
@@ -418,7 +418,7 @@ def test_detect_provider_llm_call_error() -> None:
         mock_handle.run_sync.side_effect = RuntimeError("LLM API timeout")
 
         with mock.patch(
-            "robotsix_auto_mail.detect.OpenRouterDeepseekProvider",
+            "robotsix_auto_mail.detect.get_provider",
             return_value=mock_provider,
         ):
             with pytest.raises(DetectionError) as exc:
@@ -452,7 +452,7 @@ def test_detect_provider_tier_default() -> None:
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_auto_mail.detect.OpenRouterDeepseekProvider",
+            "robotsix_auto_mail.detect.get_provider",
             return_value=mock_provider,
         ):
             detect_provider("user@example.com")
@@ -478,7 +478,7 @@ def test_detect_provider_explicit_tier() -> None:
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_auto_mail.detect.OpenRouterDeepseekProvider",
+            "robotsix_auto_mail.detect.get_provider",
             return_value=mock_provider,
         ):
             detect_provider("user@example.com", tier=Tier.DEFAULT)

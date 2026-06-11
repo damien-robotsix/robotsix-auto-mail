@@ -122,13 +122,12 @@ def generate_draft_reply(
 
     # -- lazy imports so the module loads without pydantic_ai installed --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import run_agent
-    from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
+    from robotsix_llmio.core import get_provider, run_agent
 
     # -- resolve API key (arg -> config.load_llm()) --
     resolved_key = api_key
     if not resolved_key:
-        resolved_key, _ = load_llm()
+        resolved_key = load_llm()
     if not resolved_key:
         raise DraftGenerationError(
             "No LLM API key found — set the LLM_API_KEY environment "
@@ -138,7 +137,7 @@ def generate_draft_reply(
     user_message = _build_draft_user_message(record)
 
     try:
-        llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
+        llm_provider = get_provider(api_key=resolved_key)
         agent_handle = llm_provider.build_agent(
             tier=tier,
             system_prompt=_build_draft_system_prompt(),

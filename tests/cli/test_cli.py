@@ -1094,7 +1094,7 @@ def test_detect_detection_error(
     assert "test error" in captured.err
 
 
-def test_detect_llm_model_env(
+def test_detect_llm_api_key_env(
     capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
     """detect passes LLM_API_KEY from the environment to
@@ -1108,7 +1108,7 @@ def test_detect_llm_model_env(
 
     with mock.patch.dict(
         os.environ,
-        {"LLM_MODEL": "test-model", "LLM_API_KEY": "sk-test"},
+        {"LLM_API_KEY": "sk-test"},
     ):
         with mock.patch("robotsix_auto_mail.detect.detect_provider", mock_dp):
             rc = main(["detect", "user@x.com", "--stdout"])
@@ -1343,7 +1343,6 @@ auth:
 
 llm:
   api_key: sk-keep-me
-  model: anthropic/claude-3-haiku
 """
     )
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
@@ -1371,9 +1370,8 @@ llm:
     # mail fields updated…
     assert "imap.gmail.com" in content
     assert "user@gmail.com" in content
-    # …but the llm section is preserved
+    # …but the llm api key is preserved
     assert "sk-keep-me" in content
-    assert "anthropic/claude-3-haiku" in content
 
 
 def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
@@ -1507,7 +1505,7 @@ _MONO_CONFIG = (
     "imap:\n  host: imap.example.com\n  port: 1993\n"
     "smtp:\n  host: smtp.example.com\n"
     'auth:\n  username: u@example.com\n  password: "s3cret"\n'
-    "llm:\n  api_key: sk-keep\n  model: anthropic/claude-3-haiku\n"
+    "llm:\n  api_key: sk-keep\n"
 )
 
 
@@ -1531,7 +1529,6 @@ def test_migrate_config_converts_mono_and_writes_backup(
     assert acct.imap_port == 1993
     assert acct.password == "s3cret"
     assert acct.llm_api_key == "sk-keep"
-    assert acct.llm_model == "anthropic/claude-3-haiku"
     assert acct.db_path == ".data/default/mail.db"
 
 
@@ -1669,7 +1666,7 @@ def test_ingest_single_pass_unaffected(
 def _patch_config_sync_llm(
     result_obj: ConfigSyncResult,
 ) -> mock._patch[mock.MagicMock]:
-    """Patch OpenRouterDeepseekProvider so the agent returns *result_obj*."""
+    """Patch get_provider so the agent returns *result_obj*."""
     mock_run_result = mock.MagicMock()
     mock_run_result.output = result_obj
     mock_handle = mock.MagicMock()
@@ -1680,7 +1677,7 @@ def _patch_config_sync_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     return mock.patch(
-        "robotsix_auto_mail.config.config_sync_agent.OpenRouterDeepseekProvider",
+        "robotsix_auto_mail.config.config_sync_agent.get_provider",
         return_value=mock_provider,
     )
 
@@ -1926,7 +1923,7 @@ def test_config_sync_set_unknown_fingerprint(
 def _patch_triage_llm(
     result_obj: TriageResult,
 ) -> mock._patch[mock.MagicMock]:
-    """Patch OpenRouterDeepseekProvider so the agent returns *result_obj*."""
+    """Patch get_provider so the agent returns *result_obj*."""
     mock_run_result = mock.MagicMock()
     mock_run_result.output = result_obj
     mock_handle = mock.MagicMock()
@@ -1937,7 +1934,7 @@ def _patch_triage_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     return mock.patch(
-        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+        "robotsix_llmio.core.get_provider",
         return_value=mock_provider,
     )
 
@@ -2046,9 +2043,7 @@ def test_triage_empty_inbox(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
         db_path=str(tmp_path / "empty.db"),
     )
     with (
-        mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as cls,
+        mock.patch("robotsix_llmio.core.get_provider") as cls,
         mock.patch(
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),
@@ -2168,9 +2163,7 @@ def test_triage_folder_dry_run_skips_triage(
     cfg_db = _cfg_empty_db(tmp_path)
     with (
         _patch_folder_imap(_raw_folder_message("<a@x.com>")),
-        mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as cls,
+        mock.patch("robotsix_llmio.core.get_provider") as cls,
         mock.patch(
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),

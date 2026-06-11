@@ -77,15 +77,12 @@ uv sync --extra dev
 
 # Set your OpenRouter API key (required)
 export LLM_API_KEY=sk-or-v1-…
-
-# Optional: choose a different model (default: deepseek/deepseek-v4-flash)
-export LLM_MODEL=anthropic/claude-3-haiku
 ```
 
-Instead of environment variables, you can put these in the `llm:` section of
+Instead of an environment variable, you can put this in the `llm:` section of
 `config/mail.local.yaml` (see [Configuration keys](#configuration-keys)). The
 LLM credentials resolve through the same cascade as everything else — the
-`LLM_API_KEY` / `LLM_MODEL` environment variables override the file. The same
+`LLM_API_KEY` environment variable overrides the file. The same
 settings will be reused by future LLM-assisted mail processing, not just
 `detect`.
 
@@ -237,7 +234,6 @@ auth:
 
 # llm:
 #   api_key: sk-or-v1-…   # or via the LLM_API_KEY env var
-#   model: deepseek/deepseek-v4-flash
 ```
 
 | Key | Required | Default | Purpose |
@@ -261,7 +257,6 @@ auth:
 | `archive.enabled` | no | `true` | Whether to create/manage the archive folder structure |
 | `triage.on_ingest` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
 | `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing (may instead be supplied via `LLM_API_KEY`) |
-| `llm.model` | no | `"deepseek/deepseek-v4-flash"` | LLM model name |
 | `langfuse.public_key` | no | – | Langfuse public key; when set with the secret key, every LLM agent run is traced |
 | `langfuse.secret_key` | no | – | Langfuse secret key (redacted in logs/repr) |
 | `langfuse.base_url` | no | – | Langfuse host URL (falls back to llmio's own default when unset) |
@@ -298,7 +293,6 @@ supplies the real keys there without committing them.
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
 | `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |
-| `LLM_MODEL` | no | `deepseek/deepseek-v4-flash` | LLM model name (overrides `llm.model`) |
 | `MAIL_LANGFUSE_PUBLIC_KEY` | no | – | Langfuse public key (overrides `langfuse.public_key`); enables LLM tracing |
 | `MAIL_LANGFUSE_SECRET_KEY` | no | – | Langfuse secret key (overrides `langfuse.secret_key`; redacted) |
 | `MAIL_LANGFUSE_BASE_URL` | no | – | Langfuse host URL (overrides `langfuse.base_url`) |
@@ -434,7 +428,7 @@ namespaced per account by inserting `ACCOUNTS_<n>_` after `MAIL_`, where `<n>`
 is a zero-based account index. A field whose single-account variable is
 `MAIL_<X>` becomes `MAIL_ACCOUNTS_<n>_<X>` (for example
 `MAIL_ACCOUNTS_0_IMAP_HOST`, `MAIL_ACCOUNTS_1_PASSWORD`); the two LLM fields
-become `MAIL_ACCOUNTS_<n>_LLM_API_KEY` / `MAIL_ACCOUNTS_<n>_LLM_MODEL`. Two
+become `MAIL_ACCOUNTS_<n>_LLM_API_KEY`. Two
 extra namespaced variables describe the account itself: `MAIL_ACCOUNTS_<n>_ID`
 (required — the stable account id, e.g. `MAIL_ACCOUNTS_0_ID=personal`) and
 `MAIL_ACCOUNTS_<n>_LABEL` (optional). Account indices must be contiguous
@@ -484,8 +478,8 @@ If any environment variable has an *invalid* value (e.g. a non-integer
 port), the error is raised immediately — the file fallback is skipped so
 your typo is not silently swallowed.
 
-**LLM settings** (`llm.api_key` / `llm.model`) follow the same rule —
-`LLM_API_KEY` / `LLM_MODEL` override the file's `llm:` section. The `detect`
+**LLM settings** (`llm.api_key`) follow the same rule —
+`LLM_API_KEY` overrides the file's `llm:` section. The `detect`
 command resolves them on their own (via `load_llm()`) so it works before the
 mail fields are filled in.
 

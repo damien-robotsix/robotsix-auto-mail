@@ -73,7 +73,7 @@ from robotsix_auto_mail.triage import (
 def _patch_llm(
     result_obj: TriageResult,
 ) -> tuple[mock.MagicMock, mock._patch[mock.MagicMock]]:
-    """Patch OpenRouterDeepseekProvider to return *result_obj* from the LLM.
+    """Patch get_provider to return *result_obj* from the LLM.
 
     Returns the mock handle (to assert ``close()``) and the patcher.
     """
@@ -87,7 +87,7 @@ def _patch_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     patcher = mock.patch(
-        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+        "robotsix_llmio.core.get_provider",
         return_value=mock_provider,
     )
     return mock_handle, patcher
@@ -394,9 +394,7 @@ def test_run_triage_agent_empty_inbox_no_llm(
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
-        with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as cls:
+        with mock.patch("robotsix_llmio.core.get_provider") as cls:
             out = run_triage_agent(conn)
         assert out == []
         cls.assert_not_called()
@@ -536,9 +534,7 @@ def test_run_triage_agent_only_undecided_all_decided_no_llm() -> None:
         _insert_inbox(conn, "<b@x.com>")
         set_triage_decision(conn, "<a@x.com>", "TO_ARCHIVE", source="user")
         set_triage_decision(conn, "<b@x.com>", "TO_DELETE", source="user")
-        with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as cls:
+        with mock.patch("robotsix_llmio.core.get_provider") as cls:
             # No api_key needed: filtering empties the set before any LLM.
             out = run_triage_agent(conn, only_undecided=True)
         assert out == []
@@ -556,9 +552,7 @@ def test_run_triage_agent_missing_api_key(
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
-        with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as cls:
+        with mock.patch("robotsix_llmio.core.get_provider") as cls:
             with pytest.raises(TriageError) as exc:
                 run_triage_agent(conn, api_key=None)
         assert "LLM_API_KEY" in str(exc.value)
@@ -580,7 +574,7 @@ def test_run_triage_agent_llm_failure_wrapped(
         mock_provider.build_agent.return_value = mock_handle
         mock_handle.run_sync.side_effect = RuntimeError("timeout")
         with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+            "robotsix_llmio.core.get_provider",
             return_value=mock_provider,
         ):
             with pytest.raises(TriageError) as exc:
@@ -1355,9 +1349,7 @@ def test_run_triage_agent_rule_match_skips_llm(
     try:
         _accept_rule(conn, "sender", "bob@spam.com", "TO_DELETE")
         _insert_inbox(conn, "<bob@spam.com>", sender="bob@spam.com")
-        with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as cls:
+        with mock.patch("robotsix_llmio.core.get_provider") as cls:
             out = run_triage_agent(conn)
         assert len(out) == 1
         assert out[0].action == "TO_DELETE"
@@ -1645,7 +1637,7 @@ def test_system_prompt_with_empty_archive_folders() -> None:
 def _patch_llm_for_proposal(
     subfolder: str,
 ) -> tuple[mock.MagicMock, mock._patch[mock.MagicMock]]:
-    """Patch OpenRouterDeepseekProvider to return *subfolder* from the LLM.
+    """Patch get_provider to return *subfolder* from the LLM.
 
     Returns the mock handle (to assert ``close()``) and the patcher.
     """
@@ -1661,7 +1653,7 @@ def _patch_llm_for_proposal(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     patcher = mock.patch(
-        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+        "robotsix_llmio.core.get_provider",
         return_value=mock_provider,
     )
     return mock_handle, patcher
@@ -1725,9 +1717,7 @@ def test_propose_archive_subfolder_llm_no_api_key(
             date="2025-06-01T12:00:00",
         )
 
-        with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as cls:
+        with mock.patch("robotsix_llmio.core.get_provider") as cls:
             propose_archive_subfolder_llm(conn, record, api_key="")
 
         # LLM never called
@@ -1764,7 +1754,7 @@ def test_propose_archive_subfolder_llm_llm_error(
         mock_provider.build_agent.return_value = mock.MagicMock()
 
         with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+            "robotsix_llmio.core.get_provider",
             return_value=mock_provider,
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test")
@@ -1811,7 +1801,7 @@ def test_propose_archive_subfolder_llm_existing_folders_in_prompt(
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+            "robotsix_llmio.core.get_provider",
             return_value=mock_provider,
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test")
@@ -1859,7 +1849,7 @@ def test_propose_archive_subfolder_llm_sender_memory_in_prompt(
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+            "robotsix_llmio.core.get_provider",
             return_value=mock_provider,
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test")
@@ -2115,7 +2105,7 @@ def test_propose_archive_subfolder_llm_folder_memory_in_prompt(
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+            "robotsix_llmio.core.get_provider",
             return_value=mock_provider,
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test")
@@ -2237,9 +2227,7 @@ def test_detect_unsubscribe_fast_path_header(
             unsubscribe_header="<https://example.com/unsub>",
         ),
     ]
-    with mock.patch(
-        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-    ) as cls:
+    with mock.patch("robotsix_llmio.core.get_provider") as cls:
         result = _detect_unsubscribe_for_sender(
             None,  # conn not used in fast path
             "sender@example.com",
@@ -2270,9 +2258,7 @@ def test_detect_unsubscribe_fast_path_mailto(
             unsubscribe_header="<mailto:unsub@example.com>",
         ),
     ]
-    with mock.patch(
-        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-    ) as cls:
+    with mock.patch("robotsix_llmio.core.get_provider") as cls:
         result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
     assert result is not None
     assert result.has_unsubscribe is True
@@ -2324,7 +2310,7 @@ def test_detect_unsubscribe_llm_path(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     with mock.patch(
-        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+        "robotsix_llmio.core.get_provider",
         return_value=mock_provider,
     ):
         result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
@@ -2372,7 +2358,7 @@ def test_detect_unsubscribe_llm_failure_returns_none(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     with mock.patch(
-        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+        "robotsix_llmio.core.get_provider",
         return_value=mock_provider,
     ):
         result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
@@ -2449,9 +2435,7 @@ def test_check_unsubscribe_threshold_not_met(
             insert_record(conn, record)
             set_triage_decision(conn, mid, "TO_DELETE", source="agent", reason="spam")
 
-        with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as cls:
+        with mock.patch("robotsix_llmio.core.get_provider") as cls:
             _check_unsubscribe_for_to_delete(conn)
         cls.assert_not_called()
 
@@ -2504,9 +2488,7 @@ def test_check_unsubscribe_caching_skips_llm(
             insert_record(conn, record)
             set_triage_decision(conn, mid, "TO_DELETE", source="agent", reason="spam")
 
-        with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as cls:
+        with mock.patch("robotsix_llmio.core.get_provider") as cls:
             _check_unsubscribe_for_to_delete(conn)
         # LLM provider should NOT be called — caching fast path.
         cls.assert_not_called()

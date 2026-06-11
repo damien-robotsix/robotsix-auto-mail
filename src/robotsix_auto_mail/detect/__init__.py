@@ -22,8 +22,7 @@ from xml.etree import ElementTree  # nosec B405
 import pydantic
 import urllib3
 import urllib3.exceptions
-from robotsix_llmio.core import Tier, run_agent
-from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
+from robotsix_llmio.core import Tier, get_provider, run_agent
 
 from robotsix_auto_mail.config import (
     _VALID_TLS_MODES,
@@ -456,9 +455,9 @@ def detect_provider(
 
     Args:
         email_address: The email address to detect provider settings for.
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default) maps to
-            ``deepseek/deepseek-v4-flash``; ``Tier.DEFAULT`` maps to
-            ``deepseek/deepseek-v4-pro``.
+        tier: LLM tier to use.  The concrete model for each tier is
+            resolved by the configured provider backend (see
+            :func:`robotsix_llmio.core.get_provider`).
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
         feedback: Optional description of a previous failed attempt (which
@@ -488,7 +487,7 @@ def detect_provider(
     from pydantic_ai import PromptedOutput
 
     # -- build agent --
-    llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
+    llm_provider = get_provider(api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_DETECT_SYSTEM_PROMPT,
@@ -787,7 +786,6 @@ store:
         text += f"""
 llm:
   api_key: {json.dumps(config.llm_api_key)}
-  model: {config.llm_model}
 """
 
     return text
