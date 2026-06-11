@@ -52,3 +52,11 @@ auth:
 # llm:
 #   api_key: sk-or-v1-…
 #   model: deepseek/deepseek-v4-flash
+
+# Langfuse observability — optional. When public_key/secret_key are set,
+# every LLM agent run is traced to the configured Langfuse project. The
+# MAIL_LANGFUSE_* environment variables override these values.
+# langfuse:
+#   public_key:
+#   secret_key:
+#   base_url:

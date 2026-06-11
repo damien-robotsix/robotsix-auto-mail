@@ -249,9 +249,14 @@ def main(argv: list[str] | None = None) -> int:
     setup_logging()
 
     # -- enable Langfuse tracing when credentials are configured --
+    from robotsix_auto_mail import config as _config
     from robotsix_auto_mail.tracing import init_langfuse_tracing
 
-    init_langfuse_tracing()
+    try:
+        _loaded_cfg = _config.load()
+    except Exception:
+        _loaded_cfg = None
+    init_langfuse_tracing(_loaded_cfg)
 
     if args.command == "probe":
         return _cmd_probe(_load_config_or_exit())

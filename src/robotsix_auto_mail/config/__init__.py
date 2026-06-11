@@ -247,6 +247,33 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
         False,
     ),
+    _FieldSpec(
+        "langfuse_public_key",
+        "MAIL_LANGFUSE_PUBLIC_KEY",
+        "langfuse.public_key",
+        "str",
+        "",
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "langfuse_secret_key",
+        "MAIL_LANGFUSE_SECRET_KEY",
+        "langfuse.secret_key",
+        "str",
+        "",
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "langfuse_base_url",
+        "MAIL_LANGFUSE_BASE_URL",
+        "langfuse.base_url",
+        "str",
+        "",
+        False,
+        False,
+    ),
 )
 
 # Each yaml_path must be exactly ``section.key`` — the YAML loader splits
@@ -309,9 +336,21 @@ class MailConfig:
     oauth2_client_id: str = ""
     oauth2_client_secret: str = ""
 
+    # Langfuse observability — optional; when public_key/secret_key are set,
+    # every LLM agent run is traced to the configured Langfuse project.
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_base_url: str = ""
+
     # -- masking -----------------------------------------------------------
 
-    _SECRET_FIELDS = ("password", "llm_api_key", "oauth2_token", "oauth2_client_secret")
+    _SECRET_FIELDS = (
+        "password",
+        "llm_api_key",
+        "oauth2_token",
+        "oauth2_client_secret",
+        "langfuse_secret_key",
+    )
 
     def __repr__(self) -> str:
         cls = type(self).__name__
