@@ -655,7 +655,7 @@ the card's status column via `POST /move`.
 
 **Account picker (multi-account mode).**  When two or more accounts are configured
 (via `config/mail.accounts.yaml` or environment variables), an account picker
-dropdown appears in the page header next to the "Run triage" button. The dropdown
+dropdown appears in the page header. The dropdown
 shows each configured account with its `label` (or `id` if no label is set), and
 you can click to switch accounts. Switching navigates to `/board?account=<id>` and
 sets an `account` cookie (via `Set-Cookie: account=<id>; Path=/`) so every

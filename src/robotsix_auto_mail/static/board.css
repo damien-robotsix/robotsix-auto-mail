@@ -23,7 +23,7 @@ body {
  * a dark default background so none appear white.  The coloured action
  * buttons defined later (.delete-btn, .archive-btn, .draft-reply-btn,
  * .force-triage-btn) win on specificity and keep their colours, and the
- * transparent chrome buttons (#refresh-btn, .close-btn) set
+ * transparent chrome buttons (.close-btn) set
  * ``background: none`` to override this. */
 button {
   background: #0f3460;
@@ -46,14 +46,6 @@ button:hover { background: #1a4d7a; }
 }
 
 /* -- page chrome ---------------------------------------------------------- */
-#refresh-btn {
-  display: inline; vertical-align: middle;
-  margin-left: 0.5rem; margin-bottom: 1rem;
-  background: none; border: 1px solid #3a3a6a;
-  border-radius: 4px; font-size: 1rem;
-  cursor: pointer; padding: 0.1rem 0.4rem; color: #c0c0e0;
-}
-#refresh-btn:hover { background: #0f3460; color: #e0e0e0; }
 #refresh-time {
   display: inline; vertical-align: middle;
   margin-left: 0.25rem; margin-bottom: 1rem;

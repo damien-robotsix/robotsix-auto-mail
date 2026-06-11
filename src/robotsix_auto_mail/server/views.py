@@ -278,22 +278,10 @@ def _build_board_html(
         triage_control_html = (
             '<div class="triage-banner">'
             "Triage is currently running. The board will refresh automatically."
-            "</div>\n"
-            '<button type="submit" disabled'
-            ' style="font-size:0.85rem; padding:0.25rem 0.75rem;'
-            ' cursor:not-allowed; opacity:0.6;">'
-            "Triage running…</button>"
+            "</div>"
         )
     else:
-        triage_control_html = (
-            '<form method="post" action="/run-triage"'
-            ' style="display:inline-block;'
-            ' margin-left:1.5rem; vertical-align:middle;">\n'
-            '  <button type="submit"'
-            ' style="font-size:0.85rem; padding:0.25rem 0.75rem; cursor:pointer;">'
-            "Run triage</button>\n"
-            "</form>"
-        )
+        triage_control_html = ""
 
     return (
         "<!DOCTYPE html>\n"
@@ -306,7 +294,6 @@ def _build_board_html(
         "</head>\n"
         "<body>\n"
         "<h1>Mail Board</h1>\n"
-        '<button id="refresh-btn" title="Refresh now">↻</button>\n'
         '<span id="refresh-time"></span>\n'
         f'<span id="triage-control">{triage_control_html}</span>\n'
         f"{picker_html}\n"
@@ -399,16 +386,9 @@ def _build_board_html(
         "      if (tc) {\n"
         "        if (data.triage_running) {\n"
         '          tc.innerHTML = \'<div class="triage-banner">Triage is'
-        " currently running. The board will refresh automatically.</div>'"
-        '            + \'<button type="submit" disabled style="font-size:0.85rem;'
-        ' padding:0.25rem 0.75rem; cursor:not-allowed; opacity:0.6;">Triage'
-        " running\\u2026</button>';\n"
+        " currently running. The board will refresh automatically.</div>';\n"
         "        } else {\n"
-        '          tc.innerHTML = \'<form method="post" action="/run-triage"'
-        ' style="display:inline-block; margin-left:1.5rem;'
-        " vertical-align:middle;\\\">'"
-        '            + \'<button type="submit" style="font-size:0.85rem;'
-        " padding:0.25rem 0.75rem; cursor:pointer;\\\">Run triage</button></form>';\n"
+        "          tc.innerHTML = '';\n"
         "        }\n"
         "      }\n"
         "      lastRefresh = Date.now();\n"
@@ -416,13 +396,6 @@ def _build_board_html(
         "    })\n"
         "    .catch(function() { /* silently retry next cycle */ });\n"
         "}\n"
-        "\n"
-        "document.getElementById('refresh-btn')"
-        ".addEventListener('click', function() {\n"
-        "  refreshBoard();\n"
-        "  clearInterval(refreshTimer);\n"
-        "  refreshTimer = setInterval(refreshBoard, 30000);\n"
-        "});\n"
         "\n"
         "refreshTimer = setInterval(refreshBoard, 30000);\n"
         "refreshDisplayTimer = setInterval(updateRefreshTime, 10000);\n"

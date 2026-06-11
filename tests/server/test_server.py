@@ -3833,6 +3833,25 @@ def test_handler_board_has_auto_refresh_js() -> None:
         server.shutdown()
 
 
+def test_handler_board_no_manual_controls() -> None:
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/board")
+        body = resp.read().decode("utf-8")
+        # The redundant manual controls are gone from both the
+        # server-rendered HTML and the inline refreshBoard() JS strings.
+        assert 'id="refresh-btn"' not in body
+        assert "Run triage" not in body
+        assert 'action="/run-triage"' not in body
+        # The informational auto-refresh poll and display remain.
+        assert "setInterval(refreshBoard, 30000)" in body
+        assert 'id="refresh-time"' in body
+        # The triage-control wrapper stays as the AJAX re-render target.
+        assert 'id="triage-control"' in body
+    finally:
+        server.shutdown()
+
+
 def test_handler_board_content_json_keys() -> None:
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
