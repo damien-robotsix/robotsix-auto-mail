@@ -326,6 +326,74 @@ the IMAP and SMTP clients authenticate via XOAUTH2 instead of the legacy
 If your IMAP/SMTP server still accepts password-based ``login()``, leave the
 OAuth2 fields unset — the existing password path works as before.
 
+### Multiple accounts
+
+`robotsix-auto-mail` can manage more than one mailbox at once. Multiple
+accounts are modelled as N independent configurations — each account is a
+complete set of the connection settings described above, plus a stable
+`id` and an optional human-friendly `label`. The single-account shapes
+documented above continue to work unchanged; multi-account is purely
+additive.
+
+**One SQLite DB per account.** Rather than tagging every database row with an
+`account_id`, each account carries its **own** `store.path` (SQLite database
+file). Per-account state (triage decisions, sender memory, archive
+watermarks) is therefore naturally isolated with zero schema changes, and the
+existing per-config `store.path` is the only plumbing needed. The cost is one
+SQLite file per account, so every account's `store.path` must be unique —
+uniqueness is enforced when the configuration loads. When an account omits
+`store.path`, it defaults to `.data/mail-<id>.db`, which is unique per
+account (the single-account default stays `.data/mail.db`).
+
+**YAML shape.** A multi-account YAML file uses a top-level `accounts:` list
+instead of the single-account top-level sections. Each list entry is a
+mapping with a required string `id`, an optional `label`, and the usual
+nested `imap` / `smtp` / `auth` / `store` (and optional `llm` / `ingest` /
+`archive` / `triage`) sections — parsed exactly as in the single-account
+file. An optional top-level `default_account:` names the default account;
+when omitted, the first entry is the default. A complete example ships in
+`config/mail.accounts.example.yaml`:
+
+```yaml
+default_account: personal
+
+accounts:
+  - id: personal
+    label: Personal Gmail
+    imap:
+      host: imap.gmail.com
+    smtp:
+      host: smtp.gmail.com
+    auth:
+      username: me@gmail.com
+    store:
+      path: .data/mail-personal.db
+
+  - id: work
+    label: Work mailbox
+    imap:
+      host: imap.work.example.com
+    smtp:
+      host: smtp.work.example.com
+    auth:
+      username: me@work.example.com
+    store:
+      path: .data/mail-work.db
+```
+
+**Environment-variable scheme.** Each per-field environment variable is
+namespaced per account by inserting `ACCOUNTS_<n>_` after `MAIL_`, where `<n>`
+is a zero-based account index. A field whose single-account variable is
+`MAIL_<X>` becomes `MAIL_ACCOUNTS_<n>_<X>` (for example
+`MAIL_ACCOUNTS_0_IMAP_HOST`, `MAIL_ACCOUNTS_1_PASSWORD`); the two LLM fields
+become `MAIL_ACCOUNTS_<n>_LLM_API_KEY` / `MAIL_ACCOUNTS_<n>_LLM_MODEL`. Two
+extra namespaced variables describe the account itself: `MAIL_ACCOUNTS_<n>_ID`
+(required — the stable account id, e.g. `MAIL_ACCOUNTS_0_ID=personal`) and
+`MAIL_ACCOUNTS_<n>_LABEL` (optional). Account indices must be contiguous
+starting at 0 (a gap raises an error). An optional `MAIL_ACCOUNTS_DEFAULT`
+names the default account id. As with `store.path` in YAML, an account whose
+`MAIL_ACCOUNTS_<n>_DB_PATH` is unset defaults to `.data/mail-<id>.db`.
+
 ### Self-managed archive structure
 
 `robotsix-auto-mail` manages its own archive folder hierarchy, rooted at
