@@ -253,6 +253,8 @@ auth:
 | `auth.oauth2_token` | no | – | OAuth2 access token for SASL XOAUTH2 (overrides password auth when set) |
 | `auth.oauth2_client_id` | no | – | OAuth2 client ID (required by some providers alongside the token) |
 | `auth.oauth2_client_secret` | no | – | OAuth2 client secret (required by some providers alongside the token) |
+| `auth.oauth2_provider` | no | – | MSAL OAuth2 provider; set to `microsoft` to acquire/refresh tokens via MSAL instead of a password |
+| `auth.oauth2_tenant` | no | `"organizations"` | Azure AD tenant for MSAL-managed OAuth2 |
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles (`ingest --watch`) |
 | `archive.root` | no | `"robotsix-mail-archive"` | Root folder for the self-managed archive structure |
@@ -283,6 +285,8 @@ supplies the real keys there without committing them.
 | `MAIL_OAUTH2_TOKEN` | no | – | OAuth2 access token for SASL XOAUTH2 (overrides password auth when set) |
 | `MAIL_OAUTH2_CLIENT_ID` | no | – | OAuth2 client ID |
 | `MAIL_OAUTH2_CLIENT_SECRET` | no | – | OAuth2 client secret |
+| `MAIL_OAUTH2_PROVIDER` | no | – | MSAL OAuth2 provider; set to `microsoft` to use MSAL-managed tokens |
+| `MAIL_OAUTH2_TENANT` | no | `organizations` | Azure AD tenant for MSAL-managed OAuth2 |
 | `MAIL_IMAP_PORT` | no | `993` | IMAP server port |
 | `MAIL_IMAP_TLS_MODE` | no | `direct-tls` | TLS negotiation for IMAP — one of `direct-tls`, `starttls`, `none` |
 | `MAIL_SMTP_PORT` | no | `587` | SMTP server port |

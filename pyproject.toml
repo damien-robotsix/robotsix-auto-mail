@@ -36,6 +36,9 @@ dev = [
 llm = [
     "robotsix-llmio[openrouter-deepseek,tracing]",
 ]
+microsoft = [
+    "msal>=1.28",
+]
 docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
@@ -78,6 +81,10 @@ packages = ["src/robotsix_auto_mail"]
 
 [[tool.mypy.overrides]]
 module = "robotsix_board"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "msal"
 ignore_missing_imports = true
 
 [tool.deptry]

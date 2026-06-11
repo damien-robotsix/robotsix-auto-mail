@@ -139,6 +139,16 @@ modules:
       - src/robotsix_auto_mail/imap/__init__.py
       - tests/imap/test_imap.py
 
+  - id: oauth2
+    description: >-
+      MSAL-backed OAuth2 token provider for Microsoft 365 (XOAUTH2):
+      device-code consent, a persistent per-account token cache, and
+      silent access-token refresh. msal is an optional dependency
+      behind the [microsoft] extra, imported lazily.
+    paths:
+      - src/robotsix_auto_mail/oauth2/__init__.py
+      - tests/oauth2/test_msal_provider.py
+
   - id: parser
     description: >-
       MIME to MailRecord parsing.
