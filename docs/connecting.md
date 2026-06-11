@@ -1214,6 +1214,69 @@ Inbox Triage
 Exit code is `0` on success (even if decisions are produced), `1` on error
 (missing API key, `pydantic-ai` not installed, or LLM failure).
 
+## The `triage-folder` command
+
+The `triage-folder` subcommand is a **one-shot** operation that fetches every
+message from a named mailbox folder that is **not** the configured INBOX (e.g.
+a legacy `Archive`, `Sent`, or a custom label), stores them locally, and then
+runs the triage agent over the newly-stored mail:
+
+```sh
+$ robotsix-auto-mail triage-folder Archive
+```
+
+Unlike the incremental `ingest` cycle, this performs a **full sweep** of the
+named folder (IMAP search `ALL`) and:
+
+- stores new mail locally, **deduplicating by Message-ID** (re-running the
+  command stores `0` new records), and
+- **leaves the INBOX ingest watermark completely untouched** — it is not read
+  or written, so the normal incremental INBOX ingest is unaffected.
+
+Triage remains **advisory and local-only**: no mail is moved, deleted, or
+copied in the IMAP mailbox.
+
+### Arguments
+
+| Argument | Purpose |
+|---|---|
+| `<folder>` | The IMAP folder/mailbox name to triage (e.g. `Archive`) |
+
+### Options
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--account` | – | Account id to operate on; optional when only one account is configured |
+| `--api-key` | – | OpenRouter API key; overrides `LLM_API_KEY` env and config file |
+| `--output-format` | `text` | Output format: `text` (human-readable) or `json` (machine-readable) |
+| `--dry-run` | `false` | Fetch and parse without storing; skip the triage pass |
+
+### Requirements
+
+The `triage-folder` command requires:
+- The `pydantic-ai` package (install via `pip install robotsix-auto-mail[dev]`)
+- An LLM API key (via `--api-key`, `LLM_API_KEY` env, or `llm.api_key` in config)
+
+### Representative text output
+
+```text
+Fetched:  3 messages
+Stored:   3 new
+Skipped:  0 duplicate
+Errors:   0
+
+Folder Triage
+------------------------------------------------------------
+
+<a@x.com>
+  action: archive
+  confidence: high
+  reason: Old reference mail; keep but no reply needed.
+```
+
+Exit code is `0` on success (even if decisions are produced), `1` on error
+(missing API key, `pydantic-ai` not installed, `ImapError`, or LLM failure).
+
 ## The `triage-set` command
 
 To manually record a triage decision for a single message, use `triage-set`:

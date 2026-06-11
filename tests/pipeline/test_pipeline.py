@@ -22,6 +22,7 @@ from robotsix_auto_mail.pipeline import (
     IngestError,
     IngestResult,
     fetch_new_messages,
+    ingest_folder,
     ingest_mail,
     update_watermark,
 )
@@ -1063,6 +1064,129 @@ def test_ingest_triage_failure_does_not_propagate(
     assert result.total_fetched == 1
     assert result.stored == 1
     assert result.triaged == 0
+
+
+# ---------------------------------------------------------------------------
+# ingest_folder - one-shot folder sweep
+# ---------------------------------------------------------------------------
+
+
+def test_ingest_folder_selects_folder_and_searches_all(
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """ingest_folder selects the passed folder and searches ALL."""
+    imap = _mock_imap_client()
+    imap.search_uids.return_value = [1, 2]
+    imap.fetch_messages.return_value = [
+        (1, _make_raw_message(message_id="<a@x>")),
+        (2, _make_raw_message(message_id="<b@x>")),
+    ]
+
+    result = ingest_folder(conn, imap, cfg, "Archive")
+
+    imap.select_folder.assert_called_once_with("Archive")
+    imap.search_uids.assert_called_once_with("ALL")
+    imap.fetch_messages.assert_called_once_with([1, 2])
+    assert isinstance(result, IngestResult)
+    assert result.total_fetched == 2
+    assert result.stored == 2
+    assert result.triaged == 0
+
+
+def test_ingest_folder_stores_and_dedups_on_second_run(
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """A second run on the same folder stores 0 new records (dedup)."""
+    messages = [
+        (1, _make_raw_message(message_id="<a@x>")),
+        (2, _make_raw_message(message_id="<b@x>")),
+    ]
+    imap = _mock_imap_client()
+    imap.search_uids.return_value = [1, 2]
+    imap.fetch_messages.return_value = messages
+
+    r1 = ingest_folder(conn, imap, cfg, "Archive")
+    assert r1.stored == 2
+    assert r1.skipped == 0
+
+    r2 = ingest_folder(conn, imap, cfg, "Archive")
+    assert r2.stored == 0
+    assert r2.skipped == 2
+
+    cur = conn.execute("SELECT COUNT(*) FROM mail_records")
+    assert cur.fetchone()[0] == 2
+
+
+def test_ingest_folder_does_not_change_watermark(
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """ingest_folder never reads or writes the imap_uid watermark."""
+    set_watermark(conn, "imap_uid", "42")
+
+    imap = _mock_imap_client()
+    imap.search_uids.return_value = [1]
+    imap.fetch_messages.return_value = [(1, _make_raw_message(message_id="<a@x>"))]
+
+    ingest_folder(conn, imap, cfg, "Archive")
+
+    # Watermark must be left untouched by the one-shot folder sweep.
+    assert get_watermark(conn, "imap_uid") == "42"
+
+
+def test_ingest_folder_does_not_call_setup_archive(
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """ingest_folder must not call setup_archive."""
+    imap = _mock_imap_client()
+    imap.search_uids.return_value = [1]
+    imap.fetch_messages.return_value = [(1, _make_raw_message(message_id="<a@x>"))]
+
+    with mock.patch("robotsix_auto_mail.pipeline.setup_archive") as mock_setup:
+        ingest_folder(conn, imap, cfg, "Archive")
+
+    mock_setup.assert_not_called()
+
+
+def test_ingest_folder_dry_run_does_not_store(
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """dry_run=True parses but does not insert any record."""
+    imap = _mock_imap_client()
+    imap.search_uids.return_value = [1, 2]
+    imap.fetch_messages.return_value = [
+        (1, _make_raw_message(message_id="<a@x>")),
+        (2, _make_raw_message(message_id="<b@x>")),
+    ]
+
+    result = ingest_folder(conn, imap, cfg, "Archive", dry_run=True)
+
+    # Would have stored both, but nothing is persisted.
+    assert result.total_fetched == 2
+    assert result.stored == 2
+    assert result.skipped == 0
+
+    cur = conn.execute("SELECT COUNT(*) FROM mail_records")
+    assert cur.fetchone()[0] == 0
+
+
+def test_ingest_folder_empty_folder(
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """An empty folder returns all zeros without fetching."""
+    imap = _mock_imap_client()
+    imap.search_uids.return_value = []
+
+    result = ingest_folder(conn, imap, cfg, "Archive")
+
+    assert result.total_fetched == 0
+    assert result.stored == 0
+    imap.fetch_messages.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

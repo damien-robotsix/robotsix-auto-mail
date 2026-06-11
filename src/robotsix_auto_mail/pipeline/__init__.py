@@ -143,77 +143,29 @@ class IngestResult:
     triaged: int = 0
 
 
-def ingest_mail(
+def _process_messages(
     db_conn: sqlite3.Connection,
-    imap_client: ImapClient,
-    config: MailConfig,
+    messages: list[tuple[int, bytes]],
     *,
     dry_run: bool = False,
-) -> IngestResult:
-    """Run the full ingestion pipeline: fetch → parse → store → watermark.
+) -> tuple[int, int, list[IngestError]]:
+    """Parse, dedup, and store a batch of raw ``(uid, bytes)`` messages.
 
-    Parameters
-    ----------
-    db_conn:
-        An open ``sqlite3.Connection`` to the local datastore.
-    imap_client:
-        A connected ``ImapClient`` (already entered via context manager).
-    config:
-        Mail configuration (used by ``fetch_new_messages``).
-    dry_run:
-        When ``True``, messages are fetched and parsed but
-        ``insert_record`` and ``update_watermark`` are skipped.
-        The ``stored`` count reflects messages that *would have been*
-        inserted (i.e. ``record_exists`` returned ``False``).
+    Shared per-message body used by both ``ingest_mail`` and
+    ``ingest_folder``: parses via ``parse_message``, dedups via
+    ``record_exists`` (skipping duplicates by ``message_id``), inserts
+    new records via ``insert_record``, and collects per-message
+    ``IngestError``s.  Watermark handling is intentionally *not* done
+    here — that is the caller's concern.
 
-    Returns
-    -------
-    IngestResult
-        Summary with total fetched, stored, skipped, and any errors.
+    Returns:
+        A ``(stored, skipped, errors)`` tuple.
     """
-    # 0. First-run archive setup (best-effort; skipped in dry-run).
-    #    Creating folders / writing the watermark must not happen on a
-    #    dry run, and any archive failure (LLM/network/IMAP) must not
-    #    abort ingestion — setup_archive only persists its watermark on
-    #    success, so a failed run naturally retries next time.
-    _logger.info(
-        "ingest_begin",
-        dry_run=dry_run,
-        archive_enabled=config.archive_enabled,
-        triage_on_ingest=config.triage_on_ingest,
-    )
-    if not dry_run and config.archive_enabled:
-        try:
-            setup_archive(
-                db_conn,
-                imap_client,
-                archive_root=config.archive_root,
-                archive_namespace=config.archive_namespace,
-                api_key=config.llm_api_key,
-            )
-            _logger.info("archive_setup_done")
-        except Exception:
-            _logger.exception("archive_setup_failed")
-
-    # 1. Fetch raw messages (read-only on DB).
-    messages = fetch_new_messages(db_conn, imap_client, config)
-    total_fetched = len(messages)
-    _logger.debug("fetch_done", count=total_fetched)
-
-    if total_fetched == 0:
-        return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
-
-    # 2. Process each message.
     stored = 0
     skipped = 0
     errors: list[IngestError] = []
-    max_uid: int = 0
 
     for uid, raw_bytes in messages:
-        # Track the highest UID seen in this batch.
-        if uid > max_uid:
-            max_uid = uid
-
         # -- Parse -----------------------------------------------------------
         try:
             record = parse_message(raw_bytes, imap_uid=uid)
@@ -295,7 +247,74 @@ def ingest_mail(
                 action="skipped",
             )
 
+    return stored, skipped, errors
+
+
+def ingest_mail(
+    db_conn: sqlite3.Connection,
+    imap_client: ImapClient,
+    config: MailConfig,
+    *,
+    dry_run: bool = False,
+) -> IngestResult:
+    """Run the full ingestion pipeline: fetch → parse → store → watermark.
+
+    Parameters
+    ----------
+    db_conn:
+        An open ``sqlite3.Connection`` to the local datastore.
+    imap_client:
+        A connected ``ImapClient`` (already entered via context manager).
+    config:
+        Mail configuration (used by ``fetch_new_messages``).
+    dry_run:
+        When ``True``, messages are fetched and parsed but
+        ``insert_record`` and ``update_watermark`` are skipped.
+        The ``stored`` count reflects messages that *would have been*
+        inserted (i.e. ``record_exists`` returned ``False``).
+
+    Returns
+    -------
+    IngestResult
+        Summary with total fetched, stored, skipped, and any errors.
+    """
+    # 0. First-run archive setup (best-effort; skipped in dry-run).
+    #    Creating folders / writing the watermark must not happen on a
+    #    dry run, and any archive failure (LLM/network/IMAP) must not
+    #    abort ingestion — setup_archive only persists its watermark on
+    #    success, so a failed run naturally retries next time.
+    _logger.info(
+        "ingest_begin",
+        dry_run=dry_run,
+        archive_enabled=config.archive_enabled,
+        triage_on_ingest=config.triage_on_ingest,
+    )
+    if not dry_run and config.archive_enabled:
+        try:
+            setup_archive(
+                db_conn,
+                imap_client,
+                archive_root=config.archive_root,
+                archive_namespace=config.archive_namespace,
+                api_key=config.llm_api_key,
+            )
+            _logger.info("archive_setup_done")
+        except Exception:
+            _logger.exception("archive_setup_failed")
+
+    # 1. Fetch raw messages (read-only on DB).
+    messages = fetch_new_messages(db_conn, imap_client, config)
+    total_fetched = len(messages)
+    _logger.debug("fetch_done", count=total_fetched)
+
+    if total_fetched == 0:
+        return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
+
+    # 2. Process each message.
+    stored, skipped, errors = _process_messages(db_conn, messages, dry_run=dry_run)
+
     # 3. Advance watermark to the highest UID seen (skip in dry-run).
+    max_uid = max((uid for uid, _ in messages), default=0)
     if max_uid > 0 and not dry_run:
         update_watermark(db_conn, max_uid)
 
@@ -333,4 +352,72 @@ def ingest_mail(
         skipped=skipped,
         errors=errors,
         triaged=triaged,
+    )
+
+
+def ingest_folder(
+    db_conn: sqlite3.Connection,
+    imap_client: ImapClient,
+    config: MailConfig,
+    folder: str,
+    *,
+    dry_run: bool = False,
+) -> IngestResult:
+    """One-shot fetch → parse → store sweep of an arbitrary IMAP folder.
+
+    Unlike ``ingest_mail``, this is a *full* one-shot sweep of the named
+    *folder* (e.g. a legacy ``Archive`` or ``Sent``): it selects the
+    explicit ``folder`` argument (NOT ``config.imap_folder``), searches
+    ``"ALL"``, and processes every message found.  It deliberately:
+
+    - does **not** read or write the ``imap_uid`` watermark used by the
+      incremental INBOX ingest cycle (re-runs are made idempotent solely
+      by the ``message_id`` dedup in ``_process_messages``), and
+    - does **not** call ``setup_archive`` — a one-shot folder triage must
+      not mutate the mailbox or create archive folders.
+
+    Triage itself is **not** invoked here; the returned ``triaged`` count
+    stays ``0`` and the CLI layer runs the triage agent over the
+    newly-stored mail so it can render the decisions.
+
+    Parameters
+    ----------
+    db_conn:
+        An open ``sqlite3.Connection`` to the local datastore.
+    imap_client:
+        A connected ``ImapClient`` (already entered via context manager).
+    config:
+        Mail configuration (kept for signature parity; the folder is the
+        explicit *folder* argument, not ``config.imap_folder``).
+    folder:
+        The IMAP folder/mailbox name to sweep.
+    dry_run:
+        When ``True``, messages are fetched and parsed but
+        ``insert_record`` is skipped; ``stored`` reflects messages that
+        *would have been* inserted.
+
+    Returns
+    -------
+    IngestResult
+        Summary with total fetched, stored, skipped, and any errors.
+    """
+    # 1. Select the explicit folder and fetch every message in it.
+    imap_client.select_folder(folder)
+    uids = imap_client.search_uids("ALL")
+    if not uids:
+        return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
+
+    messages = imap_client.fetch_messages(uids)
+    total_fetched = len(messages)
+    if total_fetched == 0:
+        return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
+
+    # 2. Process each message (parse, dedup, store) — no watermark.
+    stored, skipped, errors = _process_messages(db_conn, messages, dry_run=dry_run)
+
+    return IngestResult(
+        total_fetched=total_fetched,
+        stored=stored,
+        skipped=skipped,
+        errors=errors,
     )
