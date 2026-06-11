@@ -22,6 +22,7 @@ from robotsix_auto_mail.cli.commands import (
     _cmd_triage_rules,
     _cmd_triage_rules_set,
     _cmd_triage_set,
+    _load_accounts_or_exit,
     _load_config_or_exit,
 )
 from robotsix_auto_mail.cli.commands import (
@@ -46,6 +47,7 @@ from robotsix_auto_mail.cli.config import (
     _VerifyResult as _VerifyResult,
 )
 from robotsix_auto_mail.config import load as load
+from robotsix_auto_mail.config import load_accounts as load_accounts
 from robotsix_auto_mail.db import init_db as init_db
 from robotsix_auto_mail.imap import ImapClient as ImapClient
 from robotsix_auto_mail.logging import setup_logging
@@ -62,6 +64,19 @@ __all__ = [
 ]
 
 
+def _add_account_arg(parser: argparse.ArgumentParser) -> None:
+    """Add the shared ``--account`` selection flag to *parser*."""
+    parser.add_argument(
+        "--account",
+        metavar="ID",
+        default=None,
+        help=(
+            "Account id to operate on. Optional when only one account is "
+            "configured; required when multiple exist."
+        ),
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the top-level argument parser with subcommands."""
     parser = argparse.ArgumentParser(
@@ -75,8 +90,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     sub = parser.add_subparsers(dest="command", title="subcommands")
-    sub.add_parser("probe", help="Probe IMAP and SMTP servers for diagnostics")
+    probe_parser = sub.add_parser(
+        "probe", help="Probe IMAP and SMTP servers for diagnostics"
+    )
+    _add_account_arg(probe_parser)
     ingest_parser = sub.add_parser("ingest", help="Fetch new mail and store it locally")
+    ingest_account_group = ingest_parser.add_mutually_exclusive_group()
+    ingest_account_group.add_argument(
+        "--account",
+        metavar="ID",
+        default=None,
+        help=(
+            "Account id to ingest. Optional when only one account is "
+            "configured; without it every configured account is ingested."
+        ),
+    )
+    ingest_account_group.add_argument(
+        "--all-accounts",
+        action="store_true",
+        default=False,
+        help="Ingest every configured account (the default when --account is omitted).",
+    )
     ingest_parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -93,9 +127,13 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    sub.add_parser("board", help="Display ingested mail in a read-only board view")
+    board_parser = sub.add_parser(
+        "board", help="Display ingested mail in a read-only board view"
+    )
+    _add_account_arg(board_parser)
 
     serve_parser = sub.add_parser("serve", help="Start the web board server")
+    _add_account_arg(serve_parser)
     serve_parser.add_argument(
         "--port",
         type=int,
@@ -145,6 +183,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the LLM config-drift advisory agent (advisory only; "
         "does not replace the deterministic check_config_sync.py CI gate)",
     )
+    _add_account_arg(config_sync_parser)
     config_sync_parser.add_argument(
         "--api-key",
         default=None,
@@ -169,6 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the LLM inbox-triage agent and record advisory action "
         "statuses (does not move mail in the mailbox)",
     )
+    _add_account_arg(triage_parser)
     triage_parser.add_argument(
         "--api-key",
         default=None,
@@ -186,6 +226,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Record a user triage decision for a single message "
         "(advisory; does not move mail in the mailbox)",
     )
+    _add_account_arg(triage_set_parser)
     triage_set_parser.add_argument(
         "message_id",
         help="Message-ID of the mail to triage.",
@@ -200,6 +241,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Propose deterministic triage rules from triage history and "
         "list the accepted (active) rules (advisory; no LLM call)",
     )
+    _add_account_arg(triage_rules_parser)
     triage_rules_parser.add_argument(
         "--output-format",
         choices=["text", "json"],
@@ -212,6 +254,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Accept or reject a proposed triage rule by fingerprint; "
         "accepted rules become active deterministic rules",
     )
+    _add_account_arg(triage_rules_set_parser)
     triage_rules_set_parser.add_argument(
         "fingerprint",
         help="Fingerprint of the triage rule proposal.",
@@ -226,6 +269,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Mark a config-drift finding accepted or rejected so it is "
         "suppressed by the dedup memory ledger",
     )
+    _add_account_arg(config_sync_set_parser)
     config_sync_set_parser.add_argument(
         "fingerprint",
         help="Fingerprint of the config-drift finding.",
@@ -259,18 +303,22 @@ def main(argv: list[str] | None = None) -> int:
     init_langfuse_tracing(_loaded_cfg)
 
     if args.command == "probe":
-        return _cmd_probe(_load_config_or_exit())
+        return _cmd_probe(_load_config_or_exit(args.account))
 
     if args.command == "ingest":
         return _cmd_ingest(
-            _load_config_or_exit(), dry_run=args.dry_run, watch=args.watch
+            _load_accounts_or_exit(),
+            account_id=args.account,
+            all_accounts=args.all_accounts,
+            dry_run=args.dry_run,
+            watch=args.watch,
         )
 
     if args.command == "board":
-        return _cmd_board(_load_config_or_exit())
+        return _cmd_board(_load_config_or_exit(args.account))
 
     if args.command == "serve":
-        return _cmd_serve(_load_config_or_exit(), port=args.port)
+        return _cmd_serve(_load_config_or_exit(args.account), port=args.port)
 
     if args.command == "detect":
         return _cmd_detect(args)

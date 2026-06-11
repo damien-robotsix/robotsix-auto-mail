@@ -16,7 +16,7 @@ import pytest
 from tests.conftest import _make_mock_imap_ssl, _make_mock_smtp
 
 from robotsix_auto_mail.cli import _VerifyResult, build_parser, main
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.config_sync_agent import (
     ConfigSyncError,
     ConfigSyncResult,
@@ -30,6 +30,15 @@ from robotsix_auto_mail.triage import (
     TriageItem,
     TriageResult,
 )
+
+
+def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfig:
+    """Wrap a single ``MailConfig`` in a one-element accounts container."""
+    return MailAccountsConfig(
+        accounts=(MailAccount(account_id=account_id, config=cfg, label=None),),
+        default_account_id=account_id,
+    )
+
 
 # ---------------------------------------------------------------------------
 # ImapClient / SmtpClient property defaults
@@ -493,7 +502,7 @@ def test_board_empty_inbox(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) 
     # Keep conn open — _cmd_board's finally block closes it.
 
     with (
-        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
         mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
     ):
         rc = main(["board"])
@@ -560,7 +569,7 @@ VALUES
     # Keep conn open — _cmd_board's finally block closes it.
 
     with (
-        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
         mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
     ):
         rc = main(["board"])
@@ -646,7 +655,7 @@ VALUES
     conn.commit()
 
     with (
-        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
         mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
     ):
         rc = main(["board"])
@@ -669,7 +678,7 @@ def test_board_config_load_failure(
 ) -> None:
     """board exits with code 1 when config loading fails."""
     with mock.patch(
-        "robotsix_auto_mail.cli.load",
+        "robotsix_auto_mail.cli.load_accounts",
         side_effect=RuntimeError("boom"),
     ):
         with pytest.raises(SystemExit) as exc:
@@ -691,7 +700,7 @@ def test_board_header_uses_print_header(
     # Keep conn open — _cmd_board's finally block closes it.
 
     with (
-        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
         mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
     ):
         main(["board"])
@@ -790,7 +799,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             db_path=db_path,
         )
 
-        with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_with_db):
+        with mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_with_db)
+        ):
             rc = main(["board"])
 
         assert rc == 0
@@ -1386,7 +1397,7 @@ def test_ingest_watch_loops_then_stops_on_interrupt(
         ) as mock_cycle,
         mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
     ):
-        rc = _cmd_ingest(cfg, watch=True)
+        rc = _cmd_ingest(_accounts(cfg), watch=True)
 
     assert rc == 0
     mock_cycle.assert_called_once()
@@ -1406,7 +1417,7 @@ def test_ingest_watch_survives_cycle_error(
         ),
         mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
     ):
-        rc = _cmd_ingest(cfg, watch=True)
+        rc = _cmd_ingest(_accounts(cfg), watch=True)
 
     assert rc == 0
     assert "Ingest cycle failed" in capsys.readouterr().err
@@ -1421,7 +1432,7 @@ def test_ingest_single_pass_unaffected(
     with mock.patch(
         "robotsix_auto_mail.cli._ingest_cycle", return_value=0
     ) as mock_cycle:
-        rc = _cmd_ingest(cfg, watch=False)
+        rc = _cmd_ingest(_accounts(cfg), watch=False)
 
     assert rc == 0
     mock_cycle.assert_called_once_with(cfg, dry_run=False)
@@ -1575,7 +1586,9 @@ def test_config_sync_dedup_forwards_conn(
             "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
             return_value=ConfigSyncResult(proposals=[]),
         ) as mock_agent,
-        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_with_db),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_with_db)
+        ),
     ):
         rc = main(["config-sync", "--dedup"])
 
@@ -1622,7 +1635,9 @@ def test_config_sync_set_success(
     finally:
         conn.close()
 
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["config-sync-set", fingerprint, "accepted"])
 
     assert rc == 0
@@ -1647,7 +1662,9 @@ def test_config_sync_set_invalid_state(
         password="s3cret",
         db_path=str(tmp_path / "ledger.db"),
     )
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["config-sync-set", "abc123", "banana"])
 
     assert rc == 1
@@ -1667,7 +1684,9 @@ def test_config_sync_set_unknown_fingerprint(
         password="s3cret",
         db_path=str(tmp_path / "ledger.db"),
     )
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["config-sync-set", "deadbeef", "accepted"])
 
     assert rc == 1
@@ -1756,7 +1775,9 @@ def test_triage_text_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
     )
     with (
         _patch_triage_llm(result),
-        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(["triage"])
@@ -1777,7 +1798,9 @@ def test_triage_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
     )
     with (
         _patch_triage_llm(result),
-        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(["triage", "--output-format", "json"])
@@ -1803,7 +1826,9 @@ def test_triage_empty_inbox(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
         mock.patch(
             "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
         ) as cls,
-        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(["triage"])
@@ -1821,7 +1846,9 @@ def test_triage_error_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
             "robotsix_auto_mail.triage.run_triage_agent",
             side_effect=TriageError("llm exploded"),
         ),
-        mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
     ):
         rc = main(["triage"])
 
@@ -1837,7 +1864,9 @@ def test_triage_set_success(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
     from robotsix_auto_mail.triage import _load_memory, get_triage_decision
 
     cfg_db = _cfg_with_inbox(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["triage-set", "<a@x.com>", "TO_ARCHIVE"])
 
     assert rc == 0
@@ -1862,7 +1891,9 @@ def test_triage_set_invalid_action(
 ) -> None:
     """triage-set exits 1 with a clear message on an invalid action."""
     cfg_db = _cfg_with_inbox(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["triage-set", "<a@x.com>", "banana"])
 
     assert rc == 1
@@ -1876,7 +1907,9 @@ def test_triage_set_unknown_message_id(
 ) -> None:
     """triage-set exits 1 with a clear message when the message_id is unknown."""
     cfg_db = _cfg_with_inbox(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["triage-set", "<missing@x.com>", "TO_ANSWER"])
 
     assert rc == 1
@@ -1943,7 +1976,9 @@ def test_triage_rules_text_output(
 ) -> None:
     """triage-rules proposes a rule and lists active rules (text, exit 0)."""
     cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["triage-rules"])
 
     assert rc == 0
@@ -1960,7 +1995,9 @@ def test_triage_rules_json_output(
 ) -> None:
     """triage-rules --output-format json prints proposals + active rules."""
     cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["triage-rules", "--output-format", "json"])
 
     assert rc == 0
@@ -1979,7 +2016,9 @@ def test_triage_rules_dedup_on_second_run(
 ) -> None:
     """A second triage-rules run suppresses the already-recorded proposal."""
     cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         main(["triage-rules", "--output-format", "json"])
         capsys.readouterr()
         rc = main(["triage-rules", "--output-format", "json"])
@@ -1997,7 +2036,9 @@ def test_triage_rules_set_accept_makes_active(
     from robotsix_auto_mail.triage import _load_active_rules
 
     cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         main(["triage-rules", "--output-format", "json"])
         fingerprint = json.loads(capsys.readouterr().out)["proposals"][0]["fingerprint"]
         rc = main(["triage-rules-set", fingerprint, "accepted"])
@@ -2019,7 +2060,9 @@ def test_triage_rules_set_unknown_fingerprint(
 ) -> None:
     """triage-rules-set exits 1 with a clear message on unknown fingerprint."""
     cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["triage-rules-set", "deadbeef", "accepted"])
 
     assert rc == 1
@@ -2033,7 +2076,9 @@ def test_triage_rules_set_invalid_state(
 ) -> None:
     """triage-rules-set exits 1 with a clear message on an invalid state."""
     cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load", return_value=cfg_db):
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+    ):
         rc = main(["triage-rules-set", "deadbeef", "pending"])
 
     assert rc == 1
@@ -2177,3 +2222,192 @@ def test_refine_manual_stops_when_prompt_returns_none() -> None:
         outcome = _refine_manual(_refine_test_config(), _refine_host_result())
 
     assert outcome.config is None
+
+
+# ---------------------------------------------------------------------------
+# Multi-account selection (--account / --all-accounts)
+# ---------------------------------------------------------------------------
+
+
+def _two_accounts(tmp_path: Path) -> MailAccountsConfig:
+    """Build a two-account container (``personal`` + ``work``)."""
+    personal = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="me@example.com",
+        password="s3cret",
+        db_path=str(tmp_path / "personal.db"),
+    )
+    work = MailConfig(
+        imap_host="imap.work.com",
+        smtp_host="smtp.work.com",
+        username="me@work.com",
+        password="s3cret",
+        db_path=str(tmp_path / "work.db"),
+    )
+    return MailAccountsConfig(
+        accounts=(
+            MailAccount(account_id="personal", config=personal, label=None),
+            MailAccount(account_id="work", config=work, label=None),
+        ),
+        default_account_id="personal",
+    )
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "probe",
+        "ingest",
+        "board",
+        "serve",
+        "triage",
+        "triage-set",
+        "triage-rules",
+        "triage-rules-set",
+        "config-sync",
+        "config-sync-set",
+    ],
+)
+def test_account_flag_accepted_by_subcommands(command: str) -> None:
+    """Every account-consuming subcommand accepts ``--account ID``."""
+    extra = {
+        "triage-set": ["m@id", "INBOX"],
+        "triage-rules-set": ["fp", "accepted"],
+        "config-sync-set": ["fp", "accepted"],
+    }.get(command, [])
+    args = build_parser().parse_args([command, "--account", "work", *extra])
+    assert args.account == "work"
+
+
+def test_account_flag_help_documents_selection() -> None:
+    """The --account help string documents account selection."""
+    import argparse
+
+    parser = build_parser()
+    subparsers_action = next(
+        a for a in parser._actions if isinstance(a, argparse._SubParsersAction)
+    )
+    board_parser = subparsers_action.choices["board"]
+    action = next(a for a in board_parser._actions if a.dest == "account")
+    assert action.help is not None
+    assert "account" in action.help.lower()
+
+
+def test_detect_rejects_account_flag() -> None:
+    """detect does not load a mail config and rejects --account."""
+    with pytest.raises(SystemExit) as exc:
+        build_parser().parse_args(["detect", "me@example.com", "--account", "work"])
+    assert exc.value.code == 2
+
+
+def test_load_config_or_exit_selects_named_account(tmp_path: Path) -> None:
+    """_load_config_or_exit('work') returns the work account's config."""
+    from robotsix_auto_mail.cli import _load_config_or_exit
+
+    accounts = _two_accounts(tmp_path)
+    with mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts):
+        config = _load_config_or_exit("work")
+
+    assert config is accounts.get("work").config
+
+
+def test_load_config_or_exit_unknown_account(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """_load_config_or_exit('nope') errors with the valid ids and exits 1."""
+    from robotsix_auto_mail.cli import _load_config_or_exit
+
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_two_accounts(tmp_path)
+    ):
+        with pytest.raises(SystemExit) as exc:
+            _load_config_or_exit("nope")
+
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert "nope" in err
+    assert "personal" in err
+    assert "work" in err
+
+
+def test_command_requires_account_when_multiple(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A non-ingest command with multiple accounts and no --account exits 1."""
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_two_accounts(tmp_path)
+    ):
+        with pytest.raises(SystemExit) as exc:
+            main(["board"])
+
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert "--account" in err
+    assert "personal" in err
+    assert "work" in err
+
+
+def test_ingest_all_accounts_runs_each_cycle(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ingest with no --account runs one cycle per account with a header each."""
+    accounts = _two_accounts(tmp_path)
+    with (
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
+        mock.patch(
+            "robotsix_auto_mail.cli._ingest_cycle", return_value=0
+        ) as mock_cycle,
+    ):
+        rc = main(["ingest"])
+
+    assert rc == 0
+    assert mock_cycle.call_count == 2
+    configs = [call.args[0] for call in mock_cycle.call_args_list]
+    assert accounts.get("personal").config in configs
+    assert accounts.get("work").config in configs
+    out = capsys.readouterr().out
+    assert "=== account: personal ===" in out
+    assert "=== account: work ===" in out
+
+
+def test_ingest_all_accounts_flag_runs_each_cycle(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ingest --all-accounts runs one cycle per account."""
+    accounts = _two_accounts(tmp_path)
+    with (
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
+        mock.patch(
+            "robotsix_auto_mail.cli._ingest_cycle", return_value=0
+        ) as mock_cycle,
+    ):
+        rc = main(["ingest", "--all-accounts"])
+
+    assert rc == 0
+    assert mock_cycle.call_count == 2
+
+
+def test_ingest_selects_single_account(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ingest --account work runs a cycle for only the work account."""
+    accounts = _two_accounts(tmp_path)
+    with (
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
+        mock.patch(
+            "robotsix_auto_mail.cli._ingest_cycle", return_value=0
+        ) as mock_cycle,
+    ):
+        rc = main(["ingest", "--account", "work"])
+
+    assert rc == 0
+    mock_cycle.assert_called_once_with(accounts.get("work").config, dry_run=False)
+    assert "=== account:" not in capsys.readouterr().out
+
+
+def test_ingest_account_and_all_accounts_mutually_exclusive() -> None:
+    """Passing both --account and --all-accounts fails with argparse exit 2."""
+    with pytest.raises(SystemExit) as exc:
+        build_parser().parse_args(["ingest", "--account", "a", "--all-accounts"])
+    assert exc.value.code == 2

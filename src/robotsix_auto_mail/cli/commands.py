@@ -15,7 +15,11 @@ from robotsix_auto_mail.cli.config import (
     _get_password,
     _verify_and_refine,
 )
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import (
+    ConfigurationError,
+    MailAccountsConfig,
+    MailConfig,
+)
 from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
@@ -144,28 +148,60 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
 
 
 def _cmd_ingest(
-    config: MailConfig, *, dry_run: bool = False, watch: bool = False
+    accounts: MailAccountsConfig,
+    *,
+    account_id: str | None = None,
+    all_accounts: bool = False,
+    dry_run: bool = False,
+    watch: bool = False,
 ) -> int:
-    """Run the ingest subcommand once, or repeatedly in watch mode.
+    """Run the ingest subcommand for one or more accounts.
 
-    In watch mode it loops forever, running an ingest cycle every
-    ``config.ingest_interval_minutes`` minutes.  A failed cycle is logged
-    and the loop continues; Ctrl-C exits cleanly with 0.
+    When *account_id* is given, only that account is processed (exiting 1
+    with the valid ids on an unknown id).  Otherwise every configured account
+    is processed in order, regardless of *all_accounts* (a single-account
+    container yields exactly one account, so single-account usage is
+    unchanged).  A per-account header is printed only when more than one
+    account is processed.
+
+    In watch mode it loops forever, running an ingest cycle for each selected
+    account every interval.  A failed cycle is logged and the loop continues;
+    Ctrl-C exits cleanly with 0.
     """
-    if not watch:
-        return _cli._ingest_cycle(config, dry_run=dry_run)
+    if account_id is not None:
+        try:
+            selected = [accounts.get(account_id)]
+        except ConfigurationError as exc:
+            sys.stderr.write(f"Error: {exc}\n")
+            sys.exit(1)
+    else:
+        selected = list(accounts.accounts)
 
-    interval_minutes = max(1, config.ingest_interval_minutes)
+    show_header = len(selected) > 1
+
+    if not watch:
+        rc = 0
+        for account in selected:
+            if show_header:
+                sys.stdout.write(f"=== account: {account.account_id} ===\n")
+            if _cli._ingest_cycle(account.config, dry_run=dry_run) != 0:
+                rc = 1
+        return rc
+
+    interval_minutes = max(1, selected[0].config.ingest_interval_minutes)
     sys.stdout.write(
         f"Watch mode: ingesting every {interval_minutes} min (Ctrl-C to stop).\n"
     )
     sys.stdout.flush()
     try:
         while True:
-            try:
-                _cli._ingest_cycle(config, dry_run=dry_run)
-            except Exception as exc:  # never let one bad cycle kill the loop
-                sys.stderr.write(f"Ingest cycle failed: {exc}\n")
+            for account in selected:
+                if show_header:
+                    sys.stdout.write(f"=== account: {account.account_id} ===\n")
+                try:
+                    _cli._ingest_cycle(account.config, dry_run=dry_run)
+                except Exception as exc:  # never let one bad cycle kill the loop
+                    sys.stderr.write(f"Ingest cycle failed: {exc}\n")
             sys.stdout.write(f"Next ingest in {interval_minutes} min.\n")
             sys.stdout.flush()
             _cli.time.sleep(interval_minutes * 60)
@@ -325,7 +361,7 @@ def _cmd_config_sync(args: argparse.Namespace) -> int:
     # detect, the advisory tool should not require a full mail config to run.
     conn = None
     if args.dedup:
-        config = _load_config_or_exit()
+        config = _load_config_or_exit(args.account)
         conn = _cli.init_db(config.db_path)
 
     try:
@@ -372,7 +408,7 @@ def _cmd_triage(args: argparse.Namespace) -> int:
         )
         return 1
 
-    config = _load_config_or_exit()
+    config = _load_config_or_exit(args.account)
     conn = _cli.init_db(config.db_path)
     try:
         decisions = run_triage_agent(conn, api_key=args.api_key)
@@ -429,7 +465,7 @@ def _cmd_triage_set(args: argparse.Namespace) -> int:
         )
         return 1
 
-    config = _load_config_or_exit()
+    config = _load_config_or_exit(args.account)
     conn = _cli.init_db(config.db_path)
     try:
         if get_record_by_message_id(conn, args.message_id) is None:
@@ -464,7 +500,7 @@ def _cmd_triage_rules(args: argparse.Namespace) -> int:
         record_and_filter_rule_proposals,
     )
 
-    config = _load_config_or_exit()
+    config = _load_config_or_exit(args.account)
     conn = _cli.init_db(config.db_path)
     try:
         proposals = propose_triage_rules(conn)
@@ -525,7 +561,7 @@ def _cmd_triage_rules_set(args: argparse.Namespace) -> int:
         )
         return 1
 
-    config = _load_config_or_exit()
+    config = _load_config_or_exit(args.account)
     conn = _cli.init_db(config.db_path)
     try:
         set_rule_state(conn, args.fingerprint, args.state)
@@ -567,7 +603,7 @@ def _cmd_config_sync_set(args: argparse.Namespace) -> int:
         )
         return 1
 
-    config = _load_config_or_exit()
+    config = _load_config_or_exit(args.account)
     conn = _cli.init_db(config.db_path)
     try:
         set_finding_state(conn, args.fingerprint, args.state)
@@ -610,10 +646,35 @@ def _cmd_serve(config: MailConfig, *, port: int) -> int:
     return 0
 
 
-def _load_config_or_exit() -> MailConfig:
-    """Load configuration, or print to stderr and exit with code 1 on failure."""
+def _load_accounts_or_exit() -> MailAccountsConfig:
+    """Load the accounts container, or print to stderr and exit 1 on failure."""
     try:
-        return _cli.load()
+        return _cli.load_accounts()
     except Exception as exc:
         sys.stderr.write(f"Error loading configuration: {exc}\n")
         sys.exit(1)
+
+
+def _load_config_or_exit(account_id: str | None = None) -> MailConfig:
+    """Select one account's :class:`MailConfig`, or exit 1 on failure.
+
+    With *account_id* given, returns that account's config (exiting 1 with the
+    valid ids on an unknown id).  With *account_id* ``None`` and exactly one
+    account configured, returns that account's config (preserving today's
+    single-account behaviour).  With *account_id* ``None`` and multiple
+    accounts, instructs the user to pass ``--account`` and exits 1.
+    """
+    accounts = _load_accounts_or_exit()
+    if account_id is not None:
+        try:
+            return accounts.get(account_id).config
+        except ConfigurationError as exc:
+            sys.stderr.write(f"Error: {exc}\n")
+            sys.exit(1)
+    if len(accounts.accounts) == 1:
+        return accounts.accounts[0].config
+    sys.stderr.write(
+        "Error: multiple accounts are configured; pass --account <id>. "
+        f"Available ids: {list(accounts.ids())!r}\n"
+    )
+    sys.exit(1)
