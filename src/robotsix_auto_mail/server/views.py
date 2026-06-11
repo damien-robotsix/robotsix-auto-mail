@@ -273,6 +273,22 @@ def _build_board_html(
         account_qs = "&account=" + quote(current_account_id, safe="")
         fetch_qs = "?account=" + quote(current_account_id, safe="")
 
+    # Single source of truth for the not-running folder-triage control —
+    # used both for the initial server render below and (via ``json.dumps``)
+    # by the client-side ``refreshBoard`` poll, so the markup cannot drift
+    # between the two and the form is restored after a running→idle tick.
+    folder_form_html = (
+        '<form class="folder-triage-form" method="post"'
+        ' action="/run-folder-triage"'
+        ' onsubmit="return confirm('
+        "'Run a one-shot triage over the selected folder?')\">"
+        '<select id="folder-picker" name="folder">'
+        '<option value="">Select a folder…</option>'
+        "</select>"
+        '<button type="submit">Triage Folder</button>'
+        "</form>"
+    )
+
     triage_control_html: str
     if content["triage_running"]:
         triage_control_html = (
@@ -281,17 +297,7 @@ def _build_board_html(
             "</div>"
         )
     else:
-        triage_control_html = (
-            '<form class="folder-triage-form" method="post"'
-            ' action="/run-folder-triage"'
-            ' onsubmit="return confirm('
-            "'Run a one-shot triage over the selected folder?')\">"
-            '<select id="folder-picker" name="folder">'
-            '<option value="">Select a folder…</option>'
-            "</select>"
-            '<button type="submit">Triage Folder</button>'
-            "</form>"
-        )
+        triage_control_html = folder_form_html
 
     return (
         "<!DOCTYPE html>\n"
@@ -380,8 +386,12 @@ def _build_board_html(
         "        if (data.triage_running) {\n"
         '          tc.innerHTML = \'<div class="triage-banner">Triage is'
         " currently running. The board will refresh automatically.</div>';\n"
-        "        } else {\n"
-        "          tc.innerHTML = '';\n"
+        "        } else if (!document.getElementById('folder-picker')) {\n"
+        "          // Restore the folder-triage form after a running→idle\n"
+        "          // tick; only rebuild when absent so an in-progress\n"
+        "          // folder selection is preserved across refreshes.\n"
+        f"          tc.innerHTML = {json.dumps(folder_form_html)};\n"
+        "          populateFolderPicker();\n"
         "        }\n"
         "      }\n"
         "    })\n"
