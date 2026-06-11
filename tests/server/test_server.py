@@ -5003,3 +5003,194 @@ def test_cookie_persistence() -> None:
     finally:
         os.unlink(db_a)
         os.unlink(db_b)
+
+
+def _two_account_setup_with_labels(
+    db_a: str, db_b: str, default_account_id: str = "A"
+) -> MailAccountsConfig:
+    """Two-account container with a non-None label on account ``A``."""
+    base = _two_account_setup(db_a, db_b, default_account_id=default_account_id)
+    return MailAccountsConfig(
+        accounts=(
+            MailAccount(
+                account_id="A", config=_account_config(db_a), label="Alice <Work>"
+            ),
+            MailAccount(account_id="B", config=_account_config(db_b), label=None),
+        ),
+        default_account_id=base.default_account_id,
+    )
+
+
+def test_picker_visible_multi_account() -> None:
+    """A 2-account board renders the picker with selected current account."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup_with_labels(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            status, body, _h = _get(f"http://127.0.0.1:{port}/board")
+            assert status == 200
+            assert '<select id="account-picker"' in body
+            assert '<option value="A"' in body
+            assert '<option value="B"' in body
+            # Resolved current account (A) carries ``selected``.
+            assert '<option value="A" selected>' in body
+            assert '<option value="B" selected>' not in body
+            # Non-None label renders escaped as the option text.
+            assert "Alice &lt;Work&gt;" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_picker_reflects_selection() -> None:
+    """GET /board?account=B marks the B option selected (not A)."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            status, body, _h = _get(f"http://127.0.0.1:{port}/board?account=B")
+            assert status == 200
+            assert '<option value="B" selected>' in body
+            assert '<option value="A" selected>' not in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_picker_onchange_navigates() -> None:
+    """The picker reload handler navigates to ?account=."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            _s, body, _h = _get(f"http://127.0.0.1:{port}/board")
+            assert "window.location.href='/board?account='" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_account_threaded_into_js_urls() -> None:
+    """At ?account=B the detail iframe + content fetch carry account=B."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            _s, body, _h = _get(f"http://127.0.0.1:{port}/board?account=B")
+            assert "?embed=1&account=B" in body
+            assert "/board-content?account=B" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_detail_panel_shows_selected_account_data() -> None:
+    """GET /email/<msg-in-B>?embed=1&account=B returns B's data."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            status, body, _h = _get(
+                f"http://127.0.0.1:{port}/email/msg-b?embed=1&account=B"
+            )
+            assert status == 200
+            assert "bob@b.com" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_single_account_container_renders_no_picker() -> None:
+    """A 1-element MailAccountsConfig renders no picker and no account param."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    try:
+        _populate_db(
+            db_a,
+            [
+                {
+                    "message_id": "msg-a",
+                    "sender": "alice@a.com",
+                    "subject": "From A",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "Body A",
+                    "status": "to_read",
+                },
+            ],
+        )
+        accounts = MailAccountsConfig(
+            accounts=(
+                MailAccount(
+                    account_id="default", config=_account_config(db_a), label=None
+                ),
+            ),
+            default_account_id="default",
+        )
+        server, port = _start_test_server_with_accounts(accounts, "default")
+        try:
+            _s, body, _h = _get(f"http://127.0.0.1:{port}/board")
+            assert '<select id="account-picker"' not in body
+            assert "account=" not in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_a)
+
+
+def test_build_board_html_legacy_no_accounts_kwarg() -> None:
+    """Direct _build_board_html(db_path) produces no picker, unchanged URLs."""
+    from robotsix_auto_mail.server.views import _build_board_html
+
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    try:
+        _populate_db(
+            db_a,
+            [
+                {
+                    "message_id": "msg-a",
+                    "sender": "alice@a.com",
+                    "subject": "From A",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "Body A",
+                    "status": "to_read",
+                },
+            ],
+        )
+        body = _build_board_html(db_a)
+        assert '<select id="account-picker"' not in body
+        assert "?embed=1';" in body
+        assert "fetch('/board-content')" in body
+        assert "account=" not in body
+    finally:
+        os.unlink(db_a)

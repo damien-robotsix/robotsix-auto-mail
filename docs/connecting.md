@@ -653,6 +653,18 @@ mail in **five columns** — Needs reply, Waiting on them, To read, No action, D
 count badge.  Every mail card has a **Move** dropdown that lets you change
 the card's status column via `POST /move`.
 
+**Account picker (multi-account mode).**  When two or more accounts are configured
+(via `config/mail.accounts.yaml` or environment variables), an account picker
+dropdown appears in the page header next to the "Run triage" button. The dropdown
+shows each configured account with its `label` (or `id` if no label is set), and
+you can click to switch accounts. Switching navigates to `/board?account=<id>` and
+sets an `account` cookie (via `Set-Cookie: account=<id>; Path=/`) so every
+subsequent request on the page routes to the chosen account. The selected account
+is also threaded into the detail iframe and content refresh requests so deep-links
+and cookie-less clients maintain account context. When only one account is
+configured, the picker does not appear and the board behaves as a single-account
+view.
+
 **Rule proposals section.**  Above the board, a **Rule proposals**
 section displays any pending deterministic-rule proposals waiting for human
 validation. Each proposal shows:
