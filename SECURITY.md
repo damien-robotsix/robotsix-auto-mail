@@ -33,15 +33,17 @@ Instead, report vulnerabilities privately:
 When reporting, please include enough detail to reproduce the issue: the
 affected component, steps to reproduce, and the potential impact.
 
-### Response and patch timeline
+### Response and disclosure
 
-- **Acknowledgement:** We aim to acknowledge your report **within 72
-  hours**.
-- **Triage & fix:** Once a report is confirmed, a fix is targeted for
-  release as soon as is practical after triage. This is a best-effort
-  target, not a contractual SLA — `robotsix-auto-mail` is a pre-1.0,
-  volunteer-maintained project, so timelines depend on severity and
-  maintainer availability.
+`robotsix-auto-mail` is a personal project maintained by a single author
+with AI assistance. There are **no guaranteed response times, no service
+level agreement (SLA), and no maintenance commitment** — security reports
+are reviewed and addressed on a best-effort basis only, with no promised
+acknowledgement or fix timeline.
+
+Please still report responsibly: keep the report private and allow a
+reasonable opportunity for the issue to be addressed before any public
+disclosure.
 
 ## Scope
 
