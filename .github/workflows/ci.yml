@@ -56,66 +56,20 @@ jobs:
       - name: Check module registration completeness
         run: uv run --frozen robotsix-modules check-registration docs/modules.yaml --root .
 
+  # Reusable Python-security spine shared across robotsix repos. This single
+  # call replaces the inline TruffleHog secret-scan / pip-audit / CycloneDX
+  # SBOM steps that used to be hand-rolled here.
   security:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      # setup-uv installs uv and a Python matching .python-version, so a
-      # separate actions/setup-python step is no longer needed. These
-      # supply-chain checks are version-independent, so they run once on the
-      # pinned interpreter rather than across the matrix.
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v8.1.0
-
-      # --frozen uses uv.lock as-is and FAILS if pyproject.toml was changed
-      # without re-running `uv lock` — guaranteeing the committed lockfile is
-      # the single source of truth for the resolved dependency tree.
-      # --extra dev pulls the dev tooling (ruff/mypy/pytest/...) which lives
-      # in [project.optional-dependencies]; uv does not install extras by
-      # default.
-      - name: Install dependencies
-        run: uv sync --frozen --extra dev
-
-      - name: Secret scanning (TruffleHog)
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-
-      # Audit the FULL locked dependency set (incl. platform-specific
-      # packages) rather than only what pip happened to install for this
-      # runner — export the lockfile to a pip-compatible requirements file
-      # first, then point pip-audit at it.
-      # --no-emit-project drops the local editable project ("-e .") so
-      # pip-audit only sees third-party dependencies.
-      # --no-emit-package robotsix-yaml-config / robotsix-board drops the
-      # first-party git (VCS) dependencies: pip-audit installs the requirements
-      # in --require-hashes mode (triggered by the hashes uv emits) and pip
-      # cannot hash a VCS checkout, so leaving them in aborts the audit. These
-      # packages are not on PyPI, so pip-audit could never match them against
-      # the advisory DB anyway; their transitive PyPI deps (e.g. pyyaml) stay in
-      # the file WITH hashes and remain fully audited.
-      - name: Export lockfile for audit
-        run: uv export --format requirements-txt --no-emit-project --no-emit-package robotsix-yaml-config --no-emit-package robotsix-board -o requirements-locked.txt
-
-      - name: Audit dependencies (pip-audit)
-        uses: pypa/gh-action-pip-audit@v1.1.0
-        with:
-          inputs: requirements-locked.txt
-
-      - name: Generate SBOM (CycloneDX)
-        if: always()
-        run: |
-          uvx --from 'pip-audit[cyclonedx]' pip-audit \
-            --format cyclonedx-json \
-            --output sbom.json \
-            -r requirements-locked.txt || true
-
-      - name: Upload SBOM artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom
-          path: sbom.json
-          if-no-files-found: error
+    uses: damien-robotsix/robotsix-mill/.github/workflows/python-security.yml@main
+    with:
+      python-version: "3.14"
+      install-extras: "dev"
+      # Full-checkout secret scan, matching the previous `path: ./` (no PR diff).
+      run-trufflehog: true
+      trufflehog-pr-diff: false
+      # Locked-requirements audit: export uv.lock to this file, then run
+      # `pip-audit -r`. Drops the two first-party VCS packages, which are not on
+      # PyPI and break pip's --require-hashes mode.
+      run-pip-audit: true
+      pip-audit-requirements-file: requirements-locked.txt
+      pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board"
