@@ -17,6 +17,23 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* -- buttons (base) ------------------------------------------------------- */
+/* On the dark board theme an unstyled <button> renders with the browser
+ * default white/grey chrome, which looks out of place.  Give every button
+ * a dark default background so none appear white.  The coloured action
+ * buttons defined later (.delete-btn, .archive-btn, .draft-reply-btn,
+ * .force-triage-btn) win on specificity and keep their colours, and the
+ * transparent chrome buttons (#refresh-btn, .close-btn) set
+ * ``background: none`` to override this. */
+button {
+  background: #0f3460;
+  color: #e0e0e0;
+  border: 1px solid #3a3a6a;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover { background: #1a4d7a; }
+
 /* -- move form ------------------------------------------------------------ */
 /* render_board emits a generic move form (a direct child of .board-card)
  * whose <select> targets only the currently-visible columns.  auto-mail

@@ -3746,6 +3746,10 @@ def test_handler_static_automail_board_css_returns_200() -> None:
         assert ".board-wrapper" in body
         # The UI background is a dark shade harmonizing with the board palette.
         assert "background: #121626" in body
+        # Buttons get a dark default background so none render white on the
+        # dark theme.
+        assert "button {" in body
+        assert "background: #0f3460" in body
     finally:
         server.shutdown()
 
