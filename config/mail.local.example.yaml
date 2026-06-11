@@ -55,11 +55,9 @@ accounts:
     # triage:
     #   on_ingest: true
     # LLM provider — used by the `detect` command and future LLM-assisted mail
-    # processing. The LLM_API_KEY / LLM_MODEL environment variables override
-    # these values.
+    # processing. The LLM_API_KEY environment variable overrides this value.
     # llm:
     #   api_key: sk-or-v1-…
-    #   model: deepseek/deepseek-v4-flash
     # Langfuse observability — optional. When public_key/secret_key are set,
     # every LLM agent run is traced to the configured Langfuse project.
     # langfuse:

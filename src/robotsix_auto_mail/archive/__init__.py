@@ -7,10 +7,9 @@ an appropriate layout (based on the mailbox's existing folders) rooted at
 ``watermark`` table so subsequent runs reuse it without re-asking the LLM or
 recreating folders.
 
-The ``pydantic_ai`` and ``openrouter_deepseek`` provider imports are lazy
-to keep module-load time low and to avoid requiring the optional provider
-extra for the deterministic import path, mirroring
-:mod:`robotsix_auto_mail.detect`.
+The ``pydantic_ai`` and LLM-provider imports are lazy to keep module-load
+time low and to avoid requiring the optional provider extra for the
+deterministic import path, mirroring :mod:`robotsix_auto_mail.detect`.
 """
 
 from __future__ import annotations
@@ -122,12 +121,12 @@ def determine_archive_structure(
         )
 
     # -- lazy import so the rest of the CLI works without the
-    #    openrouter_deepseek extra --
+    #    LLM provider extra --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
+    from robotsix_llmio.core import get_provider
 
     # -- build agent --
-    llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
+    llm_provider = get_provider(api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_build_archive_system_prompt(archive_root),

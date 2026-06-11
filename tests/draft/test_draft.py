@@ -27,7 +27,7 @@ from robotsix_auto_mail.draft import (
 def _patch_llm(
     result_obj: DraftResult,
 ) -> tuple[mock.MagicMock, mock._patch[mock.MagicMock]]:
-    """Patch OpenRouterDeepseekProvider to return *result_obj* from the LLM.
+    """Patch get_provider to return *result_obj* from the LLM.
 
     Returns the mock handle (to assert ``close()``) and the patcher.
     """
@@ -41,7 +41,7 @@ def _patch_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     patcher = mock.patch(
-        "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+        "robotsix_llmio.core.get_provider",
         return_value=mock_provider,
     )
     return mock_handle, patcher

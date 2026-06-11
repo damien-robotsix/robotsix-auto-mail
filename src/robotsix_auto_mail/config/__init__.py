@@ -97,9 +97,6 @@ DEFAULT_DB_PATH = ".data/mail.db"
 # Default YAML config file path (used by ``load()`` and ``load_llm()``).
 DEFAULT_CONFIG_PATH = "config/mail.local.yaml"
 
-# Default LLM model for the ``detect`` command (and future mail processing).
-DEFAULT_LLM_MODEL = "deepseek/deepseek-v4-flash"
-
 # Default interval (minutes) between automatic ingest cycles in watch mode.
 DEFAULT_INGEST_INTERVAL_MINUTES = 15
 
@@ -205,9 +202,6 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         "db_path", "MAIL_DB_PATH", "store.path", "str", DEFAULT_DB_PATH, False, False
     ),
     _FieldSpec("llm_api_key", "LLM_API_KEY", "llm.api_key", "str", "", False, False),
-    _FieldSpec(
-        "llm_model", "LLM_MODEL", "llm.model", "str", DEFAULT_LLM_MODEL, False, False
-    ),
     _FieldSpec(
         "ingest_interval_minutes",
         "MAIL_INGEST_INTERVAL",
@@ -351,7 +345,6 @@ class MailConfig:
     # LLM provider settings — optional; only needed for the `detect`
     # subcommand and future LLM-assisted mail processing.
     llm_api_key: str = ""
-    llm_model: str = DEFAULT_LLM_MODEL
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
     ingest_interval_minutes: int = DEFAULT_INGEST_INTERVAL_MINUTES
@@ -499,7 +492,6 @@ class MailConfig:
 
             llm:
               api_key: sk-or-v1-…
-              model: deepseek/deepseek-v4-flash
 
         All fields are optional; missing fields fall back to the same
         defaults as ``from_env()``.
@@ -611,22 +603,20 @@ def _load_mono_config() -> MailConfig:
     return _merge_env(file_cfg)
 
 
-def load_llm() -> tuple[str, str]:
-    """Resolve ``(api_key, model)`` for LLM features through the same
-    cascade as :func:`load`, but *without* requiring the mail fields.
+def load_llm() -> str:
+    """Resolve the LLM API key through the same cascade as :func:`load`,
+    but *without* requiring the mail fields.
 
-    Order: ``LLM_API_KEY`` / ``LLM_MODEL`` environment variables win;
-    otherwise the ``llm:`` section of the YAML config file at
-    ``MAIL_CONFIG_PATH`` (default ``config/mail.local.yaml``) is consulted.
-    The model falls back to :data:`DEFAULT_LLM_MODEL`.
+    Order: ``LLM_API_KEY`` environment variable wins; otherwise the
+    ``llm.api_key`` field of the YAML config file at ``MAIL_CONFIG_PATH``
+    (default ``config/mail.local.yaml``) is consulted.
 
     This is separated from :func:`load` because ``detect`` runs before a
     complete mail configuration exists — it only needs the LLM settings.
     """
     api_key = os.environ.get("LLM_API_KEY", "")
-    model = os.environ.get("LLM_MODEL", "")
 
-    if not api_key or not model:
+    if not api_key:
         config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
         if config_path.exists():
             try:
@@ -639,9 +629,8 @@ def load_llm() -> tuple[str, str]:
                 file_cfg = None
             if file_cfg is not None:
                 api_key = api_key or file_cfg.llm_api_key
-                model = model or file_cfg.llm_model
 
-    return api_key, model or DEFAULT_LLM_MODEL
+    return api_key
 
 
 def _merge_env(base: MailConfig) -> MailConfig:
@@ -998,7 +987,7 @@ class MailAccountsConfig:
           account is built from the namespaced vars.  A field whose
           single-account env var is ``MAIL_<X>`` becomes
           ``MAIL_ACCOUNTS_<n>_<X>``; the two LLM fields become
-          ``MAIL_ACCOUNTS_<n>_LLM_API_KEY`` / ``..._LLM_MODEL``.  Two extra
+          ``MAIL_ACCOUNTS_<n>_LLM_API_KEY``.  Two extra
           vars: ``MAIL_ACCOUNTS_<n>_ID`` (required) and
           ``MAIL_ACCOUNTS_<n>_LABEL`` (optional).  A missing ``store.path``
           yields the per-account default ``".data/<id>/mail.db"``.  An
@@ -1175,10 +1164,9 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
         )
     lines.append(f"{item}store:")
     lines.append(f"{item}  path: {_yaml_scalar(cfg.db_path)}")
-    if cfg.llm_api_key or cfg.llm_model != defaults.llm_model:
+    if cfg.llm_api_key:
         lines.append(f"{item}llm:")
         lines.append(f"{item}  api_key: {_yaml_scalar(cfg.llm_api_key)}")
-        lines.append(f"{item}  model: {_yaml_scalar(cfg.llm_model)}")
     if cfg.ingest_interval_minutes != defaults.ingest_interval_minutes:
         lines.append(f"{item}ingest:")
         lines.append(f"{item}  interval_minutes: {cfg.ingest_interval_minutes}")

@@ -69,11 +69,10 @@ accounts:
     # triage:
     #   on_ingest: true
     # LLM provider — used by the `detect` command and future LLM-assisted
-    # mail processing. The LLM_API_KEY / LLM_MODEL environment variables
-    # override these values.
+    # mail processing. The LLM_API_KEY environment variable overrides this
+    # value.
     # llm:
     #   api_key: sk-or-v1-…
-    #   model: deepseek/deepseek-v4-flash
     # Langfuse observability — optional; enables LLM agent tracing.
     # langfuse:
     #   public_key: ""
@@ -115,7 +114,6 @@ MAIL_ARCHIVE_NAMESPACE=
 MAIL_ARCHIVE_ENABLED=true
 MAIL_TRIAGE_ON_INGEST=true
 LLM_API_KEY=sk-or-v1-…
-LLM_MODEL=deepseek/deepseek-v4-flash
 MAIL_LANGFUSE_PUBLIC_KEY=
 MAIL_LANGFUSE_SECRET_KEY=
 MAIL_LANGFUSE_BASE_URL=
@@ -171,7 +169,6 @@ _DOCS_YAML_TABLE = """\
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
 | `llm.api_key` | no | - | LLM provider API key |
-| `llm.model` | no | `"deepseek/deepseek-v4-flash"` | LLM model name |
 | `langfuse.public_key` | no | - | Langfuse public key for LLM tracing |
 | `langfuse.secret_key` | no | - | Langfuse secret key for LLM tracing |
 | `langfuse.base_url` | no | - | Langfuse base URL for LLM tracing |
@@ -202,7 +199,6 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Run inbox triage automatically after ingest |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
 | `LLM_API_KEY` | no | - | LLM provider API key |
-| `LLM_MODEL` | no | `deepseek/deepseek-v4-flash` | LLM model name |
 | `MAIL_LANGFUSE_PUBLIC_KEY` | no | - | Langfuse public key for LLM tracing |
 | `MAIL_LANGFUSE_SECRET_KEY` | no | - | Langfuse secret key for LLM tracing |
 | `MAIL_LANGFUSE_BASE_URL` | no | - | Langfuse base URL for LLM tracing |

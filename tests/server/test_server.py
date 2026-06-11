@@ -878,9 +878,7 @@ def test_move_to_archive_triggers_llm() -> None:
             llm_api_key="sk-test",
         )
 
-        with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as mock_provider_cls:
+        with mock.patch("robotsix_llmio.core.get_provider") as mock_provider_cls:
             server, port = _start_test_server_with_mail_config(db_path, mail_config)
             try:
                 status, body = _post_form(
@@ -931,7 +929,7 @@ def test_move_to_archive_llm_failure_still_redirects() -> None:
         mock_provider.build_agent.side_effect = RuntimeError("LLM crashed")
 
         with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+            "robotsix_llmio.core.get_provider",
             return_value=mock_provider,
         ):
             server, port = _start_test_server_with_mail_config(db_path, mail_config)
@@ -987,9 +985,7 @@ def test_move_to_other_column_skips_llm() -> None:
             llm_api_key="sk-test",
         )
 
-        with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider"
-        ) as mock_provider_cls:
+        with mock.patch("robotsix_llmio.core.get_provider") as mock_provider_cls:
             server, port = _start_test_server_with_mail_config(db_path, mail_config)
             try:
                 status, body = _post_form(
@@ -3545,7 +3541,7 @@ def test_generate_draft_generates_and_moves_to_draft_ready() -> None:
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_llmio.openrouter_deepseek.OpenRouterDeepseekProvider",
+            "robotsix_llmio.core.get_provider",
             return_value=mock_provider,
         ):
             server, port = _start_test_server_with_mail_config(db_path, mail_config)

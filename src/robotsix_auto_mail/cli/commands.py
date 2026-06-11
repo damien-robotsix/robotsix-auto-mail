@@ -301,7 +301,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     account_id = args.id or _account_id_from_email(args.email)
     label = args.email
 
-    api_key, _ = load_llm()
+    api_key = load_llm()
     provider, mx_hosts = _detect_settings(
         args.email,
         api_key,

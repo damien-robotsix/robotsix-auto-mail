@@ -213,7 +213,7 @@ The Compose file defines two services that share the same image and data:
 | `stdin_open` | `true` | Keeps stdin open so one-shot interactive commands (e.g. `detect`'s password prompt) work. |
 | `tty` | `false` | No pseudo-TTY allocation; output is plain streams. |
 | `restart` | `unless-stopped` | The default command is a long-running daemon, so it should stay up. |
-| `environment` | `MAIL_CONFIG_PATH`, `LLM_API_KEY`, `LLM_MODEL` | Points the tool at the mounted config and passes LLM credentials through. |
+| `environment` | `MAIL_CONFIG_PATH`, `LLM_API_KEY` | Points the tool at the mounted config and passes LLM credentials through. |
 | `volumes` | Two entries (see below) | Config bind-mount + data bind-mount. |
 
 `docker compose up -d` runs this service (the ingester) alongside `board`.

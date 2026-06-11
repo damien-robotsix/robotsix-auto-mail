@@ -236,9 +236,11 @@ def _existing_accounts_for_append(
         mono_cfg = MailConfig.from_yaml(path, validate=False)
     except Exception:
         return [], new_account_id
-    others = [] if new_account_id == "default" else [
-        MailAccount(account_id="default", config=mono_cfg, label="default")
-    ]
+    others = (
+        []
+        if new_account_id == "default"
+        else [MailAccount(account_id="default", config=mono_cfg, label="default")]
+    )
     return others, "default"
 
 

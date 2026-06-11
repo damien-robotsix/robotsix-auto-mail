@@ -25,8 +25,7 @@ import sys
 from pathlib import Path
 
 import pydantic
-from robotsix_llmio.core import Tier, run_agent
-from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
+from robotsix_llmio.core import Tier, get_provider, run_agent
 
 from robotsix_auto_mail.config import _FIELD_SPECS, _REQUIRED, load_llm
 from robotsix_auto_mail.db import get_watermark, set_watermark
@@ -374,7 +373,7 @@ def run_config_sync_agent(
     # -- resolve API key (arg -> LLM_API_KEY env -> config.llm_api_key) --
     resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
     if not resolved_key:
-        resolved_key, _ = load_llm()
+        resolved_key = load_llm()
     if not resolved_key:
         raise ConfigSyncError(
             "No LLM API key found — set the LLM_API_KEY environment "
@@ -389,7 +388,7 @@ def run_config_sync_agent(
     from pydantic_ai import PromptedOutput
 
     # -- build agent --
-    llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
+    llm_provider = get_provider(api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_build_config_sync_system_prompt(),

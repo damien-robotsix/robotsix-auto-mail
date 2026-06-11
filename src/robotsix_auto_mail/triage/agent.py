@@ -2,8 +2,8 @@
 
 Prompt building, per-sender unsubscribe detection and the
 ``run_triage_agent`` driver.  The ``pydantic_ai`` /
-``OpenRouterDeepseekProvider`` imports stay lazy inside the agent
-functions to keep module-load time low.
+LLM-provider imports stay lazy inside the agent functions to
+keep module-load time low.
 """
 
 from __future__ import annotations
@@ -188,12 +188,12 @@ def _detect_unsubscribe_for_sender(
     # Resolve API key with the same precedence as run_triage_agent.
     resolved_key = os.environ.get("LLM_API_KEY", "")
     if not resolved_key:
-        resolved_key, _ = load_llm()
+        resolved_key = load_llm()
     if not resolved_key:
         return None
 
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
+    from robotsix_llmio.core import get_provider
 
     system_prompt = (
         "You are an unsubscribe-detection assistant. "
@@ -214,7 +214,7 @@ def _detect_unsubscribe_for_sender(
         f"Body:\n{recent.body_plain}"
     )
 
-    llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
+    llm_provider = get_provider(api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=Tier.CHEAP,
         system_prompt=system_prompt,
@@ -361,7 +361,7 @@ def run_triage_agent(
     # -- resolve API key (arg -> LLM_API_KEY env -> config.llm_api_key) --
     resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
     if not resolved_key:
-        resolved_key, _ = load_llm()
+        resolved_key = load_llm()
     if not resolved_key:
         raise TriageError(
             "No LLM API key found — set the LLM_API_KEY environment "
@@ -409,10 +409,10 @@ def run_triage_agent(
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.openrouter_deepseek import OpenRouterDeepseekProvider
+    from robotsix_llmio.core import get_provider
 
     # -- build agent --
-    llm_provider = OpenRouterDeepseekProvider(api_key=resolved_key)
+    llm_provider = get_provider(api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_build_triage_system_prompt(

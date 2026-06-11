@@ -10,7 +10,6 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import (
-    DEFAULT_LLM_MODEL,
     ConfigurationError,
     MailAccountsConfig,
     MailConfig,
@@ -843,10 +842,9 @@ def test_from_env_still_requires_mail_password() -> None:
 
 
 def test_llm_defaults_when_absent() -> None:
-    """llm fields default to empty key + the default model."""
+    """llm api key defaults to an empty string."""
     cfg = MailConfig(imap_host="i", smtp_host="s", username="u", password="p")
     assert cfg.llm_api_key == ""
-    assert cfg.llm_model == DEFAULT_LLM_MODEL
 
 
 def test_llm_api_key_redacted_in_repr() -> None:
@@ -880,40 +878,35 @@ auth:
 
 llm:
   api_key: sk-or-from-file
-  model: anthropic/claude-3-haiku
 """
     )
     cfg = MailConfig.from_yaml(yaml_file)
     assert cfg.llm_api_key == "sk-or-from-file"
-    assert cfg.llm_model == "anthropic/claude-3-haiku"
 
 
 def test_from_env_reads_llm_vars() -> None:
-    """from_env picks up LLM_API_KEY / LLM_MODEL."""
+    """from_env picks up LLM_API_KEY."""
     env: dict[str, str] = {
         "MAIL_IMAP_HOST": "i",
         "MAIL_SMTP_HOST": "s",
         "MAIL_USERNAME": "u",
         "MAIL_PASSWORD": "p",
         "LLM_API_KEY": "sk-env",
-        "LLM_MODEL": "env/model",
     }
     with mock.patch.dict(os.environ, env, clear=True):
         cfg = MailConfig.from_env()
         assert cfg.llm_api_key == "sk-env"
-        assert cfg.llm_model == "env/model"
 
 
 def test_load_llm_env_wins() -> None:
-    """load_llm prefers the environment variables."""
+    """load_llm prefers the environment variable."""
     env: dict[str, str] = {
         "LLM_API_KEY": "sk-env",
-        "LLM_MODEL": "env/model",
         # point at a path that does not exist so the file branch is skipped
         "MAIL_CONFIG_PATH": "/nonexistent/mail.yaml",
     }
     with mock.patch.dict(os.environ, env, clear=True):
-        assert load_llm() == ("sk-env", "env/model")
+        assert load_llm() == "sk-env"
 
 
 def test_load_llm_falls_back_to_file(tmp_path: Path) -> None:
@@ -923,31 +916,18 @@ def test_load_llm_falls_back_to_file(tmp_path: Path) -> None:
         """\
 llm:
   api_key: sk-from-file
-  model: file/model
 """
     )
     env: dict[str, str] = {"MAIL_CONFIG_PATH": str(yaml_file)}
     with mock.patch.dict(os.environ, env, clear=True):
-        assert load_llm() == ("sk-from-file", "file/model")
+        assert load_llm() == "sk-from-file"
 
 
-def test_load_llm_env_key_file_model(tmp_path: Path) -> None:
-    """load_llm mixes sources: env key + file model."""
-    yaml_file = tmp_path / "mail.local.yaml"
-    yaml_file.write_text("llm:\n  model: file/model\n")
-    env: dict[str, str] = {
-        "MAIL_CONFIG_PATH": str(yaml_file),
-        "LLM_API_KEY": "sk-env",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        assert load_llm() == ("sk-env", "file/model")
-
-
-def test_load_llm_default_model_when_nothing_set() -> None:
-    """load_llm returns an empty key and the default model when unset."""
+def test_load_llm_default_key_when_nothing_set() -> None:
+    """load_llm returns an empty key when nothing is set."""
     env: dict[str, str] = {"MAIL_CONFIG_PATH": "/nonexistent/mail.yaml"}
     with mock.patch.dict(os.environ, env, clear=True):
-        assert load_llm() == ("", DEFAULT_LLM_MODEL)
+        assert load_llm() == ""
 
 
 # ---------------------------------------------------------------------------
