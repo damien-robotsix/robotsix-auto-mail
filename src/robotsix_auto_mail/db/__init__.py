@@ -77,6 +77,7 @@ class MailRecord:
     unsubscribe_header: str = ""
     notes: str = ""
     draft_text: str = ""
+    sent_reply_text: str = ""
 
     id: int = 0  # assigned by DB; ignored on insert
 
@@ -100,7 +101,8 @@ CREATE TABLE IF NOT EXISTS mail_records (
     unsubscribe_header TEXT NOT NULL DEFAULT '',
     status          TEXT    NOT NULL DEFAULT '{DEFAULT_STATUS}',
     notes           TEXT    NOT NULL DEFAULT '',
-    draft_text      TEXT    NOT NULL DEFAULT ''
+    draft_text      TEXT    NOT NULL DEFAULT '',
+    sent_reply_text TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS watermark (
@@ -158,6 +160,7 @@ def init_db(
         _migrate_add_unsubscribe_header(conn)
         _migrate_add_notes(conn)
         _migrate_add_draft_text(conn)
+        _migrate_add_sent_reply_text(conn)
     return conn
 
 
@@ -269,6 +272,22 @@ def _migrate_add_draft_text(conn: sqlite3.Connection) -> None:
         pass
 
 
+def _migrate_add_sent_reply_text(conn: sqlite3.Connection) -> None:
+    """Add ``sent_reply_text`` column to ``mail_records`` for existing DBs.
+
+    Idempotent: if the column already exists the ``ALTER TABLE`` raises
+    ``sqlite3.OperationalError`` which is caught and ignored.
+    """
+    try:
+        conn.execute(
+            "ALTER TABLE mail_records "
+            "ADD COLUMN sent_reply_text TEXT NOT NULL DEFAULT ''"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
+
 def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
     """Insert *record* into ``mail_records``.
 
@@ -283,11 +302,11 @@ def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
 INSERT INTO mail_records
     (imap_uid, message_id, sender, subject, date,
      recipients_json, body_plain, body_html, attachments_json,
-     unsubscribe_header, status, notes, draft_text)
+     unsubscribe_header, status, notes, draft_text, sent_reply_text)
 VALUES
     (:imap_uid, :message_id, :sender, :subject, :date,
      :recipients_json, :body_plain, :body_html, :attachments_json,
-     :unsubscribe_header, :status, :notes, :draft_text)
+     :unsubscribe_header, :status, :notes, :draft_text, :sent_reply_text)
 """,
             {
                 "imap_uid": record.imap_uid,
@@ -303,6 +322,7 @@ VALUES
                 "status": record.status,
                 "notes": record.notes,
                 "draft_text": record.draft_text,
+                "sent_reply_text": record.sent_reply_text,
             },
         )
     except sqlite3.IntegrityError:
@@ -374,6 +394,22 @@ def update_draft_text(
     return cur.rowcount > 0
 
 
+def update_sent_reply_text(
+    conn: sqlite3.Connection, message_id: str, text: str
+) -> bool:
+    """Update ``mail_records.sent_reply_text`` for *message_id*.
+
+    Returns ``True`` if a row was updated, ``False`` if no matching
+    ``message_id`` exists.
+    """
+    cur = conn.execute(
+        "UPDATE mail_records SET sent_reply_text = ? WHERE message_id = ?",
+        (text, message_id),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
 def delete_record_by_message_id(conn: sqlite3.Connection, message_id: str) -> bool:
     """Delete a mail record and its triage decision by *message_id*.
 
@@ -427,6 +463,7 @@ def row_to_mailrecord(
         unsubscribe_header=data["unsubscribe_header"],
         notes=data["notes"],
         draft_text=data["draft_text"],
+        sent_reply_text=data["sent_reply_text"],
         id=data["id"],
     )
 

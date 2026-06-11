@@ -889,14 +889,20 @@ class BoardHandler(BaseHTTPRequestHandler):
 
     def _handle_send_draft(self) -> None:
         """Process POST /send-draft — send the saved draft via SMTP, then
-        archive the original message (IMAP move + local DB delete).
+        re-queue the original message for triage.
 
-        Mirrors :meth:`_handle_save_draft` for form parsing/validation and
-        reuses :meth:`_archive_and_delete` for the archive phase.  After a
-        successful send the original record is removed from the board, just
-        like the Archive action.
+        Mirrors :meth:`_handle_save_draft` for form parsing/validation.
+        After a successful send the original record is **not** archived;
+        instead its sent reply body is persisted and its triage decision is
+        cleared so the email re-enters the untriaged pool and the triage
+        agent owns the post-answer disposition.
         """
-        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.db import (
+            get_record_by_message_id,
+            init_db,
+            update_sent_reply_text,
+        )
+        from robotsix_auto_mail.triage import delete_triage_decision
 
         content_length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(content_length).decode("utf-8")
@@ -983,9 +989,11 @@ class BoardHandler(BaseHTTPRequestHandler):
                     references=record.message_id,
                 )
 
-            # -- archive the original message + delete local record ----
-            if not self._archive_and_delete(conn, record):
-                return
+            # -- re-queue for triage: persist the sent reply and drop the
+            #    existing triage decision so the record re-enters the
+            #    untriaged pool (no archive move, no record deletion) ----
+            update_sent_reply_text(conn, record.message_id, record.draft_text)
+            delete_triage_decision(conn, record.message_id)
         finally:
             conn.close()
 

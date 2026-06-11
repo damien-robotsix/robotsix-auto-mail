@@ -364,6 +364,21 @@ def list_triage_decisions(
     ]
 
 
+def delete_triage_decision(conn: sqlite3.Connection, message_id: str) -> bool:
+    """Delete the triage decision row for *message_id*, if any.
+
+    Re-queues the record for triage: with no ``triage_decisions`` row it
+    satisfies the ``list_untriaged_records`` LEFT JOIN criterion.  Returns
+    ``True`` if a row was deleted, ``False`` if none existed.
+    """
+    cur = conn.execute(
+        "DELETE FROM triage_decisions WHERE message_id = ?",
+        (message_id,),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
 def delete_triage_decisions_by_action(conn: sqlite3.Connection, action: str) -> int:
     """Delete all triage decision rows for *action*.
 

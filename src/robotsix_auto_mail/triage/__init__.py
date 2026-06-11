@@ -204,6 +204,9 @@ from robotsix_auto_mail.triage.persistence import (
     _utc_now_iso as _utc_now_iso,
 )
 from robotsix_auto_mail.triage.persistence import (
+    delete_triage_decision as delete_triage_decision,
+)
+from robotsix_auto_mail.triage.persistence import (
     delete_triage_decisions_by_action as delete_triage_decisions_by_action,
 )
 from robotsix_auto_mail.triage.persistence import (
@@ -266,6 +269,7 @@ __all__ = [
     "_sender_key",
     "_utc_now_iso",
     "apply_triage_rules",
+    "delete_triage_decision",
     "delete_triage_decisions_by_action",
     "get_archive_subfolder",
     "get_triage_decision",

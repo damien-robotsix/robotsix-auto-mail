@@ -17,10 +17,13 @@ from tests.conftest import _make_record
 
 from robotsix_auto_mail.db import (
     MailRecord,
+    get_record_by_message_id,
     get_watermark,
     init_db,
     insert_record,
+    list_untriaged_records,
     set_watermark,
+    update_sent_reply_text,
 )
 from robotsix_auto_mail.triage import (
     TRIAGE_ACTION_LABELS,
@@ -37,6 +40,7 @@ from robotsix_auto_mail.triage import (
     TriageRuleProposal,
     _build_memory_guidance,
     _build_triage_system_prompt,
+    _build_user_message,
     _load_active_rules,
     _load_archive_overrides,
     _load_llm_archive_hints,
@@ -45,6 +49,7 @@ from robotsix_auto_mail.triage import (
     _rule_fingerprint,
     _save_llm_archive_hints,
     apply_triage_rules,
+    delete_triage_decision,
     delete_triage_decisions_by_action,
     get_archive_subfolder,
     get_triage_decision,
@@ -307,6 +312,69 @@ def test_delete_triage_decisions_by_action_no_matching_rows() -> None:
         deleted = delete_triage_decisions_by_action(conn, "HUMAN_TRIAGE")
         assert deleted == 0
         assert len(list_triage_decisions(conn)) == 1
+    finally:
+        conn.close()
+
+
+def test_delete_triage_decision_requeues_record() -> None:
+    """Deleting a record's decision makes it untriaged again."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        set_triage_decision(conn, "<a@x.com>", "TO_ANSWER", source="user")
+        assert get_triage_decision(conn, "<a@x.com>") is not None
+        assert "<a@x.com>" not in {r.message_id for r in list_untriaged_records(conn)}
+
+        assert delete_triage_decision(conn, "<a@x.com>") is True
+        assert get_triage_decision(conn, "<a@x.com>") is None
+        assert "<a@x.com>" in {r.message_id for r in list_untriaged_records(conn)}
+
+        # Deleting again is a no-op (no row to remove).
+        assert delete_triage_decision(conn, "<a@x.com>") is False
+    finally:
+        conn.close()
+
+
+def test_update_sent_reply_text_and_column_default() -> None:
+    """sent_reply_text defaults to '' and update_sent_reply_text persists it."""
+    conn = init_db(":memory:")
+    try:
+        # Column present on mail_records.
+        cols = {
+            row[1] for row in conn.execute("PRAGMA table_info(mail_records)").fetchall()
+        }
+        assert "sent_reply_text" in cols
+
+        _insert_inbox(conn, "<a@x.com>")
+        record = get_record_by_message_id(conn, "<a@x.com>")
+        assert record is not None
+        assert record.sent_reply_text == ""
+
+        assert update_sent_reply_text(conn, "<a@x.com>", "My reply body.") is True
+        updated = get_record_by_message_id(conn, "<a@x.com>")
+        assert updated is not None
+        assert updated.sent_reply_text == "My reply body."
+
+        # No matching row → False.
+        assert update_sent_reply_text(conn, "<missing>", "x") is False
+    finally:
+        conn.close()
+
+
+def test_answered_record_untriaged_and_marked_in_user_message() -> None:
+    """A record with sent_reply_text (and no decision) is untriaged and its
+    user-message line carries the answered marker + reply preview."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>", subject="Question")
+        update_sent_reply_text(conn, "<a@x.com>", "Thanks, all sorted.")
+
+        untriaged = list_untriaged_records(conn)
+        assert "<a@x.com>" in {r.message_id for r in untriaged}
+
+        message = _build_user_message(untriaged)
+        assert "ANSWERED — reply sent:" in message
+        assert "Thanks, all sorted." in message
     finally:
         conn.close()
 

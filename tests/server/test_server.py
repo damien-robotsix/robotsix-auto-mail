@@ -4126,9 +4126,15 @@ def _dummy_send_mail_config() -> MailConfig:
     )
 
 
-def test_send_draft_reply_sends_and_archives() -> None:
-    """POST /send-draft reply → sends mail, archives + deletes the record."""
+def test_send_draft_reply_sends_and_requeues_for_triage() -> None:
+    """POST /send-draft reply → sends mail, retains the record, stores the
+    sent reply, and clears the triage decision so it re-enters triage."""
     from unittest import mock
+
+    from robotsix_auto_mail.db import (
+        get_record_by_message_id,
+        list_untriaged_records,
+    )
 
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
@@ -4172,18 +4178,20 @@ def test_send_draft_reply_sends_and_archives() -> None:
                 assert kwargs["body"] == "Here is my reply."
                 assert not kwargs["cc"]
 
-                # IMAP archive move was invoked.
-                imap_client.move_message.assert_called_once_with(5, "my-archive")
+                # No IMAP archive move was performed in the send path.
+                imap_client.move_message.assert_not_called()
 
-            # Record was deleted — the detail page is now 404.
-            import urllib.error
-
+            # The record is retained, its sent reply body is stored, and its
+            # triage decision was cleared so it appears as untriaged.
+            conn = init_db(db_path)
             try:
-                urlopen(f"http://127.0.0.1:{port}/email/send-reply-mid")
-            except urllib.error.HTTPError as exc:
-                assert exc.code == 404
-            else:
-                raise AssertionError("Expected 404 after record deletion")
+                record = get_record_by_message_id(conn, "send-reply-mid")
+                assert record is not None
+                assert record.sent_reply_text == "Here is my reply."
+                untriaged_ids = {r.message_id for r in list_untriaged_records(conn)}
+                assert "send-reply-mid" in untriaged_ids
+            finally:
+                conn.close()
         finally:
             server.shutdown()
     finally:
