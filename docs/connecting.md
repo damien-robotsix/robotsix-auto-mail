@@ -1666,3 +1666,85 @@ The `config-sync-set` command requires:
 
 It does **not** require an LLM API key — unlike `config-sync`, it performs no
 LLM call.
+
+## The `auth login` command
+
+To seed the MSAL refresh-token cache for OAuth2 accounts (enabling subsequent
+silent token refresh), run the device-code login flow interactively:
+
+```sh
+$ robotsix-auto-mail auth login --account <id>
+```
+
+### What it does
+
+`auth login` loads the configuration for the specified account, initiates the
+OAuth2 device-code flow, and persists the token cache in the account's data
+folder. With a single configured account, `--account` may be omitted.
+
+The command:
+
+1. Resolves the account's configuration by `id` (or uses the only configured
+   account if exactly one exists and `--account` is omitted).
+2. Checks that the account is configured for OAuth2 (`oauth2_provider`
+   set — currently only `microsoft` is supported).
+3. Prints a verification URL and device code to stderr.
+4. Blocks until the user completes device consent in a browser.
+5. On success, writes the MSAL token cache to
+   `.data/<account-id>/msal_cache.json` and prints the cache path to stdout.
+
+Subsequent token acquisition for that account runs silently (no user
+interaction required).
+
+Exit code is `0` on success, `1` on any error (unknown account, non-OAuth2
+account, missing `msal` package, device-flow failure, or user abort).
+
+### Examples
+
+```sh
+# With a single configured account (--account is optional)
+robotsix-auto-mail auth login
+
+# With multiple accounts, specify which one to authenticate
+robotsix-auto-mail auth login --account work
+
+# With a non-existent account id
+$ robotsix-auto-mail auth login --account nope
+Error: Account nope not found. Available ids: ['personal', 'work']
+```
+
+### Error handling
+
+- **Unknown account id**: If `--account` names an id that doesn't exist, or if
+  multiple accounts are configured and `--account` is omitted, the command
+  exits with code `1` and lists the available account ids.
+- **Non-OAuth2 account**: If the account has no `oauth2_provider` set (or a
+  provider other than `microsoft`), the command exits with code `1` and prints
+  a clear message.
+- **Missing `msal` package**: If the `msal` library is not installed, the
+  command exits with code `1` and prints an install hint:
+  `pip install 'robotsix-auto-mail[microsoft]'`.
+- **Device-code flow failure**: If the user aborts or the flow encounters an
+  error (e.g. network failure), the command exits with code `1` and prints the
+  error.
+
+### Requirements
+
+The `auth login` command requires:
+
+- A **loadable configuration** with at least one account and an `oauth2_provider`
+  field.
+- The **`msal` package**, installed via `pip install 'robotsix-auto-mail[microsoft]'`
+  or the `[dev]` extra. The command exits with code `1` and a clear install
+  hint if `msal` is not available.
+
+It does **not** require IMAP or SMTP connectivity — authentication is purely
+OAuth2-based and happens out-of-band via the device-code flow.
+
+### Integration with `ingest` and `serve`
+
+Once the token cache is seeded, subsequent `ingest` and `serve` commands for
+that account will use the cached token automatically. If the token expires,
+it is refreshed silently using the refresh token (no user interaction required).
+If refresh fails (e.g. the user has revoked the app's consent), a new
+device-code login is required.
