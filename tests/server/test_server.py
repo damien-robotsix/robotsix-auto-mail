@@ -4007,3 +4007,67 @@ def test_handler_email_detail_embed_no_chrome() -> None:
             server.shutdown()
     finally:
         os.unlink(db_path)
+
+
+def _make_extra_html_adapter() -> MailBoardAdapter:
+    """Build an adapter with TO_DELETE/CLEANUP records and an unsubscribe hint."""
+    return MailBoardAdapter(
+        triage_by_mid={},
+        archive_subfolders={},
+        folder_exists={},
+        archive_root="",
+        unsubscribe_suggestions={
+            "sender@example.com": {
+                "method": "mailto",
+                "url": "mailto:unsub@example.com",
+                "description": "Reply to unsubscribe.",
+            }
+        },
+        record_notes={},
+        column_records={
+            "TO_DELETE": [_make_record(message_id="<d1@example.com>")],
+            "TO_ARCHIVE": [_make_record(message_id="<r1@example.com>")],
+        },
+    )
+
+
+def test_column_extra_html_to_delete_wraps_buttons_banner_outside() -> None:
+    """TO_DELETE wraps both forms in .column-extra-top, banner stays after it."""
+    adapter = _make_extra_html_adapter()
+    html_out = adapter.column_extra_html("TO_DELETE")
+    open_idx = html_out.find('<div class="column-extra-top">')
+    close_idx = html_out.find("</div>", open_idx)
+    assert open_idx != -1
+    assert close_idx != -1
+    wrapper = html_out[open_idx : close_idx + len("</div>")]
+    # Both action-button forms live inside the wrapper.
+    assert 'class="delete-form"' in wrapper
+    assert 'class="delete-btn"' in wrapper
+    assert 'class="force-triage-form"' in wrapper
+    assert 'class="force-triage-btn"' in wrapper
+    # The unsubscribe banner sits AFTER the closing wrapper div.
+    banner_idx = html_out.find('class="unsubscribe-banner"')
+    assert banner_idx != -1
+    assert banner_idx > close_idx
+
+
+def test_column_extra_html_non_to_delete_has_force_triage_only() -> None:
+    """A non-INBOX, non-TO_DELETE column wraps the force-triage form only."""
+    adapter = _make_extra_html_adapter()
+    html_out = adapter.column_extra_html("TO_ARCHIVE")
+    assert '<div class="column-extra-top">' in html_out
+    assert 'class="force-triage-form"' in html_out
+    assert 'class="delete-form"' not in html_out
+
+
+def test_served_css_orders_column_extra_top_above_cards_above_banner() -> None:
+    """The served stylesheet orders buttons between header and cards."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/static/automail/board.css")
+        body = resp.read().decode("utf-8")
+        assert ".column-extra-top { order: 1;" in body
+        assert ".board-column-cards { order: 2; }" in body
+        assert ".unsubscribe-banner { order: 3; }" in body
+    finally:
+        server.shutdown()
