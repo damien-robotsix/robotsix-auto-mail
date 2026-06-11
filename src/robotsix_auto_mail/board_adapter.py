@@ -380,7 +380,11 @@ class MailBoardAdapter:
                 )
             unsubscribe_banner_html = "".join(banner_parts)
 
-        return f"{batch_delete_form}{force_triage_form}{unsubscribe_banner_html}"
+        return (
+            '<div class="column-extra-top">'
+            f"{batch_delete_form}{force_triage_form}</div>"
+            f"{unsubscribe_banner_html}"
+        )
 
 
 # Verify the adapter satisfies the Protocol at import time.
