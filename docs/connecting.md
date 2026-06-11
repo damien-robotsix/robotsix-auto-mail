@@ -742,26 +742,26 @@ Triage field shows "(no triage decision)".
 
 **Draft generation.**  For messages marked "Needs reply" (TO_ANSWER triage action),
 the detail drawer shows a **Draft reply** section with two interfaces:
-- A **Generate with AI** button (when no draft exists) or **Regenerate with AI** 
-  button (when a draft already exists) that uses an LLM to prepare a concise, 
-  professional reply draft in the same language as the incoming message. The LLM 
-  incorporates any notes or instructions you have written in the **Notes** field 
-  — use them to guide the draft (e.g., "decline politely", "mention invoice paid", 
-  "propose Tuesday afternoon"). The generated draft appears in a textarea below 
+- A **Generate with AI** button (when no draft exists) or **Regenerate with AI**
+  button (when a draft already exists) that uses an LLM to prepare a concise,
+  professional reply draft in the same language as the incoming message. The LLM
+  incorporates any notes or instructions you have written in the **Notes** field
+  — use them to guide the draft (e.g., "decline politely", "mention invoice paid",
+  "propose Tuesday afternoon"). The generated draft appears in a textarea below
   the button, ready for review and manual editing.
-- A **Save draft** form to persist your (edited) draft text and move the card to 
+- A **Save draft** form to persist your (edited) draft text and move the card to
   "Draft ready" status.
 
-On the board card itself, a **Draft reply** button (visible only for TO_ANSWER 
-cards) is a shortcut — click it to immediately generate a draft and re-open the 
+On the board card itself, a **Draft reply** button (visible only for TO_ANSWER
+cards) is a shortcut — click it to immediately generate a draft and re-open the
 detail drawer to show the result.
 
 **Sending replies.**  Once a draft is saved (the card moves to "Draft ready" status),
 two additional buttons appear in the detail drawer:
 - **Reply** — sends the draft text as a reply to the original sender via SMTP,
   then re-queues the original message for triage with the sent reply body stored.
-  The card reappears in the INBOX column and the triage agent will decide the 
-  final disposition (typically to archive, but the agent may decide otherwise based 
+  The card reappears in the INBOX column and the triage agent will decide the
+  final disposition (typically to archive, but the agent may decide otherwise based
   on the reply content). This allows the triage system to own the post-answer workflow.
 - **Reply to all** — sends the draft to the original sender and includes all
   recipients from the original message (the `To` and `Cc` lists, excluding your own address
