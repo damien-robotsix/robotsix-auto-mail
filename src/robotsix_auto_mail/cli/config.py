@@ -9,12 +9,18 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import getpass
+import re
 import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import (
+    MailAccount,
+    MailAccountsConfig,
+    MailConfig,
+    render_accounts_yaml,
+)
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
 from robotsix_auto_mail.smtp import (
     SmtpAuthError,
@@ -149,6 +155,91 @@ def _prompt_hosts(config: MailConfig, result: _VerifyResult) -> MailConfig | Non
     if not changed:
         return None
     return dataclasses.replace(config, imap_host=imap_host, smtp_host=smtp_host)
+
+
+def _account_id_from_email(email: str) -> str:
+    """Derive a filesystem/URL-safe account id from an email address.
+
+    The local part and domain are joined and any character outside
+    ``[A-Za-z0-9._-]`` is collapsed to ``-`` (matching the account-id charset
+    enforced by :class:`MailAccount`).  Falls back to ``"default"`` when the
+    address yields no usable characters.
+    """
+    local, _, domain = email.partition("@")
+    base = f"{local}-{domain}" if domain else local
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", base).strip("-._")
+    return cleaned or "default"
+
+
+def _existing_account_ids(path: Path) -> set[str]:
+    """Return the account ids already present in the config file at *path*.
+
+    A multi-account file yields its entry ids; a deprecated mono file yields
+    ``{"default"}`` (it will be converted to a ``"default"`` account on
+    append); a missing/empty file yields an empty set.
+    """
+    from robotsix_yaml_config import (  # type: ignore[import-untyped]
+        YamlConfigError,
+        read_yaml_file,
+    )
+
+    if not path.exists():
+        return set()
+    try:
+        data = read_yaml_file(path)
+    except YamlConfigError:
+        return set()
+    if isinstance(data, dict) and isinstance(data.get("accounts"), list):
+        ids: set[str] = set()
+        for entry in data["accounts"]:
+            if isinstance(entry, dict) and isinstance(entry.get("id"), str):
+                ids.add(entry["id"])
+        return ids
+    if isinstance(data, dict) and data:
+        return {"default"}
+    return set()
+
+
+def _existing_accounts_for_append(
+    path: Path, new_account_id: str
+) -> tuple[list[MailAccount], str]:
+    """Return ``(other_accounts, default_account_id)`` for appending to *path*.
+
+    ``other_accounts`` are the accounts already in the file *excluding* one
+    matching ``new_account_id``.  A deprecated mono file is converted: its
+    single config becomes a ``"default"`` account.  ``default_account_id`` is
+    the file's existing default (or ``new_account_id`` when the file is new).
+    """
+    if not path.exists():
+        return [], new_account_id
+
+    from robotsix_yaml_config import (  # type: ignore[import-untyped]
+        YamlConfigError,
+        read_yaml_file,
+    )
+
+    try:
+        data = read_yaml_file(path)
+    except YamlConfigError:
+        return [], new_account_id
+
+    if isinstance(data, dict) and isinstance(data.get("accounts"), list):
+        try:
+            container = MailAccountsConfig.from_yaml(path, validate=False)
+        except Exception:
+            return [], new_account_id
+        others = [a for a in container.accounts if a.account_id != new_account_id]
+        return others, container.default_account_id
+
+    # Deprecated mono file → convert the existing config to a "default" account.
+    try:
+        mono_cfg = MailConfig.from_yaml(path, validate=False)
+    except Exception:
+        return [], new_account_id
+    others = [] if new_account_id == "default" else [
+        MailAccount(account_id="default", config=mono_cfg, label="default")
+    ]
+    return others, "default"
 
 
 def _get_password(args: argparse.Namespace) -> str | None:
@@ -317,12 +408,19 @@ def _verify_and_refine(
     password: str | None,
     password_from_args: str | None,
     no_verify: bool,
+    account_id: str,
+    label: str | None,
     provider_to_config: Callable[..., MailConfig],
-    render_config: Callable[[MailConfig], str],
     detect_provider: Callable[..., "MailProvider"],
     _detection_error: type[Exception],
 ) -> int:
     """Verify *config* by connecting, refining on failure.
+
+    The detected account is written into a multi-account YAML file at
+    *output_path* under the id *account_id*.  When the file already holds
+    other accounts they are preserved (append, never clobber); a deprecated
+    mono file is converted to a ``"default"`` account first.  A duplicate id
+    is refused by the caller before this runs.
 
     Refinement strategy (bounded):
     1. Auth-only failure → re-prompt password (max 2 attempts
@@ -337,30 +435,29 @@ def _verify_and_refine(
     after each change so the on-disk file stays in sync.
     """
     from robotsix_auto_mail import cli
-    from robotsix_auto_mail.config import ConfigurationError
 
-    prev: MailConfig | None = None
-    if output_path.exists():
-        try:
-            prev = MailConfig.from_yaml(output_path, validate=False)
-        except (ConfigurationError, OSError):
-            prev = None
+    other_accounts, default_account_id = _existing_accounts_for_append(
+        output_path, account_id
+    )
 
     def _build(prov: "MailProvider", pw: str | None) -> MailConfig:
         cfg = provider_to_config(prov, email, password=pw or "")
-        if prev is not None:
-            cfg = dataclasses.replace(
-                cfg,
-                llm_api_key=prev.llm_api_key,
-                llm_model=prev.llm_model,
-                db_path=prev.db_path,
-                password=pw or prev.password,
-            )
-        return cfg
+        return dataclasses.replace(cfg, db_path=f".data/{account_id}/mail.db")
 
     def _write(cfg: MailConfig) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(render_config(cfg))
+        account = MailAccount(account_id=account_id, config=cfg, label=label)
+        banner = (
+            f"# Auto-detected mail configuration — generated by "
+            f"`robotsix-auto-mail detect {email}`.\n"
+            "# Verify these settings before using — run "
+            "`robotsix-auto-mail probe`."
+        )
+        output_path.write_text(
+            render_accounts_yaml(
+                [*other_accounts, account], default_account_id, banner=banner
+            )
+        )
 
     config = _build(provider, password)
     _write(config)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import errno
 import json
 import sys
@@ -11,14 +12,19 @@ from typing import TextIO
 
 import robotsix_auto_mail.cli as _cli
 from robotsix_auto_mail.cli.config import (
+    _account_id_from_email,
     _detect_settings,
+    _existing_account_ids,
     _get_password,
     _verify_and_refine,
 )
 from robotsix_auto_mail.config import (
+    DEFAULT_CONFIG_PATH,
     ConfigurationError,
+    MailAccount,
     MailAccountsConfig,
     MailConfig,
+    render_accounts_yaml,
 )
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -282,7 +288,6 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             mx_lookup,
             provider_from_mx,
             provider_to_config,
-            render_config,
         )
     except ImportError:
         sys.stderr.write(
@@ -292,6 +297,9 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         return 1
 
     from robotsix_auto_mail.config import load_llm
+
+    account_id = args.id or _account_id_from_email(args.email)
+    label = args.email
 
     api_key, _ = load_llm()
     provider, mx_hosts = _detect_settings(
@@ -309,10 +317,13 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     if password is None:
         return 1
     if args.stdout:
-        config = provider_to_config(
-            provider,
-            args.email,
-            password="",  # nosec B106 - intentionally omitted from stdout
+        config = dataclasses.replace(
+            provider_to_config(
+                provider,
+                args.email,
+                password="",  # nosec B106 - intentionally omitted from stdout
+            ),
+            db_path=f".data/{account_id}/mail.db",
         )
         sys.stderr.write(
             f"# Detected settings for {args.email} — verify before using.\n"
@@ -320,22 +331,96 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             "or set the MAIL_PASSWORD env var before use.\n"
             "# Save this as config/mail.local.yaml.\n"
         )
-        sys.stdout.write(render_config(config))
+        account = MailAccount(account_id=account_id, config=config, label=label)
+        sys.stdout.write(render_accounts_yaml([account], account_id))
         return 0
+
+    output_path = Path(args.output)
+    if account_id in _existing_account_ids(output_path):
+        sys.stderr.write(
+            f"Error: account {account_id!r} already exists in {output_path}. "
+            "Pass --id <new-id> to add a different account, or edit the file "
+            "directly.\n"
+        )
+        return 1
     return _verify_and_refine(
         provider,
         email=args.email,
         api_key=api_key,
         mx_hosts=mx_hosts,
-        output_path=Path(args.output),
+        output_path=output_path,
         password=password,
         password_from_args=args.password,
         no_verify=args.no_verify,
+        account_id=account_id,
+        label=label,
         provider_to_config=provider_to_config,
-        render_config=render_config,
         detect_provider=detect_provider,
         _detection_error=DetectionError,
     )
+
+
+def _cmd_migrate_config(args: argparse.Namespace) -> int:
+    """Convert a deprecated single-account config file into the accounts shape.
+
+    Idempotent: a file already in the multi-account shape is left untouched
+    (exit 0).  A missing file is an error (exit 1).  A mono file is rewritten
+    into a one-entry ``accounts:`` container preserving every value; the
+    original is backed up to ``<path>.bak`` first.  ``--dry-run`` prints the
+    migrated YAML and writes nothing (neither the file nor the backup).
+    """
+    from robotsix_yaml_config import (  # type: ignore[import-untyped]
+        YamlConfigError,
+        read_yaml_file,
+    )
+
+    path = Path(args.config) if args.config else Path(DEFAULT_CONFIG_PATH)
+    account_id = args.id or "default"
+
+    if not path.exists():
+        sys.stderr.write(f"Error: config file not found: {path}\n")
+        return 1
+
+    try:
+        data = read_yaml_file(path)
+    except YamlConfigError as exc:
+        sys.stderr.write(f"Error: invalid YAML in {path}: {exc}\n")
+        return 1
+
+    if isinstance(data, dict) and isinstance(data.get("accounts"), list):
+        sys.stdout.write(
+            f"{path} is already in the multi-account shape; nothing to do.\n"
+        )
+        return 0
+
+    try:
+        cfg = MailConfig.from_yaml(path, validate=False)
+    except ConfigurationError as exc:
+        sys.stderr.write(f"Error: cannot parse {path}: {exc}\n")
+        return 1
+
+    store = data.get("store") if isinstance(data, dict) else None
+    has_store_path = isinstance(store, dict) and "path" in store
+    if not has_store_path:
+        cfg = dataclasses.replace(cfg, db_path=f".data/{account_id}/mail.db")
+
+    account = MailAccount(account_id=account_id, config=cfg, label=account_id)
+    banner = (
+        "# Migrated to the multi-account shape by "
+        "`robotsix-auto-mail migrate-config`.\n"
+        "# The original single-account file was backed up with a .bak suffix."
+    )
+    migrated = render_accounts_yaml([account], account_id, banner=banner)
+
+    if args.dry_run:
+        sys.stdout.write(migrated)
+        return 0
+
+    backup = Path(f"{path}.bak")
+    backup.write_text(path.read_text())
+    path.write_text(migrated)
+    sys.stdout.write(f"Backup written to {backup}\nMigrated config written to {path}\n")
+    return 0
 
 
 def _cmd_config_sync(args: argparse.Namespace) -> int:
@@ -750,10 +835,10 @@ def _load_config_or_exit(account_id: str | None = None) -> MailConfig:
     """Select one account's :class:`MailConfig`, or exit 1 on failure.
 
     With *account_id* given, returns that account's config (exiting 1 with the
-    valid ids on an unknown id).  With *account_id* ``None`` and exactly one
-    account configured, returns that account's config (preserving today's
-    single-account behaviour).  With *account_id* ``None`` and multiple
-    accounts, instructs the user to pass ``--account`` and exits 1.
+    valid ids on an unknown id).  With *account_id* ``None`` the **default
+    account** is returned (``default_account_id``, which falls back to the
+    first account when ``default_account`` is unset), so single-mailbox usage
+    never needs ``--account`` and multi-account usage selects the default.
     """
     accounts = _load_accounts_or_exit()
     if account_id is not None:
@@ -762,10 +847,4 @@ def _load_config_or_exit(account_id: str | None = None) -> MailConfig:
         except ConfigurationError as exc:
             sys.stderr.write(f"Error: {exc}\n")
             sys.exit(1)
-    if len(accounts.accounts) == 1:
-        return accounts.accounts[0].config
-    sys.stderr.write(
-        "Error: multiple accounts are configured; pass --account <id>. "
-        f"Available ids: {list(accounts.ids())!r}\n"
-    )
-    sys.exit(1)
+    return accounts.default.config

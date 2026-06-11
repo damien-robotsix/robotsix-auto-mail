@@ -119,16 +119,21 @@ def test_accounts_unknown_default_raises() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_from_yaml_single_account_backward_compat() -> None:
-    """The single-account example loads as a one-element 'default' container."""
-    path = "config/mail.local.example.yaml"
-    accounts = MailAccountsConfig.from_yaml(path)
+def test_from_yaml_single_account_backward_compat(tmp_path: Path) -> None:
+    """A mono-shaped file still loads (deprecated) as a 'default' container."""
+    path = tmp_path / "mail.local.yaml"
+    path.write_text(
+        "imap:\n  host: imap.example.com\n"
+        "smtp:\n  host: smtp.example.com\n"
+        "auth:\n  username: user@example.com\n  password: s3cret\n"
+    )
+    with pytest.warns(DeprecationWarning, match="migrate-config"):
+        accounts = MailAccountsConfig.from_yaml(str(path))
     assert len(accounts.accounts) == 1
     only = accounts.accounts[0]
     assert only.account_id == "default"
     assert only.label is None
     assert only.config.db_path == ".data/mail.db"
-    assert only.config == MailConfig.from_yaml(path)
     assert accounts.default.account_id == "default"
 
 
@@ -140,7 +145,8 @@ def test_from_env_single_account_backward_compat() -> None:
         "MAIL_PASSWORD": "s3cret",
     }
     with mock.patch.dict(os.environ, env, clear=True):
-        accounts = MailAccountsConfig.from_env()
+        with pytest.warns(DeprecationWarning, match="migrate-config"):
+            accounts = MailAccountsConfig.from_env()
         assert accounts.ids() == ("default",)
         only = accounts.accounts[0]
         assert only.account_id == "default"
@@ -154,7 +160,7 @@ def test_from_env_single_account_backward_compat() -> None:
 
 
 def test_from_yaml_multi_account_example() -> None:
-    accounts = MailAccountsConfig.from_yaml("config/mail.accounts.example.yaml")
+    accounts = MailAccountsConfig.from_yaml("config/mail.local.example.yaml")
     assert accounts.ids() == ("personal", "work")
     assert accounts.default_account_id == "personal"
 
@@ -162,11 +168,11 @@ def test_from_yaml_multi_account_example() -> None:
     assert personal.label == "Personal Gmail"
     assert personal.config.imap_host == "imap.gmail.com"
     assert personal.config.username == "me@gmail.com"
-    assert personal.config.db_path == ".data/mail-personal.db"
+    assert personal.config.db_path == ".data/personal/mail.db"
 
     work = accounts.get("work")
     assert work.config.imap_host == "imap.work.example.com"
-    assert work.config.db_path == ".data/mail-work.db"
+    assert work.config.db_path == ".data/work/mail.db"
 
     assert accounts.default.account_id == "personal"
 
@@ -195,8 +201,8 @@ accounts:
 """
     )
     accounts = MailAccountsConfig.from_yaml(yaml_file)
-    assert accounts.get("alpha").config.db_path == ".data/mail-alpha.db"
-    assert accounts.get("beta").config.db_path == ".data/mail-beta.db"
+    assert accounts.get("alpha").config.db_path == ".data/alpha/mail.db"
+    assert accounts.get("beta").config.db_path == ".data/beta/mail.db"
     # default is the first entry when default_account is absent
     assert accounts.default_account_id == "alpha"
 
@@ -316,11 +322,11 @@ def test_from_env_multi_account() -> None:
     assert personal.label == "Personal"
     assert personal.config.imap_host == "imap.personal.com"
     assert personal.config.username == "me@personal.com"
-    assert personal.config.db_path == ".data/mail-personal.db"
+    assert personal.config.db_path == ".data/personal/mail.db"
     work = accounts.get("work")
     assert work.label is None
     assert work.config.imap_host == "imap.work.com"
-    assert work.config.db_path == ".data/mail-work.db"
+    assert work.config.db_path == ".data/work/mail.db"
     assert accounts.default.account_id == "personal"
 
 
@@ -446,7 +452,7 @@ auth:
 
 
 def test_load_accounts_falls_back_to_multi_yaml() -> None:
-    env = {"MAIL_CONFIG_PATH": "config/mail.accounts.example.yaml"}
+    env = {"MAIL_CONFIG_PATH": "config/mail.local.example.yaml"}
     with mock.patch.dict(os.environ, env, clear=True):
         accounts = load_accounts()
     assert accounts.ids() == ("personal", "work")

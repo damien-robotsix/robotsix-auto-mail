@@ -1070,7 +1070,10 @@ def test_detect_stdout_redacts_password(
     captured = capsys.readouterr()
     assert "imap.gmail.com" in captured.out
     assert "cli-pass" not in captured.out
-    assert "MAIL_PASSWORD" in captured.out
+    # The rendered (stdout) config redacts the password; the MAIL_PASSWORD
+    # hint is printed to stderr alongside the multi-account YAML.
+    assert 'password: ""' in captured.out
+    assert "MAIL_PASSWORD" in captured.err
 
 
 def test_detect_detection_error(
@@ -1371,6 +1374,226 @@ llm:
     # …but the llm section is preserved
     assert "sk-keep-me" in content
     assert "anthropic/claude-3-haiku" in content
+
+
+def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
+    """detect --id sets the account id and the .data/<id>/mail.db store path."""
+    output = tmp_path / "cfg.yaml"
+    mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "user@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
+                "--no-verify",
+                "--id",
+                "personal",
+            ]
+        )
+
+    assert rc == 0
+    accounts = MailAccountsConfig.from_yaml(str(output))
+    assert accounts.ids() == ("personal",)
+    assert accounts.default_account_id == "personal"
+    assert accounts.get("personal").config.db_path == ".data/personal/mail.db"
+
+
+def test_detect_appends_second_account(tmp_path: Path, no_autoconfig: object) -> None:
+    """A second detect against an existing multi-account file appends, not clobbers."""
+    output = tmp_path / "cfg.yaml"
+    p1 = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
+    p2 = MailProvider(imap_host="imap.work.com", smtp_host="smtp.work.com")
+
+    with (
+        mock.patch("robotsix_auto_mail.detect.detect_provider", side_effect=[p1, p2]),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc1 = main(
+            [
+                "detect",
+                "me@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
+                "--no-verify",
+                "--id",
+                "personal",
+            ]
+        )
+        rc2 = main(
+            [
+                "detect",
+                "me@work.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
+                "--no-verify",
+                "--id",
+                "work",
+            ]
+        )
+
+    assert rc1 == 0
+    assert rc2 == 0
+    accounts = MailAccountsConfig.from_yaml(str(output))
+    assert set(accounts.ids()) == {"personal", "work"}
+    assert accounts.get("work").config.imap_host == "imap.work.com"
+
+
+def test_detect_refuses_duplicate_id(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """A detect whose resolved id already exists is refused (exit 1) without clobber."""
+    output = tmp_path / "cfg.yaml"
+    provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
+
+    with (
+        mock.patch("robotsix_auto_mail.detect.detect_provider", return_value=provider),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc1 = main(
+            [
+                "detect",
+                "me@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
+                "--no-verify",
+                "--id",
+                "personal",
+            ]
+        )
+        capsys.readouterr()
+        rc2 = main(
+            [
+                "detect",
+                "other@gmail.com",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
+                "--no-verify",
+                "--id",
+                "personal",
+            ]
+        )
+
+    assert rc1 == 0
+    assert rc2 == 1
+    assert "already exists" in capsys.readouterr().err
+    accounts = MailAccountsConfig.from_yaml(str(output))
+    assert accounts.ids() == ("personal",)
+
+
+# ---------------------------------------------------------------------------
+# migrate-config
+# ---------------------------------------------------------------------------
+
+
+_MONO_CONFIG = (
+    "imap:\n  host: imap.example.com\n  port: 1993\n"
+    "smtp:\n  host: smtp.example.com\n"
+    'auth:\n  username: u@example.com\n  password: "s3cret"\n'
+    "llm:\n  api_key: sk-keep\n  model: anthropic/claude-3-haiku\n"
+)
+
+
+def test_migrate_config_converts_mono_and_writes_backup(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """migrate-config rewrites a mono file to accounts shape, preserving values."""
+    cfg = tmp_path / "mail.local.yaml"
+    cfg.write_text(_MONO_CONFIG)
+
+    rc = main(["migrate-config", "--config", str(cfg)])
+
+    assert rc == 0
+    backup = tmp_path / "mail.local.yaml.bak"
+    assert backup.exists()
+    assert backup.read_text() == _MONO_CONFIG
+    migrated = MailAccountsConfig.from_yaml(str(cfg))
+    assert migrated.ids() == ("default",)
+    acct = migrated.default.config
+    assert acct.imap_host == "imap.example.com"
+    assert acct.imap_port == 1993
+    assert acct.password == "s3cret"
+    assert acct.llm_api_key == "sk-keep"
+    assert acct.llm_model == "anthropic/claude-3-haiku"
+    assert acct.db_path == ".data/default/mail.db"
+
+
+def test_migrate_config_custom_id(tmp_path: Path) -> None:
+    """migrate-config --id sets the migrated account id and store folder."""
+    cfg = tmp_path / "mail.local.yaml"
+    cfg.write_text(_MONO_CONFIG)
+
+    rc = main(["migrate-config", "--config", str(cfg), "--id", "personal"])
+
+    assert rc == 0
+    migrated = MailAccountsConfig.from_yaml(str(cfg))
+    assert migrated.ids() == ("personal",)
+    assert migrated.default.config.db_path == ".data/personal/mail.db"
+
+
+def test_migrate_config_idempotent_on_multi(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """migrate-config is a no-op (exit 0) on an already-multi file."""
+    cfg = tmp_path / "mail.local.yaml"
+    multi = (
+        "default_account: a\naccounts:\n  - id: a\n"
+        "    imap:\n      host: i\n    smtp:\n      host: s\n"
+        '    auth:\n      username: u\n      password: "p"\n'
+        "    store:\n      path: .data/a/mail.db\n"
+    )
+    cfg.write_text(multi)
+
+    rc = main(["migrate-config", "--config", str(cfg)])
+
+    assert rc == 0
+    assert "already" in capsys.readouterr().out.lower()
+    assert cfg.read_text() == multi
+    assert not (tmp_path / "mail.local.yaml.bak").exists()
+
+
+def test_migrate_config_missing_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """migrate-config errors (exit 1) on a missing file."""
+    rc = main(["migrate-config", "--config", str(tmp_path / "nope.yaml")])
+
+    assert rc == 1
+    assert "not found" in capsys.readouterr().err.lower()
+
+
+def test_migrate_config_dry_run_writes_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """--dry-run prints the migrated YAML without writing the file or backup."""
+    cfg = tmp_path / "mail.local.yaml"
+    cfg.write_text(_MONO_CONFIG)
+
+    rc = main(["migrate-config", "--config", str(cfg), "--dry-run"])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "accounts:" in out
+    assert "default_account:" in out
+    assert cfg.read_text() == _MONO_CONFIG
+    assert not (tmp_path / "mail.local.yaml.bak").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -2509,21 +2732,17 @@ def test_load_config_or_exit_unknown_account(
     assert "work" in err
 
 
-def test_command_requires_account_when_multiple(
+def test_command_defaults_to_default_account_when_multiple(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A non-ingest command with multiple accounts and no --account exits 1."""
-    with mock.patch(
-        "robotsix_auto_mail.cli.load_accounts", return_value=_two_accounts(tmp_path)
-    ):
-        with pytest.raises(SystemExit) as exc:
-            main(["board"])
+    """A command with multiple accounts and no --account uses the default."""
+    from robotsix_auto_mail.cli import _load_config_or_exit
 
-    assert exc.value.code == 1
-    err = capsys.readouterr().err
-    assert "--account" in err
-    assert "personal" in err
-    assert "work" in err
+    accounts = _two_accounts(tmp_path)
+    with mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts):
+        config = _load_config_or_exit(None)
+
+    assert config is accounts.default.config
 
 
 def test_ingest_all_accounts_runs_each_cycle(
