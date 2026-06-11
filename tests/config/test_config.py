@@ -368,6 +368,71 @@ auth:
     assert cfg.langfuse_base_url == ""
 
 
+def test_mailconfig_oauth2_provider_defaults() -> None:
+    """oauth2_provider/tenant defaults: empty provider, 'organizations' tenant."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="u",
+        password="p",
+    )
+    assert cfg.oauth2_provider == ""
+    assert cfg.oauth2_tenant == "organizations"
+
+
+def test_from_env_oauth2_provider_and_tenant() -> None:
+    """MAIL_OAUTH2_PROVIDER / MAIL_OAUTH2_TENANT round-trip from env."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "u",
+        "MAIL_PASSWORD": "p",
+        "MAIL_OAUTH2_PROVIDER": "microsoft",
+        "MAIL_OAUTH2_TENANT": "contoso.onmicrosoft.com",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = MailConfig.from_env()
+        assert cfg.oauth2_provider == "microsoft"
+        assert cfg.oauth2_tenant == "contoso.onmicrosoft.com"
+
+
+def test_from_env_oauth2_tenant_defaults_when_absent() -> None:
+    """Missing tenant env var → defaults to 'organizations'."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "u",
+        "MAIL_PASSWORD": "p",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = MailConfig.from_env()
+        assert cfg.oauth2_provider == ""
+        assert cfg.oauth2_tenant == "organizations"
+
+
+def test_from_yaml_oauth2_provider_and_tenant(tmp_path: Path) -> None:
+    """auth.oauth2_provider / auth.oauth2_tenant round-trip from YAML."""
+    yaml_file = tmp_path / "msal.yaml"
+    yaml_file.write_text(
+        """\
+imap:
+  host: imap.example.com
+
+smtp:
+  host: smtp.example.com
+
+auth:
+  username: u
+  password: p
+  oauth2_provider: microsoft
+  oauth2_tenant: contoso.onmicrosoft.com
+"""
+    )
+    cfg = MailConfig.from_yaml(yaml_file)
+    assert cfg.oauth2_provider == "microsoft"
+    assert cfg.oauth2_tenant == "contoso.onmicrosoft.com"
+
+
 def test_from_env_langfuse_vars() -> None:
     """MAIL_LANGFUSE_* env vars populate the langfuse fields."""
     env: dict[str, str] = {

@@ -40,6 +40,10 @@ accounts:
       # oauth2_token: ""          # or via MAIL_ACCOUNTS_0_OAUTH2_TOKEN
       # oauth2_client_id: ""      # or via MAIL_ACCOUNTS_0_OAUTH2_CLIENT_ID
       # oauth2_client_secret: ""  # or via MAIL_ACCOUNTS_0_OAUTH2_CLIENT_SECRET
+      # MSAL-managed OAuth2 (Microsoft 365). Set oauth2_provider to
+      # "microsoft" to acquire/refresh tokens via MSAL instead of a password.
+      # oauth2_provider: ""              # "microsoft" to enable MSAL
+      # oauth2_tenant: organizations     # Azure AD tenant
     store:
       path: .data/personal/mail.db
     # Automatic ingestion (used by `ingest --watch`). How often, in minutes,

@@ -269,6 +269,24 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
     ),
     _FieldSpec(
+        "oauth2_provider",
+        "MAIL_OAUTH2_PROVIDER",
+        "auth.oauth2_provider",
+        "str",
+        "",
+        False,
+        False,
+    ),
+    _FieldSpec(
+        "oauth2_tenant",
+        "MAIL_OAUTH2_TENANT",
+        "auth.oauth2_tenant",
+        "str",
+        "organizations",
+        False,
+        False,
+    ),
+    _FieldSpec(
         "langfuse_public_key",
         "MAIL_LANGFUSE_PUBLIC_KEY",
         "langfuse.public_key",
@@ -355,6 +373,13 @@ class MailConfig:
     oauth2_token: str = ""
     oauth2_client_id: str = ""
     oauth2_client_secret: str = ""
+
+    # MSAL-managed OAuth2 (Microsoft 365). When ``oauth2_provider`` is set
+    # to ``"microsoft"``, access tokens are acquired and refreshed via MSAL
+    # instead of password/static-token auth. ``oauth2_tenant`` is the Azure
+    # AD tenant (default ``organizations``).
+    oauth2_provider: str = ""
+    oauth2_tenant: str = "organizations"
 
     # Langfuse observability — optional; when public_key/secret_key are set,
     # every LLM agent run is traced to the configured Langfuse project.

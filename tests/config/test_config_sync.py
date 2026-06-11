@@ -54,6 +54,8 @@ accounts:
       # oauth2_token: ""
       # oauth2_client_id: ""
       # oauth2_client_secret: ""
+      # oauth2_provider: ""
+      # oauth2_tenant: organizations
     store:
       path: .data/personal/mail.db
     # Automatic ingestion (used by `ingest --watch`). How often, in minutes,
@@ -107,6 +109,8 @@ MAIL_PASSWORD=your-password-here
 MAIL_OAUTH2_TOKEN=
 MAIL_OAUTH2_CLIENT_ID=
 MAIL_OAUTH2_CLIENT_SECRET=
+MAIL_OAUTH2_PROVIDER=
+MAIL_OAUTH2_TENANT=organizations
 MAIL_DB_PATH=.data/mail.db
 MAIL_INGEST_INTERVAL=15
 MAIL_ARCHIVE_ROOT=robotsix-mail-archive
@@ -162,6 +166,8 @@ _DOCS_YAML_TABLE = """\
 | `auth.oauth2_token` | no | - | OAuth2 access token for SASL XOAUTH2 |
 | `auth.oauth2_client_id` | no | - | OAuth2 client ID |
 | `auth.oauth2_client_secret` | no | - | OAuth2 client secret |
+| `auth.oauth2_provider` | no | - | MSAL OAuth2 provider |
+| `auth.oauth2_tenant` | no | `organizations` | Azure AD tenant |
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles |
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
@@ -186,6 +192,8 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_OAUTH2_TOKEN` | no | - | OAuth2 access token for SASL XOAUTH2 |
 | `MAIL_OAUTH2_CLIENT_ID` | no | - | OAuth2 client ID |
 | `MAIL_OAUTH2_CLIENT_SECRET` | no | - | OAuth2 client secret |
+| `MAIL_OAUTH2_PROVIDER` | no | - | MSAL OAuth2 provider |
+| `MAIL_OAUTH2_TENANT` | no | `organizations` | Azure AD tenant |
 | `MAIL_IMAP_PORT` | no | `993` | IMAP server port |
 | `MAIL_IMAP_TLS_MODE` | no | `direct-tls` | TLS negotiation for IMAP |
 | `MAIL_SMTP_PORT` | no | `587` | SMTP server port |
