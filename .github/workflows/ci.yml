@@ -7,13 +7,24 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
+  # Reusable Python-CI spine shared across robotsix repos. This single call
+  # replaces the inline ruff/mypy/deptry/pytest+coverage/bandit steps that used
+  # to be hand-rolled here.
+  ci:
+    uses: damien-robotsix/robotsix-mill/.github/workflows/python-ci.yml@main
+    with:
+      python-version: "3.14"
+      install-extras: "dev"
+      cov-package: robotsix_auto_mail
+      coverage-threshold: "80"
+      mypy-advisory: false        # auto-mail runs `mypy --strict` as a BLOCKING gate; it must NOT become advisory
+      run-deptry: true
+      run-bandit: true
 
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.14"]
+  # auto-mail-specific checks with no equivalent in the reusable spine. They
+  # keep their own steps and stay blocking on every push + PR.
+  repo-checks:
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -24,49 +35,26 @@ jobs:
           dockerfile: Dockerfile
           failure-threshold: warning
 
-      # Passing python-version to setup-uv sets UV_PYTHON for the job,
-      # overriding the pinned .python-version, and setup-uv downloads + caches
-      # the requested interpreter automatically — so the per-version core
-      # checks (lint, mypy, deptry, pytest) run against every supported Python.
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v8.1.0
-        with:
-          python-version: ${{ matrix.python-version }}
-
       # --frozen uses uv.lock as-is and FAILS if pyproject.toml was changed
       # without re-running `uv lock` — guaranteeing the committed lockfile is
       # the single source of truth for the resolved dependency tree.
       # --extra dev pulls the dev tooling (ruff/mypy/pytest/...) which lives
       # in [project.optional-dependencies]; uv does not install extras by
       # default.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+
       - name: Install dependencies
         run: uv sync --frozen --extra dev
 
-      - name: Format check (ruff)
-        run: uv run --frozen ruff format --check .
-
-      - name: Lint (ruff)
-        run: uv run --frozen ruff check .
-
-      - name: Type check (mypy)
-        run: uv run --frozen mypy --strict .
-
-      - name: Dependency hygiene (deptry)
-        run: uv run --frozen deptry src/ tests/
-
-      - name: Test (pytest + coverage)
-        run: uv run --frozen pytest --cov --cov-fail-under=80 --cov-report=term-missing --cov-report=xml
-
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report-py${{ matrix.python-version }}
-          path: coverage.xml
-          if-no-files-found: error
-
       - name: Check config sync
         run: uv run --frozen python scripts/config/check_config_sync.py
+
+      - name: Validate module taxonomy
+        run: uv run --frozen robotsix-modules validate docs/modules.yaml
+
+      - name: Check module registration completeness
+        run: uv run --frozen robotsix-modules check-registration docs/modules.yaml --root .
 
   security:
     runs-on: ubuntu-latest
@@ -89,15 +77,6 @@ jobs:
       # default.
       - name: Install dependencies
         run: uv sync --frozen --extra dev
-
-      - name: Validate module taxonomy
-        run: uv run --frozen robotsix-modules validate docs/modules.yaml
-
-      - name: Check module registration completeness
-        run: uv run --frozen robotsix-modules check-registration docs/modules.yaml --root .
-
-      - name: SAST (bandit)
-        run: uvx --from 'bandit[toml]' bandit -r src/ -f json -c pyproject.toml
 
       - name: Secret scanning (TruffleHog)
         uses: trufflesecurity/trufflehog@main
