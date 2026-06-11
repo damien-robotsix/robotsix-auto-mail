@@ -10,11 +10,14 @@ _SCRIPTS = Path(__file__).resolve().parent.parent.parent / "scripts" / "config"
 sys.path.insert(0, str(_SCRIPTS))
 
 from check_config_sync import (  # noqa: E402
+    check_accounts_example,
     check_docs_connecting,
     check_env_example,
     check_yaml_example,
     run_checks,
 )
+
+from robotsix_auto_mail.config import MailAccountsConfig  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Shared test data
@@ -107,6 +110,32 @@ LLM_MODEL=deepseek/deepseek-v4-flash
 MAIL_LANGFUSE_PUBLIC_KEY=
 MAIL_LANGFUSE_SECRET_KEY=
 MAIL_LANGFUSE_BASE_URL=
+"""
+
+_ACCOUNTS_EXAMPLE = """\
+# Example multi-account configuration.
+default_account: personal
+
+accounts:
+  - id: personal
+    label: Personal
+    imap:
+      host: imap.gmail.com
+    smtp:
+      host: smtp.gmail.com
+    auth:
+      username: me@gmail.com
+      password: ""
+
+  - id: work
+    label: Work
+    imap:
+      host: imap.work.example.com
+    smtp:
+      host: smtp.work.example.com
+    auth:
+      username: me@work.example.com
+      password: ""
 """
 
 _DOCS_YAML_TABLE = """\
@@ -208,6 +237,7 @@ def test_run_checks_happy(tmp_path: Path) -> None:
     repo = tmp_path
     (repo / "config").mkdir(parents=True)
     (repo / "config" / "mail.local.example.yaml").write_text(_YAML_EXAMPLE)
+    (repo / "config" / "mail.accounts.example.yaml").write_text(_ACCOUNTS_EXAMPLE)
     (repo / ".env.example").write_text(_ENV_EXAMPLE)
     (repo / "docs").mkdir()
     (repo / "docs" / "connecting.md").write_text(
@@ -447,3 +477,79 @@ def test_run_checks_missing_file(tmp_path: Path) -> None:
         _full_docs(_DOCS_YAML_TABLE, _DOCS_ENV_TABLE)
     )
     assert run_checks(repo) == 2
+
+
+# ====================================================================
+# Multi-account example check
+# ====================================================================
+
+
+def test_accounts_example_happy() -> None:
+    """A well-formed multi-account example produces no findings."""
+    findings = check_accounts_example(_ACCOUNTS_EXAMPLE)
+    assert findings == []
+
+
+def test_accounts_example_shipped_file_clean() -> None:
+    """The shipped config/mail.accounts.example.yaml produces no findings."""
+    findings = check_accounts_example("config/mail.accounts.example.yaml")
+    assert findings == []
+
+
+def test_accounts_example_duplicate_ids(tmp_path: Path) -> None:
+    """Duplicate account ids surface at least one finding."""
+    bad = _ACCOUNTS_EXAMPLE.replace("id: work", "id: personal")
+    path = tmp_path / "accounts.yaml"
+    path.write_text(bad)
+    findings = check_accounts_example(path)
+    assert findings
+
+
+def test_accounts_example_no_accounts_key() -> None:
+    """A single-account-shaped doc (no `accounts:` key) surfaces a finding."""
+    findings = check_accounts_example(_YAML_EXAMPLE)
+    assert findings
+
+
+def test_accounts_example_colliding_db_paths(tmp_path: Path) -> None:
+    """Colliding per-account store.path values surface a finding."""
+    bad = (
+        "accounts:\n"
+        "  - id: a\n"
+        "    imap:\n      host: imap.a.example.com\n"
+        "    smtp:\n      host: smtp.a.example.com\n"
+        '    auth:\n      username: a@example.com\n      password: ""\n'
+        "    store:\n      path: .data/shared.db\n"
+        "  - id: b\n"
+        "    imap:\n      host: imap.b.example.com\n"
+        "    smtp:\n      host: smtp.b.example.com\n"
+        '    auth:\n      username: b@example.com\n      password: ""\n'
+        "    store:\n      path: .data/shared.db\n"
+    )
+    path = tmp_path / "accounts.yaml"
+    path.write_text(bad)
+    findings = check_accounts_example(path)
+    assert findings
+
+
+# ====================================================================
+# End-to-end against the real repo
+# ====================================================================
+
+
+def test_run_checks_real_repo() -> None:
+    """run_checks() against the real repo root still exits 0."""
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    assert run_checks(repo_root) == 0
+
+
+def test_shipped_accounts_example_loads() -> None:
+    """The shipped multi-account example loads as a valid container."""
+    config = MailAccountsConfig.from_yaml("config/mail.accounts.example.yaml")
+    assert len(config.accounts) >= 2
+    ids = config.ids()
+    assert len(set(ids)) == len(ids)
+    db_paths = [account.config.db_path for account in config.accounts]
+    assert len(set(db_paths)) == len(db_paths)
+    # The default resolves without raising.
+    assert config.default.account_id in ids
