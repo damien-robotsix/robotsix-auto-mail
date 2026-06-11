@@ -334,8 +334,8 @@ def _build_board_html(db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT) ->
         "  if (el) el.textContent = relativeTime(Date.now() - lastRefresh);\n"
         "}\n"
         "\n"
-        "function refreshBoard() {\n"
-        "  if (document.getElementById('side-panel')"
+        "function refreshBoard(force) {\n"
+        "  if (!force && document.getElementById('side-panel')"
         ".classList.contains('open')) return;\n"
         "  fetch('/board-content')\n"
         "    .then(function(r) {\n"
@@ -511,6 +511,12 @@ def _build_detail_html(
             '<div class="embed-detail">\n'
             f"{fields_html}"
             "</div>\n"
+            "<script>\n"
+            "if (window.parent && window.parent !== window\n"
+            "    && typeof window.parent.refreshBoard === 'function') {\n"
+            "  window.parent.refreshBoard(true);\n"
+            "}\n"
+            "</script>\n"
         )
 
     # Full standalone detail page.
