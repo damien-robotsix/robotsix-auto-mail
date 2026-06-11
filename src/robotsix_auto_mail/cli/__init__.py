@@ -318,7 +318,18 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_board(_load_config_or_exit(args.account))
 
     if args.command == "serve":
-        return _cmd_serve(_load_config_or_exit(args.account), port=args.port)
+        from robotsix_auto_mail.config import ConfigurationError
+
+        accounts = _load_accounts_or_exit()
+        if args.account is not None:
+            try:
+                resolved = accounts.get(args.account).account_id
+            except ConfigurationError as exc:
+                sys.stderr.write(f"Error: {exc}\n")
+                return 1
+        else:
+            resolved = accounts.default_account_id
+        return _cmd_serve(accounts, default_account_id=resolved, port=args.port)
 
     if args.command == "detect":
         return _cmd_detect(args)

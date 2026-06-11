@@ -5,11 +5,17 @@ from __future__ import annotations
 import functools
 import json
 from collections.abc import Callable, Mapping
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
 from typing import Any
-from urllib.parse import parse_qs, quote, unquote
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
+from robotsix_auto_mail.config import (
+    DEFAULT_ARCHIVE_ROOT,
+    ConfigurationError,
+    MailAccountsConfig,
+    MailConfig,
+)
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._constants import (
     _STATIC_AUTOMAIL_BOARD_CSS,
@@ -52,6 +58,8 @@ class BoardHandler(BaseHTTPRequestHandler):
         *args: object,
         db_path: str,
         mail_config: MailConfig | None = None,
+        accounts: MailAccountsConfig | None = None,
+        default_account_id: str | None = None,
         **kwargs: object,
     ) -> None:
         # Set attributes BEFORE calling ``super().__init__`` because
@@ -59,10 +67,22 @@ class BoardHandler(BaseHTTPRequestHandler):
         # synchronously, which dispatches to ``do_GET``/``do_POST``.
         self.db_path = db_path
         self.mail_config = mail_config
+        self.accounts = accounts
+        self.default_account_id = default_account_id
+        # ``Set-Cookie`` value emitted by the response sinks when a
+        # request selected an account via ``?account=`` (set by
+        # ``_select_account``); ``None`` means no cookie is written.
+        self._account_cookie: str | None = None
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
     def do_GET(self) -> None:
         """Route GET requests via an ordered (predicate → handler) table."""
+        if self.accounts is not None and not self._select_account():
+            return
+        # Dispatch on the bare path so ``?account=<id>`` query strings do
+        # not defeat route matching (``self.path`` retains the query for
+        # the existing query parsing inside individual handlers).
+        path = urlsplit(self.path).path
         routes: list[tuple[Callable[[str], bool], Callable[[], None]]] = [
             (lambda p: p == "/", lambda: self._redirect("/board")),
             (lambda p: p == "/board", self._serve_board),
@@ -79,13 +99,15 @@ class BoardHandler(BaseHTTPRequestHandler):
             ),
         ]
         for matches, handler in routes:
-            if matches(self.path):
+            if matches(path):
                 handler()
                 return
         self._not_found()
 
     def do_POST(self) -> None:
         """Route POST requests via an exact-match table."""
+        if self.accounts is not None and not self._select_account():
+            return
         # Periodic-trigger decision — Option A (on-demand endpoint
         # only): no background/periodic runner is added.  The
         # deterministic ``check_config_sync.py`` remains the fast, free,
@@ -113,11 +135,61 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/send-draft": self._handle_send_draft,
             "/generate-draft": self._handle_generate_draft,
         }
-        handler = routes.get(self.path)
+        # Dispatch on the bare path so ``?account=<id>`` query strings do
+        # not defeat exact-match routing.
+        handler = routes.get(urlsplit(self.path).path)
         if handler is None:
             self._not_found()
             return
         handler()
+
+    def _select_account(self) -> bool:
+        """Resolve the per-request account and bind its DB / mail config.
+
+        Only invoked when ``self.accounts is not None``.  Resolution
+        precedence: ``?account=`` query param → ``account`` request
+        cookie → ``self.default_account_id``/the container default.
+
+        An explicit ``?account=<id>`` that is unknown is a hard 404
+        (returns ``False`` so the caller skips dispatch).  A stale id
+        coming only from the cookie is ignored — cookies must never
+        hard-fail a request.  On success, ``self.db_path`` and
+        ``self.mail_config`` are rebound to the selected account for the
+        duration of the request and a ``Set-Cookie`` is armed when the id
+        arrived via the query param.  Returns ``True`` on success.
+        """
+        accounts = self.accounts
+        if accounts is None:  # pragma: no cover - guarded by the caller
+            return True
+        query = parse_qs(urlsplit(self.path).query)
+        query_values = query.get("account")
+        query_id = query_values[0] if query_values else None
+
+        cookie_id: str | None = None
+        cookie_header = self.headers.get("Cookie")
+        if cookie_header:
+            morsel = SimpleCookie(cookie_header).get("account")
+            if morsel is not None:
+                cookie_id = morsel.value
+
+        fallback_id = self.default_account_id or accounts.default_account_id
+        account_id = query_id or cookie_id or fallback_id
+
+        try:
+            account = accounts.get(account_id)
+        except ConfigurationError:
+            if query_id is not None:
+                # Explicit, unknown account → hard 404.
+                self._not_found()
+                return False
+            # Stale/unknown cookie id → fall back to the default account.
+            account = accounts.get(fallback_id)
+
+        self.db_path = account.config.db_path
+        self.mail_config = account.config
+        if query_id is not None:
+            self._account_cookie = f"account={account.account_id}; Path=/"
+        return True
 
     def _send_response(
         self,
@@ -135,6 +207,8 @@ class BoardHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(encoded)))
+        if self._account_cookie is not None:
+            self.send_header("Set-Cookie", self._account_cookie)
         self.end_headers()
         self.wfile.write(encoded)
 
@@ -150,6 +224,8 @@ class BoardHandler(BaseHTTPRequestHandler):
             location = "/board"
         self.send_response(code)
         self.send_header("Location", location)
+        if self._account_cookie is not None:
+            self.send_header("Set-Cookie", self._account_cookie)
         self.end_headers()
 
     def _not_found(self) -> None:
@@ -1169,6 +1245,9 @@ class BoardHandler(BaseHTTPRequestHandler):
 def make_board_handler(
     db_path: str,
     mail_config: MailConfig | None = None,
+    *,
+    accounts: MailAccountsConfig | None = None,
+    default_account_id: str | None = None,
 ) -> functools.partial[BoardHandler]:
     """Return a callable that builds a ``BoardHandler`` wired to *db_path*.
 
@@ -1176,9 +1255,24 @@ def make_board_handler(
     server)``; the returned ``functools.partial`` binds *db_path* and
     *mail_config* as keyword arguments so the standard three positional
     args still flow through to ``BoardHandler.__init__``.
+
+    When *accounts* is provided, the handler additionally resolves the
+    target account per request (query param / cookie / default), and
+    *db_path*/*mail_config* act as the pre-resolution defaults.  In the
+    legacy single-account mode (*accounts* ``None``) the partial binds
+    only ``db_path`` and ``mail_config`` so existing callers and tests
+    observe an unchanged keyword set.
     """
+    if accounts is None:
+        return functools.partial(
+            BoardHandler,
+            db_path=db_path,
+            mail_config=mail_config,
+        )
     return functools.partial(
         BoardHandler,
         db_path=db_path,
         mail_config=mail_config,
+        accounts=accounts,
+        default_account_id=default_account_id,
     )
