@@ -11,7 +11,7 @@ from urllib.parse import quote
 from robotsix_board import render_board
 
 from robotsix_auto_mail.board_adapter import MailBoardAdapter
-from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
+from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailAccountsConfig
 from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.format import _format_date
 from robotsix_auto_mail.server._constants import _BOARD_COLUMNS
@@ -215,15 +215,63 @@ def _build_board_content(
     }
 
 
-def _build_board_html(db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT) -> str:
+def _build_board_html(
+    db_path: str,
+    archive_root: str = DEFAULT_ARCHIVE_ROOT,
+    *,
+    accounts: MailAccountsConfig | None = None,
+    current_account_id: str | None = None,
+) -> str:
     """Build the full ``/board`` HTML document.
 
     Calls :func:`_build_board_content` and wraps the result in a minimal
     HTML5 page shell (Python f-strings, no Jinja2).  Raises ``Exception``
     when the database cannot be opened (the caller should catch it and
     return a 503).
+
+    When *accounts* describes two or more accounts an account picker is
+    rendered in the header and the resolved *current_account_id* is
+    threaded into the JS-built GET URLs (detail iframe, content refresh)
+    so deep-links and cookie-less clients route correctly.  In the
+    single-account / legacy path (*accounts* ``None`` or fewer than two
+    accounts) the served HTML is byte-for-byte unchanged apart from an
+    empty picker slot.
     """
     content = _build_board_content(db_path, archive_root=archive_root)
+
+    # -- account picker + URL threading -----------------------------------
+    # The picker only appears when more than one account is configured.
+    # Switching accounts navigates to ``/board?account=<id>`` which the
+    # already-landed ``_select_account`` resolves and persists via the
+    # ``account`` cookie — every subsequent same-origin request (POST
+    # forms, iframe, fetch) then routes to the chosen account.  POST form
+    # bodies deliberately carry no account field: ``_select_account``
+    # reads only the URL query or the cookie, so a hidden field would be
+    # ignored; the cookie is the persistence mechanism.
+    picker_html = ""
+    account_qs = ""
+    fetch_qs = ""
+    multi_account = accounts is not None and len(accounts.ids()) >= 2
+    if multi_account and accounts is not None:
+        options_parts: list[str] = []
+        for account_id in accounts.ids():
+            account = accounts.get(account_id)
+            display = account.label if account.label else account.account_id
+            sel = " selected" if account_id == current_account_id else ""
+            options_parts.append(
+                f'<option value="{html.escape(account_id)}"{sel}>'
+                f"{html.escape(display)}</option>"
+            )
+        picker_html = (
+            '<select id="account-picker"'
+            " onchange=\"window.location.href='/board?account='"
+            '+encodeURIComponent(this.value)">'
+            f"{''.join(options_parts)}"
+            "</select>"
+        )
+    if multi_account and current_account_id:
+        account_qs = "&account=" + quote(current_account_id, safe="")
+        fetch_qs = "?account=" + quote(current_account_id, safe="")
 
     triage_control_html: str
     if content["triage_running"]:
@@ -261,6 +309,7 @@ def _build_board_html(db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT) ->
         '<button id="refresh-btn" title="Refresh now">↻</button>\n'
         '<span id="refresh-time"></span>\n'
         f'<span id="triage-control">{triage_control_html}</span>\n'
+        f"{picker_html}\n"
         f"{content['proposals_html']}\n"
         '<div class="board-wrapper">\n'
         '<div class="board">\n'
@@ -278,7 +327,7 @@ def _build_board_html(db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT) ->
         "</div>\n"
         "<script>\n"
         "function openDetail(messageId, subject, focusDraft) {\n"
-        "  var src = '/email/' + messageId + '?embed=1';\n"
+        f"  var src = '/email/' + messageId + '?embed=1{account_qs}';\n"
         "  if (focusDraft) src += '&draft=1';\n"
         "  document.querySelector('.side-panel iframe').src = src;\n"
         "  document.querySelector('.side-panel').classList.add('open');\n"
@@ -337,7 +386,7 @@ def _build_board_html(db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT) ->
         "function refreshBoard(force) {\n"
         "  if (!force && document.getElementById('side-panel')"
         ".classList.contains('open')) return;\n"
-        "  fetch('/board-content')\n"
+        f"  fetch('/board-content{fetch_qs}')\n"
         "    .then(function(r) {\n"
         "      if (!r.ok) throw new Error('bad status');\n"
         "      return r.json();\n"

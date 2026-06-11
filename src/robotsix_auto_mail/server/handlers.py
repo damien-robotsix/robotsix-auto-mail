@@ -73,6 +73,10 @@ class BoardHandler(BaseHTTPRequestHandler):
         # request selected an account via ``?account=`` (set by
         # ``_select_account``); ``None`` means no cookie is written.
         self._account_cookie: str | None = None
+        # Resolved current account id for the in-flight request (set by
+        # ``_select_account``); ``None`` in legacy single-account mode
+        # because ``_select_account`` is never called there.
+        self._current_account_id: str | None = None
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
     def do_GET(self) -> None:
@@ -187,6 +191,7 @@ class BoardHandler(BaseHTTPRequestHandler):
 
         self.db_path = account.config.db_path
         self.mail_config = account.config
+        self._current_account_id = account.account_id
         if query_id is not None:
             self._account_cookie = f"account={account.account_id}; Path=/"
         return True
@@ -252,7 +257,12 @@ class BoardHandler(BaseHTTPRequestHandler):
             else DEFAULT_ARCHIVE_ROOT
         )
         try:
-            body = _build_board_html(self.db_path, archive_root=archive_root)
+            body = _build_board_html(
+                self.db_path,
+                archive_root=archive_root,
+                accounts=self.accounts,
+                current_account_id=self._current_account_id,
+            )
         except Exception:
             self._send_response("Database unavailable", status=503)
             return
