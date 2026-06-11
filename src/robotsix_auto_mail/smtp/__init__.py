@@ -16,7 +16,8 @@ from email.utils import formatdate
 from typing import Any
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.protocol import _ProtocolClient
+from robotsix_auto_mail.oauth2 import build_token_provider
+from robotsix_auto_mail.protocol import _ProtocolClient, build_xoauth2_response
 
 # Store a reference to SMTPException *before* any mocking can replace
 # smtplib.SMTP and turn ``SMTPException`` into a MagicMock attribute.
@@ -102,6 +103,7 @@ class SmtpClient(_ProtocolClient):
             oauth2_client_id=config.oauth2_client_id,
             oauth2_client_secret=config.oauth2_client_secret,
         )
+        self._token_provider = build_token_provider(config)
 
         self._smtp: smtplib.SMTP | None = None
 
@@ -264,8 +266,10 @@ class SmtpClient(_ProtocolClient):
     def _authenticate(self) -> None:
         if self._smtp is None:
             raise RuntimeError("_authenticate() called before _connect_*()")
+        if self._token_provider is not None:
+            self._oauth2_token = self._token_provider()
         try:
-            if self._oauth2_token:
+            if self._token_provider is not None or self._oauth2_token:
                 self._smtp.auth(
                     "XOAUTH2", self._smtp_xoauth2_cb, initial_response_ok=True
                 )
@@ -286,4 +290,4 @@ class SmtpClient(_ProtocolClient):
         """
         if challenge is not None:
             return "\x01"
-        return f"user={self._username}\x01auth=Bearer {self._oauth2_token}\x01\x01"
+        return build_xoauth2_response(self._username, self._oauth2_token)

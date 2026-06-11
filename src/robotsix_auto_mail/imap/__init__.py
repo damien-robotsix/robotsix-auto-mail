@@ -18,7 +18,8 @@ import ssl
 from typing import Any
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.protocol import _ProtocolClient
+from robotsix_auto_mail.oauth2 import build_token_provider
+from robotsix_auto_mail.protocol import _ProtocolClient, build_xoauth2_response
 
 # Store a reference to IMAP4.error *before* any mocking can replace
 # IMAP4 and turn ``IMAP4.error`` into a MagicMock attribute.  Using
@@ -168,6 +169,7 @@ class ImapClient(_ProtocolClient):
             oauth2_client_id=config.oauth2_client_id,
             oauth2_client_secret=config.oauth2_client_secret,
         )
+        self._token_provider = build_token_provider(config)
 
         self._imap: imaplib.IMAP4 | None = None
 
@@ -249,8 +251,10 @@ class ImapClient(_ProtocolClient):
     def _authenticate(self) -> None:
         if self._imap is None:
             raise RuntimeError("_authenticate() called before _connect_*()")
+        if self._token_provider is not None:
+            self._oauth2_token = self._token_provider()
         try:
-            if self._oauth2_token:
+            if self._token_provider is not None or self._oauth2_token:
                 self._imap.authenticate("XOAUTH2", self._imap_xoauth2_cb)
             else:
                 self._imap.login(self._username, self._password)
@@ -269,7 +273,7 @@ class ImapClient(_ProtocolClient):
         """
         if challenge:
             return None
-        resp = f"user={self._username}\x01auth=Bearer {self._oauth2_token}\x01\x01"
+        resp = build_xoauth2_response(self._username, self._oauth2_token)
         return resp.encode()
 
     def _close_socket(self) -> None:
