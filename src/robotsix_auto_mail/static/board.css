@@ -211,10 +211,10 @@ button:hover { background: #1a4d7a; }
 }
 .force-triage-btn:hover { background: #1565c0; }
 
-/* -- column flex ordering: header -> action buttons -> cards -> banner ---- */
+/* -- column flex ordering: banner -> header/action buttons -> cards ------- */
 .column-extra-top { order: 1; margin-bottom: 0.3rem; }
 .board-column-cards { order: 2; }
-.unsubscribe-banner { order: 3; }
+.unsubscribe-banner { order: 0; }
 
 /* -- triage-running indicator -------------------------------------------- */
 .triage-banner {

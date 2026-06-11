@@ -4060,15 +4060,15 @@ def test_column_extra_html_non_to_delete_has_force_triage_only() -> None:
     assert 'class="delete-form"' not in html_out
 
 
-def test_served_css_orders_column_extra_top_above_cards_above_banner() -> None:
-    """The served stylesheet orders buttons between header and cards."""
+def test_served_css_orders_banner_above_column_extra_top_above_cards() -> None:
+    """The served stylesheet sorts the unsubscribe banner to the column top."""
     server, port = _start_test_server(":memory:")
     try:
         resp = urlopen(f"http://127.0.0.1:{port}/static/automail/board.css")
         body = resp.read().decode("utf-8")
         assert ".column-extra-top { order: 1;" in body
         assert ".board-column-cards { order: 2; }" in body
-        assert ".unsubscribe-banner { order: 3; }" in body
+        assert ".unsubscribe-banner { order: 0; }" in body
     finally:
         server.shutdown()
 
