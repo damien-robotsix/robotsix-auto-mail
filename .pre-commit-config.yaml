@@ -20,11 +20,17 @@ repos:
           - urllib3>=2.0
           - types-PyYAML
 
-  - repo: https://github.com/damien-robotsix/robotsix-modules
-    # keep in sync with uv.lock robotsix-modules git pin (rev=main#<sha>)
-    rev: 8a40eee6130d5e005148bb9ddf85e1af7f7dee4f
+  # robotsix-modules ships a CLI but no .pre-commit-hooks.yaml manifest, so it
+  # cannot be consumed as a remote hook repo (pre-commit fails env init with
+  # InvalidManifestError). Run its validator as a local hook against the
+  # dev-installed package (kept in sync with uv.lock).
+  - repo: local
     hooks:
       - id: robotsix-modules-validate
+        name: Validate module taxonomy
+        entry: uv run --frozen robotsix-modules validate
+        language: system
+        pass_filenames: true
         files: ^docs/modules\.yaml$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
