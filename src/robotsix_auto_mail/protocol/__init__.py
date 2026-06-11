@@ -9,6 +9,12 @@ client implements with its own protocol library.
 from __future__ import annotations
 
 import abc
+from collections.abc import Callable
+
+
+def build_xoauth2_response(username: str, token: str) -> str:
+    """Return the SASL XOAUTH2 response string for *username*/*token*."""
+    return f"user={username}\x01auth=Bearer {token}\x01\x01"
 
 
 class _ProtocolClient(abc.ABC):
@@ -41,6 +47,10 @@ class _ProtocolClient(abc.ABC):
         self._oauth2_token = oauth2_token
         self._oauth2_client_id = oauth2_client_id
         self._oauth2_client_secret = oauth2_client_secret
+        # A dynamic token provider (e.g. MSAL) is wired in by subclasses
+        # after ``super().__init__``; ``None`` for static-token / password
+        # setups.
+        self._token_provider: Callable[[], str] | None = None
 
     # -- repr --------------------------------------------------------------
 

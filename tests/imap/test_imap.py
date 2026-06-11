@@ -555,6 +555,67 @@ def test_xoauth2_authentication_rejected() -> None:
         assert exc.value.__cause__ is auth_error
 
 
+def test_xoauth2_uses_token_provider_over_static() -> None:
+    """A token provider is preferred over a static oauth2_token."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        oauth2_token="static-token",
+    )
+
+    provider = mock.Mock(return_value="provider-token")
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.authenticate.return_value = ("OK", [b"Authenticated"])
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.build_token_provider", return_value=provider
+    ):
+        with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+            with ImapClient(cfg):
+                cb = mock_ssl.authenticate.call_args[0][1]
+                assert cb(b"") == (
+                    b"user=user@example.com\x01auth=Bearer provider-token\x01\x01"
+                )
+
+    provider.assert_called_once()
+    mock_ssl.login.assert_not_called()
+
+
+def test_xoauth2_provider_refreshes_on_reconnect() -> None:
+    """Re-entering the context manager fetches a fresh token each time."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+    )
+
+    provider = mock.Mock(side_effect=["token-1", "token-2"])
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.authenticate.return_value = ("OK", [b"Authenticated"])
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.build_token_provider", return_value=provider
+    ):
+        with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+            client = ImapClient(cfg)
+            with client:
+                cb = mock_ssl.authenticate.call_args[0][1]
+                assert cb(b"") == (
+                    b"user=user@example.com\x01auth=Bearer token-1\x01\x01"
+                )
+            with client:
+                cb = mock_ssl.authenticate.call_args[0][1]
+                assert cb(b"") == (
+                    b"user=user@example.com\x01auth=Bearer token-2\x01\x01"
+                )
+
+    assert provider.call_count == 2
+    mock_ssl.login.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # Context manager error handling
 # ---------------------------------------------------------------------------
