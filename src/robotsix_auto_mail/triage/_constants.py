@@ -88,5 +88,11 @@ _ARCHIVE_OVERRIDES_WATERMARK_KEY = "archive_subfolder_overrides"
 #: Watermark key owned by this module for LLM-suggested archive subfolders.
 _ARCHIVE_LLM_HINTS_WATERMARK_KEY = "archive_subfolder_llm_hints"
 
+#: Watermark key owned by this module for the archive-folder memory — which
+#: subfolder a sender's / domain's mail has been filed into.  Persisted in
+#: ``db.py``'s ``watermark`` key-value table as JSON (no new tables / files),
+#: so the proposal can prefer reusing an established project folder.
+_ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY = "archive_folder_memory"
+
 #: Watermark key owned by this module for unsubscribe-suggestion cache.
 _UNSUBSCRIBE_SUGGESTIONS_KEY = "unsubscribe_suggestions"

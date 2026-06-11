@@ -631,6 +631,23 @@ The reply always includes threading headers (`In-Reply-To` and `References`) so 
 as a conversation thread in the recipient's mail client. The subject is automatically prefixed
 with "Re: " unless it already starts with that (case-insensitive).
 
+**Archive-folder recommendations.**  When you move a card to the "To archive" column
+(or the triage agent classifies one), the system proposes an archive subfolder. The
+proposal engine uses a **three-tier strategy**:
+
+1. **User override** — if you have manually set a subfolder for that message, it is used.
+2. **LLM-learned history** — the system remembers which archive subfolders you (or the triage
+   agent) have filed mail from each sender and domain into. When proposing a folder for a
+   similar sender (same email address, or same domain with a known project folder), it
+   suggests reusing the existing project folder instead of creating a new one. This is
+   especially useful when a domain hosts multiple project addresses — the system learns
+   that `armada@ls2n.fr` and `crew@ls2n-fr.org` both relate to the `ls2n/armada` project
+   and steers both there.
+3. **Deterministic fallback** — if no history exists, the system proposes a folder based
+   on a simple rule: mailing-list brackets in the subject (`[python-dev]` → `Lists/python-dev`),
+   sender domain + local part (`alice@example.com` → `example.com/alice`), or a year/month
+   bucket from the message date.
+
 The board is the interface: no separate client is needed.
 
 The page includes `<meta http-equiv="refresh" content="30">`, so the board

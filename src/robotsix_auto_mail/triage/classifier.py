@@ -27,6 +27,7 @@ from robotsix_auto_mail.db import (
     set_watermark,
 )
 from robotsix_auto_mail.triage._constants import (
+    _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY,
     _ARCHIVE_LLM_HINTS_WATERMARK_KEY,
     _ARCHIVE_OVERRIDES_WATERMARK_KEY,
     _MEMORY_WATERMARK_KEY,
@@ -36,6 +37,7 @@ from robotsix_auto_mail.triage._constants import (
     _VALID_RULE_STATES,
 )
 from robotsix_auto_mail.triage.persistence import (
+    ArchiveFolderMemory,
     ArchiveSubfolderProposal,
     RuleLedgerEntry,
     SenderMemory,
@@ -156,6 +158,60 @@ def _save_llm_archive_hints(conn: sqlite3.Connection, hints: dict[str, str]) -> 
     set_watermark(conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY, json.dumps(hints))
 
 
+def _load_archive_folder_memory(
+    conn: sqlite3.Connection,
+) -> dict[str, ArchiveFolderMemory]:
+    """Load the archive-folder memory from the watermark table.
+
+    Returns ``{key: ArchiveFolderMemory}`` keyed by sender key and sender
+    domain; an empty dict when the memory has never been written.
+    """
+    raw = get_watermark(conn, _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY)
+    if raw is None:
+        return {}
+    data: dict[str, object] = json.loads(raw)
+    return {
+        key: ArchiveFolderMemory.model_validate(entry) for key, entry in data.items()
+    }
+
+
+def _save_archive_folder_memory(
+    conn: sqlite3.Connection, memory: dict[str, ArchiveFolderMemory]
+) -> None:
+    """Persist *memory* to the watermark table (json round-trip)."""
+    payload = {key: entry.model_dump() for key, entry in memory.items()}
+    set_watermark(conn, _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY, json.dumps(payload))
+
+
+def record_archive_folder_choice(
+    conn: sqlite3.Connection, record: MailRecord, subfolder: str
+) -> None:
+    """Remember that *record*'s sender / domain mail is filed into *subfolder*.
+
+    Upserts BOTH a sender-key entry (``_sender_key``) and a sender-domain
+    entry, incrementing ``count`` on repeat so the most-used folder can be
+    surfaced.  A no-op when *subfolder* is empty; the domain entry is skipped
+    when the sender address has no ``@``.  Record only human-confirmed folder
+    choices here — never the LLM's own proposal/hint.
+    """
+    if not subfolder:
+        return
+    keys = [_sender_key(record.sender)]
+    domain = _domain_key(record.sender)
+    if domain:
+        keys.append(domain)
+    memory = _load_archive_folder_memory(conn)
+    for key in keys:
+        previous = memory.get(key)
+        count = previous.count + 1 if previous is not None else 1
+        memory[key] = ArchiveFolderMemory(
+            subfolder=subfolder,
+            count=count,
+            updated_at=_utc_now_iso(),
+        )
+    _save_archive_folder_memory(conn, memory)
+
+
 def get_archive_subfolder(
     conn: sqlite3.Connection, message_id: str, record: MailRecord
 ) -> str:
@@ -227,6 +283,12 @@ def propose_archive_subfolder_llm(
     memory = _load_memory(conn)
     sender_memory_entry = memory.get(_sender_key(record.sender))
 
+    # -- load archive-folder memory for this sender / domain --
+    folder_memory = _load_archive_folder_memory(conn)
+    sender_folder_entry = folder_memory.get(_sender_key(record.sender))
+    domain = _domain_key(record.sender)
+    domain_folder_entry = folder_memory.get(domain) if domain else None
+
     # -- build system prompt --
     system_prompt = (
         "You are an assistant that proposes archive subfolders for email.\n"
@@ -248,6 +310,25 @@ def propose_archive_subfolder_llm(
             f"triaged as `{sender_memory_entry.action}` "
             f"({sender_memory_entry.count} times). "
             "Use this to inform your folder proposal.\n"
+        )
+    if sender_folder_entry is not None or domain_folder_entry is not None:
+        system_prompt += "\nArchive-folder history:\n"
+        if sender_folder_entry is not None:
+            system_prompt += (
+                f"Mail from this sender was previously archived to "
+                f"`{sender_folder_entry.subfolder}`.\n"
+            )
+        if domain_folder_entry is not None:
+            times = "time" if domain_folder_entry.count == 1 else "times"
+            system_prompt += (
+                f"Other mail from senders at domain `{domain}` was previously "
+                f"archived to `{domain_folder_entry.subfolder}` "
+                f"({domain_folder_entry.count} {times}).\n"
+            )
+        system_prompt += (
+            "Prefer reusing an existing project folder when the message "
+            "relates to an ongoing project, rather than inventing a new "
+            "folder or a date bucket.\n"
         )
 
     # -- build user message --

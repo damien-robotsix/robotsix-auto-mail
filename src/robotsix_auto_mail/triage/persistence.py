@@ -153,6 +153,22 @@ class SenderMemory(pydantic.BaseModel):
         return v
 
 
+class ArchiveFolderMemory(pydantic.BaseModel):
+    """One sender's / domain's remembered archive-folder choice.
+
+    Stored in the archive-folder memory ledger keyed by the lowercased
+    sender email (via ``_sender_key``) or its domain.  ``subfolder`` is the
+    most recent subfolder a human filed this sender's / domain's mail into,
+    ``count`` is how many times a folder has been recorded for this key and
+    ``updated_at`` is the ISO-8601 UTC timestamp of the latest update.
+    Mirrors the :class:`SenderMemory` shape.
+    """
+
+    subfolder: str
+    count: int = 1
+    updated_at: str = ""
+
+
 class ArchiveSubfolderProposal(pydantic.BaseModel):
     """Structured LLM output for a per-mail archive subfolder proposal."""
 

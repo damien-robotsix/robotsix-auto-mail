@@ -2410,6 +2410,162 @@ def test_archive_proposal_post_empty_subfolder_clears_override() -> None:
         os.unlink(db_path)
 
 
+def test_archive_proposal_post_records_archive_folder_memory() -> None:
+    """POST /archive-proposal with a non-empty subfolder records the choice
+    in archive-folder memory (both sender and domain)."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "rec-ap",
+                    "sender": "a@b.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/archive-proposal",
+                {"message_id": "rec-ap", "subfolder": "My/Path"},
+            )
+            assert resp.status == 302
+        finally:
+            server.shutdown()
+
+        from robotsix_auto_mail.triage import _load_archive_folder_memory
+
+        conn = init_db(db_path)
+        try:
+            memory = _load_archive_folder_memory(conn)
+            assert memory["a@b.com"].subfolder == "My/Path"
+            assert memory["b.com"].subfolder == "My/Path"
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_proposal_post_empty_subfolder_records_nothing() -> None:
+    """POST /archive-proposal with an empty subfolder records nothing in
+    archive-folder memory."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "empty-ap",
+                    "sender": "a@b.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/archive-proposal",
+                {"message_id": "empty-ap", "subfolder": ""},
+            )
+            assert resp.status == 302
+        finally:
+            server.shutdown()
+
+        from robotsix_auto_mail.triage import _load_archive_folder_memory
+
+        conn = init_db(db_path)
+        try:
+            assert _load_archive_folder_memory(conn) == {}
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_records_archive_folder_memory_before_delete() -> None:
+    """POST /archive records the effective subfolder in archive-folder memory
+    before the local row is deleted."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "arch-mem-mid",
+                    "sender": "x@x.com",
+                    "subject": "hier",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "arch-mem-mid", action="TO_ARCHIVE")
+        _seed_archive_override(db_path, "arch-mem-mid", "Lists/new-list")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (7, "arch-mem-mid"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="my-archive",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
+
+                resp = _post_to_path(port, "/archive", {"message_id": "arch-mem-mid"})
+
+            assert resp.status == 302
+        finally:
+            server.shutdown()
+
+        from robotsix_auto_mail.db import get_record_by_message_id
+        from robotsix_auto_mail.triage import _load_archive_folder_memory
+
+        conn = init_db(db_path)
+        try:
+            # The local row is gone, but the folder memory survives.
+            assert get_record_by_message_id(conn, "arch-mem-mid") is None
+            memory = _load_archive_folder_memory(conn)
+            assert memory["x@x.com"].subfolder == "Lists/new-list"
+            assert memory["x.com"].subfolder == "Lists/new-list"
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
 def test_archive_proposal_post_missing_message_id_400() -> None:
     """POST /archive-proposal without message_id returns 400."""
     server, port = _start_test_server(":memory:")
