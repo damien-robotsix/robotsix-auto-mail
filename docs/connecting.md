@@ -618,12 +618,14 @@ detail drawer to show the result.
 
 **Sending replies.**  Once a draft is saved (the card moves to "Draft ready" status),
 two additional buttons appear in the detail drawer:
-- **Reply & archive** — sends the draft text as a reply to the original sender via SMTP,
-  then archives the original message (moves it to the IMAP archive folder and removes it from
-  the local database). The card disappears from the board after sending.
-- **Reply to all & archive** — sends the draft to the original sender and includes all
+- **Reply** — sends the draft text as a reply to the original sender via SMTP,
+  then re-queues the original message for triage with the sent reply body stored.
+  The card reappears in the INBOX column and the triage agent will decide the 
+  final disposition (typically to archive, but the agent may decide otherwise based 
+  on the reply content). This allows the triage system to own the post-answer workflow.
+- **Reply to all** — sends the draft to the original sender and includes all
   recipients from the original message (the `To` and `Cc` lists, excluding your own address
-  and duplicates). After sending, the message is archived and the card is removed.
+  and duplicates). After sending, the message is re-queued for triage in the same manner.
 
 The reply always includes threading headers (`In-Reply-To` and `References`) so it appears
 as a conversation thread in the recipient's mail client. The subject is automatically prefixed

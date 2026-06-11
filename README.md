@@ -86,6 +86,8 @@ with the reason visible on hover. Click any card to view full details
 including the triage action, reason, and confidence. Cards marked "Needs reply"
 have a **Draft reply** button that triggers LLM-driven draft generation — click it
 to have the LLM prepare a professional reply draft from the incoming message.
+When you send a reply, the original message re-enters the triage queue with the
+reply body stored so the triage agent can decide the final disposition.
 Full details are in [docs/connecting.md](docs/connecting.md#the-serve-command).
 
 ## License
