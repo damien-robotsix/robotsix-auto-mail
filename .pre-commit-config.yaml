@@ -21,7 +21,8 @@ repos:
           - types-PyYAML
 
   - repo: https://github.com/damien-robotsix/robotsix-modules
-    rev: v0.2.0
+    # keep in sync with uv.lock robotsix-modules git pin (rev=main#<sha>)
+    rev: 8a40eee6130d5e005148bb9ddf85e1af7f7dee4f
     hooks:
       - id: robotsix-modules-validate
         files: ^docs/modules\.yaml$
