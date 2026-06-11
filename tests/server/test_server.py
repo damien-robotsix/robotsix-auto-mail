@@ -3833,6 +3833,80 @@ def test_handler_email_detail_embed_links_app_css() -> None:
         os.unlink(db_path)
 
 
+def test_handler_board_refresh_board_accepts_force() -> None:
+    """/board defines refreshBoard(force) with a force-guarded early return."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/board")
+        body = resp.read().decode("utf-8")
+        assert "function refreshBoard(force)" in body
+        assert "if (!force && document.getElementById('side-panel')" in body
+        assert ".classList.contains('open')) return;" in body
+        # Auto-refresh behaviour preserved.
+        assert "setInterval(refreshBoard, 30000)" in body
+    finally:
+        server.shutdown()
+
+
+def test_handler_email_detail_embed_notifies_parent_board() -> None:
+    """The embed fragment carries a guarded parent-board refresh script."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "notify-embed",
+                    "sender": "x@y.com",
+                    "subject": "Embed",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "B",
+                    "status": "to_read",
+                }
+            ],
+        )
+        server, port = _start_test_server(db_path)
+        try:
+            resp = urlopen(f"http://127.0.0.1:{port}/email/notify-embed?embed=1")
+            body = resp.read().decode("utf-8")
+            assert "window.parent.refreshBoard(true)" in body
+            assert "typeof window.parent.refreshBoard === 'function'" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_handler_email_detail_standalone_has_no_parent_refresh() -> None:
+    """The standalone (non-embed) detail page must not notify a parent board."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "standalone-detail",
+                    "sender": "x@y.com",
+                    "subject": "Standalone",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "B",
+                    "status": "to_read",
+                }
+            ],
+        )
+        server, port = _start_test_server(db_path)
+        try:
+            resp = urlopen(f"http://127.0.0.1:{port}/email/standalone-detail")
+            body = resp.read().decode("utf-8")
+            assert "window.parent.refreshBoard" not in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
 def test_handler_board_inline_handlers_resolve_to_defined_functions() -> None:
     """Regression guard: every inline onclick/onchange/onsubmit handler on
     /board must invoke a function that is defined somewhere reachable by the
