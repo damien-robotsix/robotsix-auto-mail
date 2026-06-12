@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 from robotsix_board import render_board
 
-from robotsix_auto_mail.board_adapter import MailBoardAdapter
+from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailAccountsConfig
 from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.format import _effective_body_plain, _format_date

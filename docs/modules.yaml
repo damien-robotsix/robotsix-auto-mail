@@ -201,10 +201,10 @@ modules:
       - src/robotsix_auto_mail/server/adapters.py
       - src/robotsix_auto_mail/server/handlers.py
       - src/robotsix_auto_mail/server/views.py
-      - src/robotsix_auto_mail/static/board.css
-      - src/robotsix_auto_mail/board_adapter.py
+      - src/robotsix_auto_mail/server/static/board.css
+      - src/robotsix_auto_mail/server/board_adapter.py
       - tests/server/test_server.py
-      - tests/board_adapter/test_board_adapter.py
+      - tests/server/test_board_adapter.py
       - scripts/smoke_board.sh
 
   - id: docs

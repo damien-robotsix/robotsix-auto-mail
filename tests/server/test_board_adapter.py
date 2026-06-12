@@ -13,7 +13,7 @@ from __future__ import annotations
 from robotsix_board import RenderMode
 from tests.conftest import _make_record
 
-from robotsix_auto_mail.board_adapter import MailBoardAdapter
+from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 
 
 def _make_adapter(triage_by_mid: dict[str, str] | None = None) -> MailBoardAdapter:

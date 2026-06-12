@@ -25,7 +25,7 @@ _STATIC_BOARD_CSS = (
 # it does not collide with the library's /static/board.css.  Loaded after
 # the library CSS so its rules cascade over the library defaults.
 _STATIC_AUTOMAIL_BOARD_CSS = (
-    importlib.resources.files("robotsix_auto_mail") / "static" / "board.css"
+    importlib.resources.files("robotsix_auto_mail.server") / "static" / "board.css"
 ).read_text()
 
 # -- Constants --------------------------------------------------------------
