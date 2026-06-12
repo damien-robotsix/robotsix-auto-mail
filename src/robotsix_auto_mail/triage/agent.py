@@ -14,6 +14,7 @@ import sqlite3
 
 from robotsix_llmio.core import Tier, run_agent
 
+from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.config import load_llm
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -119,18 +120,7 @@ def _build_triage_system_prompt(
             "`Lists/python-dev`). You may suggest an existing folder from "
             "the list above, or propose a new folder name that fits the "
             "message. Leave the field empty or omit it when you have no "
-            "suggestion.\n"
-            "Categorize by purpose or topic: choose a top-level semantic "
-            "bucket adapted to the existing folders above. Example buckets "
-            "(adapt to the user's existing structure — these are not a fixed "
-            "list): `Finance` (invoices, receipts, bank), `Orders` "
-            "(purchases, shipping), `Travel`, `Newsletters`, `Notifications` "
-            "(CI / automated alerts), `Projects/<name>`, `Admin` (accounts, "
-            "legal). Do NOT use bare `<domain>/<sender>` paths (e.g. never "
-            "`lwn.net/lwn`); a sender name may appear only as a leaf under a "
-            "semantic parent (e.g. `Newsletters/LWN`) and only when no better "
-            "topical bucket fits. Keep paths shallow: at most 2 levels (one "
-            "`/` separator).\n"
+            "suggestion.\n" + _ARCHIVE_TAXONOMY_GUIDANCE + "\n"
         )
         if archive_folder_usage:
             prompt += (

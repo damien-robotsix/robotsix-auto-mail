@@ -22,6 +22,7 @@ import typing
 import pydantic
 from robotsix_llmio.core import Tier, run_agent
 
+from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.imap import ImapClient
 
@@ -81,6 +82,12 @@ def _build_archive_system_prompt(archive_root: str) -> str:
         "\n"
         "Return ONLY the JSON object matching the schema — no explanation, no "
         "markdown fences."
+        "\n"
+        "Folder taxonomy rules:\n" + _ARCHIVE_TAXONOMY_GUIDANCE + "\n"
+        "Existing folders whose top-level segment contains a dot (e.g. "
+        "`tii-ae/apinvoice`, `lwn.net/lwn`) reflect a legacy `<domain>/<sender>` "
+        "convention. Do NOT propagate this pattern into new folder proposals — "
+        "re-home that content into semantic topic buckets instead.\n"
     )
 
 
