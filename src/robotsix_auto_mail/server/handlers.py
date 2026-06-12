@@ -55,6 +55,29 @@ from robotsix_auto_mail.triage import (
 )
 
 
+def _compute_reply_all_cc(record: MailRecord, from_addr: str) -> list[str] | None:
+    """Compute the CC list for a reply-all, excluding self and the original sender."""
+    try:
+        recipients = json.loads(record.recipients_json)
+    except (json.JSONDecodeError, TypeError):
+        recipients = {}
+    orig_to = recipients.get("to", []) if isinstance(recipients, dict) else []
+    orig_cc = recipients.get("cc", []) if isinstance(recipients, dict) else []
+    to_addr = record.sender
+    cc_list: list[str] = []
+    seen: set[str] = set()
+    excluded = {from_addr.lower(), to_addr.lower()}
+    for addr in [*orig_to, *orig_cc]:
+        if not isinstance(addr, str):
+            continue
+        lowered = addr.lower()
+        if lowered in excluded or lowered in seen:
+            continue
+        seen.add(lowered)
+        cc_list.append(addr)
+    return cc_list or None
+
+
 class BoardHandler(BaseHTTPRequestHandler):
     """Request handler for the robotsix-auto-mail board server.
 
@@ -1355,33 +1378,11 @@ class BoardHandler(BaseHTTPRequestHandler):
                 self._bad_request("Refusing to send a reply to your own address")
                 return
 
-            cc: list[str] | None = None
-            if reply_mode == "reply_all":
-                try:
-                    recipients = json.loads(record.recipients_json)
-                except (json.JSONDecodeError, TypeError):
-                    recipients = {}
-                orig_to = (
-                    recipients.get("to", []) if isinstance(recipients, dict) else []
-                )
-                orig_cc = (
-                    recipients.get("cc", []) if isinstance(recipients, dict) else []
-                )
-                # Union of original To + Cc, excluding self and the sender
-                # (already in To), deduplicated case-insensitively while
-                # preserving order.
-                cc_list: list[str] = []
-                seen: set[str] = set()
-                excluded = {from_addr.lower(), to_addr.lower()}
-                for addr in [*orig_to, *orig_cc]:
-                    if not isinstance(addr, str):
-                        continue
-                    lowered = addr.lower()
-                    if lowered in excluded or lowered in seen:
-                        continue
-                    seen.add(lowered)
-                    cc_list.append(addr)
-                cc = cc_list or None
+            cc = (
+                _compute_reply_all_cc(record, from_addr)
+                if reply_mode == "reply_all"
+                else None
+            )
 
             # -- subject (prepend "Re: " unless already present) -------
             subject = record.subject
