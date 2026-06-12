@@ -237,6 +237,12 @@ auth:
 
 # llm:
 #   api_key: sk-or-v1-…   # or via the LLM_API_KEY env var
+#   provider: openrouter-deepseek
+
+# langfuse:
+#   public_key: ""
+#   secret_key: ""
+#   base_url: ""
 ```
 
 | Key | Required | Default | Purpose |
@@ -267,11 +273,16 @@ auth:
 | `langfuse.secret_key` | no | – | Langfuse secret key (redacted in logs/repr) |
 | `langfuse.base_url` | no | – | Langfuse host URL (falls back to llmio's own default when unset) |
 
+> **Multi-account note:** In the multi-account shape (``accounts:`` list),
+> ``llm:`` and ``langfuse:`` are **top-level** sections (alongside
+> ``default_account:``), not per-account.  See
+> ``config/mail.local.example.yaml`` for the correct placement.
+
 The `auth.password` and `llm.api_key` values are **redacted** in logs and
 debug output regardless of how they are supplied.
 
 Setting `langfuse.public_key` / `langfuse.secret_key` (or the matching
-`MAIL_LANGFUSE_*` env vars) enables Langfuse tracing for every LLM-running
+`LANGFUSE_*` env vars) enables Langfuse tracing for every LLM-running
 subcommand. Since `config/mail.local.yaml` is git-ignored, the deployment
 supplies the real keys there without committing them.
 
@@ -302,9 +313,9 @@ supplies the real keys there without committing them.
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
 | `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |
 | `LLM_PROVIDER` | no | `openrouter-deepseek` | LLM backend name (overrides `llm.provider`); see robotsix-llmio README for available backends |
-| `MAIL_LANGFUSE_PUBLIC_KEY` | no | – | Langfuse public key (overrides `langfuse.public_key`); enables LLM tracing |
-| `MAIL_LANGFUSE_SECRET_KEY` | no | – | Langfuse secret key (overrides `langfuse.secret_key`; redacted) |
-| `MAIL_LANGFUSE_BASE_URL` | no | – | Langfuse host URL (overrides `langfuse.base_url`) |
+| `LANGFUSE_PUBLIC_KEY` | no | – | Langfuse public key (overrides `langfuse.public_key`); enables LLM tracing |
+| `LANGFUSE_SECRET_KEY` | no | – | Langfuse secret key (overrides `langfuse.secret_key`; redacted) |
+| `LANGFUSE_BASE_URL` | no | – | Langfuse host URL (overrides `langfuse.base_url`) |
 | `LOG_LEVEL` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `LOG_FORMAT` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
 

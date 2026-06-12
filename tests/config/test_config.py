@@ -434,15 +434,15 @@ auth:
 
 
 def test_from_env_langfuse_vars() -> None:
-    """MAIL_LANGFUSE_* env vars populate the langfuse fields."""
+    """LANGFUSE_* env vars populate the langfuse fields."""
     env: dict[str, str] = {
         "MAIL_IMAP_HOST": "imap.example.com",
         "MAIL_SMTP_HOST": "smtp.example.com",
         "MAIL_USERNAME": "u",
         "MAIL_PASSWORD": "p",
-        "MAIL_LANGFUSE_PUBLIC_KEY": "pk-lf-env",
-        "MAIL_LANGFUSE_SECRET_KEY": "sk-lf-env",
-        "MAIL_LANGFUSE_BASE_URL": "https://langfuse.env.net",
+        "LANGFUSE_PUBLIC_KEY": "pk-lf-env",
+        "LANGFUSE_SECRET_KEY": "sk-lf-env",
+        "LANGFUSE_BASE_URL": "https://langfuse.env.net",
     }
     with mock.patch.dict(os.environ, env, clear=True):
         cfg = MailConfig.from_env()
@@ -452,7 +452,7 @@ def test_from_env_langfuse_vars() -> None:
 
 
 def test_from_env_langfuse_defaults_when_absent() -> None:
-    """MAIL_LANGFUSE_* env vars absent → empty-string defaults."""
+    """LANGFUSE_* env vars absent → empty-string defaults."""
     env: dict[str, str] = {
         "MAIL_IMAP_HOST": "imap.example.com",
         "MAIL_SMTP_HOST": "smtp.example.com",
@@ -849,14 +849,21 @@ def test_load_llm_env_wins() -> None:
 
 
 def test_load_llm_falls_back_to_file(tmp_path: Path) -> None:
-    """load_llm reads the default account's llm: section when env is absent."""
+    """load_llm reads the top-level llm: section when env is absent."""
     yaml_file = tmp_path / "mail.local.yaml"
     yaml_file.write_text(
         """\
+llm:
+  api_key: sk-from-file
 accounts:
   - id: default
-    llm:
-      api_key: sk-from-file
+    imap:
+      host: imap.example.com
+    smtp:
+      host: smtp.example.com
+    auth:
+      username: u
+      password: p
 """
     )
     env: dict[str, str] = {"MAIL_CONFIG_PATH": str(yaml_file)}

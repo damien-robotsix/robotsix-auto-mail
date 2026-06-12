@@ -142,6 +142,10 @@ class _FieldSpec(NamedTuple):
     required for that source (or :data:`_REQUIRED` if no real default
     exists).  ``required_in_env`` / ``required_in_yaml`` are intentionally
     independent — ``password`` is required in env but not in YAML.
+
+    ``global_field`` marks a field that is application-wide (llm, langfuse);
+    in the multi-account loader these fields are read from bare (non-namespaced)
+    env vars, not from ``MAIL_ACCOUNTS_<n>_*``.
     """
 
     field_name: str
@@ -151,6 +155,7 @@ class _FieldSpec(NamedTuple):
     default: Any
     required_in_env: bool
     required_in_yaml: bool
+    global_field: bool = False
 
 
 _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
@@ -193,7 +198,16 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
     _FieldSpec(
         "db_path", "MAIL_DB_PATH", "store.path", "str", DEFAULT_DB_PATH, False, False
     ),
-    _FieldSpec("llm_api_key", "LLM_API_KEY", "llm.api_key", "str", "", False, False),
+    _FieldSpec(
+        "llm_api_key",
+        "LLM_API_KEY",
+        "llm.api_key",
+        "str",
+        "",
+        False,
+        False,
+        global_field=True,
+    ),
     _FieldSpec(
         "llm_provider",
         "LLM_PROVIDER",
@@ -202,6 +216,7 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         "openrouter-deepseek",
         False,
         False,
+        global_field=True,
     ),
     _FieldSpec(
         "ingest_interval_minutes",
@@ -297,30 +312,33 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
     ),
     _FieldSpec(
         "langfuse_public_key",
-        "MAIL_LANGFUSE_PUBLIC_KEY",
+        "LANGFUSE_PUBLIC_KEY",
         "langfuse.public_key",
         "str",
         "",
         False,
         False,
+        global_field=True,
     ),
     _FieldSpec(
         "langfuse_secret_key",
-        "MAIL_LANGFUSE_SECRET_KEY",
+        "LANGFUSE_SECRET_KEY",
         "langfuse.secret_key",
         "str",
         "",
         False,
         False,
+        global_field=True,
     ),
     _FieldSpec(
         "langfuse_base_url",
-        "MAIL_LANGFUSE_BASE_URL",
+        "LANGFUSE_BASE_URL",
         "langfuse.base_url",
         "str",
         "",
         False,
         False,
+        global_field=True,
     ),
 )
 
@@ -893,11 +911,14 @@ class MailAccountsConfig:
         * **Multi-account** — a top-level ``accounts:`` list.  Each entry is
           a mapping with ``id`` (required str), optional ``label`` (str) and
           the usual nested config sections (``imap``, ``smtp``, ``auth``,
-          ``store``, ``llm``, ``ingest``, ``archive``, ``triage``) parsed by
-          the same helper as the single-account loader.  An optional
-          top-level ``default_account:`` names the default (absent → the
-          first entry).  When an entry omits ``store.path`` the per-account
-          default ``".data/<id>/mail.db"`` is used so DBs never collide.
+          ``store``, ``ingest``, ``archive``, ``triage``) parsed by
+          the same helper as the single-account loader.  ``llm:`` and
+          ``langfuse:`` are **top-level** sections (application-wide); they
+          are applied to every account via :func:`dataclasses.replace`.
+          An optional top-level ``default_account:`` names the default
+          (absent → the first entry).  When an entry omits ``store.path``
+          the per-account default ``".data/<id>/mail.db"`` is used so DBs
+          never collide.
         * **Legacy single-account** — no top-level ``accounts:`` key.  The
           whole file is parsed via :meth:`MailConfig.from_yaml` and wrapped
           in a one-element container with ``account_id="default"`` (keeping
@@ -931,6 +952,30 @@ class MailAccountsConfig:
         if not accounts_raw:
             raise ConfigurationError("'accounts' must contain at least one account")
 
+        # -- top-level llm / langfuse sections (application-wide) -----------
+
+        global_llm_api_key: str = ""
+        global_llm_provider: str = ""
+        global_langfuse_public_key: str = ""
+        global_langfuse_secret_key: str = ""
+        global_langfuse_base_url: str = ""
+
+        if isinstance(data, dict):
+            llm_section = _get_table(data, "llm")
+            if llm_section is not None:
+                global_llm_api_key = _get_str(llm_section, "api_key", "")
+                global_llm_provider = _get_str(llm_section, "provider", "")
+
+            langfuse_section = _get_table(data, "langfuse")
+            if langfuse_section is not None:
+                global_langfuse_public_key = _get_str(
+                    langfuse_section, "public_key", ""
+                )
+                global_langfuse_secret_key = _get_str(
+                    langfuse_section, "secret_key", ""
+                )
+                global_langfuse_base_url = _get_str(langfuse_section, "base_url", "")
+
         accounts: list[MailAccount] = []
         for entry in accounts_raw:
             if not isinstance(entry, dict):
@@ -943,11 +988,36 @@ class MailAccountsConfig:
             raw_label = entry.get("label")
             if raw_label is not None and not isinstance(raw_label, str):
                 raise ConfigurationError(f"account {raw_id!r} 'label' must be a string")
+
+            # llm: and langfuse: are now top-level (application-wide);
+            # per-account blocks are rejected with an actionable error.
+            for section_name in ("llm", "langfuse"):
+                if section_name in entry:
+                    raise ConfigurationError(
+                        f"account {raw_id!r} has a per-account "
+                        f"{section_name!r} block — {section_name}: is now "
+                        f"a top-level section. Move it outside the "
+                        f"accounts: list."
+                    )
+
             store_section = entry.get("store")
             has_store_path = isinstance(store_section, dict) and "path" in store_section
             cfg = MailConfig._parse_config_dict(entry, path, validate=validate)
             if not has_store_path:
                 cfg = dataclasses.replace(cfg, db_path=f".data/{raw_id}/mail.db")
+
+            # Apply top-level llm/langfuse values (global wins over defaults).
+            cfg = dataclasses.replace(
+                cfg,
+                llm_api_key=global_llm_api_key or cfg.llm_api_key,
+                llm_provider=global_llm_provider or cfg.llm_provider,
+                langfuse_public_key=global_langfuse_public_key
+                or cfg.langfuse_public_key,
+                langfuse_secret_key=global_langfuse_secret_key
+                or cfg.langfuse_secret_key,
+                langfuse_base_url=global_langfuse_base_url or cfg.langfuse_base_url,
+            )
+
             accounts.append(MailAccount(account_id=raw_id, config=cfg, label=raw_label))
 
         raw_default = data.get("default_account")
@@ -970,8 +1040,9 @@ class MailAccountsConfig:
           present.  For each contiguous index ``n`` starting at 0, one
           account is built from the namespaced vars.  A field whose
           single-account env var is ``MAIL_<X>`` becomes
-          ``MAIL_ACCOUNTS_<n>_<X>``; the two LLM fields become
-          ``MAIL_ACCOUNTS_<n>_LLM_API_KEY``.  Two extra
+          ``MAIL_ACCOUNTS_<n>_<X>``.  ``LLM_API_KEY``, ``LLM_PROVIDER``,
+          and ``LANGFUSE_*`` are application-wide (global) and read from
+          the bare env vars, not namespaced.  Two extra
           vars: ``MAIL_ACCOUNTS_<n>_ID`` (required) and
           ``MAIL_ACCOUNTS_<n>_LABEL`` (optional).  A missing ``store.path``
           yields the per-account default ``".data/<id>/mail.db"``.  An
@@ -1034,6 +1105,21 @@ def _build_account_from_env(index: int) -> MailAccount:
     cfg = _build_config_from_env(
         lambda spec: os.environ.get(namespaced(spec.env_key), ""),
         lambda spec: namespaced(spec.env_key),
+    )
+
+    # Global fields are application-wide; read them from bare (non-namespaced)
+    # env vars, overriding any per-account namespaced value.
+    cfg = dataclasses.replace(
+        cfg,
+        llm_api_key=os.environ.get("LLM_API_KEY", cfg.llm_api_key),
+        llm_provider=os.environ.get("LLM_PROVIDER", cfg.llm_provider),
+        langfuse_public_key=os.environ.get(
+            "LANGFUSE_PUBLIC_KEY", cfg.langfuse_public_key
+        ),
+        langfuse_secret_key=os.environ.get(
+            "LANGFUSE_SECRET_KEY", cfg.langfuse_secret_key
+        ),
+        langfuse_base_url=os.environ.get("LANGFUSE_BASE_URL", cfg.langfuse_base_url),
     )
 
     account_id = os.environ.get(f"{prefix}ID", "")
@@ -1111,10 +1197,14 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     """Render one :class:`MailAccount` as a YAML list item under ``accounts:``.
 
     The mandatory ``imap`` / ``smtp`` / ``auth`` / ``store`` sections are
-    always emitted; the optional sections (``llm`` / ``ingest`` / ``archive``
-    / ``triage`` / ``langfuse`` and the OAuth2 fields) are emitted only when
+    always emitted; the optional sections (``ingest`` / ``archive``
+    / ``triage`` and the OAuth2 fields) are emitted only when
     they carry a non-default value, so freshly-detected configs stay terse
     while migrated configs preserve any customised value.
+
+    ``llm:`` and ``langfuse:`` are NOT emitted per-account — they are
+    application-wide and rendered as top-level sections by
+    :func:`render_accounts_yaml`.
     """
     cfg = account.config
     defaults = MailConfig(imap_host="", smtp_host="", username="", password="")
@@ -1150,13 +1240,6 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
         )
     lines.append(f"{item}store:")
     lines.append(f"{item}  path: {_yaml_scalar(cfg.db_path)}")
-    if cfg.llm_api_key:
-        lines.append(f"{item}llm:")
-        lines.append(f"{item}  api_key: {_yaml_scalar(cfg.llm_api_key)}")
-    if cfg.llm_provider != defaults.llm_provider:
-        if not cfg.llm_api_key:
-            lines.append(f"{item}llm:")
-        lines.append(f"{item}  provider: {_yaml_scalar(cfg.llm_provider)}")
     if cfg.ingest_interval_minutes != defaults.ingest_interval_minutes:
         lines.append(f"{item}ingest:")
         lines.append(f"{item}  interval_minutes: {cfg.ingest_interval_minutes}")
@@ -1172,11 +1255,6 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     if cfg.triage_on_ingest != defaults.triage_on_ingest:
         lines.append(f"{item}triage:")
         lines.append(f"{item}  on_ingest: {_yaml_scalar(cfg.triage_on_ingest)}")
-    if cfg.langfuse_public_key or cfg.langfuse_secret_key or cfg.langfuse_base_url:
-        lines.append(f"{item}langfuse:")
-        lines.append(f"{item}  public_key: {_yaml_scalar(cfg.langfuse_public_key)}")
-        lines.append(f"{item}  secret_key: {_yaml_scalar(cfg.langfuse_secret_key)}")
-        lines.append(f"{item}  base_url: {_yaml_scalar(cfg.langfuse_base_url)}")
     return lines
 
 
@@ -1188,7 +1266,8 @@ def render_accounts_yaml(
 ) -> str:
     """Render *accounts* as a multi-account YAML config file.
 
-    Emits a top-level ``default_account:`` followed by an ``accounts:`` list.
+    Emits top-level ``llm:`` / ``langfuse:`` sections (application-wide)
+    followed by ``default_account:`` and an ``accounts:`` list.
     Used by ``detect`` (to write/append a detected account) and by
     ``migrate-config`` (to convert a deprecated single-account file).
     """
@@ -1196,6 +1275,35 @@ def render_accounts_yaml(
     if banner:
         lines.append(banner.rstrip("\n"))
         lines.append("")
+
+    # Emit top-level llm: / langfuse: sections using the first account's
+    # config values (they are identical across all accounts by construction).
+    representative = accounts[0].config
+    if (
+        representative.llm_api_key
+        or representative.llm_provider != "openrouter-deepseek"
+    ):
+        lines.append("llm:")
+        if representative.llm_api_key:
+            lines.append(f"  api_key: {_yaml_scalar(representative.llm_api_key)}")
+        if representative.llm_provider != "openrouter-deepseek":
+            lines.append(f"  provider: {_yaml_scalar(representative.llm_provider)}")
+        lines.append("")
+    if (
+        representative.langfuse_public_key
+        or representative.langfuse_secret_key
+        or representative.langfuse_base_url
+    ):
+        lines.append("langfuse:")
+        lines.append(
+            f"  public_key: {_yaml_scalar(representative.langfuse_public_key)}"
+        )
+        lines.append(
+            f"  secret_key: {_yaml_scalar(representative.langfuse_secret_key)}"
+        )
+        lines.append(f"  base_url: {_yaml_scalar(representative.langfuse_base_url)}")
+        lines.append("")
+
     lines.append(f"default_account: {_yaml_scalar(default_account_id)}")
     lines.append("")
     lines.append("accounts:")

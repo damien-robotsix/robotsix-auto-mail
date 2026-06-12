@@ -32,6 +32,21 @@ _YAML_EXAMPLE = """\
 # Any field you omit falls back to its built-in default (shown commented
 # below). The MAIL_ACCOUNTS_<n>_* environment variables override the
 # corresponding value here.
+#
+# llm: and langfuse: are application-wide (top-level) sections.
+
+# LLM provider — used by the `detect` command and future LLM-assisted
+# mail processing. The LLM_API_KEY environment variable overrides this
+# value.
+# llm:
+#   api_key: sk-or-v1-…
+#   provider: openrouter-deepseek
+
+# Langfuse observability — optional; enables LLM agent tracing.
+# langfuse:
+#   public_key: ""
+#   secret_key: ""
+#   base_url: ""
 
 default_account: personal
 
@@ -70,17 +85,6 @@ accounts:
     # Inbox triage agent — runs automatically after each ingest cycle.
     # triage:
     #   on_ingest: true
-    # LLM provider — used by the `detect` command and future LLM-assisted
-    # mail processing. The LLM_API_KEY environment variable overrides this
-    # value.
-    # llm:
-    #   api_key: sk-or-v1-…
-    #   provider: openrouter-deepseek
-    # Langfuse observability — optional; enables LLM agent tracing.
-    # langfuse:
-    #   public_key: ""
-    #   secret_key: ""
-    #   base_url: ""
 
   - id: work
     label: Work
@@ -120,9 +124,9 @@ MAIL_ARCHIVE_ENABLED=true
 MAIL_TRIAGE_ON_INGEST=true
 LLM_API_KEY=sk-or-v1-…
 LLM_PROVIDER=openrouter-deepseek
-MAIL_LANGFUSE_PUBLIC_KEY=
-MAIL_LANGFUSE_SECRET_KEY=
-MAIL_LANGFUSE_BASE_URL=
+LANGFUSE_PUBLIC_KEY=
+LANGFUSE_SECRET_KEY=
+LANGFUSE_BASE_URL=
 """
 
 _ACCOUNTS_EXAMPLE = """\
@@ -211,9 +215,9 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
 | `LLM_API_KEY` | no | - | LLM provider API key |
 | `LLM_PROVIDER` | no | `openrouter-deepseek` | LLM backend name |
-| `MAIL_LANGFUSE_PUBLIC_KEY` | no | - | Langfuse public key for LLM tracing |
-| `MAIL_LANGFUSE_SECRET_KEY` | no | - | Langfuse secret key for LLM tracing |
-| `MAIL_LANGFUSE_BASE_URL` | no | - | Langfuse base URL for LLM tracing |
+| `LANGFUSE_PUBLIC_KEY` | no | - | Langfuse public key for LLM tracing |
+| `LANGFUSE_SECRET_KEY` | no | - | Langfuse secret key for LLM tracing |
+| `LANGFUSE_BASE_URL` | no | - | Langfuse base URL for LLM tracing |
 """
 
 
