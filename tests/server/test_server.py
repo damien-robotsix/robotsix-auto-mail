@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 from tests.conftest import _make_record
 
-from robotsix_auto_mail.board_adapter import MailBoardAdapter
+from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.format import _format_date
