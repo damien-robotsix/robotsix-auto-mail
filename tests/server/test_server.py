@@ -2352,8 +2352,6 @@ def test_batch_delete_stale_uid_preserves_all_records() -> None:
     """POST /batch-delete with one stale UID aborts and keeps every record."""
     from unittest import mock
 
-    from robotsix_auto_mail.imap import ImapMessageNotFoundError
-
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
@@ -2406,9 +2404,16 @@ def test_batch_delete_stale_uid_preserves_all_records() -> None:
         try:
             with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.delete_message.side_effect = ImapMessageNotFoundError(
-                    "UID 42 not found in the selected folder (stale UID)"
-                )
+
+                # Simulate one stale UID: UID 42 no longer exists in INBOX.
+                def _search_uids(criteria: str) -> list[int]:
+                    if "UID 42" in criteria:
+                        return []
+                    if "UID 43" in criteria:
+                        return [43]
+                    return [42, 43]  # default: both exist
+
+                mock_client.search_uids.side_effect = _search_uids
 
                 status, body = _post_form(port, {}, path="/batch-delete")
 

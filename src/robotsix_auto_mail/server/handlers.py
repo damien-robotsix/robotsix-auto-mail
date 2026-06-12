@@ -26,6 +26,8 @@ from robotsix_auto_mail.server._constants import (
 )
 from robotsix_auto_mail.server.adapters import (
     _batch_op_running,
+    _collect_records_for_action,
+    _release_batch_op,
     _run_batch_archive_background,
     _run_batch_delete_background,
     _run_folder_triage_background,
@@ -626,12 +628,13 @@ class BoardHandler(BaseHTTPRequestHandler):
         """Process POST /batch-delete — delete all TO_DELETE mail from IMAP
         and local DB in a background daemon thread.
 
-        Follows the triage handler shape (:meth:`_handle_run_triage`):
-        single-flight guarded by the shared ``batch_op:state`` watermark
+        Single-flight guarded by the shared ``batch_op:state`` watermark
         (so delete and archive cannot run concurrently on the same
-        account), the redirect is returned **immediately** — before any
-        IMAP work — and the worker swallows failures, leaving any
-        remaining ``TO_DELETE`` records re-triggerable.
+        account).  Before handing off to the background worker, a
+        **synchronous stale-UID precheck** verifies that every tracked
+        UID still exists in the selected IMAP folder.  If any UID is
+        stale the handler responds with **409** and nothing is deleted
+        — mirroring the single-delete path in :meth:`_handle_delete`.
         """
         import threading
 
@@ -645,6 +648,50 @@ class BoardHandler(BaseHTTPRequestHandler):
             set_watermark(conn, "batch_op:state", "running")
         finally:
             conn.close()
+
+        # -- synchronous stale-UID precheck (before redirect) --
+        if self.mail_config is not None:
+            from robotsix_auto_mail.imap import (
+                ImapClient,
+                ImapError,
+                ImapMessageNotFoundError,
+            )
+
+            conn = init_db(self.db_path, skip_migrations=True)
+            try:
+                records = _collect_records_for_action(conn, "TO_DELETE")
+            finally:
+                conn.close()
+
+            if any(r.imap_uid is not None for r in records):
+                try:
+                    with ImapClient(self.mail_config) as client:
+                        client.select_folder(self.mail_config.imap_folder)
+                        for record in records:
+                            if record.imap_uid is None:
+                                continue
+                            if not client.search_uids(
+                                f"UID {record.imap_uid}"
+                            ):
+                                raise ImapMessageNotFoundError(
+                                    f"UID {record.imap_uid} not found in "
+                                    f"the selected folder (stale UID)"
+                                )
+                except ImapMessageNotFoundError as exc:
+                    _release_batch_op(self.db_path)
+                    self._send_response(
+                        f"Batch delete aborted — a tracked UID is stale, "
+                        f"so no messages were deleted: {exc}",
+                        status=409,
+                    )
+                    return
+                except (ImapError, OSError) as exc:
+                    _release_batch_op(self.db_path)
+                    self._send_response(
+                        f"IMAP precheck failed: {exc}",
+                        status=502,
+                    )
+                    return
 
         threading.Thread(
             target=_run_batch_delete_background,
