@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import email.mime.application
 import email.mime.base
+import email.mime.message
 import email.mime.multipart
 import email.mime.text
 import json
@@ -415,6 +416,75 @@ def test_undeclarable_charset_fallback() -> None:
     )
     record = parse_message(raw)
     assert record.body_plain == "hello"
+
+
+# ---------------------------------------------------------------------------
+# Body overwrite protection (depth-first walk)
+# ---------------------------------------------------------------------------
+
+
+def test_forwarded_message_outer_body_preserved() -> None:
+    """Outer text/plain is non-empty; inner forwarded text/plain is empty."""
+    outer = email.mime.multipart.MIMEMultipart("mixed")
+    outer.attach(email.mime.text.MIMEText("Real outer body", "plain"))
+
+    inner_msg = email.mime.text.MIMEText("", "plain")
+    inner_msg["Subject"] = "Fwd"
+    inner_msg["From"] = "b@x.com"
+    inner_msg["Date"] = "Wed, 15 Jan 2025 10:30:00 +0000"
+    inner = email.mime.message.MIMEMessage(inner_msg)
+    outer.attach(inner)
+
+    outer["Subject"] = "Fwd test"
+    outer["From"] = "a@x.com"
+    outer["Date"] = "Wed, 15 Jan 2025 10:30:00 +0000"
+    record = parse_message(outer.as_bytes())
+    assert record.body_plain == "Real outer body"
+
+
+def test_multi_level_text_plain_first_non_empty_wins() -> None:
+    """Two text/plain parts at different levels: first non-empty is preserved."""
+    outer = email.mime.multipart.MIMEMultipart("mixed")
+    outer.attach(email.mime.text.MIMEText("First", "plain"))
+
+    nested_mixed = email.mime.multipart.MIMEMultipart("mixed")
+    nested_mixed.attach(email.mime.text.MIMEText("", "plain"))
+    outer.attach(nested_mixed)
+
+    outer["Subject"] = "Multi"
+    outer["From"] = "a@x.com"
+    outer["Date"] = "Wed, 15 Jan 2025 10:30:00 +0000"
+    record = parse_message(outer.as_bytes())
+    assert record.body_plain == "First"
+
+
+def test_alternative_empty_plain_html_preserved() -> None:
+    """multipart/alternative with empty text/plain and non-empty text/html."""
+    msg = email.mime.multipart.MIMEMultipart("alternative")
+    msg.attach(email.mime.text.MIMEText("", "plain"))
+    msg.attach(email.mime.text.MIMEText("<b>html content</b>", "html"))
+    msg["Subject"] = "Alt empty plain"
+    msg["From"] = "a@x.com"
+    msg["Date"] = "Wed, 15 Jan 2025 10:30:00 +0000"
+    record = parse_message(msg.as_bytes())
+    assert record.body_plain == ""
+    assert record.body_html == "<b>html content</b>"
+
+
+def test_outer_empty_inner_non_empty_fallback() -> None:
+    """Outer text/plain is empty, inner text/plain has content — fallback."""
+    outer = email.mime.multipart.MIMEMultipart("mixed")
+    outer.attach(email.mime.text.MIMEText("", "plain"))
+
+    nested_mixed = email.mime.multipart.MIMEMultipart("mixed")
+    nested_mixed.attach(email.mime.text.MIMEText("Inner body", "plain"))
+    outer.attach(nested_mixed)
+
+    outer["Subject"] = "Fallback"
+    outer["From"] = "a@x.com"
+    outer["Date"] = "Wed, 15 Jan 2025 10:30:00 +0000"
+    record = parse_message(outer.as_bytes())
+    assert record.body_plain == "Inner body"
 
 
 # ---------------------------------------------------------------------------
