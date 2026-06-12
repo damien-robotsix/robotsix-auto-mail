@@ -22,7 +22,7 @@ from robotsix_auto_mail.db import (
     list_untriaged_records,
     set_watermark,
 )
-from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT
+from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _effective_body_plain
 from robotsix_auto_mail.triage._constants import (
     _AGENT_SELECTABLE_ACTIONS,
     _UNSUBSCRIBE_SUGGESTIONS_KEY,
@@ -171,7 +171,7 @@ def _build_user_message(records: list) -> str:  # type: ignore[type-arg]
     for i, record in enumerate(records, start=1):
         line = (
             f"{i} | {record.sender} | {record.subject} | "
-            f"{_body_preview(record.body_plain)}"
+            f"{_body_preview(_effective_body_plain(record))}"
         )
         if record.sent_reply_text:
             line += f" | ANSWERED — reply sent: {_body_preview(record.sent_reply_text)}"

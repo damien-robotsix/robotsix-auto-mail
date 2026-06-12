@@ -36,7 +36,11 @@ from urllib.parse import quote
 from robotsix_board import BoardAdapter, RenderMode
 
 from robotsix_auto_mail.db import MailRecord
-from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
+from robotsix_auto_mail.format import (
+    _BODY_PREVIEW_LIMIT,
+    _effective_body_plain,
+    _format_date,
+)
 from robotsix_auto_mail.triage import (
     TRIAGE_ACTION_LABELS,
     TRIAGE_ACTION_ORDER,
@@ -160,7 +164,7 @@ class MailBoardAdapter:
         quoted_mid = quote(card.message_id, safe="")
 
         # Body preview.
-        body = card.body_plain
+        body = _effective_body_plain(card)
         if not body or not body.strip():
             body_html_render = '<span class="no-body">(no body)</span>'
         elif len(body) > _BODY_PREVIEW_LIMIT:

@@ -254,17 +254,13 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                         if uids:
                             client.delete_messages(uids)
                         for record, _ in chunk:
-                            delete_record_by_message_id(
-                                conn, record.message_id
-                            )
+                            delete_record_by_message_id(conn, record.message_id)
                         conn.commit()
                         done += len(chunk)
                         set_watermark(
                             conn,
                             "batch_op:state",
-                            json.dumps(
-                                {"op": "delete", "done": done, "total": total}
-                            ),
+                            json.dumps({"op": "delete", "done": done, "total": total}),
                         )
         else:
             # DB-only delete (no IMAP configured or no tracked UIDs).
@@ -340,16 +336,12 @@ def _run_batch_archive_background(
                 # Group records by (source_folder, destination).
                 from collections import defaultdict
 
-                by_source_dest: dict[
-                    tuple[str, str], list[MailRecord]
-                ] = defaultdict(list)
+                by_source_dest: dict[tuple[str, str], list[MailRecord]] = defaultdict(
+                    list
+                )
                 for record in records:
-                    subfolder = get_archive_subfolder(
-                        conn, record.message_id, record
-                    )
-                    dest = _archive_dest_folder(
-                        effective_root, subfolder, delimiter
-                    )
+                    subfolder = get_archive_subfolder(conn, record.message_id, record)
+                    dest = _archive_dest_folder(effective_root, subfolder, delimiter)
                     if dest is None:
                         # Destination escapes the archive root — skip.
                         continue
@@ -387,9 +379,7 @@ def _run_batch_archive_background(
                     set_watermark(
                         conn,
                         "batch_op:state",
-                        json.dumps(
-                            {"op": "archive", "done": done, "total": total}
-                        ),
+                        json.dumps({"op": "archive", "done": done, "total": total}),
                     )
         else:
             # DB-only archive (no IMAP configured or no tracked UIDs).

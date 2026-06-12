@@ -1095,12 +1095,8 @@ def test_delete_messages_single_chunk(cfg: MailConfig) -> None:
         with ImapClient(cfg) as client:
             client.delete_messages([1, 2, 3])
 
-    store_calls = [
-        c for c in mock_ssl.uid.call_args_list if c.args[0] == "STORE"
-    ]
-    assert store_calls == [
-        mock.call("STORE", "1,2,3", "+FLAGS", "(\\Deleted)")
-    ]
+    store_calls = [c for c in mock_ssl.uid.call_args_list if c.args[0] == "STORE"]
+    assert store_calls == [mock.call("STORE", "1,2,3", "+FLAGS", "(\\Deleted)")]
     mock_ssl.expunge.assert_called_once()
 
 

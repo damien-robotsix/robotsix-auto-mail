@@ -401,8 +401,7 @@ def update_record_source(
     ``message_id`` exists.
     """
     cur = conn.execute(
-        "UPDATE mail_records SET source_folder = ?, imap_uid = ? "
-        "WHERE message_id = ?",
+        "UPDATE mail_records SET source_folder = ?, imap_uid = ? WHERE message_id = ?",
         (source_folder, imap_uid, message_id),
     )
     conn.commit()
