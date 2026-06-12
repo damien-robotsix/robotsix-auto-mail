@@ -455,6 +455,26 @@ def test_run_triage_agent_uses_cheap_tier(
         conn.close()
 
 
+def test_run_triage_agent_forwards_user_email_to_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When user_email is passed, the built agent's system prompt includes it."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _handle, patcher = _patch_llm(
+            TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
+        )
+        with patcher as cls:
+            run_triage_agent(conn, user_email="me@example.com")
+            provider = cls.return_value
+        call_kwargs = provider.build_agent.call_args.kwargs
+        assert "me@example.com" in call_kwargs["system_prompt"]
+    finally:
+        conn.close()
+
+
 def test_run_triage_agent_clamps_unknown_action(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1627,6 +1647,21 @@ def test_system_prompt_with_empty_archive_folders() -> None:
     """When archive_folders is empty, no archive section is appended."""
     prompt = _build_triage_system_prompt(archive_folders=[])
     assert "existing sub-folders" not in prompt
+
+
+def test_system_prompt_with_user_email() -> None:
+    """When user_email is set, the prompt names it and forbids self-answers."""
+    prompt = _build_triage_system_prompt(user_email="me@example.com")
+    assert "me@example.com" in prompt
+    assert "reply to yourself" in prompt
+    assert "TO_ANSWER" in prompt
+
+
+def test_system_prompt_without_user_email_unchanged() -> None:
+    """Without user_email the prompt is byte-identical to the no-arg form."""
+    prompt = _build_triage_system_prompt(user_email=None)
+    assert "reply to yourself" not in prompt
+    assert prompt == _build_triage_system_prompt()
 
 
 # ---------------------------------------------------------------------------

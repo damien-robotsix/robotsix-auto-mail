@@ -331,6 +331,7 @@ def ingest_mail(
                 db_conn,
                 api_key=config.llm_api_key,
                 only_undecided=True,
+                user_email=config.username,
             )
             triaged = len(decisions)
             _logger.info("triage_done", decisions=triaged)

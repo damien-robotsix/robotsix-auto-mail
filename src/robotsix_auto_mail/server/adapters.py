@@ -31,7 +31,7 @@ class _NonEmptyColumnsAdapter:
         return getattr(self._adapter, name)
 
 
-def _run_triage_background(db_path: str) -> None:
+def _run_triage_background(db_path: str, user_email: str | None = None) -> None:
     """Run the triage agent in a background thread, clearing the watermark on exit.
 
     Opens its own SQLite connection so it never shares a connection with
@@ -54,7 +54,7 @@ def _run_triage_background(db_path: str) -> None:
             )
         except ImportError:
             return
-        run_triage_agent(conn)
+        run_triage_agent(conn, user_email=user_email)
         # Surface freshly-derived rule proposals on the board.  This is a
         # deterministic, LLM-free scan of triage history, so it is cheap to
         # run on every triage pass; record_and_filter only writes the
@@ -99,7 +99,7 @@ def _run_folder_triage_background(
 
         with ImapClient(mail_config) as imap:
             ingest_folder(conn, imap, mail_config, folder)
-        run_triage_agent(conn)
+        run_triage_agent(conn, user_email=mail_config.username)
         # Mirror the inbox helper's deterministic rule-proposal refresh.
         record_and_filter_rule_proposals(conn, propose_triage_rules(conn))
     except Exception:  # noqa: S110  # nosec B110

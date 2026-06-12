@@ -993,7 +993,7 @@ def test_ingest_runs_triage_on_new_mail(
     result = ingest_mail(conn, imap, cfg)
 
     mock_triage.assert_called_once_with(
-        conn, api_key=cfg.llm_api_key, only_undecided=True
+        conn, api_key=cfg.llm_api_key, only_undecided=True, user_email=cfg.username
     )
     assert result.triaged == 2
     # Triage must perform no IMAP/mailbox action of its own.

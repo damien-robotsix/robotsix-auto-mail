@@ -750,7 +750,10 @@ class BoardHandler(BaseHTTPRequestHandler):
 
         threading.Thread(
             target=_run_triage_background,
-            args=(self.db_path,),
+            args=(
+                self.db_path,
+                self.mail_config.username if self.mail_config is not None else None,
+            ),
             daemon=True,
         ).start()
 
@@ -868,7 +871,10 @@ class BoardHandler(BaseHTTPRequestHandler):
 
         threading.Thread(
             target=_run_triage_background,
-            args=(self.db_path,),
+            args=(
+                self.db_path,
+                self.mail_config.username if self.mail_config is not None else None,
+            ),
             daemon=True,
         ).start()
 
@@ -1132,6 +1138,12 @@ class BoardHandler(BaseHTTPRequestHandler):
             # -- compute recipients ------------------------------------
             from_addr = mail_config.username
             to_addr = record.sender
+
+            # Defensive guard: never reply to the user's own address
+            # (a self-sent message that slipped through triage).
+            if to_addr.strip().lower() == from_addr.strip().lower():
+                self._bad_request("Refusing to send a reply to your own address")
+                return
 
             cc: list[str] | None = None
             if reply_mode == "reply_all":
