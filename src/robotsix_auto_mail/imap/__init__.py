@@ -65,6 +65,10 @@ class ImapAuthError(ImapError):
     """
 
 
+class ImapMessageNotFoundError(ImapError):
+    """The target UID does not exist in the selected folder (stale UID)."""
+
+
 # ---------------------------------------------------------------------------
 # MailboxInfo
 # ---------------------------------------------------------------------------
@@ -505,6 +509,15 @@ class ImapClient(_ProtocolClient):
         if self._imap is None:
             raise ImapError("Not connected")
 
+        # Pre-verify the UID exists in the selected folder.  A STORE that
+        # matches no message is a conformant ``OK`` no-op (RFC 3501), so we
+        # must guard against a stale UID before issuing any destructive
+        # command — otherwise the caller would treat a no-op as success.
+        if not self.search_uids(f"UID {uid}"):
+            raise ImapMessageNotFoundError(
+                f"UID {uid} not found in the selected folder (stale UID)"
+            )
+
         # Mark the message as deleted.
         status, _ = self._imap.uid("STORE", str(uid), "+FLAGS", "(\\Deleted)")
         if status != "OK":
@@ -533,10 +546,31 @@ class ImapClient(_ProtocolClient):
         if self._imap is None:
             raise ImapError("Not connected")
 
+        # Pre-verify the UID exists in the selected folder.  A COPY that
+        # matches no message is a conformant ``OK`` no-op (RFC 3501/4315),
+        # so guard against a stale UID before issuing COPY or the
+        # subsequent delete — otherwise the caller would treat a no-op as
+        # success and lose the local record.
+        if not self.search_uids(f"UID {uid}"):
+            raise ImapMessageNotFoundError(
+                f"UID {uid} not found in the selected folder (stale UID)"
+            )
+
         # Copy to destination.
-        status, _ = self._imap.uid("COPY", str(uid), dest_folder)
+        status, data = self._imap.uid("COPY", str(uid), dest_folder)
         if status != "OK":
             raise ImapError(f"UID COPY of {uid} to {dest_folder!r} failed: {status}")
+
+        # Defensive hardening: if the server advertises UIDPLUS it returns a
+        # ``COPYUID`` response code naming the source UID set.  When present
+        # and its source-UID set is empty the COPY affected zero messages —
+        # treat it as not-found.  Servers that omit ``COPYUID`` are not
+        # regressed (we only raise when it is present and indicates zero).
+        if self._copyuid_indicates_empty_source(data):
+            raise ImapMessageNotFoundError(
+                f"UID {uid} not found in the selected folder (stale UID); "
+                "COPYUID reported zero source messages"
+            )
 
         # Delete the original from the source mailbox.
         self.delete_message(uid)
@@ -600,6 +634,32 @@ class ImapClient(_ProtocolClient):
                 )
 
             self.delete_messages(chunk)
+
+    @staticmethod
+    def _copyuid_indicates_empty_source(data: Any) -> bool:
+        """Return ``True`` when a COPY response carries an empty ``COPYUID``.
+
+        Inspects the ``UID COPY`` response data for a ``COPYUID`` response
+        code (RFC 4315: ``COPYUID <uidvalidity> <source-set> <dest-set>``).
+        Returns ``True`` only when ``COPYUID`` is present AND its source-UID
+        set is empty (zero messages copied).  Returns ``False`` when no
+        ``COPYUID`` is present, so servers without UIDPLUS are not regressed.
+        """
+        if not data:
+            return False
+        for item in data:
+            if isinstance(item, bytes):
+                text = item.decode("utf-8", errors="replace")
+            elif isinstance(item, str):
+                text = item
+            else:
+                continue
+            match = re.search(r"COPYUID\s+\d+\s+(\S*)", text)
+            if match is None:
+                continue
+            source_set = match.group(1).strip()
+            return source_set == ""
+        return False
 
     @staticmethod
     def _parse_uid_from_fetch_header(header: bytes) -> int | None:

@@ -2201,6 +2201,235 @@ def test_batch_delete_empty_column_returns_302() -> None:
         server.shutdown()
 
 
+def test_delete_stale_uid_preserves_record() -> None:
+    """POST /delete with a stale UID → 409 and the local record is kept."""
+    from unittest import mock
+
+    from robotsix_auto_mail.imap import ImapMessageNotFoundError
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "stale-del",
+                    "sender": "x@x.com",
+                    "subject": "Stale delete",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "stale-del", action="TO_DELETE")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (42, "stale-del"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.delete_message.side_effect = ImapMessageNotFoundError(
+                    "UID 42 not found in the selected folder (stale UID)"
+                )
+
+                status, body = _post_form(
+                    port, {"message_id": "stale-del"}, path="/delete"
+                )
+
+            assert status == 409, f"Expected 409, got {status}: {body}"
+            assert "stale" in body.lower()
+            assert "UID" in body
+        finally:
+            server.shutdown()
+
+        # The local record must remain intact.
+        from robotsix_auto_mail.db import get_record_by_message_id
+
+        conn = init_db(db_path)
+        try:
+            assert get_record_by_message_id(conn, "stale-del") is not None
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_stale_uid_preserves_record() -> None:
+    """POST /archive with a stale UID → 409, record kept, no folder memory."""
+    from unittest import mock
+
+    from robotsix_auto_mail.imap import ImapMessageNotFoundError
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "stale-arch",
+                    "sender": "x@x.com",
+                    "subject": "Stale archive",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "stale-arch", action="TO_ARCHIVE")
+        _seed_archive_override(db_path, "stale-arch", "Lists/new-list")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (42, "stale-arch"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="my-archive",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
+                mock_client.move_message.side_effect = ImapMessageNotFoundError(
+                    "UID 42 not found in the selected folder (stale UID)"
+                )
+
+                status, body = _post_form(
+                    port, {"message_id": "stale-arch"}, path="/archive"
+                )
+
+            assert status == 409, f"Expected 409, got {status}: {body}"
+            assert "stale" in body.lower()
+            assert "UID" in body
+        finally:
+            server.shutdown()
+
+        from robotsix_auto_mail.db import get_record_by_message_id
+        from robotsix_auto_mail.triage import _load_archive_folder_memory
+
+        conn = init_db(db_path)
+        try:
+            # Record preserved and archive-folder memory NOT written.
+            assert get_record_by_message_id(conn, "stale-arch") is not None
+            assert _load_archive_folder_memory(conn) == {}
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_batch_delete_stale_uid_preserves_all_records() -> None:
+    """POST /batch-delete with one stale UID aborts and keeps every record."""
+    from unittest import mock
+
+    from robotsix_auto_mail.imap import ImapMessageNotFoundError
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "bd-stale-1",
+                    "sender": "a@b.com",
+                    "subject": "Delete me 1",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+                {
+                    "message_id": "bd-stale-2",
+                    "sender": "c@d.com",
+                    "subject": "Delete me 2",
+                    "date": "2025-01-02T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "bd-stale-1", action="TO_DELETE")
+        _seed_triage_decision(db_path, "bd-stale-2", action="TO_DELETE")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (42, "bd-stale-1"),
+            )
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (43, "bd-stale-2"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.delete_message.side_effect = ImapMessageNotFoundError(
+                    "UID 42 not found in the selected folder (stale UID)"
+                )
+
+                status, body = _post_form(port, {}, path="/batch-delete")
+
+            assert status == 409, f"Expected 409, got {status}: {body}"
+            assert "stale" in body.lower()
+        finally:
+            server.shutdown()
+
+        # No local DB deletions — every TO_DELETE record preserved.
+        from robotsix_auto_mail.db import get_record_by_message_id
+
+        conn = init_db(db_path)
+        try:
+            assert get_record_by_message_id(conn, "bd-stale-1") is not None
+            assert get_record_by_message_id(conn, "bd-stale-2") is not None
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
 def _seed_archive_structure(
     db_path: str, folders: list[str], delimiter: str = "/"
 ) -> None:

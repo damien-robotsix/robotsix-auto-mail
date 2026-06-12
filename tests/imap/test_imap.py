@@ -17,9 +17,30 @@ from robotsix_auto_mail.imap import (
     ImapClient,
     ImapConnectionError,
     ImapError,
+    ImapMessageNotFoundError,
     ImapTlsError,
     MailboxInfo,
 )
+
+
+def _uid_side_effect(
+    *, search_result: tuple[str, list[bytes]], other: tuple[str, list[bytes]]
+) -> object:
+    """Build a ``.uid`` side_effect branching on the IMAP command.
+
+    The destructive primitives now pre-verify a UID via ``UID SEARCH``
+    before issuing ``STORE`` / ``COPY``.  This helper routes ``"SEARCH"``
+    to *search_result* (UID-existence) and every other command (``STORE``,
+    ``COPY``) to *other*.
+    """
+
+    def _side_effect(command: str, *args: object) -> tuple[str, list[bytes]]:
+        if command == "SEARCH":
+            return search_result
+        return other
+
+    return _side_effect
+
 
 # ---------------------------------------------------------------------------
 # Exception hierarchy
@@ -983,15 +1004,36 @@ def test_fetch_messages_header_with_body_size(cfg: MailConfig) -> None:
 def test_delete_message_success(cfg: MailConfig) -> None:
     """delete_message calls UID STORE +FLAGS (\\Deleted) then EXPUNGE."""
     mock_ssl = _make_mock_imap_ssl()
-    mock_ssl.uid.return_value = ("OK", [b""])
+    mock_ssl.uid.side_effect = _uid_side_effect(
+        search_result=("OK", [b"42"]),
+        other=("OK", [b""]),
+    )
     mock_ssl.expunge.return_value = ("OK", [b""])
 
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
         with ImapClient(cfg) as client:
             client.delete_message(42)
 
-    mock_ssl.uid.assert_called_once_with("STORE", "42", "+FLAGS", "(\\Deleted)")
+    mock_ssl.uid.assert_any_call("SEARCH", "UID 42")
+    mock_ssl.uid.assert_any_call("STORE", "42", "+FLAGS", "(\\Deleted)")
     mock_ssl.expunge.assert_called_once()
+
+
+def test_delete_message_uid_not_found_raises(cfg: MailConfig) -> None:
+    """delete_message raises when the UID is absent; no STORE/EXPUNGE."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.side_effect = _uid_side_effect(
+        search_result=("OK", [b""]),
+        other=("OK", [b""]),
+    )
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapMessageNotFoundError, match="42"):
+                client.delete_message(42)
+
+    mock_ssl.uid.assert_called_once_with("SEARCH", "UID 42")
+    mock_ssl.expunge.assert_not_called()
 
 
 def test_delete_message_not_connected(cfg: MailConfig) -> None:
@@ -1004,7 +1046,10 @@ def test_delete_message_not_connected(cfg: MailConfig) -> None:
 def test_delete_message_store_fails(cfg: MailConfig) -> None:
     """delete_message raises ImapError when UID STORE returns non-OK."""
     mock_ssl = _make_mock_imap_ssl()
-    mock_ssl.uid.return_value = ("NO", [b"Some error"])
+    mock_ssl.uid.side_effect = _uid_side_effect(
+        search_result=("OK", [b"99"]),
+        other=("NO", [b"Some error"]),
+    )
 
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
         with ImapClient(cfg) as client:
@@ -1017,7 +1062,10 @@ def test_delete_message_store_fails(cfg: MailConfig) -> None:
 def test_delete_message_expunge_fails(cfg: MailConfig) -> None:
     """delete_message raises ImapError when EXPUNGE returns non-OK."""
     mock_ssl = _make_mock_imap_ssl()
-    mock_ssl.uid.return_value = ("OK", [b""])
+    mock_ssl.uid.side_effect = _uid_side_effect(
+        search_result=("OK", [b"1"]),
+        other=("OK", [b""]),
+    )
     mock_ssl.expunge.return_value = ("NO", [b"Expunge error"])
 
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
@@ -1114,3 +1162,44 @@ def test_move_messages_empty_is_noop(cfg: MailConfig) -> None:
 
     mock_ssl.uid.assert_not_called()
     mock_ssl.expunge.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# move_message (single-message primitive)
+# ---------------------------------------------------------------------------
+
+
+def test_move_message_success(cfg: MailConfig) -> None:
+    """move_message pre-verifies, COPYs, then deletes the original."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.side_effect = _uid_side_effect(
+        search_result=("OK", [b"42"]),
+        other=("OK", [b"[COPYUID 1 42 99]"]),
+    )
+    mock_ssl.expunge.return_value = ("OK", [b""])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.move_message(42, "Archive")
+
+    mock_ssl.uid.assert_any_call("COPY", "42", "Archive")
+    mock_ssl.uid.assert_any_call("STORE", "42", "+FLAGS", "(\\Deleted)")
+    mock_ssl.expunge.assert_called_once()
+
+
+def test_move_message_uid_not_found_raises(cfg: MailConfig) -> None:
+    """move_message raises when the UID is absent; no COPY issued."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.side_effect = _uid_side_effect(
+        search_result=("OK", [b""]),
+        other=("OK", [b""]),
+    )
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapMessageNotFoundError, match="42"):
+                client.move_message(42, "Archive")
+
+    mock_ssl.uid.assert_called_once_with("SEARCH", "UID 42")
+    for call in mock_ssl.uid.call_args_list:
+        assert call.args[0] != "COPY"
