@@ -70,6 +70,7 @@ class MailRecord:
 
     status: str = DEFAULT_STATUS
     imap_uid: int | None = None
+    source_folder: str = "INBOX"
     recipients_json: str = '{"to": [], "cc": []}'
     body_plain: str = ""
     body_html: str = ""
@@ -90,6 +91,7 @@ _SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS mail_records (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     imap_uid        INTEGER,
+    source_folder   TEXT    NOT NULL DEFAULT 'INBOX',
     message_id      TEXT    NOT NULL UNIQUE,
     sender          TEXT    NOT NULL,
     subject         TEXT    NOT NULL,
@@ -161,6 +163,7 @@ def init_db(
         _migrate_add_notes(conn)
         _migrate_add_draft_text(conn)
         _migrate_add_sent_reply_text(conn)
+        _migrate_add_source_folder(conn)
     return conn
 
 
@@ -288,6 +291,22 @@ def _migrate_add_sent_reply_text(conn: sqlite3.Connection) -> None:
         pass
 
 
+def _migrate_add_source_folder(conn: sqlite3.Connection) -> None:
+    """Add ``source_folder`` column to ``mail_records`` for existing DBs.
+
+    Idempotent: if the column already exists the ``ALTER TABLE`` raises
+    ``sqlite3.OperationalError`` which is caught and ignored.
+    """
+    try:
+        conn.execute(
+            "ALTER TABLE mail_records "
+            "ADD COLUMN source_folder TEXT NOT NULL DEFAULT 'INBOX'"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
+
 def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
     """Insert *record* into ``mail_records``.
 
@@ -300,16 +319,17 @@ def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
         cur = conn.execute(
             """\
 INSERT INTO mail_records
-    (imap_uid, message_id, sender, subject, date,
+    (imap_uid, source_folder, message_id, sender, subject, date,
      recipients_json, body_plain, body_html, attachments_json,
      unsubscribe_header, status, notes, draft_text, sent_reply_text)
 VALUES
-    (:imap_uid, :message_id, :sender, :subject, :date,
+    (:imap_uid, :source_folder, :message_id, :sender, :subject, :date,
      :recipients_json, :body_plain, :body_html, :attachments_json,
      :unsubscribe_header, :status, :notes, :draft_text, :sent_reply_text)
 """,
             {
                 "imap_uid": record.imap_uid,
+                "source_folder": record.source_folder,
                 "message_id": record.message_id,
                 "sender": record.sender,
                 "subject": record.subject,
@@ -362,6 +382,31 @@ def record_exists(conn: sqlite3.Connection, message_id: str) -> bool:
         (message_id,),
     )
     return cur.fetchone() is not None
+
+
+def update_record_source(
+    conn: sqlite3.Connection,
+    message_id: str,
+    *,
+    source_folder: str,
+    imap_uid: int | None = None,
+) -> bool:
+    """Update ``source_folder`` and ``imap_uid`` for an existing record.
+
+    Used when ``ingest_folder`` re-encounters a message_id whose
+    tracked UID is stale — the row gets its source folder and UID
+    refreshed so it becomes actionable for archive/delete.
+
+    Returns ``True`` if a row was updated, ``False`` if no matching
+    ``message_id`` exists.
+    """
+    cur = conn.execute(
+        "UPDATE mail_records SET source_folder = ?, imap_uid = ? "
+        "WHERE message_id = ?",
+        (source_folder, imap_uid, message_id),
+    )
+    conn.commit()
+    return cur.rowcount > 0
 
 
 def update_notes(conn: sqlite3.Connection, message_id: str, notes: str) -> bool:
@@ -456,6 +501,7 @@ def row_to_mailrecord(
         date=data["date"],
         status=data["status"],
         imap_uid=data["imap_uid"],
+        source_folder=data["source_folder"],
         recipients_json=data["recipients_json"],
         body_plain=data["body_plain"],
         body_html=data["body_html"],

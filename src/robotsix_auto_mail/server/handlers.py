@@ -436,17 +436,25 @@ class BoardHandler(BaseHTTPRequestHandler):
                     ImapClient,
                     ImapError,
                     ImapMessageNotFoundError,
+                    resolve_uid_with_fallback,
                 )
 
                 try:
                     with ImapClient(self.mail_config) as client:
-                        client.select_folder(self.mail_config.imap_folder)
-                        client.delete_message(record.imap_uid)
+                        resolved_uid = resolve_uid_with_fallback(
+                            client,
+                            record.source_folder,
+                            record.imap_uid,
+                            record.message_id,
+                        )
+                        client.delete_message(resolved_uid)
                 except ImapMessageNotFoundError as exc:
+                    folder_label = record.source_folder or "its source folder"
                     self._send_response(
-                        f"Message {message_id} is no longer in INBOX — the "
-                        f"tracked UID is stale, so it was not deleted and the "
-                        f"board record was kept: {exc}",
+                        f"Message {message_id} is no longer in "
+                        f"{folder_label} — the tracked UID is stale, "
+                        f"so it was not deleted and the board record "
+                        f"was kept: {exc}",
                         status=409,
                     )
                     return
@@ -473,17 +481,27 @@ class BoardHandler(BaseHTTPRequestHandler):
         imap_uid: int,
         effective_root: str,
         subfolder: str | None,
+        source_folder: str = "INBOX",
+        message_id: str = "",
     ) -> None:
         """Move a message to the archive folder via IMAP.
+
+        Selects *source_folder* (the record's origin folder) rather
+        than assuming ``config.imap_folder``.  If the stored UID is
+        stale, falls back to a ``HEADER Message-ID`` search before
+        giving up.
 
         Raises ValueError on security-policy violations (caller should
         return 400).  Raises ImapError or OSError on IMAP/IO failures
         (caller should return 502).
         """
-        from robotsix_auto_mail.imap import ImapClient
+        from robotsix_auto_mail.imap import ImapClient, resolve_uid_with_fallback
 
         with ImapClient(mail_config) as client:
-            client.select_folder(mail_config.imap_folder)
+            # Resolve the possibly-stale UID, selecting source_folder.
+            resolved_uid = resolve_uid_with_fallback(
+                client, source_folder, imap_uid, message_id
+            )
 
             # Determine the IMAP hierarchy delimiter.
             existing = client.list_folders()
@@ -516,7 +534,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             for i in range(1, len(parts) + 1):
                 client.create_folder(delimiter.join(parts[:i]))
 
-            client.move_message(imap_uid, dest_folder)
+            client.move_message(resolved_uid, dest_folder)
 
     def _archive_and_delete(self, conn: Any, record: MailRecord) -> bool:
         """Archive *record*'s message via IMAP, then delete its local row.
@@ -563,15 +581,19 @@ class BoardHandler(BaseHTTPRequestHandler):
                     record.imap_uid,
                     effective_root,
                     subfolder,
+                    source_folder=record.source_folder,
+                    message_id=record.message_id,
                 )
             except ValueError as exc:
                 self._bad_request(str(exc))
                 return False
             except ImapMessageNotFoundError as exc:
+                folder_label = record.source_folder or "its source folder"
                 self._send_response(
-                    f"Message {record.message_id} is no longer in INBOX — the "
-                    f"tracked UID is stale, so it was not archived and the "
-                    f"board record was kept: {exc}",
+                    f"Message {record.message_id} is no longer in "
+                    f"{folder_label} — the tracked UID is stale, so "
+                    f"it was not archived and the board record was "
+                    f"kept: {exc}",
                     status=409,
                 )
                 return False
@@ -655,6 +677,7 @@ class BoardHandler(BaseHTTPRequestHandler):
                 ImapClient,
                 ImapError,
                 ImapMessageNotFoundError,
+                resolve_uid_with_fallback,
             )
 
             conn = init_db(self.db_path, skip_migrations=True)
@@ -666,17 +689,15 @@ class BoardHandler(BaseHTTPRequestHandler):
             if any(r.imap_uid is not None for r in records):
                 try:
                     with ImapClient(self.mail_config) as client:
-                        client.select_folder(self.mail_config.imap_folder)
                         for record in records:
                             if record.imap_uid is None:
                                 continue
-                            if not client.search_uids(
-                                f"UID {record.imap_uid}"
-                            ):
-                                raise ImapMessageNotFoundError(
-                                    f"UID {record.imap_uid} not found in "
-                                    f"the selected folder (stale UID)"
-                                )
+                            resolve_uid_with_fallback(
+                                client,
+                                record.source_folder,
+                                record.imap_uid,
+                                record.message_id,
+                            )
                 except ImapMessageNotFoundError as exc:
                     _release_batch_op(self.db_path)
                     self._send_response(

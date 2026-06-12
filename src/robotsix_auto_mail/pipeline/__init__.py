@@ -148,6 +148,7 @@ def _process_messages(
     messages: list[tuple[int, bytes]],
     *,
     dry_run: bool = False,
+    source_folder: str = "INBOX",
 ) -> tuple[int, int, list[IngestError]]:
     """Parse, dedup, and store a batch of raw ``(uid, bytes)`` messages.
 
@@ -157,6 +158,12 @@ def _process_messages(
     new records via ``insert_record``, and collects per-message
     ``IngestError``s.  Watermark handling is intentionally *not* done
     here — that is the caller's concern.
+
+    When *source_folder* is provided and a duplicate ``message_id`` is
+    found (``record_exists`` returns ``True``), the existing row's
+    ``source_folder`` and ``imap_uid`` are **updated** rather than
+    skipped — this keeps records from ``ingest_folder`` actionable
+    even when the tracked UID has become stale.
 
     Returns:
         A ``(stored, skipped, errors)`` tuple.
@@ -168,7 +175,7 @@ def _process_messages(
     for uid, raw_bytes in messages:
         # -- Parse -----------------------------------------------------------
         try:
-            record = parse_message(raw_bytes, imap_uid=uid)
+            record = parse_message(raw_bytes, imap_uid=uid, source_folder=source_folder)
         except Exception as exc:
             errors.append(
                 IngestError(
@@ -188,6 +195,17 @@ def _process_messages(
 
         # -- Deduplication check ---------------------------------------------
         if record_exists(db_conn, record.message_id):
+            # When a duplicate is found, refresh the existing row's
+            # source_folder + UID so legacy mails re-ingested from a
+            # named folder become actionable for archive/delete.
+            from robotsix_auto_mail.db import update_record_source
+
+            update_record_source(
+                db_conn,
+                record.message_id,
+                source_folder=source_folder,
+                imap_uid=uid,
+            )
             skipped += 1
             _logger.debug(
                 "message_processing",
@@ -311,7 +329,9 @@ def ingest_mail(
         return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
 
     # 2. Process each message.
-    stored, skipped, errors = _process_messages(db_conn, messages, dry_run=dry_run)
+    stored, skipped, errors = _process_messages(
+        db_conn, messages, dry_run=dry_run, source_folder=config.imap_folder
+    )
 
     # 3. Advance watermark to the highest UID seen (skip in dry-run).
     max_uid = max((uid for uid, _ in messages), default=0)
@@ -414,7 +434,9 @@ def ingest_folder(
         return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
 
     # 2. Process each message (parse, dedup, store) — no watermark.
-    stored, skipped, errors = _process_messages(db_conn, messages, dry_run=dry_run)
+    stored, skipped, errors = _process_messages(
+        db_conn, messages, dry_run=dry_run, source_folder=folder
+    )
 
     return IngestResult(
         total_fetched=total_fetched,

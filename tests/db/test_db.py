@@ -188,6 +188,7 @@ def test_init_db_creates_mail_records_table() -> None:
         expected = {
             "id": "INTEGER",
             "imap_uid": "INTEGER",
+            "source_folder": "TEXT",
             "message_id": "TEXT",
             "sender": "TEXT",
             "subject": "TEXT",

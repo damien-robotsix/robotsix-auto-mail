@@ -148,6 +148,36 @@ def _parse_list_line(line: bytes) -> MailboxInfo:
     return MailboxInfo(name=name, attributes=attributes, delimiter=delimiter)
 
 
+def resolve_uid_with_fallback(
+    client: "ImapClient",
+    source_folder: str,
+    uid: int,
+    message_id: str,
+) -> int:
+    """Return a confirmed UID for *message_id* in *source_folder*.
+
+    First tries the stored *uid*.  If that UID is not found in
+    *source_folder*, falls back to a ``HEADER Message-ID`` search
+    (UIDs can shift when servers renumber).  Raises
+    ``ImapMessageNotFoundError`` if neither approach finds the
+    message.
+
+    The caller must have already selected a folder or be prepared
+    for this function to select *source_folder*.
+    """
+    client.select_folder(source_folder)
+    if client.search_uids(f"UID {uid}"):
+        return uid
+    # Fallback: UID may have shifted — search by Message-ID header.
+    found = client.search_uids(f'HEADER Message-ID "{message_id}"')
+    if found:
+        return found[0]
+    raise ImapMessageNotFoundError(
+        f"UID {uid} not found in {source_folder!r} "
+        f"(Message-ID fallback also failed)"
+    )
+
+
 # ---------------------------------------------------------------------------
 # ImapClient
 # ---------------------------------------------------------------------------

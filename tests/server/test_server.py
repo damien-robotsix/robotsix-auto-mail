@@ -2405,12 +2405,16 @@ def test_batch_delete_stale_uid_preserves_all_records() -> None:
             with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
 
-                # Simulate one stale UID: UID 42 no longer exists in INBOX.
+                # Simulate one stale UID: UID 42 no longer exists in INBOX,
+                # and the Message-ID fallback also fails.
                 def _search_uids(criteria: str) -> list[int]:
                     if "UID 42" in criteria:
                         return []
                     if "UID 43" in criteria:
                         return [43]
+                    # Message-ID fallback: stale message not findable.
+                    if "bd-stale-1" in criteria:
+                        return []
                     return [42, 43]  # default: both exist
 
                 mock_client.search_uids.side_effect = _search_uids
@@ -3551,6 +3555,164 @@ def test_archive_namespace_security_gate_uses_effective_root() -> None:
             # is "INBOX.my-archive/Lists/ok" — starts-with check passes.
             assert resp.status == 302
             mock_client.move_message.assert_called_once()
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_selects_source_folder_not_just_inbox() -> None:
+    """POST /archive on a record whose source_folder is not INBOX selects
+    the record's source_folder instead of the default IMAP folder."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "legacy-arch",
+                    "sender": "x@x.com",
+                    "subject": "Legacy archive",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "legacy-arch", action="TO_ARCHIVE")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ?, source_folder = ? "
+                "WHERE message_id = ?",
+                (99, "INBOX.archive", "legacy-arch"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="my-archive",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.list_folders.return_value = [
+                    mock.Mock(delimiter="/")
+                ]
+                # search_uids: UID 99 exists in INBOX.archive.
+                mock_client.search_uids.return_value = [99]
+
+                resp = _post_to_path(
+                    port, "/archive", {"message_id": "legacy-arch"}
+                )
+
+            assert resp.status == 302
+            # The record's source_folder ("INBOX.archive") must have
+            # been selected — NOT the default "INBOX".
+            select_calls = [
+                c.args[0]
+                for c in mock_client.select_folder.call_args_list
+            ]
+            assert "INBOX.archive" in select_calls, (
+                f"Expected select_folder('INBOX.archive'), "
+                f"got {select_calls}"
+            )
+            mock_client.move_message.assert_called_once()
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_message_id_fallback_when_uid_stale() -> None:
+    """POST /archive: when the stored UID is stale, the Message-ID fallback
+    finds the message and the archive succeeds."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "fallback-arch",
+                    "sender": "x@x.com",
+                    "subject": "Fallback archive",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "fallback-arch", action="TO_ARCHIVE")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (42, "fallback-arch"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="my-archive",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.list_folders.return_value = [
+                    mock.Mock(delimiter="/")
+                ]
+
+                # UID 42 is stale → search returns [].
+                # But the Message-ID fallback finds UID 77.
+                call_count = [0]
+
+                def _search_uids(criteria: str) -> list[int]:
+                    call_count[0] += 1
+                    if "UID 42" in criteria:
+                        return []  # stale
+                    if "fallback-arch" in criteria:
+                        return [77]  # found via Message-ID
+                    return [42]  # default
+
+                mock_client.search_uids.side_effect = _search_uids
+
+                resp = _post_to_path(
+                    port, "/archive", {"message_id": "fallback-arch"}
+                )
+
+            assert resp.status == 302, (
+                f"Expected 302, got {resp.status}: "
+                f"{resp.read().decode()[:200]}"
+            )
+            # The move must use the resolved UID 77, not the stale 42.
+            mock_client.move_message.assert_called_once()
+            move_uid = mock_client.move_message.call_args[0][0]
+            assert move_uid == 77, (
+                f"Expected move_message with UID 77 (resolved), "
+                f"got {move_uid}"
+            )
         finally:
             server.shutdown()
     finally:
@@ -6119,6 +6281,10 @@ def test_batch_archive_worker_groups_uids_by_destination(
 
             def create_folder(self, name: str) -> None:
                 pass
+
+            def search_uids(self, criteria: str) -> list[int]:
+                # Return the stored UIDs for the records being tested.
+                return [11, 22, 33]
 
             def move_messages(self, uids: list[int], dest: str) -> None:
                 moves.append((list(uids), dest))

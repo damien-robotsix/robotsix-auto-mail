@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import json
 from typing import Any
 
@@ -192,7 +191,12 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
         init_db,
         set_watermark,
     )
-    from robotsix_auto_mail.imap import _BATCH_UID_CHUNK, ImapClient
+    from robotsix_auto_mail.imap import (
+        _BATCH_UID_CHUNK,
+        ImapClient,
+        ImapMessageNotFoundError,
+        resolve_uid_with_fallback,
+    )
 
     conn = init_db(db_path, skip_migrations=True)
     try:
@@ -208,23 +212,62 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
             r.imap_uid is not None for r in records
         )
         done = 0
-        ctx: Any = (
-            ImapClient(mail_config)
-            if need_imap and mail_config is not None
-            else contextlib.nullcontext()
-        )
-        with ctx as client:
-            if client is not None and mail_config is not None:
-                client.select_folder(mail_config.imap_folder)
-            for start in range(0, total, _BATCH_UID_CHUNK):
-                chunk = records[start : start + _BATCH_UID_CHUNK]
-                uids = [r.imap_uid for r in chunk if r.imap_uid is not None]
-                if client is not None and uids:
-                    client.delete_messages(uids)
-                for record in chunk:
-                    delete_record_by_message_id(conn, record.message_id)
+        if need_imap and mail_config is not None:
+            with ImapClient(mail_config) as client:
+                # Group records by source_folder so each batch
+                # operates in the correct mailbox.
+                from collections import defaultdict
+
+                by_folder: dict[str, list[MailRecord]] = defaultdict(list)
+                for r in records:
+                    by_folder[r.source_folder].append(r)
+
+                for folder, group in by_folder.items():
+                    # Resolve possibly-stale UIDs in this folder.
+                    resolved: list[tuple[MailRecord, int]] = []
+                    for r in group:
+                        if r.imap_uid is None:
+                            resolved.append((r, 0))
+                        else:
+                            try:
+                                new_uid = resolve_uid_with_fallback(
+                                    client,
+                                    folder,
+                                    r.imap_uid,
+                                    r.message_id,
+                                )
+                            except ImapMessageNotFoundError:
+                                # UID truly gone — skip IMAP, still
+                                # delete from DB below.
+                                resolved.append((r, 0))
+                            else:
+                                resolved.append((r, new_uid))
+
+                    # Process in chunks.
+                    for start in range(0, len(resolved), _BATCH_UID_CHUNK):
+                        chunk = resolved[start : start + _BATCH_UID_CHUNK]
+                        uids = [uid for _, uid in chunk if uid]
+                        if uids:
+                            client.delete_messages(uids)
+                        for record, _ in chunk:
+                            delete_record_by_message_id(
+                                conn, record.message_id
+                            )
+                        conn.commit()
+                        done += len(chunk)
+                        set_watermark(
+                            conn,
+                            "batch_op:state",
+                            json.dumps(
+                                {"op": "delete", "done": done, "total": total}
+                            ),
+                        )
+        else:
+            # DB-only delete (no IMAP configured or no tracked UIDs).
+            for record in records:
+                delete_record_by_message_id(conn, record.message_id)
                 conn.commit()
-                done += len(chunk)
+                done += 1
                 set_watermark(
                     conn,
                     "batch_op:state",
@@ -260,7 +303,11 @@ def _run_batch_archive_background(
         init_db,
         set_watermark,
     )
-    from robotsix_auto_mail.imap import ImapClient
+    from robotsix_auto_mail.imap import (
+        ImapClient,
+        ImapMessageNotFoundError,
+        resolve_uid_with_fallback,
+    )
     from robotsix_auto_mail.triage import get_archive_subfolder
 
     conn = init_db(db_path, skip_migrations=True)
@@ -282,30 +329,53 @@ def _run_batch_archive_background(
         )
         if need_imap and mail_config is not None:
             with ImapClient(mail_config) as client:
-                client.select_folder(mail_config.imap_folder)
                 delimiter = next(
                     (f.delimiter for f in client.list_folders() if f.delimiter),
                     "/",
                 )
-                # Group records by their effective destination folder.
-                groups: dict[str, list[MailRecord]] = {}
-                for record in records:
-                    subfolder = get_archive_subfolder(conn, record.message_id, record)
-                    dest = _archive_dest_folder(effective_root, subfolder, delimiter)
-                    if dest is None:
-                        # Destination escapes the archive root — skip the
-                        # record (left re-triggerable), mirroring triage.
-                        continue
-                    groups.setdefault(dest, []).append(record)
+                # Group records by (source_folder, destination).
+                from collections import defaultdict
 
-                for dest, group in groups.items():
-                    uids = [r.imap_uid for r in group if r.imap_uid is not None]
-                    if uids:
+                by_source_dest: dict[
+                    tuple[str, str], list[MailRecord]
+                ] = defaultdict(list)
+                for record in records:
+                    subfolder = get_archive_subfolder(
+                        conn, record.message_id, record
+                    )
+                    dest = _archive_dest_folder(
+                        effective_root, subfolder, delimiter
+                    )
+                    if dest is None:
+                        # Destination escapes the archive root — skip.
+                        continue
+                    by_source_dest[(record.source_folder, dest)].append(record)
+
+                for (source_folder, dest), group in by_source_dest.items():
+                    # Resolve UIDs in source_folder.
+                    resolved_uids: list[int] = []
+                    for r in group:
+                        if r.imap_uid is None:
+                            continue
+                        try:
+                            new_uid = resolve_uid_with_fallback(
+                                client,
+                                source_folder,
+                                r.imap_uid,
+                                r.message_id,
+                            )
+                        except ImapMessageNotFoundError:
+                            # UID gone — skip IMAP, still delete DB row.
+                            continue
+                        resolved_uids.append(new_uid)
+
+                    if resolved_uids:
                         # Ensure the destination hierarchy exists.
                         parts = dest.split(delimiter)
                         for i in range(1, len(parts) + 1):
                             client.create_folder(delimiter.join(parts[:i]))
-                        client.move_messages(uids, dest)
+                        client.move_messages(resolved_uids, dest)
+
                     for record in group:
                         delete_record_by_message_id(conn, record.message_id)
                     conn.commit()
@@ -313,7 +383,9 @@ def _run_batch_archive_background(
                     set_watermark(
                         conn,
                         "batch_op:state",
-                        json.dumps({"op": "archive", "done": done, "total": total}),
+                        json.dumps(
+                            {"op": "archive", "done": done, "total": total}
+                        ),
                     )
         else:
             # DB-only archive (no IMAP configured or no tracked UIDs).
