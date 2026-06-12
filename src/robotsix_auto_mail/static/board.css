@@ -177,6 +177,18 @@ button:hover { background: #1a4d7a; }
   flex: 1; border: none; width: 100%;
 }
 
+/* -- card account badge (aggregate board) --------------------------------- */
+.card-account {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  background: #1a1a4e;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  margin-bottom: 0.2rem;
+}
+
 /* -- delete / force-triage buttons --------------------------------------- */
 .delete-btn {
   background: #d32f2f; color: #fff; border: none;

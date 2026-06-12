@@ -48,6 +48,13 @@ from robotsix_auto_mail.triage import (
 )
 
 
+def _account_qs(account_id: str | None) -> str:
+    """Return ``"?account=<quoted id>"`` or ``""`` when *account_id* is None."""
+    if account_id is None:
+        return ""
+    return "?account=" + quote(account_id, safe="")
+
+
 class MailBoardAdapter:
     """Adapter that presents auto-mail records to the ``robotsix_board`` library.
 
@@ -75,6 +82,9 @@ class MailBoardAdapter:
         record_notes: Mapping[str, str],
         column_records: Mapping[str, Sequence[MailRecord]] | None = None,
         batch_running: bool = False,
+        *,
+        record_accounts: Mapping[str, str] | None = None,
+        account_labels: Mapping[str, str] | None = None,
     ) -> None:
         # Protocol-facing data.
         self._triage_by_mid = dict(triage_by_mid)  # message_id → action
@@ -94,6 +104,11 @@ class MailBoardAdapter:
         self._column_records: dict[str, list[MailRecord]] = {
             key: list(records) for key, records in (column_records or {}).items()
         }
+        # Aggregate-view context: message_id → owning account_id and
+        # account_id → display label.  Both empty when not in aggregate mode,
+        # preserving byte-for-byte single-account output.
+        self._record_accounts: dict[str, str] = dict(record_accounts or {})
+        self._account_labels: dict[str, str] = dict(account_labels or {})
 
     # -- BoardAdapter protocol ------------------------------------------------
 
@@ -156,12 +171,31 @@ class MailBoardAdapter:
         move form (the library's generic move form is suppressed via CSS,
         since its targets are coupled to the visible columns and auto-mail
         hides empty ones).
+
+        In aggregate mode (``self._record_accounts`` non-empty) each card
+        carries a ``data-account`` attribute, a visible account badge, and
+        every per-card form ``action`` appends ``?account=<owning id>`` so
+        POSTs route to the correct account's DB.
         """
         current_action = self._triage_by_mid.get(card.message_id, "INBOX")
         subject_str = card.subject.strip() or "(no subject)"
         subject_attr = html.escape(subject_str)
         escaped_mid = html.escape(card.message_id)
         quoted_mid = quote(card.message_id, safe="")
+
+        # Aggregate-mode context for this card.
+        account_id = self._record_accounts.get(card.message_id)
+        account_qs = _account_qs(account_id) if account_id else ""
+
+        # Account badge (aggregate mode only).
+        account_badge = ""
+        data_account_attr = ""
+        if account_id:
+            data_account_attr = f' data-account="{html.escape(account_id)}"'
+            label = self._account_labels.get(account_id, account_id)
+            account_badge = (
+                f'<span class="card-account">{html.escape(label)}</span>'
+            )
 
         # Body preview.
         body = _effective_body_plain(card)
@@ -212,7 +246,7 @@ class MailBoardAdapter:
         if current_action == "TO_ANSWER":
             draft_button = (
                 '<form class="draft-reply-form" method="post"'
-                ' action="/generate-draft">'
+                f' action="/generate-draft{account_qs}">'
                 f'<input type="hidden" name="message_id" value="{escaped_mid}">'
                 '<button type="submit" class="draft-reply-btn">'
                 "Draft reply</button>"
@@ -223,7 +257,8 @@ class MailBoardAdapter:
         delete_form = ""
         if current_action == "TO_DELETE":
             delete_form = (
-                '<form class="delete-form" method="post" action="/delete"'
+                '<form class="delete-form" method="post"'
+                f' action="/delete{account_qs}"'
                 ' onsubmit="return confirm('
                 "'Permanently delete this mail from mailbox and database?')\">"
                 f'<input type="hidden" name="message_id" value="{escaped_mid}">'
@@ -255,7 +290,7 @@ class MailBoardAdapter:
                     f'<span class="archive-path">{display_path}</span>'
                     f"{exists_indicator}"
                     '<form class="archive-override-form" method="post"'
-                    ' action="/archive-proposal">'
+                    f' action="/archive-proposal{account_qs}">'
                     f'<input type="hidden" name="message_id" value="{escaped_mid}">'
                     '<input type="text" name="subfolder"'
                     f' value="{escaped_subfolder}"'
@@ -263,7 +298,7 @@ class MailBoardAdapter:
                     '<button type="submit">Set</button>'
                     "</form>"
                     '<form class="archive-confirm-form" method="post"'
-                    ' action="/archive"'
+                    f' action="/archive{account_qs}"'
                     ' onsubmit="return confirm('
                     f"'Archive this mail to {display_path}?')\">"
                     f'<input type="hidden" name="message_id" value="{escaped_mid}">'
@@ -275,7 +310,7 @@ class MailBoardAdapter:
         move_url, move_method = self.move_endpoint(card)
         move_form = (
             f'<form class="board-card-move" method="{html.escape(move_method)}"'
-            f' action="{html.escape(move_url)}">'
+            f' action="{html.escape(move_url)}{account_qs}">'
             f'<input type="hidden" name="message_id" value="{escaped_mid}">'
             '<select class="board-move-select" name="triage_action">'
             f"{''.join(options_parts)}</select>"
@@ -286,7 +321,9 @@ class MailBoardAdapter:
         return (
             '<div class="card-extra"'
             f' data-message-id="{quoted_mid}"'
-            f' data-subject="{subject_attr}">'
+            f' data-subject="{subject_attr}"'
+            f'{data_account_attr}>'
+            f"{account_badge}"
             f'<div class="body-preview">{body_html_render}</div>'
             f"{notes_indicator}"
             f"{draft_indicator}"
@@ -305,7 +342,13 @@ class MailBoardAdapter:
         its own escaping.  It carries the batch-delete button, the
         force-triage form and the unsubscribe banner (all ``TO_DELETE`` /
         non-``INBOX`` specific).
+
+        In aggregate mode (``self._record_accounts`` non-empty) the
+        batch-delete, batch-archive, and force-triage forms are suppressed
+        — each operates on a whole column spanning multiple accounts and
+        cannot route to a single-account POST handler.
         """
+        aggregate = bool(self._record_accounts)
         records = self._column_records.get(status_key, [])
         if not records:
             return ""
@@ -314,8 +357,9 @@ class MailBoardAdapter:
 
         # Batch-delete button (TO_DELETE only).  Suppressed while a batch op
         # is running, mirroring how the triage banner replaces its form.
+        # Also suppressed in aggregate mode.
         batch_delete_form = ""
-        if status_key == "TO_DELETE" and not self._batch_running:
+        if status_key == "TO_DELETE" and not self._batch_running and not aggregate:
             batch_delete_form = (
                 '<form class="delete-form" method="post" action="/batch-delete"'
                 ' onsubmit="return confirm('
@@ -327,8 +371,9 @@ class MailBoardAdapter:
 
         # Batch-archive button (TO_ARCHIVE only).  Suppressed while a batch
         # op is running, mirroring the Delete-All button.
+        # Also suppressed in aggregate mode.
         batch_archive_form = ""
-        if status_key == "TO_ARCHIVE" and not self._batch_running:
+        if status_key == "TO_ARCHIVE" and not self._batch_running and not aggregate:
             batch_archive_form = (
                 '<form class="archive-form" method="post" action="/batch-archive"'
                 ' onsubmit="return confirm('
@@ -339,8 +384,9 @@ class MailBoardAdapter:
             )
 
         # Force-triage button (every column except INBOX).
+        # Suppressed in aggregate mode.
         force_triage_form = ""
-        if status_key != "INBOX":
+        if status_key != "INBOX" and not aggregate:
             force_triage_form = (
                 '<form class="force-triage-form" method="post"'
                 ' action="/force-triage-column"'

@@ -18,6 +18,7 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._constants import (
+    GLOBAL_VIEW_ACCOUNT_ID,
     _STATIC_AUTOMAIL_BOARD_CSS,
     _STATIC_BOARD_CSS,
     _STATIC_BOARD_JS,
@@ -37,6 +38,8 @@ from robotsix_auto_mail.server.views import (
     _build_board_content,
     _build_board_html,
     _build_detail_html,
+    _build_global_board_content,
+    _build_global_board_html,
 )
 from robotsix_auto_mail.triage import (
     VALID_TRIAGE_ACTIONS,
@@ -84,6 +87,9 @@ class BoardHandler(BaseHTTPRequestHandler):
         # ``_select_account``); ``None`` in legacy single-account mode
         # because ``_select_account`` is never called there.
         self._current_account_id: str | None = None
+        # Aggregate mode flag — set to ``True`` when the request resolves to
+        # the global (all-accounts) board view.
+        self._aggregate: bool = False
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
     def do_GET(self) -> None:
@@ -164,6 +170,11 @@ class BoardHandler(BaseHTTPRequestHandler):
         precedence: ``?account=`` query param → ``account`` request
         cookie → ``self.default_account_id``/the container default.
 
+        The reserved sentinel ``GLOBAL_VIEW_ACCOUNT_ID`` (``"__all__"``)
+        selects the aggregate view instead of a single account.  When
+        there is no ``?account=``, no cookie, and at least two accounts
+        are configured, the handler defaults to the aggregate view.
+
         An explicit ``?account=<id>`` that is unknown is a hard 404
         (returns ``False`` so the caller skips dispatch).  A stale id
         coming only from the cookie is ignored — cookies must never
@@ -186,6 +197,25 @@ class BoardHandler(BaseHTTPRequestHandler):
             if morsel is not None:
                 cookie_id = morsel.value
 
+        # -- aggregate-mode resolution -----------------------------------
+        if query_id == GLOBAL_VIEW_ACCOUNT_ID:
+            self._aggregate = True
+            self._account_cookie = f"account={GLOBAL_VIEW_ACCOUNT_ID}; Path=/"
+            self._current_account_id = GLOBAL_VIEW_ACCOUNT_ID
+            return True
+
+        if cookie_id == GLOBAL_VIEW_ACCOUNT_ID and not query_id:
+            self._aggregate = True
+            self._current_account_id = GLOBAL_VIEW_ACCOUNT_ID
+            return True
+
+        # No query param, no cookie, ≥2 accounts → default to aggregate.
+        if not query_id and not cookie_id and len(accounts.ids()) >= 2:
+            self._aggregate = True
+            self._current_account_id = GLOBAL_VIEW_ACCOUNT_ID
+            return True
+
+        # -- single-account resolution -----------------------------------
         fallback_id = self.default_account_id or accounts.default_account_id
         account_id = query_id or cookie_id or fallback_id
 
@@ -261,6 +291,15 @@ class BoardHandler(BaseHTTPRequestHandler):
 
     def _serve_board(self) -> None:
         """Render and serve the kanban board HTML."""
+        if self._aggregate and self.accounts is not None:
+            try:
+                body = _build_global_board_html(self.accounts)
+            except Exception:
+                self._send_response("Database unavailable", status=503)
+                return
+            self._send_response(body, content_type="text/html; charset=utf-8")
+            return
+
         archive_root = (
             self.mail_config.archive_root
             if self.mail_config is not None
@@ -281,6 +320,15 @@ class BoardHandler(BaseHTTPRequestHandler):
 
     def _serve_board_content(self) -> None:
         """Render and serve the board content as JSON."""
+        if self._aggregate and self.accounts is not None:
+            try:
+                payload = _build_global_board_content(self.accounts)
+            except Exception:
+                self._serve_json({"error": "Database unavailable"}, status=503)
+                return
+            self._serve_json(payload)
+            return
+
         archive_root = (
             self.mail_config.archive_root
             if self.mail_config is not None

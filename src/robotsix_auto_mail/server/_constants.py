@@ -31,6 +31,11 @@ _STATIC_AUTOMAIL_BOARD_CSS = (
 # -- Constants --------------------------------------------------------------
 _BOARD_COLUMNS = TRIAGE_ACTION_ORDER
 
+#: Reserved sentinel account id that selects the aggregate (all-accounts)
+#: board view.  Must not be used as a real ``account_id`` — collisions
+#: with a real account named ``__all__`` are out of scope.
+GLOBAL_VIEW_ACCOUNT_ID: str = "__all__"
+
 
 def _is_safe_redirect_path(location: str) -> bool:
     """Return ``True`` if *location* is a safe same-origin relative path.

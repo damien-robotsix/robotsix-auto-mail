@@ -63,19 +63,18 @@ def _render_board_columns(
     return inner.strip("\n")
 
 
-def _build_board_content(
+def _gather_account_board_data(
     db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
 ) -> dict[str, Any]:
-    """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
+    """Read one account's DB and return the raw structures for board building.
 
-    Opens a fresh database connection, gathers every mail record and
-    buckets them into kanban columns based on each record's triage
-    decision.  Cards with no triage decision land in the ``"INBOX"``
-    column.  Renders column and rule-proposal HTML fragments and
-    returns them as a plain dict.
+    Returns a dict with keys: ``triage_running``, ``batch_op``,
+    ``triage_by_mid``, ``column_buckets``, ``proposals``,
+    ``archive_subfolders``, ``folder_exists``, ``unsubscribe_suggestions``,
+    ``record_notes``.
 
-    Raises ``Exception`` when the database cannot be opened (the
-    caller should catch it and return a 503).
+    This is the DB-reading half of :func:`_build_board_content`, extracted
+    so the global board can call it per-account.
     """
     from robotsix_auto_mail.db import get_watermark, init_db
 
@@ -189,6 +188,47 @@ def _build_board_content(
     finally:
         conn.close()
 
+    return {
+        "triage_running": triage_running,
+        "batch_op": batch_op,
+        "triage_by_mid": triage_by_mid,
+        "column_buckets": column_buckets,
+        "proposals": proposals,
+        "archive_subfolders": archive_subfolders,
+        "folder_exists": folder_exists,
+        "unsubscribe_suggestions": unsubscribe_suggestions,
+        "record_notes": record_notes,
+    }
+
+
+def _build_board_content(
+    db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
+) -> dict[str, Any]:
+    """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
+
+    Opens a fresh database connection, gathers every mail record and
+    buckets them into kanban columns based on each record's triage
+    decision.  Cards with no triage decision land in the ``"INBOX"``
+    column.  Renders column and rule-proposal HTML fragments and
+    returns them as a plain dict.
+
+    Raises ``Exception`` when the database cannot be opened (the
+    caller should catch it and return a 503).
+    """
+    gathered = _gather_account_board_data(db_path, archive_root=archive_root)
+
+    triage_running = gathered["triage_running"]
+    batch_op = gathered["batch_op"]
+    triage_by_mid: dict[str, TriageDecision] = gathered["triage_by_mid"]
+    column_buckets: dict[str, list[MailRecord]] = gathered["column_buckets"]
+    proposals = gathered["proposals"]
+    archive_subfolders: dict[str, str] = gathered["archive_subfolders"]
+    folder_exists: dict[str, bool] = gathered["folder_exists"]
+    unsubscribe_suggestions: dict[str, dict[str, Any]] = gathered[
+        "unsubscribe_suggestions"
+    ]
+    record_notes: dict[str, str] = gathered["record_notes"]
+
     # Build the board adapter — the single source of truth for both the
     # base column/card scaffold (the protocol methods) and auto-mail's
     # custom per-card / per-column widgets, which the library appends via
@@ -239,6 +279,129 @@ def _build_board_content(
     }
 
 
+def _build_global_board_content(
+    accounts: MailAccountsConfig,
+) -> dict[str, Any]:
+    """Aggregate board content across all configured accounts.
+
+    Calls :func:`_gather_account_board_data` for each account, merges the
+    per-account column buckets, and builds a single :class:`MailBoardAdapter`
+    with the merged context plus ``record_accounts`` / ``account_labels``
+    maps so per-card widgets route to the owning account's DB.
+
+    Returns the same JSON shape as :func:`_build_board_content`
+    (``columns_html``, ``proposals_html``, ``triage_running``,
+    ``unsubscribe_suggestions``).
+
+    Assumption: ``message_id`` is treated as globally unique (RFC 5322).
+    Cross-account duplicate message_ids are a known limitation and out of
+    scope.
+    """
+    # Per-account merge accumulators.
+    merged_buckets: dict[str, list[MailRecord]] = {
+        action: [] for action in _BOARD_COLUMNS
+    }
+    merged_triage_by_mid: dict[str, str] = {}
+    merged_archive_subfolders: dict[str, str] = {}
+    merged_folder_exists: dict[str, bool] = {}
+    merged_unsubscribe: dict[str, dict[str, Any]] = {}
+    merged_record_notes: dict[str, str] = {}
+    record_accounts: dict[str, str] = {}
+    account_labels: dict[str, str] = {}
+    triage_running: bool = False
+
+    # Rule proposals: collect per-account, keyed by fingerprint so
+    # duplicates across accounts (same fingerprint) keep the first seen.
+    merged_proposals: dict[str, tuple[str, RuleLedgerEntry]] = {}
+    # Track which account each proposal belongs to (fingerprint → account_id).
+    proposal_accounts: dict[str, str] = {}
+
+    for account in accounts.accounts:
+        aid = account.account_id
+        label = account.label if account.label else aid
+        account_labels[aid] = label
+
+        gathered = _gather_account_board_data(
+            account.config.db_path, archive_root=account.config.archive_root
+        )
+
+        triage_running = triage_running or gathered["triage_running"]
+
+        # Merge column buckets.
+        for action in _BOARD_COLUMNS:
+            merged_buckets[action].extend(gathered["column_buckets"][action])
+
+        # Track per-message owning account.
+        for recs in gathered["column_buckets"].values():
+            for rec in recs:
+                record_accounts[rec.message_id] = aid
+
+        # Merge context maps.
+        merged_triage_by_mid.update(
+            {mid: d.action for mid, d in gathered["triage_by_mid"].items()}
+        )
+        merged_archive_subfolders.update(gathered["archive_subfolders"])
+        merged_folder_exists.update(gathered["folder_exists"])
+        merged_unsubscribe.update(gathered["unsubscribe_suggestions"])
+        merged_record_notes.update(gathered["record_notes"])
+
+        # Merge rule proposals (dedup by fingerprint, first wins).
+        for fingerprint, entry in gathered["proposals"]:
+            if fingerprint not in merged_proposals:
+                merged_proposals[fingerprint] = (fingerprint, entry)
+                proposal_accounts[fingerprint] = aid
+
+    # Convert proposals back to list (in insertion order).
+    proposals: list[tuple[str, RuleLedgerEntry]] = list(merged_proposals.values())
+
+    adapter = MailBoardAdapter(
+        triage_by_mid=merged_triage_by_mid,
+        archive_subfolders=merged_archive_subfolders,
+        folder_exists=merged_folder_exists,
+        archive_root=DEFAULT_ARCHIVE_ROOT,  # not used per-card in aggregate mode
+        unsubscribe_suggestions=merged_unsubscribe,
+        record_notes=merged_record_notes,
+        column_records=merged_buckets,
+        batch_running=False,  # batch ops are per-account, suppressed in aggregate
+        record_accounts=record_accounts,
+        account_labels=account_labels,
+    )
+
+    cards: dict[str, list[MailRecord]] = {
+        action: merged_buckets[action]
+        for action in _BOARD_COLUMNS
+        if merged_buckets[action]
+    }
+    columns_html = _render_board_columns(adapter, cards)
+
+    # Rule proposals HTML — per-card forms carry ?account=<owning id>.
+    proposals_count = len(proposals)
+    if proposals:
+        rule_cards_html = "".join(
+            _render_rule_card(
+                fingerprint, entry, account_id=proposal_accounts.get(fingerprint)
+            )
+            for fingerprint, entry in proposals
+        )
+    else:
+        rule_cards_html = '<div class="rule-empty">No pending rule proposals</div>'
+    proposals_html = (
+        '<div class="rule-proposals">'
+        '<div class="rule-proposals-header">'
+        "<h2>Rule proposals</h2>"
+        f'<span class="count rule-count">{proposals_count}</span></div>'
+        f'<div class="rule-cards">{rule_cards_html}</div>'
+        "</div>"
+    )
+
+    return {
+        "columns_html": columns_html,
+        "proposals_html": proposals_html,
+        "triage_running": triage_running,
+        "unsubscribe_suggestions": merged_unsubscribe,
+    }
+
+
 def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
     """Return the ``.batch-banner`` markup for a running batch op, or ``""``.
 
@@ -259,6 +422,261 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
         '<div class="batch-banner">'
         f"{verb} mail{progress}. The board will refresh automatically."
         "</div>"
+    )
+
+
+def _render_board_page_shell(
+    *,
+    columns_html: str,
+    proposals_html: str,
+    triage_running: bool,
+    picker_html: str,
+    account_qs: str,
+    fetch_qs: str,
+    folder_form_html: str | None,
+    batch_control_html: str,
+    data_account_js: bool,
+) -> str:
+    """Shared HTML page shell + JS for both single-account and global boards.
+
+    All varying parts are passed as keyword arguments so the two callers
+    (:func:`_build_board_html` and :func:`_build_global_board_html`) share
+    the ~150-line shell without duplication.
+    """
+    # Single source of truth for the not-running folder-triage control —
+    # used both for the initial server render below and (via ``json.dumps``)
+    # by the client-side ``refreshBoard`` poll, so the markup cannot drift
+    # between the two and the form is restored after a running→idle tick.
+    default_folder_form_html = (
+        '<form class="folder-triage-form" method="post"'
+        ' action="/run-folder-triage"'
+        ' onsubmit="return confirm('
+        "'Run a one-shot triage over the selected folder?')\">"
+        '<select id="folder-picker" name="folder">'
+        '<option value="">Select a folder…</option>'
+        "</select>"
+        '<button type="submit">Triage Folder</button>'
+        "</form>"
+    )
+    effective_folder_form = (
+        folder_form_html
+        if folder_form_html is not None
+        else default_folder_form_html
+    )
+
+    triage_control_html: str
+    if triage_running:
+        triage_control_html = (
+            '<div class="triage-banner">'
+            "Triage is currently running. The board will refresh automatically."
+            "</div>"
+        )
+    elif folder_form_html is None:
+        # Aggregate mode: no folder-triage form — render an empty span
+        # so the JS re-render target exists.
+        triage_control_html = ""
+    else:
+        triage_control_html = effective_folder_form
+
+    # Build the detail-open JS with optional data-account support.
+    if data_account_js:
+        open_detail_js = (
+            "function openDetail(messageId, subject, focusDraft, cardAccount) {\n"
+            "  var src = '/email/' + messageId + '?embed=1';\n"
+            "  if (cardAccount) {\n"
+            "    src += '&account=' + cardAccount;\n"
+            "  }\n"
+            "  if (focusDraft) src += '&draft=1';\n"
+            "  document.querySelector('.side-panel iframe').src = src;\n"
+            "  document.querySelector('.side-panel').classList.add('open');\n"
+            "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
+            "  document.querySelector('.panel-title').textContent = subject || '';\n"
+            "  location.hash = messageId;\n"
+            "}"
+        )
+        click_handler_js = (
+            "document.querySelector('.board').addEventListener('click', function(e) {\n"
+            "  if (e.target.closest('button, select, input')) return;\n"
+            "  var card = e.target.closest('.board-card');\n"
+            "  if (!card) return;\n"
+            "  var meta = card.querySelector('.card-extra');\n"
+            "  var mid = meta && meta.getAttribute('data-message-id');\n"
+            "  if (!mid) return;\n"
+            "  if (e.target.closest('form')) return;\n"
+            "  e.preventDefault();\n"
+            "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
+            "  var cardAccount = (meta && meta.getAttribute('data-account')) || '';\n"
+            "  openDetail(mid, subject, false, cardAccount);\n"
+            "});"
+        )
+        hashchange_js = (
+            "window.addEventListener('hashchange', function() {\n"
+            "  if (!location.hash) closeDetail();\n"
+            "});"
+        )
+    else:
+        open_detail_js = (
+            "function openDetail(messageId, subject, focusDraft) {\n"
+            f"  var src = '/email/' + messageId + '?embed=1{account_qs}';\n"
+            "  if (focusDraft) src += '&draft=1';\n"
+            "  document.querySelector('.side-panel iframe').src = src;\n"
+            "  document.querySelector('.side-panel').classList.add('open');\n"
+            "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
+            "  document.querySelector('.panel-title').textContent = subject || '';\n"
+            "  location.hash = messageId;\n"
+            "}"
+        )
+        click_handler_js = (
+            "document.querySelector('.board').addEventListener('click', function(e) {\n"
+            "  if (e.target.closest('button, select, input')) return;\n"
+            "  var card = e.target.closest('.board-card');\n"
+            "  if (!card) return;\n"
+            "  var meta = card.querySelector('.card-extra');\n"
+            "  var mid = meta && meta.getAttribute('data-message-id');\n"
+            "  if (!mid) return;\n"
+            "  if (e.target.closest('form')) return;\n"
+            "  e.preventDefault();\n"
+            "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
+            "  openDetail(mid, subject);\n"
+            "});"
+        )
+        hashchange_js = (
+            "window.addEventListener('hashchange', function() {\n"
+            "  if (!location.hash) closeDetail();\n"
+            "});"
+        )
+
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="utf-8">\n'
+        "<title>Mail Board</title>\n"
+        '<link rel="stylesheet" href="/static/board.css">\n'
+        '<link rel="stylesheet" href="/static/automail/board.css">\n'
+        "</head>\n"
+        "<body>\n"
+        "<h1>Mail Board</h1>\n"
+        f'<span id="triage-control">{triage_control_html}</span>\n'
+        f'<span id="batch-control">{batch_control_html}</span>\n'
+        f"{picker_html}\n"
+        f"{proposals_html}\n"
+        '<div class="board-wrapper">\n'
+        '<div class="board">\n'
+        f"{columns_html}"
+        "\n</div>\n"
+        "</div>\n"
+        # Side-panel skeleton (auto-mail's iframe-based pattern, not
+        # the library's #drawer).
+        '<div class="side-panel" id="side-panel">\n'
+        '<div class="panel-header">\n'
+        '<span class="panel-title"></span>\n'
+        '<button class="close-btn" onclick="closeDetail()">&times;</button>\n'
+        "</div>\n"
+        '<iframe src="" title="Mail detail"></iframe>\n'
+        "</div>\n"
+        "<script>\n"
+        f"{open_detail_js}\n"
+        "function closeDetail() {\n"
+        "  document.querySelector('.side-panel').classList.remove('open');\n"
+        "  document.querySelector('.board-wrapper').classList.remove('panel-open');\n"
+        "  document.querySelector('.side-panel iframe').src = '';\n"
+        "  location.hash = '';\n"
+        "}\n"
+        "if (location.hash) {\n"
+        "  var mid = location.hash.slice(1);\n"
+        "  if (mid) openDetail(mid);\n"
+        "}\n"
+        f"{hashchange_js}\n"
+        "window.addEventListener('keydown', function(e) {\n"
+        "  if (e.key === 'Escape') closeDetail();\n"
+        "});\n"
+        f"{click_handler_js}\n"
+        "\n"
+        "// Board auto-refresh polling\n"
+        "var refreshTimer = null;\n"
+        "\n"
+        "function refreshBoard(force) {\n"
+        "  if (!force && document.getElementById('side-panel')"
+        ".classList.contains('open')) return;\n"
+        "  var savedX = window.pageXOffset;\n"
+        "  var savedY = window.pageYOffset;\n"
+        "  var prevBoard = document.querySelector('.board');\n"
+        "  var savedBoardLeft = prevBoard ? prevBoard.scrollLeft : 0;\n"
+        "  var savedBoardTop = prevBoard ? prevBoard.scrollTop : 0;\n"
+        f"  fetch('/board-content{fetch_qs}')\n"
+        "    .then(function(r) {\n"
+        "      if (!r.ok) throw new Error('bad status');\n"
+        "      return r.json();\n"
+        "    })\n"
+        "    .then(function(data) {\n"
+        "      document.querySelector('.board').innerHTML = data.columns_html;\n"
+        "      var proposals = document.querySelector('.rule-proposals');\n"
+        "      if (proposals) proposals.outerHTML = data.proposals_html;\n"
+        "      var tc = document.getElementById('triage-control');\n"
+        "      if (tc) {\n"
+        "        if (data.triage_running) {\n"
+        '          tc.innerHTML = \'<div class="triage-banner">Triage is'
+        " currently running. The board will refresh automatically.</div>';\n"
+        "        } else if (!document.getElementById('folder-picker')) {\n"
+        "          // Restore the folder-triage form after a running→idle\n"
+        "          // tick; only rebuild when absent so an in-progress\n"
+        "          // folder selection is preserved across refreshes.\n"
+        f"          tc.innerHTML = {json.dumps(effective_folder_form)};\n"
+        "          populateFolderPicker();\n"
+        "        }\n"
+        "      }\n"
+        "      var bc = document.getElementById('batch-control');\n"
+        "      if (bc) {\n"
+        "        var op = data.batch_op;\n"
+        "        if (op) {\n"
+        "          var verb = op.op === 'archive' ? 'Archiving' : 'Deleting';\n"
+        "          var prog = (typeof op.done === 'number'\n"
+        "            && typeof op.total === 'number')\n"
+        "            ? ': ' + op.done + '/' + op.total : '';\n"
+        "          bc.innerHTML = '<div class=\"batch-banner\">' + verb"
+        " + ' mail' + prog + '. The board will refresh automatically.</div>';\n"
+        "        } else {\n"
+        "          bc.innerHTML = '';\n"
+        "        }\n"
+        "      }\n"
+        "      window.scrollTo(savedX, savedY);\n"
+        "      var newBoard = document.querySelector('.board');\n"
+        "      if (newBoard) {\n"
+        "        newBoard.scrollLeft = savedBoardLeft;\n"
+        "        newBoard.scrollTop = savedBoardTop;\n"
+        "      }\n"
+        "    })\n"
+        "    .catch(function() { /* silently retry next cycle */ });\n"
+        "}\n"
+        "\n"
+        "refreshTimer = setInterval(refreshBoard, 30000);\n"
+        "\n"
+        "// Populate the folder picker from the async /folders endpoint so\n"
+        "// the synchronous /board render never blocks on IMAP.\n"
+        "function populateFolderPicker() {\n"
+        "  var picker = document.getElementById('folder-picker');\n"
+        "  if (!picker) return;\n"
+        f"  fetch('/folders{fetch_qs}')\n"
+        "    .then(function(r) {\n"
+        "      if (!r.ok) throw new Error('bad status');\n"
+        "      return r.json();\n"
+        "    })\n"
+        "    .then(function(data) {\n"
+        "      (data.folders || []).forEach(function(name) {\n"
+        "        var opt = document.createElement('option');\n"
+        "        opt.value = name;\n"
+        "        opt.textContent = name;\n"
+        "        picker.appendChild(opt);\n"
+        "      });\n"
+        "    })\n"
+        "    .catch(function() { /* leave placeholder; form unusable */ });\n"
+        "}\n"
+        "populateFolderPicker();\n"
+        "</script>\n"
+        '<script src="/static/board.js"></script>\n'
+        "</body>\n"
+        "</html>"
     )
 
 
@@ -320,10 +738,6 @@ def _build_board_html(
         account_qs = "&account=" + quote(current_account_id, safe="")
         fetch_qs = "?account=" + quote(current_account_id, safe="")
 
-    # Single source of truth for the not-running folder-triage control —
-    # used both for the initial server render below and (via ``json.dumps``)
-    # by the client-side ``refreshBoard`` poll, so the markup cannot drift
-    # between the two and the form is restored after a running→idle tick.
     folder_form_html = (
         '<form class="folder-triage-form" method="post"'
         ' action="/run-folder-triage"'
@@ -336,170 +750,73 @@ def _build_board_html(
         "</form>"
     )
 
-    triage_control_html: str
-    if content["triage_running"]:
-        triage_control_html = (
-            '<div class="triage-banner">'
-            "Triage is currently running. The board will refresh automatically."
-            "</div>"
-        )
-    else:
-        triage_control_html = folder_form_html
-
     batch_control_html = _batch_banner_html(content["batch_op"])
 
-    return (
-        "<!DOCTYPE html>\n"
-        '<html lang="en">\n'
-        "<head>\n"
-        '<meta charset="utf-8">\n'
-        "<title>Mail Board</title>\n"
-        '<link rel="stylesheet" href="/static/board.css">\n'
-        '<link rel="stylesheet" href="/static/automail/board.css">\n'
-        "</head>\n"
-        "<body>\n"
-        "<h1>Mail Board</h1>\n"
-        f'<span id="triage-control">{triage_control_html}</span>\n'
-        f'<span id="batch-control">{batch_control_html}</span>\n'
-        f"{picker_html}\n"
-        f"{content['proposals_html']}\n"
-        '<div class="board-wrapper">\n'
-        '<div class="board">\n'
-        f"{content['columns_html']}"
-        "\n</div>\n"
-        "</div>\n"
-        # Side-panel skeleton (auto-mail's iframe-based pattern, not
-        # the library's #drawer).
-        '<div class="side-panel" id="side-panel">\n'
-        '<div class="panel-header">\n'
-        '<span class="panel-title"></span>\n'
-        '<button class="close-btn" onclick="closeDetail()">&times;</button>\n'
-        "</div>\n"
-        '<iframe src="" title="Mail detail"></iframe>\n'
-        "</div>\n"
-        "<script>\n"
-        "function openDetail(messageId, subject, focusDraft) {\n"
-        f"  var src = '/email/' + messageId + '?embed=1{account_qs}';\n"
-        "  if (focusDraft) src += '&draft=1';\n"
-        "  document.querySelector('.side-panel iframe').src = src;\n"
-        "  document.querySelector('.side-panel').classList.add('open');\n"
-        "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
-        "  document.querySelector('.panel-title').textContent = subject || '';\n"
-        "  location.hash = messageId;\n"
-        "}\n"
-        "function closeDetail() {\n"
-        "  document.querySelector('.side-panel').classList.remove('open');\n"
-        "  document.querySelector('.board-wrapper').classList.remove('panel-open');\n"
-        "  document.querySelector('.side-panel iframe').src = '';\n"
-        "  location.hash = '';\n"
-        "}\n"
-        "if (location.hash) {\n"
-        "  var mid = location.hash.slice(1);\n"
-        "  if (mid) openDetail(mid);\n"
-        "}\n"
-        "window.addEventListener('hashchange', function() {\n"
-        "  if (!location.hash) closeDetail();\n"
-        "});\n"
-        "window.addEventListener('keydown', function(e) {\n"
-        "  if (e.key === 'Escape') closeDetail();\n"
-        "});\n"
-        "document.querySelector('.board').addEventListener('click', function(e) {\n"
-        "  if (e.target.closest('button, select, input')) return;\n"
-        "  var card = e.target.closest('.board-card');\n"
-        "  if (!card) return;\n"
-        "  var meta = card.querySelector('.card-extra');\n"
-        "  var mid = meta && meta.getAttribute('data-message-id');\n"
-        "  if (!mid) return;\n"
-        "  if (e.target.closest('form')) return;\n"
-        "  e.preventDefault();\n"
-        "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
-        "  openDetail(mid, subject);\n"
-        "});\n"
-        "\n"
-        "// Board auto-refresh polling\n"
-        "var refreshTimer = null;\n"
-        "\n"
-        "function refreshBoard(force) {\n"
-        "  if (!force && document.getElementById('side-panel')"
-        ".classList.contains('open')) return;\n"
-        "  var savedX = window.pageXOffset;\n"
-        "  var savedY = window.pageYOffset;\n"
-        "  var prevBoard = document.querySelector('.board');\n"
-        "  var savedBoardLeft = prevBoard ? prevBoard.scrollLeft : 0;\n"
-        "  var savedBoardTop = prevBoard ? prevBoard.scrollTop : 0;\n"
-        f"  fetch('/board-content{fetch_qs}')\n"
-        "    .then(function(r) {\n"
-        "      if (!r.ok) throw new Error('bad status');\n"
-        "      return r.json();\n"
-        "    })\n"
-        "    .then(function(data) {\n"
-        "      document.querySelector('.board').innerHTML = data.columns_html;\n"
-        "      var proposals = document.querySelector('.rule-proposals');\n"
-        "      if (proposals) proposals.outerHTML = data.proposals_html;\n"
-        "      var tc = document.getElementById('triage-control');\n"
-        "      if (tc) {\n"
-        "        if (data.triage_running) {\n"
-        '          tc.innerHTML = \'<div class="triage-banner">Triage is'
-        " currently running. The board will refresh automatically.</div>';\n"
-        "        } else if (!document.getElementById('folder-picker')) {\n"
-        "          // Restore the folder-triage form after a running→idle\n"
-        "          // tick; only rebuild when absent so an in-progress\n"
-        "          // folder selection is preserved across refreshes.\n"
-        f"          tc.innerHTML = {json.dumps(folder_form_html)};\n"
-        "          populateFolderPicker();\n"
-        "        }\n"
-        "      }\n"
-        "      var bc = document.getElementById('batch-control');\n"
-        "      if (bc) {\n"
-        "        var op = data.batch_op;\n"
-        "        if (op) {\n"
-        "          var verb = op.op === 'archive' ? 'Archiving' : 'Deleting';\n"
-        "          var prog = (typeof op.done === 'number'\n"
-        "            && typeof op.total === 'number')\n"
-        "            ? ': ' + op.done + '/' + op.total : '';\n"
-        "          bc.innerHTML = '<div class=\"batch-banner\">' + verb"
-        " + ' mail' + prog + '. The board will refresh automatically.</div>';\n"
-        "        } else {\n"
-        "          bc.innerHTML = '';\n"
-        "        }\n"
-        "      }\n"
-        "      window.scrollTo(savedX, savedY);\n"
-        "      var newBoard = document.querySelector('.board');\n"
-        "      if (newBoard) {\n"
-        "        newBoard.scrollLeft = savedBoardLeft;\n"
-        "        newBoard.scrollTop = savedBoardTop;\n"
-        "      }\n"
-        "    })\n"
-        "    .catch(function() { /* silently retry next cycle */ });\n"
-        "}\n"
-        "\n"
-        "refreshTimer = setInterval(refreshBoard, 30000);\n"
-        "\n"
-        "// Populate the folder picker from the async /folders endpoint so\n"
-        "// the synchronous /board render never blocks on IMAP.\n"
-        "function populateFolderPicker() {\n"
-        "  var picker = document.getElementById('folder-picker');\n"
-        "  if (!picker) return;\n"
-        f"  fetch('/folders{fetch_qs}')\n"
-        "    .then(function(r) {\n"
-        "      if (!r.ok) throw new Error('bad status');\n"
-        "      return r.json();\n"
-        "    })\n"
-        "    .then(function(data) {\n"
-        "      (data.folders || []).forEach(function(name) {\n"
-        "        var opt = document.createElement('option');\n"
-        "        opt.value = name;\n"
-        "        opt.textContent = name;\n"
-        "        picker.appendChild(opt);\n"
-        "      });\n"
-        "    })\n"
-        "    .catch(function() { /* leave placeholder; form unusable */ });\n"
-        "}\n"
-        "populateFolderPicker();\n"
-        "</script>\n"
-        '<script src="/static/board.js"></script>\n'
-        "</body>\n"
-        "</html>"
+    return _render_board_page_shell(
+        columns_html=content["columns_html"],
+        proposals_html=content["proposals_html"],
+        triage_running=content["triage_running"],
+        picker_html=picker_html,
+        account_qs=account_qs,
+        fetch_qs=fetch_qs,
+        folder_form_html=folder_form_html,
+        batch_control_html=batch_control_html,
+        data_account_js=False,
+    )
+
+
+def _build_global_board_html(
+    accounts: MailAccountsConfig,
+    *,
+    current_account_id: str = "__all__",
+) -> str:
+    """Build the full ``/board`` HTML document for the aggregate view.
+
+    Renders every configured account's records in a single unified board,
+    with a picker whose first option is ``All mailboxes`` (selected by
+    default).  Card click handlers derive the owning account from
+    ``data-account`` rather than a page-level ``account_qs`` so each
+    per-card detail link and form routes to the correct single-account DB.
+
+    Folder-triage is hidden in the aggregate view (it requires a single
+    account's IMAP connection).
+    """
+    content = _build_global_board_content(accounts)
+
+    # Account picker — first option is the global view.
+    options_parts: list[str] = [
+        '<option value="__all__" selected>All mailboxes</option>'
+    ]
+    for account_id in accounts.ids():
+        account = accounts.get(account_id)
+        display = account.label if account.label else account.account_id
+        options_parts.append(
+            f'<option value="{html.escape(account_id)}">'
+            f"{html.escape(display)}</option>"
+        )
+    picker_html = (
+        '<select id="account-picker"'
+        " onchange=\"window.location.href='/board?account='"
+        '+encodeURIComponent(this.value)">'
+        f"{''.join(options_parts)}"
+        "</select>"
+    )
+
+    # Aggregate view always polls /board-content?account=__all__ and
+    # has no page-level account_qs for the detail iframe (each card
+    # carries its own data-account).
+    fetch_qs = "?account=__all__"
+
+    return _render_board_page_shell(
+        columns_html=content["columns_html"],
+        proposals_html=content["proposals_html"],
+        triage_running=content["triage_running"],
+        picker_html=picker_html,
+        account_qs="",  # page-level; cards carry their own
+        fetch_qs=fetch_qs,
+        folder_form_html=None,  # hidden in aggregate mode
+        batch_control_html="",  # batch ops are per-account, suppressed
+        data_account_js=True,
     )
 
 
@@ -868,20 +1185,27 @@ def _render_triage_section(triage_decision: TriageDecision | None) -> str:
     )
 
 
-def _render_rule_card(fingerprint: str, entry: RuleLedgerEntry) -> str:
+def _render_rule_card(
+    fingerprint: str, entry: RuleLedgerEntry, *, account_id: str | None = None
+) -> str:
     """Render one pending rule proposal as a ``.rule-card`` HTML string.
 
     Every interpolated value is passed through ``html.escape`` because the
     board pages use manual f-strings (no Jinja2 autoescape).
+
+    When *account_id* is set the rule form ``action`` carries
+    ``?account=<quoted id>`` so ``/rule-action`` routes to the owning
+    account's DB.
     """
     title = html.escape(entry.title)
     summary = html.escape(f"{entry.match_type}={entry.match_value} -> {entry.action}")
     fp = html.escape(fingerprint)
+    account_qs = f"?account={quote(account_id, safe='')}" if account_id else ""
     return (
         '<div class="rule-card">'
         f'<div class="rule-title">{title}</div>'
         f'<div class="rule-summary">{summary}</div>'
-        '<form class="rule-form" method="post" action="/rule-action">'
+        f'<form class="rule-form" method="post" action="/rule-action{account_qs}">'
         f'<input type="hidden" name="fingerprint" value="{fp}">'
         '<button type="submit" name="decision" value="accept">Accept</button>'
         '<button type="submit" name="decision" value="reject">Reject</button>'
