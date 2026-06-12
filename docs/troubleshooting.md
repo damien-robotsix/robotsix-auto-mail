@@ -67,3 +67,50 @@ re-fetched) are expected: ingestion is idempotent, deduplicating on
 `Message-ID` and advancing the `imap_uid` watermark, so re-running an ingest
 is always safe and will not duplicate stored mail.  See
 [docs/ingestion.md](ingestion.md) for the schema and idempotency model.
+
+## Board operation — stale UID errors (409)
+
+When you use the board's **Move**, **Delete**, or **Archive** operations, or
+trigger a **Batch Delete**, the system communicates with your IMAP server to
+move or delete the actual message. The system tracks each message's IMAP UID
+(unique identifier within a folder) in its local database.
+
+**What is a stale UID?**  A stale UID occurs when the message no longer exists
+in the IMAP folder where the system expects it. This typically happens when:
+
+- You (or another client) manually moved the message to a different folder
+  (e.g., moved the entire INBOX into `INBOX.Archive` or `INBOX.Archives`)
+- The IMAP server purged the message
+- The message was deleted via another mail client or web interface
+
+**Error behavior:**  When the board detects a stale UID, it **stops and
+returns a 409 Conflict error** instead of silently deleting the local record.
+The error message clearly states:
+
+```
+Message {message-id} is no longer in INBOX — the tracked UID is stale, 
+so it was not {deleted|archived} and the board record was kept.
+```
+
+This prevents silent data loss: the local board record remains intact and you
+can investigate the actual message on the server.
+
+**How to recover:**
+
+1. **Verify the message location** on your IMAP server using a mail client
+   (Thunderbird, Apple Mail, Gmail web interface, etc.). Search for the message
+   by sender or subject.
+2. **If the message is in a different folder**, manually move it back to INBOX
+   (or the folder configured in `imap_folder`) if you still want to delete or
+   archive it via the board.
+3. **If the message is gone entirely**, you can safely **delete the board record
+   manually** via the database or wait for the triage agent to re-classify it
+   (if applicable).
+4. **Re-attempt the operation** (Move/Delete/Archive) once the message is in the
+   expected location.
+
+**Why we do this:**  IMAP `STORE` and `COPY` commands that target a non-existent
+UID return success (RFC 3501) even though they affect zero messages. Without
+explicit checking, such silent no-ops would cause the board to delete its local
+record while leaving the actual message on the server — a form of data loss. The
+409 response ensures you always know when something unexpected happened.
