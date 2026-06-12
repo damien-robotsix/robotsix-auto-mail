@@ -514,7 +514,9 @@ def _cmd_triage(args: argparse.Namespace) -> int:
     config = _load_config_or_exit(args.account)
     conn = _cli.init_db(config.db_path)
     try:
-        decisions = run_triage_agent(conn, api_key=args.api_key)
+        decisions = run_triage_agent(
+            conn, api_key=args.api_key, user_email=config.username
+        )
     except TriageError as exc:
         sys.stderr.write(f"Error: {exc}\n")
         return 1
@@ -579,7 +581,9 @@ def _cmd_triage_folder(args: argparse.Namespace) -> int:
 
         if not args.dry_run:
             try:
-                decisions = run_triage_agent(conn, api_key=args.api_key)
+                decisions = run_triage_agent(
+                    conn, api_key=args.api_key, user_email=config.username
+                )
             except TriageError as exc:
                 sys.stderr.write(f"Error: {exc}\n")
                 return 1

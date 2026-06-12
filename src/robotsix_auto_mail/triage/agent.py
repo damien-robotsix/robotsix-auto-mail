@@ -55,6 +55,7 @@ from robotsix_auto_mail.triage.persistence import (
 def _build_triage_system_prompt(
     archive_folders: list[str] | None = None,
     archive_folder_history: list[str] | None = None,
+    user_email: str | None = None,
 ) -> str:
     """Build the LLM system prompt describing the triage task and actions.
 
@@ -64,7 +65,9 @@ def _build_triage_system_prompt(
     non-empty list of guidance lines (one per sender/domain with a recorded
     archive-folder choice), the ``TO_ARCHIVE`` paragraph additionally lists
     those previously-used folders and instructs the model to prefer reusing
-    an existing project folder for ongoing projects.
+    an existing project folder for ongoing projects.  When *user_email* is a
+    non-empty string, appends an instruction telling the model never to
+    classify mail the user sent to themself as ``TO_ANSWER``.
     """
     prompt = (
         "You are an inbox triage assistant. You are given a numbered list of "
@@ -115,6 +118,14 @@ def _build_triage_system_prompt(
                 "relates to an ongoing project, rather than inventing a new "
                 "folder or a date bucket.\n"
             )
+    if user_email:
+        prompt += (
+            f"\n\nThe user's own email address is `{user_email}`. Messages "
+            "whose sender IS this address were sent by the user themself — "
+            "never classify them as `TO_ANSWER` (you must not reply to "
+            "yourself). Classify such self-sent messages as `TO_ARCHIVE` "
+            "(or `HUMAN_TRIAGE` if genuinely unsure)."
+        )
     return prompt
 
 
@@ -437,6 +448,7 @@ def run_triage_agent(
     api_key: str | None = None,
     tier: Tier = Tier.CHEAP,
     only_undecided: bool = False,
+    user_email: str | None = None,
 ) -> list[TriageDecision]:
     """Classify every inbox mail into a triage action and persist the result.
 
@@ -461,6 +473,10 @@ def run_triage_agent(
             filtered set is empty, returns ``[]`` without building the LLM
             agent (no API key required).  Defaults to ``False`` (re-triage
             every inbox record, preserving the manual CLI behavior).
+        user_email: The user's own email address (typically
+            ``config.username``).  When non-empty, the system prompt
+            instructs the model never to classify self-sent mail (sender ==
+            this address) as ``TO_ANSWER``.  Defaults to ``None``.
 
     Raises:
         TriageError: If the API key is missing or the LLM call fails.
@@ -497,7 +513,7 @@ def run_triage_agent(
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_build_triage_system_prompt(
-            archive_folders, archive_folder_history or None
+            archive_folders, archive_folder_history or None, user_email
         ),
         output_type=PromptedOutput(TriageResult),
     )

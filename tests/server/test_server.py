@@ -4442,6 +4442,41 @@ def test_send_draft_reply_sends_and_requeues_for_triage() -> None:
         os.unlink(db_path)
 
 
+def test_send_draft_refuses_self_reply() -> None:
+    """POST /send-draft where the recipient equals the user's own address →
+    400 and no SMTP send occurs."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_draft_record(
+            db_path,
+            "send-self-mid",
+            sender="USER@example.com",  # same address as username, differing case
+            subject="Note to self",
+            draft_text="Reply body.",
+            imap_uid=5,
+        )
+
+        server, port = _start_test_server_with_mail_config(
+            db_path, _dummy_send_mail_config()
+        )
+        try:
+            with mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls:
+                resp = _post_to_path(
+                    port,
+                    "/send-draft",
+                    {"message_id": "send-self-mid", "reply_mode": "reply"},
+                )
+                assert resp.status == 400
+                smtp_cls.return_value.__enter__.return_value.send.assert_not_called()
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
 def test_send_draft_reply_all_cc_recipients() -> None:
     """POST /send-draft reply_all → cc is original to+cc minus self/sender."""
     from unittest import mock
