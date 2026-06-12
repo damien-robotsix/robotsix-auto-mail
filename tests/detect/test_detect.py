@@ -20,6 +20,7 @@ from robotsix_auto_mail.detect import (
     MailProvider,
     autoconfig_lookup,
     detect_provider,
+    is_microsoft_provider,
     mx_lookup,
     provider_from_mx,
     provider_to_config,
@@ -262,6 +263,73 @@ def test_provider_to_config_explicit_db_path() -> None:
     mp = MailProvider(imap_host="ih", smtp_host="sh")
     cfg = provider_to_config(mp, "user@example.com", db_path="custom/path.db")
     assert cfg.db_path == "custom/path.db"
+
+
+# ---------------------------------------------------------------------------
+# is_microsoft_provider — host classification
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "imap_host,smtp_host",
+    [
+        ("outlook.office365.com", "smtp.office365.com"),
+        ("OUTLOOK.OFFICE365.COM", "SMTP.OFFICE365.COM"),
+        ("eur.olc.protection.office365.com", "smtp.office365.com"),
+        ("imap.example.com", "smtp.office365.com"),
+        ("outlook.com", "smtp-mail.outlook.com"),
+    ],
+)
+def test_is_microsoft_provider_true(imap_host: str, smtp_host: str) -> None:
+    """Microsoft 365 / Outlook.com hosts are recognised, case-insensitively."""
+    mp = MailProvider(imap_host=imap_host, smtp_host=smtp_host)
+    assert is_microsoft_provider(mp) is True
+
+
+@pytest.mark.parametrize(
+    "imap_host,smtp_host",
+    [
+        ("imap.gmail.com", "smtp.gmail.com"),
+        ("imap.fastmail.com", "smtp.fastmail.com"),
+        ("mail.example.com", "mail.example.com"),
+    ],
+)
+def test_is_microsoft_provider_false(imap_host: str, smtp_host: str) -> None:
+    """Non-Microsoft providers are not misclassified."""
+    mp = MailProvider(imap_host=imap_host, smtp_host=smtp_host)
+    assert is_microsoft_provider(mp) is False
+
+
+def test_provider_to_config_microsoft_writes_oauth2_no_password() -> None:
+    """A Microsoft provider yields an OAuth2 config with no password."""
+    mp = MailProvider(imap_host="outlook.office365.com", smtp_host="smtp.office365.com")
+    cfg = provider_to_config(mp, "user@contoso.com", password="ignored")
+    assert cfg.oauth2_provider == "microsoft"
+    assert cfg.oauth2_tenant == "organizations"
+    assert cfg.oauth2_client_id == ""
+    assert cfg.password == ""
+
+
+def test_render_config_microsoft_emits_oauth2_block() -> None:
+    """render_config emits an OAuth2 auth block and no password line."""
+    mp = MailProvider(imap_host="outlook.office365.com", smtp_host="smtp.office365.com")
+    cfg = provider_to_config(mp, "user@contoso.com")
+    output = render_config(cfg)
+    assert "oauth2_provider: microsoft" in output
+    assert "oauth2_tenant: organizations" in output
+    assert "password:" not in output
+
+
+def test_render_config_microsoft_round_trips(tmp_path: Path) -> None:
+    """The Microsoft OAuth2 config parses back via MailConfig.from_yaml()."""
+    mp = MailProvider(imap_host="outlook.office365.com", smtp_host="smtp.office365.com")
+    cfg = provider_to_config(mp, "user@contoso.com")
+    yaml_file = tmp_path / "ms.yaml"
+    yaml_file.write_text(render_config(cfg))
+    parsed = MailConfig.from_yaml(yaml_file)
+    assert parsed.oauth2_provider == "microsoft"
+    assert parsed.oauth2_tenant == "organizations"
+    assert parsed.password == ""
 
 
 # ---------------------------------------------------------------------------

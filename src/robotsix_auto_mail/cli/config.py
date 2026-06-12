@@ -415,6 +415,7 @@ def _verify_and_refine(
     provider_to_config: Callable[..., MailConfig],
     detect_provider: Callable[..., "MailProvider"],
     _detection_error: type[Exception],
+    microsoft: bool = False,
 ) -> int:
     """Verify *config* by connecting, refining on failure.
 
@@ -465,21 +466,40 @@ def _verify_and_refine(
     _write(config)
     sys.stderr.write(f"Config written to {output_path}\n")
 
-    if not config.password:
-        sys.stderr.write(
-            f"No password provided — add it to {output_path} "
-            "(or set MAIL_PASSWORD), then run `probe` to verify.\n"
-        )
-        return 0
-    if no_verify:
-        return 0
+    if microsoft:
+        if no_verify:
+            return 0
+        # Seed the MSAL token cache via device-code consent so the post-write
+        # verification can authenticate over XOAUTH2 — never a password.
+        from robotsix_auto_mail.config import ConfigurationError
+        from robotsix_auto_mail.oauth2 import device_code_login
+
+        sys.stderr.write("\nRunning Microsoft device-code login…\n")
+        try:
+            device_code_login(config)
+        except ConfigurationError as exc:
+            sys.stderr.write(f"Error: {exc}\n")
+            return 1
+        except Exception as exc:  # device-flow error / user abort
+            sys.stderr.write(f"Error: device-code login failed: {exc}\n")
+            return 1
+    else:
+        if not config.password:
+            sys.stderr.write(
+                f"No password provided — add it to {output_path} "
+                "(or set MAIL_PASSWORD), then run `probe` to verify.\n"
+            )
+            return 0
+        if no_verify:
+            return 0
 
     # -- verify + refine loop --
     #   connection/TLS failure → refine host via the LLM (bounded), then a
     #   manual prompt;  auth failure → re-prompt the password.
     llm_budget = 2
-    # only re-prompt the password when it was entered interactively
-    pw_budget = 2 if password_from_args is None else 0
+    # only re-prompt the password when it was entered interactively; Microsoft
+    # accounts never use a password, so re-prompting is always disabled.
+    pw_budget = 0 if microsoft else (2 if password_from_args is None else 0)
     manual_used = False
 
     while True:
@@ -489,6 +509,16 @@ def _verify_and_refine(
             sys.stderr.write("Verification succeeded — settings work.\n")
             return 0
         _report_verify_result(result)
+
+        if microsoft and result.only_auth_problem:
+            sys.stderr.write(
+                "Microsoft XOAUTH2 authentication failed. Run "
+                f"`robotsix-auto-mail auth login --account {account_id}` to "
+                "(re)consent.\nIf your organisation restricts IMAP/SMTP OAuth, "
+                "an Azure AD admin may need to grant the IMAP.AccessAsUser.All "
+                "and SMTP.Send permissions.\n"
+            )
+            break
 
         if result.only_auth_problem and pw_budget > 0:
             pw_budget -= 1

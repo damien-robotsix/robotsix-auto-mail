@@ -1250,6 +1250,97 @@ def test_detect_no_verify_skips_check(tmp_path: Path, no_autoconfig: object) -> 
     mock_verify.assert_not_called()
 
 
+def test_detect_microsoft_runs_device_code_and_verifies(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """A Microsoft address writes an OAuth2 block, runs device-code login, and
+    verifies over XOAUTH2 — never prompting for or writing a password."""
+    output = tmp_path / "cfg.yaml"
+    mock_provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass") as mock_getpass,
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
+        ) as mock_verify,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(["detect", "user@contoso.com", "--output", str(output)])
+
+    assert rc == 0
+    mock_getpass.assert_not_called()
+    mock_login.assert_called_once()
+    mock_verify.assert_called_once()
+    content = output.read_text()
+    assert 'oauth2_provider: "microsoft"' in content
+    assert "password:" not in content
+    assert "Verification succeeded" in capsys.readouterr().err
+
+
+def test_detect_microsoft_stdout_instructs_auth_login(
+    capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--stdout for a Microsoft address emits the OAuth2 YAML and tells the
+    user to run `auth login`, without any interactive flow."""
+    mock_provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass") as mock_getpass,
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(["detect", "user@contoso.com", "--stdout"])
+
+    assert rc == 0
+    mock_getpass.assert_not_called()
+    mock_login.assert_not_called()
+    captured = capsys.readouterr()
+    assert 'oauth2_provider: "microsoft"' in captured.out
+    assert "password:" not in captured.out
+    assert "auth login" in captured.err
+
+
+def test_detect_microsoft_auth_failure_points_at_auth_login(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """A Microsoft auth failure surfaces an actionable message and never
+    re-prompts for a password."""
+    output = tmp_path / "cfg.yaml"
+    mock_provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass") as mock_getpass,
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login"),
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config",
+            return_value=_auth_fail_result(),
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(["detect", "user@contoso.com", "--output", str(output)])
+
+    assert rc == 1
+    mock_getpass.assert_not_called()
+    err = capsys.readouterr().err
+    assert "auth login" in err
+
+
 def test_detect_refines_host_with_llm_on_connection_failure(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
