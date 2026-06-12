@@ -18,7 +18,7 @@ def test_list_folders_against_inprocess_server(imap_server):
         imap_tls_mode="none",
         smtp_host="smtp.example.com",
         username="user@example.com",
-        password="s3cret",
+        password="s3cret",  # pragma: allowlist secret
     )
     with ImapClient(cfg) as client:
         folders = client.list_folders()
