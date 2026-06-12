@@ -733,11 +733,15 @@ class BoardHandler(BaseHTTPRequestHandler):
         """Process POST /batch-archive — archive all TO_ARCHIVE mail from
         IMAP and local DB in a background daemon thread.
 
-        Identical shape to :meth:`_handle_batch_delete` and guarded by the
-        same ``batch_op:state`` watermark, so a delete and an archive
-        cannot run concurrently on the same account.  The redirect is
-        returned immediately; the worker groups UIDs by destination folder
-        and batch-moves each group.
+        Single-flight guarded by the shared ``batch_op:state`` watermark
+        (so delete and archive cannot run concurrently on the same
+        account).  Before handing off to the background worker, a
+        **synchronous stale-UID precheck** verifies that every tracked
+        UID still exists in the selected IMAP folder.  If any UID is
+        stale the handler responds with **409** and nothing is archived
+        — mirroring the single-archive path.  The redirect is returned
+        after the precheck passes; the worker groups UIDs by destination
+        folder and batch-moves each group.
         """
         import threading
 
@@ -757,6 +761,49 @@ class BoardHandler(BaseHTTPRequestHandler):
             set_watermark(conn, "batch_op:state", "running")
         finally:
             conn.close()
+
+        # -- synchronous stale-UID precheck (before redirect) --
+        if self.mail_config is not None:
+            from robotsix_auto_mail.imap import (
+                ImapClient,
+                ImapError,
+                ImapMessageNotFoundError,
+                resolve_uid_with_fallback,
+            )
+
+            conn = init_db(self.db_path, skip_migrations=True)
+            try:
+                records = _collect_records_for_action(conn, "TO_ARCHIVE")
+            finally:
+                conn.close()
+
+            if any(r.imap_uid is not None for r in records):
+                try:
+                    with ImapClient(self.mail_config) as client:
+                        for record in records:
+                            if record.imap_uid is None:
+                                continue
+                            resolve_uid_with_fallback(
+                                client,
+                                record.source_folder,
+                                record.imap_uid,
+                                record.message_id,
+                            )
+                except ImapMessageNotFoundError as exc:
+                    _release_batch_op(self.db_path)
+                    self._send_response(
+                        f"Batch archive aborted — a tracked UID is stale, "
+                        f"so no messages were archived: {exc}",
+                        status=409,
+                    )
+                    return
+                except (ImapError, OSError) as exc:
+                    _release_batch_op(self.db_path)
+                    self._send_response(
+                        f"IMAP precheck failed: {exc}",
+                        status=502,
+                    )
+                    return
 
         threading.Thread(
             target=_run_batch_archive_background,

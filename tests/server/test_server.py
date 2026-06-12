@@ -2439,6 +2439,97 @@ def test_batch_delete_stale_uid_preserves_all_records() -> None:
         os.unlink(db_path)
 
 
+def test_batch_archive_stale_uid_preserves_all_records() -> None:
+    """POST /batch-archive with one stale UID aborts and keeps every record."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "ba-stale-1",
+                    "sender": "a@b.com",
+                    "subject": "Archive me 1",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+                {
+                    "message_id": "ba-stale-2",
+                    "sender": "c@d.com",
+                    "subject": "Archive me 2",
+                    "date": "2025-01-02T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "ba-stale-1", action="TO_ARCHIVE")
+        _seed_triage_decision(db_path, "ba-stale-2", action="TO_ARCHIVE")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (42, "ba-stale-1"),
+            )
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (43, "ba-stale-2"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+                mock_client = mock_cls.return_value.__enter__.return_value
+
+                # Simulate one stale UID: UID 42 no longer exists in INBOX,
+                # and the Message-ID fallback also fails.
+                def _search_uids(criteria: str) -> list[int]:
+                    if "UID 42" in criteria:
+                        return []
+                    if "UID 43" in criteria:
+                        return [43]
+                    # Message-ID fallback: stale message not findable.
+                    if "ba-stale-1" in criteria:
+                        return []
+                    return [42, 43]  # default: both exist
+
+                mock_client.search_uids.side_effect = _search_uids
+
+                status, body = _post_form(port, {}, path="/batch-archive")
+
+            assert status == 409, f"Expected 409, got {status}: {body}"
+            assert "stale" in body.lower()
+        finally:
+            server.shutdown()
+
+        # No local DB deletions — every TO_ARCHIVE record preserved.
+        from robotsix_auto_mail.db import get_record_by_message_id
+
+        conn = init_db(db_path)
+        try:
+            assert get_record_by_message_id(conn, "ba-stale-1") is not None
+            assert get_record_by_message_id(conn, "ba-stale-2") is not None
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
 def _seed_archive_structure(
     db_path: str, folders: list[str], delimiter: str = "/"
 ) -> None:

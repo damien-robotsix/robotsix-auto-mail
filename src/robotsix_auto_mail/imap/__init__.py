@@ -614,6 +614,11 @@ class ImapClient(_ProtocolClient):
         therefore costs at most six round-trip pairs instead of one per
         message.  An empty list is a no-op (no IMAP calls).
 
+        Stale UIDs (those no longer present in the selected folder) are
+        silently filtered out via a ``UID SEARCH`` pre-verification before
+        the destructive ``UID STORE`` is issued.  A chunk where every UID
+        is stale is skipped entirely.
+
         Raises :class:`ImapError` if not connected or the server returns
         a non-OK status for any ``UID STORE`` or ``EXPUNGE``.
         """
@@ -626,11 +631,24 @@ class ImapClient(_ProtocolClient):
             chunk = uids[start : start + _BATCH_UID_CHUNK]
             uid_set = ",".join(str(uid) for uid in chunk)
 
-            status, _ = self._imap.uid("STORE", uid_set, "+FLAGS", "(\\Deleted)")
+            # Pre-verify which UIDs actually exist in the selected folder.
+            # A STORE matching zero UIDs is a conformant OK no-op
+            # (RFC 3501), so guard against stale UIDs before issuing any
+            # destructive command.
+            existing = set(self.search_uids(f"UID {uid_set}"))
+            valid_uids = [uid for uid in chunk if uid in existing]
+            if not valid_uids:
+                continue
+
+            valid_set = ",".join(str(uid) for uid in valid_uids)
+
+            status, _ = self._imap.uid(
+                "STORE", valid_set, "+FLAGS", "(\\Deleted)"
+            )
             if status != "OK":
                 raise ImapError(
-                    f"UID STORE +FLAGS (\\Deleted) for UID set {uid_set!r} "
-                    f"failed: {status}"
+                    f"UID STORE +FLAGS (\\Deleted) for UID set "
+                    f"{valid_set!r} failed: {status}"
                 )
 
             status, _ = self._imap.expunge()
@@ -645,6 +663,12 @@ class ImapClient(_ProtocolClient):
         followed by a batched :meth:`delete_messages` of that same set.
         An empty list is a no-op (no IMAP calls).
 
+        Stale UIDs are silently filtered out via a ``UID SEARCH``
+        pre-verification before ``UID COPY`` is issued.  After COPY,
+        the ``COPYUID`` response code (RFC 4315) is inspected — if it
+        indicates zero source messages were copied, deletion of the
+        originals is skipped.
+
         Raises :class:`ImapError` if not connected or the server returns
         a non-OK status for any ``UID COPY`` or the subsequent deletion.
         """
@@ -657,13 +681,29 @@ class ImapClient(_ProtocolClient):
             chunk = uids[start : start + _BATCH_UID_CHUNK]
             uid_set = ",".join(str(uid) for uid in chunk)
 
-            status, _ = self._imap.uid("COPY", uid_set, dest_folder)
+            # Pre-verify which UIDs actually exist.
+            existing = set(self.search_uids(f"UID {uid_set}"))
+            valid_uids = [uid for uid in chunk if uid in existing]
+            if not valid_uids:
+                continue
+
+            valid_set = ",".join(str(uid) for uid in valid_uids)
+
+            status, data = self._imap.uid("COPY", valid_set, dest_folder)
             if status != "OK":
                 raise ImapError(
-                    f"UID COPY of {uid_set!r} to {dest_folder!r} failed: {status}"
+                    f"UID COPY of {valid_set!r} to {dest_folder!r} "
+                    f"failed: {status}"
                 )
 
-            self.delete_messages(chunk)
+            # Defensive hardening: if the server advertises UIDPLUS it
+            # returns a ``COPYUID`` response code.  When present and its
+            # source-UID set is empty the COPY affected zero messages —
+            # skip deletion of originals.
+            if self._copyuid_indicates_empty_source(data):
+                continue
+
+            self.delete_messages(valid_uids)
 
     @staticmethod
     def _copyuid_indicates_empty_source(data: Any) -> bool:
