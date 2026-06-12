@@ -4323,7 +4323,8 @@ def test_handler_board_has_auto_refresh_js() -> None:
     try:
         resp = urlopen(f"http://127.0.0.1:{port}/board")
         body = resp.read().decode("utf-8")
-        assert "setInterval(refreshBoard, 30000)" in body
+        # The refresh logic lives in the external board-auto-mail.js overlay.
+        assert "/static/board-auto-mail.js" in body
     finally:
         server.shutdown()
 
@@ -4331,7 +4332,9 @@ def test_handler_board_has_auto_refresh_js() -> None:
 def test_handler_board_refresh_preserves_scroll() -> None:
     server, port = _start_test_server(":memory:")
     try:
-        resp = urlopen(f"http://127.0.0.1:{port}/board")
+        # The scroll-preservation logic lives in board-auto-mail.js.
+        # Verify the overlay is served and contains the expected code.
+        resp = urlopen(f"http://127.0.0.1:{port}/static/board-auto-mail.js")
         body = resp.read().decode("utf-8")
         # refreshBoard saves the scroll offsets before replacing innerHTML.
         assert "window.pageXOffset" in body
@@ -4356,8 +4359,8 @@ def test_handler_board_no_manual_controls() -> None:
         assert 'id="refresh-btn"' not in body
         assert "Run triage" not in body
         assert 'action="/run-triage"' not in body
-        # The informational auto-refresh poll remains.
-        assert "setInterval(refreshBoard, 30000)" in body
+        # The informational auto-refresh poll lives in the overlay now.
+        assert "/static/board-auto-mail.js" in body
         # The triage-control wrapper stays as the AJAX re-render target.
         assert 'id="triage-control"' in body
     finally:
@@ -4527,11 +4530,11 @@ def test_handler_board_refresh_board_accepts_force() -> None:
     """/board defines refreshBoard(force) with a force-guarded early return."""
     server, port = _start_test_server(":memory:")
     try:
-        resp = urlopen(f"http://127.0.0.1:{port}/board")
+        resp = urlopen(f"http://127.0.0.1:{port}/static/board-auto-mail.js")
         body = resp.read().decode("utf-8")
         assert "function refreshBoard(force)" in body
-        assert "if (!force && document.getElementById('side-panel')" in body
-        assert ".classList.contains('open')) return;" in body
+        assert "if (!force && sidePanel" in body
+        assert '.classList.contains("open")) return;' in body
         # Auto-refresh behaviour preserved.
         assert "setInterval(refreshBoard, 30000)" in body
     finally:
@@ -5670,8 +5673,10 @@ def test_account_threaded_into_js_urls() -> None:
         server, port = _start_test_server_with_accounts(accounts, "A")
         try:
             _s, body, _h = _get(f"http://127.0.0.1:{port}/board?account=B")
-            assert "?embed=1&account=B" in body
-            assert "/board-content?account=B" in body
+            # The account query strings are now carried in the #board-config
+            # JSON element, consumed by board-auto-mail.js at runtime.
+            assert '"account_qs": "&account=B"' in body
+            assert '"fetch_qs": "?account=B"' in body
         finally:
             server.shutdown()
     finally:
@@ -5760,9 +5765,11 @@ def test_build_board_html_legacy_no_accounts_kwarg() -> None:
         )
         body = _build_board_html(db_a)
         assert '<select id="account-picker"' not in body
-        assert "?embed=1';" in body
-        assert "fetch('/board-content')" in body
-        assert "account=" not in body
+        # The board-auto-mail.js overlay handles URL construction; the
+        # #board-config carries the query-string fragments.
+        assert '"fetch_qs": ""' in body
+        assert '"account_qs": ""' in body
+        assert '"data_account_js": false' in body
     finally:
         os.unlink(db_a)
 

@@ -18,10 +18,11 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._constants import (
-    GLOBAL_VIEW_ACCOUNT_ID,
     _STATIC_AUTOMAIL_BOARD_CSS,
+    _STATIC_BOARD_AUTOMAIL_JS,
     _STATIC_BOARD_CSS,
     _STATIC_BOARD_JS,
+    GLOBAL_VIEW_ACCOUNT_ID,
     _is_safe_redirect_path,
     _parse_archive_structure,
 )
@@ -381,6 +382,11 @@ class BoardHandler(BaseHTTPRequestHandler):
             self._send_response(
                 _STATIC_AUTOMAIL_BOARD_CSS,
                 content_type="text/css; charset=utf-8",
+            )
+        elif self.path == "/static/board-auto-mail.js":
+            self._send_response(
+                _STATIC_BOARD_AUTOMAIL_JS,
+                content_type="text/javascript; charset=utf-8",
             )
         else:
             self._not_found()

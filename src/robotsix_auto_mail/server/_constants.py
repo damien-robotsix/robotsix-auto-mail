@@ -27,6 +27,13 @@ _STATIC_BOARD_CSS = (
 _STATIC_AUTOMAIL_BOARD_CSS = (
     importlib.resources.files("robotsix_auto_mail.server") / "static" / "board.css"
 ).read_text()
+# Auto-mail's app-layer JS overlay (board.js composer).  Served at
+# /static/board-auto-mail.js so it sits alongside the library's board.js.
+_STATIC_BOARD_AUTOMAIL_JS = (
+    importlib.resources.files("robotsix_auto_mail.server")
+    / "static"
+    / "board-auto-mail.js"
+).read_text()
 
 # -- Constants --------------------------------------------------------------
 _BOARD_COLUMNS = TRIAGE_ACTION_ORDER
