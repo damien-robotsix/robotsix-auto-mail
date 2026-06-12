@@ -58,6 +58,9 @@ select = ["E", "F", "I", "S", "B", "N", "RUF"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: tests that require a real or emulated network service (IMAP, SMTP, HTTP)",
+]
 
 [tool.coverage.run]
 source = ["src/robotsix_auto_mail"]
