@@ -88,7 +88,7 @@ returns a 409 Conflict error** instead of silently deleting the local record.
 The error message clearly states:
 
 ```
-Message {message-id} is no longer in INBOX — the tracked UID is stale, 
+Message {message-id} is no longer in INBOX — the tracked UID is stale,
 so it was not {deleted|archived} and the board record was kept.
 ```
 
