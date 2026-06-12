@@ -6288,6 +6288,237 @@ def test_to_archive_column_renders_archive_all_button() -> None:
         os.unlink(db_path)
 
 
+# ===========================================================================
+# _is_safe_redirect_path unit tests
+# ===========================================================================
+
+
+def test_is_safe_redirect_path_simple_root() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert _is_safe_redirect_path("/")
+
+
+def test_is_safe_redirect_path_with_path_segments() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert _is_safe_redirect_path("/path/to/page")
+
+
+def test_is_safe_redirect_path_with_query_and_fragment() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert _is_safe_redirect_path("/path?q=1#frag")
+
+
+def test_is_safe_redirect_path_rejects_protocol_relative() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert not _is_safe_redirect_path("//evil.com")
+
+
+def test_is_safe_redirect_path_rejects_backslash_trick() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert not _is_safe_redirect_path("/\\evil")
+
+
+def test_is_safe_redirect_path_rejects_empty_string() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert not _is_safe_redirect_path("")
+
+
+def test_is_safe_redirect_path_rejects_no_leading_slash() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert not _is_safe_redirect_path("board")
+    assert not _is_safe_redirect_path("../etc")
+
+
+def test_is_safe_redirect_path_rejects_absolute_url() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert not _is_safe_redirect_path("http://evil.com")
+    assert not _is_safe_redirect_path("https://evil.com/path")
+
+
+def test_is_safe_redirect_path_rejects_crlf_injection() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert not _is_safe_redirect_path("/board\r\nSet-Cookie: pwned=1")
+    assert not _is_safe_redirect_path("/board\nX-Injected: true")
+    assert not _is_safe_redirect_path("/board\rX-Injected: true")
+
+
+def test_is_safe_redirect_path_rejects_other_control_characters() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert not _is_safe_redirect_path("/path\x00")
+    assert not _is_safe_redirect_path("/path\x1f")
+    assert not _is_safe_redirect_path("/path\x7f")  # DEL
+
+
+def test_is_safe_redirect_path_rejects_null_byte() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert not _is_safe_redirect_path("/safe\x00hidden")
+
+
+def test_is_safe_redirect_path_accepts_typical_valid_paths() -> None:
+    from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+
+    assert _is_safe_redirect_path("/board")
+    assert _is_safe_redirect_path("/email/some-id")
+    assert _is_safe_redirect_path("/email/some-id?embed=1")
+
+
+# ===========================================================================
+# _parse_archive_structure unit tests
+# ===========================================================================
+
+
+def test_parse_archive_structure_none_input_returns_defaults() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    folders, delim, root = _parse_archive_structure(None, "my-archive")
+    assert folders == set()
+    assert delim == "/"
+    assert root == "my-archive"
+
+
+def test_parse_archive_structure_empty_string_falls_back() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    folders, delim, root = _parse_archive_structure("", "my-archive")
+    assert folders == set()
+    assert delim == "/"
+    assert root == "my-archive"
+
+
+def test_parse_archive_structure_malformed_json_falls_back() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    folders, delim, root = _parse_archive_structure(
+        "not json{", "my-archive"
+    )
+    assert folders == set()
+    assert delim == "/"
+    assert root == "my-archive"
+
+
+def test_parse_archive_structure_old_format_bare_list() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    raw = '["a", "b", "c"]'
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == {"a", "b", "c"}
+    assert delim == "/"
+    assert root == "a"
+
+
+def test_parse_archive_structure_old_format_single_element_list() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    raw = '["only"]'
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == {"only"}
+    assert delim == "/"
+    assert root == "only"
+
+
+def test_parse_archive_structure_old_format_empty_list() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    raw = "[]"
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == set()
+    assert delim == "/"
+    assert root == "my-archive"
+
+
+def test_parse_archive_structure_new_format_with_delimiter_and_folders() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    raw = '{"delimiter": ".", "folders": ["x", "y", "z"]}'
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == {"x", "y", "z"}
+    assert delim == "."
+    assert root == "x"
+
+
+def test_parse_archive_structure_new_format_default_delimiter() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    raw = '{"folders": ["p", "q"]}'
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == {"p", "q"}
+    assert delim == "/"
+    assert root == "p"
+
+
+def test_parse_archive_structure_new_format_empty_folders() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    raw = '{"delimiter": "/", "folders": []}'
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == set()
+    assert delim == "/"
+    assert root == "my-archive"
+
+
+def test_parse_archive_structure_new_format_single_folder() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    raw = '{"delimiter": "/", "folders": ["single"]}'
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == {"single"}
+    assert delim == "/"
+    assert root == "single"
+
+
+def test_parse_archive_structure_new_format_missing_folders_key_falls_back() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    raw = '{"delimiter": "/"}'
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == set()
+    assert delim == "/"
+    assert root == "my-archive"
+
+
+def test_parse_archive_structure_non_list_non_dict_falls_back() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    assert _parse_archive_structure("42", "my-archive") == (set(), "/", "my-archive")
+    assert _parse_archive_structure('"a string"', "my-archive") == (
+        set(),
+        "/",
+        "my-archive",
+    )
+
+
+def test_parse_archive_structure_extra_keys_in_new_format_ignored() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    raw = '{"delimiter": ".", "folders": ["a", "b"], "extra": "ignored"}'
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == {"a", "b"}
+    assert delim == "."
+    assert root == "a"
+
+
+def test_parse_archive_structure_typeerror_falls_back() -> None:
+    from robotsix_auto_mail.server._constants import _parse_archive_structure
+
+    # JSON with null for folders triggers TypeError on dict iteration
+    raw = '{"folders": null}'
+    folders, delim, root = _parse_archive_structure(raw, "my-archive")
+    assert folders == set()
+    assert delim == "/"
+    assert root == "my-archive"
+
+
 def test_batch_archive_worker_groups_uids_by_destination(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
