@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import dataclasses
 import imaplib
+import re
 import shlex
 import ssl
 from typing import Any
@@ -449,18 +450,43 @@ class ImapClient(_ProtocolClient):
         # alternating (header_bytes, literal_bytes) pairs.  We walk the
         # list and, for each pair, extract the UID from the header line
         # and pair it with the literal body.
+        #
+        # Two server shapes are handled:
+        #  * Header-first (OVH, most servers): the UID is embedded in the
+        #    tuple header, e.g. ``(b"1 (UID 42 BODY[] {5}", body)``.
+        #  * Trailing-UID (Exchange / Office365): the header carries no
+        #    UID and the UID arrives as a separate bare-bytes item
+        #    immediately after the tuple, e.g.
+        #    ``[(b"1 (BODY[] {5}", body), b" UID 42)"]``.
+        pending_body: bytes | None = None
         for item in data:
-            if not isinstance(item, tuple) or len(item) != 2:
-                continue
-            header, body = item
-            if not isinstance(header, bytes) or not isinstance(body, bytes):
-                continue
-            # Parse UID from the header line, e.g.:
-            # b'1 (UID 42)'
-            # b'1 (UID 42 BODY[] {5}'
-            uid = self._parse_uid_from_fetch_header(header)
-            if uid is not None:
-                result.append((uid, body))
+            if isinstance(item, tuple) and len(item) == 2:
+                header, body = item
+                if not isinstance(header, bytes) or not isinstance(body, bytes):
+                    pending_body = None
+                    continue
+                # Parse UID from the header line, e.g.:
+                # b'1 (UID 42)'
+                # b'1 (UID 42 BODY[] {5}'
+                uid = self._parse_uid_from_fetch_header(header)
+                if uid is not None:
+                    result.append((uid, body))
+                    pending_body = None
+                else:
+                    # No UID in the header — Exchange/Office365 places it
+                    # in the bare-bytes item that follows.
+                    pending_body = body
+            elif isinstance(item, bytes) and pending_body is not None:
+                # Trailing bare-bytes UID carrier for the preceding
+                # header-less tuple, e.g. b" UID 10780)".
+                uid = self._parse_uid_from_fetch_trailer(item)
+                if uid is not None:
+                    result.append((uid, pending_body))
+                pending_body = None
+            else:
+                # Stray bare-bytes continuation (e.g. b")") with no
+                # pending header-less body — ignore, as before.
+                pending_body = None
 
         return result
 
@@ -532,5 +558,25 @@ class ImapClient(_ProtocolClient):
                 return None
         try:
             return int(text[start:end].rstrip(")"))
+        except (ValueError, TypeError):
+            return None
+
+    @staticmethod
+    def _parse_uid_from_fetch_trailer(item: bytes) -> int | None:
+        """Extract the UID from a trailing bare-bytes FETCH item.
+
+        Exchange / Office365 returns the UID after the body literal as a
+        separate bare-``bytes`` item, e.g. ``b" UID 10780)"``.  Tolerates
+        a leading space and a trailing ``)``.
+        """
+        try:
+            text = item.decode("utf-8", errors="replace")
+        except AttributeError:
+            return None
+        match = re.search(r"UID\s+(\d+)", text)
+        if match is None:
+            return None
+        try:
+            return int(match.group(1))
         except (ValueError, TypeError):
             return None

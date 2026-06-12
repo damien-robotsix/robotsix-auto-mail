@@ -920,6 +920,44 @@ def test_fetch_messages_skips_non_tuple_items(cfg: MailConfig) -> None:
     assert result == [(1, b"body1"), (2, b"body2")]
 
 
+def test_fetch_messages_trailing_uid_exchange_shape(cfg: MailConfig) -> None:
+    """Exchange/Office365 returns the UID as a trailing bare-bytes item."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = (
+        "OK",
+        [
+            (b"1 (BODY[] {9}", b"msg1-body"),
+            b" UID 10780)",
+            (b"2 (BODY[] {9}", b"msg2-body"),
+            b" UID 10781)",
+        ],
+    )
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.fetch_messages([10780, 10781])
+
+    assert result == [(10780, b"msg1-body"), (10781, b"msg2-body")]
+
+
+def test_fetch_messages_standalone_bare_bytes_ignored(cfg: MailConfig) -> None:
+    """A bare-bytes item with no preceding header-less tuple is ignored."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = (
+        "OK",
+        [
+            (b"1 (UID 1 BODY[] {5}", b"body1"),
+            b")",  # standalone continuation — not a UID carrier
+        ],
+    )
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.fetch_messages([1])
+
+    assert result == [(1, b"body1")]
+
+
 def test_fetch_messages_header_with_body_size(cfg: MailConfig) -> None:
     """fetch_messages parses UID from headers containing BODY[] size."""
     mock_ssl = _make_mock_imap_ssl()
