@@ -38,14 +38,15 @@ COPY src/ src/
 #   - `uv export --frozen` reads uv.lock as-is and emits pinned git URLs
 #     (`...?rev=main#<sha>`); --no-emit-project drops the local project so
 #     it is not installed via the requirements file; --no-hashes avoids the
-#     hash/VCS conflict (uv cannot hash a git checkout); --extra llm keeps
-#     the previous `.[llm]` selection.
+#     hash/VCS conflict (uv cannot hash a git checkout); --extra llm and
+#     --extra microsoft select both the `.[llm]` and `.[microsoft]`
+#     extras (the latter pulls in msal for Microsoft OAuth2).
 #   - the project itself is then installed with --no-deps so its deps are
 #     NOT re-resolved.
 # --system installs into the image's system Python (the same
 # /usr/local/lib/python3.14/site-packages/ path the production
 # stage copies from), matching the previous `pip install` layout.
-RUN uv export --frozen --no-emit-project --no-hashes --extra llm -o /tmp/requirements.txt && \
+RUN uv export --frozen --no-emit-project --no-hashes --extra llm --extra microsoft -o /tmp/requirements.txt && \
     uv pip install --system --no-cache-dir -r /tmp/requirements.txt && \
     uv pip install --system --no-cache-dir --no-deps .
 
