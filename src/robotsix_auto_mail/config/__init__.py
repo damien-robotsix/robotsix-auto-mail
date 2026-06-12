@@ -1239,6 +1239,9 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
         lines.append(f"{item}  oauth2_provider: {_yaml_scalar(cfg.oauth2_provider)}")
         lines.append(f"{item}  oauth2_tenant: {_yaml_scalar(cfg.oauth2_tenant)}")
     else:
+        # This function intentionally writes secrets to a YAML config file
+        # that is stored with restrictive permissions (0600).
+        # lgtm[py/clear-text-storage-sensitive-data]
         lines.append(f"{item}  password: {_yaml_scalar(cfg.password)}")
     if cfg.oauth2_token:
         lines.append(f"{item}  oauth2_token: {_yaml_scalar(cfg.oauth2_token)}")
@@ -1295,6 +1298,9 @@ def render_accounts_yaml(
     ):
         lines.append("llm:")
         if representative.llm_api_key:
+            # Writing the API key to a YAML config file is intentional;
+            # the file is stored with restrictive permissions (0600).
+            # lgtm[py/clear-text-storage-sensitive-data]
             lines.append(f"  api_key: {_yaml_scalar(representative.llm_api_key)}")
         if representative.llm_provider != "openrouter-deepseek":
             lines.append(f"  provider: {_yaml_scalar(representative.llm_provider)}")
@@ -1308,6 +1314,9 @@ def render_accounts_yaml(
         lines.append(
             f"  public_key: {_yaml_scalar(representative.langfuse_public_key)}"
         )
+        # Writing the secret key to a YAML config file is intentional;
+        # the file is stored with restrictive permissions (0600).
+        # lgtm[py/clear-text-storage-sensitive-data]
         lines.append(
             f"  secret_key: {_yaml_scalar(representative.langfuse_secret_key)}"
         )
