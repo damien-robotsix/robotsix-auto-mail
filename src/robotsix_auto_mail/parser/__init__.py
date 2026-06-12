@@ -62,6 +62,7 @@ def parse_message(
     raw_bytes: bytes,
     *,
     imap_uid: int | None = None,
+    source_folder: str = "INBOX",
 ) -> MailRecord:
     """Parse raw MIME bytes into a ``MailRecord``.
 
@@ -73,6 +74,9 @@ def parse_message(
         Optional IMAP UID supplied by the caller (e.g. from
         ``fetch_new_messages``).  Passed through to
         ``MailRecord.imap_uid``.
+    source_folder:
+        The IMAP folder the message was fetched from (defaults to
+        ``"INBOX"``).  Passed through to ``MailRecord.source_folder``.
 
     Returns
     -------
@@ -158,6 +162,7 @@ def parse_message(
         subject=subject,
         date=date_str,
         imap_uid=imap_uid,
+        source_folder=source_folder,
         recipients_json=recipients_json,
         body_plain=body_plain,
         body_html=body_html,

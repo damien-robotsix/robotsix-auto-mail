@@ -192,10 +192,15 @@ def test_ingest_partial_parse_failure(
     # Let the real parse_message handle good messages; only fail on UID 3.
     from robotsix_auto_mail.parser import parse_message as real_parse
 
-    def side_effect(raw_bytes: bytes, *, imap_uid: int | None = None) -> MailRecord:
+    def side_effect(
+        raw_bytes: bytes,
+        *,
+        imap_uid: int | None = None,
+        source_folder: str = "INBOX",
+    ) -> MailRecord:
         if raw_bytes == r3:
             raise ParseError("failed to parse raw bytes as MIME message")
-        return real_parse(raw_bytes, imap_uid=imap_uid)
+        return real_parse(raw_bytes, imap_uid=imap_uid, source_folder=source_folder)
 
     mock_parse.side_effect = side_effect
 
@@ -499,10 +504,15 @@ def test_ingest_mixed_store_skip_error(
 
     from robotsix_auto_mail.parser import parse_message as real_parse
 
-    def side_effect(raw_bytes: bytes, *, imap_uid: int | None = None) -> MailRecord:
+    def side_effect(
+        raw_bytes: bytes,
+        *,
+        imap_uid: int | None = None,
+        source_folder: str = "INBOX",
+    ) -> MailRecord:
         if raw_bytes == r12:
             raise ParseError("failed to parse raw bytes as MIME message")
-        return real_parse(raw_bytes, imap_uid=imap_uid)
+        return real_parse(raw_bytes, imap_uid=imap_uid, source_folder=source_folder)
 
     mock_parse.side_effect = side_effect
 
@@ -819,10 +829,15 @@ def test_ingest_dry_run_parses_messages(
     # Let the real parser handle r1; fail on r2.
     from robotsix_auto_mail.parser import parse_message as real_parse
 
-    def side_effect(raw_bytes: bytes, *, imap_uid: int | None = None) -> MailRecord:
+    def side_effect(
+        raw_bytes: bytes,
+        *,
+        imap_uid: int | None = None,
+        source_folder: str = "INBOX",
+    ) -> MailRecord:
         if raw_bytes == r2:
             raise ParseError("failed to parse raw bytes as MIME message")
-        return real_parse(raw_bytes, imap_uid=imap_uid)
+        return real_parse(raw_bytes, imap_uid=imap_uid, source_folder=source_folder)
 
     mock_parse.side_effect = side_effect
 
@@ -1187,6 +1202,45 @@ def test_ingest_folder_empty_folder(
     assert result.total_fetched == 0
     assert result.stored == 0
     imap.fetch_messages.assert_not_called()
+
+
+def test_ingest_folder_dedup_updates_source_folder_and_uid(
+    conn: sqlite3.Connection,
+    cfg: MailConfig,
+) -> None:
+    """Re-ingesting a known message_id from a named folder updates the
+    existing record's source_folder and imap_uid, making it actionable."""
+    from robotsix_auto_mail.db import get_record_by_message_id, insert_record
+
+    # Pre-seed a record with the default INBOX source and a stale UID.
+    existing = MailRecord(
+        message_id="<legacy@x>",
+        sender="x@x.com",
+        subject="Legacy",
+        date="2025-01-01T00:00:00",
+        imap_uid=1,
+        source_folder="INBOX",
+    )
+    insert_record(conn, existing)
+
+    # Now re-ingest the same message from a legacy folder.
+    imap = _mock_imap_client()
+    imap.search_uids.return_value = [99]
+    imap.fetch_messages.return_value = [
+        (99, _make_raw_message(message_id="<legacy@x>")),
+    ]
+
+    result = ingest_folder(conn, imap, cfg, "INBOX.archive")
+
+    # Duplicate → skipped count is 1, stored is 0.
+    assert result.stored == 0
+    assert result.skipped == 1
+
+    # The existing record should now have the new folder and UID.
+    updated = get_record_by_message_id(conn, "<legacy@x>")
+    assert updated is not None
+    assert updated.source_folder == "INBOX.archive"
+    assert updated.imap_uid == 99
 
 
 # ---------------------------------------------------------------------------
