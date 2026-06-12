@@ -1082,14 +1082,25 @@ def test_delete_message_expunge_fails(cfg: MailConfig) -> None:
 def test_delete_messages_single_chunk(cfg: MailConfig) -> None:
     """delete_messages issues one STORE over the UID set + one EXPUNGE."""
     mock_ssl = _make_mock_imap_ssl()
-    mock_ssl.uid.return_value = ("OK", [b""])
+
+    def _uid_side_effect(*args: object, **kwargs: object) -> tuple[str, list[bytes]]:
+        if args[0] == "SEARCH":
+            return ("OK", [b"1 2 3"])
+        return ("OK", [b""])
+
+    mock_ssl.uid.side_effect = _uid_side_effect
     mock_ssl.expunge.return_value = ("OK", [b""])
 
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
         with ImapClient(cfg) as client:
             client.delete_messages([1, 2, 3])
 
-    mock_ssl.uid.assert_called_once_with("STORE", "1,2,3", "+FLAGS", "(\\Deleted)")
+    store_calls = [
+        c for c in mock_ssl.uid.call_args_list if c.args[0] == "STORE"
+    ]
+    assert store_calls == [
+        mock.call("STORE", "1,2,3", "+FLAGS", "(\\Deleted)")
+    ]
     mock_ssl.expunge.assert_called_once()
 
 
@@ -1108,7 +1119,15 @@ def test_delete_messages_empty_is_noop(cfg: MailConfig) -> None:
 def test_delete_messages_chunks_in_hundreds(cfg: MailConfig) -> None:
     """delete_messages issues one STORE + one EXPUNGE per <=100-UID chunk."""
     mock_ssl = _make_mock_imap_ssl()
-    mock_ssl.uid.return_value = ("OK", [b""])
+
+    def _uid_side_effect(*args: object, **kwargs: object) -> tuple[str, list[bytes]]:
+        if args[0] == "SEARCH":
+            # Return all searched UIDs as present (space-separated).
+            uid_str = str(args[1]).replace("UID ", "").replace(",", " ")
+            return ("OK", [uid_str.encode()])
+        return ("OK", [b""])
+
+    mock_ssl.uid.side_effect = _uid_side_effect
     mock_ssl.expunge.return_value = ("OK", [b""])
 
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
@@ -1125,7 +1144,13 @@ def test_delete_messages_chunks_in_hundreds(cfg: MailConfig) -> None:
 def test_delete_messages_store_fails_raises(cfg: MailConfig) -> None:
     """delete_messages raises ImapError when UID STORE returns non-OK."""
     mock_ssl = _make_mock_imap_ssl()
-    mock_ssl.uid.return_value = ("NO", [b"err"])
+
+    def _uid_side_effect(*args: object, **kwargs: object) -> tuple[str, list[bytes]]:
+        if args[0] == "SEARCH":
+            return ("OK", [b"7 8"])  # both UIDs exist, so STORE is attempted
+        return ("NO", [b"err"])
+
+    mock_ssl.uid.side_effect = _uid_side_effect
 
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
         with ImapClient(cfg) as client:
@@ -1138,7 +1163,13 @@ def test_delete_messages_store_fails_raises(cfg: MailConfig) -> None:
 def test_move_messages_copies_then_deletes(cfg: MailConfig) -> None:
     """move_messages issues one UID COPY over the set then the batched delete."""
     mock_ssl = _make_mock_imap_ssl()
-    mock_ssl.uid.return_value = ("OK", [b""])
+
+    def _uid_side_effect(*args: object, **kwargs: object) -> tuple[str, list[bytes]]:
+        if args[0] == "SEARCH":
+            return ("OK", [b"3 5 9"])
+        return ("OK", [b""])
+
+    mock_ssl.uid.side_effect = _uid_side_effect
     mock_ssl.expunge.return_value = ("OK", [b""])
 
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
