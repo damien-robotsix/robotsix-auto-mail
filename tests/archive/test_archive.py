@@ -10,11 +10,13 @@ from unittest import mock
 import pytest
 from robotsix_llmio.core import Tier
 
+from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.archive import (
     _ARCHIVE_WATERMARK_KEY,
     ARCHIVE_ROOT,
     ArchiveError,
     ArchiveStructure,
+    _build_archive_system_prompt,
     determine_archive_structure,
     setup_archive,
 )
@@ -418,3 +420,37 @@ def test_setup_archive_namespace_llm_sees_original_root() -> None:
         assert "INBOX.my-archive" not in prompt
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Prompt content — taxonomy guidance
+# ---------------------------------------------------------------------------
+
+
+def test_archive_structure_prompt_includes_taxonomy_guidance() -> None:
+    """The structure-proposal prompt includes the shared taxonomy guidance."""
+    prompt = _build_archive_system_prompt("robotsix-mail-archive")
+    lower = prompt.lower()
+    assert "purpose" in lower
+    assert "topic" in lower
+    assert "do not use bare" in lower
+    assert "domain" in lower
+    assert "sender" in lower
+    assert "at most 2 levels" in prompt
+
+
+def test_archive_structure_prompt_legacy_folders_guidance() -> None:
+    """The structure prompt warns against propagating legacy domain/sender patterns."""
+    prompt = _build_archive_system_prompt("robotsix-mail-archive")
+    assert "legacy" in prompt.lower()
+    assert "re-home" in prompt.lower() or "do not propagate" in prompt.lower()
+
+
+def test_archive_and_triage_prompts_share_taxonomy() -> None:
+    """Both prompts embed the exact same _ARCHIVE_TAXONOMY_GUIDANCE string."""
+    from robotsix_auto_mail.triage import _build_triage_system_prompt
+
+    archive_prompt = _build_archive_system_prompt("root")
+    triage_prompt = _build_triage_system_prompt(archive_folders=["Newsletters/LWN"])
+    assert _ARCHIVE_TAXONOMY_GUIDANCE in archive_prompt
+    assert _ARCHIVE_TAXONOMY_GUIDANCE in triage_prompt
