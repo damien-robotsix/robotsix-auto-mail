@@ -3829,6 +3829,24 @@ def test_handler_board_has_auto_refresh_js() -> None:
         server.shutdown()
 
 
+def test_handler_board_refresh_preserves_scroll() -> None:
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/board")
+        body = resp.read().decode("utf-8")
+        # refreshBoard saves the scroll offsets before replacing innerHTML.
+        assert "window.pageXOffset" in body
+        assert "window.pageYOffset" in body
+        assert "prevBoard.scrollLeft" in body
+        assert "prevBoard.scrollTop" in body
+        # ...and restores them after the successful refresh.
+        assert "window.scrollTo(savedX, savedY)" in body
+        assert "newBoard.scrollLeft = savedBoardLeft" in body
+        assert "newBoard.scrollTop = savedBoardTop" in body
+    finally:
+        server.shutdown()
+
+
 def test_handler_board_no_manual_controls() -> None:
     server, port = _start_test_server(":memory:")
     try:
