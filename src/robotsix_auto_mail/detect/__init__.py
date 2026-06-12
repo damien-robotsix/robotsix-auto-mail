@@ -448,6 +448,7 @@ def detect_provider(
     *,
     tier: Tier = Tier.CHEAP,
     api_key: str | None = None,
+    provider: str | None = None,
     feedback: str | None = None,
     mx_hosts: list[str] | None = None,
 ) -> MailProvider:
@@ -460,6 +461,8 @@ def detect_provider(
             :func:`robotsix_llmio.core.get_provider`).
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
+        provider: LLM backend name (e.g. ``openrouter-deepseek``).  Defaults
+            to ``LLM_PROVIDER`` env var, then ``load_llm_provider()``.
         feedback: Optional description of a previous failed attempt (which
             host was tried and how it failed).  When provided, it is added
             to the prompt so the model can propose a different, non-obvious
@@ -483,11 +486,18 @@ def detect_provider(
             "variable or add an `llm.api_key` entry to your config file"
         )
 
+    # -- resolve provider --
+    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
+    if not resolved_provider:
+        from robotsix_auto_mail.config import load_llm_provider
+
+        resolved_provider = load_llm_provider()
+
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
 
     # -- build agent --
-    llm_provider = get_provider(api_key=resolved_key)
+    llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_DETECT_SYSTEM_PROMPT,

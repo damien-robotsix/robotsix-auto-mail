@@ -13,12 +13,13 @@ optional LLM extra, mirroring :mod:`robotsix_auto_mail.triage`.
 
 from __future__ import annotations
 
+import os
 import sqlite3
 
 from pydantic import BaseModel
 from robotsix_llmio.core import Tier
 
-from robotsix_auto_mail.config import load_llm
+from robotsix_auto_mail.config import load_llm, load_llm_provider
 from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
@@ -95,6 +96,7 @@ def generate_draft_reply(
     message_id: str,
     *,
     api_key: str | None = None,
+    provider: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> str:
     """Generate, persist, and return an LLM draft reply for *message_id*.
@@ -110,6 +112,9 @@ def generate_draft_reply(
         message_id: The ``mail_records`` message id to draft a reply for.
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``config.load_llm()``.
+        provider: LLM backend name (e.g. ``openrouter-deepseek``).  Resolves
+            with the precedence ``provider`` argument → ``LLM_PROVIDER``
+            env var → ``config.load_llm_provider()``.
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
 
     Raises:
@@ -134,10 +139,15 @@ def generate_draft_reply(
             "variable or add an `llm.api_key` entry to your config file"
         )
 
+    # -- resolve provider (arg -> LLM_PROVIDER env -> config.load_llm_provider()) --
+    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
+    if not resolved_provider:
+        resolved_provider = load_llm_provider()
+
     user_message = _build_draft_user_message(record)
 
     try:
-        llm_provider = get_provider(api_key=resolved_key)
+        llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
         agent_handle = llm_provider.build_agent(
             tier=tier,
             system_prompt=_build_draft_system_prompt(),

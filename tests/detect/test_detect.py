@@ -474,7 +474,9 @@ def test_detect_provider_passes_api_key_arg() -> None:
             result = detect_provider("user@example.com", api_key="sk-arg-key")
 
         assert result.imap_host == "imap.example.com"
-        mock_provider_cls.assert_called_once_with(api_key="sk-arg-key")
+        mock_provider_cls.assert_called_once_with(
+            provider="openrouter-deepseek", api_key="sk-arg-key"
+        )
 
 
 def test_detect_provider_llm_call_error() -> None:

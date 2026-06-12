@@ -231,6 +231,13 @@ def _detect_unsubscribe_for_sender(
     if not resolved_key:
         return None
 
+    # Resolve provider.
+    resolved_provider = os.environ.get("LLM_PROVIDER", "")
+    if not resolved_provider:
+        from robotsix_auto_mail.config import load_llm_provider
+
+        resolved_provider = load_llm_provider()
+
     from pydantic_ai import PromptedOutput
     from robotsix_llmio.core import get_provider
 
@@ -253,7 +260,7 @@ def _detect_unsubscribe_for_sender(
         f"Body:\n{recent.body_plain}"
     )
 
-    llm_provider = get_provider(api_key=resolved_key)
+    llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=Tier.CHEAP,
         system_prompt=system_prompt,
@@ -366,6 +373,16 @@ def _resolve_llm_api_key(api_key: str | None) -> str:
             "variable or add an `llm.api_key` entry to your config file"
         )
     return resolved_key
+
+
+def _resolve_llm_provider(provider: str | None) -> str:
+    """Resolve the LLM provider (arg -> LLM_PROVIDER env -> config)."""
+    resolved = provider or os.environ.get("LLM_PROVIDER", "")
+    if not resolved:
+        from robotsix_auto_mail.config import load_llm_provider
+
+        resolved = load_llm_provider()
+    return resolved
 
 
 def _is_non_semantic_subfolder(subfolder: str) -> bool:
@@ -502,6 +519,7 @@ def run_triage_agent(
     conn: sqlite3.Connection,
     *,
     api_key: str | None = None,
+    provider: str | None = None,
     tier: Tier = Tier.CHEAP,
     only_undecided: bool = False,
     user_email: str | None = None,
@@ -521,6 +539,10 @@ def run_triage_agent(
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``LLM_API_KEY`` env var →
             ``config.llm_api_key`` (via :func:`load_llm`).
+        provider: LLM backend name (e.g. ``openrouter-deepseek``).
+            Resolves with the precedence ``provider`` argument →
+            ``LLM_PROVIDER`` env var → ``config.llm_provider`` (via
+            :func:`load_llm_provider`).
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
         only_undecided: When ``True``, inbox records that already have a
             ``triage_decisions`` row (per :func:`get_triage_decision`) are
@@ -557,6 +579,9 @@ def run_triage_agent(
     # -- resolve API key (arg -> LLM_API_KEY env -> config.llm_api_key) --
     resolved_key = _resolve_llm_api_key(api_key)
 
+    # -- resolve provider (arg -> LLM_PROVIDER env -> config.llm_provider) --
+    resolved_provider = _resolve_llm_provider(provider)
+
     # -- read archive structure + per-sender/domain history for the prompt --
     archive_folders, archive_folder_history, archive_folder_usage = (
         _load_archive_guidance(conn, remaining)
@@ -567,7 +592,7 @@ def run_triage_agent(
     from robotsix_llmio.core import get_provider
 
     # -- build agent --
-    llm_provider = get_provider(api_key=resolved_key)
+    llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_build_triage_system_prompt(

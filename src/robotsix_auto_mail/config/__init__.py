@@ -195,6 +195,15 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
     ),
     _FieldSpec("llm_api_key", "LLM_API_KEY", "llm.api_key", "str", "", False, False),
     _FieldSpec(
+        "llm_provider",
+        "LLM_PROVIDER",
+        "llm.provider",
+        "str",
+        "openrouter-deepseek",
+        False,
+        False,
+    ),
+    _FieldSpec(
         "ingest_interval_minutes",
         "MAIL_INGEST_INTERVAL",
         "ingest.interval_minutes",
@@ -355,6 +364,7 @@ class MailConfig:
     # LLM provider settings — optional; only needed for the `detect`
     # subcommand and future LLM-assisted mail processing.
     llm_api_key: str = ""
+    llm_provider: str = "openrouter-deepseek"
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
     ingest_interval_minutes: int = DEFAULT_INGEST_INTERVAL_MINUTES
@@ -606,6 +616,30 @@ def load_llm() -> str:
                 api_key = api_key or file_cfg.llm_api_key
 
     return api_key
+
+
+def load_llm_provider() -> str:
+    """Resolve the LLM provider through the same cascade as :func:`load_llm`.
+
+    Order: ``LLM_PROVIDER`` environment variable wins; otherwise the
+    ``llm.provider`` field of the YAML config file at ``MAIL_CONFIG_PATH``
+    (default ``config/mail.local.yaml``) is consulted; falls back to
+    ``"openrouter-deepseek"``.
+    """
+    provider = os.environ.get("LLM_PROVIDER", "")
+
+    if not provider:
+        config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
+        if config_path.exists():
+            try:
+                accounts = MailAccountsConfig.from_yaml(config_path, validate=False)
+                file_cfg: MailConfig | None = accounts.default.config
+            except (ConfigurationError, FileNotFoundError, OSError):
+                file_cfg = None
+            if file_cfg is not None:
+                provider = provider or file_cfg.llm_provider
+
+    return provider or "openrouter-deepseek"
 
 
 # ---------------------------------------------------------------------------
@@ -1119,6 +1153,10 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     if cfg.llm_api_key:
         lines.append(f"{item}llm:")
         lines.append(f"{item}  api_key: {_yaml_scalar(cfg.llm_api_key)}")
+    if cfg.llm_provider != defaults.llm_provider:
+        if not cfg.llm_api_key:
+            lines.append(f"{item}llm:")
+        lines.append(f"{item}  provider: {_yaml_scalar(cfg.llm_provider)}")
     if cfg.ingest_interval_minutes != defaults.ingest_interval_minutes:
         lines.append(f"{item}ingest:")
         lines.append(f"{item}  interval_minutes: {cfg.ingest_interval_minutes}")
