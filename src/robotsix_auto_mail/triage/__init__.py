@@ -90,6 +90,12 @@ from robotsix_auto_mail.triage.agent import (
     _detect_unsubscribe_for_sender as _detect_unsubscribe_for_sender,
 )
 from robotsix_auto_mail.triage.agent import (
+    _is_non_semantic_subfolder as _is_non_semantic_subfolder,
+)
+from robotsix_auto_mail.triage.agent import (
+    _load_archive_guidance as _load_archive_guidance,
+)
+from robotsix_auto_mail.triage.agent import (
     run_triage_agent as run_triage_agent,
 )
 from robotsix_auto_mail.triage.classifier import (
@@ -270,8 +276,10 @@ __all__ = [
     "_confidence_for",
     "_detect_unsubscribe_for_sender",
     "_domain_key",
+    "_is_non_semantic_subfolder",
     "_load_active_rules",
     "_load_archive_folder_memory",
+    "_load_archive_guidance",
     "_load_archive_overrides",
     "_load_llm_archive_hints",
     "_load_memory",

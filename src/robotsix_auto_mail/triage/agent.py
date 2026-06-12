@@ -55,6 +55,7 @@ from robotsix_auto_mail.triage.persistence import (
 def _build_triage_system_prompt(
     archive_folders: list[str] | None = None,
     archive_folder_history: list[str] | None = None,
+    archive_folder_usage: dict[str, int] | None = None,
     user_email: str | None = None,
 ) -> str:
     """Build the LLM system prompt describing the triage task and actions.
@@ -65,8 +66,11 @@ def _build_triage_system_prompt(
     non-empty list of guidance lines (one per sender/domain with a recorded
     archive-folder choice), the ``TO_ARCHIVE`` paragraph additionally lists
     those previously-used folders and instructs the model to prefer reusing
-    an existing project folder for ongoing projects.  When *user_email* is a
-    non-empty string, appends an instruction telling the model never to
+    an existing project folder for ongoing projects.  When
+    *archive_folder_usage* maps folder paths to aggregated usage counts,
+    each listed folder with a positive count is annotated with ``(used Nx)``
+    and the model is told to prefer high-count folders.  When *user_email* is
+    a non-empty string, appends an instruction telling the model never to
     classify mail the user sent to themself as ``TO_ANSWER``.
     """
     prompt = (
@@ -96,7 +100,15 @@ def _build_triage_system_prompt(
         "the reply content indicates the thread still needs further action."
     )
     if archive_folders:
-        folder_lines = "\n".join(f"- {f}" for f in archive_folders)
+        if archive_folder_usage:
+            folder_lines = "\n".join(
+                f"- {f} (used {archive_folder_usage[f]}x)"
+                if archive_folder_usage.get(f, 0) > 0
+                else f"- {f}"
+                for f in archive_folders
+            )
+        else:
+            folder_lines = "\n".join(f"- {f}" for f in archive_folders)
         prompt += (
             "\n\nThe user has an archive folder structure with these "
             "existing sub-folders:\n"
@@ -108,7 +120,23 @@ def _build_triage_system_prompt(
             "the list above, or propose a new folder name that fits the "
             "message. Leave the field empty or omit it when you have no "
             "suggestion.\n"
+            "Categorize by purpose or topic: choose a top-level semantic "
+            "bucket adapted to the existing folders above. Example buckets "
+            "(adapt to the user's existing structure — these are not a fixed "
+            "list): `Finance` (invoices, receipts, bank), `Orders` "
+            "(purchases, shipping), `Travel`, `Newsletters`, `Notifications` "
+            "(CI / automated alerts), `Projects/<name>`, `Admin` (accounts, "
+            "legal). Do NOT use bare `<domain>/<sender>` paths (e.g. never "
+            "`lwn.net/lwn`); a sender name may appear only as a leaf under a "
+            "semantic parent (e.g. `Newsletters/LWN`) and only when no better "
+            "topical bucket fits. Keep paths shallow: at most 2 levels (one "
+            "`/` separator).\n"
         )
+        if archive_folder_usage:
+            prompt += (
+                "Prefer folders that already contain many mails (higher "
+                "`used Nx` counts) over inventing a near-duplicate folder.\n"
+            )
         if archive_folder_history:
             history_lines = "\n".join(archive_folder_history)
             prompt += (
@@ -340,11 +368,24 @@ def _resolve_llm_api_key(api_key: str | None) -> str:
     return resolved_key
 
 
+def _is_non_semantic_subfolder(subfolder: str) -> bool:
+    """Return ``True`` when *subfolder*'s top-level segment looks like a domain.
+
+    A path whose segment before the first ``/`` contains a ``.`` (e.g.
+    ``lwn.net/lwn``, ``ls2n.fr/armada``) echoes sender identity rather than a
+    semantic topic.  A single-segment path or one whose top segment has no
+    dot (e.g. ``Newsletters/LWN``, ``Projects/armada``, ``Finance``) is
+    semantic.
+    """
+    top = subfolder.split("/", 1)[0]
+    return "." in top
+
+
 def _load_archive_guidance(
     conn: sqlite3.Connection,
     remaining: list[MailRecord],
-) -> tuple[list[str] | None, list[str]]:
-    """Load archive folders and per-sender/domain archive-folder history hints."""
+) -> tuple[list[str] | None, list[str], dict[str, int]]:
+    """Load archive folders, per-sender/domain history hints, and usage counts."""
     archive_raw = get_watermark(conn, "archive_structure")
     archive_folders: list[str] | None = None
     if archive_raw is not None:
@@ -358,6 +399,15 @@ def _load_archive_guidance(
             archive_folders = None
 
     folder_memory = _load_archive_folder_memory(conn)
+    archive_folder_usage: dict[str, int] = {}
+    for entry in folder_memory.values():
+        archive_folder_usage[entry.subfolder] = (
+            archive_folder_usage.get(entry.subfolder, 0) + entry.count
+        )
+    weak_hint = (
+        " (previously used, but prefer a semantic topical folder over this "
+        "domain/sender path)"
+    )
     archive_folder_history: list[str] = []
     if folder_memory:
         seen_keys: set[str] = set()
@@ -366,21 +416,27 @@ def _load_archive_guidance(
             sender_entry = folder_memory.get(sender_key)
             if sender_entry is not None and sender_key not in seen_keys:
                 seen_keys.add(sender_key)
-                archive_folder_history.append(
+                line = (
                     f"- Mail from `{sender_key}` was previously archived to "
                     f"`{sender_entry.subfolder}`."
                 )
+                if _is_non_semantic_subfolder(sender_entry.subfolder):
+                    line += weak_hint
+                archive_folder_history.append(line)
             domain = _domain_key(record.sender)
             domain_entry = folder_memory.get(domain) if domain else None
             if domain_entry is not None and domain not in seen_keys:
                 seen_keys.add(domain)
                 times = "time" if domain_entry.count == 1 else "times"
-                archive_folder_history.append(
+                line = (
                     f"- Other mail from senders at domain `{domain}` was "
                     f"previously archived to `{domain_entry.subfolder}` "
                     f"({domain_entry.count} {times})."
                 )
-    return archive_folders, archive_folder_history
+                if _is_non_semantic_subfolder(domain_entry.subfolder):
+                    line += weak_hint
+                archive_folder_history.append(line)
+    return archive_folders, archive_folder_history, archive_folder_usage
 
 
 def _persist_llm_triage_results(
@@ -502,7 +558,9 @@ def run_triage_agent(
     resolved_key = _resolve_llm_api_key(api_key)
 
     # -- read archive structure + per-sender/domain history for the prompt --
-    archive_folders, archive_folder_history = _load_archive_guidance(conn, remaining)
+    archive_folders, archive_folder_history, archive_folder_usage = (
+        _load_archive_guidance(conn, remaining)
+    )
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
@@ -513,7 +571,10 @@ def run_triage_agent(
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_build_triage_system_prompt(
-            archive_folders, archive_folder_history or None, user_email
+            archive_folders,
+            archive_folder_history or None,
+            archive_folder_usage or None,
+            user_email,
         ),
         output_type=PromptedOutput(TriageResult),
     )
