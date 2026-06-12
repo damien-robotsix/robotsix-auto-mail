@@ -430,12 +430,24 @@ class BoardHandler(BaseHTTPRequestHandler):
 
             # -- IMAP deletion (when config and UID are both available) --
             if self.mail_config is not None and record.imap_uid is not None:
-                from robotsix_auto_mail.imap import ImapClient, ImapError
+                from robotsix_auto_mail.imap import (
+                    ImapClient,
+                    ImapError,
+                    ImapMessageNotFoundError,
+                )
 
                 try:
                     with ImapClient(self.mail_config) as client:
                         client.select_folder(self.mail_config.imap_folder)
                         client.delete_message(record.imap_uid)
+                except ImapMessageNotFoundError as exc:
+                    self._send_response(
+                        f"Message {message_id} is no longer in INBOX — the "
+                        f"tracked UID is stale, so it was not deleted and the "
+                        f"board record was kept: {exc}",
+                        status=409,
+                    )
+                    return
                 except (ImapError, OSError) as exc:
                     self._send_response(
                         f"IMAP deletion failed: {exc}",
@@ -541,7 +553,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         # -- IMAP move phase (only when IMAP is configured and the
         #    record has a tracked UID) --
         if self.mail_config is not None and record.imap_uid is not None:
-            from robotsix_auto_mail.imap import ImapError
+            from robotsix_auto_mail.imap import ImapError, ImapMessageNotFoundError
 
             try:
                 self._imap_archive_move(
@@ -552,6 +564,14 @@ class BoardHandler(BaseHTTPRequestHandler):
                 )
             except ValueError as exc:
                 self._bad_request(str(exc))
+                return False
+            except ImapMessageNotFoundError as exc:
+                self._send_response(
+                    f"Message {record.message_id} is no longer in INBOX — the "
+                    f"tracked UID is stale, so it was not archived and the "
+                    f"board record was kept: {exc}",
+                    status=409,
+                )
                 return False
             except (ImapError, OSError) as exc:
                 self._send_response(
