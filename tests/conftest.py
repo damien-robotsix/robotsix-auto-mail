@@ -29,12 +29,16 @@ def _isolate_env() -> Generator[None, None, None]:
 
 
 @pytest.fixture(autouse=True)
-def _block_network() -> Generator[None, None, None]:
+def _block_network(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     """Block socket.create_connection so no test accidentally hits the network.
 
-    Localhost connections (127.0.0.1 / ::1) are allowed so that tests
-    which spin up a local HTTP server (e.g. test_server.py) still work.
+    Tests marked ``@pytest.mark.integration`` are allowed to connect — they
+    manage their own network isolation via in-process servers on localhost.
     """
+    if request.node.get_closest_marker("integration"):
+        yield
+        return
+
     original = socket.create_connection
 
     def _blocked(address: Any, *args: Any, **kwargs: Any) -> Any:
