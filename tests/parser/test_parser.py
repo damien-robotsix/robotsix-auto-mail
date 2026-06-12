@@ -31,7 +31,7 @@ def test_message_id_preserves_brackets() -> None:
     assert record.message_id == "<abc123@example.com>"
 
 
-def test_message_id_missing() -> None:
+def test_message_id_missing_synthesizes_surrogate() -> None:
     raw = (
         b"From: alice@example.com\r\n"
         b"Subject: Hi\r\n"
@@ -41,7 +41,14 @@ def test_message_id_missing() -> None:
         b"body"
     )
     record = parse_message(raw)
-    assert record.message_id == ""
+    # No Message-ID header → a stable surrogate is synthesized so the
+    # record stays addressable (board actions and dedup key on message_id).
+    assert record.message_id.startswith("<")
+    assert record.message_id.endswith("@synthetic.robotsix-auto-mail>")
+    # Deterministic: same bytes → same surrogate (dedup-safe)…
+    assert parse_message(raw).message_id == record.message_id
+    # …and different bytes → different surrogate.
+    assert parse_message(raw + b"x").message_id != record.message_id
 
 
 def test_sender_from_header() -> None:
