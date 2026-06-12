@@ -285,6 +285,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             DetectionError,
             autoconfig_lookup,
             detect_provider,
+            is_microsoft_provider,
             mx_lookup,
             provider_from_mx,
             provider_to_config,
@@ -313,9 +314,15 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     )
     if provider is None:
         return 1
-    password = _get_password(args)
-    if password is None:
-        return 1
+    microsoft = is_microsoft_provider(provider)
+    # Microsoft 365 rejects password auth; it uses MSAL-managed XOAUTH2, so we
+    # never prompt for or write a password for these accounts.
+    if microsoft:
+        password: str | None = None
+    else:
+        password = _get_password(args)
+        if password is None:
+            return 1
     if args.stdout:
         config = dataclasses.replace(
             provider_to_config(
@@ -325,12 +332,22 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             ),
             db_path=f".data/{account_id}/mail.db",
         )
-        sys.stderr.write(
-            f"# Detected settings for {args.email} — verify before using.\n"
-            "# The password was intentionally omitted: fill in auth.password "
-            "or set the MAIL_PASSWORD env var before use.\n"
-            "# Save this as config/mail.local.yaml.\n"
-        )
+        if microsoft:
+            sys.stderr.write(
+                f"# Detected Microsoft 365 settings for {args.email} — "
+                "OAuth2 (XOAUTH2); no password is used.\n"
+                "# Save this as config/mail.local.yaml, then run:\n"
+                f"#   robotsix-auto-mail auth login --account {account_id}\n"
+                "# to complete the device-code consent and seed the token "
+                "cache.\n"
+            )
+        else:
+            sys.stderr.write(
+                f"# Detected settings for {args.email} — verify before using.\n"
+                "# The password was intentionally omitted: fill in auth.password "
+                "or set the MAIL_PASSWORD env var before use.\n"
+                "# Save this as config/mail.local.yaml.\n"
+            )
         account = MailAccount(account_id=account_id, config=config, label=label)
         sys.stdout.write(render_accounts_yaml([account], account_id))
         return 0
@@ -357,6 +374,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         provider_to_config=provider_to_config,
         detect_provider=detect_provider,
         _detection_error=DetectionError,
+        microsoft=microsoft,
     )
 
 

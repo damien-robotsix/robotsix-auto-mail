@@ -352,17 +352,54 @@ the IMAP and SMTP clients authenticate via XOAUTH2 instead of the legacy
    ``MAIL_OAUTH2_TOKEN``).  If your flow requires it, also set
    ``auth.oauth2_client_id`` and ``auth.oauth2_client_secret``.
 
-**Microsoft 365 / Outlook.com:**
+**Microsoft 365 / Outlook.com (MSAL device-code, recommended):**
 
-1. Register an application in the
-   [Azure Portal](https://portal.azure.com/) under "App registrations".
-2. Under "API permissions", add the ``IMAP.AccessAsUser.All`` and
-   ``SMTP.Send`` delegated permissions.
-3. Use the OAuth2 device-code or authorization-code flow with scopes
-   ``https://outlook.office.com/IMAP.AccessAsUser.All`` and
-   ``https://outlook.office.com/SMTP.Send`` (or the combined
-   ``https://outlook.office.com/.default`` for both).
-4. Set the resulting access token as ``auth.oauth2_token``.
+Microsoft 365 rejects password auth and requires XOAUTH2. Rather than pasting
+a short-lived access token into ``auth.oauth2_token``, set
+``auth.oauth2_provider: microsoft`` and let the bundled MSAL integration
+acquire and silently refresh tokens for you:
+
+1. Install the optional dependency: ``pip install 'robotsix-auto-mail[microsoft]'``.
+2. Run [`robotsix-auto-mail detect <address>`](#scripting-usage). When the
+   detected host is Microsoft (``outlook.office365.com`` /
+   ``*.office365.com`` / ``outlook.com``), `detect` writes an
+   ``oauth2_provider: microsoft`` auth block (**no password**) and
+   automatically runs the device-code login: it prints a URL and a short code;
+   open the URL, enter the code, and sign in to consent. The post-write
+   verification then authenticates over XOAUTH2 on both IMAP and SMTP.
+3. To (re)run the consent flow later — e.g. after revoking access or moving to
+   a new machine — run
+   ``robotsix-auto-mail auth login --account <id>``.
+
+The MSAL refresh-token cache is stored per account at
+``.data/<id>/msal_cache.json``; once seeded, ``ingest --watch`` refreshes
+access tokens silently for hours without re-prompting. The cache file holds
+secrets and is never committed to the repo.
+
+By default the integration uses a well-known public client id suitable for
+IMAP/SMTP device-code flow against the ``organizations`` tenant. Organisations
+with their own Azure AD **app registration** can override these via
+``auth.oauth2_client_id`` (and ``auth.oauth2_tenant`` for a single-tenant
+directory id); the scopes used are
+``https://outlook.office365.com/IMAP.AccessAsUser.All``,
+``https://outlook.office365.com/SMTP.Send`` and ``offline_access``.
+
+> **Admin-consent caveat (corporate tenants).** Many Microsoft 365
+> organisations restrict which applications may use IMAP/SMTP OAuth. If
+> device-code login fails with a consent/permission error, an **Azure AD
+> administrator** may need to grant the ``IMAP.AccessAsUser.All`` and
+> ``SMTP.Send`` delegated permissions (and admin-consent) for the client id
+> before the flow succeeds.
+
+**Microsoft 365 / Outlook.com (static token, manual):**
+
+If you prefer to manage tokens yourself, register an application in the
+[Azure Portal](https://portal.azure.com/) under "App registrations", add the
+``IMAP.AccessAsUser.All`` and ``SMTP.Send`` delegated permissions, run the
+OAuth2 device-code or authorization-code flow with scopes
+``https://outlook.office.com/IMAP.AccessAsUser.All`` and
+``https://outlook.office.com/SMTP.Send``, and set the resulting access token
+as ``auth.oauth2_token`` (you are then responsible for refreshing it).
 
 **Self-hosted / other providers:**
 
@@ -431,7 +468,24 @@ accounts:
       username: me@work.example.com
     store:
       path: .data/work/mail.db
+
+  - id: office365
+    label: Microsoft 365
+    imap:
+      host: outlook.office365.com
+    smtp:
+      host: smtp.office365.com
+    auth:
+      username: me@contoso.com
+      oauth2_provider: microsoft
+      oauth2_tenant: organizations
+    store:
+      path: .data/office365/mail.db
 ```
+
+The Microsoft 365 account above carries **no password** — run
+`robotsix-auto-mail auth login --account office365` (or let `detect` do it)
+to seed the MSAL token cache at `.data/office365/msal_cache.json`.
 
 **Environment-variable scheme.** Each per-field environment variable is
 namespaced per account by inserting `ACCOUNTS_<n>_` after `MAIL_`, where `<n>`

@@ -15,6 +15,7 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
     load_accounts,
+    render_accounts_yaml,
 )
 
 # ---------------------------------------------------------------------------
@@ -175,6 +176,57 @@ def test_from_yaml_multi_account_example() -> None:
     assert work.config.db_path == ".data/work/mail.db"
 
     assert accounts.default.account_id == "personal"
+
+
+def test_render_accounts_yaml_microsoft_oauth2_block() -> None:
+    """A Microsoft OAuth2 account emits oauth2_provider/tenant and NO password."""
+    account = MailAccount(
+        "office365",
+        _cfg(
+            imap_host="outlook.office365.com",
+            smtp_host="smtp.office365.com",
+            username="me@contoso.com",
+            password="",
+            oauth2_provider="microsoft",
+            oauth2_tenant="organizations",
+            db_path=".data/office365/mail.db",
+        ),
+    )
+    text = render_accounts_yaml([account], "office365")
+    assert 'oauth2_provider: "microsoft"' in text
+    assert 'oauth2_tenant: "organizations"' in text
+    assert "password:" not in text
+
+
+def test_render_accounts_yaml_microsoft_round_trips(tmp_path: Path) -> None:
+    """The rendered Microsoft OAuth2 account parses back via from_yaml()."""
+    account = MailAccount(
+        "office365",
+        _cfg(
+            imap_host="outlook.office365.com",
+            smtp_host="smtp.office365.com",
+            username="me@contoso.com",
+            password="",
+            oauth2_provider="microsoft",
+            oauth2_tenant="organizations",
+            db_path=".data/office365/mail.db",
+        ),
+    )
+    yaml_file = tmp_path / "accts.yaml"
+    yaml_file.write_text(render_accounts_yaml([account], "office365"))
+    parsed = MailAccountsConfig.from_yaml(yaml_file)
+    cfg = parsed.get("office365").config
+    assert cfg.oauth2_provider == "microsoft"
+    assert cfg.oauth2_tenant == "organizations"
+    assert cfg.password == ""
+
+
+def test_render_accounts_yaml_password_block_unchanged() -> None:
+    """A non-OAuth2 account still emits a password line and no oauth2 fields."""
+    account = MailAccount("p", _cfg(db_path=".data/p/mail.db"))
+    text = render_accounts_yaml([account], "p")
+    assert "password:" in text
+    assert "oauth2_provider" not in text
 
 
 def test_from_yaml_multi_account_db_path_default(tmp_path: Path) -> None:

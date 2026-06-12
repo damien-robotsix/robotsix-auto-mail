@@ -709,6 +709,34 @@ def provider_from_mx(mx_hosts: list[str]) -> MailProvider | None:
 # ---------------------------------------------------------------------------
 
 
+#: Microsoft 365 / Outlook.com IMAP & SMTP hosts.  Used to classify a
+#: detected provider as Microsoft regardless of which detection backend
+#: (autoconfig / MX / LLM) produced it, so ``detect`` can write an OAuth2
+#: (XOAUTH2) auth block instead of prompting for a (rejected) password.
+_MICROSOFT_HOSTS = frozenset(
+    {
+        "outlook.office365.com",
+        "smtp.office365.com",
+        "outlook.com",
+    }
+)
+
+
+def is_microsoft_provider(provider: MailProvider) -> bool:
+    """Return ``True`` when *provider* points at Microsoft 365 / Outlook.com.
+
+    The match is host-based and case-insensitive so it works regardless of
+    which detection backend (autoconfig / MX / LLM) produced the provider:
+    a host that exactly equals ``outlook.office365.com``, ``smtp.office365.com``
+    or ``outlook.com``, or ends with ``.office365.com``, is Microsoft.
+    """
+    for host in (provider.imap_host, provider.smtp_host):
+        normalized = host.strip().rstrip(".").lower()
+        if normalized in _MICROSOFT_HOSTS or normalized.endswith(".office365.com"):
+            return True
+    return False
+
+
 def provider_to_config(
     provider: MailProvider,
     username: str,
@@ -717,7 +745,28 @@ def provider_to_config(
 ) -> MailConfig:
     """Convert a ``MailProvider`` + username (+ optional password) into a
     ``MailConfig``.
+
+    For a Microsoft 365 / Outlook.com provider the result uses MSAL-managed
+    OAuth2 (``oauth2_provider="microsoft"``) with an empty password — these
+    hosts reject password auth — so the caller seeds the token cache via the
+    device-code flow instead.
     """
+    if is_microsoft_provider(provider):
+        return MailConfig(
+            imap_host=provider.imap_host,
+            imap_port=provider.imap_port,
+            imap_tls_mode=provider.imap_tls_mode,
+            smtp_host=provider.smtp_host,
+            smtp_port=provider.smtp_port,
+            smtp_tls_mode=provider.smtp_tls_mode,
+            username=username,
+            password="",  # nosec B106 -- Microsoft uses OAuth2, never a password
+            oauth2_provider="microsoft",
+            oauth2_tenant="organizations",
+            oauth2_client_id="",
+            db_path=db_path,
+            imap_folder="INBOX",
+        )
     return MailConfig(
         imap_host=provider.imap_host,
         imap_port=provider.imap_port,
@@ -746,8 +795,22 @@ def render_config(config: MailConfig) -> str:
 
     An ``llm:`` section is appended when ``config.llm_api_key`` is set, so
     that re-running ``detect`` over an existing file preserves the key.
+
+    A Microsoft 365 config (``oauth2_provider="microsoft"``) emits an OAuth2
+    auth block (``oauth2_provider`` / ``oauth2_tenant`` and an optional
+    ``oauth2_client_id``) and NO ``password:`` line.
     """
-    if config.password:
+    if config.oauth2_provider:
+        # The template prefixes the first line with two spaces; subsequent
+        # lines carry their own two-space indent so the block aligns.
+        auth_lines = [
+            f"oauth2_provider: {config.oauth2_provider}",
+            f"  oauth2_tenant: {config.oauth2_tenant}",
+        ]
+        if config.oauth2_client_id:
+            auth_lines.append(f"  oauth2_client_id: {config.oauth2_client_id}")
+        password_line = "\n".join(auth_lines)
+    elif config.password:
         # json.dumps yields a double-quoted scalar that is valid YAML and
         # safely escapes any special characters in the password.
         password_line = f"password: {json.dumps(config.password)}"

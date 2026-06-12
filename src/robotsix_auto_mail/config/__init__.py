@@ -1099,7 +1099,13 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     lines.append(f"{item}  tls_mode: {_yaml_scalar(cfg.smtp_tls_mode)}")
     lines.append(f"{item}auth:")
     lines.append(f"{item}  username: {_yaml_scalar(cfg.username)}")
-    lines.append(f"{item}  password: {_yaml_scalar(cfg.password)}")
+    if cfg.oauth2_provider:
+        # MSAL-managed OAuth2 (Microsoft 365): no password is stored;
+        # tokens live in the per-account MSAL cache.
+        lines.append(f"{item}  oauth2_provider: {_yaml_scalar(cfg.oauth2_provider)}")
+        lines.append(f"{item}  oauth2_tenant: {_yaml_scalar(cfg.oauth2_tenant)}")
+    else:
+        lines.append(f"{item}  password: {_yaml_scalar(cfg.password)}")
     if cfg.oauth2_token:
         lines.append(f"{item}  oauth2_token: {_yaml_scalar(cfg.oauth2_token)}")
     if cfg.oauth2_client_id:
