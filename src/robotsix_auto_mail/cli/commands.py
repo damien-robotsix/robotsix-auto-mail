@@ -861,6 +861,30 @@ def _cmd_auth_login(args: argparse.Namespace) -> int:
     return 0
 
 
+def _clear_stale_triage_state(accounts: MailAccountsConfig) -> None:
+    """Reset any orphaned triage_run:state=running watermark to idle.
+
+    Called once at board-server startup. After a fresh process start
+    there can be no live worker thread, so any 'running' flag is a
+    leftover from a SIGKILL'd container and is safe to clear.
+    """
+    from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
+
+    for acct in accounts.accounts:
+        db_path = acct.config.db_path
+        try:
+            conn = init_db(db_path, skip_migrations=True)
+            try:
+                if get_watermark(conn, "triage_run:state") == "running":
+                    set_watermark(conn, "triage_run:state", "idle")
+            finally:
+                conn.close()
+        except Exception:  # noqa: S112  # nosec B112
+            # Best-effort: a bad/unopenable account DB must never abort the
+            # boot loop or crash the server.
+            continue
+
+
 def _cmd_serve(
     accounts: MailAccountsConfig, *, default_account_id: str, port: int
 ) -> int:
@@ -882,6 +906,11 @@ def _cmd_serve(
         accounts=accounts,
         default_account_id=default_account_id,
     )
+
+    # Self-heal any orphaned ``triage_run:state == "running"`` watermark left
+    # behind by a SIGKILL'd worker thread on a prior container run.  At a fresh
+    # process start there is no live worker, so any such flag is safe to clear.
+    _clear_stale_triage_state(accounts)
 
     print(f"Serving board on http://0.0.0.0:{port}/board")
     try:

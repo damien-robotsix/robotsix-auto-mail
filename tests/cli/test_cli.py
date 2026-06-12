@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import dataclasses
 import imaplib
 import json
 import os
@@ -3021,3 +3022,68 @@ def test_auth_login_missing_msal_errors(
     assert rc == 1
     err = capsys.readouterr().err
     assert "robotsix-auto-mail[microsoft]" in err
+
+
+# ---------------------------------------------------------------------------
+# _clear_stale_triage_state — boot-clear of orphaned triage_run:state
+# ---------------------------------------------------------------------------
+
+
+def test_clear_stale_triage_state_resets_running_flags(
+    cfg: MailConfig, tmp_path: Path
+) -> None:
+    """A boot-clear resets every orphaned ``running`` flag to ``idle`` while
+    leaving non-running flags untouched and tolerating a missing account DB."""
+    from robotsix_auto_mail.cli.commands import _clear_stale_triage_state
+    from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
+
+    # Account A: orphaned "running" flag (should be reset to "idle").
+    db_a = str(tmp_path / "a" / "mail.db")
+    conn_a = init_db(db_a)
+    set_watermark(conn_a, "triage_run:state", "running")
+    conn_a.close()
+
+    # Account B: explicitly "idle" flag (should be left untouched).
+    db_b = str(tmp_path / "b" / "mail.db")
+    conn_b = init_db(db_b)
+    set_watermark(conn_b, "triage_run:state", "idle")
+    conn_b.close()
+
+    # Account C: a bad DB path that cannot be opened — must not abort the loop.
+    db_c = str(tmp_path / "missing-dir" / "nope" / "\x00bad" / "mail.db")
+
+    accounts = MailAccountsConfig(
+        accounts=(
+            MailAccount(
+                account_id="a",
+                config=dataclasses.replace(cfg, db_path=db_a),
+                label=None,
+            ),
+            MailAccount(
+                account_id="c",
+                config=dataclasses.replace(cfg, db_path=db_c),
+                label=None,
+            ),
+            MailAccount(
+                account_id="b",
+                config=dataclasses.replace(cfg, db_path=db_b),
+                label=None,
+            ),
+        ),
+        default_account_id="a",
+    )
+
+    # Must not raise even though account C's DB cannot be opened.
+    _clear_stale_triage_state(accounts)
+
+    conn_a = init_db(db_a, skip_migrations=True)
+    try:
+        assert get_watermark(conn_a, "triage_run:state") == "idle"
+    finally:
+        conn_a.close()
+
+    conn_b = init_db(db_b, skip_migrations=True)
+    try:
+        assert get_watermark(conn_b, "triage_run:state") == "idle"
+    finally:
+        conn_b.close()
