@@ -867,6 +867,44 @@ The board is the interface: no separate client is needed.
 The page includes `<meta http-equiv="refresh" content="30">`, so the board
 auto-refreshes every 30 seconds.
 
+**Column-wide batch delete and archive.**  For columns with many cards,
+individual card operations (delete one, archive one) can be tedious. The board
+offers two column-wide bulk operations, each accessed via an **All** button that
+appears only when the operation is not already running:
+
+- **Delete All** (appears on the `TO_DELETE` column): bulk-deletes every message
+  in the column from both IMAP and the local database via `POST /batch-delete`.
+  Click the button and confirm the dialog to start; the operation runs in a
+  background daemon thread and does not block the board. While running, a
+  progress banner appears showing the operation status (e.g., "Deleting mail:
+  120/518. The board will refresh automatically.") and the Delete All button is
+  suppressed until the operation completes.
+
+- **Archive All** (appears on the `TO_ARCHIVE` column): bulk-archives every
+  message in the column to its proposed subfolder via IMAP (or removes it from
+  the local database if IMAP is not configured) via `POST /batch-archive`. Click
+  the button and confirm the dialog to start; like delete, the operation runs in
+  the background with a progress banner. The archive operation groups messages by
+  their destination subfolder so each group is moved in a single batched IMAP
+  operation, minimizing round-trips (a 518-mail column with multiple destination
+  folders costs at most ~6 IMAP round-trip pairs instead of one per message).
+
+**Progress and single-flight guard.**  Only one batch operation (delete or
+archive) can run at a time per account — a second request to start an operation
+while one is already in flight returns a 302 redirect to `/board` with no action.
+The board's 30-second auto-refresh polls the operation status and hides the
+progress banner once complete. If a batch operation is interrupted by a container
+restart (SIGKILL), the watermark is reset at startup so the board recovers
+cleanly without a wedged banner.
+
+**Re-triggering after interruption.**  Because each batch processes records in
+chunks and commits to the database per chunk, a mid-operation restart leaves
+already-deleted/archived records removed from the database. Re-triggering the same
+batch operation automatically skips the already-processed records and continues
+with the remaining ones — so a 518-mail delete that was interrupted at 300 mails
+will, on re-trigger, process only the remaining 218 without re-deleting the first
+300.
+
 ### Multi-account request routing
 
 When multiple accounts are configured (via `config/mail.accounts.yaml` or
@@ -1115,6 +1153,134 @@ Errors during the background thread (e.g., `ImapError`, missing LLM optional
 extra) are swallowed so a transient IMAP failure or missing dependency never
 wedges the board. The thread always clears the watermark so the board eventually
 recovers.
+
+An optional `?account=<id>` query parameter is supported in multi-account mode
+(see [Multi-account request routing](#multi-account-request-routing)).
+
+### The `/batch-delete` and `/batch-archive` endpoints
+
+In addition to per-card delete and archive operations, the server hosts two
+endpoints for column-wide bulk deletions and archives. These endpoints are used
+by the board page's **Delete All** and **Archive All** buttons but can also be
+called directly by external tools or scripts.
+
+#### `POST /batch-delete` — bulk delete all TO_DELETE mail
+
+Deletes every message in the `TO_DELETE` triage column from both IMAP and the
+local database in a background daemon thread.
+
+##### Request
+
+```sh
+curl -X POST http://localhost:8080/batch-delete
+```
+
+No request body is required.
+
+##### Behavior
+
+When the request succeeds:
+
+1. The server checks the `batch_op:state` watermark. If it is already running
+   (indicating a batch operation is in flight), the request returns a 302 redirect
+   to `/board` immediately with no action (single-flight guard).
+2. If no batch operation is running, the watermark is set to `"running"` and a
+   daemon background thread is spawned that:
+   - Collects every `TO_DELETE` triage decision and its corresponding `MailRecord`.
+   - Processes records in chunks (up to 100 UIDs per chunk to minimize IMAP
+     round-trips).
+   - For each chunk: issues a single batched `UID STORE +FLAGS (\Deleted)` and
+     `EXPUNGE` to mark all UIDs in the chunk deleted, then deletes the
+     corresponding local database rows and commits.
+   - Updates the `batch_op:state` watermark with progress JSON
+     (`{"op": "delete", "done": N, "total": M}`) after each chunk so the board
+     can display live progress.
+   - Records with `imap_uid is None` (DB-only records) are deleted without IMAP
+     operations.
+   - Always clears the `batch_op:state` watermark back to `"idle"` in a
+     `finally` block, even on error.
+3. The server immediately returns a 302 redirect to `/board` so the browser
+   returns to the board page. The deletion runs in the background and the board
+   auto-refreshes every 30 seconds to reflect the deletion progress and status
+   change.
+
+##### Response on success (HTTP 302)
+
+A 302 redirect to `/board` (the batch delete has been queued).
+
+##### Error responses
+
+- **HTTP 302** — A batch operation (delete or archive) is already running (the
+  watermark `batch_op:state` is not `None` and not `"idle"`). The response is a
+  302 redirect to `/board` (idempotent — the request is silently ignored and the
+  watermark is unchanged).
+
+Errors during the background thread (e.g., `ImapError`, database errors) are
+swallowed so a transient IMAP failure never wedges the board. The thread always
+clears the watermark so the board eventually recovers. Already-deleted records
+remain deleted (per-chunk commits make progress durable), so re-triggering the
+batch continues with the remaining records.
+
+An optional `?account=<id>` query parameter is supported in multi-account mode
+(see [Multi-account request routing](#multi-account-request-routing)).
+
+#### `POST /batch-archive` — bulk archive all TO_ARCHIVE mail
+
+Archives every message in the `TO_ARCHIVE` triage column to its proposed
+subfolder via IMAP (or removes it from the local database if IMAP is not
+configured) in a background daemon thread.
+
+##### Request
+
+```sh
+curl -X POST http://localhost:8080/batch-archive
+```
+
+No request body is required.
+
+##### Behavior
+
+When the request succeeds:
+
+1. The server checks the `batch_op:state` watermark. If it is already running, the
+   request returns a 302 redirect to `/board` immediately with no action (the same
+   single-flight guard as `/batch-delete`, so delete and archive cannot run
+   concurrently).
+2. If no batch operation is running, the watermark is set to `"running"` and a
+   daemon background thread is spawned that:
+   - Collects every `TO_ARCHIVE` triage decision and its corresponding `MailRecord`.
+   - Computes each record's effective destination subfolder using the same logic
+     the board uses for archive-folder recommendations (user override → LLM-learned
+     history → deterministic fallback).
+   - Groups records by their destination folder so each group can be moved with a
+     single batched `UID COPY` command (minimizing IMAP round-trips).
+   - For each destination group: ensures the folder hierarchy exists, issues a
+     single batched `UID COPY` to the destination, then deletes the corresponding
+     local database rows and commits.
+   - Records with `imap_uid is None` (DB-only records) are deleted without IMAP
+     operations.
+   - Updates the `batch_op:state` watermark with progress JSON
+     (`{"op": "archive", "done": N, "total": M}`) after each group.
+   - Always clears the `batch_op:state` watermark back to `"idle"` in a
+     `finally` block, even on error.
+3. The server immediately returns a 302 redirect to `/board` so the browser
+   returns to the board page. The archival runs in the background and the board
+   auto-refreshes every 30 seconds to reflect progress and status changes.
+
+##### Response on success (HTTP 302)
+
+A 302 redirect to `/board` (the batch archive has been queued).
+
+##### Error responses
+
+- **HTTP 302** — A batch operation (delete or archive) is already running (the
+  watermark `batch_op:state` is not `None` and not `"idle"`). The response is a
+  302 redirect to `/board` (idempotent — the request is silently ignored).
+
+Errors during the background thread (e.g., `ImapError`, invalid destination
+folders, database errors) are swallowed. Already-archived records remain archived
+(per-group commits make progress durable), so re-triggering the batch continues
+with the remaining records.
 
 An optional `?account=<id>` query parameter is supported in multi-account mode
 (see [Multi-account request routing](#multi-account-request-routing)).
