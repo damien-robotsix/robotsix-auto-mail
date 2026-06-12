@@ -862,11 +862,13 @@ def _cmd_auth_login(args: argparse.Namespace) -> int:
 
 
 def _clear_stale_triage_state(accounts: MailAccountsConfig) -> None:
-    """Reset any orphaned triage_run:state=running watermark to idle.
+    """Reset any orphaned background-op watermarks to idle.
 
     Called once at board-server startup. After a fresh process start
-    there can be no live worker thread, so any 'running' flag is a
-    leftover from a SIGKILL'd container and is safe to clear.
+    there can be no live worker thread, so any 'running' flag (the
+    ``triage_run:state`` triage watermark or a non-idle ``batch_op:state``
+    batch-delete/archive watermark) is a leftover from a SIGKILL'd
+    container and is safe to clear.
     """
     from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
 
@@ -877,6 +879,9 @@ def _clear_stale_triage_state(accounts: MailAccountsConfig) -> None:
             try:
                 if get_watermark(conn, "triage_run:state") == "running":
                     set_watermark(conn, "triage_run:state", "idle")
+                batch_state = get_watermark(conn, "batch_op:state")
+                if batch_state is not None and batch_state != "idle":
+                    set_watermark(conn, "batch_op:state", "idle")
             finally:
                 conn.close()
         except Exception:  # noqa: S112  # nosec B112

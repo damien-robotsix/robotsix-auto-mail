@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
+import json
 from typing import Any
 
 from robotsix_auto_mail.board_adapter import MailBoardAdapter
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
+from robotsix_auto_mail.db import MailRecord
 
 
 class _NonEmptyColumnsAdapter:
@@ -107,4 +110,214 @@ def _run_folder_triage_background(
         pass
     finally:
         set_watermark(conn, "triage_run:state", "idle")
+        conn.close()
+
+
+def _batch_op_running(state: str | None) -> bool:
+    """Return whether *state* (the ``batch_op:state`` watermark) means running.
+
+    "Running" is any value that is neither ``None`` nor the literal
+    ``"idle"`` — i.e. the JSON progress payload set while a batch worker
+    is in flight.
+    """
+    return state is not None and state != "idle"
+
+
+def _archive_dest_folder(
+    effective_root: str, subfolder: str | None, delimiter: str
+) -> str | None:
+    """Compute the destination IMAP folder for a TO_ARCHIVE record.
+
+    Mirrors the destination computation and security gate in
+    :meth:`BoardHandler._imap_archive_move`: translates ``/`` separators
+    in *subfolder* to the server *delimiter*, joins under *effective_root*,
+    and rejects (returns ``None``) any destination that escapes the
+    archive root or contains a ``..`` path segment.
+    """
+    if subfolder:
+        translated = subfolder.replace("/", delimiter)
+        dest = f"{effective_root}{delimiter}{translated}"
+    else:
+        dest = effective_root
+    root_prefix = f"{effective_root}{delimiter}"
+    if dest != effective_root and not dest.startswith(root_prefix):
+        return None
+    if ".." in dest.split(delimiter):
+        return None
+    return dest
+
+
+def _collect_records_for_action(conn: Any, action: str) -> list[MailRecord]:
+    """Return the ``MailRecord``s whose current triage decision is *action*."""
+    from robotsix_auto_mail.db import get_record_by_message_id
+    from robotsix_auto_mail.triage import list_triage_decisions
+
+    records: list[MailRecord] = []
+    for decision in list_triage_decisions(conn):
+        if decision.action != action:
+            continue
+        record = get_record_by_message_id(conn, decision.message_id)
+        if record is not None:
+            records.append(record)
+    return records
+
+
+def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -> None:
+    """Delete every ``TO_DELETE`` mail from IMAP + local DB in the background.
+
+    Mirrors :func:`_run_triage_background`: owns its SQLite connection,
+    swallows all exceptions, and always resets the ``batch_op:state``
+    watermark to ``"idle"`` in a ``finally`` block.  Records are processed
+    in chunks of :data:`~robotsix_auto_mail.imap._BATCH_UID_CHUNK`; each
+    chunk issues one batched ``client.delete_messages(...)``, deletes the
+    chunk's local rows and ``commit``s, then bumps the ``done`` count in
+    the watermark.  Committing per chunk is what makes a mid-batch restart
+    leave the already-processed mails removed from the DB, so re-triggering
+    naturally skips them.  Records with ``imap_uid is None`` are DB-only
+    deletes.
+    """
+    from robotsix_auto_mail.db import (
+        delete_record_by_message_id,
+        init_db,
+        set_watermark,
+    )
+    from robotsix_auto_mail.imap import _BATCH_UID_CHUNK, ImapClient
+
+    conn = init_db(db_path, skip_migrations=True)
+    try:
+        records = _collect_records_for_action(conn, "TO_DELETE")
+        total = len(records)
+        set_watermark(
+            conn,
+            "batch_op:state",
+            json.dumps({"op": "delete", "done": 0, "total": total}),
+        )
+
+        need_imap = mail_config is not None and any(
+            r.imap_uid is not None for r in records
+        )
+        done = 0
+        ctx: Any = (
+            ImapClient(mail_config)
+            if need_imap and mail_config is not None
+            else contextlib.nullcontext()
+        )
+        with ctx as client:
+            if client is not None and mail_config is not None:
+                client.select_folder(mail_config.imap_folder)
+            for start in range(0, total, _BATCH_UID_CHUNK):
+                chunk = records[start : start + _BATCH_UID_CHUNK]
+                uids = [r.imap_uid for r in chunk if r.imap_uid is not None]
+                if client is not None and uids:
+                    client.delete_messages(uids)
+                for record in chunk:
+                    delete_record_by_message_id(conn, record.message_id)
+                conn.commit()
+                done += len(chunk)
+                set_watermark(
+                    conn,
+                    "batch_op:state",
+                    json.dumps({"op": "delete", "done": done, "total": total}),
+                )
+    except Exception:  # noqa: S110  # nosec B110
+        # Swallow all exceptions — the watermark is always cleared.
+        pass
+    finally:
+        set_watermark(conn, "batch_op:state", "idle")
+        conn.close()
+
+
+def _run_batch_archive_background(
+    db_path: str,
+    mail_config: MailConfig | None,
+    archive_root: str = DEFAULT_ARCHIVE_ROOT,
+) -> None:
+    """Archive every ``TO_ARCHIVE`` mail from IMAP + local DB in the background.
+
+    Mirrors :func:`_run_batch_delete_background` but each record's
+    destination differs, so UIDs are grouped by their effective destination
+    subfolder (the same logic the board uses for ``TO_ARCHIVE``) and each
+    group is batch-moved with one :meth:`ImapClient.move_messages` call.
+    The destination folder hierarchy is created before the move.  DB rows
+    are deleted and committed per group so a mid-batch restart leaves the
+    processed groups removed (re-triggering then skips them).  Records with
+    ``imap_uid is None`` are DB-only deletes.  All exceptions are swallowed
+    and ``batch_op:state`` is always reset to ``"idle"`` in ``finally``.
+    """
+    from robotsix_auto_mail.db import (
+        delete_record_by_message_id,
+        init_db,
+        set_watermark,
+    )
+    from robotsix_auto_mail.imap import ImapClient
+    from robotsix_auto_mail.triage import get_archive_subfolder
+
+    conn = init_db(db_path, skip_migrations=True)
+    try:
+        records = _collect_records_for_action(conn, "TO_ARCHIVE")
+        total = len(records)
+        set_watermark(
+            conn,
+            "batch_op:state",
+            json.dumps({"op": "archive", "done": 0, "total": total}),
+        )
+
+        namespace = mail_config.archive_namespace if mail_config is not None else ""
+        effective_root = namespace + archive_root
+        done = 0
+
+        need_imap = mail_config is not None and any(
+            r.imap_uid is not None for r in records
+        )
+        if need_imap and mail_config is not None:
+            with ImapClient(mail_config) as client:
+                client.select_folder(mail_config.imap_folder)
+                delimiter = next(
+                    (f.delimiter for f in client.list_folders() if f.delimiter),
+                    "/",
+                )
+                # Group records by their effective destination folder.
+                groups: dict[str, list[MailRecord]] = {}
+                for record in records:
+                    subfolder = get_archive_subfolder(conn, record.message_id, record)
+                    dest = _archive_dest_folder(effective_root, subfolder, delimiter)
+                    if dest is None:
+                        # Destination escapes the archive root — skip the
+                        # record (left re-triggerable), mirroring triage.
+                        continue
+                    groups.setdefault(dest, []).append(record)
+
+                for dest, group in groups.items():
+                    uids = [r.imap_uid for r in group if r.imap_uid is not None]
+                    if uids:
+                        # Ensure the destination hierarchy exists.
+                        parts = dest.split(delimiter)
+                        for i in range(1, len(parts) + 1):
+                            client.create_folder(delimiter.join(parts[:i]))
+                        client.move_messages(uids, dest)
+                    for record in group:
+                        delete_record_by_message_id(conn, record.message_id)
+                    conn.commit()
+                    done += len(group)
+                    set_watermark(
+                        conn,
+                        "batch_op:state",
+                        json.dumps({"op": "archive", "done": done, "total": total}),
+                    )
+        else:
+            # DB-only archive (no IMAP configured or no tracked UIDs).
+            for record in records:
+                delete_record_by_message_id(conn, record.message_id)
+                conn.commit()
+                done += 1
+                set_watermark(
+                    conn,
+                    "batch_op:state",
+                    json.dumps({"op": "archive", "done": done, "total": total}),
+                )
+    except Exception:  # noqa: S110  # nosec B110
+        # Swallow all exceptions — the watermark is always cleared.
+        pass
+    finally:
+        set_watermark(conn, "batch_op:state", "idle")
         conn.close()

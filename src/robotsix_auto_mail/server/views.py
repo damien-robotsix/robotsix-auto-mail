@@ -65,7 +65,7 @@ def _render_board_columns(
 
 def _build_board_content(
     db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
-) -> dict[str, str | bool | dict[str, dict[str, Any]]]:
+) -> dict[str, Any]:
     """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
 
     Opens a fresh database connection, gathers every mail record and
@@ -84,6 +84,28 @@ def _build_board_content(
         # Check whether the triage agent is currently running so the
         # board can show a visual indicator and disable the button.
         triage_running = get_watermark(conn, "triage_run:state") == "running"
+
+        # Parse the batch-op watermark (delete/archive progress).  The
+        # value is ``"idle"``/``None`` when no batch op is running, else a
+        # JSON ``{"op", "done", "total"}`` progress payload.
+        batch_raw = get_watermark(conn, "batch_op:state")
+        batch_op: dict[str, Any] | None = None
+        if batch_raw is not None and batch_raw != "idle":
+            try:
+                parsed = json.loads(batch_raw)
+            except (json.JSONDecodeError, TypeError):
+                parsed = None
+            if isinstance(parsed, dict):
+                batch_op = {
+                    "op": parsed.get("op"),
+                    "done": parsed.get("done"),
+                    "total": parsed.get("total"),
+                }
+            else:
+                # A bare "running" sentinel (set by the handler before the
+                # worker writes its first JSON payload) still counts as a
+                # running batch op with as-yet-unknown counts.
+                batch_op = {"op": None, "done": None, "total": None}
 
         # Gather every record and every triage decision once.
         all_records = list_records(conn)
@@ -179,6 +201,7 @@ def _build_board_content(
         unsubscribe_suggestions=unsubscribe_suggestions,
         record_notes=record_notes,
         column_records=column_buckets,
+        batch_running=batch_op is not None,
     )
     # auto-mail hides empty columns, so only the populated buckets are
     # handed to ``render_board`` (which renders one column per adapter
@@ -211,8 +234,32 @@ def _build_board_content(
         "columns_html": columns_html,
         "proposals_html": proposals_html,
         "triage_running": triage_running,
+        "batch_op": batch_op,
         "unsubscribe_suggestions": unsubscribe_suggestions,
     }
+
+
+def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
+    """Return the ``.batch-banner`` markup for a running batch op, or ``""``.
+
+    Renders the operation verb plus ``done/total`` progress (e.g.
+    ``"Deleting mail: 120/518. The board will refresh automatically."``).
+    Returns the empty string when *batch_op* is ``None`` (no op running).
+    """
+    if batch_op is None:
+        return ""
+    verb = "Archiving" if batch_op.get("op") == "archive" else "Deleting"
+    done = batch_op.get("done")
+    total = batch_op.get("total")
+    if isinstance(done, int) and isinstance(total, int):
+        progress = f": {done}/{total}"
+    else:
+        progress = ""
+    return (
+        '<div class="batch-banner">'
+        f"{verb} mail{progress}. The board will refresh automatically."
+        "</div>"
+    )
 
 
 def _build_board_html(
@@ -299,6 +346,8 @@ def _build_board_html(
     else:
         triage_control_html = folder_form_html
 
+    batch_control_html = _batch_banner_html(content["batch_op"])
+
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n'
@@ -311,6 +360,7 @@ def _build_board_html(
         "<body>\n"
         "<h1>Mail Board</h1>\n"
         f'<span id="triage-control">{triage_control_html}</span>\n'
+        f'<span id="batch-control">{batch_control_html}</span>\n'
         f"{picker_html}\n"
         f"{content['proposals_html']}\n"
         '<div class="board-wrapper">\n'
@@ -397,6 +447,20 @@ def _build_board_html(
         "          // folder selection is preserved across refreshes.\n"
         f"          tc.innerHTML = {json.dumps(folder_form_html)};\n"
         "          populateFolderPicker();\n"
+        "        }\n"
+        "      }\n"
+        "      var bc = document.getElementById('batch-control');\n"
+        "      if (bc) {\n"
+        "        var op = data.batch_op;\n"
+        "        if (op) {\n"
+        "          var verb = op.op === 'archive' ? 'Archiving' : 'Deleting';\n"
+        "          var prog = (typeof op.done === 'number'\n"
+        "            && typeof op.total === 'number')\n"
+        "            ? ': ' + op.done + '/' + op.total : '';\n"
+        "          bc.innerHTML = '<div class=\"batch-banner\">' + verb"
+        " + ' mail' + prog + '. The board will refresh automatically.</div>';\n"
+        "        } else {\n"
+        "          bc.innerHTML = '';\n"
         "        }\n"
         "      }\n"
         "      window.scrollTo(savedX, savedY);\n"

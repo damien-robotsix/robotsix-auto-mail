@@ -70,9 +70,14 @@ class MailBoardAdapter:
         unsubscribe_suggestions: Mapping[str, dict[str, object]],
         record_notes: Mapping[str, str],
         column_records: Mapping[str, Sequence[MailRecord]] | None = None,
+        batch_running: bool = False,
     ) -> None:
         # Protocol-facing data.
         self._triage_by_mid = dict(triage_by_mid)  # message_id → action
+        # When a column-wide batch op (delete/archive) is in flight the
+        # Delete-All / Archive-All buttons are suppressed, mirroring how the
+        # triage banner replaces the folder-triage form.
+        self._batch_running = batch_running
 
         # Auto-mail-specific data for server.py rendering.
         self.archive_subfolders = dict(archive_subfolders)
@@ -303,15 +308,29 @@ class MailBoardAdapter:
         label = TRIAGE_ACTION_LABELS.get(status_key, status_key)
         count = len(records)
 
-        # Batch-delete button (TO_DELETE only).
+        # Batch-delete button (TO_DELETE only).  Suppressed while a batch op
+        # is running, mirroring how the triage banner replaces its form.
         batch_delete_form = ""
-        if status_key == "TO_DELETE":
+        if status_key == "TO_DELETE" and not self._batch_running:
             batch_delete_form = (
                 '<form class="delete-form" method="post" action="/batch-delete"'
                 ' onsubmit="return confirm('
                 "'Permanently delete ALL mail in this column"
                 " from mailbox and database?')\">"
                 '<button type="submit" class="delete-btn">Delete All</button>'
+                "</form>"
+            )
+
+        # Batch-archive button (TO_ARCHIVE only).  Suppressed while a batch
+        # op is running, mirroring the Delete-All button.
+        batch_archive_form = ""
+        if status_key == "TO_ARCHIVE" and not self._batch_running:
+            batch_archive_form = (
+                '<form class="archive-form" method="post" action="/batch-archive"'
+                ' onsubmit="return confirm('
+                "'Archive ALL mail in this column to their proposed"
+                " folders?')\">"
+                '<button type="submit" class="archive-btn">Archive All</button>'
                 "</form>"
             )
 
@@ -382,7 +401,7 @@ class MailBoardAdapter:
 
         return (
             '<div class="column-extra-top">'
-            f"{batch_delete_form}{force_triage_form}</div>"
+            f"{batch_delete_form}{batch_archive_form}{force_triage_form}</div>"
             f"{unsubscribe_banner_html}"
         )
 

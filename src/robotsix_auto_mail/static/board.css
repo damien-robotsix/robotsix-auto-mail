@@ -209,6 +209,14 @@ button:hover { background: #1a4d7a; }
   font-size: 0.9rem; border: 1px solid #ffecb5;
 }
 
+/* -- batch-op (delete/archive) progress indicator ------------------------ */
+.batch-banner {
+  background: #d1e7dd; color: #0a3622;
+  text-align: center; padding: 0.5rem 1rem;
+  border-radius: 6px; margin-bottom: 0.75rem;
+  font-size: 0.9rem; border: 1px solid #a3cfbb;
+}
+
 /* -- unsubscribe suggestion banner --------------------------------------- */
 .unsubscribe-banner {
   background: #e3f2fd; color: #1a3a5c;

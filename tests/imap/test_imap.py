@@ -1024,3 +1024,93 @@ def test_delete_message_expunge_fails(cfg: MailConfig) -> None:
         with ImapClient(cfg) as client:
             with pytest.raises(ImapError, match="EXPUNGE"):
                 client.delete_message(1)
+
+
+# ---------------------------------------------------------------------------
+# delete_messages / move_messages (batched primitives)
+# ---------------------------------------------------------------------------
+
+
+def test_delete_messages_single_chunk(cfg: MailConfig) -> None:
+    """delete_messages issues one STORE over the UID set + one EXPUNGE."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b""])
+    mock_ssl.expunge.return_value = ("OK", [b""])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.delete_messages([1, 2, 3])
+
+    mock_ssl.uid.assert_called_once_with("STORE", "1,2,3", "+FLAGS", "(\\Deleted)")
+    mock_ssl.expunge.assert_called_once()
+
+
+def test_delete_messages_empty_is_noop(cfg: MailConfig) -> None:
+    """delete_messages on an empty list issues no IMAP calls."""
+    mock_ssl = _make_mock_imap_ssl()
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.delete_messages([])
+
+    mock_ssl.uid.assert_not_called()
+    mock_ssl.expunge.assert_not_called()
+
+
+def test_delete_messages_chunks_in_hundreds(cfg: MailConfig) -> None:
+    """delete_messages issues one STORE + one EXPUNGE per <=100-UID chunk."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b""])
+    mock_ssl.expunge.return_value = ("OK", [b""])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.delete_messages(list(range(1, 251)))
+
+    store_calls = [c for c in mock_ssl.uid.call_args_list if c.args[0] == "STORE"]
+    assert len(store_calls) == 3  # 100 + 100 + 50
+    assert mock_ssl.expunge.call_count == 3
+    # First chunk packs UIDs 1..100 into a single comma-joined set.
+    assert store_calls[0].args[1] == ",".join(str(u) for u in range(1, 101))
+
+
+def test_delete_messages_store_fails_raises(cfg: MailConfig) -> None:
+    """delete_messages raises ImapError when UID STORE returns non-OK."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("NO", [b"err"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapError, match="UID STORE"):
+                client.delete_messages([7, 8])
+
+    mock_ssl.expunge.assert_not_called()
+
+
+def test_move_messages_copies_then_deletes(cfg: MailConfig) -> None:
+    """move_messages issues one UID COPY over the set then the batched delete."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b""])
+    mock_ssl.expunge.return_value = ("OK", [b""])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.move_messages([3, 5, 9], "Archive/2026")
+
+    copy_calls = [c for c in mock_ssl.uid.call_args_list if c.args[0] == "COPY"]
+    store_calls = [c for c in mock_ssl.uid.call_args_list if c.args[0] == "STORE"]
+    assert copy_calls == [mock.call("COPY", "3,5,9", "Archive/2026")]
+    assert store_calls == [mock.call("STORE", "3,5,9", "+FLAGS", "(\\Deleted)")]
+    mock_ssl.expunge.assert_called_once()
+
+
+def test_move_messages_empty_is_noop(cfg: MailConfig) -> None:
+    """move_messages on an empty list issues no IMAP calls."""
+    mock_ssl = _make_mock_imap_ssl()
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.move_messages([], "Archive")
+
+    mock_ssl.uid.assert_not_called()
+    mock_ssl.expunge.assert_not_called()

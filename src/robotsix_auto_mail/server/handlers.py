@@ -25,6 +25,9 @@ from robotsix_auto_mail.server._constants import (
     _parse_archive_structure,
 )
 from robotsix_auto_mail.server.adapters import (
+    _batch_op_running,
+    _run_batch_archive_background,
+    _run_batch_delete_background,
     _run_folder_triage_background,
     _run_triage_background,
 )
@@ -38,7 +41,6 @@ from robotsix_auto_mail.triage import (
     TriageError,
     get_archive_subfolder,
     get_triage_decision,
-    list_triage_decisions,
     propose_archive_subfolder_llm,
     record_archive_folder_choice,
     record_human_decision,
@@ -133,6 +135,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/delete": self._handle_delete,
             "/archive": self._handle_archive,
             "/batch-delete": self._handle_batch_delete,
+            "/batch-archive": self._handle_batch_archive,
             "/rule-action": self._handle_rule_action,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
@@ -601,53 +604,70 @@ class BoardHandler(BaseHTTPRequestHandler):
 
     def _handle_batch_delete(self) -> None:
         """Process POST /batch-delete — delete all TO_DELETE mail from IMAP
-        and local DB in a single request.
+        and local DB in a background daemon thread.
 
-        All-or-nothing guard: if any IMAP deletion fails the handler
-        returns 502 and **no** local database changes are made.
+        Follows the triage handler shape (:meth:`_handle_run_triage`):
+        single-flight guarded by the shared ``batch_op:state`` watermark
+        (so delete and archive cannot run concurrently on the same
+        account), the redirect is returned **immediately** — before any
+        IMAP work — and the worker swallows failures, leaving any
+        remaining ``TO_DELETE`` records re-triggerable.
         """
-        from robotsix_auto_mail.db import (
-            delete_record_by_message_id,
-            get_record_by_message_id,
-            init_db,
+        import threading
+
+        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            if _batch_op_running(get_watermark(conn, "batch_op:state")):
+                self._redirect("/board", code=302)
+                return
+            set_watermark(conn, "batch_op:state", "running")
+        finally:
+            conn.close()
+
+        threading.Thread(
+            target=_run_batch_delete_background,
+            args=(self.db_path, self.mail_config),
+            daemon=True,
+        ).start()
+
+        self._redirect("/board", code=302)
+
+    def _handle_batch_archive(self) -> None:
+        """Process POST /batch-archive — archive all TO_ARCHIVE mail from
+        IMAP and local DB in a background daemon thread.
+
+        Identical shape to :meth:`_handle_batch_delete` and guarded by the
+        same ``batch_op:state`` watermark, so a delete and an archive
+        cannot run concurrently on the same account.  The redirect is
+        returned immediately; the worker groups UIDs by destination folder
+        and batch-moves each group.
+        """
+        import threading
+
+        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
+
+        archive_root = (
+            self.mail_config.archive_root
+            if self.mail_config is not None
+            else DEFAULT_ARCHIVE_ROOT
         )
 
         conn = init_db(self.db_path, skip_migrations=True)
         try:
-            # Collect every TO_DELETE decision and its MailRecord.
-            to_delete_decisions = [
-                d for d in list_triage_decisions(conn) if d.action == "TO_DELETE"
-            ]
-            records: list[MailRecord] = []
-            for decision in to_delete_decisions:
-                record = get_record_by_message_id(conn, decision.message_id)
-                if record is not None:
-                    records.append(record)
-
-            # -- IMAP deletion phase (single connection) ------------------
-            if self.mail_config is not None and any(
-                r.imap_uid is not None for r in records
-            ):
-                from robotsix_auto_mail.imap import ImapClient, ImapError
-
-                try:
-                    with ImapClient(self.mail_config) as client:
-                        client.select_folder(self.mail_config.imap_folder)
-                        for record in records:
-                            if record.imap_uid is not None:
-                                client.delete_message(record.imap_uid)
-                except (ImapError, OSError) as exc:
-                    self._send_response(
-                        f"IMAP deletion failed: {exc}",
-                        status=502,
-                    )
-                    return
-
-            # -- local DB deletion phase ----------------------------------
-            for record in records:
-                delete_record_by_message_id(conn, record.message_id)
+            if _batch_op_running(get_watermark(conn, "batch_op:state")):
+                self._redirect("/board", code=302)
+                return
+            set_watermark(conn, "batch_op:state", "running")
         finally:
             conn.close()
+
+        threading.Thread(
+            target=_run_batch_archive_background,
+            args=(self.db_path, self.mail_config, archive_root),
+            daemon=True,
+        ).start()
 
         self._redirect("/board", code=302)
 
