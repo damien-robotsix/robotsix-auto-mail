@@ -148,9 +148,13 @@ def parse_message(
             continue
 
         if content_type == "text/plain":
-            body_plain = _decode_content(part)
+            decoded = _decode_content(part)
+            if not body_plain.strip():
+                body_plain = decoded
         elif content_type == "text/html":
-            body_html = _decode_content(part)
+            decoded = _decode_content(part)
+            if not body_html.strip():
+                body_html = decoded
         else:
             attachments.append(_attachment_meta(part))
 
