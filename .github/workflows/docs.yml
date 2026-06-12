@@ -5,41 +5,19 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 concurrency:
   group: docs-deploy
   cancel-in-progress: true
 
 jobs:
+  # Reusable Python-docs spine shared across robotsix repos. This single call
+  # replaces the inline checkout / setup-uv / `uv sync` / git-identity / retry
+  # `mkdocs gh-deploy` steps that used to be hand-rolled here. Unlike mill's own
+  # caller (which installs a `docs` group), auto-mail's docs deps live in the
+  # `docs` extra, so install-extras pulls `--extra docs`.
   deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v8.1.0
-
-      - name: Install docs dependencies
-        run: uv sync --frozen --extra docs
-
-      - name: Configure git identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Deploy docs (with retry)
-        run: |
-          for attempt in 1 2 3; do
-            if uv run --frozen mkdocs gh-deploy --force; then
-              echo "gh-deploy succeeded on attempt $attempt"
-              exit 0
-            fi
-            echo "gh-deploy failed on attempt $attempt; retrying..."
-            sleep 5
-          done
-          echo "gh-deploy failed after 3 attempts"
-          exit 1
+    uses: damien-robotsix/robotsix-mill/.github/workflows/python-docs.yml@main
+    permissions:
+      contents: write
+    with:
+      install-extras: "docs"
