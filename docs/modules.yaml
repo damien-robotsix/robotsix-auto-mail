@@ -76,7 +76,7 @@ modules:
       - tests/config/test_config_sync.py
       - tests/config/test_config_sync_agent.py
       - tests/config/test_accounts_config.py
-      - tests/multi_account/test_account_isolation.py
+      - tests/config/test_account_isolation.py
 
   - id: triage
     description: >-
