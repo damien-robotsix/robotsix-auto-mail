@@ -514,3 +514,349 @@ auth:
         with pytest.raises(ConfigurationError) as exc:
             load_accounts()
     assert "MAIL_IMAP_PORT" in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# Top-level llm: / langfuse: sections (application-wide)
+# ---------------------------------------------------------------------------
+
+
+def test_from_yaml_top_level_llm_applied_to_all_accounts(tmp_path: Path) -> None:
+    """Top-level llm: section populates llm_api_key on every account."""
+    yaml_file = tmp_path / "accts.yaml"
+    yaml_file.write_text(
+        """\
+llm:
+  api_key: sk-global
+  provider: openrouter-deepseek
+accounts:
+  - id: a
+    imap:
+      host: imap.a.com
+    smtp:
+      host: smtp.a.com
+    auth:
+      username: a
+      password: p
+  - id: b
+    imap:
+      host: imap.b.com
+    smtp:
+      host: smtp.b.com
+    auth:
+      username: b
+      password: p
+"""
+    )
+    accounts = MailAccountsConfig.from_yaml(yaml_file)
+    assert accounts.get("a").config.llm_api_key == "sk-global"
+    assert accounts.get("a").config.llm_provider == "openrouter-deepseek"
+    assert accounts.get("b").config.llm_api_key == "sk-global"
+    assert accounts.get("b").config.llm_provider == "openrouter-deepseek"
+
+
+def test_from_yaml_top_level_langfuse_applied_to_all_accounts(
+    tmp_path: Path,
+) -> None:
+    """Top-level langfuse: section populates langfuse fields on every account."""
+    yaml_file = tmp_path / "accts.yaml"
+    yaml_file.write_text(
+        """\
+langfuse:
+  public_key: pk-lf-global
+  secret_key: sk-lf-global
+  base_url: https://langfuse.example.com
+accounts:
+  - id: a
+    imap:
+      host: imap.a.com
+    smtp:
+      host: smtp.a.com
+    auth:
+      username: a
+      password: p
+  - id: b
+    imap:
+      host: imap.b.com
+    smtp:
+      host: smtp.b.com
+    auth:
+      username: b
+      password: p
+"""
+    )
+    accounts = MailAccountsConfig.from_yaml(yaml_file)
+    cfg_a = accounts.get("a").config
+    assert cfg_a.langfuse_public_key == "pk-lf-global"
+    assert cfg_a.langfuse_secret_key == "sk-lf-global"
+    assert cfg_a.langfuse_base_url == "https://langfuse.example.com"
+    cfg_b = accounts.get("b").config
+    assert cfg_b.langfuse_public_key == "pk-lf-global"
+    assert cfg_b.langfuse_secret_key == "sk-lf-global"
+    assert cfg_b.langfuse_base_url == "https://langfuse.example.com"
+
+
+def test_from_yaml_top_level_llm_wins_over_per_account_default(
+    tmp_path: Path,
+) -> None:
+    """Top-level llm: values override the empty-string default on every account."""
+    yaml_file = tmp_path / "accts.yaml"
+    yaml_file.write_text(
+        """\
+llm:
+  api_key: sk-global
+accounts:
+  - id: a
+    imap:
+      host: imap.a.com
+    smtp:
+      host: smtp.a.com
+    auth:
+      username: a
+      password: p
+"""
+    )
+    accounts = MailAccountsConfig.from_yaml(yaml_file)
+    assert accounts.get("a").config.llm_api_key == "sk-global"
+
+
+def test_from_yaml_per_account_llm_rejected(tmp_path: Path) -> None:
+    """Per-account llm: block raises ConfigurationError with actionable message."""
+    yaml_file = tmp_path / "accts.yaml"
+    yaml_file.write_text(
+        """\
+accounts:
+  - id: personal
+    imap:
+      host: imap.a.com
+    smtp:
+      host: smtp.a.com
+    auth:
+      username: a
+      password: p
+    llm:
+      api_key: sk-per-account
+"""
+    )
+    with pytest.raises(ConfigurationError) as excinfo:
+        MailAccountsConfig.from_yaml(yaml_file)
+    message = str(excinfo.value)
+    assert "personal" in message
+    assert "llm" in message.lower()
+    assert "top-level" in message.lower() or "outside" in message.lower()
+
+
+def test_from_yaml_per_account_langfuse_rejected(tmp_path: Path) -> None:
+    """Per-account langfuse: block raises ConfigurationError with actionable message."""
+    yaml_file = tmp_path / "accts.yaml"
+    yaml_file.write_text(
+        """\
+accounts:
+  - id: work
+    imap:
+      host: imap.a.com
+    smtp:
+      host: smtp.a.com
+    auth:
+      username: a
+      password: p
+    langfuse:
+      public_key: pk-per-account
+"""
+    )
+    with pytest.raises(ConfigurationError) as excinfo:
+        MailAccountsConfig.from_yaml(yaml_file)
+    message = str(excinfo.value)
+    assert "work" in message
+    assert "langfuse" in message.lower()
+    assert "top-level" in message.lower() or "outside" in message.lower()
+
+
+# ---------------------------------------------------------------------------
+# render_accounts_yaml top-level emission
+# ---------------------------------------------------------------------------
+
+
+def test_render_accounts_yaml_emits_top_level_llm() -> None:
+    """render_accounts_yaml emits a top-level llm: section, not per-account."""
+    account = MailAccount(
+        "alpha",
+        _cfg(
+            llm_api_key="sk-test",
+            llm_provider="openrouter-deepseek",
+            db_path=".data/alpha/mail.db",
+        ),
+    )
+    text = render_accounts_yaml([account], "alpha")
+    # Top-level llm: appears before accounts:
+    llm_pos = text.index("llm:")
+    accts_pos = text.index("accounts:")
+    assert llm_pos < accts_pos, "llm: must appear before accounts:"
+    assert "api_key: " in text
+    assert "sk-test" in text
+    # No per-account llm: block inside the account rendering
+    # (the llm: line appears exactly once — the top-level one)
+    assert text.count("llm:") == 1
+
+
+def test_render_accounts_yaml_emits_top_level_langfuse() -> None:
+    """render_accounts_yaml emits a top-level langfuse: section, not per-account."""
+    account = MailAccount(
+        "alpha",
+        _cfg(
+            langfuse_public_key="pk-lf-test",
+            langfuse_secret_key="sk-lf-test",
+            langfuse_base_url="https://cloud.langfuse.com",
+            db_path=".data/alpha/mail.db",
+        ),
+    )
+    text = render_accounts_yaml([account], "alpha")
+    langfuse_pos = text.index("langfuse:")
+    accts_pos = text.index("accounts:")
+    assert langfuse_pos < accts_pos, "langfuse: must appear before accounts:"
+    assert "public_key: " in text
+    assert "pk-lf-test" in text
+    assert "secret_key: " in text
+    assert "sk-lf-test" in text
+    assert text.count("langfuse:") == 1
+
+
+def test_render_accounts_yaml_omits_llm_when_defaults() -> None:
+    """render_accounts_yaml does NOT emit llm: when api_key is empty and
+    provider is the default."""
+    account = MailAccount("alpha", _cfg(db_path=".data/alpha/mail.db"))
+    text = render_accounts_yaml([account], "alpha")
+    assert "llm:" not in text
+
+
+def test_render_accounts_yaml_omits_langfuse_when_all_empty() -> None:
+    """render_accounts_yaml does NOT emit langfuse: when all fields are empty."""
+    account = MailAccount("alpha", _cfg(db_path=".data/alpha/mail.db"))
+    text = render_accounts_yaml([account], "alpha")
+    assert "langfuse:" not in text
+
+
+def test_render_accounts_yaml_emits_llm_when_only_provider_non_default() -> None:
+    """llm: section emitted even with empty api_key if provider differs from default."""
+    account = MailAccount(
+        "alpha",
+        _cfg(
+            llm_provider="claude-sdk",
+            db_path=".data/alpha/mail.db",
+        ),
+    )
+    text = render_accounts_yaml([account], "alpha")
+    assert "llm:" in text
+    assert 'provider: "claude-sdk"' in text
+    assert "api_key:" not in text  # empty api_key not emitted
+
+
+# ---------------------------------------------------------------------------
+# Multi-account from_env with bare global vars
+# ---------------------------------------------------------------------------
+
+
+def test_from_env_multi_account_bare_llm_vars() -> None:
+    """Bare LLM_API_KEY / LLM_PROVIDER populate global fields in multi-account env."""
+    env = {
+        "LLM_API_KEY": "sk-bare",
+        "LLM_PROVIDER": "claude-sdk",
+        "MAIL_ACCOUNTS_0_ID": "a",
+        "MAIL_ACCOUNTS_0_IMAP_HOST": "imap.a.com",
+        "MAIL_ACCOUNTS_0_SMTP_HOST": "smtp.a.com",
+        "MAIL_ACCOUNTS_0_USERNAME": "a",
+        "MAIL_ACCOUNTS_0_PASSWORD": "p",
+        "MAIL_ACCOUNTS_1_ID": "b",
+        "MAIL_ACCOUNTS_1_IMAP_HOST": "imap.b.com",
+        "MAIL_ACCOUNTS_1_SMTP_HOST": "smtp.b.com",
+        "MAIL_ACCOUNTS_1_USERNAME": "b",
+        "MAIL_ACCOUNTS_1_PASSWORD": "p",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        accounts = MailAccountsConfig.from_env()
+    assert accounts.get("a").config.llm_api_key == "sk-bare"
+    assert accounts.get("a").config.llm_provider == "claude-sdk"
+    assert accounts.get("b").config.llm_api_key == "sk-bare"
+    assert accounts.get("b").config.llm_provider == "claude-sdk"
+
+
+def test_from_env_multi_account_bare_langfuse_vars() -> None:
+    """Bare LANGFUSE_* vars populate global fields in multi-account env."""
+    env = {
+        "LANGFUSE_PUBLIC_KEY": "pk-bare",
+        "LANGFUSE_SECRET_KEY": "sk-bare",
+        "LANGFUSE_BASE_URL": "https://lf.example.com",
+        "MAIL_ACCOUNTS_0_ID": "a",
+        "MAIL_ACCOUNTS_0_IMAP_HOST": "imap.a.com",
+        "MAIL_ACCOUNTS_0_SMTP_HOST": "smtp.a.com",
+        "MAIL_ACCOUNTS_0_USERNAME": "a",
+        "MAIL_ACCOUNTS_0_PASSWORD": "p",
+        "MAIL_ACCOUNTS_1_ID": "b",
+        "MAIL_ACCOUNTS_1_IMAP_HOST": "imap.b.com",
+        "MAIL_ACCOUNTS_1_SMTP_HOST": "smtp.b.com",
+        "MAIL_ACCOUNTS_1_USERNAME": "b",
+        "MAIL_ACCOUNTS_1_PASSWORD": "p",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        accounts = MailAccountsConfig.from_env()
+    cfg_a = accounts.get("a").config
+    assert cfg_a.langfuse_public_key == "pk-bare"
+    assert cfg_a.langfuse_secret_key == "sk-bare"
+    assert cfg_a.langfuse_base_url == "https://lf.example.com"
+    cfg_b = accounts.get("b").config
+    assert cfg_b.langfuse_public_key == "pk-bare"
+    assert cfg_b.langfuse_secret_key == "sk-bare"
+    assert cfg_b.langfuse_base_url == "https://lf.example.com"
+
+
+def test_from_env_multi_account_bare_wins_over_namespaced_llm() -> None:
+    """Bare LLM_API_KEY overrides a namespaced MAIL_ACCOUNTS_0_LLM_API_KEY."""
+    env = {
+        "LLM_API_KEY": "sk-bare",
+        "MAIL_ACCOUNTS_0_ID": "a",
+        "MAIL_ACCOUNTS_0_LLM_API_KEY": "sk-namespaced",
+        "MAIL_ACCOUNTS_0_IMAP_HOST": "imap.a.com",
+        "MAIL_ACCOUNTS_0_SMTP_HOST": "smtp.a.com",
+        "MAIL_ACCOUNTS_0_USERNAME": "a",
+        "MAIL_ACCOUNTS_0_PASSWORD": "p",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        accounts = MailAccountsConfig.from_env()
+    # Bare env var wins; the namespaced value is ignored.
+    assert accounts.get("a").config.llm_api_key == "sk-bare"
+
+
+def test_from_env_multi_account_bare_wins_over_namespaced_langfuse() -> None:
+    """Bare LANGFUSE_PUBLIC_KEY overrides a namespaced MAIL_ACCOUNTS_0_LANGFUSE_PUBLIC_KEY."""
+    env = {
+        "LANGFUSE_PUBLIC_KEY": "pk-bare",
+        "MAIL_ACCOUNTS_0_ID": "a",
+        "MAIL_ACCOUNTS_0_LANGFUSE_PUBLIC_KEY": "pk-namespaced",
+        "MAIL_ACCOUNTS_0_IMAP_HOST": "imap.a.com",
+        "MAIL_ACCOUNTS_0_SMTP_HOST": "smtp.a.com",
+        "MAIL_ACCOUNTS_0_USERNAME": "a",
+        "MAIL_ACCOUNTS_0_PASSWORD": "p",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        accounts = MailAccountsConfig.from_env()
+    # Bare env var wins; the namespaced value is ignored.
+    assert accounts.get("a").config.langfuse_public_key == "pk-bare"
+
+
+def test_from_env_multi_account_global_fields_default_when_not_set() -> None:
+    """When bare global env vars are absent, global fields fall back to defaults."""
+    env = {
+        "MAIL_ACCOUNTS_0_ID": "a",
+        "MAIL_ACCOUNTS_0_IMAP_HOST": "imap.a.com",
+        "MAIL_ACCOUNTS_0_SMTP_HOST": "smtp.a.com",
+        "MAIL_ACCOUNTS_0_USERNAME": "a",
+        "MAIL_ACCOUNTS_0_PASSWORD": "p",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        accounts = MailAccountsConfig.from_env()
+    cfg = accounts.get("a").config
+    assert cfg.llm_api_key == ""
+    assert cfg.llm_provider == "openrouter-deepseek"
+    assert cfg.langfuse_public_key == ""
+    assert cfg.langfuse_secret_key == ""
+    assert cfg.langfuse_base_url == ""

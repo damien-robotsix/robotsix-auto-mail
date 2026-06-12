@@ -99,9 +99,9 @@ FIELD_TO_ENV: dict[str, str] = {
     "archive_namespace": "MAIL_ARCHIVE_NAMESPACE",
     "archive_enabled": "MAIL_ARCHIVE_ENABLED",
     "triage_on_ingest": "MAIL_TRIAGE_ON_INGEST",
-    "langfuse_public_key": "MAIL_LANGFUSE_PUBLIC_KEY",
-    "langfuse_secret_key": "MAIL_LANGFUSE_SECRET_KEY",
-    "langfuse_base_url": "MAIL_LANGFUSE_BASE_URL",
+    "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
+    "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
+    "langfuse_base_url": "LANGFUSE_BASE_URL",
 }
 
 # ---------------------------------------------------------------------------
@@ -112,6 +112,9 @@ _PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^sk-or-v1-…$"),
     re.compile(r"^sk-or-v1-\w+$"),
     re.compile(r"^your-password-here$"),
+    re.compile(r"^pk-lf-…$"),
+    re.compile(r"^sk-lf-…$"),
+    re.compile(r"^https://cloud\.langfuse\.com$"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -125,11 +128,6 @@ _ENV_EXCLUDE_STALE: frozenset[str] = frozenset(
         # (via ``os.environ``) and are intentionally not ``MailConfig`` fields.
         "LOG_LEVEL",
         "LOG_FORMAT",
-        # Langfuse tracing vars are read directly from the environment by
-        # ``robotsix_llmio.core.setup_langfuse_tracing``.
-        "LANGFUSE_PUBLIC_KEY",
-        "LANGFUSE_SECRET_KEY",
-        "LANGFUSE_BASE_URL",
     }
 )
 
@@ -372,6 +370,14 @@ def check_yaml_example(
     for section, value in representative.items():
         if isinstance(value, dict):
             _collect_paths(value, section)
+
+    # -- top-level keys (llm, langfuse) ------------------------------------
+    for tls in ("llm", "langfuse"):
+        tls_data = data.get(tls)
+        if isinstance(tls_data, dict):
+            for k, v in tls_data.items():
+                if not isinstance(v, dict):
+                    structured[f"{tls}.{k}"] = v
 
     # -- text scan (commented-out optional keys) ----------------------------
     commented = _scan_commented_yaml(text)

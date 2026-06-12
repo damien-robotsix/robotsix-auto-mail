@@ -15,6 +15,23 @@
 # NOTE: the legacy single-account shape (top-level imap:/smtp:/auth: with no
 # `accounts:` key) is DEPRECATED but still loads. Run
 # `robotsix-auto-mail migrate-config` to convert an old config to this shape.
+#
+# llm: and langfuse: are application-wide (top-level) sections — they apply
+# to every account.  Bare LLM_API_KEY / LANGFUSE_* env vars override them.
+
+# LLM provider — used by the `detect` command and future LLM-assisted mail
+# processing.  The LLM_API_KEY / LLM_PROVIDER environment variables override
+# these values.
+# llm:
+#   api_key: sk-or-v1-…
+#   provider: openrouter-deepseek
+
+# Langfuse observability — optional.  When public_key/secret_key are set,
+# every LLM agent run is traced to the configured Langfuse project.
+# langfuse:
+#   public_key: ""
+#   secret_key: ""
+#   base_url: ""
 
 # Optional: name the default account. Absent → the first entry below.
 default_account: personal
@@ -58,17 +75,6 @@ accounts:
     # Inbox triage agent — runs automatically after each ingest cycle.
     # triage:
     #   on_ingest: true
-    # LLM provider — used by the `detect` command and future LLM-assisted mail
-    # processing. The LLM_API_KEY environment variable overrides this value.
-    # llm:
-    #   api_key: sk-or-v1-…
-    #   provider: openrouter-deepseek
-    # Langfuse observability — optional. When public_key/secret_key are set,
-    # every LLM agent run is traced to the configured Langfuse project.
-    # langfuse:
-    #   public_key: ""
-    #   secret_key: ""
-    #   base_url: ""
 
   - id: work
     label: Work mailbox
