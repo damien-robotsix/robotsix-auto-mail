@@ -16,6 +16,7 @@ from robotsix_auto_mail.cli.config import (
     _existing_account_ids,
     _existing_accounts_for_append,
     _get_password,
+    _prompt_hosts,
     _refine_manual,
     _refine_password,
     _refine_with_llm,
@@ -26,7 +27,7 @@ from robotsix_auto_mail.cli.config import (
     _verify_feedback,
     _VerifyResult,
 )
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import ConfigurationError, MailConfig
 from robotsix_auto_mail.detect import DetectionError, MailProvider
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
 from robotsix_auto_mail.smtp import SmtpAuthError, SmtpClient, SmtpError
@@ -1356,3 +1357,334 @@ def test_verify_and_refine_multi_account_append(
     assert "new-account" in content
     assert "old@example.com" in content
     assert "new@example.com" in content
+
+
+# ---------------------------------------------------------------------------
+# _prompt_hosts — direct unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_prompt_hosts_both_failing(cfg: MailConfig) -> None:
+    """Both IMAP and SMTP host problems prompt for each host."""
+    result = _VerifyResult(
+        imap_ok=False, smtp_ok=False, imap_error="refused", smtp_error="timeout"
+    )
+    with mock.patch("builtins.input", side_effect=["new-imap.com", "new-smtp.com"]):
+        updated = _prompt_hosts(cfg, result)
+    assert updated is not None
+    assert updated.imap_host == "new-imap.com"
+    assert updated.smtp_host == "new-smtp.com"
+
+
+def test_prompt_hosts_imap_only(cfg: MailConfig) -> None:
+    """Only IMAP has a host problem → only IMAP is prompted."""
+    result = _VerifyResult(imap_ok=False, smtp_ok=True, imap_error="refused")
+    with mock.patch("builtins.input", side_effect=["fixed-imap.com"]):
+        updated = _prompt_hosts(cfg, result)
+    assert updated is not None
+    assert updated.imap_host == "fixed-imap.com"
+    assert updated.smtp_host == cfg.smtp_host
+
+
+def test_prompt_hosts_smtp_only(cfg: MailConfig) -> None:
+    """Only SMTP has a host problem → only SMTP is prompted."""
+    result = _VerifyResult(imap_ok=True, smtp_ok=False, smtp_error="timeout")
+    with mock.patch("builtins.input", side_effect=["fixed-smtp.com"]):
+        updated = _prompt_hosts(cfg, result)
+    assert updated is not None
+    assert updated.smtp_host == "fixed-smtp.com"
+    assert updated.imap_host == cfg.imap_host
+
+
+def test_prompt_hosts_auth_not_prompted(cfg: MailConfig) -> None:
+    """Auth failures (not host problems) are not prompted."""
+    result = _VerifyResult(
+        imap_ok=False,
+        smtp_ok=False,
+        imap_auth=True,
+        smtp_auth=True,
+        imap_error="auth",
+        smtp_error="auth",
+    )
+    updated = _prompt_hosts(cfg, result)
+    assert updated is None  # no host problems → no prompts → no change
+
+
+def test_prompt_hosts_no_change(cfg: MailConfig) -> None:
+    """User presses Enter without typing → no config returned."""
+    result = _VerifyResult(imap_ok=False, smtp_ok=False)
+    with mock.patch("builtins.input", side_effect=["", ""]):
+        updated = _prompt_hosts(cfg, result)
+    assert updated is None
+
+
+def test_prompt_hosts_eof(cfg: MailConfig) -> None:
+    """EOFError during prompt → None returned."""
+    result = _VerifyResult(imap_ok=False, smtp_ok=False)
+    with mock.patch("builtins.input", side_effect=EOFError):
+        updated = _prompt_hosts(cfg, result)
+    assert updated is None
+
+
+def test_prompt_hosts_keyboard_interrupt(cfg: MailConfig) -> None:
+    """KeyboardInterrupt during prompt → None returned."""
+    result = _VerifyResult(imap_ok=False, smtp_ok=False)
+    with mock.patch("builtins.input", side_effect=KeyboardInterrupt):
+        updated = _prompt_hosts(cfg, result)
+    assert updated is None
+
+
+# ---------------------------------------------------------------------------
+# _existing_accounts_for_append — validation-failure edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_existing_accounts_for_append_multi_account_validation_error(
+    tmp_path: Path,
+) -> None:
+    """Multi-account YAML that parses but fails schema validation → graceful fallback."""
+    path = tmp_path / "bad_schema.yaml"
+    path.write_text(
+        "accounts:\n"
+        "  - id: ok\n"
+        "    auth:\n"
+        "      username: a@a.com\n"
+        "    imap:\n"
+        "      host: imap.ok.com\n"
+        "    smtp:\n"
+        "      host: smtp.ok.com\n"
+        "default_account_id: ok\n"
+    )
+    # Force MailAccountsConfig.from_yaml to raise to cover the except path.
+    with mock.patch(
+        "robotsix_auto_mail.cli.config.MailAccountsConfig.from_yaml",
+        side_effect=ValueError("schema mismatch"),
+    ):
+        others, default_id = _existing_accounts_for_append(path, "new-id")
+    assert others == []
+    assert default_id == "new-id"
+
+
+def test_existing_accounts_for_append_mono_validation_error(
+    tmp_path: Path,
+) -> None:
+    """Mono YAML that parses but fails MailConfig schema → graceful fallback."""
+    path = tmp_path / "bad_mono.yaml"
+    path.write_text("auth:\n  username: user@example.com\nimap:\n  host: imap.example.com\n")
+    # Force MailConfig.from_yaml to raise to cover the except path.
+    with mock.patch(
+        "robotsix_auto_mail.cli.config.MailConfig.from_yaml",
+        side_effect=ValueError("validation failed"),
+    ):
+        others, default_id = _existing_accounts_for_append(path, "myid")
+    assert others == []
+    assert default_id == "myid"
+
+
+# ---------------------------------------------------------------------------
+# _verify_and_refine — remaining edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_verify_and_refine_microsoft_no_verify(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Microsoft account with --no-verify returns 0 immediately after writing config."""
+    output = tmp_path / "cfg.yaml"
+    provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    rc = _verify_and_refine(
+        provider,
+        email="user@contoso.com",
+        api_key=None,
+        llm_provider=None,
+        mx_hosts=[],
+        output_path=output,
+        password=None,
+        password_from_args=None,
+        no_verify=True,
+        account_id="default",
+        label=None,
+        provider_to_config=_provider_to_config,
+        detect_provider=_mock_detect,
+        _detection_error=DetectionError,
+        microsoft=True,
+    )
+
+    assert rc == 0
+    assert output.exists()
+
+
+def test_verify_and_refine_microsoft_device_code_config_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Microsoft device-code login raises ConfigurationError → return 1."""
+    output = tmp_path / "cfg.yaml"
+    provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with mock.patch(
+        "robotsix_auto_mail.oauth2.device_code_login",
+        side_effect=ConfigurationError("missing tenant"),
+    ):
+        rc = _verify_and_refine(
+            provider,
+            email="user@contoso.com",
+            api_key=None,
+            llm_provider=None,
+            mx_hosts=[],
+            output_path=output,
+            password=None,
+            password_from_args=None,
+            no_verify=False,
+            account_id="default",
+            label=None,
+            provider_to_config=_provider_to_config,
+            detect_provider=_mock_detect,
+            _detection_error=DetectionError,
+            microsoft=True,
+        )
+
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert "missing tenant" in captured.err
+
+
+def test_verify_and_refine_microsoft_device_code_exception(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Microsoft device-code login raises generic Exception → return 1."""
+    output = tmp_path / "cfg.yaml"
+    provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with mock.patch(
+        "robotsix_auto_mail.oauth2.device_code_login",
+        side_effect=RuntimeError("network down"),
+    ):
+        rc = _verify_and_refine(
+            provider,
+            email="user@contoso.com",
+            api_key=None,
+            llm_provider=None,
+            mx_hosts=[],
+            output_path=output,
+            password=None,
+            password_from_args=None,
+            no_verify=False,
+            account_id="default",
+            label=None,
+            provider_to_config=_provider_to_config,
+            detect_provider=_mock_detect,
+            _detection_error=DetectionError,
+            microsoft=True,
+        )
+
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert "device-code login failed" in captured.err
+
+
+def test_verify_and_refine_no_password_early_return(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Non-Microsoft, no password, no_verify=False → returns 0 with instructions."""
+    output = tmp_path / "cfg.yaml"
+    provider = MailProvider(imap_host="imap.test.com", smtp_host="smtp.test.com")
+
+    rc = _verify_and_refine(
+        provider,
+        email="user@example.com",
+        api_key=None,
+        llm_provider=None,
+        mx_hosts=[],
+        output_path=output,
+        password=None,
+        password_from_args=None,
+        no_verify=False,
+        account_id="default",
+        label=None,
+        provider_to_config=_provider_to_config,
+        detect_provider=_mock_detect,
+        _detection_error=DetectionError,
+    )
+
+    assert rc == 0
+    assert output.exists()
+    captured = capsys.readouterr()
+    assert "No password provided" in captured.err
+
+
+def test_verify_and_refine_auth_retry_returns_none(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Auth failure → password re-prompt returns None → break → return 1."""
+    output = tmp_path / "cfg.yaml"
+    provider = MailProvider(imap_host="imap.ok.com", smtp_host="smtp.ok.com")
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config",
+            return_value=_VerifyResult(
+                imap_ok=False,
+                smtp_ok=False,
+                imap_auth=True,
+                smtp_auth=True,
+                imap_error="auth",
+                smtp_error="auth",
+            ),
+        ),
+        mock.patch("getpass.getpass", return_value=""),  # empty → None
+    ):
+        rc = _verify_and_refine(
+            provider,
+            email="user@example.com",
+            api_key=None,
+            llm_provider=None,
+            mx_hosts=[],
+            output_path=output,
+            password="wrong-pw",
+            password_from_args=None,  # interactive → pw_budget = 2
+            no_verify=False,
+            account_id="default",
+            label=None,
+            provider_to_config=_provider_to_config,
+            detect_provider=_mock_detect,
+            _detection_error=DetectionError,
+        )
+
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert "Verification FAILED" in captured.err
+
+
+def test_verify_and_refine_password_with_no_verify(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Non-Microsoft, password present, --no-verify → returns 0, config written."""
+    output = tmp_path / "cfg.yaml"
+    provider = MailProvider(imap_host="imap.test.com", smtp_host="smtp.test.com")
+
+    rc = _verify_and_refine(
+        provider,
+        email="user@example.com",
+        api_key=None,
+        llm_provider=None,
+        mx_hosts=[],
+        output_path=output,
+        password="pw",
+        password_from_args="pw",
+        no_verify=True,
+        account_id="default",
+        label=None,
+        provider_to_config=_provider_to_config,
+        detect_provider=_mock_detect,
+        _detection_error=DetectionError,
+    )
+
+    assert rc == 0
+    assert output.exists()
