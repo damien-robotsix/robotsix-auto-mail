@@ -1600,6 +1600,9 @@ _MONO_CONFIG = (
     "smtp:\n  host: smtp.example.com\n"
     'auth:\n  username: u@example.com\n  password: "s3cret"\n'
     "llm:\n  api_key: sk-keep\n"
+    "langfuse:\n  public_key: pk-lf-keep\n"
+    "  secret_key: sk-lf-keep\n"
+    "  base_url: https://cloud.langfuse.com\n"
 )
 
 
@@ -1623,7 +1626,21 @@ def test_migrate_config_converts_mono_and_writes_backup(
     assert acct.imap_port == 1993
     assert acct.password == "s3cret"
     assert acct.llm_api_key == "sk-keep"
+    assert acct.langfuse_public_key == "pk-lf-keep"
+    assert acct.langfuse_secret_key == "sk-lf-keep"
+    assert acct.langfuse_base_url == "https://cloud.langfuse.com"
     assert acct.db_path == ".data/default/mail.db"
+
+    # Verify top-level llm: / langfuse: sections in the rendered YAML.
+    rendered = cfg.read_text()
+    llm_pos = rendered.index("llm:")
+    langfuse_pos = rendered.index("langfuse:")
+    accts_pos = rendered.index("accounts:")
+    assert llm_pos < accts_pos, "llm: must be top-level (before accounts:)"
+    assert langfuse_pos < accts_pos, "langfuse: must be top-level (before accounts:)"
+    # Only one llm: / langfuse: block (top-level; none per-account).
+    assert rendered.count("llm:") == 1
+    assert rendered.count("langfuse:") == 1
 
 
 def test_migrate_config_custom_id(tmp_path: Path) -> None:
@@ -1683,6 +1700,12 @@ def test_migrate_config_dry_run_writes_nothing(
     out = capsys.readouterr().out
     assert "accounts:" in out
     assert "default_account:" in out
+    # Top-level llm: / langfuse: sections appear before accounts:
+    llm_pos = out.index("llm:")
+    langfuse_pos = out.index("langfuse:")
+    accts_pos = out.index("accounts:")
+    assert llm_pos < accts_pos, "llm: must be top-level (before accounts:)"
+    assert langfuse_pos < accts_pos, "langfuse: must be top-level (before accounts:)"
     assert cfg.read_text() == _MONO_CONFIG
     assert not (tmp_path / "mail.local.yaml.bak").exists()
 

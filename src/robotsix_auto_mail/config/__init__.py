@@ -721,6 +721,8 @@ def _get_bool(section: dict[str, object], key: str, default: bool) -> bool:
 def _build_config_from_env(
     raw_for: Callable[[_FieldSpec], str],
     label_for: Callable[[_FieldSpec], str],
+    *,
+    skip_global: bool = False,
 ) -> MailConfig:
     """Build a ``MailConfig`` from a per-field environment source.
 
@@ -730,12 +732,19 @@ def _build_config_from_env(
     namespaced multi-account loader (``MailAccountsConfig.from_env``) share
     exactly the same required-field / default / coercion / validation logic
     rather than duplicating it.
+
+    When *skip_global* is True, fields marked ``global_field=True`` are
+    skipped — the caller is responsible for populating them separately
+    (e.g. from bare environment variables in the multi-account path).
     """
     missing: list[str] = []
     errors: list[str] = []
     kwargs: dict[str, Any] = {}
 
     for spec in _FIELD_SPECS:
+        if skip_global and spec.global_field:
+            kwargs[spec.field_name] = spec.default
+            continue
         raw = raw_for(spec)
         label = label_for(spec)
         if not raw:
@@ -1105,10 +1114,11 @@ def _build_account_from_env(index: int) -> MailAccount:
     cfg = _build_config_from_env(
         lambda spec: os.environ.get(namespaced(spec.env_key), ""),
         lambda spec: namespaced(spec.env_key),
+        skip_global=True,
     )
 
     # Global fields are application-wide; read them from bare (non-namespaced)
-    # env vars, overriding any per-account namespaced value.
+    # env vars.  They were skipped in _build_config_from_env above.
     cfg = dataclasses.replace(
         cfg,
         llm_api_key=os.environ.get("LLM_API_KEY", cfg.llm_api_key),
