@@ -13,6 +13,7 @@ from __future__ import annotations
 import email.message
 import email.policy
 import email.utils
+import hashlib
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -99,6 +100,14 @@ def parse_message(
     # -- message_id -----------------------------------------------------------
     message_id: str = msg.get("Message-ID", "")
     # Keep brackets as-is per existing convention.
+    if not message_id.strip():
+        # A mail without a Message-ID header would be unaddressable: every
+        # board action and the ingest dedup key on message_id, so an empty
+        # value yields a permanently stuck card. Synthesize a stable
+        # surrogate from the raw bytes — deterministic, so re-ingesting the
+        # same physical mail dedups exactly like a real Message-ID.
+        digest = hashlib.sha256(raw_bytes).hexdigest()[:32]
+        message_id = f"<{digest}@synthetic.robotsix-auto-mail>"
 
     # -- sender ---------------------------------------------------------------
     sender: str = msg.get("From", "")
