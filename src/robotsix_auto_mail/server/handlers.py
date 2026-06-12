@@ -392,7 +392,14 @@ class BoardHandler(BaseHTTPRequestHandler):
                 try:
                     if record is not None and self.mail_config is not None:
                         propose_archive_subfolder_llm(
-                            conn, record, self.mail_config.llm_api_key
+                            conn,
+                            record,
+                            self.mail_config.llm_api_key,
+                            provider=(
+                                self.mail_config.llm_provider
+                                if self.mail_config
+                                else None
+                            ),
                         )
                 except Exception:  # noqa: S110  # nosec B110
                     pass  # Non-fatal: board falls back to deterministic proposal
@@ -1355,6 +1362,9 @@ class BoardHandler(BaseHTTPRequestHandler):
                     message_id,
                     api_key=(
                         self.mail_config.llm_api_key if self.mail_config else None
+                    ),
+                    provider=(
+                        self.mail_config.llm_provider if self.mail_config else None
                     ),
                 )
             except DraftGenerationError:

@@ -101,7 +101,11 @@ def _run_folder_triage_background(
 
         with ImapClient(mail_config) as imap:
             ingest_folder(conn, imap, mail_config, folder)
-        run_triage_agent(conn, user_email=mail_config.username)
+        run_triage_agent(
+            conn,
+            user_email=mail_config.username,
+            provider=mail_config.llm_provider,
+        )
         # Mirror the inbox helper's deterministic rule-proposal refresh.
         record_and_filter_rule_proposals(conn, propose_triage_rules(conn))
     except Exception:  # noqa: S110  # nosec B110

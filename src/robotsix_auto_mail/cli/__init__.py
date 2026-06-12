@@ -203,6 +203,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
     )
     config_sync_parser.add_argument(
+        "--provider",
+        default=None,
+        help="LLM backend name (e.g. openrouter-deepseek). Overrides "
+        "LLM_PROVIDER env and config file.",
+    )
+    config_sync_parser.add_argument(
         "--output-format",
         choices=["text", "json"],
         default="text",

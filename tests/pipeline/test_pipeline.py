@@ -898,6 +898,7 @@ def test_ingest_calls_setup_archive_before_fetch(
         archive_root=cfg.archive_root,
         archive_namespace=cfg.archive_namespace,
         api_key=cfg.llm_api_key,
+        provider=cfg.llm_provider,
     )
     # setup_archive must run before fetch_new_messages.
     call_order = [c[0] for c in manager.mock_calls]
@@ -960,6 +961,7 @@ def test_ingest_passes_configured_archive_root(
         archive_root="custom-archive",
         archive_namespace=cfg.archive_namespace,
         api_key=cfg.llm_api_key,
+        provider=cfg.llm_provider,
     )
 
 
@@ -1008,7 +1010,11 @@ def test_ingest_runs_triage_on_new_mail(
     result = ingest_mail(conn, imap, cfg)
 
     mock_triage.assert_called_once_with(
-        conn, api_key=cfg.llm_api_key, only_undecided=True, user_email=cfg.username
+        conn,
+        api_key=cfg.llm_api_key,
+        provider=cfg.llm_provider,
+        only_undecided=True,
+        user_email=cfg.username,
     )
     assert result.triaged == 2
     # Triage must perform no IMAP/mailbox action of its own.

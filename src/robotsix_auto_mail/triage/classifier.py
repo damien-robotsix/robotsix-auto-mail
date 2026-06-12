@@ -256,6 +256,7 @@ def propose_archive_subfolder_llm(
     conn: sqlite3.Connection,
     record: MailRecord,
     api_key: str,
+    provider: str | None = None,
 ) -> None:
     """Run a cheap LLM to propose an archive subfolder for *record*
     and persist the hint.  Best-effort — failures are silently
@@ -265,6 +266,13 @@ def propose_archive_subfolder_llm(
     resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
     if not resolved_key:
         return  # No API key → silently return
+
+    # -- resolve provider --
+    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
+    if not resolved_provider:
+        from robotsix_auto_mail.config import load_llm_provider
+
+        resolved_provider = load_llm_provider()
 
     # -- load existing archive folders from watermark --
     archive_raw = get_watermark(conn, "archive_structure")
@@ -344,7 +352,7 @@ def propose_archive_subfolder_llm(
     from robotsix_llmio.core import get_provider
 
     try:
-        llm_provider = get_provider(api_key=resolved_key)
+        llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
         agent_handle = llm_provider.build_agent(
             tier=Tier.CHEAP,
             system_prompt=system_prompt,

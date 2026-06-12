@@ -62,6 +62,7 @@ accounts:
     # processing. The LLM_API_KEY environment variable overrides this value.
     # llm:
     #   api_key: sk-or-v1-…
+    #   provider: openrouter-deepseek
     # Langfuse observability — optional. When public_key/secret_key are set,
     # every LLM agent run is traced to the configured Langfuse project.
     # langfuse:

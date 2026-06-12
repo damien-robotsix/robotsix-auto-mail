@@ -297,15 +297,17 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         return 1
 
-    from robotsix_auto_mail.config import load_llm
+    from robotsix_auto_mail.config import load_llm, load_llm_provider
 
     account_id = args.id or _account_id_from_email(args.email)
     label = args.email
 
     api_key = load_llm()
+    llm_provider_str = load_llm_provider()
     provider, mx_hosts = _detect_settings(
         args.email,
         api_key,
+        llm_provider_str,
         autoconfig_lookup,
         mx_lookup,
         provider_from_mx,
@@ -364,6 +366,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         provider,
         email=args.email,
         api_key=api_key,
+        llm_provider=llm_provider_str,
         mx_hosts=mx_hosts,
         output_path=output_path,
         password=password,
@@ -468,7 +471,9 @@ def _cmd_config_sync(args: argparse.Namespace) -> int:
         conn = _cli.init_db(config.db_path)
 
     try:
-        result = run_config_sync_agent(api_key=args.api_key, conn=conn)
+        result = run_config_sync_agent(
+            api_key=args.api_key, provider=args.provider, conn=conn
+        )
     except ConfigSyncError as exc:
         sys.stderr.write(f"Error: {exc}\n")
         return 1
@@ -515,7 +520,10 @@ def _cmd_triage(args: argparse.Namespace) -> int:
     conn = _cli.init_db(config.db_path)
     try:
         decisions = run_triage_agent(
-            conn, api_key=args.api_key, user_email=config.username
+            conn,
+            api_key=args.api_key,
+            provider=config.llm_provider,
+            user_email=config.username,
         )
     except TriageError as exc:
         sys.stderr.write(f"Error: {exc}\n")
@@ -582,7 +590,10 @@ def _cmd_triage_folder(args: argparse.Namespace) -> int:
         if not args.dry_run:
             try:
                 decisions = run_triage_agent(
-                    conn, api_key=args.api_key, user_email=config.username
+                    conn,
+                    api_key=args.api_key,
+                    provider=config.llm_provider,
+                    user_email=config.username,
                 )
             except TriageError as exc:
                 sys.stderr.write(f"Error: {exc}\n")

@@ -1115,7 +1115,9 @@ def test_detect_llm_api_key_env(
             rc = main(["detect", "user@x.com", "--stdout"])
 
     assert rc == 0
-    mock_dp.assert_called_once_with("user@x.com", api_key="sk-test", mx_hosts=[])
+    mock_dp.assert_called_once_with(
+        "user@x.com", api_key="sk-test", provider="openrouter-deepseek", mx_hosts=[]
+    )
 
 
 def test_detect_uses_autoconfig_when_available(
@@ -1879,7 +1881,7 @@ def test_config_sync_api_key_precedence(
         rc = main(["config-sync", "--api-key", "sk-cli"])
 
     assert rc == 0
-    cls.assert_called_once_with(api_key="sk-cli")
+    cls.assert_called_once_with(provider="openrouter-deepseek", api_key="sk-cli")
 
 
 def test_config_sync_dedup_forwards_conn(
@@ -2652,6 +2654,7 @@ def test_refine_with_llm_success_returns_provider_and_config() -> None:
         result,
         email="user@example.com",
         api_key="sk-test",
+        llm_provider="openrouter-deepseek",
         mx_hosts=[],
         detect_provider=mock.MagicMock(return_value=refined),
         _detection_error=DetectionError,
@@ -2678,6 +2681,7 @@ def test_refine_with_llm_detection_error_returns_empty(
         _refine_host_result(),
         email="user@example.com",
         api_key="sk-test",
+        llm_provider="openrouter-deepseek",
         mx_hosts=[],
         detect_provider=mock.MagicMock(side_effect=DetectionError("down")),
         _detection_error=DetectionError,

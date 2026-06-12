@@ -27,7 +27,12 @@ from pathlib import Path
 import pydantic
 from robotsix_llmio.core import Tier, get_provider, run_agent
 
-from robotsix_auto_mail.config import _FIELD_SPECS, _REQUIRED, load_llm
+from robotsix_auto_mail.config import (
+    _FIELD_SPECS,
+    _REQUIRED,
+    load_llm,
+    load_llm_provider,
+)
 from robotsix_auto_mail.db import get_watermark, set_watermark
 
 # ---------------------------------------------------------------------------
@@ -340,6 +345,7 @@ def run_config_sync_agent(
     *,
     repo_root: Path | None = None,
     api_key: str | None = None,
+    provider: str | None = None,
     tier: Tier = Tier.CHEAP,
     conn: sqlite3.Connection | None = None,
 ) -> ConfigSyncResult:
@@ -351,6 +357,10 @@ def run_config_sync_agent(
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``LLM_API_KEY`` env var →
             ``config.llm_api_key`` (via the config loader).
+        provider: LLM backend name (e.g. ``openrouter-deepseek``).
+            Resolves with the precedence ``provider`` argument →
+            ``LLM_PROVIDER`` env var → ``config.llm_provider`` (via
+            :func:`load_llm_provider`).
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
         conn: Optional open SQLite connection.  When provided, the result
             is passed through the dedup memory ledger
@@ -380,6 +390,11 @@ def run_config_sync_agent(
             "variable or add an `llm.api_key` entry to your config file"
         )
 
+    # -- resolve provider (arg -> LLM_PROVIDER env -> config.llm_provider) --
+    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
+    if not resolved_provider:
+        resolved_provider = load_llm_provider()
+
     # -- gather the four surfaces + the ground-truth mappings --
     surfaces = _read_config_surfaces(resolved_root)
     field_to_yaml, field_to_env = _load_field_mappings(resolved_root)
@@ -388,7 +403,7 @@ def run_config_sync_agent(
     from pydantic_ai import PromptedOutput
 
     # -- build agent --
-    llm_provider = get_provider(api_key=resolved_key)
+    llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_build_config_sync_system_prompt(),

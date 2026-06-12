@@ -94,6 +94,7 @@ def determine_archive_structure(
     *,
     archive_root: str = ARCHIVE_ROOT,
     api_key: str | None = None,
+    provider: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> list[str]:
     """Ask an LLM to propose an archive folder layout under the root.
@@ -103,6 +104,9 @@ def determine_archive_structure(
             mailbox, used to inform the proposed layout.
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
+        provider: LLM backend name (e.g. ``openrouter-deepseek``).  Defaults
+            to ``LLM_PROVIDER`` env var, then ``llm.provider`` in the config
+            file, then ``"openrouter-deepseek"``.
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
 
     Returns:
@@ -120,13 +124,20 @@ def determine_archive_structure(
             "variable or add an `llm.api_key` entry to your config file"
         )
 
+    # -- resolve provider --
+    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
+    if not resolved_provider:
+        from robotsix_auto_mail.config import load_llm_provider
+
+        resolved_provider = load_llm_provider()
+
     # -- lazy import so the rest of the CLI works without the
     #    LLM provider extra --
     from pydantic_ai import PromptedOutput
     from robotsix_llmio.core import get_provider
 
     # -- build agent --
-    llm_provider = get_provider(api_key=resolved_key)
+    llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         tier=tier,
         system_prompt=_build_archive_system_prompt(archive_root),
@@ -164,6 +175,7 @@ def setup_archive(
     archive_root: str = ARCHIVE_ROOT,
     archive_namespace: str = "",
     api_key: str | None = None,
+    provider: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> list[str]:
     """Ensure the managed archive folder structure exists and is remembered.
@@ -216,6 +228,7 @@ def setup_archive(
             [f.name for f in existing],
             archive_root=archive_root,
             api_key=resolved_key,
+            provider=provider,
             tier=tier,
         )
     else:
