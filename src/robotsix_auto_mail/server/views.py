@@ -425,6 +425,75 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
     )
 
 
+def _build_board_js(*, account_qs: str, data_account_js: bool) -> tuple[str, str, str]:
+    """Return the three JS string variables for the board page shell.
+
+    Returns a 3-tuple of ``(open_detail_js, click_handler_js, hashchange_js)``.
+    """
+    if data_account_js:
+        open_detail_js = (
+            "function openDetail(messageId, subject, focusDraft, cardAccount) {\n"
+            "  var src = '/email/' + messageId + '?embed=1';\n"
+            "  if (cardAccount) {\n"
+            "    src += '&account=' + cardAccount;\n"
+            "  }\n"
+            "  if (focusDraft) src += '&draft=1';\n"
+            "  document.querySelector('.side-panel iframe').src = src;\n"
+            "  document.querySelector('.side-panel').classList.add('open');\n"
+            "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
+            "  document.querySelector('.panel-title').textContent = subject || '';\n"
+            "  location.hash = messageId;\n"
+            "}"
+        )
+        click_handler_js = (
+            "document.querySelector('.board').addEventListener('click', function(e) {\n"
+            "  if (e.target.closest('button, select, input')) return;\n"
+            "  var card = e.target.closest('.board-card');\n"
+            "  if (!card) return;\n"
+            "  var meta = card.querySelector('.card-extra');\n"
+            "  var mid = meta && meta.getAttribute('data-message-id');\n"
+            "  if (!mid) return;\n"
+            "  if (e.target.closest('form')) return;\n"
+            "  e.preventDefault();\n"
+            "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
+            "  var cardAccount = (meta && meta.getAttribute('data-account')) || '';\n"
+            "  openDetail(mid, subject, false, cardAccount);\n"
+            "});"
+        )
+    else:
+        open_detail_js = (
+            "function openDetail(messageId, subject, focusDraft) {\n"
+            f"  var src = '/email/' + messageId + '?embed=1{account_qs}';\n"
+            "  if (focusDraft) src += '&draft=1';\n"
+            "  document.querySelector('.side-panel iframe').src = src;\n"
+            "  document.querySelector('.side-panel').classList.add('open');\n"
+            "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
+            "  document.querySelector('.panel-title').textContent = subject || '';\n"
+            "  location.hash = messageId;\n"
+            "}"
+        )
+        click_handler_js = (
+            "document.querySelector('.board').addEventListener('click', function(e) {\n"
+            "  if (e.target.closest('button, select, input')) return;\n"
+            "  var card = e.target.closest('.board-card');\n"
+            "  if (!card) return;\n"
+            "  var meta = card.querySelector('.card-extra');\n"
+            "  var mid = meta && meta.getAttribute('data-message-id');\n"
+            "  if (!mid) return;\n"
+            "  if (e.target.closest('form')) return;\n"
+            "  e.preventDefault();\n"
+            "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
+            "  openDetail(mid, subject);\n"
+            "});"
+        )
+    hashchange_js = (
+        "window.addEventListener('hashchange', function() {\n"
+        "  if (!location.hash) closeDetail();\n"
+        "});"
+    )
+    return open_detail_js, click_handler_js, hashchange_js
+
+
 def _render_board_page_shell(
     *,
     columns_html: str,
@@ -478,73 +547,9 @@ def _render_board_page_shell(
     else:
         triage_control_html = effective_folder_form
 
-    # Build the detail-open JS with optional data-account support.
-    if data_account_js:
-        open_detail_js = (
-            "function openDetail(messageId, subject, focusDraft, cardAccount) {\n"
-            "  var src = '/email/' + messageId + '?embed=1';\n"
-            "  if (cardAccount) {\n"
-            "    src += '&account=' + cardAccount;\n"
-            "  }\n"
-            "  if (focusDraft) src += '&draft=1';\n"
-            "  document.querySelector('.side-panel iframe').src = src;\n"
-            "  document.querySelector('.side-panel').classList.add('open');\n"
-            "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
-            "  document.querySelector('.panel-title').textContent = subject || '';\n"
-            "  location.hash = messageId;\n"
-            "}"
-        )
-        click_handler_js = (
-            "document.querySelector('.board').addEventListener('click', function(e) {\n"
-            "  if (e.target.closest('button, select, input')) return;\n"
-            "  var card = e.target.closest('.board-card');\n"
-            "  if (!card) return;\n"
-            "  var meta = card.querySelector('.card-extra');\n"
-            "  var mid = meta && meta.getAttribute('data-message-id');\n"
-            "  if (!mid) return;\n"
-            "  if (e.target.closest('form')) return;\n"
-            "  e.preventDefault();\n"
-            "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
-            "  var cardAccount = (meta && meta.getAttribute('data-account')) || '';\n"
-            "  openDetail(mid, subject, false, cardAccount);\n"
-            "});"
-        )
-        hashchange_js = (
-            "window.addEventListener('hashchange', function() {\n"
-            "  if (!location.hash) closeDetail();\n"
-            "});"
-        )
-    else:
-        open_detail_js = (
-            "function openDetail(messageId, subject, focusDraft) {\n"
-            f"  var src = '/email/' + messageId + '?embed=1{account_qs}';\n"
-            "  if (focusDraft) src += '&draft=1';\n"
-            "  document.querySelector('.side-panel iframe').src = src;\n"
-            "  document.querySelector('.side-panel').classList.add('open');\n"
-            "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
-            "  document.querySelector('.panel-title').textContent = subject || '';\n"
-            "  location.hash = messageId;\n"
-            "}"
-        )
-        click_handler_js = (
-            "document.querySelector('.board').addEventListener('click', function(e) {\n"
-            "  if (e.target.closest('button, select, input')) return;\n"
-            "  var card = e.target.closest('.board-card');\n"
-            "  if (!card) return;\n"
-            "  var meta = card.querySelector('.card-extra');\n"
-            "  var mid = meta && meta.getAttribute('data-message-id');\n"
-            "  if (!mid) return;\n"
-            "  if (e.target.closest('form')) return;\n"
-            "  e.preventDefault();\n"
-            "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
-            "  openDetail(mid, subject);\n"
-            "});"
-        )
-        hashchange_js = (
-            "window.addEventListener('hashchange', function() {\n"
-            "  if (!location.hash) closeDetail();\n"
-            "});"
-        )
+    open_detail_js, click_handler_js, hashchange_js = _build_board_js(
+        account_qs=account_qs, data_account_js=data_account_js
+    )
 
     return (
         "<!DOCTYPE html>\n"
