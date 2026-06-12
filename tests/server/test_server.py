@@ -3698,26 +3698,18 @@ def test_archive_selects_source_folder_not_just_inbox() -> None:
         try:
             with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
                 # search_uids: UID 99 exists in INBOX.archive.
                 mock_client.search_uids.return_value = [99]
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "legacy-arch"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "legacy-arch"})
 
             assert resp.status == 302
             # The record's source_folder ("INBOX.archive") must have
             # been selected — NOT the default "INBOX".
-            select_calls = [
-                c.args[0]
-                for c in mock_client.select_folder.call_args_list
-            ]
+            select_calls = [c.args[0] for c in mock_client.select_folder.call_args_list]
             assert "INBOX.archive" in select_calls, (
-                f"Expected select_folder('INBOX.archive'), "
-                f"got {select_calls}"
+                f"Expected select_folder('INBOX.archive'), got {select_calls}"
             )
             mock_client.move_message.assert_called_once()
         finally:
@@ -3771,9 +3763,7 @@ def test_archive_message_id_fallback_when_uid_stale() -> None:
         try:
             with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [
-                    mock.Mock(delimiter="/")
-                ]
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
                 # UID 42 is stale → search returns [].
                 # But the Message-ID fallback finds UID 77.
@@ -3789,20 +3779,16 @@ def test_archive_message_id_fallback_when_uid_stale() -> None:
 
                 mock_client.search_uids.side_effect = _search_uids
 
-                resp = _post_to_path(
-                    port, "/archive", {"message_id": "fallback-arch"}
-                )
+                resp = _post_to_path(port, "/archive", {"message_id": "fallback-arch"})
 
             assert resp.status == 302, (
-                f"Expected 302, got {resp.status}: "
-                f"{resp.read().decode()[:200]}"
+                f"Expected 302, got {resp.status}: {resp.read().decode()[:200]}"
             )
             # The move must use the resolved UID 77, not the stale 42.
             mock_client.move_message.assert_called_once()
             move_uid = mock_client.move_message.call_args[0][0]
             assert move_uid == 77, (
-                f"Expected move_message with UID 77 (resolved), "
-                f"got {move_uid}"
+                f"Expected move_message with UID 77 (resolved), got {move_uid}"
             )
         finally:
             server.shutdown()

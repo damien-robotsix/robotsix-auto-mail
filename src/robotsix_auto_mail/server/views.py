@@ -13,7 +13,7 @@ from robotsix_board import render_board
 from robotsix_auto_mail.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailAccountsConfig
 from robotsix_auto_mail.db import MailRecord, list_records
-from robotsix_auto_mail.format import _format_date
+from robotsix_auto_mail.format import _effective_body_plain, _format_date
 from robotsix_auto_mail.server._constants import _BOARD_COLUMNS
 from robotsix_auto_mail.server.adapters import _NonEmptyColumnsAdapter
 from robotsix_auto_mail.triage import (
@@ -683,9 +683,15 @@ def _render_move_form(
 
 def _render_body(record: MailRecord) -> tuple[str, str]:
     """Return ``(body_html_render, body_html_note)`` for a record's body."""
-    body = record.body_plain
+    body = _effective_body_plain(record)
+    from_html = not record.body_plain.strip() and record.body_html.strip()
     if not body or not body.strip():
         body_html_render = '<span class="detail-value"><em>(no body)</em></span>'
+    elif from_html:
+        body_html_render = (
+            f"<pre>{html.escape(body)}</pre>"
+            "<span class='body-from-html'>(from HTML)</span>"
+        )
     else:
         body_html_render = f"<pre>{html.escape(body)}</pre>"
 

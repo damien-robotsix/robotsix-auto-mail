@@ -31,7 +31,11 @@ from robotsix_auto_mail.db import (
     get_record_by_message_id,
     list_records,
 )
-from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _format_date
+from robotsix_auto_mail.format import (
+    _BODY_PREVIEW_LIMIT,
+    _effective_body_plain,
+    _format_date,
+)
 from robotsix_auto_mail.imap import ImapClient, ImapError
 from robotsix_auto_mail.pipeline import IngestResult, ingest_folder
 from robotsix_auto_mail.smtp import (
@@ -232,7 +236,7 @@ def _render_card(record: MailRecord, file: TextIO) -> None:
     file.write(f"Date:    {_format_date(record.date)}\n")
 
     # Body preview
-    body = record.body_plain
+    body = _effective_body_plain(record)
     if not body or not body.strip():
         preview = "(no body)"
     elif len(body) > _BODY_PREVIEW_LIMIT:

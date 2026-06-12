@@ -173,8 +173,7 @@ def resolve_uid_with_fallback(
     if found:
         return found[0]
     raise ImapMessageNotFoundError(
-        f"UID {uid} not found in {source_folder!r} "
-        f"(Message-ID fallback also failed)"
+        f"UID {uid} not found in {source_folder!r} (Message-ID fallback also failed)"
     )
 
 
@@ -642,9 +641,7 @@ class ImapClient(_ProtocolClient):
 
             valid_set = ",".join(str(uid) for uid in valid_uids)
 
-            status, _ = self._imap.uid(
-                "STORE", valid_set, "+FLAGS", "(\\Deleted)"
-            )
+            status, _ = self._imap.uid("STORE", valid_set, "+FLAGS", "(\\Deleted)")
             if status != "OK":
                 raise ImapError(
                     f"UID STORE +FLAGS (\\Deleted) for UID set "
@@ -692,8 +689,7 @@ class ImapClient(_ProtocolClient):
             status, data = self._imap.uid("COPY", valid_set, dest_folder)
             if status != "OK":
                 raise ImapError(
-                    f"UID COPY of {valid_set!r} to {dest_folder!r} "
-                    f"failed: {status}"
+                    f"UID COPY of {valid_set!r} to {dest_folder!r} failed: {status}"
                 )
 
             # Defensive hardening: if the server advertises UIDPLUS it
