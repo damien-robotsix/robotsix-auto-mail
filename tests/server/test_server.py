@@ -9,6 +9,8 @@ import tempfile
 from typing import TYPE_CHECKING, cast
 from urllib.request import urlopen
 
+import pytest
+
 if TYPE_CHECKING:
     from http.client import HTTPResponse
     from http.server import HTTPServer
@@ -2104,6 +2106,27 @@ def test_delete_unknown_message_id_returns_404() -> None:
         server.shutdown()
 
 
+def _wait_for_batch_idle(db_path: str, timeout: float = 10.0) -> str | None:
+    """Poll ``batch_op:state`` until it is ``"idle"``/cleared, returning it."""
+    import time
+
+    from robotsix_auto_mail.db import get_watermark
+    from robotsix_auto_mail.db import init_db as _init_db
+
+    deadline = time.monotonic() + timeout
+    state: str | None = "running"
+    while time.monotonic() < deadline:
+        conn = _init_db(db_path, skip_migrations=True)
+        try:
+            state = get_watermark(conn, "batch_op:state")
+        finally:
+            conn.close()
+        if state is None or state == "idle":
+            break
+        time.sleep(0.05)
+    return state
+
+
 def test_batch_delete_success_removes_all_to_delete_records_and_redirects() -> None:
     """POST /batch-delete deletes every TO_DELETE record and redirects 302."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -2147,6 +2170,9 @@ def test_batch_delete_success_removes_all_to_delete_records_and_redirects() -> N
             resp = _post_to_path(port, "/batch-delete", {})
             assert resp.status == 302
             assert resp.headers.get("Location") == "/board"
+            # The worker now runs in a background daemon thread — poll the
+            # batch_op:state watermark until it clears back to "idle".
+            _wait_for_batch_idle(db_path)
         finally:
             server.shutdown()
 
@@ -3878,9 +3904,12 @@ def test_handler_board_content_json_keys() -> None:
                 "columns_html",
                 "proposals_html",
                 "triage_running",
+                "batch_op",
                 "unsubscribe_suggestions",
             ):
                 assert key in payload
+            # Idle board → no batch op in flight.
+            assert payload["batch_op"] is None
         finally:
             server.shutdown()
     finally:
@@ -5439,3 +5468,455 @@ def test_board_renders_folder_picker() -> None:
         assert 'action="/run-triage"' not in body
     finally:
         server.shutdown()
+
+
+# ===========================================================================
+# Batch-op background workers, single-flight guard and progress banner
+# ===========================================================================
+
+
+def _seed_batch_state(db_path: str, value: str) -> None:
+    """Write the ``batch_op:state`` watermark directly."""
+    conn = init_db(db_path)
+    try:
+        set_watermark(conn, "batch_op:state", value)
+    finally:
+        conn.close()
+
+
+def test_batch_delete_single_flight_does_not_spawn_second_worker() -> None:
+    """A second POST /batch-delete while batch_op:state is running is a
+    no-op single-flight redirect — the running watermark is untouched."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_batch_state(db_path, "running")
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(port, "/batch-delete", {})
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+            # No worker spawned → watermark is still the seeded "running".
+            from robotsix_auto_mail.db import get_watermark
+
+            conn = init_db(db_path, skip_migrations=True)
+            try:
+                assert get_watermark(conn, "batch_op:state") == "running"
+            finally:
+                conn.close()
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_batch_archive_blocked_by_running_delete_shared_key() -> None:
+    """POST /batch-archive while a delete is running (shared batch_op:state
+    key) is a single-flight no-op and leaves the watermark running."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        # A JSON delete-progress payload counts as running.
+        _seed_batch_state(db_path, json.dumps({"op": "delete", "done": 1, "total": 5}))
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(port, "/batch-archive", {})
+            assert resp.status == 302
+            from robotsix_auto_mail.db import get_watermark
+
+            conn = init_db(db_path, skip_migrations=True)
+            try:
+                state = get_watermark(conn, "batch_op:state")
+            finally:
+                conn.close()
+            assert state == json.dumps({"op": "delete", "done": 1, "total": 5})
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_batch_archive_db_only_removes_records_and_clears_watermark() -> None:
+    """POST /batch-archive deletes every TO_ARCHIVE record (DB-only path,
+    no IMAP) in the background and resets batch_op:state to idle."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "ba-1",
+                    "sender": "a@b.com",
+                    "subject": "Archive me 1",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+                {
+                    "message_id": "ba-2",
+                    "sender": "c@d.com",
+                    "subject": "Archive me 2",
+                    "date": "2025-01-02T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "ba-1", action="TO_ARCHIVE")
+        _seed_triage_decision(db_path, "ba-2", action="TO_ARCHIVE")
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(port, "/batch-archive", {})
+            assert resp.status == 302
+            assert _wait_for_batch_idle(db_path) in (None, "idle")
+        finally:
+            server.shutdown()
+
+        from robotsix_auto_mail.db import get_record_by_message_id
+
+        conn = init_db(db_path)
+        try:
+            assert get_record_by_message_id(conn, "ba-1") is None
+            assert get_record_by_message_id(conn, "ba-2") is None
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_batch_delete_worker_clears_watermark_even_when_imap_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The delete worker's finally block resets batch_op:state to idle even
+    when an IMAP call raises, leaving the records re-triggerable."""
+    import robotsix_auto_mail.imap as imap_mod
+    from robotsix_auto_mail.server.adapters import _run_batch_delete_background
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "bw-1",
+                    "sender": "a@b.com",
+                    "subject": "Boom",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        # Give the record a tracked UID so the worker takes the IMAP path.
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = 42 WHERE message_id = 'bw-1'"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        _seed_triage_decision(db_path, "bw-1", action="TO_DELETE")
+
+        class _BoomClient:
+            def __init__(self, *a: object, **k: object) -> None:
+                pass
+
+            def __enter__(self) -> "_BoomClient":
+                raise imap_mod.ImapError("kaboom")
+
+            def __exit__(self, *a: object) -> None:
+                pass
+
+        monkeypatch.setattr(imap_mod, "ImapClient", _BoomClient)
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            imap_port=993,
+            imap_tls_mode="direct",
+            smtp_host="smtp.example.com",
+            smtp_port=465,
+            smtp_tls_mode="direct",
+            username="user@example.com",
+            password="pw",
+            db_path=db_path,
+        )
+        _run_batch_delete_background(db_path, mail_config)
+
+        from robotsix_auto_mail.db import get_record_by_message_id, get_watermark
+
+        conn = init_db(db_path, skip_migrations=True)
+        try:
+            assert get_watermark(conn, "batch_op:state") == "idle"
+            # IMAP raised before any delete → record left re-triggerable.
+            assert get_record_by_message_id(conn, "bw-1") is not None
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_batch_delete_worker_retrigger_skips_already_deleted() -> None:
+    """Re-running the delete worker only processes records still present in
+    the DB (already-deleted ones are skipped because they were committed)."""
+    from robotsix_auto_mail.server.adapters import _run_batch_delete_background
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "rt-1",
+                    "sender": "a@b.com",
+                    "subject": "One",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+                {
+                    "message_id": "rt-2",
+                    "sender": "c@d.com",
+                    "subject": "Two",
+                    "date": "2025-01-02T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "rt-1", action="TO_DELETE")
+        _seed_triage_decision(db_path, "rt-2", action="TO_DELETE")
+
+        # First run (DB-only, mail_config=None) deletes both records.
+        _run_batch_delete_background(db_path, None)
+
+        from robotsix_auto_mail.db import get_record_by_message_id, get_watermark
+
+        conn = init_db(db_path, skip_migrations=True)
+        try:
+            assert get_record_by_message_id(conn, "rt-1") is None
+            assert get_record_by_message_id(conn, "rt-2") is None
+        finally:
+            conn.close()
+
+        # Re-trigger: nothing remains → total 0, no error, watermark idle.
+        _run_batch_delete_background(db_path, None)
+        conn = init_db(db_path, skip_migrations=True)
+        try:
+            assert get_watermark(conn, "batch_op:state") == "idle"
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_build_board_content_batch_op_running_suppresses_delete_all() -> None:
+    """When batch_op:state holds a JSON payload, _build_board_content returns
+    the parsed batch_op and the columns omit the Delete-All button."""
+    from robotsix_auto_mail.server.views import _build_board_content
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "bc-1",
+                    "sender": "a@b.com",
+                    "subject": "Del",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "bc-1", action="TO_DELETE")
+
+        # Idle → batch_op None, Delete-All present.
+        idle = _build_board_content(db_path)
+        assert idle["batch_op"] is None
+        assert "Delete All" in idle["columns_html"]
+
+        # Running → parsed batch_op, Delete-All suppressed.
+        _seed_batch_state(
+            db_path, json.dumps({"op": "delete", "done": 120, "total": 518})
+        )
+        running = _build_board_content(db_path)
+        assert running["batch_op"] == {"op": "delete", "done": 120, "total": 518}
+        assert "Delete All" not in running["columns_html"]
+    finally:
+        os.unlink(db_path)
+
+
+def test_board_and_content_render_batch_banner() -> None:
+    """/board renders a .batch-banner with done/total and /board-content's
+    JSON carries the batch_op payload while a batch op is running."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_batch_state(
+            db_path, json.dumps({"op": "delete", "done": 120, "total": 518})
+        )
+        server, port = _start_test_server(db_path)
+        try:
+            body = urlopen(f"http://127.0.0.1:{port}/board").read().decode("utf-8")
+            assert "batch-banner" in body
+            assert "120/518" in body
+
+            content = json.loads(
+                urlopen(f"http://127.0.0.1:{port}/board-content").read().decode("utf-8")
+            )
+            assert content["batch_op"] == {"op": "delete", "done": 120, "total": 518}
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_to_archive_column_renders_archive_all_button() -> None:
+    """A TO_ARCHIVE column renders an Archive All form posting /batch-archive."""
+    from robotsix_auto_mail.server.views import _build_board_content
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "aa-1",
+                    "sender": "a@b.com",
+                    "subject": "Arc",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "aa-1", action="TO_ARCHIVE")
+        content = _build_board_content(db_path)
+        assert 'action="/batch-archive"' in content["columns_html"]
+        assert "Archive All" in content["columns_html"]
+    finally:
+        os.unlink(db_path)
+
+
+def test_batch_archive_worker_groups_uids_by_destination(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The archive worker groups UIDs by their effective destination folder
+    and issues one move_messages call per group."""
+    import robotsix_auto_mail.imap as imap_mod
+    from robotsix_auto_mail.server.adapters import _run_batch_archive_background
+    from robotsix_auto_mail.triage import set_archive_subfolder_override
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "g-1",
+                    "sender": "a@b.com",
+                    "subject": "A",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+                {
+                    "message_id": "g-2",
+                    "sender": "c@d.com",
+                    "subject": "B",
+                    "date": "2025-01-02T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+                {
+                    "message_id": "g-3",
+                    "sender": "e@f.com",
+                    "subject": "C",
+                    "date": "2025-01-03T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        conn = init_db(db_path)
+        try:
+            conn.execute("UPDATE mail_records SET imap_uid = 11 WHERE message_id='g-1'")
+            conn.execute("UPDATE mail_records SET imap_uid = 22 WHERE message_id='g-2'")
+            conn.execute("UPDATE mail_records SET imap_uid = 33 WHERE message_id='g-3'")
+            conn.commit()
+            # g-1 and g-3 share a destination subfolder; g-2 differs.
+            set_archive_subfolder_override(conn, "g-1", "2026")
+            set_archive_subfolder_override(conn, "g-2", "vendors")
+            set_archive_subfolder_override(conn, "g-3", "2026")
+        finally:
+            conn.close()
+        for mid in ("g-1", "g-2", "g-3"):
+            _seed_triage_decision(db_path, mid, action="TO_ARCHIVE")
+
+        class _Folder:
+            delimiter = "/"
+
+        moves: list[tuple[list[int], str]] = []
+
+        class _FakeClient:
+            def __init__(self, *a: object, **k: object) -> None:
+                pass
+
+            def __enter__(self) -> "_FakeClient":
+                return self
+
+            def __exit__(self, *a: object) -> None:
+                pass
+
+            def select_folder(self, name: str) -> int:
+                return 0
+
+            def list_folders(self) -> list[_Folder]:
+                return [_Folder()]
+
+            def create_folder(self, name: str) -> None:
+                pass
+
+            def move_messages(self, uids: list[int], dest: str) -> None:
+                moves.append((list(uids), dest))
+
+        monkeypatch.setattr(imap_mod, "ImapClient", _FakeClient)
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            imap_port=993,
+            imap_tls_mode="direct",
+            smtp_host="smtp.example.com",
+            smtp_port=465,
+            smtp_tls_mode="direct",
+            username="user@example.com",
+            password="pw",
+            db_path=db_path,
+            archive_root="Archive",
+        )
+        _run_batch_archive_background(db_path, mail_config, "Archive")
+
+        # One move per destination group; g-1 + g-3 batched together.
+        by_dest = {dest: uids for uids, dest in moves}
+        assert by_dest == {"Archive/2026": [11, 33], "Archive/vendors": [22]}
+
+        from robotsix_auto_mail.db import get_record_by_message_id, get_watermark
+
+        conn = init_db(db_path, skip_migrations=True)
+        try:
+            for mid in ("g-1", "g-2", "g-3"):
+                assert get_record_by_message_id(conn, mid) is None
+            assert get_watermark(conn, "batch_op:state") == "idle"
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)

@@ -27,6 +27,11 @@ from robotsix_auto_mail.protocol import _ProtocolClient, build_xoauth2_response
 # this reference in except clauses keeps tests reliable.
 _IMAP4_ERROR = imaplib.IMAP4.error
 
+# Maximum number of UIDs packed into a single ``UID STORE`` / ``UID COPY``
+# round-trip by the batched delete/move primitives.  A 518-mail column then
+# costs at most six round-trip pairs instead of one per message.
+_BATCH_UID_CHUNK = 100
+
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
@@ -535,6 +540,66 @@ class ImapClient(_ProtocolClient):
 
         # Delete the original from the source mailbox.
         self.delete_message(uid)
+
+    def delete_messages(self, uids: list[int]) -> None:
+        """Mark a whole UID set ``\\Deleted`` and expunge, in chunks.
+
+        Processes *uids* in chunks of :data:`_BATCH_UID_CHUNK`, issuing a
+        single ``UID STORE +FLAGS (\\Deleted)`` over the comma-joined UID
+        set followed by **one** ``EXPUNGE`` per chunk.  A 518-mail delete
+        therefore costs at most six round-trip pairs instead of one per
+        message.  An empty list is a no-op (no IMAP calls).
+
+        Raises :class:`ImapError` if not connected or the server returns
+        a non-OK status for any ``UID STORE`` or ``EXPUNGE``.
+        """
+        if not uids:
+            return
+        if self._imap is None:
+            raise ImapError("Not connected")
+
+        for start in range(0, len(uids), _BATCH_UID_CHUNK):
+            chunk = uids[start : start + _BATCH_UID_CHUNK]
+            uid_set = ",".join(str(uid) for uid in chunk)
+
+            status, _ = self._imap.uid("STORE", uid_set, "+FLAGS", "(\\Deleted)")
+            if status != "OK":
+                raise ImapError(
+                    f"UID STORE +FLAGS (\\Deleted) for UID set {uid_set!r} "
+                    f"failed: {status}"
+                )
+
+            status, _ = self._imap.expunge()
+            if status != "OK":
+                raise ImapError(f"EXPUNGE failed: {status}")
+
+    def move_messages(self, uids: list[int], dest_folder: str) -> None:
+        """Copy a whole UID set to *dest_folder* then delete the originals.
+
+        Processes *uids* in chunks of :data:`_BATCH_UID_CHUNK`: a single
+        ``UID COPY`` over the comma-joined UID set to *dest_folder*,
+        followed by a batched :meth:`delete_messages` of that same set.
+        An empty list is a no-op (no IMAP calls).
+
+        Raises :class:`ImapError` if not connected or the server returns
+        a non-OK status for any ``UID COPY`` or the subsequent deletion.
+        """
+        if not uids:
+            return
+        if self._imap is None:
+            raise ImapError("Not connected")
+
+        for start in range(0, len(uids), _BATCH_UID_CHUNK):
+            chunk = uids[start : start + _BATCH_UID_CHUNK]
+            uid_set = ",".join(str(uid) for uid in chunk)
+
+            status, _ = self._imap.uid("COPY", uid_set, dest_folder)
+            if status != "OK":
+                raise ImapError(
+                    f"UID COPY of {uid_set!r} to {dest_folder!r} failed: {status}"
+                )
+
+            self.delete_messages(chunk)
 
     @staticmethod
     def _parse_uid_from_fetch_header(header: bytes) -> int | None:

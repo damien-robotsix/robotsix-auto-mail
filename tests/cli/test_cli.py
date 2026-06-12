@@ -3087,3 +3087,59 @@ def test_clear_stale_triage_state_resets_running_flags(
         assert get_watermark(conn_b, "triage_run:state") == "idle"
     finally:
         conn_b.close()
+
+
+def test_clear_stale_triage_state_resets_stale_batch_op(
+    cfg: MailConfig, tmp_path: Path
+) -> None:
+    """A boot-clear also resets a stale ``batch_op:state`` (a non-idle JSON
+    progress payload left by a SIGKILL'd batch worker) to ``"idle"`` for
+    every configured account."""
+    from robotsix_auto_mail.cli.commands import _clear_stale_triage_state
+    from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
+
+    # Account A: orphaned running batch-delete progress payload.
+    db_a = str(tmp_path / "a" / "mail.db")
+    conn_a = init_db(db_a)
+    set_watermark(
+        conn_a,
+        "batch_op:state",
+        json.dumps({"op": "delete", "done": 3, "total": 9}),
+    )
+    conn_a.close()
+
+    # Account B: already idle — left untouched.
+    db_b = str(tmp_path / "b" / "mail.db")
+    conn_b = init_db(db_b)
+    set_watermark(conn_b, "batch_op:state", "idle")
+    conn_b.close()
+
+    accounts = MailAccountsConfig(
+        accounts=(
+            MailAccount(
+                account_id="a",
+                config=dataclasses.replace(cfg, db_path=db_a),
+                label=None,
+            ),
+            MailAccount(
+                account_id="b",
+                config=dataclasses.replace(cfg, db_path=db_b),
+                label=None,
+            ),
+        ),
+        default_account_id="a",
+    )
+
+    _clear_stale_triage_state(accounts)
+
+    conn_a = init_db(db_a, skip_migrations=True)
+    try:
+        assert get_watermark(conn_a, "batch_op:state") == "idle"
+    finally:
+        conn_a.close()
+
+    conn_b = init_db(db_b, skip_migrations=True)
+    try:
+        assert get_watermark(conn_b, "batch_op:state") == "idle"
+    finally:
+        conn_b.close()
