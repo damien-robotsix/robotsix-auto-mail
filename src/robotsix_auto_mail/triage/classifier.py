@@ -14,7 +14,6 @@ import json
 import os
 import re
 import sqlite3
-from datetime import datetime
 from email.utils import parseaddr
 
 from robotsix_llmio.core import Tier, run_agent
@@ -62,9 +61,7 @@ def propose_archive_subfolder(record: MailRecord) -> str:
 
     1. **Mailing-list prefix** — subject starts with a bracketed token
        like ``[python-dev]`` or ``[list-name:123]`` → ``Lists/<name>``.
-    2. **Sender domain + local-part** — ``example.com/alice``.
-    3. **Date fallback** — ``YYYY/MM`` from ``record.date``.
-    4. **All-rules-fail** — returns ``""`` (archive into root).
+    2. **All-rules-fail** — returns ``""`` (archive into root).
 
     No LLM involved — purely deterministic.
     """
@@ -80,37 +77,8 @@ def propose_archive_subfolder(record: MailRecord) -> str:
                 if sanitised:
                     return f"Lists/{sanitised}"
 
-    # -- 2. Sender domain + local-part ------------------------------------
-    sender = record.sender
-    addr = parseaddr(sender)[1]
-    if addr and "@" in addr:
-        local_part, domain = addr.split("@", 1)
-        local = _sanitise_subfolder(local_part.lower())
-        dom = _sanitise_subfolder(domain.lower())
-        if dom and local:
-            return f"{dom}/{local}"
-
-    # -- 3. Date fallback --------------------------------------------------
-    date_str = record.date.strip()
-    for fmt in (
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%dT%H:%M:%S%z",
-        "%Y-%m-%d",
-        "%Y-%m-%dT%H:%M:%S.%f",
-    ):
-        try:
-            dt = datetime.strptime(date_str, fmt)
-            return f"{dt.year:04d}/{dt.month:02d}"
-        except ValueError:
-            continue
-    # Try ISO-8601 via fromisoformat (Python 3.11+ handles more variants).
-    try:
-        dt = datetime.fromisoformat(date_str)
-        return f"{dt.year:04d}/{dt.month:02d}"
-    except (ValueError, TypeError):
-        # Unparseable date string — fall through to the "unknown" bucket.
-        pass
-    return "unknown"
+    # -- 2. All-rules-fail → archive root ---------------------------------
+    return ""
 
 
 def _sanitise_subfolder(raw: str) -> str:
@@ -213,26 +181,39 @@ def record_archive_folder_choice(
 
 
 def get_archive_subfolder(
-    conn: sqlite3.Connection, message_id: str, record: MailRecord
+    conn: sqlite3.Connection,
+    message_id: str,
+    record: MailRecord,
+    api_key: str = "",
 ) -> str:
     """Return the effective archive subfolder for *message_id*.
 
     Priority chain:
     1. User override (from ``archive_subfolder_overrides`` watermark).
-    2. LLM hint (from ``archive_subfolder_llm_hints`` watermark).
-    3. Deterministic proposal via :func:`propose_archive_subfolder`.
+    2. LLM hint (previously persisted in ``archive_subfolder_llm_hints``).
+    3. On-the-fly LLM proposal — only when *api_key* is non-empty; calls
+       :func:`propose_archive_subfolder_llm` and re-reads hints so a
+       successful proposal also populates the hint for next time.
+    4. Deterministic proposal via :func:`propose_archive_subfolder`.
     """
     # 1. User override
     overrides = _load_archive_overrides(conn)
     if message_id in overrides:
         return overrides[message_id]
 
-    # 2. LLM hint
+    # 2. LLM hint (previously persisted)
     hints = _load_llm_archive_hints(conn)
     if message_id in hints:
         return hints[message_id]
 
-    # 3. Deterministic proposal
+    # 3. On-the-fly LLM proposal (NEW)
+    if api_key:
+        propose_archive_subfolder_llm(conn, record, api_key)
+        hints = _load_llm_archive_hints(conn)  # re-read after persist
+        if message_id in hints:
+            return hints[message_id]
+
+    # 4. Deterministic fallback (stripped-down)
     return propose_archive_subfolder(record)
 
 

@@ -1452,7 +1452,7 @@ def test_propose_mailing_list_with_space_and_id() -> None:
 
 
 def test_propose_empty_brackets_skipped() -> None:
-    """[] should fall through to next rule."""
+    """[] should fall through to root (no rules match)."""
     record = _make_record(
         message_id="<a>",
         sender="alice@example.com",
@@ -1460,64 +1460,63 @@ def test_propose_empty_brackets_skipped() -> None:
         date="2025-06-01T12:00:00",
     )
     result = propose_archive_subfolder(record)
-    # Falls through to sender rule → example-com/alice
-    # (dots are collapsed to dashes by sanitisation)
-    assert result == "example-com/alice"
+    # Falls through to root — domain/sender rule removed.
+    assert result == ""
 
 
 def test_propose_sender_domain_and_local_part() -> None:
-    """alice@example.com → example-com/alice."""
+    """alice@example.com → '' (domain/sender rule removed)."""
     record = _make_record(
         message_id="<a>",
         sender="Alice <alice@example.com>",
         subject="Hello",
         date="2025-06-01T12:00:00",
     )
-    assert propose_archive_subfolder(record) == "example-com/alice"
+    assert propose_archive_subfolder(record) == ""
 
 
 def test_propose_bare_sender_no_brackets() -> None:
-    """bob@example.com → example-com/bob."""
+    """bob@example.com → '' (domain/sender rule removed)."""
     record = _make_record(
         message_id="<a>",
         sender="bob@example.com",
         subject="Hi",
         date="2025-06-01T12:00:00",
     )
-    assert propose_archive_subfolder(record) == "example-com/bob"
+    assert propose_archive_subfolder(record) == ""
 
 
 def test_propose_sender_no_at_falls_through() -> None:
-    """Sender with no @ falls through to date."""
+    """Sender with no @ falls through to root (date rule removed)."""
     record = _make_record(
         message_id="<a>",
         sender="NoEmailName",
         subject="Hi",
         date="2025-06-15T12:00:00",
     )
-    assert propose_archive_subfolder(record) == "2025/06"
+    assert propose_archive_subfolder(record) == ""
 
 
 def test_propose_date_iso() -> None:
-    """ISO date → YYYY/MM."""
+    """ISO date → '' (date rule removed)."""
     record = _make_record(
         message_id="<a>",
         sender="NoEmail",
         subject="No list",
         date="2025-06-01T12:00:00",
     )
-    assert propose_archive_subfolder(record) == "2025/06"
+    assert propose_archive_subfolder(record) == ""
 
 
 def test_propose_unparseable_date_returns_unknown() -> None:
-    """Unparseable date → 'unknown'."""
+    """Unparseable date → '' (date rule removed)."""
     record = _make_record(
         message_id="<a>",
         sender="NoEmail",
         subject="No list",
         date="not-a-date",
     )
-    assert propose_archive_subfolder(record) == "unknown"
+    assert propose_archive_subfolder(record) == ""
 
 
 def test_propose_all_rules_fail_returns_empty() -> None:
@@ -1530,8 +1529,8 @@ def test_propose_all_rules_fail_returns_empty() -> None:
         subject="no list",
         date="",
     )
-    # Date is empty → unparseable → "unknown"
-    assert propose_archive_subfolder(record) == "unknown"
+    # Date is empty → all-rules-fail → ""
+    assert propose_archive_subfolder(record) == ""
 
 
 def test_propose_sanitises_special_chars() -> None:
@@ -1562,9 +1561,9 @@ def test_archive_override_round_trip() -> None:
             subject="Hello",
             date="2025-06-01T12:00:00",
         )
-        # Default → deterministic
+        # Default → deterministic (root, since no mailing-list prefix)
         default = get_archive_subfolder(conn, "<a@x.com>", record)
-        assert default == "example-com/alice"
+        assert default == ""
 
         # Set override
         set_archive_subfolder_override(conn, "<a@x.com>", "Custom/Folder")
@@ -1572,7 +1571,7 @@ def test_archive_override_round_trip() -> None:
 
         # Clear override (empty string)
         set_archive_subfolder_override(conn, "<a@x.com>", "")
-        assert get_archive_subfolder(conn, "<a@x.com>", record) == "example-com/alice"
+        assert get_archive_subfolder(conn, "<a@x.com>", record) == ""
     finally:
         conn.close()
 
@@ -1863,9 +1862,9 @@ def test_propose_archive_subfolder_llm_no_api_key(
         hints = _load_llm_archive_hints(conn)
         assert "<nokey@x.com>" not in hints
 
-        # Falls through to deterministic
+        # Falls through to deterministic (root, domain/sender rule removed)
         result = get_archive_subfolder(conn, "<nokey@x.com>", record)
-        assert result == "example-com/alice"
+        assert result == ""
     finally:
         conn.close()
 
@@ -1899,9 +1898,9 @@ def test_propose_archive_subfolder_llm_llm_error(
         hints = _load_llm_archive_hints(conn)
         assert "<error@x.com>" not in hints
 
-        # Falls through to deterministic
+        # Falls through to deterministic (root, domain/sender rule removed)
         result = get_archive_subfolder(conn, "<error@x.com>", record)
-        assert result == "example-com/alice"
+        assert result == ""
     finally:
         conn.close()
 
@@ -2053,9 +2052,89 @@ def test_propose_archive_subfolder_llm_empty_subfolder_skips_store(
         hints = _load_llm_archive_hints(conn)
         assert "<empty@x.com>" not in hints
 
-        # Falls through to deterministic
+        # Falls through to deterministic (root, domain/sender rule removed)
         result = get_archive_subfolder(conn, "<empty@x.com>", record)
-        assert result == "nowhere-com/unknown"
+        assert result == ""
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# get_archive_subfolder on-the-fly LLM proposal (new in PR #345 follow-up)
+# ---------------------------------------------------------------------------
+
+
+def test_hintless_with_api_key_uses_llm_and_persists(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When an API key is provided and no hint exists, get_archive_subfolder
+    calls the LLM, persists the hint, and returns it."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<api-key-test@x.com>", sender="dev@python.org")
+        record = _make_record(
+            message_id="<api-key-test@x.com>",
+            sender="dev@python.org",
+            subject="[python-dev] PEP discussion",
+            date="2025-06-01T12:00:00",
+            body_plain="Let's discuss the new PEP.",
+        )
+
+        set_watermark(
+            conn,
+            "archive_structure",
+            json.dumps(["Lists/python-dev", "Receipts/2025"]),
+        )
+
+        handle, patcher = _patch_llm_for_proposal("Lists/python-dev")
+        with patcher:
+            result = get_archive_subfolder(
+                conn, "<api-key-test@x.com>", record, api_key="sk-test"
+            )
+
+        # The LLM result is returned directly.
+        assert result == "Lists/python-dev"
+
+        # The hint is persisted so a second call is free.
+        hints = _load_llm_archive_hints(conn)
+        assert hints.get("<api-key-test@x.com>") == "Lists/python-dev"
+
+        handle.close.assert_called_once()
+    finally:
+        conn.close()
+
+
+def test_hintless_without_api_key_returns_root() -> None:
+    """Ordinary sender, no API key → archive root ('')."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<no-key@x.com>", sender="alice@example.com")
+        record = _make_record(
+            message_id="<no-key@x.com>",
+            sender="alice@example.com",
+            subject="Hello",
+            date="2025-06-01T12:00:00",
+        )
+        result = get_archive_subfolder(conn, "<no-key@x.com>", record)
+        assert result == ""
+    finally:
+        conn.close()
+
+
+def test_hintless_without_api_key_mailing_list() -> None:
+    """Mailing-list subject, no API key → Lists/<name>."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<ml-no-key@x.com>", sender="a@b.com")
+        record = _make_record(
+            message_id="<ml-no-key@x.com>",
+            sender="a@b.com",
+            subject="[python-dev] Re: some topic",
+            date="2025-06-01T12:00:00",
+        )
+        result = get_archive_subfolder(conn, "<ml-no-key@x.com>", record)
+        assert result == "Lists/python-dev"
     finally:
         conn.close()
 

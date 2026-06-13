@@ -208,7 +208,10 @@ class _BoardViewMixin:
                 self._not_found()
                 return
 
-            subfolder = get_archive_subfolder(conn, message_id, record)
+            subfolder = get_archive_subfolder(
+                conn, message_id, record,
+                api_key=self.mail_config.llm_api_key if self.mail_config else "",
+            )
             overrides = _load_archive_overrides(conn)
             hints = _load_llm_archive_hints(conn)
 
