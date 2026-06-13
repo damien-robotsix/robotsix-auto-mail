@@ -114,6 +114,24 @@ def test_parse_list_line_decodes_utf7_name() -> None:
     assert info.name == "Préfecture-44"
 
 
+def test_select_quotes_names_with_spaces(cfg: MailConfig) -> None:
+    """A mailbox name with a space (e.g. Gmail's All Mail) is sent quoted.
+
+    stdlib imaplib does not quote mailbox names; an unquoted
+    ``SELECT [Gmail]/All Mail`` is rejected ("Could not parse command").
+    """
+    mock_ssl = _make_mock_imap_ssl()
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            client.select_folder("[Gmail]/All Mail")
+            client.select_folder("INBOX")
+
+    selected = [c.args[0] for c in mock_ssl.select.call_args_list]
+    # Space-containing name is quoted; a bare atom is sent verbatim.
+    assert '"[Gmail]/All Mail"' in selected
+    assert "INBOX" in selected
+
+
 # ---------------------------------------------------------------------------
 # Exception hierarchy
 # ---------------------------------------------------------------------------
