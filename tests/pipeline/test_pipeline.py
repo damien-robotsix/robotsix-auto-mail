@@ -12,6 +12,7 @@ import pytest
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
     MailRecord,
+    get_record_by_message_id,
     get_watermark,
     init_db,
     set_watermark,
@@ -24,6 +25,7 @@ from robotsix_auto_mail.pipeline import (
     fetch_new_messages,
     ingest_folder,
     ingest_mail,
+    reconcile_records,
     update_watermark,
 )
 
@@ -1247,6 +1249,237 @@ def test_ingest_folder_dedup_updates_source_folder_and_uid(
     assert updated is not None
     assert updated.source_folder == "INBOX.archive"
     assert updated.imap_uid == 99
+
+
+# ---------------------------------------------------------------------------
+# reconcile_records tests
+# ---------------------------------------------------------------------------
+
+
+def test_reconcile_empty_db(
+    conn: sqlite3.Connection,
+) -> None:
+    """No tracked records → returns (0, 0), no IMAP calls made."""
+    imap = _mock_imap_client()
+
+    healed, removed = reconcile_records(conn, imap)
+
+    assert healed == 0
+    assert removed == 0
+    imap.select_folder.assert_not_called()
+    imap.search_uids.assert_not_called()
+
+
+def test_reconcile_heals_moved_mail(
+    conn: sqlite3.Connection,
+) -> None:
+    """UID not in source folder; cross_folder_resolve finds it elsewhere → heal."""
+    from robotsix_auto_mail.db import insert_record
+
+    # Seed a record.
+    insert_record(
+        conn,
+        MailRecord(
+            message_id="<moved@x>",
+            sender="x@x.com",
+            subject="Moved",
+            date="2025-01-01T00:00:00",
+            imap_uid=42,
+            source_folder="INBOX",
+        ),
+    )
+
+    imap = _mock_imap_client()
+    # UID 42 is NOT in INBOX.
+    imap.search_uids.return_value = []
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.cross_folder_resolve",
+        return_value=("Projects", 77),
+    ) as mock_resolve:
+        healed, removed = reconcile_records(conn, imap)
+
+    assert healed == 1
+    assert removed == 0
+
+    # Record should be updated with the new location.
+    updated = get_record_by_message_id(conn, "<moved@x>")
+    assert updated is not None
+    assert updated.source_folder == "Projects"
+    assert updated.imap_uid == 77
+
+    # Verify cross_folder_resolve was called with the correct message_id.
+    mock_resolve.assert_called_once_with(imap, "<moved@x>")
+
+
+def test_reconcile_removes_deleted_mail(
+    conn: sqlite3.Connection,
+) -> None:
+    """UID not found; cross_folder_resolve returns None → record removed."""
+    from robotsix_auto_mail.db import insert_record
+
+    insert_record(
+        conn,
+        MailRecord(
+            message_id="<deleted@x>",
+            sender="x@x.com",
+            subject="Deleted",
+            date="2025-01-01T00:00:00",
+            imap_uid=99,
+            source_folder="INBOX",
+        ),
+    )
+
+    imap = _mock_imap_client()
+    imap.search_uids.return_value = []  # UID 99 not found.
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.cross_folder_resolve",
+        return_value=None,
+    ):
+        healed, removed = reconcile_records(conn, imap)
+
+    assert healed == 0
+    assert removed == 1
+
+    # Record should be gone.
+    assert get_record_by_message_id(conn, "<deleted@x>") is None
+
+
+def test_reconcile_mixed_scenario(
+    conn: sqlite3.Connection,
+) -> None:
+    """Three records: one fine, one moved, one deleted."""
+    from robotsix_auto_mail.db import insert_record
+
+    for mid, uid in [
+        ("<fine@x>", 1),
+        ("<moved@x>", 2),
+        ("<deleted@x>", 3),
+    ]:
+        insert_record(
+            conn,
+            MailRecord(
+                message_id=mid,
+                sender="x@x.com",
+                subject="Test",
+                date="2025-01-01T00:00:00",
+                imap_uid=uid,
+                source_folder="INBOX",
+            ),
+        )
+
+    imap = _mock_imap_client()
+    # search_uids returns only UID 1 — UIDs 2 and 3 are missing.
+    imap.search_uids.return_value = [1]
+
+    def _fake_resolve(client, message_id):
+        if message_id == "<moved@x>":
+            return ("Projects", 77)
+        if message_id == "<deleted@x>":
+            return None
+        raise AssertionError(f"unexpected resolve call for {message_id}")
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.cross_folder_resolve",
+        side_effect=_fake_resolve,
+    ):
+        healed, removed = reconcile_records(conn, imap)
+
+    assert healed == 1
+    assert removed == 1
+
+    # Fine record untouched.
+    fine = get_record_by_message_id(conn, "<fine@x>")
+    assert fine is not None
+    assert fine.source_folder == "INBOX"
+    assert fine.imap_uid == 1
+
+    # Moved record healed.
+    moved = get_record_by_message_id(conn, "<moved@x>")
+    assert moved is not None
+    assert moved.source_folder == "Projects"
+    assert moved.imap_uid == 77
+
+    # Deleted record gone.
+    assert get_record_by_message_id(conn, "<deleted@x>") is None
+
+
+def test_reconcile_transient_error_preserves_records(
+    conn: sqlite3.Connection,
+) -> None:
+    """search_uids raises ImapError → (0, 0), all records preserved."""
+    from robotsix_auto_mail.db import insert_record
+    from robotsix_auto_mail.imap import ImapError
+
+    insert_record(
+        conn,
+        MailRecord(
+            message_id="<keep@x>",
+            sender="x@x.com",
+            subject="Keep",
+            date="2025-01-01T00:00:00",
+            imap_uid=42,
+            source_folder="INBOX",
+        ),
+    )
+
+    imap = _mock_imap_client()
+    imap.search_uids.side_effect = ImapError("connection lost")
+
+    healed, removed = reconcile_records(conn, imap)
+
+    assert healed == 0
+    assert removed == 0
+
+    # Record still exists.
+    assert get_record_by_message_id(conn, "<keep@x>") is not None
+
+
+def test_reconcile_chunks_uid_search(
+    conn: sqlite3.Connection,
+) -> None:
+    """600 UIDs in one folder → two search_uids calls (500 + 100)."""
+    from robotsix_auto_mail.db import insert_record
+
+    # Insert 600 records, UIDs 1..600.
+    for uid in range(1, 601):
+        insert_record(
+            conn,
+            MailRecord(
+                message_id=f"<msg{uid}@x>",
+                sender="x@x.com",
+                subject="Chunk",
+                date="2025-01-01T00:00:00",
+                imap_uid=uid,
+                source_folder="INBOX",
+            ),
+        )
+
+    imap = _mock_imap_client()
+    # Return all UIDs as found (no healing needed).
+    imap.search_uids.return_value = list(range(1, 601))
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.cross_folder_resolve",
+    ) as mock_resolve:
+        healed, removed = reconcile_records(conn, imap)
+
+    assert healed == 0
+    assert removed == 0
+
+    # Two search_uids calls expected.
+    assert imap.search_uids.call_count == 2
+
+    # First call: 500 UIDs.
+    call1_args = imap.search_uids.call_args_list[0][0]
+    assert "UID " in call1_args[0]
+    # Second call: 100 UIDs.
+    call2_args = imap.search_uids.call_args_list[1][0]
+    assert "UID " in call2_args[0]
+
+    # cross_folder_resolve never called (all UIDs found).
+    mock_resolve.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
