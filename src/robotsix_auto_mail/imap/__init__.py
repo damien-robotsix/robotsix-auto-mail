@@ -339,11 +339,17 @@ def cross_folder_resolve(
     uid)`` for the first match, or ``None`` when no non-waste folder
     contains the message.
 
+    Non-selectable container nodes (those carrying ``\\Noselect``, e.g.
+    Gmail's ``[Gmail]`` namespace parent) are skipped — ``SELECT``-ing them
+    fails with ``NO`` and is not a real resolution target.
+
     Propagates ``ImapError`` (and subclasses) on connection/auth/protocol
     failures — it never swallows transient errors.
     """
     for folder in client.list_folders():
         if _is_waste_folder(folder.name):
+            continue
+        if any(attr.lower() == "\\noselect" for attr in folder.attributes):
             continue
         client.select_folder(folder.name)
         uids = client.search_uids(f'HEADER Message-ID "{message_id}"')
