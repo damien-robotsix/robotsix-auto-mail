@@ -135,6 +135,7 @@ class BoardHandler(
             "/archive": self._handle_archive,
             "/batch-delete": self._handle_batch_delete,
             "/batch-archive": self._handle_batch_archive,
+            "/batch-archive-folder": self._handle_batch_archive_folder,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
             "/force-triage-column": self._handle_force_triage_column,

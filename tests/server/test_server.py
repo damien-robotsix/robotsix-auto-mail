@@ -1817,7 +1817,6 @@ def test_run_triage_background_clears_watermark() -> None:
         os.unlink(db_path)
 
 
-
 # ---------------------------------------------------------------------------
 # Delete button on TO_DELETE cards
 # ---------------------------------------------------------------------------

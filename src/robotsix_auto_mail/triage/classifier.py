@@ -36,7 +36,6 @@ from robotsix_auto_mail.triage.persistence import (
     SenderMemory,
     TriageError,
     _utc_now_iso,
-    list_triage_decisions,
 )
 
 # ---------------------------------------------------------------------------
