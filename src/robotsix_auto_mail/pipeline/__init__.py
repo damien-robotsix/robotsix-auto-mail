@@ -446,3 +446,93 @@ def ingest_folder(
         skipped=skipped,
         errors=errors,
     )
+
+
+def reconcile_records(
+    db_conn: sqlite3.Connection,
+    imap_client: ImapClient,
+) -> tuple[int, int]:
+    """Verify tracked records' UIDs; heal moved mails, remove deleted ones.
+
+    Returns ``(healed, removed)`` counts.
+    """
+    from robotsix_auto_mail.db import delete_record_by_message_id, update_record_source
+    from robotsix_auto_mail.imap import ImapError, cross_folder_resolve
+
+    try:
+        # 1. Query all records with a tracked IMAP UID.
+        cur = db_conn.execute(
+            "SELECT message_id, source_folder, imap_uid "
+            "FROM mail_records WHERE imap_uid IS NOT NULL"
+        )
+        rows = cur.fetchall()
+        if not rows:
+            return (0, 0)
+
+        # 2. Build {folder: {uid: message_id}} mapping.
+        folder_uids: dict[str, dict[int, str]] = {}
+        for message_id, source_folder, imap_uid in rows:
+            folder_uids.setdefault(source_folder, {})[imap_uid] = message_id
+
+        healed = 0
+        removed = 0
+
+        # 3. For each source folder, verify tracked UIDs are still present.
+        for folder, uid_map in folder_uids.items():
+            # Select the folder — skip on error (e.g. folder was deleted).
+            try:
+                imap_client.select_folder(folder)
+            except ImapError:
+                _logger.warning("reconcile_select_error", folder=folder)
+                continue
+
+            tracked_uids = set(uid_map.keys())
+            found_uids: set[int] = set()
+
+            # Chunk UIDs in groups of 500 for the UID SEARCH.
+            uid_list = sorted(tracked_uids)
+            folder_failed = False
+            for i in range(0, len(uid_list), 500):
+                chunk = uid_list[i : i + 500]
+                criteria = "UID " + ",".join(str(u) for u in chunk)
+                try:
+                    found_uids.update(imap_client.search_uids(criteria))
+                except ImapError:
+                    _logger.warning("reconcile_search_error", folder=folder)
+                    folder_failed = True
+                    break
+
+            if folder_failed:
+                continue  # Skip this folder entirely on transient error.
+
+            missing_uids = tracked_uids - found_uids
+
+            # 4. For each missing UID, cross-folder resolve to heal or remove.
+            for missing_uid in missing_uids:
+                message_id = uid_map[missing_uid]
+                try:
+                    resolved = cross_folder_resolve(imap_client, message_id)
+                except ImapError:
+                    _logger.warning("reconcile_resolve_error", message_id=message_id)
+                    continue
+
+                if resolved is not None:
+                    new_folder, new_uid = resolved
+                    update_record_source(
+                        db_conn,
+                        message_id,
+                        source_folder=new_folder,
+                        imap_uid=new_uid,
+                    )
+                    db_conn.commit()
+                    healed += 1
+                else:
+                    delete_record_by_message_id(db_conn, message_id)
+                    db_conn.commit()
+                    removed += 1
+
+        return (healed, removed)
+
+    except ImapError as exc:
+        _logger.warning("reconcile_imap_error", error=str(exc))
+        return (0, 0)

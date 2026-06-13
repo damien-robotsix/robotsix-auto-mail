@@ -37,7 +37,7 @@ from robotsix_auto_mail.format import (
     _format_date,
 )
 from robotsix_auto_mail.imap import ImapClient, ImapError, is_system_folder
-from robotsix_auto_mail.pipeline import IngestResult, ingest_folder
+from robotsix_auto_mail.pipeline import IngestResult, ingest_folder, reconcile_records
 from robotsix_auto_mail.smtp import (
     SmtpClient,
     SmtpError,
@@ -128,6 +128,15 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
     try:
         with _cli.ImapClient(config) as imap_client:
             result = _cli.ingest_mail(conn, imap_client, config, dry_run=dry_run)
+            if not dry_run and result is not None:
+                try:
+                    healed, removed = reconcile_records(conn, imap_client)
+                    if healed or removed:
+                        sys.stdout.write(
+                            f"Reconciliation: {healed} healed, {removed} removed\n"
+                        )
+                except Exception:
+                    sys.stderr.write("Reconciliation failed (will retry next cycle)\n")
     except Exception:
         # Fatal connection failure — ImapClient(config) raised.
         result = None
