@@ -508,8 +508,7 @@ to seed the MSAL token cache at `.data/office365/msal_cache.json`.
 namespaced per account by inserting `ACCOUNTS_<n>_` after `MAIL_`, where `<n>`
 is a zero-based account index. A field whose single-account variable is
 `MAIL_<X>` becomes `MAIL_ACCOUNTS_<n>_<X>` (for example
-`MAIL_ACCOUNTS_0_IMAP_HOST`, `MAIL_ACCOUNTS_1_PASSWORD`); the two LLM fields
-become `MAIL_ACCOUNTS_<n>_LLM_API_KEY`. Two
+`MAIL_ACCOUNTS_0_IMAP_HOST`, `MAIL_ACCOUNTS_1_PASSWORD`); `LLM_API_KEY`, `LLM_PROVIDER`, and `LANGFUSE_*` are application-wide (global) and read from the bare env vars, not namespaced. Two
 extra namespaced variables describe the account itself: `MAIL_ACCOUNTS_<n>_ID`
 (required — the stable account id, e.g. `MAIL_ACCOUNTS_0_ID=personal`) and
 `MAIL_ACCOUNTS_<n>_LABEL` (optional). Account indices must be contiguous
