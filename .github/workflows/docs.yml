@@ -14,10 +14,10 @@ jobs:
   # replaces the inline checkout / setup-uv / `uv sync` / git-identity / retry
   # `mkdocs gh-deploy` steps that used to be hand-rolled here. Unlike mill's own
   # caller (which installs a `docs` group), auto-mail's docs deps live in the
-  # `docs` extra, so install-extras pulls `--extra docs`.
+  # `docs` extra, so the install args pull `--extra docs`.
   deploy:
     uses: damien-robotsix/robotsix-mill/.github/workflows/python-docs.yml@main
     permissions:
       contents: write
     with:
-      install-extras: "docs"
+      docs-install-args: "--extra docs"
