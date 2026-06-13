@@ -794,7 +794,7 @@ def test_refine_with_llm_success(capsys: pytest.CaptureFixture[str]) -> None:
     assert outcome.config.imap_host == "imap.good.com"
     assert outcome.config.smtp_host == "smtp.good.com"
     assert (
-        outcome.config.password == "pw"
+        outcome.config.password == "pw"  # pragma: allowlist secret
     )  # preserved from original  # pragma: allowlist secret
     assert outcome.provider is not None
     assert outcome.provider.imap_host == "imap.good.com"
@@ -1079,7 +1079,8 @@ def test_verify_and_refine_host_failure_llm_refine(
             side_effect=verify_results,
         ),
         mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}
+            os.environ,
+            {"LLM_API_KEY": "sk-test"},  # pragma: allowlist secret
         ),  # pragma: allowlist secret
     ):
         rc = _verify_and_refine(
@@ -1130,7 +1131,8 @@ def test_verify_and_refine_host_failure_llm_then_manual(
             side_effect=verify_results,
         ),
         mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}
+            os.environ,
+            {"LLM_API_KEY": "sk-test"},  # pragma: allowlist secret
         ),  # pragma: allowlist secret
         mock.patch("builtins.input", side_effect=["", "manual-smtp.com"]),
     ):
@@ -1294,7 +1296,8 @@ def test_verify_and_refine_budget_exhausted(
             side_effect=verify_results,
         ),
         mock.patch.dict(
-            os.environ, {"LLM_API_KEY": "sk-test"}
+            os.environ,
+            {"LLM_API_KEY": "sk-test"},  # pragma: allowlist secret
         ),  # pragma: allowlist secret
         mock.patch("builtins.input", side_effect=["", ""]),
     ):
