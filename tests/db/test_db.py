@@ -812,7 +812,7 @@ def test_list_untriaged_records_some_triaged() -> None:
         conn.execute(
             "INSERT INTO triage_decisions "
             "(message_id, action, source, reason, confidence, updated_at) "
-            "VALUES ('<triaged@x.com>', 'TO_ARCHIVE', 'agent', '', 'medium', '2025-01-01T00:00:00')"  # noqa: E501
+            "VALUES ('<triaged@x.com>', 'TO_ARCHIVE', 'agent', '', 'medium', '2025-01-01T00:00:00')"
         )
         conn.commit()
         result = list_untriaged_records(conn)
@@ -896,7 +896,7 @@ def test_init_db_status_migration_idempotent(tmp_db_path: str) -> None:
             "INSERT INTO mail_records "
             "(message_id, sender, subject, date, recipients_json, "
             "body_plain, body_html, attachments_json, status) "
-            "VALUES ('<dup@x.com>', 's@x.com', 'S', 'd', '{}', '', '', '[]', 'needs_reply')"  # noqa: E501
+            "VALUES ('<dup@x.com>', 's@x.com', 'S', 'd', '{}', '', '', '[]', 'needs_reply')"
         )
         conn.commit()
     finally:
@@ -933,13 +933,13 @@ def test_init_db_status_migration_skips_existing_decisions(
             "INSERT INTO mail_records "
             "(message_id, sender, subject, date, recipients_json, "
             "body_plain, body_html, attachments_json, status) "
-            "VALUES ('<existing@x.com>', 's@x.com', 'S', 'd', '{}', '', '', '[]', 'needs_reply')"  # noqa: E501
+            "VALUES ('<existing@x.com>', 's@x.com', 'S', 'd', '{}', '', '', '[]', 'needs_reply')"
         )
         # Pre-create a triage_decisions row with a different action.
         conn.execute(
             "INSERT INTO triage_decisions "
             "(message_id, action, source, reason, confidence, updated_at) "
-            "VALUES ('<existing@x.com>', 'TO_DELETE', 'agent', 'spam', 'high', '2025-01-01T00:00:00')"  # noqa: E501
+            "VALUES ('<existing@x.com>', 'TO_DELETE', 'agent', 'spam', 'high', '2025-01-01T00:00:00')"
         )
         conn.commit()
     finally:

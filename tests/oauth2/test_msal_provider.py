@@ -88,7 +88,7 @@ def _install_fake_msal(
         SerializableTokenCache = _FakeCache
 
         @staticmethod
-        def PublicClientApplication(  # noqa: N802
+        def PublicClientApplication(
             *, client_id: str, authority: str, token_cache: _FakeCache
         ) -> _FakeApp:
             recorder["client_id"] = client_id

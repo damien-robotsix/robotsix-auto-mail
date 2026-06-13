@@ -359,30 +359,32 @@ def cross_folder_resolve(
 # Known system-folder names (lowercased) for the name-based fallback in
 # ``is_system_folder()``.  Covers English and French.  More languages can
 # be added by expanding this set.
-_SYSTEM_FOLDER_NAMES_LOWER: frozenset[str] = frozenset({
-    # English
-    "sent",
-    "sent items",
-    "sent mail",
-    "sent messages",
-    "drafts",
-    "trash",
-    "deleted items",
-    "deleted messages",
-    "bin",
-    "junk",
-    "spam",
-    "junk e-mail",
-    "bulk mail",
-    # French
-    "éléments envoyés",
-    "messages envoyés",
-    "brouillons",
-    "éléments supprimés",
-    "corbeille",
-    "courrier indésirable",
-    "indésirables",
-})
+_SYSTEM_FOLDER_NAMES_LOWER: frozenset[str] = frozenset(
+    {
+        # English
+        "sent",
+        "sent items",
+        "sent mail",
+        "sent messages",
+        "drafts",
+        "trash",
+        "deleted items",
+        "deleted messages",
+        "bin",
+        "junk",
+        "spam",
+        "junk e-mail",
+        "bulk mail",
+        # French
+        "éléments envoyés",
+        "messages envoyés",
+        "brouillons",
+        "éléments supprimés",
+        "corbeille",
+        "courrier indésirable",
+        "indésirables",
+    }
+)
 
 
 def is_system_folder(mailbox: MailboxInfo) -> bool:
