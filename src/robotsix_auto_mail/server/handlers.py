@@ -96,7 +96,6 @@ class BoardHandler(
             (lambda p: p == "/", lambda: self._redirect("/board")),
             (lambda p: p == "/board", self._serve_board),
             (lambda p: p == "/board-content", self._serve_board_content),
-            (lambda p: p == "/folders", self._serve_folders),
             (lambda p: p.startswith("/static/"), self._serve_static),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
@@ -141,7 +140,6 @@ class BoardHandler(
             "/rule-delete": self._handle_rule_delete,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
-            "/run-folder-triage": self._handle_run_folder_triage,
             "/force-triage-column": self._handle_force_triage_column,
             "/archive-proposal": self._handle_archive_proposal,
             "/save-notes": self._handle_save_notes,

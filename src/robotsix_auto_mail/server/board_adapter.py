@@ -90,7 +90,7 @@ class MailBoardAdapter:
         self._triage_by_mid = dict(triage_by_mid)  # message_id → action
         # When a column-wide batch op (delete/archive) is in flight the
         # Delete-All / Archive-All buttons are suppressed, mirroring how the
-        # triage banner replaces the folder-triage form.
+        # triage banner replaces the inline controls.
         self._batch_running = batch_running
 
         # Auto-mail-specific data for server.py rendering.
@@ -193,9 +193,7 @@ class MailBoardAdapter:
         if account_id:
             data_account_attr = f' data-account="{html.escape(account_id)}"'
             label = self._account_labels.get(account_id, account_id)
-            account_badge = (
-                f'<span class="card-account">{html.escape(label)}</span>'
-            )
+            account_badge = f'<span class="card-account">{html.escape(label)}</span>'
 
         # Body preview.
         body = _effective_body_plain(card)
@@ -322,7 +320,7 @@ class MailBoardAdapter:
             '<div class="card-extra"'
             f' data-message-id="{quoted_mid}"'
             f' data-subject="{subject_attr}"'
-            f'{data_account_attr}>'
+            f"{data_account_attr}>"
             f"{account_badge}"
             f'<div class="body-preview">{body_html_render}</div>'
             f"{notes_indicator}"

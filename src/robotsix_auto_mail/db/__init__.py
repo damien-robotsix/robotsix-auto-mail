@@ -393,7 +393,7 @@ def update_record_source(
 ) -> bool:
     """Update ``source_folder`` and ``imap_uid`` for an existing record.
 
-    Used when ``ingest_folder`` re-encounters a message_id whose
+    Used when a re-ingest from a named folder re-encounters a message_id whose
     tracked UID is stale — the row gets its source folder and UID
     refreshed so it becomes actionable for archive/delete.
 

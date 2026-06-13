@@ -11,7 +11,6 @@
  *   • capture-phase card-click interceptor (overrides board.js drawer)
  *   • hash-based navigation + Escape-key handler
  *   • Board auto-refresh polling (HTML-replacement model)
- *   • Async folder-picker population
  */
 
 (function () {
@@ -42,7 +41,6 @@
   var accountQs = CFG.account_qs || "";
   var fetchQs = CFG.fetch_qs || "";
   var dataAccountJs = CFG.data_account_js === true;
-  var folderFormHtml = CFG.folder_form_html || "";
 
   /* ==================================================================
    * 1.  Side-panel (iframe-based, replaces board.js's #drawer)
@@ -185,9 +183,8 @@
             tc.innerHTML =
               '<div class="triage-banner">Triage is currently running. ' +
               "The board will refresh automatically.</div>";
-          } else if (!document.getElementById("folder-picker")) {
-            tc.innerHTML = folderFormHtml;
-            populateFolderPicker();
+          } else {
+            tc.innerHTML = "";
           }
         }
 
@@ -228,32 +225,7 @@
   }
 
   /* ==================================================================
-   * 5.  Folder picker
-   * ================================================================ */
-
-  function populateFolderPicker() {
-    var picker = document.getElementById("folder-picker");
-    if (!picker) return;
-    fetch("/folders" + fetchQs)
-      .then(function (r) {
-        if (!r.ok) throw new Error("bad status");
-        return r.json();
-      })
-      .then(function (data) {
-        (data.folders || []).forEach(function (name) {
-          var opt = document.createElement("option");
-          opt.value = name;
-          opt.textContent = name;
-          picker.appendChild(opt);
-        });
-      })
-      .catch(function () {
-        /* leave placeholder; form unusable */
-      });
-  }
-
-  /* ==================================================================
-   * 6.  Bootstrap
+   * 5.  Bootstrap
    * ================================================================ */
 
   function init() {
@@ -261,7 +233,6 @@
     attachHashRouting();
     attachEscapeKey();
     startRefreshLoop();
-    populateFolderPicker();
   }
 
   if (document.readyState === "loading") {
