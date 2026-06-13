@@ -254,6 +254,71 @@ def test_from_env_invalid_smtp_tls_mode() -> None:
         assert "MAIL_SMTP_TLS_MODE" in msg
 
 
+def test_from_env_logging_fields_defaults() -> None:
+    """Logging fields fall back to defaults when env vars are absent."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "u",
+        "MAIL_PASSWORD": "p",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = MailConfig.from_env()
+        assert cfg.log_level == "INFO"
+        assert cfg.log_format == "console"
+        assert cfg.log_file_dir == ".mail_log"
+
+
+def test_from_env_logging_fields_applied() -> None:
+    """LOG_LEVEL, LOG_FORMAT, LOG_FILE_DIR are read from env."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "u",
+        "MAIL_PASSWORD": "p",
+        "LOG_LEVEL": "DEBUG",
+        "LOG_FORMAT": "json",
+        "LOG_FILE_DIR": "/var/log/mail",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = MailConfig.from_env()
+        assert cfg.log_level == "DEBUG"
+        assert cfg.log_format == "json"
+        assert cfg.log_file_dir == "/var/log/mail"
+
+
+def test_from_env_invalid_log_level() -> None:
+    """Invalid LOG_LEVEL → ConfigurationError."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "u",
+        "MAIL_PASSWORD": "p",
+        "LOG_LEVEL": "FATAL",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        with pytest.raises(ConfigurationError) as exc:
+            MailConfig.from_env()
+        msg = str(exc.value)
+        assert "LOG_LEVEL" in msg
+
+
+def test_from_env_invalid_log_format() -> None:
+    """Invalid LOG_FORMAT → ConfigurationError."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "u",
+        "MAIL_PASSWORD": "p",
+        "LOG_FORMAT": "xml",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        with pytest.raises(ConfigurationError) as exc:
+            MailConfig.from_env()
+        msg = str(exc.value)
+        assert "LOG_FORMAT" in msg
+
+
 # ---------------------------------------------------------------------------
 # from_yaml
 # ---------------------------------------------------------------------------

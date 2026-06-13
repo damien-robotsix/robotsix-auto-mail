@@ -78,6 +78,9 @@ class ConfigurationError(Exception):
 
 _VALID_TLS_MODES = frozenset({"starttls", "direct-tls", "none"})
 
+_VALID_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR"})
+_VALID_LOG_FORMATS = frozenset({"json", "console"})
+
 # Default TLS modes for IMAP and SMTP connections.
 DEFAULT_IMAP_TLS_MODE = "direct-tls"
 DEFAULT_SMTP_TLS_MODE = "starttls"
@@ -340,6 +343,36 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
         global_field=True,
     ),
+    _FieldSpec(
+        "log_level",
+        "LOG_LEVEL",
+        "logging.level",
+        "log_level",
+        "INFO",
+        False,
+        False,
+        global_field=True,
+    ),
+    _FieldSpec(
+        "log_format",
+        "LOG_FORMAT",
+        "logging.format",
+        "log_format",
+        "console",
+        False,
+        False,
+        global_field=True,
+    ),
+    _FieldSpec(
+        "log_file_dir",
+        "LOG_FILE_DIR",
+        "logging.file_dir",
+        "str",
+        ".mail_log",
+        False,
+        False,
+        global_field=True,
+    ),
 )
 
 # Each yaml_path must be exactly ``section.key`` — the YAML loader splits
@@ -414,6 +447,11 @@ class MailConfig:
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
     langfuse_base_url: str = ""
+
+    # Logging configuration — application-wide (global).
+    log_level: str = "INFO"
+    log_format: str = "console"
+    log_file_dir: str = ".mail_log"
 
     # -- masking -----------------------------------------------------------
 
@@ -494,6 +532,22 @@ class MailConfig:
                     errors.append(
                         f"{spec.yaml_path} must be one of "
                         f"{sorted(_VALID_TLS_MODES)!r}, got {value!r}"
+                    )
+                kwargs[spec.field_name] = value
+            elif spec.kind == "log_level":
+                value = _get_str(section, key_name, spec.default)
+                if value.upper() not in _VALID_LOG_LEVELS:
+                    errors.append(
+                        f"{spec.yaml_path} must be one of "
+                        f"{sorted(_VALID_LOG_LEVELS)!r}, got {value!r}"
+                    )
+                kwargs[spec.field_name] = value
+            elif spec.kind == "log_format":
+                value = _get_str(section, key_name, spec.default)
+                if value.lower() not in _VALID_LOG_FORMATS:
+                    errors.append(
+                        f"{spec.yaml_path} must be one of "
+                        f"{sorted(_VALID_LOG_FORMATS)!r}, got {value!r}"
                     )
                 kwargs[spec.field_name] = value
             else:  # "str"
@@ -768,6 +822,20 @@ def _build_config_from_env(
             except ConfigurationError as exc:
                 errors.append(exc.message)
                 kwargs[spec.field_name] = spec.default
+        elif spec.kind == "log_level":
+            if raw.upper() not in _VALID_LOG_LEVELS:
+                errors.append(
+                    f"{label} must be one of "
+                    f"{sorted(_VALID_LOG_LEVELS)!r}, got {raw!r}"
+                )
+            kwargs[spec.field_name] = raw
+        elif spec.kind == "log_format":
+            if raw.lower() not in _VALID_LOG_FORMATS:
+                errors.append(
+                    f"{label} must be one of "
+                    f"{sorted(_VALID_LOG_FORMATS)!r}, got {raw!r}"
+                )
+            kwargs[spec.field_name] = raw
         else:  # "tls_mode"
             if raw not in _VALID_TLS_MODES:
                 errors.append(
@@ -1130,7 +1198,27 @@ def _build_account_from_env(index: int) -> MailAccount:
             "LANGFUSE_SECRET_KEY", cfg.langfuse_secret_key
         ),
         langfuse_base_url=os.environ.get("LANGFUSE_BASE_URL", cfg.langfuse_base_url),
+        log_level=os.environ.get("LOG_LEVEL", cfg.log_level),
+        log_format=os.environ.get("LOG_FORMAT", cfg.log_format),
+        log_file_dir=os.environ.get("LOG_FILE_DIR", cfg.log_file_dir),
     )
+
+    # Validate global logging fields (skipped by _build_config_from_env).
+    errs: list[str] = []
+    raw_lvl = os.environ.get("LOG_LEVEL", "")
+    if raw_lvl and raw_lvl.upper() not in _VALID_LOG_LEVELS:
+        errs.append(
+            f"LOG_LEVEL must be one of {sorted(_VALID_LOG_LEVELS)!r}, "
+            f"got {raw_lvl!r}"
+        )
+    raw_fmt = os.environ.get("LOG_FORMAT", "")
+    if raw_fmt and raw_fmt.lower() not in _VALID_LOG_FORMATS:
+        errs.append(
+            f"LOG_FORMAT must be one of {sorted(_VALID_LOG_FORMATS)!r}, "
+            f"got {raw_fmt!r}"
+        )
+    if errs:
+        raise ConfigurationError("\n".join(errs))
 
     account_id = os.environ.get(f"{prefix}ID", "")
     if not os.environ.get(namespaced("MAIL_DB_PATH")):
@@ -1268,6 +1356,15 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     if cfg.triage_on_ingest != defaults.triage_on_ingest:
         lines.append(f"{item}triage:")
         lines.append(f"{item}  on_ingest: {_yaml_scalar(cfg.triage_on_ingest)}")
+    if (
+        cfg.log_level != defaults.log_level
+        or cfg.log_format != defaults.log_format
+        or cfg.log_file_dir != defaults.log_file_dir
+    ):
+        lines.append(f"{item}logging:")
+        lines.append(f"{item}  level: {_yaml_scalar(cfg.log_level)}")
+        lines.append(f"{item}  format: {_yaml_scalar(cfg.log_format)}")
+        lines.append(f"{item}  file_dir: {_yaml_scalar(cfg.log_file_dir)}")
     return lines
 
 

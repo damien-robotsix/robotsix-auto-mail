@@ -22,28 +22,38 @@ import structlog
 from structlog.typing import Processor
 
 
-def _resolve_level() -> int:
-    """Resolve the numeric log level from ``LOG_LEVEL`` (default ``INFO``).
+def _resolve_level(level_name: str = "INFO") -> int:
+    """Resolve a numeric log level from *level_name* (default ``INFO``).
 
     Accepts ``DEBUG`` / ``INFO`` / ``WARNING`` / ``ERROR`` case-insensitively;
     an unrecognised value falls back to ``INFO``.
     """
-    name = os.environ.get("LOG_LEVEL", "INFO").upper()
+    name = level_name.upper()
     level = getattr(logging, name, None)
     if not isinstance(level, int):
         return logging.INFO
     return level
 
 
-def setup_logging() -> None:
-    """Configure structlog + stdlib logging from the environment.
+def setup_logging(
+    *,
+    level: str = "INFO",
+    log_format: str = "console",
+    log_file_dir: str = ".mail_log",
+) -> None:
+    """Configure structlog + stdlib logging.
 
-    Reads ``LOG_LEVEL`` (default ``INFO``) and ``LOG_FORMAT`` (default
-    ``console``; ``json`` selects the JSON renderer, anything else the dev
-    console renderer).  Safe to call once per process (idempotent).
+    *level* is the log level name (``DEBUG`` / ``INFO`` / ``WARNING``
+    / ``ERROR``; default ``INFO``).  *log_format* selects the renderer:
+    ``"json"`` for structured production logs, ``"console"`` (the default)
+    for human-friendly development output.  *log_file_dir* is the directory
+    for date-stamped debug log files (default ``".mail_log"``); an empty
+    or whitespace-only string disables file logging.
+
+    Safe to call once per process (idempotent).
     """
-    level = _resolve_level()
-    log_format = os.environ.get("LOG_FORMAT", "console").lower()
+    level_value = _resolve_level(level)
+    log_format = log_format.lower()
 
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -74,14 +84,14 @@ def setup_logging() -> None:
 
     # Bridge stdlib logging so third-party libraries render through the same
     # pipeline; set the root logger level from LOG_LEVEL.
-    logging.basicConfig(format="%(message)s", level=level, stream=sys.stdout)
-    logging.getLogger().setLevel(level)
+    logging.basicConfig(format="%(message)s", level=level_value, stream=sys.stdout)
+    logging.getLogger().setLevel(level_value)
 
     # -- file handler --------------------------------------------------------
     # Always DEBUG; survives independently of LOG_LEVEL (which only governs
     # stdout).  Date-stamped filenames give natural daily rollover without
     # a rotation library.
-    log_file_dir = os.environ.get("LOG_FILE_DIR", ".mail_log").strip()
+    log_file_dir = log_file_dir.strip()
     if log_file_dir:
         root = logging.getLogger()
         if not any(isinstance(h, logging.FileHandler) for h in root.handlers):

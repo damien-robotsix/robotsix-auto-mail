@@ -20,46 +20,36 @@ def _reset_logging(monkeypatch: pytest.MonkeyPatch) -> None:
     root = logging.getLogger()
     root.handlers.clear()
     root.setLevel(logging.WARNING)  # default before setup_logging
+    # Clear LOG_FILE_DIR from env (no longer read by setup_logging, but kept
+    # for safety in case other code reads it).
     monkeypatch.setenv("LOG_FILE_DIR", "")
 
 
 # ---------------------------------------------------------------------------
 
 
-def test_log_level_honoured(monkeypatch: pytest.MonkeyPatch) -> None:
-    """LOG_LEVEL=WARNING sets the root logger level to WARNING."""
-    monkeypatch.setenv("LOG_LEVEL", "WARNING")
-    monkeypatch.setenv("LOG_FILE_DIR", "")  # disable file logging
-    monkeypatch.delenv("LOG_FORMAT", raising=False)
-
-    setup_logging()
+def test_log_level_honoured() -> None:
+    """A level=WARNING arg sets the root logger level to WARNING."""
+    setup_logging(level="WARNING", log_file_dir="")
 
     assert logging.getLogger().level == logging.WARNING
 
 
-def test_default_log_level_is_info(monkeypatch: pytest.MonkeyPatch) -> None:
-    """With no LOG_LEVEL set, the default level is INFO."""
-    monkeypatch.delenv("LOG_LEVEL", raising=False)
-    monkeypatch.setenv("LOG_FILE_DIR", "")  # disable file logging
-    monkeypatch.delenv("LOG_FORMAT", raising=False)
-
-    setup_logging()
+def test_default_log_level_is_info() -> None:
+    """With no ``level`` arg, the default level is INFO."""
+    setup_logging(log_file_dir="")
 
     assert logging.getLogger().level == logging.INFO
 
 
 def test_json_format_renders_parseable_json(
-    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """LOG_FORMAT=json renders each event as a single parseable JSON line."""
-    monkeypatch.setenv("LOG_FORMAT", "json")
-    monkeypatch.setenv("LOG_LEVEL", "INFO")
-    monkeypatch.setenv("LOG_FILE_DIR", "")  # disable file logging
+    """log_format=json renders each event as a single parseable JSON line."""
     # Force basicConfig to attach a fresh handler bound to the captured stdout.
     logging.getLogger().handlers.clear()
 
-    setup_logging()
+    setup_logging(level="INFO", log_format="json", log_file_dir="")
 
     logger = structlog.get_logger("test.logging")
     logger.info("hello_event", foo="bar")
@@ -78,16 +68,11 @@ def test_json_format_renders_parseable_json(
 
 
 def test_file_handler_creates_log_file(
-    monkeypatch: pytest.MonkeyPatch,
     tmp_path: str,
 ) -> None:
-    """With LOG_FILE_DIR set to a writable tmp_path, a date-stamped log
+    """With log_file_dir set to a writable tmp_path, a date-stamped log
     file is created and receives log events."""
-    monkeypatch.setenv("LOG_FILE_DIR", str(tmp_path))
-    monkeypatch.setenv("LOG_LEVEL", "INFO")
-    monkeypatch.delenv("LOG_FORMAT", raising=False)
-
-    setup_logging()
+    setup_logging(level="INFO", log_file_dir=str(tmp_path))
 
     logger = structlog.get_logger("test.file")
     logger.info("file_log_test", extra="value")
@@ -104,15 +89,10 @@ def test_file_handler_creates_log_file(
 
 
 def test_file_handler_always_debug(
-    monkeypatch: pytest.MonkeyPatch,
     tmp_path: str,
 ) -> None:
-    """When LOG_LEVEL=WARNING, the file handler still receives DEBUG events."""
-    monkeypatch.setenv("LOG_FILE_DIR", str(tmp_path))
-    monkeypatch.setenv("LOG_LEVEL", "WARNING")
-    monkeypatch.delenv("LOG_FORMAT", raising=False)
-
-    setup_logging()
+    """When level=WARNING, the file handler still receives DEBUG events."""
+    setup_logging(level="WARNING", log_file_dir=str(tmp_path))
 
     logger = structlog.get_logger("test.debug")
     logger.debug("debug_for_file_only")
@@ -127,18 +107,12 @@ def test_file_handler_always_debug(
     assert "debug_for_file_only" in content
 
 
-def test_file_handler_uncreatable_path_does_not_crash(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """When LOG_FILE_DIR points to an uncreatable path, setup_logging
+def test_file_handler_uncreatable_path_does_not_crash() -> None:
+    """When log_file_dir points to an uncreatable path, setup_logging
     does not raise and stdout logging still works."""
     # /dev/null is a file, not a directory — creating a subdirectory
     # inside it must fail.
-    monkeypatch.setenv("LOG_FILE_DIR", "/dev/null/.mail_log")
-    monkeypatch.setenv("LOG_LEVEL", "INFO")
-    monkeypatch.delenv("LOG_FORMAT", raising=False)
-
-    setup_logging()  # must not raise
+    setup_logging(level="INFO", log_file_dir="/dev/null/.mail_log")
 
     # The root logger should still have a StreamHandler for stdout.
     root = logging.getLogger()
@@ -146,16 +120,10 @@ def test_file_handler_uncreatable_path_does_not_crash(
     assert stream_handlers, "expected a stdout StreamHandler to exist"
 
 
-def test_empty_log_file_dir_disables_file_logging(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Empty LOG_FILE_DIR (or whitespace-only) means no file handler."""
-    monkeypatch.setenv("LOG_FILE_DIR", "   ")
-    monkeypatch.setenv("LOG_LEVEL", "INFO")
-    monkeypatch.delenv("LOG_FORMAT", raising=False)
-
-    setup_logging()
+def test_empty_log_file_dir_disables_file_logging() -> None:
+    """Empty log_file_dir (or whitespace-only) means no file handler."""
+    setup_logging(level="INFO", log_file_dir="   ")
 
     root = logging.getLogger()
     file_handlers = [h for h in root.handlers if isinstance(h, logging.FileHandler)]
-    assert not file_handlers, "expected no FileHandler for empty LOG_FILE_DIR"
+    assert not file_handlers, "expected no FileHandler for empty log_file_dir"
