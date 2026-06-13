@@ -129,6 +129,29 @@ def imap_utf7_decode(name: str) -> str:
     return "".join(out)
 
 
+# A mailbox name made only of these chars is a bare IMAP "atom" and may be
+# sent verbatim.  Anything else — most importantly a SPACE, as in Gmail's
+# ``[Gmail]/All Mail`` / ``[Gmail]/Sent Mail`` — must be sent as a quoted
+# string, because stdlib ``imaplib`` does NOT quote mailbox names and the
+# server then rejects the command ("Could not parse command").
+_ATOM_SAFE_RE = re.compile(r"[A-Za-z0-9._/-]+")
+
+
+def _encode_mailbox(name: str) -> str:
+    """Return *name* ready to pass to an imaplib mailbox command.
+
+    Encodes to modified UTF-7 (so non-ASCII names work) and wraps the result
+    in an IMAP quoted string unless it is a bare atom — covering spaces,
+    brackets and other non-atom characters that imaplib would otherwise send
+    unquoted and unparseable.
+    """
+    encoded = imap_utf7_encode(name)
+    if encoded and _ATOM_SAFE_RE.fullmatch(encoded):
+        return encoded
+    escaped = encoded.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
@@ -570,7 +593,7 @@ class ImapClient(_ProtocolClient):
         """
         if self._imap is None:
             raise ImapError("Not connected")
-        status, data = self._imap.select(imap_utf7_encode(name))
+        status, data = self._imap.select(_encode_mailbox(name))
         if status != "OK":
             raise ImapError(f"SELECT '{name}' failed: {status}")
         if data and data[0]:
@@ -602,7 +625,7 @@ class ImapClient(_ProtocolClient):
         """
         if self._imap is None:
             raise ImapError("Not connected")
-        status, _data = self._imap.create(imap_utf7_encode(name))
+        status, _data = self._imap.create(_encode_mailbox(name))
         if status == "OK":
             self._subscribe(name)
             return
@@ -627,7 +650,7 @@ class ImapClient(_ProtocolClient):
         if self._imap is None:
             return
         try:
-            self._imap.subscribe(imap_utf7_encode(name))
+            self._imap.subscribe(_encode_mailbox(name))
         except Exception:  # noqa: S110  # nosec B110
             pass
 
@@ -790,7 +813,7 @@ class ImapClient(_ProtocolClient):
             )
 
         # Copy to destination.
-        status, data = self._imap.uid("COPY", str(uid), imap_utf7_encode(dest_folder))
+        status, data = self._imap.uid("COPY", str(uid), _encode_mailbox(dest_folder))
         if status != "OK":
             raise ImapError(f"UID COPY of {uid} to {dest_folder!r} failed: {status}")
 
@@ -891,7 +914,7 @@ class ImapClient(_ProtocolClient):
             valid_set = ",".join(str(uid) for uid in valid_uids)
 
             status, data = self._imap.uid(
-                "COPY", valid_set, imap_utf7_encode(dest_folder)
+                "COPY", valid_set, _encode_mailbox(dest_folder)
             )
             if status != "OK":
                 raise ImapError(

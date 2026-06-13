@@ -57,7 +57,6 @@ class _BatchActionMixin:
             )
             from robotsix_auto_mail.imap import (
                 ImapClient,
-                ImapError,
                 ImapMessageNotFoundError,
                 cross_folder_resolve,
                 resolve_uid_with_fallback,
@@ -97,7 +96,11 @@ class _BatchActionMixin:
                                     delete_record_by_message_id(
                                         db_conn, record.message_id
                                     )
-                except (ImapError, OSError) as exc:
+                except Exception as exc:
+                    # Any precheck failure (including a raw imaplib.IMAP4.error,
+                    # which is neither ImapError nor OSError) must release the
+                    # single-flight watermark — otherwise the board's progress
+                    # banner wedges on "running" forever.
                     _release_batch_op(self.db_path)
                     self._send_response(
                         f"IMAP precheck failed: {exc}",
@@ -192,7 +195,6 @@ class _BatchActionMixin:
             )
             from robotsix_auto_mail.imap import (
                 ImapClient,
-                ImapError,
                 ImapMessageNotFoundError,
                 cross_folder_resolve,
                 resolve_uid_with_fallback,
@@ -232,7 +234,11 @@ class _BatchActionMixin:
                                     delete_record_by_message_id(
                                         db_conn, record.message_id
                                     )
-                except (ImapError, OSError) as exc:
+                except Exception as exc:
+                    # Any precheck failure (including a raw imaplib.IMAP4.error,
+                    # which is neither ImapError nor OSError) must release the
+                    # single-flight watermark — otherwise the board's progress
+                    # banner wedges on "running" forever.
                     _release_batch_op(self.db_path)
                     self._send_response(
                         f"IMAP precheck failed: {exc}",
