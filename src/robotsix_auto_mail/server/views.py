@@ -10,12 +10,12 @@ from urllib.parse import quote
 
 from robotsix_board import render_board
 
-from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailAccountsConfig
 from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.format import _effective_body_plain, _format_date
 from robotsix_auto_mail.server._constants import _BOARD_COLUMNS
 from robotsix_auto_mail.server.adapters import _NonEmptyColumnsAdapter
+from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.triage import (
     TRIAGE_ACTION_LABELS,
     TRIAGE_ACTION_ORDER,
@@ -425,75 +425,6 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
     )
 
 
-def _build_board_js(*, account_qs: str, data_account_js: bool) -> tuple[str, str, str]:
-    """Return the three JS string variables for the board page shell.
-
-    Returns a 3-tuple of ``(open_detail_js, click_handler_js, hashchange_js)``.
-    """
-    if data_account_js:
-        open_detail_js = (
-            "function openDetail(messageId, subject, focusDraft, cardAccount) {\n"
-            "  var src = '/email/' + messageId + '?embed=1';\n"
-            "  if (cardAccount) {\n"
-            "    src += '&account=' + cardAccount;\n"
-            "  }\n"
-            "  if (focusDraft) src += '&draft=1';\n"
-            "  document.querySelector('.side-panel iframe').src = src;\n"
-            "  document.querySelector('.side-panel').classList.add('open');\n"
-            "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
-            "  document.querySelector('.panel-title').textContent = subject || '';\n"
-            "  location.hash = messageId;\n"
-            "}"
-        )
-        click_handler_js = (
-            "document.querySelector('.board').addEventListener('click', function(e) {\n"
-            "  if (e.target.closest('button, select, input')) return;\n"
-            "  var card = e.target.closest('.board-card');\n"
-            "  if (!card) return;\n"
-            "  var meta = card.querySelector('.card-extra');\n"
-            "  var mid = meta && meta.getAttribute('data-message-id');\n"
-            "  if (!mid) return;\n"
-            "  if (e.target.closest('form')) return;\n"
-            "  e.preventDefault();\n"
-            "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
-            "  var cardAccount = (meta && meta.getAttribute('data-account')) || '';\n"
-            "  openDetail(mid, subject, false, cardAccount);\n"
-            "});"
-        )
-    else:
-        open_detail_js = (
-            "function openDetail(messageId, subject, focusDraft) {\n"
-            f"  var src = '/email/' + messageId + '?embed=1{account_qs}';\n"
-            "  if (focusDraft) src += '&draft=1';\n"
-            "  document.querySelector('.side-panel iframe').src = src;\n"
-            "  document.querySelector('.side-panel').classList.add('open');\n"
-            "  document.querySelector('.board-wrapper').classList.add('panel-open');\n"
-            "  document.querySelector('.panel-title').textContent = subject || '';\n"
-            "  location.hash = messageId;\n"
-            "}"
-        )
-        click_handler_js = (
-            "document.querySelector('.board').addEventListener('click', function(e) {\n"
-            "  if (e.target.closest('button, select, input')) return;\n"
-            "  var card = e.target.closest('.board-card');\n"
-            "  if (!card) return;\n"
-            "  var meta = card.querySelector('.card-extra');\n"
-            "  var mid = meta && meta.getAttribute('data-message-id');\n"
-            "  if (!mid) return;\n"
-            "  if (e.target.closest('form')) return;\n"
-            "  e.preventDefault();\n"
-            "  var subject = (meta && meta.getAttribute('data-subject')) || '';\n"
-            "  openDetail(mid, subject);\n"
-            "});"
-        )
-    hashchange_js = (
-        "window.addEventListener('hashchange', function() {\n"
-        "  if (!location.hash) closeDetail();\n"
-        "});"
-    )
-    return open_detail_js, click_handler_js, hashchange_js
-
-
 def _render_board_page_shell(
     *,
     columns_html: str,
@@ -528,9 +459,7 @@ def _render_board_page_shell(
         "</form>"
     )
     effective_folder_form = (
-        folder_form_html
-        if folder_form_html is not None
-        else default_folder_form_html
+        folder_form_html if folder_form_html is not None else default_folder_form_html
     )
 
     triage_control_html: str
@@ -547,9 +476,21 @@ def _render_board_page_shell(
     else:
         triage_control_html = effective_folder_form
 
-    open_detail_js, click_handler_js, hashchange_js = _build_board_js(
-        account_qs=account_qs, data_account_js=data_account_js
-    )
+    # Build the #board-config JSON payload so robotsix-board's board.js
+    # can activate and expose its public API (robotsixBoardRefresh, etc.).
+    # Auto-mail's own board-auto-mail.js overlay composes on top via
+    # capture-phase interceptor and reads its app-specific config from
+    # the same element.
+    board_config = {
+        "render_mode": "json_hydration",
+        "columns": [
+            [action, TRIAGE_ACTION_LABELS[action]] for action in TRIAGE_ACTION_ORDER
+        ],
+        "account_qs": account_qs,
+        "fetch_qs": fetch_qs,
+        "data_account_js": data_account_js,
+        "folder_form_html": effective_folder_form,
+    }
 
     return (
         "<!DOCTYPE html>\n"
@@ -580,106 +521,16 @@ def _render_board_page_shell(
         "</div>\n"
         '<iframe src="" title="Mail detail"></iframe>\n'
         "</div>\n"
-        "<script>\n"
-        f"{open_detail_js}\n"
-        "function closeDetail() {\n"
-        "  document.querySelector('.side-panel').classList.remove('open');\n"
-        "  document.querySelector('.board-wrapper').classList.remove('panel-open');\n"
-        "  document.querySelector('.side-panel iframe').src = '';\n"
-        "  location.hash = '';\n"
-        "}\n"
-        "if (location.hash) {\n"
-        "  var mid = location.hash.slice(1);\n"
-        "  if (mid) openDetail(mid);\n"
-        "}\n"
-        f"{hashchange_js}\n"
-        "window.addEventListener('keydown', function(e) {\n"
-        "  if (e.key === 'Escape') closeDetail();\n"
-        "});\n"
-        f"{click_handler_js}\n"
-        "\n"
-        "// Board auto-refresh polling\n"
-        "var refreshTimer = null;\n"
-        "\n"
-        "function refreshBoard(force) {\n"
-        "  if (!force && document.getElementById('side-panel')"
-        ".classList.contains('open')) return;\n"
-        "  var savedX = window.pageXOffset;\n"
-        "  var savedY = window.pageYOffset;\n"
-        "  var prevBoard = document.querySelector('.board');\n"
-        "  var savedBoardLeft = prevBoard ? prevBoard.scrollLeft : 0;\n"
-        "  var savedBoardTop = prevBoard ? prevBoard.scrollTop : 0;\n"
-        f"  fetch('/board-content{fetch_qs}')\n"
-        "    .then(function(r) {\n"
-        "      if (!r.ok) throw new Error('bad status');\n"
-        "      return r.json();\n"
-        "    })\n"
-        "    .then(function(data) {\n"
-        "      document.querySelector('.board').innerHTML = data.columns_html;\n"
-        "      var proposals = document.querySelector('.rule-proposals');\n"
-        "      if (proposals) proposals.outerHTML = data.proposals_html;\n"
-        "      var tc = document.getElementById('triage-control');\n"
-        "      if (tc) {\n"
-        "        if (data.triage_running) {\n"
-        '          tc.innerHTML = \'<div class="triage-banner">Triage is'
-        " currently running. The board will refresh automatically.</div>';\n"
-        "        } else if (!document.getElementById('folder-picker')) {\n"
-        "          // Restore the folder-triage form after a running→idle\n"
-        "          // tick; only rebuild when absent so an in-progress\n"
-        "          // folder selection is preserved across refreshes.\n"
-        f"          tc.innerHTML = {json.dumps(effective_folder_form)};\n"
-        "          populateFolderPicker();\n"
-        "        }\n"
-        "      }\n"
-        "      var bc = document.getElementById('batch-control');\n"
-        "      if (bc) {\n"
-        "        var op = data.batch_op;\n"
-        "        if (op) {\n"
-        "          var verb = op.op === 'archive' ? 'Archiving' : 'Deleting';\n"
-        "          var prog = (typeof op.done === 'number'\n"
-        "            && typeof op.total === 'number')\n"
-        "            ? ': ' + op.done + '/' + op.total : '';\n"
-        "          bc.innerHTML = '<div class=\"batch-banner\">' + verb"
-        " + ' mail' + prog + '. The board will refresh automatically.</div>';\n"
-        "        } else {\n"
-        "          bc.innerHTML = '';\n"
-        "        }\n"
-        "      }\n"
-        "      window.scrollTo(savedX, savedY);\n"
-        "      var newBoard = document.querySelector('.board');\n"
-        "      if (newBoard) {\n"
-        "        newBoard.scrollLeft = savedBoardLeft;\n"
-        "        newBoard.scrollTop = savedBoardTop;\n"
-        "      }\n"
-        "    })\n"
-        "    .catch(function() { /* silently retry next cycle */ });\n"
-        "}\n"
-        "\n"
-        "refreshTimer = setInterval(refreshBoard, 30000);\n"
-        "\n"
-        "// Populate the folder picker from the async /folders endpoint so\n"
-        "// the synchronous /board render never blocks on IMAP.\n"
-        "function populateFolderPicker() {\n"
-        "  var picker = document.getElementById('folder-picker');\n"
-        "  if (!picker) return;\n"
-        f"  fetch('/folders{fetch_qs}')\n"
-        "    .then(function(r) {\n"
-        "      if (!r.ok) throw new Error('bad status');\n"
-        "      return r.json();\n"
-        "    })\n"
-        "    .then(function(data) {\n"
-        "      (data.folders || []).forEach(function(name) {\n"
-        "        var opt = document.createElement('option');\n"
-        "        opt.value = name;\n"
-        "        opt.textContent = name;\n"
-        "        picker.appendChild(opt);\n"
-        "      });\n"
-        "    })\n"
-        "    .catch(function() { /* leave placeholder; form unusable */ });\n"
-        "}\n"
-        "populateFolderPicker();\n"
+        # board.js configuration — enables the library's public API and
+        # harmless internal handlers (no #board element → all no-ops).
+        '<script id="board-config" type="application/json">'
+        f"{json.dumps(board_config)}"
         "</script>\n"
         '<script src="/static/board.js"></script>\n'
+        # App-specific overlay — must load after board.js so the
+        # capture-phase interceptor can override board.js's bubble
+        # handler for card clicks.
+        '<script src="/static/board-auto-mail.js"></script>\n'
         "</body>\n"
         "</html>"
     )
@@ -796,8 +647,7 @@ def _build_global_board_html(
         account = accounts.get(account_id)
         display = account.label if account.label else account.account_id
         options_parts.append(
-            f'<option value="{html.escape(account_id)}">'
-            f"{html.escape(display)}</option>"
+            f'<option value="{html.escape(account_id)}">{html.escape(display)}</option>'
         )
     picker_html = (
         '<select id="account-picker"'
