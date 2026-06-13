@@ -1481,6 +1481,32 @@ def test_cross_folder_resolve_skips_waste_folders() -> None:
     client.select_folder.assert_called_once_with("INBOX")
 
 
+def test_cross_folder_resolve_skips_noselect_folders() -> None:
+    """A \\Noselect container (e.g. Gmail's ``[Gmail]``) is never SELECT-ed."""
+    client = mock.MagicMock(spec=ImapClient)
+    client.list_folders.return_value = [
+        MailboxInfo(name="INBOX", attributes=("\\HasNoChildren",), delimiter="/"),
+        MailboxInfo(
+            name="[Gmail]", attributes=("\\HasChildren", "\\Noselect"), delimiter="/"
+        ),
+        MailboxInfo(name="[Gmail]/All Mail", attributes=("\\All",), delimiter="/"),
+    ]
+    client.select_folder.return_value = 5
+    client.search_uids.side_effect = [
+        [],  # INBOX — no match
+        [9],  # [Gmail]/All Mail — match
+    ]
+
+    result = cross_folder_resolve(client, "<m@example.com>")
+
+    assert result == ("[Gmail]/All Mail", 9)
+    # [Gmail] (Noselect) is skipped — never SELECT-ed.
+    assert client.select_folder.call_args_list == [
+        mock.call("INBOX"),
+        mock.call("[Gmail]/All Mail"),
+    ]
+
+
 def test_cross_folder_resolve_returns_first_match() -> None:
     """cross_folder_resolve returns the first found match (short-circuits)."""
     client = mock.MagicMock(spec=ImapClient)
