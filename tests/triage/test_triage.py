@@ -71,6 +71,7 @@ from robotsix_auto_mail.triage import (
     set_rule_state,
     set_triage_decision,
 )
+from robotsix_auto_mail.triage.agent import _fill_missing_archive_hints
 
 
 def _patch_llm(
@@ -421,7 +422,10 @@ def test_run_triage_agent_happy_path(
             ]
         )
         handle, patcher = _patch_llm(result_obj)
-        with patcher:
+        with (
+            patcher,
+            mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
+        ):
             out = run_triage_agent(conn)
 
         assert [(d.message_id, d.action) for d in out] == [
@@ -469,7 +473,10 @@ def test_run_triage_agent_forwards_user_email_to_prompt(
         _handle, patcher = _patch_llm(
             TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
         )
-        with patcher as cls:
+        with (
+            patcher as cls,
+            mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
+        ):
             run_triage_agent(conn, user_email="me@example.com")
             provider = cls.return_value
         call_kwargs = provider.build_agent.call_args.kwargs
@@ -847,7 +854,10 @@ def test_run_triage_agent_prompt_includes_guidance(
         handle, patcher = _patch_llm(
             TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
         )
-        with patcher:
+        with (
+            patcher,
+            mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
+        ):
             run_triage_agent(conn)
         prompt = handle.run_sync.call_args.args[0]
         assert "alice@example.com" in prompt
@@ -1572,6 +1582,51 @@ def test_propose_sanitises_special_chars() -> None:
 )
 def test_normalize_archive_subfolder(raw: str, expected: str) -> None:
     assert normalize_archive_subfolder(raw) == expected
+
+
+# ---------------------------------------------------------------------------
+# _fill_missing_archive_hints
+# ---------------------------------------------------------------------------
+
+
+def test_fill_missing_archive_hints_only_unhinted_to_archive() -> None:
+    """The proposer runs only for TO_ARCHIVE records without an existing hint."""
+    conn = init_db(":memory:")
+    try:
+        rec_a = _make_record(message_id="<a@x>")  # TO_ARCHIVE, no hint → propose
+        rec_b = _make_record(message_id="<b@x>")  # TO_DELETE → skip
+        rec_c = _make_record(message_id="<c@x>")  # TO_ARCHIVE, already hinted → skip
+        _save_llm_archive_hints(conn, {"<c@x>": "Billing"})
+        by_index = {
+            1: TriageItem(index=1, action="TO_ARCHIVE"),
+            2: TriageItem(index=2, action="TO_DELETE"),
+            3: TriageItem(index=3, action="TO_ARCHIVE"),
+        }
+        with mock.patch(
+            "robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"
+        ) as proposer:
+            _fill_missing_archive_hints(
+                conn, [rec_a, rec_b, rec_c], by_index, "sk-test", None
+            )
+        called_ids = [call.args[1].message_id for call in proposer.call_args_list]
+        assert called_ids == ["<a@x>"]
+    finally:
+        conn.close()
+
+
+def test_fill_missing_archive_hints_no_api_key_is_noop() -> None:
+    """With no API key the proposer is never invoked."""
+    conn = init_db(":memory:")
+    try:
+        rec = _make_record(message_id="<a@x>")
+        by_index = {1: TriageItem(index=1, action="TO_ARCHIVE")}
+        with mock.patch(
+            "robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"
+        ) as proposer:
+            _fill_missing_archive_hints(conn, [rec], by_index, "", None)
+        proposer.assert_not_called()
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
