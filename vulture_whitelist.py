@@ -72,23 +72,9 @@ BoardAdapter.column_extra_html
 from robotsix_auto_mail.config import logger
 logger  # noqa
 
-from robotsix_auto_mail.config import _check_tls_mode
-_check_tls_mode  # noqa
-
-from robotsix_auto_mail.config import _parse_int
-_parse_int  # noqa
-
 from robotsix_auto_mail.detect import ProviderEntry
 ProviderEntry.in_managed_hosting
-
-from robotsix_auto_mail.detect import render_config
-render_config  # noqa
 
 from robotsix_auto_mail.protocol import _ProtocolClient
 _ProtocolClient._oauth2_client_id
 _ProtocolClient._oauth2_client_secret
-
-# _release_batch_op is exercised by tests/server/test_adapters.py (vulture
-# only scans src/, so it reports a false 'unused').
-from robotsix_auto_mail.server.adapters import _release_batch_op
-_release_batch_op

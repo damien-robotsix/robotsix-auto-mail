@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import FrozenInstanceError
-from pathlib import Path
 from typing import Literal
 from unittest import mock
 
@@ -13,7 +12,6 @@ import pytest
 import urllib3.exceptions
 from robotsix_llmio.core import Tier
 
-from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.detect import (
     DetectedProvider,
     DetectionError,
@@ -24,7 +22,6 @@ from robotsix_auto_mail.detect import (
     mx_lookup,
     provider_from_mx,
     provider_to_config,
-    render_config,
 )
 
 
@@ -308,106 +305,6 @@ def test_provider_to_config_microsoft_writes_oauth2_no_password() -> None:
     assert cfg.oauth2_tenant == "organizations"
     assert cfg.oauth2_client_id == ""
     assert cfg.password == ""
-
-
-def test_render_config_microsoft_emits_oauth2_block() -> None:
-    """render_config emits an OAuth2 auth block and no password line."""
-    mp = MailProvider(imap_host="outlook.office365.com", smtp_host="smtp.office365.com")
-    cfg = provider_to_config(mp, "user@contoso.com")
-    output = render_config(cfg)
-    assert "oauth2_provider: microsoft" in output
-    assert "oauth2_tenant: organizations" in output
-    assert "password:" not in output
-
-
-def test_render_config_microsoft_round_trips(tmp_path: Path) -> None:
-    """The Microsoft OAuth2 config parses back via MailConfig.from_yaml()."""
-    mp = MailProvider(imap_host="outlook.office365.com", smtp_host="smtp.office365.com")
-    cfg = provider_to_config(mp, "user@contoso.com")
-    yaml_file = tmp_path / "ms.yaml"
-    yaml_file.write_text(render_config(cfg))
-    parsed = MailConfig.from_yaml(yaml_file)
-    assert parsed.oauth2_provider == "microsoft"
-    assert parsed.oauth2_tenant == "organizations"
-    assert parsed.password == ""
-
-
-# ---------------------------------------------------------------------------
-# render_config — YAML
-# ---------------------------------------------------------------------------
-
-
-def test_render_config_contains_imap_fields() -> None:
-    """Output contains the imap section with correct values."""
-    mp = MailProvider(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-    )
-    cfg = provider_to_config(mp, "user@example.com")
-    output = render_config(cfg)
-    assert "imap:" in output
-    assert "host: imap.example.com" in output
-    assert "port: 993" in output
-    assert "tls_mode: direct-tls" in output
-    assert "folder: INBOX" in output
-
-
-def test_render_config_contains_smtp_fields() -> None:
-    """Output contains the smtp section with correct values."""
-    mp = MailProvider(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-    )
-    cfg = provider_to_config(mp, "user@example.com")
-    output = render_config(cfg)
-    assert "smtp:" in output
-    assert "host: smtp.example.com" in output
-    assert "port: 587" in output
-    assert "tls_mode: starttls" in output
-
-
-def test_render_config_empty_password_has_comment() -> None:
-    """With no password, auth.password is '' with a fill-in note."""
-    mp = MailProvider(imap_host="ih", smtp_host="sh")
-    cfg = provider_to_config(mp, "user@example.com")
-    output = render_config(cfg)
-    assert 'password: ""' in output
-    assert "MAIL_PASSWORD" in output
-
-
-def test_render_config_writes_password() -> None:
-    """A supplied password is written into auth.password and round-trips."""
-    mp = MailProvider(imap_host="ih", smtp_host="sh")
-    cfg = provider_to_config(mp, "user@example.com", password="s3:cret#1")
-    output = render_config(cfg)
-    assert '"s3:cret#1"' in output
-
-
-def test_render_config_round_trip(tmp_path: Path) -> None:
-    """Output can be parsed back by MailConfig.from_yaml()."""
-    mp = MailProvider(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-        imap_port=143,
-        imap_tls_mode="starttls",
-        smtp_port=465,
-        smtp_tls_mode="direct-tls",
-    )
-    cfg = provider_to_config(mp, "user@example.com", password="s3:cret#1")
-    output = render_config(cfg)
-
-    yaml_file = tmp_path / "test.yaml"
-    yaml_file.write_text(output)
-
-    parsed = MailConfig.from_yaml(yaml_file)
-    assert parsed.imap_host == "imap.example.com"
-    assert parsed.imap_port == 143
-    assert parsed.imap_tls_mode == "starttls"
-    assert parsed.smtp_host == "smtp.example.com"
-    assert parsed.smtp_port == 465
-    assert parsed.smtp_tls_mode == "direct-tls"
-    assert parsed.username == "user@example.com"
-    assert parsed.password == "s3:cret#1"
 
 
 # ---------------------------------------------------------------------------

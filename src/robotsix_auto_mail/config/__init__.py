@@ -99,20 +99,6 @@ DEFAULT_INGEST_INTERVAL_MINUTES = 15
 DEFAULT_ARCHIVE_ROOT = "robotsix-mail-archive"
 
 
-def _check_tls_mode(label: str, value: str) -> None:
-    if value not in _VALID_TLS_MODES:
-        raise ConfigurationError(
-            f"{label} must be one of {sorted(_VALID_TLS_MODES)!r}, got {value!r}"
-        )
-
-
-def _parse_int(label: str, raw: str) -> int:
-    try:
-        return int(raw)
-    except (ValueError, TypeError):
-        raise ConfigurationError(f"{label} must be an integer, got {raw!r}") from None
-
-
 _BOOL_TRUE = frozenset({"1", "true", "yes", "on"})
 _BOOL_FALSE = frozenset({"0", "false", "no", "off"})
 
