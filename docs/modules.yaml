@@ -49,6 +49,7 @@ modules:
     paths:
       - dev/auto-mail-autoupdate.sh
       - src/robotsix_auto_mail/autoupdate.py
+      - tests/autoupdate/test_autoupdate.py
 
   - id: cli
     description: >-
