@@ -63,6 +63,76 @@ def test_json_format_renders_parseable_json(
 
 
 # ---------------------------------------------------------------------------
+# Trace-id injection tests
+# ---------------------------------------------------------------------------
+
+
+def test_trace_id_no_span_renders_dash(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no active recording span, JSON output carries trace_id == "-"."""
+    logging.getLogger().handlers.clear()
+    monkeypatch.setattr("robotsix_auto_mail.logging.get_recording_span", lambda: None)
+
+    setup_logging(level="INFO", log_format="json", log_file_dir="")
+
+    logger = structlog.get_logger("test.trace.none")
+    logger.info("no_span_event")
+
+    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip()]
+    payload = json.loads(lines[-1])
+    assert payload["trace_id"] == "-"
+
+
+def test_trace_id_active_span_renders_hex(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An active recording span stamps the 32-hex-char trace id."""
+    logging.getLogger().handlers.clear()
+    trace_int = 0x0123456789ABCDEF0123456789ABCDEF
+
+    class _Ctx:
+        trace_id = trace_int
+
+    class _Span:
+        def get_span_context(self) -> "_Ctx":
+            return _Ctx()
+
+    monkeypatch.setattr(
+        "robotsix_auto_mail.logging.get_recording_span", lambda: _Span()
+    )
+
+    setup_logging(level="INFO", log_format="json", log_file_dir="")
+
+    logger = structlog.get_logger("test.trace.active")
+    logger.info("span_event")
+
+    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip()]
+    payload = json.loads(lines[-1])
+    assert payload["trace_id"] == format(trace_int, "032x")
+    assert len(payload["trace_id"]) == 32
+
+
+def test_trace_id_present_in_console_format(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Console renderer also carries the trace_id key."""
+    logging.getLogger().handlers.clear()
+    monkeypatch.setattr("robotsix_auto_mail.logging.get_recording_span", lambda: None)
+
+    setup_logging(level="INFO", log_format="console", log_file_dir="")
+
+    logger = structlog.get_logger("test.trace.console")
+    logger.info("console_event")
+
+    out = capsys.readouterr().out
+    assert "trace_id" in out
+
+
+# ---------------------------------------------------------------------------
 # File handler tests
 # ---------------------------------------------------------------------------
 
