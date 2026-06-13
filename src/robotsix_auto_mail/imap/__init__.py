@@ -353,62 +353,6 @@ def cross_folder_resolve(
 
 
 # ---------------------------------------------------------------------------
-# System folder detection
-# ---------------------------------------------------------------------------
-
-# Known system-folder names (lowercased) for the name-based fallback in
-# ``is_system_folder()``.  Covers English and French.  More languages can
-# be added by expanding this set.
-_SYSTEM_FOLDER_NAMES_LOWER: frozenset[str] = frozenset(
-    {
-        # English
-        "sent",
-        "sent items",
-        "sent mail",
-        "sent messages",
-        "drafts",
-        "trash",
-        "deleted items",
-        "deleted messages",
-        "bin",
-        "junk",
-        "spam",
-        "junk e-mail",
-        "bulk mail",
-        # French
-        "éléments envoyés",
-        "messages envoyés",
-        "brouillons",
-        "éléments supprimés",
-        "corbeille",
-        "courrier indésirable",
-        "indésirables",
-    }
-)
-
-
-def is_system_folder(mailbox: MailboxInfo) -> bool:
-    """Return ``True`` when *mailbox* is a special-use system folder.
-
-    Two-tier check:
-
-    1. **SPECIAL-USE flags** (RFC 6154): if ``mailbox.attributes`` contains
-       any of ``\\Sent``, ``\\Drafts``, ``\\Trash``, or ``\\Junk``, return
-       ``True``.  ``\\Archive`` and ``\\All`` are intentionally NOT blocked.
-    2. **Name-based fallback** (case-insensitive, leading/trailing
-       whitespace stripped): compares against a module-level frozenset of
-       known system-folder names (English + French).
-    """
-    # Tier 1: RFC 6154 SPECIAL-USE flags
-    for attr in mailbox.attributes:
-        if attr in (r"\Sent", r"\Drafts", r"\Trash", r"\Junk"):
-            return True
-
-    # Tier 2: name-based fallback
-    return mailbox.name.strip().lower() in _SYSTEM_FOLDER_NAMES_LOWER
-
-
-# ---------------------------------------------------------------------------
 # ImapClient
 # ---------------------------------------------------------------------------
 
