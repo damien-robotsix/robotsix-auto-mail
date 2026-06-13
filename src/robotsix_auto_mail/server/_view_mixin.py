@@ -22,6 +22,7 @@ from robotsix_auto_mail.server.views import (
     _build_detail_html,
     _build_global_board_content,
     _build_global_board_html,
+    _build_rules_html,
 )
 from robotsix_auto_mail.triage import (
     get_archive_subfolder,
@@ -84,6 +85,33 @@ class _BoardViewMixin:
             body = _build_board_html(
                 self.db_path,
                 archive_root=archive_root,
+                accounts=self.accounts,
+                current_account_id=self._current_account_id,
+            )
+        except Exception:
+            self._send_response("Database unavailable", status=503)
+            return
+
+        self._send_response(body, content_type="text/html; charset=utf-8")
+
+    def _serve_rules(self) -> None:
+        """Render and serve the rules management page."""
+        if self._aggregate and self.accounts is not None:
+            try:
+                body = _build_rules_html(
+                    "__aggregate__",
+                    accounts=self.accounts,
+                    current_account_id=self._current_account_id,
+                )
+            except Exception:
+                self._send_response("Database unavailable", status=503)
+                return
+            self._send_response(body, content_type="text/html; charset=utf-8")
+            return
+
+        try:
+            body = _build_rules_html(
+                self.db_path,
                 accounts=self.accounts,
                 current_account_id=self._current_account_id,
             )

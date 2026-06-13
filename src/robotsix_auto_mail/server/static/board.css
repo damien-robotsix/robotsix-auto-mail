@@ -107,6 +107,13 @@ button:hover { background: #1a4d7a; }
     color: #333; text-decoration: none;
 }
 .back-link:hover { text-decoration: underline; }
+.nav-link {
+  color: #a0c0ff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-left: 1rem;
+}
+.nav-link:hover { text-decoration: underline; }
 .detail-container { max-width: 800px; }
 .embed-detail { padding: 1rem; font-family: system-ui, -apple-system, sans-serif; }
 .detail-field { margin-bottom: 0.75rem; }
@@ -299,4 +306,32 @@ button:hover { background: #1a4d7a; }
     min-width: 240px;
     max-width: 300px;
   }
+}
+
+/* -- rules page ------------------------------------------------------------ */
+.rules-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.rules-page h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #e0e0e0;
+  margin-bottom: 0.5rem;
+}
+.rules-section {
+  background: #16213e;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+.rules-section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #2a2a4a;
 }

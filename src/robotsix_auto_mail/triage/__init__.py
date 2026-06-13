@@ -159,6 +159,9 @@ from robotsix_auto_mail.triage.classifier import (
     apply_triage_rules as apply_triage_rules,
 )
 from robotsix_auto_mail.triage.classifier import (
+    delete_active_rule as delete_active_rule,
+)
+from robotsix_auto_mail.triage.classifier import (
     get_archive_subfolder as get_archive_subfolder,
 )
 from robotsix_auto_mail.triage.classifier import (
@@ -296,6 +299,7 @@ __all__ = [
     "_sender_key",
     "_utc_now_iso",
     "apply_triage_rules",
+    "delete_active_rule",
     "delete_triage_decision",
     "delete_triage_decisions_by_action",
     "get_archive_subfolder",

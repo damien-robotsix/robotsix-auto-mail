@@ -662,6 +662,155 @@ def test_rule_action_missing_fingerprint_bad_request() -> None:
         server.shutdown()
 
 
+def test_rules_page_returns_200_and_html() -> None:
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/rules")
+        assert resp.status == 200
+        content_type = resp.headers.get("Content-Type") or ""
+        assert "text/html" in content_type
+        body = resp.read().decode("utf-8")
+        assert "Triage Rules" in body
+        assert 'href="/board"' in body
+    finally:
+        server.shutdown()
+
+
+def test_rules_page_shows_active_rules() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        # Seed a pending proposal and accept it to make it active.
+        _seed_rule_proposal(db_path, "sender", "spam@x.com", "TO_DELETE")
+        conn = init_db(db_path)
+        try:
+            from robotsix_auto_mail.triage import (
+                list_rule_proposals,
+                set_rule_state,
+            )
+
+            fingerprint = list_rule_proposals(conn, "pending")[0][0]
+            set_rule_state(conn, fingerprint, "accepted")
+        finally:
+            conn.close()
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = urlopen(f"http://127.0.0.1:{port}/rules")
+            assert resp.status == 200
+            body = resp.read().decode("utf-8")
+            # The active rule should appear with its match details.
+            assert "spam@x.com" in body
+            assert "TO_DELETE" in body
+            assert "sender" in body
+            # Delete button should be present.
+            assert "/rule-delete" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_rules_page_shows_pending_proposals() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _seed_rule_proposal(db_path, "domain", "example.com", "TO_ARCHIVE")
+
+        server, port = _start_test_server(db_path)
+        try:
+            resp = urlopen(f"http://127.0.0.1:{port}/rules")
+            assert resp.status == 200
+            body = resp.read().decode("utf-8")
+            # The pending proposal should appear.
+            assert "example.com" in body
+            assert "TO_ARCHIVE" in body
+            # Accept/Reject buttons should be present.
+            assert "/rule-action" in body
+            assert "accept" in body.lower()
+            assert "reject" in body.lower()
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_delete_active_rule() -> None:
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        # Seed and accept a rule.
+        _seed_rule_proposal(db_path, "sender", "spam@x.com", "TO_DELETE")
+        conn = init_db(db_path)
+        try:
+            from robotsix_auto_mail.triage import (
+                _load_active_rules,
+                _rule_fingerprint,
+                list_rule_proposals,
+                set_rule_state,
+            )
+
+            fingerprint = list_rule_proposals(conn, "pending")[0][0]
+            set_rule_state(conn, fingerprint, "accepted")
+            # Verify it's active before the test.
+            active_before = _load_active_rules(conn)
+            assert any(_rule_fingerprint(r) == fingerprint for r in active_before)
+        finally:
+            conn.close()
+
+        server, port = _start_test_server(db_path)
+        try:
+            # POST to delete.
+            resp = _post_to_path(
+                port,
+                "/rule-delete",
+                {"fingerprint": fingerprint},
+            )
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/rules"
+
+            # Now GET /rules and verify the rule is gone.
+            resp2 = urlopen(f"http://127.0.0.1:{port}/rules")
+            body = resp2.read().decode("utf-8")
+            assert "spam@x.com" not in body
+        finally:
+            server.shutdown()
+
+        # Also verify directly in the DB that the rule is no longer active.
+        conn = init_db(db_path)
+        try:
+            active_after = _load_active_rules(conn)
+            assert not any(
+                _rule_fingerprint(r) == fingerprint for r in active_after
+            )
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_delete_active_rule_missing_fingerprint() -> None:
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(port, "/rule-delete", {})
+        assert resp.status == 400
+    finally:
+        server.shutdown()
+
+
+def test_delete_active_rule_unknown_fingerprint() -> None:
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = _post_to_path(
+            port,
+            "/rule-delete",
+            {"fingerprint": "nonexistent12345"},
+        )
+        assert resp.status == 404
+    finally:
+        server.shutdown()
+
+
 def test_move_success_redirects_302() -> None:
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
