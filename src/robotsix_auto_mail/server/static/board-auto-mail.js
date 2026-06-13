@@ -134,7 +134,7 @@
     var form = document.createElement("form");
     form.className = "archive-group-form";
     form.method = "post";
-    form.action = "/batch-archive-folder" + accountQs;
+    form.action = "/batch-archive-folder" + fetchQs;
     form.onsubmit = function () {
       return confirm("Archive " + count + " mail to " + label + "?");
     };
@@ -156,6 +156,11 @@
     // Clear any headers from a previous render (idempotent on refresh).
     var old = document.querySelectorAll(".archive-group");
     for (var i = 0; i < old.length; i++) old[i].remove();
+
+    // The aggregate ("All mailboxes") view mixes accounts; per-folder batch
+    // archive targets a single account, so skip grouping there — mirroring the
+    // server suppressing "Archive All" in aggregate mode.
+    if (dataAccountJs) return;
 
     var extras = document.querySelectorAll(".card-extra[data-archive-dest]");
     var groups = [];
