@@ -128,9 +128,32 @@ class _BatchActionMixin:
 
         self._redirect("/board", code=302)
 
-    def _handle_batch_archive(self) -> None:
+    def _handle_batch_archive_folder(self) -> None:
+        """Process POST /batch-archive-folder — archive only the TO_ARCHIVE
+        mail whose proposed destination equals the posted ``folder``.
+
+        Reads the relative ``folder`` subfolder from the form body (empty =
+        the archive root) and delegates to :meth:`_handle_batch_archive` with
+        that filter.  Same single-flight guard, precheck and background worker
+        as the column-wide "Archive All", scoped to one destination.
+        """
+        from urllib.parse import parse_qs
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
+        folder = (fields.get("folder") or [""])[0].strip()
+        self._handle_batch_archive(subfolder=folder)
+
+    def _handle_batch_archive(self, subfolder: str | None = None) -> None:
         """Process POST /batch-archive — archive all TO_ARCHIVE mail from
         IMAP and local DB in a background daemon thread.
+
+        When *subfolder* is not ``None`` only that destination's mail is
+        archived (see :meth:`_handle_batch_archive_folder`); ``None`` archives
+        the whole column.  The synchronous stale-UID precheck still scans every
+        TO_ARCHIVE record (healing UIDs is harmless and keeps the code simple);
+        the *subfolder* filter is applied by the background worker.
 
         Single-flight guarded by the shared ``batch_op:state`` watermark
         (so delete and archive cannot run concurrently on the same
@@ -234,7 +257,7 @@ class _BatchActionMixin:
 
         threading.Thread(
             target=_run_batch_archive_background,
-            args=(self.db_path, self.mail_config, archive_root),
+            args=(self.db_path, self.mail_config, archive_root, subfolder),
             daemon=True,
         ).start()
 

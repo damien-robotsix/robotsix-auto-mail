@@ -275,6 +275,21 @@ button:hover { background: #1a4d7a; }
 }
 .archive-btn:hover { background: #1b5e20; }
 
+/* -- per-destination archive group header (JS-injected) ------------------ */
+.archive-group {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; flex-wrap: wrap;
+  margin: 0.5rem 0 0.25rem; padding: 0.3rem 0.5rem;
+  background: #e8f0e8; border: 1px solid #cfe0cf;
+  border-left: 4px solid #2e7d32; border-radius: 5px;
+}
+.archive-group-label {
+  font-weight: 600; font-size: 0.8rem; color: #1b5e20;
+  font-family: monospace; word-break: break-all;
+}
+.archive-group-form { margin: 0; }
+.archive-group-btn { white-space: nowrap; }
+
 /* -- draft reply button -------------------------------------------------- */
 .draft-reply-btn {
     font-size: 0.75rem; padding: 0.1rem 0.5rem; cursor: pointer;

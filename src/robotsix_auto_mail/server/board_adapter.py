@@ -266,9 +266,16 @@ class MailBoardAdapter:
 
         # Archive proposal section (TO_ARCHIVE only).
         archive_html = ""
+        # ``data-archive-dest`` lets the board JS group TO_ARCHIVE cards by
+        # destination and offer a per-folder "Archive these" button.  Empty
+        # value means the archive root.
+        data_archive_dest_attr = ""
         if current_action == "TO_ARCHIVE":
             arc_subfolder = self.archive_subfolders.get(card.message_id)
             if arc_subfolder is not None:
+                data_archive_dest_attr = (
+                    f' data-archive-dest="{html.escape(arc_subfolder, quote=True)}"'
+                )
                 escaped_subfolder = html.escape(arc_subfolder)
                 escaped_root = html.escape(self.archive_root)
                 if arc_subfolder:
@@ -320,6 +327,7 @@ class MailBoardAdapter:
             '<div class="card-extra"'
             f' data-message-id="{quoted_mid}"'
             f' data-subject="{subject_attr}"'
+            f"{data_archive_dest_attr}"
             f"{data_account_attr}>"
             f"{account_badge}"
             f'<div class="body-preview">{body_html_render}</div>'
