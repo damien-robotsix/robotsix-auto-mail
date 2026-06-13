@@ -502,7 +502,7 @@ def _render_board_page_shell(
         '<link rel="stylesheet" href="/static/automail/board.css">\n'
         "</head>\n"
         "<body>\n"
-        "<h1>Mail Board</h1>\n"
+        "<h1>Mail Board</h1> <a href=\"/rules\" class=\"nav-link\">Rules</a>\n"
         f'<span id="triage-control">{triage_control_html}</span>\n'
         f'<span id="batch-control">{batch_control_html}</span>\n'
         f"{picker_html}\n"
@@ -1039,6 +1039,169 @@ def _render_triage_section(triage_decision: TriageDecision | None) -> str:
         '<div class="detail-label">Triage</div>'
         f'<div class="detail-value">{triage_value}</div>'
         "</div>\n"
+    )
+
+
+def _build_rules_html(
+    db_path: str,
+    *,
+    accounts: MailAccountsConfig | None = None,
+    current_account_id: str | None = None,
+) -> str:
+    """Build the full ``/rules`` HTML document.
+
+    When *current_account_id* is ``"__all__"`` or *db_path* is
+    ``"__aggregate__"``, renders a message asking the user to select an
+    account.  Otherwise renders active rules and pending proposals for
+    the selected account.
+    """
+    from robotsix_auto_mail.db import init_db
+
+    # -- account picker ---------------------------------------------------
+    picker_html = ""
+    account_qs = ""
+    multi_account = accounts is not None and len(accounts.ids()) >= 2
+    if multi_account and accounts is not None:
+        options_parts: list[str] = []
+        for account_id in accounts.ids():
+            account = accounts.get(account_id)
+            display = account.label if account.label else account.account_id
+            sel = " selected" if account_id == current_account_id else ""
+            options_parts.append(
+                f'<option value="{html.escape(account_id)}"{sel}>'
+                f"{html.escape(display)}</option>"
+            )
+        picker_html = (
+            '<select id="account-picker"'
+            " onchange=\"window.location.href='/rules?account='"
+            '+encodeURIComponent(this.value)">'
+            f"{''.join(options_parts)}"
+            "</select>"
+        )
+    if multi_account and current_account_id:
+        account_qs = "&account=" + quote(current_account_id, safe="")
+
+    # -- aggregate / global view ------------------------------------------
+    if current_account_id == "__all__" or db_path == "__aggregate__":
+        return (
+            "<!DOCTYPE html>\n"
+            '<html lang="en">\n'
+            "<head>\n"
+            '<meta charset="utf-8">\n'
+            "<title>Triage Rules</title>\n"
+            '<link rel="stylesheet" href="/static/board.css">\n'
+            '<link rel="stylesheet" href="/static/automail/board.css">\n'
+            "</head>\n"
+            "<body>\n"
+            '<div class="rules-page">\n'
+            '<a class="back-link" href="/board">← Back to Board</a>\n'
+            "<h1>Triage Rules</h1>\n"
+            f"{picker_html}\n"
+            '<div class="rules-section">'
+            "<p>Select an account to view rules.</p>"
+            "</div>\n"
+            "</div>\n"
+            "</body>\n"
+            "</html>"
+        )
+
+    # -- single-account view ----------------------------------------------
+    conn = init_db(db_path, skip_migrations=True)
+    try:
+        # Load active rules
+        from robotsix_auto_mail.triage import _load_active_rules, _rule_fingerprint
+        from robotsix_auto_mail.triage import _load_rule_ledger, list_rule_proposals
+
+        active_rules = _load_active_rules(conn)
+        ledger = _load_rule_ledger(conn)
+
+        # Build active rule cards
+        active_cards_parts: list[str] = []
+        for rule in active_rules:
+            fp = _rule_fingerprint(rule)
+            # Try to get a title from the ledger
+            ledger_entry = ledger.get(fp)
+            if ledger_entry is not None and ledger_entry.title:
+                title = html.escape(ledger_entry.title)
+            else:
+                # Generate a label from the match type
+                if rule.match_type == "sender":
+                    title = "Sender rule"
+                elif rule.match_type == "domain":
+                    title = "Domain rule"
+                elif rule.match_type == "subject_contains":
+                    title = "Subject rule"
+                else:
+                    title = f"{rule.match_type} rule"
+            summary = html.escape(
+                f"{rule.match_type}={rule.match_value} -> {rule.action}"
+            )
+            fp_escaped = html.escape(fp)
+            active_cards_parts.append(
+                '<div class="rule-card">'
+                f'<div class="rule-title">{title}</div>'
+                f'<div class="rule-summary">{summary}</div>'
+                f'<form class="rule-form" method="post" action="/rule-delete">'
+                f'<input type="hidden" name="fingerprint" value="{fp_escaped}">'
+                '<button type="submit" name="decision" value="delete">Delete</button>'
+                "</form>"
+                "</div>"
+            )
+
+        active_html: str
+        if active_cards_parts:
+            active_html = (
+                '<div class="rule-cards">'
+                f"{''.join(active_cards_parts)}"
+                "</div>"
+            )
+        else:
+            active_html = '<div class="rule-empty">No active rules</div>'
+
+        # Load pending proposals
+        proposals = list_rule_proposals(conn, state="pending")
+
+        proposals_html: str
+        if proposals:
+            rule_cards_html = "".join(
+                _render_rule_card(fp, entry, account_id=current_account_id)
+                for fp, entry in proposals
+            )
+            proposals_html = (
+                '<div class="rule-cards">'
+                f"{rule_cards_html}"
+                "</div>"
+            )
+        else:
+            proposals_html = '<div class="rule-empty">No pending proposals</div>'
+    finally:
+        conn.close()
+
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="utf-8">\n'
+        "<title>Triage Rules</title>\n"
+        '<link rel="stylesheet" href="/static/board.css">\n'
+        '<link rel="stylesheet" href="/static/automail/board.css">\n'
+        "</head>\n"
+        "<body>\n"
+        '<div class="rules-page">\n'
+        '<a class="back-link" href="/board">← Back to Board</a>\n'
+        "<h1>Triage Rules</h1>\n"
+        f"{picker_html}\n"
+        '<div class="rules-section">'
+        "<h2>Active Rules</h2>\n"
+        f"{active_html}\n"
+        "</div>\n"
+        '<div class="rules-section">'
+        "<h2>Pending Proposals</h2>\n"
+        f"{proposals_html}\n"
+        "</div>\n"
+        "</div>\n"
+        "</body>\n"
+        "</html>"
     )
 
 

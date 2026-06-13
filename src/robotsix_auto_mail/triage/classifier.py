@@ -697,6 +697,31 @@ def set_rule_state(conn: sqlite3.Connection, fingerprint: str, state: str) -> No
         _save_active_rules(conn, active)
 
 
+def delete_active_rule(conn: sqlite3.Connection, fingerprint: str) -> None:
+    """Delete an active rule identified by *fingerprint*.
+
+    Removes the rule from the active-rules list and transitions the
+    corresponding ledger entry to ``"rejected"`` (if present) so the rule
+    is not silently re-proposed later.
+    """
+    active = _load_active_rules(conn)
+    match_idx: int | None = None
+    for idx, rule in enumerate(active):
+        if _rule_fingerprint(rule) == fingerprint:
+            match_idx = idx
+            break
+    if match_idx is None:
+        raise TriageError(f"No active rule with fingerprint {fingerprint!r}")
+    filtered = [r for i, r in enumerate(active) if i != match_idx]
+    _save_active_rules(conn, filtered)
+
+    ledger = _load_rule_ledger(conn)
+    if fingerprint in ledger:
+        entry = ledger[fingerprint]
+        ledger[fingerprint] = entry.model_copy(update={"state": "rejected"})
+        _save_rule_ledger(conn, ledger)
+
+
 def list_rule_proposals(
     conn: sqlite3.Connection, state: str = "pending"
 ) -> list[tuple[str, RuleLedgerEntry]]:

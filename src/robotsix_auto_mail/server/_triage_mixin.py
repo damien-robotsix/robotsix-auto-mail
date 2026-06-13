@@ -14,6 +14,7 @@ from robotsix_auto_mail.server.adapters import (
 )
 from robotsix_auto_mail.triage import (
     TriageError,
+    delete_active_rule,
     set_rule_state,
 )
 
@@ -85,6 +86,31 @@ class _TriageMixin:
             conn.close()
 
         self._redirect("/board", code=302)
+
+    def _handle_rule_delete(self) -> None:
+        """Process POST /rule-delete — delete an active triage rule."""
+        from robotsix_auto_mail.db import init_db
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        fields = parse_qs(raw)
+
+        fingerprint = (fields.get("fingerprint") or [""])[0].strip()
+
+        if not fingerprint:
+            self._bad_request("Missing fingerprint")
+            return
+
+        conn = init_db(self.db_path)
+        try:
+            delete_active_rule(conn, fingerprint)
+        except TriageError:
+            self._not_found()
+            return
+        finally:
+            conn.close()
+
+        self._redirect("/rules", code=302)
 
     def _handle_run_triage(self) -> None:
         """Process POST /run-triage — launch triage agent in a background thread.
