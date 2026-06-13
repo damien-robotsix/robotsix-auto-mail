@@ -64,7 +64,9 @@ def _render_board_columns(
 
 
 def _gather_account_board_data(
-    db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
+    db_path: str,
+    archive_root: str = DEFAULT_ARCHIVE_ROOT,
+    user_email: str | None = None,
 ) -> dict[str, Any]:
     """Read one account's DB and return the raw structures for board building.
 
@@ -75,6 +77,10 @@ def _gather_account_board_data(
 
     This is the DB-reading half of :func:`_build_board_content`, extracted
     so the global board can call it per-account.
+
+    When *user_email* is not ``None`` it is forwarded to
+    :func:`get_archive_subfolder` so the deterministic proposal can skip
+    sender-derived rules for self-sent mail.
     """
     from robotsix_auto_mail.db import get_watermark, init_db
 
@@ -161,7 +167,9 @@ def _gather_account_board_data(
         archive_subfolders: dict[str, str] = {}
         folder_exists: dict[str, bool] = {}
         for record in column_buckets.get("TO_ARCHIVE", []):
-            subfolder = get_archive_subfolder(conn, record.message_id, record)
+            subfolder = get_archive_subfolder(
+                conn, record.message_id, record, user_email=user_email
+            )
             archive_subfolders[record.message_id] = subfolder
             if subfolder:
                 translated = subfolder.replace("/", delimiter)
@@ -202,7 +210,9 @@ def _gather_account_board_data(
 
 
 def _build_board_content(
-    db_path: str, archive_root: str = DEFAULT_ARCHIVE_ROOT
+    db_path: str,
+    archive_root: str = DEFAULT_ARCHIVE_ROOT,
+    user_email: str | None = None,
 ) -> dict[str, Any]:
     """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
 
@@ -215,7 +225,9 @@ def _build_board_content(
     Raises ``Exception`` when the database cannot be opened (the
     caller should catch it and return a 503).
     """
-    gathered = _gather_account_board_data(db_path, archive_root=archive_root)
+    gathered = _gather_account_board_data(
+        db_path, archive_root=archive_root, user_email=user_email
+    )
 
     triage_running = gathered["triage_running"]
     batch_op = gathered["batch_op"]
@@ -322,7 +334,9 @@ def _build_global_board_content(
         account_labels[aid] = label
 
         gathered = _gather_account_board_data(
-            account.config.db_path, archive_root=account.config.archive_root
+            account.config.db_path,
+            archive_root=account.config.archive_root,
+            user_email=None,  # aggregate view: no single user_email
         )
 
         triage_running = triage_running or gathered["triage_running"]
@@ -542,6 +556,7 @@ def _build_board_html(
     *,
     accounts: MailAccountsConfig | None = None,
     current_account_id: str | None = None,
+    user_email: str | None = None,
 ) -> str:
     """Build the full ``/board`` HTML document.
 
@@ -558,7 +573,9 @@ def _build_board_html(
     accounts) the served HTML is byte-for-byte unchanged apart from an
     empty picker slot.
     """
-    content = _build_board_content(db_path, archive_root=archive_root)
+    content = _build_board_content(
+        db_path, archive_root=archive_root, user_email=user_email
+    )
 
     # -- account picker + URL threading -----------------------------------
     # The picker only appears when more than one account is configured.

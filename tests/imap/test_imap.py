@@ -20,6 +20,7 @@ from robotsix_auto_mail.imap import (
     ImapMessageNotFoundError,
     ImapTlsError,
     MailboxInfo,
+    is_system_folder,
 )
 
 
@@ -1230,3 +1231,109 @@ def test_move_message_uid_not_found_raises(cfg: MailConfig) -> None:
     mock_ssl.uid.assert_called_once_with("SEARCH", "UID 42")
     for call in mock_ssl.uid.call_args_list:
         assert call.args[0] != "COPY"
+
+
+# ---------------------------------------------------------------------------
+# is_system_folder
+# ---------------------------------------------------------------------------
+
+
+class TestIsSystemFolderSpecialUseFlags:
+    """SPECIAL-USE flag detection (RFC 6154)."""
+
+    def test_sent_flag(self) -> None:
+        m = MailboxInfo(name="Sent", attributes=(r"\Sent",), delimiter="/")
+        assert is_system_folder(m) is True
+
+    def test_drafts_flag(self) -> None:
+        m = MailboxInfo(name="Drafts", attributes=(r"\Drafts",), delimiter="/")
+        assert is_system_folder(m) is True
+
+    def test_trash_flag(self) -> None:
+        m = MailboxInfo(name="Trash", attributes=(r"\Trash",), delimiter="/")
+        assert is_system_folder(m) is True
+
+    def test_junk_flag(self) -> None:
+        m = MailboxInfo(name="Junk", attributes=(r"\Junk",), delimiter="/")
+        assert is_system_folder(m) is True
+
+    def test_archive_flag_not_blocked(self) -> None:
+        m = MailboxInfo(name="Archive", attributes=(r"\Archive",), delimiter="/")
+        assert is_system_folder(m) is False
+
+    def test_hasnochildren_flag_not_blocked(self) -> None:
+        m = MailboxInfo(
+            name="INBOX", attributes=(r"\HasNoChildren",), delimiter="/"
+        )
+        assert is_system_folder(m) is False
+
+    def test_multiple_flags_one_system(self) -> None:
+        m = MailboxInfo(
+            name="Sent",
+            attributes=(r"\HasNoChildren", r"\Sent"),
+            delimiter="/",
+        )
+        assert is_system_folder(m) is True
+
+    def test_all_flag_not_blocked(self) -> None:
+        m = MailboxInfo(name="All", attributes=(r"\All",), delimiter="/")
+        assert is_system_folder(m) is False
+
+
+class TestIsSystemFolderNameFallback:
+    """Name-based fallback (case-insensitive, whitespace stripped)."""
+
+    def test_sent(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="Sent", attributes=(), delimiter="/")
+        ) is True
+
+    def test_sent_case_insensitive(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="sent", attributes=(), delimiter="/")
+        ) is True
+
+    def test_sent_whitespace(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="  Sent  ", attributes=(), delimiter="/")
+        ) is True
+
+    def test_french_envoyes(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="Éléments envoyés", attributes=(), delimiter="/")
+        ) is True
+
+    def test_french_envoyes_lowercase(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="éléments envoyés", attributes=(), delimiter="/")
+        ) is True
+
+    def test_deleted_items(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="Deleted Items", attributes=(), delimiter="/")
+        ) is True
+
+    def test_inbox_not_system(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="INBOX", attributes=(), delimiter="/")
+        ) is False
+
+    def test_archive_not_system(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="Archive", attributes=(), delimiter="/")
+        ) is False
+
+    def test_projects_not_system(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="Projects", attributes=(), delimiter="/")
+        ) is False
+
+    def test_sent_items(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="Sent Items", attributes=(), delimiter="/")
+        ) is True
+
+    def test_junk_email(self) -> None:
+        assert is_system_folder(
+            MailboxInfo(name="Junk E-mail", attributes=(), delimiter="/")
+        ) is True

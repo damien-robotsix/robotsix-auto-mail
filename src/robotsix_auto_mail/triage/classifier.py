@@ -52,7 +52,9 @@ from robotsix_auto_mail.triage.persistence import (
 # ---------------------------------------------------------------------------
 
 
-def propose_archive_subfolder(record: MailRecord) -> str:
+def propose_archive_subfolder(
+    record: MailRecord, user_email: str | None = None
+) -> str:
     """Derive a sensible archive subfolder path for *record*.
 
     Priority-ordered rules (first match wins; result is lowercased with
@@ -61,7 +63,11 @@ def propose_archive_subfolder(record: MailRecord) -> str:
 
     1. **Mailing-list prefix** — subject starts with a bracketed token
        like ``[python-dev]`` or ``[list-name:123]`` → ``Lists/<name>``.
-    2. **All-rules-fail** — returns ``""`` (archive into root).
+    2. **Sender-derived path** — (reserved for future sender-domain rule).
+       When *user_email* is not ``None`` and the parsed sender address
+       matches it (case-insensitive), this rule is skipped so self-sent
+       mail never creates nonsense ``domain/localpart`` archive folders.
+    3. **All-rules-fail** — returns ``""`` (archive into root).
 
     No LLM involved — purely deterministic.
     """
@@ -77,7 +83,17 @@ def propose_archive_subfolder(record: MailRecord) -> str:
                 if sanitised:
                     return f"Lists/{sanitised}"
 
-    # -- 2. All-rules-fail → archive root ---------------------------------
+    # -- 2. Sender-derived path (reserved) --------------------------------
+    # If *user_email* is set and matches the record's parsed sender address
+    # (case-insensitive), skip any sender-derived rule so self-sent mail
+    # never produces a ``domain/localpart`` archive folder.
+    if user_email is not None:
+        sender_addr = parseaddr(record.sender)[1].strip().lower()
+        if sender_addr and sender_addr == user_email.strip().lower():
+            # Self-sent mail — skip sender-derived proposal, fall through.
+            return ""
+
+    # -- 3. All-rules-fail → archive root ---------------------------------
     return ""
 
 
@@ -185,6 +201,7 @@ def get_archive_subfolder(
     message_id: str,
     record: MailRecord,
     api_key: str = "",
+    user_email: str | None = None,
 ) -> str:
     """Return the effective archive subfolder for *message_id*.
 
@@ -214,7 +231,7 @@ def get_archive_subfolder(
             return hints[message_id]
 
     # 4. Deterministic fallback (stripped-down)
-    return propose_archive_subfolder(record)
+    return propose_archive_subfolder(record, user_email=user_email)
 
 
 def set_archive_subfolder_override(

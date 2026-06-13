@@ -36,7 +36,7 @@ from robotsix_auto_mail.format import (
     _effective_body_plain,
     _format_date,
 )
-from robotsix_auto_mail.imap import ImapClient, ImapError
+from robotsix_auto_mail.imap import ImapClient, ImapError, is_system_folder
 from robotsix_auto_mail.pipeline import IngestResult, ingest_folder
 from robotsix_auto_mail.smtp import (
     SmtpClient,
@@ -579,6 +579,35 @@ def _cmd_triage_folder(args: argparse.Namespace) -> int:
         return 1
 
     config = _load_config_or_exit(args.account)
+
+    # -- guard: refuse triage on system folders (Sent/Drafts/Trash/Junk) --
+    if not args.force:
+        try:
+            with ImapClient(config) as client:
+                for info in client.list_folders():
+                    if info.name == args.folder and is_system_folder(info):
+                        flag_hint = ""
+                        for attr in info.attributes:
+                            if attr in (
+                                r"\Sent",
+                                r"\Drafts",
+                                r"\Trash",
+                                r"\Junk",
+                            ):
+                                flag_hint = f" ({attr})"
+                                break
+                        sys.stderr.write(
+                            f"Error: Folder {args.folder!r} is a special-use "
+                            f"mailbox{flag_hint}. "
+                            "Triage of sent mail, drafts, trash, and spam "
+                            "folders is not supported because the triage "
+                            "prompt assumes incoming mail. "
+                            "Use --force to override.\n"
+                        )
+                        return 1
+        except ImapError:
+            pass  # Proceed normally — the ingest will fail with its own error
+
     conn = _cli.init_db(config.db_path)
     decisions: list[TriageDecision] = []
     try:

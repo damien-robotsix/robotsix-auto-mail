@@ -179,6 +179,47 @@ class _TriageMixin:
             if get_watermark(conn, "triage_run:state") == "running":
                 self._redirect("/board", code=302)
                 return
+        finally:
+            conn.close()
+
+        # -- guard: refuse triage on system folders (Sent/Drafts/Trash/Junk) --
+        force = params.get("force", [""])[0].strip().lower() == "true"
+        if not force:
+            from robotsix_auto_mail.imap import (
+                ImapClient,
+                is_system_folder,
+            )
+
+            try:
+                with ImapClient(mail_config) as client:
+                    for info in client.list_folders():
+                        if info.name == folder and is_system_folder(info):
+                            flag_hint = ""
+                            for attr in info.attributes:
+                                if attr in (
+                                    r"\Sent",
+                                    r"\Drafts",
+                                    r"\Trash",
+                                    r"\Junk",
+                                ):
+                                    flag_hint = f" ({attr})"
+                                    break
+                            self._bad_request(
+                                f"Folder {folder!r} is a special-use mailbox"
+                                f"{flag_hint}. "
+                                "Triage of sent mail, drafts, trash, and spam "
+                                "folders is not supported because the triage "
+                                "prompt assumes incoming mail. "
+                                "Use force=true to override."
+                            )
+                            return
+            except Exception:
+                # IMAP unreachable or any other error — proceed normally;
+                # the background thread will surface the real error.
+                pass
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
             set_watermark(conn, "triage_run:state", "running")
         finally:
             conn.close()

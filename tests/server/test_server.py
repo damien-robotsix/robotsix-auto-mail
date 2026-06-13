@@ -5946,19 +5946,21 @@ def test_folders_endpoint_returns_json() -> None:
         )
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            # ``Mock(name=...)`` is special, so set ``.name`` explicitly.
+            # ``Mock(name=...)`` is special, so set attributes explicitly.
             archive = mock.Mock()
             archive.name = "Archive"
-            sent = mock.Mock()
-            sent.name = "Sent"
+            archive.attributes = ()
+            projects = mock.Mock()
+            projects.name = "Projects"
+            projects.attributes = ()
             with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [archive, sent]
+                mock_client.list_folders.return_value = [archive, projects]
 
                 resp = urlopen(f"http://127.0.0.1:{port}/folders")
                 assert resp.status == 200
                 payload = json.loads(resp.read().decode("utf-8"))
-                assert payload["folders"] == ["Archive", "Sent"]
+                assert payload["folders"] == ["Archive", "Projects"]
         finally:
             server.shutdown()
     finally:
