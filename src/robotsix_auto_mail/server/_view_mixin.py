@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 from urllib.parse import unquote
 
@@ -146,46 +145,6 @@ class _BoardViewMixin:
         else:
             self._not_found()
 
-    def _serve_folders(self) -> None:
-        """Serve GET /folders — list IMAP mailbox folders as JSON.
-
-        Folder enumeration is deliberately served from this async
-        endpoint (not during the synchronous ``/board`` render) so a slow
-        or unreachable IMAP server never blocks the single-threaded board
-        page.  Returns 503 when IMAP is unconfigured and 502 on an
-        ``ImapError``.
-        """
-        if self.mail_config is None:
-            self._send_response(
-                json.dumps({"error": "IMAP not configured"}).encode(),
-                status=503,
-                content_type="application/json",
-            )
-            return
-
-        from robotsix_auto_mail.imap import ImapClient, ImapError, is_system_folder
-
-        try:
-            with ImapClient(self.mail_config) as client:
-                folders = [
-                    info.name
-                    for info in client.list_folders()
-                    if not is_system_folder(info)
-                ]
-        except ImapError as exc:
-            self._send_response(
-                json.dumps({"error": str(exc)}).encode(),
-                status=502,
-                content_type="application/json",
-            )
-            return
-
-        self._send_response(
-            json.dumps({"folders": folders}).encode(),
-            status=200,
-            content_type="application/json",
-        )
-
     def _serve_archive_proposal(self) -> None:
         """Serve GET /archive-proposal/{message_id} — return JSON with
         effective subfolder, source, and folder-exists status."""
@@ -217,7 +176,9 @@ class _BoardViewMixin:
                 return
 
             subfolder = get_archive_subfolder(
-                conn, message_id, record,
+                conn,
+                message_id,
+                record,
                 api_key=self.mail_config.llm_api_key if self.mail_config else "",
             )
             overrides = _load_archive_overrides(conn)

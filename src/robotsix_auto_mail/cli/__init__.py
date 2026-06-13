@@ -21,7 +21,6 @@ from robotsix_auto_mail.cli.commands import (
     _cmd_probe,
     _cmd_serve,
     _cmd_triage,
-    _cmd_triage_folder,
     _cmd_triage_rules,
     _cmd_triage_rules_set,
     _cmd_triage_set,
@@ -240,41 +239,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output format for triage decisions (default: %(default)s).",
     )
 
-    triage_folder_parser = sub.add_parser(
-        "triage-folder",
-        help="Ingest an existing mailbox folder (e.g. Archive) one-shot and "
-        "run the triage agent over it (advisory; does not move mail in the "
-        "mailbox)",
-    )
-    triage_folder_parser.add_argument(
-        "folder",
-        help="IMAP folder/mailbox name to triage (e.g. Archive).",
-    )
-    _add_account_arg(triage_folder_parser)
-    triage_folder_parser.add_argument(
-        "--api-key",
-        default=None,
-        help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
-    )
-    triage_folder_parser.add_argument(
-        "--output-format",
-        choices=["text", "json"],
-        default="text",
-        help="Output format for triage decisions (default: %(default)s).",
-    )
-    triage_folder_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        default=False,
-        help="Fetch and parse messages without storing; skip the triage pass.",
-    )
-    triage_folder_parser.add_argument(
-        "--force",
-        action="store_true",
-        default=False,
-        help="Allow triage on special-use folders (Sent, Drafts, Trash, Junk).",
-    )
-
     triage_set_parser = sub.add_parser(
         "triage-set",
         help="Record a user triage decision for a single message "
@@ -445,9 +409,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "triage":
         return _cmd_triage(args)
-
-    if args.command == "triage-folder":
-        return _cmd_triage_folder(args)
 
     if args.command == "triage-set":
         return _cmd_triage_set(args)

@@ -862,22 +862,6 @@ proposal engine uses a **three-tier strategy**:
    sender domain + local part (`alice@example.com` → `example.com/alice`), or a year/month
    bucket from the message date.
 
-**Folder-triage control.**  At the top of the board, when triage is not
-currently running, a **Triage Folder** form appears. This form contains:
-- A dropdown (`<select>`) listing available IMAP mailbox folders (e.g., `Archive`,
-  `Sent`, custom labels), populated asynchronously from the `GET /folders` endpoint
-  so the board page never blocks on IMAP.
-- A submit button that launches a one-shot triage over the selected folder via
-  `POST /run-folder-triage`.
-
-Selecting a folder and clicking **Triage Folder** ingests every message in that
-folder (via IMAP search `ALL`), deduplicates by Message-ID, and runs the triage
-agent — **without** touching the INBOX watermark or creating archive folders. This
-is useful for triaging legacy folders (e.g., a read-only `Archive` or `Sent` folder)
-or catching mail that belongs in the current triage workflow. When triage is
-running, the form is replaced by the running banner; when it completes, the form
-reappears and the board updates (new cards appear in the appropriate columns).
-
 The board is the interface: no separate client is needed.
 
 The page includes `<meta http-equiv="refresh" content="30">`, so the board
@@ -1073,105 +1057,6 @@ auto-refreshes to show the updated state).
 
 Both decisions suppress the proposal from resurfacing on future `triage-rules`
 CLI runs or board refreshes.
-
-### The `/folders` and `/run-folder-triage` endpoints
-
-In addition to the folder-triage control on the board page, the server hosts two
-complementary endpoints for programmatic folder triage:
-
-#### `GET /folders` — list IMAP folders
-
-Returns the available mailbox folders as JSON. Used client-side to populate the
-folder picker dropdown, but can also be called directly by external tools.
-
-##### Request
-
-```sh
-curl http://localhost:8080/folders
-```
-
-An optional `?account=<id>` query parameter is supported in multi-account mode
-(see [Multi-account request routing](#multi-account-request-routing)).
-
-##### Response on success (HTTP 200)
-
-Content-Type: `application/json`
-
-```json
-{
-  "folders": ["INBOX", "Archive", "Sent", "Drafts", "Custom"]
-}
-```
-
-Each folder name corresponds to the IMAP mailbox name that can be passed to
-`/run-folder-triage`.
-
-##### Error responses
-
-- **HTTP 503** — IMAP is not configured (`mail_config is None`). The response
-  body is `{"error": "IMAP not configured"}`.
-- **HTTP 502** — IMAP connection failed (e.g., authentication failure, server
-  unreachable). The response body is `{"error": "<error message>"}`.
-
-The folder list is fetched asynchronously so a slow or unreachable IMAP server
-never blocks the synchronous `/board` page render.
-
-#### `POST /run-folder-triage` — trigger one-shot folder triage
-
-Launches a background triage run over a specified IMAP folder (not the configured
-INBOX). This endpoint is used by the board page's **Triage Folder** button but can
-also be called directly by external tools or scripts.
-
-##### Request
-
-```sh
-curl -X POST http://localhost:8080/run-folder-triage \
-  -d 'folder=Archive'
-```
-
-Form-encoded body parameters:
-- `folder` (required): The IMAP folder/mailbox name (e.g., `Archive`, `Sent`)
-
-##### Behavior
-
-When the request succeeds:
-
-1. The server sets the `triage_run:state` watermark to `"running"` (guarding
-   against concurrent triage runs).
-2. A daemon background thread is spawned that:
-   - Connects to IMAP and fetches all messages from the specified *folder*
-     (IMAP search `ALL`).
-   - Stores new messages locally, deduplicating by Message-ID.
-   - **Does not modify the INBOX watermark** — the normal incremental INBOX
-     ingest cycle is unaffected.
-   - Runs the triage agent over the newly-stored messages.
-   - Always clears the `triage_run:state` watermark back to `"idle"` in a
-     `finally` block, even on error.
-3. The server immediately returns a 302 redirect to `/board` so the browser
-   returns to the board page. The triage runs in the background and the board
-   auto-refreshes every 30 seconds to reflect new triage decisions.
-
-##### Response on success (HTTP 302)
-
-A 302 redirect to `/board` (the triage run has been queued).
-
-##### Error responses
-
-- **HTTP 400** — Missing or empty `folder` parameter. The response body is a
-  plain-text error message.
-- **HTTP 400** — IMAP is not configured (`mail_config is None`). The response
-  body is `"Folder triage requires IMAP configuration"`.
-- **HTTP 302** — Triage is already running (the watermark `triage_run:state` is
-  `"running"`). The response is a 302 redirect to `/board` (idempotent — the
-  request is silently ignored and the watermark is unchanged).
-
-Errors during the background thread (e.g., `ImapError`, missing LLM optional
-extra) are swallowed so a transient IMAP failure or missing dependency never
-wedges the board. The thread always clears the watermark so the board eventually
-recovers.
-
-An optional `?account=<id>` query parameter is supported in multi-account mode
-(see [Multi-account request routing](#multi-account-request-routing)).
 
 ### The `/batch-delete` and `/batch-archive` endpoints
 
@@ -1616,69 +1501,6 @@ Inbox Triage
 
 Exit code is `0` on success (even if decisions are produced), `1` on error
 (missing API key, `pydantic-ai` not installed, or LLM failure).
-
-## The `triage-folder` command
-
-The `triage-folder` subcommand is a **one-shot** operation that fetches every
-message from a named mailbox folder that is **not** the configured INBOX (e.g.
-a legacy `Archive`, `Sent`, or a custom label), stores them locally, and then
-runs the triage agent over the newly-stored mail:
-
-```sh
-$ robotsix-auto-mail triage-folder Archive
-```
-
-Unlike the incremental `ingest` cycle, this performs a **full sweep** of the
-named folder (IMAP search `ALL`) and:
-
-- stores new mail locally, **deduplicating by Message-ID** (re-running the
-  command stores `0` new records), and
-- **leaves the INBOX ingest watermark completely untouched** — it is not read
-  or written, so the normal incremental INBOX ingest is unaffected.
-
-Triage remains **advisory and local-only**: no mail is moved, deleted, or
-copied in the IMAP mailbox.
-
-### Arguments
-
-| Argument | Purpose |
-|---|---|
-| `<folder>` | The IMAP folder/mailbox name to triage (e.g. `Archive`) |
-
-### Options
-
-| Option | Default | Purpose |
-|---|---|---|
-| `--account` | – | Account id to operate on; optional when only one account is configured |
-| `--api-key` | – | OpenRouter API key; overrides `LLM_API_KEY` env and config file |
-| `--output-format` | `text` | Output format: `text` (human-readable) or `json` (machine-readable) |
-| `--dry-run` | `false` | Fetch and parse without storing; skip the triage pass |
-
-### Requirements
-
-The `triage-folder` command requires:
-- The `pydantic-ai` package (install via `pip install robotsix-auto-mail[dev]`)
-- An LLM API key (via `--api-key`, `LLM_API_KEY` env, or `llm.api_key` in config)
-
-### Representative text output
-
-```text
-Fetched:  3 messages
-Stored:   3 new
-Skipped:  0 duplicate
-Errors:   0
-
-Folder Triage
-------------------------------------------------------------
-
-<a@x.com>
-  action: archive
-  confidence: high
-  reason: Old reference mail; keep but no reply needed.
-```
-
-Exit code is `0` on success (even if decisions are produced), `1` on error
-(missing API key, `pydantic-ai` not installed, `ImapError`, or LLM failure).
 
 ## The `triage-set` command
 

@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.server.adapters import (
-    _run_folder_triage_background,
     _run_triage_background,
 )
 from robotsix_auto_mail.triage import (
@@ -113,93 +112,6 @@ class _TriageMixin:
                 self.db_path,
                 self.mail_config.username if self.mail_config is not None else None,
             ),
-            daemon=True,
-        ).start()
-
-        self._redirect("/board", code=302)
-
-    def _handle_run_folder_triage(self) -> None:
-        """Process POST /run-folder-triage — one-shot triage over a folder.
-
-        Mirrors :meth:`_handle_run_triage` but ingests a named IMAP
-        folder (supplied per-request via the ``folder`` param) before
-        running the triage agent.  Requires IMAP to be configured;
-        validates the ``folder`` param; guards on the shared
-        ``triage_run:state`` watermark (idempotent when already running);
-        spawns a daemon thread and redirects to ``/board``.
-        """
-        import threading
-        import urllib.parse
-
-        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
-
-        content_length = int(self.headers.get("content-length", "0"))
-        raw_body = self.rfile.read(content_length) if content_length else b""
-        params = urllib.parse.parse_qs(raw_body.decode("utf-8"))
-        folder_list = params.get("folder", [])
-        if not folder_list or not folder_list[0].strip():
-            self._bad_request("Missing 'folder' parameter")
-            return
-        folder = folder_list[0].strip()
-
-        if self.mail_config is None:
-            self._bad_request("Folder triage requires IMAP configuration")
-            return
-        mail_config = self.mail_config
-
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            if get_watermark(conn, "triage_run:state") == "running":
-                self._redirect("/board", code=302)
-                return
-        finally:
-            conn.close()
-
-        # -- guard: refuse triage on system folders (Sent/Drafts/Trash/Junk) --
-        force = params.get("force", [""])[0].strip().lower() == "true"
-        if not force:
-            from robotsix_auto_mail.imap import (
-                ImapClient,
-                is_system_folder,
-            )
-
-            try:
-                with ImapClient(mail_config) as client:
-                    for info in client.list_folders():
-                        if info.name == folder and is_system_folder(info):
-                            flag_hint = ""
-                            for attr in info.attributes:
-                                if attr in (
-                                    r"\Sent",
-                                    r"\Drafts",
-                                    r"\Trash",
-                                    r"\Junk",
-                                ):
-                                    flag_hint = f" ({attr})"
-                                    break
-                            self._bad_request(
-                                f"Folder {folder!r} is a special-use mailbox"
-                                f"{flag_hint}. "
-                                "Triage of sent mail, drafts, trash, and spam "
-                                "folders is not supported because the triage "
-                                "prompt assumes incoming mail. "
-                                "Use force=true to override."
-                            )
-                            return
-            except Exception:
-                # IMAP unreachable or any other error — proceed normally;
-                # the background thread will surface the real error.
-                pass
-
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            set_watermark(conn, "triage_run:state", "running")
-        finally:
-            conn.close()
-
-        threading.Thread(
-            target=_run_folder_triage_background,
-            args=(self.db_path, mail_config, folder),
             daemon=True,
         ).start()
 

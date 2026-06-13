@@ -152,8 +152,8 @@ def _process_messages(
 ) -> tuple[int, int, list[IngestError]]:
     """Parse, dedup, and store a batch of raw ``(uid, bytes)`` messages.
 
-    Shared per-message body used by both ``ingest_mail`` and
-    ``ingest_folder``: parses via ``parse_message``, dedups via
+    Shared per-message body used by ``ingest_mail``:
+    parses via ``parse_message``, dedups via
     ``record_exists`` (skipping duplicates by ``message_id``), inserts
     new records via ``insert_record``, and collects per-message
     ``IngestError``s.  Watermark handling is intentionally *not* done
@@ -162,7 +162,7 @@ def _process_messages(
     When *source_folder* is provided and a duplicate ``message_id`` is
     found (``record_exists`` returns ``True``), the existing row's
     ``source_folder`` and ``imap_uid`` are **updated** rather than
-    skipped — this keeps records from ``ingest_folder`` actionable
+    skipped — this keeps re-ingested records actionable
     even when the tracked UID has become stale.
 
     Returns:
@@ -375,76 +375,6 @@ def ingest_mail(
         skipped=skipped,
         errors=errors,
         triaged=triaged,
-    )
-
-
-def ingest_folder(
-    db_conn: sqlite3.Connection,
-    imap_client: ImapClient,
-    config: MailConfig,
-    folder: str,
-    *,
-    dry_run: bool = False,
-) -> IngestResult:
-    """One-shot fetch → parse → store sweep of an arbitrary IMAP folder.
-
-    Unlike ``ingest_mail``, this is a *full* one-shot sweep of the named
-    *folder* (e.g. a legacy ``Archive`` or ``Sent``): it selects the
-    explicit ``folder`` argument (NOT ``config.imap_folder``), searches
-    ``"ALL"``, and processes every message found.  It deliberately:
-
-    - does **not** read or write the ``imap_uid`` watermark used by the
-      incremental INBOX ingest cycle (re-runs are made idempotent solely
-      by the ``message_id`` dedup in ``_process_messages``), and
-    - does **not** call ``setup_archive`` — a one-shot folder triage must
-      not mutate the mailbox or create archive folders.
-
-    Triage itself is **not** invoked here; the returned ``triaged`` count
-    stays ``0`` and the CLI layer runs the triage agent over the
-    newly-stored mail so it can render the decisions.
-
-    Parameters
-    ----------
-    db_conn:
-        An open ``sqlite3.Connection`` to the local datastore.
-    imap_client:
-        A connected ``ImapClient`` (already entered via context manager).
-    config:
-        Mail configuration (kept for signature parity; the folder is the
-        explicit *folder* argument, not ``config.imap_folder``).
-    folder:
-        The IMAP folder/mailbox name to sweep.
-    dry_run:
-        When ``True``, messages are fetched and parsed but
-        ``insert_record`` is skipped; ``stored`` reflects messages that
-        *would have been* inserted.
-
-    Returns
-    -------
-    IngestResult
-        Summary with total fetched, stored, skipped, and any errors.
-    """
-    # 1. Select the explicit folder and fetch every message in it.
-    imap_client.select_folder(folder)
-    uids = imap_client.search_uids("ALL")
-    if not uids:
-        return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
-
-    messages = imap_client.fetch_messages(uids)
-    total_fetched = len(messages)
-    if total_fetched == 0:
-        return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
-
-    # 2. Process each message (parse, dedup, store) — no watermark.
-    stored, skipped, errors = _process_messages(
-        db_conn, messages, dry_run=dry_run, source_folder=folder
-    )
-
-    return IngestResult(
-        total_fetched=total_fetched,
-        stored=stored,
-        skipped=skipped,
-        errors=errors,
     )
 
 

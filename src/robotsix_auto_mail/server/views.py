@@ -162,9 +162,7 @@ def _gather_account_board_data(
         archive_subfolders: dict[str, str] = {}
         folder_exists: dict[str, bool] = {}
         for record in column_buckets.get("TO_ARCHIVE", []):
-            subfolder = get_archive_subfolder(
-                conn, record.message_id, record
-            )
+            subfolder = get_archive_subfolder(conn, record.message_id, record)
             archive_subfolders[record.message_id] = subfolder
             if subfolder:
                 translated = subfolder.replace("/", delimiter)
@@ -219,9 +217,7 @@ def _build_board_content(
     Raises ``Exception`` when the database cannot be opened (the
     caller should catch it and return a 503).
     """
-    gathered = _gather_account_board_data(
-        db_path, archive_root=archive_root
-    )
+    gathered = _gather_account_board_data(db_path, archive_root=archive_root)
 
     triage_running = gathered["triage_running"]
     batch_op = gathered["batch_op"]
@@ -440,7 +436,6 @@ def _render_board_page_shell(
     picker_html: str,
     account_qs: str,
     fetch_qs: str,
-    folder_form_html: str | None,
     batch_control_html: str,
     data_account_js: bool,
 ) -> str:
@@ -450,25 +445,6 @@ def _render_board_page_shell(
     (:func:`_build_board_html` and :func:`_build_global_board_html`) share
     the ~150-line shell without duplication.
     """
-    # Single source of truth for the not-running folder-triage control —
-    # used both for the initial server render below and (via ``json.dumps``)
-    # by the client-side ``refreshBoard`` poll, so the markup cannot drift
-    # between the two and the form is restored after a running→idle tick.
-    default_folder_form_html = (
-        '<form class="folder-triage-form" method="post"'
-        ' action="/run-folder-triage"'
-        ' onsubmit="return confirm('
-        "'Run a one-shot triage over the selected folder?')\">"
-        '<select id="folder-picker" name="folder">'
-        '<option value="">Select a folder…</option>'
-        "</select>"
-        '<button type="submit">Triage Folder</button>'
-        "</form>"
-    )
-    effective_folder_form = (
-        folder_form_html if folder_form_html is not None else default_folder_form_html
-    )
-
     triage_control_html: str
     if triage_running:
         triage_control_html = (
@@ -476,12 +452,8 @@ def _render_board_page_shell(
             "Triage is currently running. The board will refresh automatically."
             "</div>"
         )
-    elif folder_form_html is None:
-        # Aggregate mode: no folder-triage form — render an empty span
-        # so the JS re-render target exists.
-        triage_control_html = ""
     else:
-        triage_control_html = effective_folder_form
+        triage_control_html = ""
 
     # Build the #board-config JSON payload so robotsix-board's board.js
     # can activate and expose its public API (robotsixBoardRefresh, etc.).
@@ -496,7 +468,6 @@ def _render_board_page_shell(
         "account_qs": account_qs,
         "fetch_qs": fetch_qs,
         "data_account_js": data_account_js,
-        "folder_form_html": effective_folder_form,
     }
 
     return (
@@ -509,7 +480,7 @@ def _render_board_page_shell(
         '<link rel="stylesheet" href="/static/automail/board.css">\n'
         "</head>\n"
         "<body>\n"
-        "<h1>Mail Board</h1> <a href=\"/rules\" class=\"nav-link\">Rules</a>\n"
+        '<h1>Mail Board</h1> <a href="/rules" class="nav-link">Rules</a>\n'
         f'<span id="triage-control">{triage_control_html}</span>\n'
         f'<span id="batch-control">{batch_control_html}</span>\n'
         f"{picker_html}\n"
@@ -565,9 +536,7 @@ def _build_board_html(
     accounts) the served HTML is byte-for-byte unchanged apart from an
     empty picker slot.
     """
-    content = _build_board_content(
-        db_path, archive_root=archive_root
-    )
+    content = _build_board_content(db_path, archive_root=archive_root)
 
     # -- account picker + URL threading -----------------------------------
     # The picker only appears when more than one account is configured.
@@ -583,9 +552,7 @@ def _build_board_html(
     fetch_qs = ""
     multi_account = accounts is not None and len(accounts.ids()) >= 2
     if multi_account and accounts is not None:
-        options_parts: list[str] = [
-            '<option value="__all__">All mailboxes</option>'
-        ]
+        options_parts: list[str] = ['<option value="__all__">All mailboxes</option>']
         for account_id in accounts.ids():
             account = accounts.get(account_id)
             display = account.label if account.label else account.account_id
@@ -605,18 +572,6 @@ def _build_board_html(
         account_qs = "&account=" + quote(current_account_id, safe="")
         fetch_qs = "?account=" + quote(current_account_id, safe="")
 
-    folder_form_html = (
-        '<form class="folder-triage-form" method="post"'
-        ' action="/run-folder-triage"'
-        ' onsubmit="return confirm('
-        "'Run a one-shot triage over the selected folder?')\">"
-        '<select id="folder-picker" name="folder">'
-        '<option value="">Select a folder…</option>'
-        "</select>"
-        '<button type="submit">Triage Folder</button>'
-        "</form>"
-    )
-
     batch_control_html = _batch_banner_html(content["batch_op"])
 
     return _render_board_page_shell(
@@ -626,7 +581,6 @@ def _build_board_html(
         picker_html=picker_html,
         account_qs=account_qs,
         fetch_qs=fetch_qs,
-        folder_form_html=folder_form_html,
         batch_control_html=batch_control_html,
         data_account_js=False,
     )
@@ -680,7 +634,6 @@ def _build_global_board_html(
         picker_html=picker_html,
         account_qs="",  # page-level; cards carry their own
         fetch_qs=fetch_qs,
-        folder_form_html=None,  # hidden in aggregate mode
         batch_control_html="",  # batch ops are per-account, suppressed
         data_account_js=True,
     )
@@ -1159,11 +1112,7 @@ def _build_rules_html(
 
         active_html: str
         if active_cards_parts:
-            active_html = (
-                '<div class="rule-cards">'
-                f"{''.join(active_cards_parts)}"
-                "</div>"
-            )
+            active_html = f'<div class="rule-cards">{"".join(active_cards_parts)}</div>'
         else:
             active_html = '<div class="rule-empty">No active rules</div>'
 
@@ -1176,11 +1125,7 @@ def _build_rules_html(
                 _render_rule_card(fp, entry, account_id=current_account_id)
                 for fp, entry in proposals
             )
-            proposals_html = (
-                '<div class="rule-cards">'
-                f"{rule_cards_html}"
-                "</div>"
-            )
+            proposals_html = f'<div class="rule-cards">{rule_cards_html}</div>'
         else:
             proposals_html = '<div class="rule-empty">No pending proposals</div>'
     finally:

@@ -36,8 +36,8 @@ from robotsix_auto_mail.format import (
     _effective_body_plain,
     _format_date,
 )
-from robotsix_auto_mail.imap import ImapClient, ImapError, is_system_folder
-from robotsix_auto_mail.pipeline import IngestResult, ingest_folder, reconcile_records
+from robotsix_auto_mail.imap import ImapClient, ImapError
+from robotsix_auto_mail.pipeline import IngestResult, reconcile_records
 from robotsix_auto_mail.smtp import (
     SmtpClient,
     SmtpError,
@@ -552,120 +552,6 @@ def _cmd_triage(args: argparse.Namespace) -> int:
     _print_header(sys.stdout, "Inbox Triage")
     if not decisions:
         sys.stdout.write("No inbox mail to triage.\n")
-        return 0
-
-    for decision in decisions:
-        sys.stdout.write(f"\n{decision.message_id}\n")
-        sys.stdout.write(f"  action: {decision.action}\n")
-        sys.stdout.write(f"  confidence: {decision.confidence}\n")
-        reason = decision.reason if decision.reason else "(none)"
-        sys.stdout.write(f"  reason: {reason}\n")
-
-    return 0
-
-
-def _cmd_triage_folder(args: argparse.Namespace) -> int:
-    """Ingest an existing mailbox folder one-shot, then triage the new mail.
-
-    Fetches every message from the named *folder*, stores them locally
-    (dedup by Message-ID, the INBOX watermark left untouched), then runs
-    the triage agent over the newly-stored mail and renders the advisory
-    decisions.  Triage is advisory and local-only: no mail is moved in the
-    mailbox.  Returns 0 on success, 1 on error (missing pydantic_ai,
-    ImapError, TriageError).
-    """
-    try:
-        from robotsix_auto_mail.triage import (
-            TriageDecision,
-            TriageError,
-            run_triage_agent,
-        )
-    except ImportError:
-        sys.stderr.write(
-            "The 'triage-folder' command requires the pydantic-ai package. "
-            "Install it with: pip install robotsix-auto-mail[dev]\n"
-        )
-        return 1
-
-    config = _load_config_or_exit(args.account)
-
-    # -- guard: refuse triage on system folders (Sent/Drafts/Trash/Junk) --
-    if not args.force:
-        try:
-            with ImapClient(config) as client:
-                for info in client.list_folders():
-                    if info.name == args.folder and is_system_folder(info):
-                        flag_hint = ""
-                        for attr in info.attributes:
-                            if attr in (
-                                r"\Sent",
-                                r"\Drafts",
-                                r"\Trash",
-                                r"\Junk",
-                            ):
-                                flag_hint = f" ({attr})"
-                                break
-                        sys.stderr.write(
-                            f"Error: Folder {args.folder!r} is a special-use "
-                            f"mailbox{flag_hint}. "
-                            "Triage of sent mail, drafts, trash, and spam "
-                            "folders is not supported because the triage "
-                            "prompt assumes incoming mail. "
-                            "Use --force to override.\n"
-                        )
-                        return 1
-        except ImapError:
-            pass  # Proceed normally — the ingest will fail with its own error
-
-    conn = _cli.init_db(config.db_path)
-    decisions: list[TriageDecision] = []
-    try:
-        try:
-            with ImapClient(config) as imap:
-                result = ingest_folder(
-                    conn, imap, config, args.folder, dry_run=args.dry_run
-                )
-        except ImapError as exc:
-            sys.stderr.write(f"Error: {exc}\n")
-            return 1
-
-        if not args.dry_run:
-            try:
-                decisions = run_triage_agent(
-                    conn,
-                    api_key=args.api_key,
-                    provider=config.llm_provider,
-                    user_email=config.username,
-                )
-            except TriageError as exc:
-                sys.stderr.write(f"Error: {exc}\n")
-                return 1
-    finally:
-        conn.close()
-
-    if args.output_format == "json":
-        payload = {
-            "folder": args.folder,
-            "fetched": result.total_fetched,
-            "stored": result.stored,
-            "skipped": result.skipped,
-            "errors": len(result.errors),
-            "decisions": [d.model_dump() for d in decisions],
-        }
-        sys.stdout.write(json.dumps(payload, indent=2) + "\n")
-        return 0
-
-    # -- text: ingest summary (same style as _ingest_cycle) --------------
-    if args.dry_run:
-        sys.stdout.write("DRY RUN — nothing stored\n")
-    sys.stdout.write(f"Fetched: {result.total_fetched:>2} messages\n")
-    sys.stdout.write(f"Stored:  {result.stored:>2} new\n")
-    sys.stdout.write(f"Skipped: {result.skipped:>2} duplicate\n")
-    sys.stdout.write(f"Errors:  {len(result.errors):>2}\n")
-
-    _print_header(sys.stdout, "Folder Triage")
-    if not decisions:
-        sys.stdout.write("No mail to triage.\n")
         return 0
 
     for decision in decisions:
