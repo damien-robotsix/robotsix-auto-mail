@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
 from robotsix_auto_mail.db import MailRecord
+from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 
 
 class _NonEmptyColumnsAdapter:
