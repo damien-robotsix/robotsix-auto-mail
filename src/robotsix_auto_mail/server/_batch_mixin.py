@@ -10,7 +10,6 @@ from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
 from robotsix_auto_mail.server.adapters import (
     _batch_op_running,
     _collect_records_for_action,
-    _release_batch_op,
     _run_batch_archive_background,
     _run_batch_delete_background,
 )
@@ -28,13 +27,14 @@ class _BatchActionMixin:
         """Process POST /batch-delete — delete all TO_DELETE mail from IMAP
         and local DB in a background daemon thread.
 
-        Single-flight guarded by the shared ``batch_op:state`` watermark
-        (so delete and archive cannot run concurrently on the same
-        account).  Before handing off to the background worker, a
-        **synchronous stale-UID precheck** verifies that every tracked
-        UID still exists in the selected IMAP folder.  If any UID is
-        stale the handler responds with **409** and nothing is deleted
-        — mirroring the single-delete path in :meth:`_handle_delete`.
+        Returns the redirect **immediately** with no synchronous IMAP work,
+        so the browser is never held while a large column is processed.
+        Single-flight guarded by the shared ``batch_op:state`` watermark (so
+        delete and archive cannot run concurrently on the same account); the
+        daemon worker does all IMAP + DB deletion and heals any stale UIDs
+        itself (``resolve_uid_with_fallback`` / ``cross_folder_resolve``).
+        Progress and completion show via the board's batch banner and the
+        30-second auto-refresh.
         """
         import threading
 
@@ -45,83 +45,13 @@ class _BatchActionMixin:
             if _batch_op_running(get_watermark(conn, "batch_op:state")):
                 self._redirect("/board", code=302)
                 return
+            # Nothing to do → don't spawn a no-op worker / set "running".
+            if not _collect_records_for_action(conn, "TO_DELETE"):
+                self._redirect("/board", code=302)
+                return
             set_watermark(conn, "batch_op:state", "running")
         finally:
             conn.close()
-
-        # -- synchronous stale-UID precheck (before redirect) --
-        if self.mail_config is not None:
-            from robotsix_auto_mail.db import (
-                delete_record_by_message_id,
-                update_record_source,
-            )
-            from robotsix_auto_mail.imap import (
-                ImapClient,
-                ImapMessageNotFoundError,
-                cross_folder_resolve,
-                resolve_uid_with_fallback,
-            )
-
-            conn = init_db(self.db_path, skip_migrations=True)
-            try:
-                records = _collect_records_for_action(conn, "TO_DELETE")
-            finally:
-                conn.close()
-
-            if any(r.imap_uid is not None for r in records):
-                db_conn = init_db(self.db_path, skip_migrations=True)
-                try:
-                    with ImapClient(self.mail_config) as client:
-                        for record in records:
-                            if record.imap_uid is None:
-                                continue
-                            try:
-                                resolve_uid_with_fallback(
-                                    client,
-                                    record.source_folder,
-                                    record.imap_uid,
-                                    record.message_id,
-                                )
-                            except ImapMessageNotFoundError:
-                                cross = cross_folder_resolve(client, record.message_id)
-                                if cross is not None:
-                                    new_folder, new_uid = cross
-                                    update_record_source(
-                                        db_conn,
-                                        record.message_id,
-                                        source_folder=new_folder,
-                                        imap_uid=new_uid,
-                                    )
-                                else:
-                                    delete_record_by_message_id(
-                                        db_conn, record.message_id
-                                    )
-                except Exception as exc:
-                    # Any precheck failure (including a raw imaplib.IMAP4.error,
-                    # which is neither ImapError nor OSError) must release the
-                    # single-flight watermark — otherwise the board's progress
-                    # banner wedges on "running" forever.
-                    _release_batch_op(self.db_path)
-                    self._send_response(
-                        f"IMAP precheck failed: {exc}",
-                        status=502,
-                    )
-                    return
-                finally:
-                    db_conn.close()
-
-        # Re-check whether any TO_DELETE records remain after the
-        # precheck (some may have been healed or removed).
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            remaining = _collect_records_for_action(conn, "TO_DELETE")
-        finally:
-            conn.close()
-
-        if not remaining:
-            _release_batch_op(self.db_path)
-            self._redirect("/board", code=302)
-            return
 
         threading.Thread(
             target=_run_batch_delete_background,
@@ -152,21 +82,15 @@ class _BatchActionMixin:
         """Process POST /batch-archive — archive all TO_ARCHIVE mail from
         IMAP and local DB in a background daemon thread.
 
+        Returns the redirect **immediately** with no synchronous IMAP work,
+        so the browser is never held while a large column is processed.
         When *subfolder* is not ``None`` only that destination's mail is
         archived (see :meth:`_handle_batch_archive_folder`); ``None`` archives
-        the whole column.  The synchronous stale-UID precheck still scans every
-        TO_ARCHIVE record (healing UIDs is harmless and keeps the code simple);
-        the *subfolder* filter is applied by the background worker.
-
-        Single-flight guarded by the shared ``batch_op:state`` watermark
-        (so delete and archive cannot run concurrently on the same
-        account).  Before handing off to the background worker, a
-        **synchronous stale-UID precheck** verifies that every tracked
-        UID still exists in the selected IMAP folder.  If any UID is
-        stale the handler responds with **409** and nothing is archived
-        — mirroring the single-archive path.  The redirect is returned
-        after the precheck passes; the worker groups UIDs by destination
-        folder and batch-moves each group.
+        the whole column.  Single-flight guarded by the shared
+        ``batch_op:state`` watermark (so delete and archive cannot run
+        concurrently on the same account); the daemon worker groups UIDs by
+        destination, heals stale UIDs itself, and batch-moves each group.
+        Progress shows via the board's batch banner and 30-second refresh.
         """
         import threading
 
@@ -183,83 +107,13 @@ class _BatchActionMixin:
             if _batch_op_running(get_watermark(conn, "batch_op:state")):
                 self._redirect("/board", code=302)
                 return
+            # Nothing to do → don't spawn a no-op worker / set "running".
+            if not _collect_records_for_action(conn, "TO_ARCHIVE"):
+                self._redirect("/board", code=302)
+                return
             set_watermark(conn, "batch_op:state", "running")
         finally:
             conn.close()
-
-        # -- synchronous stale-UID precheck (before redirect) --
-        if self.mail_config is not None:
-            from robotsix_auto_mail.db import (
-                delete_record_by_message_id,
-                update_record_source,
-            )
-            from robotsix_auto_mail.imap import (
-                ImapClient,
-                ImapMessageNotFoundError,
-                cross_folder_resolve,
-                resolve_uid_with_fallback,
-            )
-
-            conn = init_db(self.db_path, skip_migrations=True)
-            try:
-                records = _collect_records_for_action(conn, "TO_ARCHIVE")
-            finally:
-                conn.close()
-
-            if any(r.imap_uid is not None for r in records):
-                db_conn = init_db(self.db_path, skip_migrations=True)
-                try:
-                    with ImapClient(self.mail_config) as client:
-                        for record in records:
-                            if record.imap_uid is None:
-                                continue
-                            try:
-                                resolve_uid_with_fallback(
-                                    client,
-                                    record.source_folder,
-                                    record.imap_uid,
-                                    record.message_id,
-                                )
-                            except ImapMessageNotFoundError:
-                                cross = cross_folder_resolve(client, record.message_id)
-                                if cross is not None:
-                                    new_folder, new_uid = cross
-                                    update_record_source(
-                                        db_conn,
-                                        record.message_id,
-                                        source_folder=new_folder,
-                                        imap_uid=new_uid,
-                                    )
-                                else:
-                                    delete_record_by_message_id(
-                                        db_conn, record.message_id
-                                    )
-                except Exception as exc:
-                    # Any precheck failure (including a raw imaplib.IMAP4.error,
-                    # which is neither ImapError nor OSError) must release the
-                    # single-flight watermark — otherwise the board's progress
-                    # banner wedges on "running" forever.
-                    _release_batch_op(self.db_path)
-                    self._send_response(
-                        f"IMAP precheck failed: {exc}",
-                        status=502,
-                    )
-                    return
-                finally:
-                    db_conn.close()
-
-        # Re-check whether any TO_ARCHIVE records remain after the
-        # precheck (some may have been healed or removed).
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            remaining = _collect_records_for_action(conn, "TO_ARCHIVE")
-        finally:
-            conn.close()
-
-        if not remaining:
-            _release_batch_op(self.db_path)
-            self._redirect("/board", code=302)
-            return
 
         threading.Thread(
             target=_run_batch_archive_background,
