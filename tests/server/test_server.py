@@ -2230,19 +2230,22 @@ def test_batch_delete_stale_uid_preserves_all_records() -> None:
                 mock_cross.return_value = None  # mail gone
 
                 status, body = _post_form(port, {}, path="/batch-delete")
-
-            assert status == 302, f"Expected 302, got {status}: {body}"
+                assert status == 302, f"Expected 302, got {status}: {body}"
+                # Work happens in a background daemon thread (the handler no
+                # longer blocks on a synchronous precheck) — wait for it while
+                # the IMAP mocks are still active.
+                _wait_for_batch_idle(db_path)
         finally:
             server.shutdown()
 
-        # bd-stale-1 was removed during precheck; bd-stale-2 remains.
+        # The worker deletes every TO_DELETE record: the stale-UID one (mail
+        # gone) is dropped from the DB, and the resolvable one is expunged.
         from robotsix_auto_mail.db import get_record_by_message_id
 
         conn = init_db(db_path)
         try:
             assert get_record_by_message_id(conn, "bd-stale-1") is None
-            # bd-stale-2 is still TO_DELETE and may still be present
-            # (the background thread handles it).
+            assert get_record_by_message_id(conn, "bd-stale-2") is None
         finally:
             conn.close()
     finally:
