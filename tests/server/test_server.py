@@ -7070,3 +7070,52 @@ def test_mailboard_adapter_with_record_accounts_adds_badge_and_qs() -> None:
     assert 'action="/batch-delete"' not in col_html
     assert 'action="/batch-archive"' not in col_html
     assert 'action="/force-triage-column"' not in col_html
+
+
+def test_multi_account_delete_rule_with_account_param() -> None:
+    """POST /rule-delete?account=<id> deletes from the correct account's DB."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        # Seed and accept a rule in account A only.
+        _seed_rule_proposal(db_a, "sender", "spam@a.com", "TO_DELETE")
+        conn_a = init_db(db_a)
+        try:
+            from robotsix_auto_mail.triage import list_rule_proposals, set_rule_state
+
+            fingerprint = list_rule_proposals(conn_a, "pending")[0][0]
+            set_rule_state(conn_a, fingerprint, "accepted")
+        finally:
+            conn_a.close()
+
+        accounts = _two_account_setup(db_a, db_b)
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            resp = _post_to_path(
+                port,
+                "/rule-delete?account=A",
+                {"fingerprint": fingerprint},
+            )
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/rules?account=A"
+
+            # GET /rules?account=A — rule should be gone.
+            _s, body, _h = _get(f"http://127.0.0.1:{port}/rules?account=A")
+            assert "spam@a.com" not in body
+        finally:
+            server.shutdown()
+
+        # Verify the rule is no longer active in A's DB.
+        conn_a2 = init_db(db_a)
+        try:
+            from robotsix_auto_mail.triage import _load_active_rules, _rule_fingerprint
+
+            active = _load_active_rules(conn_a2)
+            assert not any(_rule_fingerprint(r) == fingerprint for r in active)
+        finally:
+            conn_a2.close()
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
