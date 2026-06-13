@@ -97,9 +97,3 @@ render_config  # noqa
 from robotsix_auto_mail.protocol import _ProtocolClient
 _ProtocolClient._oauth2_client_id
 _ProtocolClient._oauth2_client_secret
-
-# is_system_folder is a public helper added for the run-folder-triage
-# system-folder guard; its wiring into _handle_run_folder_triage appears
-# to have been lost (see the follow-up ticket). Whitelist until re-wired.
-from robotsix_auto_mail.imap import is_system_folder
-is_system_folder
