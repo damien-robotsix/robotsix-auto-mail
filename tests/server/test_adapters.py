@@ -1,9 +1,9 @@
 """Unit tests for ``src/robotsix_auto_mail/server/adapters.py``.
 
-Covers the six utilities that lacked dedicated tests:
+Covers the five utilities that lacked dedicated tests:
 ``_NonEmptyColumnsAdapter``, ``_run_triage_background``,
-``_batch_op_running``, ``_release_batch_op``,
-``_archive_dest_folder`` and ``_collect_records_for_action``.
+``_batch_op_running``, ``_archive_dest_folder`` and
+``_collect_records_for_action``.
 """
 
 from __future__ import annotations
@@ -18,7 +18,6 @@ from robotsix_auto_mail.server.adapters import (
     _batch_op_running,
     _collect_records_for_action,
     _NonEmptyColumnsAdapter,
-    _release_batch_op,
     _run_triage_background,
 )
 from robotsix_auto_mail.triage import set_triage_decision
@@ -172,41 +171,6 @@ class TestBatchOpRunning:
 
     def test_empty_string_is_running(self) -> None:
         assert _batch_op_running("") is True
-
-
-# ---------------------------------------------------------------------------
-# _release_batch_op
-# ---------------------------------------------------------------------------
-
-
-class TestReleaseBatchOp:
-    def test_sets_watermark_to_idle_and_closes_connection(self) -> None:
-        mock_conn = mock.MagicMock(spec=sqlite3.Connection)
-        with (
-            mock.patch(
-                "robotsix_auto_mail.db.init_db", return_value=mock_conn
-            ) as mock_init_db,
-            mock.patch("robotsix_auto_mail.db.set_watermark") as mock_set_watermark,
-        ):
-            _release_batch_op("/fake/db.sqlite")
-
-        mock_init_db.assert_called_once_with("/fake/db.sqlite", skip_migrations=True)
-        mock_set_watermark.assert_called_once_with(mock_conn, "batch_op:state", "idle")
-        mock_conn.close.assert_called_once()
-
-    def test_closes_connection_even_when_set_watermark_raises(self) -> None:
-        mock_conn = mock.MagicMock(spec=sqlite3.Connection)
-        with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
-            mock.patch(
-                "robotsix_auto_mail.db.set_watermark",
-                side_effect=RuntimeError("db down"),
-            ),
-        ):
-            with pytest.raises(RuntimeError, match="db down"):
-                _release_batch_op("/fake/db.sqlite")
-
-        mock_conn.close.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
