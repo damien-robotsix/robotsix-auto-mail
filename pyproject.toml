@@ -98,6 +98,14 @@ ignore_missing_imports = true
 # Dev deps are exempt from DEP002 (unused) regardless of whether tests/
 # actually imports them.
 optional_dependencies_dev_groups = ["dev", "docs"]
+# deptry doesn't infer the src-layout first-party package name reliably
+# (the built robotsix_auto_mail is also installed in the env), so it
+# mis-flags intra-package imports as DEP003 transitive. Declare it.
+known_first_party = ["robotsix_auto_mail"]
+# scripts/ is dev-only repo tooling (config-sync checker, etc.), not part
+# of the shipped package; its imports (e.g. PyYAML, a dev dep) shouldn't
+# be audited against the package's runtime deps.
+extend_exclude = ["scripts"]
 
 [tool.deptry.per_rule_ignores]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter-deepseek]

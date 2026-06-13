@@ -21,6 +21,7 @@ modules:
       - tests/core/test_format.py
       - pyproject.toml
       - uv.lock
+      - vulture_whitelist.py
       - .gitignore
       - .python-version
       - LICENSE
@@ -56,6 +57,7 @@ modules:
       - src/robotsix_auto_mail/cli/commands.py
       - src/robotsix_auto_mail/cli/config.py
       - tests/cli/test_cli.py
+      - tests/cli/test_cli_config.py
 
   - id: config
     description: >-
@@ -202,11 +204,20 @@ modules:
       - src/robotsix_auto_mail/server/_constants.py
       - src/robotsix_auto_mail/server/adapters.py
       - src/robotsix_auto_mail/server/handlers.py
+      - src/robotsix_auto_mail/server/_action_mixin.py
+      - src/robotsix_auto_mail/server/_batch_mixin.py
+      - src/robotsix_auto_mail/server/_board_handler_protocol.py
+      - src/robotsix_auto_mail/server/_config_mixin.py
+      - src/robotsix_auto_mail/server/_draft_mixin.py
+      - src/robotsix_auto_mail/server/_triage_mixin.py
+      - src/robotsix_auto_mail/server/_view_mixin.py
       - src/robotsix_auto_mail/server/views.py
       - src/robotsix_auto_mail/server/static/board.css
+      - src/robotsix_auto_mail/server/static/board-auto-mail.js
       - src/robotsix_auto_mail/server/board_adapter.py
       - tests/server/test_server.py
       - tests/server/test_board_adapter.py
+      - tests/server/test_adapters.py
       - scripts/smoke_board.sh
 
   - id: docs
