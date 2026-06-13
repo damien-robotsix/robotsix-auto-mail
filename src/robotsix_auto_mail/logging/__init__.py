@@ -19,7 +19,26 @@ import os
 import sys
 
 import structlog
-from structlog.typing import Processor
+from robotsix_llmio.core import get_recording_span
+from structlog.typing import EventDict, Processor, WrappedLogger
+
+
+def _add_trace_id(
+    logger: WrappedLogger, method_name: str, event_dict: EventDict
+) -> EventDict:
+    """Stamp the active OpenTelemetry trace id onto *event_dict*.
+
+    Mirrors ``robotsix_llmio.logging.OTelTraceFilter``: sets
+    ``event_dict["trace_id"]`` to the 32-hex-char id of the active recording
+    span, or to ``"-"`` when no span is active (or OpenTelemetry is absent).
+    """
+    span = get_recording_span()
+    if span is not None:
+        tid = getattr(span.get_span_context(), "trace_id", 0)
+        event_dict["trace_id"] = format(tid, "032x") if tid else "-"
+    else:
+        event_dict["trace_id"] = "-"
+    return event_dict
 
 
 def _resolve_level(level_name: str = "INFO") -> int:
@@ -58,6 +77,7 @@ def setup_logging(
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
+        _add_trace_id,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.TimeStamper(fmt="iso"),
     ]
