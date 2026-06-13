@@ -4263,6 +4263,44 @@ def test_mailboardadapter_archive_override_offers_folder_dropdown() -> None:
     assert '<option value="Compta">' in col
 
 
+def test_mailboardadapter_aggregate_forms_redirect_to_all_mailboxes() -> None:
+    """In the aggregate view, card actions post back to the All-mailboxes board.
+
+    The per-card form still targets the card's own account DB
+    (``?account=<id>``), but a hidden ``redirect_to`` returns the user to
+    ``/board?account=__all__`` instead of switching to that single account.
+    """
+    mid = "<test@example.com>"
+    adapter = MailBoardAdapter(
+        triage_by_mid={mid: "TO_DELETE"},
+        archive_subfolders={},
+        folder_exists={},
+        archive_root="robotsix-mail-archive",
+        unsubscribe_suggestions={},
+        record_notes={},
+        record_accounts={mid: "work"},
+        account_labels={"work": "Work"},
+    )
+    card = adapter.card_extra_html(_make_record(message_id=mid))
+    assert 'name="redirect_to" value="/board?account=__all__"' in card
+    assert "?account=work" in card  # write still routes to the card's account
+
+
+def test_mailboardadapter_single_account_has_no_aggregate_redirect() -> None:
+    """Single-account cards omit the aggregate redirect (the cookie persists)."""
+    mid = "<test@example.com>"
+    adapter = MailBoardAdapter(
+        triage_by_mid={mid: "TO_DELETE"},
+        archive_subfolders={},
+        folder_exists={},
+        archive_root="robotsix-mail-archive",
+        unsubscribe_suggestions={},
+        record_notes={},
+    )
+    card = adapter.card_extra_html(_make_record(message_id=mid))
+    assert "redirect_to" not in card
+
+
 def test_mailboardadapter_card_badges_unmatched_returns_inbox() -> None:
 
     adapter = MailBoardAdapter(

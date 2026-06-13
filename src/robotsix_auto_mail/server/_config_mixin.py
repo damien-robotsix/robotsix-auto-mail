@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs
 
+from robotsix_auto_mail.server._constants import _is_safe_redirect_path
 from robotsix_auto_mail.triage import (
     record_archive_folder_choice,
     set_archive_subfolder_override,
@@ -73,6 +74,7 @@ class _ConfigMixin:
 
         message_id = (fields.get("message_id") or [""])[0].strip()
         subfolder = (fields.get("subfolder") or [""])[0].strip()
+        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
 
         if not message_id:
             self._bad_request("Missing message_id")
@@ -104,4 +106,7 @@ class _ConfigMixin:
         finally:
             conn.close()
 
-        self._redirect("/board", code=302)
+        if redirect_to and _is_safe_redirect_path(redirect_to):
+            self._redirect(redirect_to, code=302)
+        else:
+            self._redirect("/board", code=302)

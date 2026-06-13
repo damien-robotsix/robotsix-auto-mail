@@ -191,6 +191,17 @@ class MailBoardAdapter:
         # Aggregate-mode context for this card.
         account_id = self._record_accounts.get(card.message_id)
         account_qs = _account_qs(account_id) if account_id else ""
+        # In aggregate ("All mailboxes") mode each form posts to the card's own
+        # ``?account=<id>`` so the write hits the right DB — but that also
+        # switches the account cookie, so a plain redirect to ``/board`` would
+        # land on that single account.  Send actions back to the aggregate
+        # board instead.  (Empty for single-account views, which redirect to
+        # ``/board`` and rely on the existing cookie.)
+        aggregate_redirect = (
+            '<input type="hidden" name="redirect_to" value="/board?account=__all__">'
+            if account_id
+            else ""
+        )
 
         # Account badge (aggregate mode only).
         account_badge = ""
@@ -265,6 +276,7 @@ class MailBoardAdapter:
                 ' onsubmit="return confirm('
                 "'Permanently delete this mail from mailbox and database?')\">"
                 f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+                f"{aggregate_redirect}"
                 '<button type="submit" class="delete-btn">Delete</button>'
                 "</form>"
             )
@@ -302,6 +314,7 @@ class MailBoardAdapter:
                     '<form class="archive-override-form" method="post"'
                     f' action="/archive-proposal{account_qs}">'
                     f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+                    f"{aggregate_redirect}"
                     '<input type="text" name="subfolder"'
                     f' value="{escaped_subfolder}"'
                     ' list="archive-folders"'
@@ -313,6 +326,7 @@ class MailBoardAdapter:
                     ' onsubmit="return confirm('
                     f"'Archive this mail to {display_path}?')\">"
                     f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+                    f"{aggregate_redirect}"
                     '<button type="submit" class="archive-btn">Archive</button>'
                     "</form>"
                     "</div>"
@@ -323,6 +337,7 @@ class MailBoardAdapter:
             f'<form class="board-card-move" method="{html.escape(move_method)}"'
             f' action="{html.escape(move_url)}{account_qs}">'
             f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+            f"{aggregate_redirect}"
             '<select class="board-move-select" name="triage_action">'
             f"{''.join(options_parts)}</select>"
             '<button type="submit" class="board-move-submit">Move</button>'
