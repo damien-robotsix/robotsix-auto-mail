@@ -5636,6 +5636,9 @@ def test_picker_reflects_selection() -> None:
             assert status == 200
             assert '<option value="B" selected>' in body
             assert '<option value="A" selected>' not in body
+            # Aggregate sentinel is present but not selected.
+            assert '<option value="__all__">All mailboxes</option>' in body
+            assert '<option value="__all__" selected>' not in body
         finally:
             server.shutdown()
     finally:

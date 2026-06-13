@@ -574,7 +574,9 @@ def _build_board_html(
     fetch_qs = ""
     multi_account = accounts is not None and len(accounts.ids()) >= 2
     if multi_account and accounts is not None:
-        options_parts: list[str] = []
+        options_parts: list[str] = [
+            '<option value="__all__">All mailboxes</option>'
+        ]
         for account_id in accounts.ids():
             account = accounts.get(account_id)
             display = account.label if account.label else account.account_id
