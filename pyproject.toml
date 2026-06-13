@@ -85,6 +85,7 @@ skips = ["B107"]
 
 [project.scripts]
 robotsix-auto-mail = "robotsix_auto_mail.cli:main"
+robotsix-autoupdate = "robotsix_auto_mail.autoupdate:main"
 
 [tool.mypy]
 strict = true
