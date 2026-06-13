@@ -36,6 +36,7 @@ from robotsix_auto_mail.triage.classifier import (
     _save_llm_archive_hints,
     _sender_key,
     apply_triage_rules,
+    normalize_archive_subfolder,
 )
 from robotsix_auto_mail.triage.persistence import (
     TriageDecision,
@@ -499,7 +500,7 @@ def _update_archive_hints(
     for i, record in enumerate(remaining, start=1):
         matched = by_index.get(i)
         if matched is not None and matched.action == "TO_ARCHIVE":
-            sub = (matched.archive_subfolder or "").strip()
+            sub = normalize_archive_subfolder(matched.archive_subfolder or "")
             if sub:
                 hints[record.message_id] = sub
     _save_llm_archive_hints(conn, hints)

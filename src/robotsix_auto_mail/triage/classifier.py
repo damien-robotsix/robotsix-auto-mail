@@ -51,6 +51,40 @@ from robotsix_auto_mail.triage.persistence import (
 # Archive subfolder proposal — deterministic + override storage
 # ---------------------------------------------------------------------------
 
+#: A leading path segment the LLM tends to echo back: the archive root itself
+#: (``robotsix-mail-archive``) or a near-miss typo of it.  Stripped so a
+#: proposal never double-prefixes when joined under the archive root.
+_ARCHIVE_ROOT_SEGMENT_RE = re.compile(r".*mail-archive$", re.IGNORECASE)
+
+
+def normalize_archive_subfolder(subfolder: str) -> str:
+    """Normalise an archive-subfolder proposal to a clean RELATIVE path.
+
+    Guards against two LLM misbehaviours seen in real proposals:
+
+    * **echoing the archive root** (``robotsix-mail-archive/Billing``, or a
+      typo like ``robosix-mail-archive/Billing``) — a leading root-like
+      segment is dropped so callers that join the result under the archive
+      root do not produce ``robotsix-mail-archive/robotsix-mail-archive/…``;
+    * **returning a triage action** (``TO_DELETE``, ``TO_ARCHIVE`` …) as a
+      folder name — any such segment is dropped, so mail is never filed into
+      a triage-action-named folder.
+
+    Returns a ``/``-separated relative path, or ``""`` (archive into the
+    root) when nothing meaningful remains.
+    """
+    segments = [seg.strip() for seg in subfolder.strip().split("/")]
+    cleaned: list[str] = []
+    for index, seg in enumerate(segments):
+        if not seg:
+            continue
+        if index == 0 and _ARCHIVE_ROOT_SEGMENT_RE.match(seg):
+            continue
+        if seg.upper() in VALID_TRIAGE_ACTIONS:
+            continue
+        cleaned.append(seg)
+    return "/".join(cleaned)
+
 
 def propose_archive_subfolder(record: MailRecord) -> str:
     """Derive a sensible archive subfolder path for *record*.
@@ -199,22 +233,22 @@ def get_archive_subfolder(
     # 1. User override
     overrides = _load_archive_overrides(conn)
     if message_id in overrides:
-        return overrides[message_id]
+        return normalize_archive_subfolder(overrides[message_id])
 
     # 2. LLM hint (previously persisted)
     hints = _load_llm_archive_hints(conn)
     if message_id in hints:
-        return hints[message_id]
+        return normalize_archive_subfolder(hints[message_id])
 
     # 3. On-the-fly LLM proposal (NEW)
     if api_key:
         propose_archive_subfolder_llm(conn, record, api_key)
         hints = _load_llm_archive_hints(conn)  # re-read after persist
         if message_id in hints:
-            return hints[message_id]
+            return normalize_archive_subfolder(hints[message_id])
 
     # 4. Deterministic fallback (stripped-down)
-    return propose_archive_subfolder(record)
+    return normalize_archive_subfolder(propose_archive_subfolder(record))
 
 
 def set_archive_subfolder_override(
@@ -352,9 +386,9 @@ def propose_archive_subfolder_llm(
             return  # LLM call failed → silently return
 
         proposed: ArchiveSubfolderProposal = result.output
-        subfolder = proposed.subfolder.strip()
+        subfolder = normalize_archive_subfolder(proposed.subfolder)
         if not subfolder:
-            return  # Empty proposal → don't pollute the watermark
+            return  # Empty / root-only / action-only proposal → don't persist
 
         # -- persist the hint --
         hints = _load_llm_archive_hints(conn)

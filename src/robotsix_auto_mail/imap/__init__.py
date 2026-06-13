@@ -11,6 +11,7 @@ Python standard library (``imaplib``, ``ssl``).
 
 from __future__ import annotations
 
+import base64
 import dataclasses
 import imaplib
 import re
@@ -31,6 +32,94 @@ _IMAP4_ERROR = imaplib.IMAP4.error
 # round-trip by the batched delete/move primitives.  A 518-mail column then
 # costs at most six round-trip pairs instead of one per message.
 _BATCH_UID_CHUNK = 100
+
+# Gmail rejects a normal account password over IMAP; only an App Password
+# (with 2-Step Verification enabled) or OAuth2 works.  Appended to the auth
+# error when a plain-login attempt against a Gmail host fails, so the user is
+# pointed at the right credential instead of the opaque server message.
+_GMAIL_AUTH_HINT = (
+    "\nGmail does not accept your normal account password over IMAP. Enable "
+    "IMAP in Gmail settings, turn on 2-Step Verification, then create a "
+    "16-character App Password at https://myaccount.google.com/apppasswords "
+    "and use that as the password (or configure OAuth2)."
+)
+
+
+def _is_gmail_host(host: str) -> bool:
+    """Return ``True`` when *host* is a Google / Gmail IMAP endpoint.
+
+    Covers both consumer Gmail and Google Workspace, which share the
+    ``imap.gmail.com`` / ``imap.googlemail.com`` hosts.
+    """
+    normalized = host.strip().rstrip(".").lower()
+    return normalized.endswith("gmail.com") or normalized.endswith("googlemail.com")
+
+
+# ---------------------------------------------------------------------------
+# Modified UTF-7 (RFC 3501 §5.1.3) — IMAP mailbox-name encoding
+# ---------------------------------------------------------------------------
+#
+# stdlib ``imaplib`` encodes command arguments as ASCII, so a mailbox name
+# with non-ASCII characters (e.g. ``Préfecture``) raises ``UnicodeEncodeError``
+# before it ever reaches the wire.  IMAP mandates "modified UTF-7": printable
+# ASCII passes through verbatim (with ``&`` written ``&-``); any other run of
+# characters is the modified-BASE64 of its UTF-16BE bytes, delimited by ``&``
+# and ``-``, using ``,`` in place of ``/``.  Pure-ASCII names without ``&`` are
+# unchanged, so encoding is a no-op for the common case.
+
+
+def _modified_b64encode(text: str) -> str:
+    encoded = base64.b64encode(text.encode("utf-16-be")).decode("ascii")
+    return encoded.rstrip("=").replace("/", ",")
+
+
+def _modified_b64decode(chunk: str) -> str:
+    data = chunk.replace(",", "/")
+    data += "=" * (-len(data) % 4)  # restore stripped BASE64 padding
+    return base64.b64decode(data).decode("utf-16-be")
+
+
+def imap_utf7_encode(name: str) -> str:
+    """Encode a mailbox *name* to IMAP modified UTF-7."""
+    out: list[str] = []
+    run: list[str] = []
+
+    def _flush() -> None:
+        if run:
+            out.append("&" + _modified_b64encode("".join(run)) + "-")
+            run.clear()
+
+    for ch in name:
+        if 0x20 <= ord(ch) <= 0x7E:
+            _flush()
+            out.append("&-" if ch == "&" else ch)
+        else:
+            run.append(ch)
+    _flush()
+    return "".join(out)
+
+
+def imap_utf7_decode(name: str) -> str:
+    """Decode an IMAP modified-UTF-7 mailbox *name* back to Unicode."""
+    if "&" not in name:
+        return name  # fast path: nothing to decode
+    out: list[str] = []
+    i = 0
+    while i < len(name):
+        ch = name[i]
+        if ch != "&":
+            out.append(ch)
+            i += 1
+            continue
+        end = name.find("-", i + 1)
+        if end == -1:  # malformed; pass the remainder through verbatim
+            out.append(name[i:])
+            break
+        chunk = name[i + 1 : end]
+        out.append("&" if chunk == "" else _modified_b64decode(chunk))
+        i = end + 1
+    return "".join(out)
+
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -93,6 +182,38 @@ class MailboxInfo:
     delimiter: str
 
 
+#: SPECIAL-USE mailbox attributes (RFC 6154), plus Gmail's non-standard
+#: ``\Important`` and the ``\Noselect`` container flag.  A mailbox carrying
+#: any of these is a system folder — Gmail surfaces ``[Gmail]/All Mail``,
+#: ``[Gmail]/Sent Mail``, ``[Gmail]/Trash`` … (and the ``\Noselect``
+#: ``[Gmail]`` parent node) this way — not an archive-topic folder.  Stored
+#: lower-cased for case-insensitive matching.
+_SPECIAL_USE_ATTRIBUTES = frozenset(
+    {
+        "\\all",
+        "\\archive",
+        "\\drafts",
+        "\\flagged",
+        "\\junk",
+        "\\sent",
+        "\\trash",
+        "\\important",
+        "\\noselect",
+    }
+)
+
+
+def is_special_use(info: MailboxInfo) -> bool:
+    """Return ``True`` when *info* is a system / special-use mailbox.
+
+    Recognises RFC 6154 SPECIAL-USE attributes (``\\All``, ``\\Sent``,
+    ``\\Drafts``, ``\\Trash``, ``\\Junk``, ``\\Flagged``, ``\\Archive``),
+    Gmail's non-standard ``\\Important``, and ``\\Noselect`` container nodes
+    such as Gmail's ``[Gmail]`` parent.  Matching is case-insensitive.
+    """
+    return any(attr.lower() in _SPECIAL_USE_ATTRIBUTES for attr in info.attributes)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -143,7 +264,7 @@ def _parse_list_line(line: bytes) -> MailboxInfo:
     delimiter = "" if tokens[0].upper() == "NIL" else tokens[0]
 
     # -- name ------------------------------------------------------------
-    name = tokens[1]
+    name = imap_utf7_decode(tokens[1])
 
     return MailboxInfo(name=name, attributes=attributes, delimiter=delimiter)
 
@@ -400,16 +521,22 @@ class ImapClient(_ProtocolClient):
             raise RuntimeError("_authenticate() called before _connect_*()")
         if self._token_provider is not None:
             self._oauth2_token = self._token_provider()
+        used_oauth2 = self._token_provider is not None or bool(self._oauth2_token)
         try:
-            if self._token_provider is not None or self._oauth2_token:
+            if used_oauth2:
                 self._imap.authenticate("XOAUTH2", self._imap_xoauth2_cb)
             else:
                 self._imap.login(self._username, self._password)
         except _IMAP4_ERROR as exc:
-            raise ImapAuthError(
+            message = (
                 f"Authentication failed for user {self._username!r} "
                 f"on {self._host}:{self._port}: {exc}"
-            ) from exc
+            )
+            # A plain-password rejection from Gmail almost always means the
+            # user supplied their normal password instead of an App Password.
+            if not used_oauth2 and _is_gmail_host(self._host):
+                message += _GMAIL_AUTH_HINT
+            raise ImapAuthError(message) from exc
 
     def _imap_xoauth2_cb(self, challenge: bytes) -> bytes | None:
         """SASL XOAUTH2 callback for ``imaplib.IMAP4.authenticate()``.
@@ -474,7 +601,7 @@ class ImapClient(_ProtocolClient):
         """
         if self._imap is None:
             raise ImapError("Not connected")
-        status, data = self._imap.select(name)
+        status, data = self._imap.select(imap_utf7_encode(name))
         if status != "OK":
             raise ImapError(f"SELECT '{name}' failed: {status}")
         if data and data[0]:
@@ -506,7 +633,7 @@ class ImapClient(_ProtocolClient):
         """
         if self._imap is None:
             raise ImapError("Not connected")
-        status, _data = self._imap.create(name)
+        status, _data = self._imap.create(imap_utf7_encode(name))
         if status == "OK":
             self._subscribe(name)
             return
@@ -531,7 +658,7 @@ class ImapClient(_ProtocolClient):
         if self._imap is None:
             return
         try:
-            self._imap.subscribe(name)
+            self._imap.subscribe(imap_utf7_encode(name))
         except Exception:  # noqa: S110  # nosec B110
             pass
 
@@ -694,7 +821,7 @@ class ImapClient(_ProtocolClient):
             )
 
         # Copy to destination.
-        status, data = self._imap.uid("COPY", str(uid), dest_folder)
+        status, data = self._imap.uid("COPY", str(uid), imap_utf7_encode(dest_folder))
         if status != "OK":
             raise ImapError(f"UID COPY of {uid} to {dest_folder!r} failed: {status}")
 
@@ -794,7 +921,9 @@ class ImapClient(_ProtocolClient):
 
             valid_set = ",".join(str(uid) for uid in valid_uids)
 
-            status, data = self._imap.uid("COPY", valid_set, dest_folder)
+            status, data = self._imap.uid(
+                "COPY", valid_set, imap_utf7_encode(dest_folder)
+            )
             if status != "OK":
                 raise ImapError(
                     f"UID COPY of {valid_set!r} to {dest_folder!r} failed: {status}"

@@ -24,7 +24,7 @@ from robotsix_llmio.core import Tier, run_agent
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.db import get_watermark, set_watermark
-from robotsix_auto_mail.imap import ImapClient
+from robotsix_auto_mail.imap import ImapClient, is_special_use
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -229,10 +229,16 @@ def setup_archive(
     delimiter = next((f.delimiter for f in existing if f.delimiter), "/")
 
     # -- determine relative sub-paths (LLM, or fall back to root only) --
+    # System / special-use mailboxes (Gmail's ``[Gmail]/All Mail``, ``Sent
+    # Mail``, ``Trash`` … and the ``[Gmail]`` parent, plus any RFC 6154
+    # special-use folder) are not archive-topic folders, so they are excluded
+    # from the layout the LLM proposes.  For non-Gmail mailboxes, whose
+    # folders carry no special-use attributes, this filter is a no-op.
+    informational_folders = [f.name for f in existing if not is_special_use(f)]
     resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
     if resolved_key:
         subpaths = determine_archive_structure(
-            [f.name for f in existing],
+            informational_folders,
             archive_root=archive_root,
             api_key=resolved_key,
             provider=provider,

@@ -59,6 +59,7 @@ from robotsix_auto_mail.triage import (
     get_triage_decision,
     list_rule_proposals,
     list_triage_decisions,
+    normalize_archive_subfolder,
     propose_archive_subfolder,
     propose_archive_subfolder_llm,
     propose_triage_rules,
@@ -1543,6 +1544,34 @@ def test_propose_sanitises_special_chars() -> None:
     )
     # List rule wins: "My List!!!" → sanitised to "my-list"
     assert propose_archive_subfolder(record) == "Lists/my-list"
+
+
+# ---------------------------------------------------------------------------
+# normalize_archive_subfolder
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Billing", "Billing"),  # already relative → unchanged
+        ("Administratif/Préfecture-44", "Administratif/Préfecture-44"),
+        ("  Billing  ", "Billing"),  # trimmed
+        ("/Billing/", "Billing"),  # stray slashes
+        ("", ""),
+        # echoed archive root prefix is stripped (not double-prefixed)
+        ("robotsix-mail-archive/Billing", "Billing"),
+        ("robotsix-mail-archive/LS2N/sub", "LS2N/sub"),
+        ("robotsix-mail-archive", ""),  # root only → keep in root
+        ("robosix-mail-archive/Billing", "Billing"),  # LLM typo of the root
+        # triage-action tokens are never used as folder names
+        ("TO_DELETE", ""),
+        ("TO_ARCHIVE/Billing", "Billing"),
+        ("Billing/TO_DELETE", "Billing"),
+    ],
+)
+def test_normalize_archive_subfolder(raw: str, expected: str) -> None:
+    assert normalize_archive_subfolder(raw) == expected
 
 
 # ---------------------------------------------------------------------------
