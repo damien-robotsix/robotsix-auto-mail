@@ -23,37 +23,10 @@ from robotsix_auto_mail.triage import (
 class _BoardActionMixin:
     """Mixin providing POST action handlers for the board server."""
 
-    # -- mypy: declare attributes and methods provided by BoardHandler ---
     if TYPE_CHECKING:
-        from collections.abc import Mapping as _Mapping
+        from ._board_handler_protocol import BoardHandlerProtocol
 
-        from robotsix_auto_mail.config import (
-            MailAccountsConfig as _MailAccountsConfig,
-        )
-        from robotsix_auto_mail.config import (
-            MailConfig as _MailConfig,
-        )
-
-        db_path: str
-        mail_config: _MailConfig | None
-        accounts: _MailAccountsConfig | None
-        _current_account_id: str | None
-        _aggregate: bool
-        _account_cookie: str | None
-        default_account_id: str | None
-
-        def _send_response(
-            self,
-            body: bytes | str,
-            status: int = 200,
-            content_type: str = "text/plain; charset=utf-8",
-        ) -> None: ...
-        def _redirect(self, location: str, code: int = 301) -> None: ...
-        def _not_found(self) -> None: ...
-        def _bad_request(self, message: str) -> None: ...
-        def _serve_json(
-            self, payload: _Mapping[str, object], status: int = 200
-        ) -> None: ...
+    self: BoardHandlerProtocol
 
     def _handle_move(self) -> None:
         """Process POST /move — update a card's triage decision and redirect."""
