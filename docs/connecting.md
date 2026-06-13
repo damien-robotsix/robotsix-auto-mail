@@ -276,6 +276,8 @@ auth:
 | `logging.format` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
 | `logging.file_dir` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |
 
+**Trace ID injection.** Every log event automatically includes a `trace_id` field that correlates logs with OpenTelemetry / Langfuse recordings. When a Langfuse trace is active (see `langfuse.public_key` / `langfuse.secret_key` above), the `trace_id` is stamped as a 32-character lowercase hexadecimal string; when no trace is active (or OpenTelemetry is absent), it is set to `"-"`. This is transparent — no configuration is needed — and applies to both `json` and `console` log formats.
+
 > **Multi-account note:** In the multi-account shape (``accounts:`` list),
 > ``llm:`` and ``langfuse:`` are **top-level** sections (alongside
 > ``default_account:``), not per-account.  See
