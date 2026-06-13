@@ -162,6 +162,7 @@ modules:
     paths:
       - src/robotsix_auto_mail/parser/__init__.py
       - tests/parser/test_parser.py
+      - tests/parser/test_parser_properties.py
 
   - id: pipeline
     description: >-

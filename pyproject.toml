@@ -20,6 +20,7 @@ dev = [
     "mypy",
     "pytest",
     "pytest-cov>=7.1.0",
+    "hypothesis>=6",
     "deptry",
     "hatchling",
     # pyyaml is no longer used by the package itself (YAML loading is delegated
@@ -69,6 +70,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
     "integration: tests that require a real or emulated network service (IMAP, SMTP, HTTP)",
+    "slow: heavier property-based / fuzz tests (large example counts)",
 ]
 
 [tool.coverage.run]
