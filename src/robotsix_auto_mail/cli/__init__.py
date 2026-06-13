@@ -268,6 +268,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Fetch and parse messages without storing; skip the triage pass.",
     )
+    triage_folder_parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Allow triage on special-use folders (Sent, Drafts, Trash, Junk).",
+    )
 
     triage_set_parser = sub.add_parser(
         "triage-set",
