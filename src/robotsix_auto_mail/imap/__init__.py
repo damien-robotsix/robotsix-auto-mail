@@ -177,6 +177,60 @@ def resolve_uid_with_fallback(
     )
 
 
+_WASTE_FOLDER_PATTERNS: frozenset[str] = frozenset(
+    {
+        "trash",
+        "deleted items",
+        "deleted messages",
+        "bin",
+        "papierkorb",
+        "gelöschte objekte",
+        "éléments supprimés",
+        "elementi eliminati",
+        "junk",
+        "spam",
+        "bulk mail",
+        "junk e-mail",
+        "courrier indésirable",
+    }
+)
+
+
+def _is_waste_folder(name: str) -> bool:
+    """Return ``True`` when *name* is a Trash or Junk folder.
+
+    Case-insensitive substring match against a frozen set of known
+    patterns covering English, German, French, and Italian.
+    """
+    lowered = name.lower()
+    return any(pattern in lowered for pattern in _WASTE_FOLDER_PATTERNS)
+
+
+def cross_folder_resolve(
+    client: "ImapClient",
+    message_id: str,
+) -> tuple[str, int] | None:
+    """Search all non-waste folders for *message_id* via its header.
+
+    Calls ``list_folders()``, skips folders where
+    ``_is_waste_folder(name)`` is ``True``, selects each remaining folder
+    and runs ``UID SEARCH HEADER Message-ID``.  Returns ``(folder_name,
+    uid)`` for the first match, or ``None`` when no non-waste folder
+    contains the message.
+
+    Propagates ``ImapError`` (and subclasses) on connection/auth/protocol
+    failures — it never swallows transient errors.
+    """
+    for folder in client.list_folders():
+        if _is_waste_folder(folder.name):
+            continue
+        client.select_folder(folder.name)
+        uids = client.search_uids(f'HEADER Message-ID "{message_id}"')
+        if uids:
+            return (folder.name, uids[0])
+    return None
+
+
 # ---------------------------------------------------------------------------
 # System folder detection
 # ---------------------------------------------------------------------------
