@@ -2193,11 +2193,6 @@ def test_triage_error_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     assert "llm exploded" in err
 
 
-# ---------------------------------------------------------------------------
-# triage-folder subcommand
-# ---------------------------------------------------------------------------
-
-
 def test_triage_set_success(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """triage-set records a user decision and exits 0."""
     from robotsix_auto_mail.db import init_db as real_init_db
