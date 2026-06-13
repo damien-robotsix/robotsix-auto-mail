@@ -1,0 +1,8 @@
+# Per-repo periodic workflow: presence enables agent_check for this repo.
+# Name-only -> inherits the built-in agent_check definition from
+# robotsix-mill (agent_definitions/periodic/agent_check.yaml). Audits this
+# repo's LLM agent/tool definitions (triage, config-drift, draft-reply,
+# archive, classifier sub-agents) for tool-prompt mismatches, registration
+# completeness, prompt self-consistency, metadata correctness, and
+# memory-ledger coherence.
+name: agent_check
