@@ -32,6 +32,8 @@ dev = [
     # check registration of docs/modules.yaml. It is tooling only (never imported
     # by the package), so it lives in the dev extra (exempt from deptry DEP002).
     "robotsix-modules",
+    # vulture: dead-code detection (CI + pre-commit gate).
+    "vulture>=2.16",
 ]
 llm = [
     "robotsix-llmio[openrouter-deepseek,tracing]",
@@ -101,6 +103,13 @@ optional_dependencies_dev_groups = ["dev", "docs"]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter-deepseek]
 # (declared in the [llm] extra); the lazy import in detect.py is intentional.
 DEP003 = ["pydantic_ai"]
+
+[tool.vulture]
+paths = ["src/robotsix_auto_mail"]
+# ``log_message`` overrides the stdlib handler and discards every parameter;
+# ``format`` shadows the builtin and cannot be whitelisted via a file-level
+# reference (it is a local inside a method body).
+ignore_names = ["format"]
 
 [tool.uv.sources]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }

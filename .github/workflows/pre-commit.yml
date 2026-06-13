@@ -27,4 +27,4 @@ jobs:
           # (hadolint-docker/check-config-sync/robotsix-modules-validate),
           # leaving this job responsible only for the hooks with no other
           # CI coverage: detect-secrets, file-hygiene, private-key, large-files.
-          SKIP: ruff,ruff-format,mypy,bandit,hadolint-docker,check-config-sync,robotsix-modules-validate
+          SKIP: ruff,ruff-format,mypy,bandit,hadolint-docker,check-config-sync,robotsix-modules-validate,vulture
