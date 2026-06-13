@@ -272,6 +272,9 @@ auth:
 | `langfuse.public_key` | no | – | Langfuse public key; when set with the secret key, every LLM agent run is traced |
 | `langfuse.secret_key` | no | – | Langfuse secret key (redacted in logs/repr) |
 | `langfuse.base_url` | no | – | Langfuse host URL (falls back to llmio's own default when unset) |
+| `logging.level` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `logging.format` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
+| `logging.file_dir` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |
 
 > **Multi-account note:** In the multi-account shape (``accounts:`` list),
 > ``llm:`` and ``langfuse:`` are **top-level** sections (alongside
@@ -318,6 +321,7 @@ supplies the real keys there without committing them.
 | `LANGFUSE_BASE_URL` | no | – | Langfuse host URL (overrides `langfuse.base_url`) |
 | `LOG_LEVEL` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `LOG_FORMAT` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
+| `LOG_FILE_DIR` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |
 
 **TLS modes**
 

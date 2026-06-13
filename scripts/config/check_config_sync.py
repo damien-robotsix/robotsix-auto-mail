@@ -74,6 +74,9 @@ FIELD_TO_YAML: dict[str, str] = {
     "langfuse_public_key": "langfuse.public_key",
     "langfuse_secret_key": "langfuse.secret_key",
     "langfuse_base_url": "langfuse.base_url",
+    "log_level": "logging.level",
+    "log_format": "logging.format",
+    "log_file_dir": "logging.file_dir",
 }
 
 FIELD_TO_ENV: dict[str, str] = {
@@ -102,6 +105,9 @@ FIELD_TO_ENV: dict[str, str] = {
     "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
     "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
     "langfuse_base_url": "LANGFUSE_BASE_URL",
+    "log_level": "LOG_LEVEL",
+    "log_format": "LOG_FORMAT",
+    "log_file_dir": "LOG_FILE_DIR",
 }
 
 # ---------------------------------------------------------------------------
@@ -124,10 +130,6 @@ _PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
 _ENV_EXCLUDE_STALE: frozenset[str] = frozenset(
     {
         "MAIL_CONFIG_PATH",
-        # Logging env vars are read directly by ``logging_config.setup_logging``
-        # (via ``os.environ``) and are intentionally not ``MailConfig`` fields.
-        "LOG_LEVEL",
-        "LOG_FORMAT",
     }
 )
 

@@ -377,9 +377,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    setup_logging()
-
-    # -- enable Langfuse tracing when credentials are configured --
+    # -- load configuration (env → YAML cascade) --
     from robotsix_auto_mail import config as _config
     from robotsix_auto_mail.tracing import init_langfuse_tracing
 
@@ -387,6 +385,18 @@ def main(argv: list[str] | None = None) -> int:
         _loaded_cfg = _config.load()
     except Exception:
         _loaded_cfg = None
+
+    # -- configure logging from config (or defaults) --
+    if _loaded_cfg is not None:
+        setup_logging(
+            level=_loaded_cfg.log_level,
+            log_format=_loaded_cfg.log_format,
+            log_file_dir=_loaded_cfg.log_file_dir,
+        )
+    else:
+        setup_logging()
+
+    # -- enable Langfuse tracing when credentials are configured --
     init_langfuse_tracing(_loaded_cfg)
 
     if args.command == "probe":

@@ -85,6 +85,11 @@ accounts:
     # Inbox triage agent — runs automatically after each ingest cycle.
     # triage:
     #   on_ingest: true
+    # Logging configuration — application-wide.
+    # logging:
+    #   level: INFO
+    #   format: console
+    #   file_dir: .mail_log
 
   - id: work
     label: Work
@@ -127,6 +132,9 @@ LLM_PROVIDER=openrouter-deepseek
 LANGFUSE_PUBLIC_KEY=
 LANGFUSE_SECRET_KEY=
 LANGFUSE_BASE_URL=
+LOG_LEVEL=INFO
+LOG_FORMAT=console
+LOG_FILE_DIR=.mail_log
 """
 
 _ACCOUNTS_EXAMPLE = """\
@@ -185,6 +193,9 @@ _DOCS_YAML_TABLE = """\
 | `langfuse.public_key` | no | - | Langfuse public key for LLM tracing |
 | `langfuse.secret_key` | no | - | Langfuse secret key for LLM tracing |
 | `langfuse.base_url` | no | - | Langfuse base URL for LLM tracing |
+| `logging.level` | no | `INFO` | Log level |
+| `logging.format` | no | `console` | Log format |
+| `logging.file_dir` | no | `.mail_log` | Log file directory |
 """
 
 _DOCS_ENV_TABLE = """\
@@ -218,6 +229,9 @@ _DOCS_ENV_TABLE = """\
 | `LANGFUSE_PUBLIC_KEY` | no | - | Langfuse public key for LLM tracing |
 | `LANGFUSE_SECRET_KEY` | no | - | Langfuse secret key for LLM tracing |
 | `LANGFUSE_BASE_URL` | no | - | Langfuse base URL for LLM tracing |
+| `LOG_LEVEL` | no | `INFO` | Log level |
+| `LOG_FORMAT` | no | `console` | Log format |
+| `LOG_FILE_DIR` | no | `.mail_log` | Log file directory |
 """
 
 
