@@ -17,8 +17,10 @@ from robotsix_auto_mail.db import (
     insert_record,
 )
 from robotsix_auto_mail.draft import (
+    _BODY_CHAR_LIMIT,
     DraftGenerationError,
     DraftResult,
+    _build_draft_system_prompt,
     _build_draft_user_message,
     generate_draft_reply,
 )
@@ -116,3 +118,64 @@ def test_generate_draft_reply_missing_record_raises() -> None:
             generate_draft_reply(conn, "does-not-exist", api_key="sk-test")
     finally:
         conn.close()
+
+
+def test_build_draft_system_prompt_contains_required_keywords() -> None:
+    """The system prompt is non-empty and includes key instructions."""
+    prompt = _build_draft_system_prompt()
+    assert isinstance(prompt, str)
+    assert len(prompt) > 0
+    # Expected keywords from the prompt rules:
+    for keyword in ("LANGUAGE", "draft_text", "placeholder", "professional"):
+        assert keyword in prompt, f"Missing keyword in system prompt: {keyword}"
+
+
+def test_generate_draft_reply_llm_error_propagates() -> None:
+    """LLM failure raises DraftGenerationError wrapping the original."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "mid-err")
+        _, patcher = _patch_llm(DraftResult(draft_text="irrelevant"))
+        # Make run_agent raise a non-DraftGenerationError exception
+        run_agent_patch = mock.patch(
+            "robotsix_llmio.core.run_agent",
+            side_effect=ValueError("LLM timeout"),
+        )
+        with patcher, run_agent_patch:
+            with pytest.raises(DraftGenerationError, match="LLM timeout"):
+                generate_draft_reply(conn, "mid-err", api_key="sk-test")
+    finally:
+        conn.close()
+
+
+def test_build_draft_user_message_truncates_long_body() -> None:
+    """A body exceeding _BODY_CHAR_LIMIT is truncated in the user message."""
+    conn = init_db(":memory:")
+    try:
+        long_body = "x" * (_BODY_CHAR_LIMIT + 500)
+        _insert_inbox(conn, "mid-long", body_plain=long_body)
+        record = get_record_by_message_id(conn, "mid-long")
+        assert record is not None
+        message = _build_draft_user_message(record)
+        # The truncated body should appear in the message, but the full one
+        # should not.
+        expected_truncated = long_body[:_BODY_CHAR_LIMIT]
+        assert expected_truncated in message
+        assert long_body not in message
+        # The message must be shorter than the original body + framing
+        assert len(message) < len(long_body)
+    finally:
+        conn.close()
+
+
+def test_draft_result_requires_draft_text() -> None:
+    """DraftResult enforces that draft_text is required."""
+    from pydantic import ValidationError
+
+    DraftResult(draft_text="hello")  # valid — should not raise
+
+    with pytest.raises(ValidationError):
+        DraftResult()  # type: ignore[call-arg]
+
+    with pytest.raises(ValidationError):
+        DraftResult(draft_text=123)  # type: ignore[arg-type]
