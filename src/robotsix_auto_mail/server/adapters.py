@@ -194,11 +194,13 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
         delete_record_by_message_id,
         init_db,
         set_watermark,
+        update_record_source,
     )
     from robotsix_auto_mail.imap import (
         _BATCH_UID_CHUNK,
         ImapClient,
         ImapMessageNotFoundError,
+        cross_folder_resolve,
         resolve_uid_with_fallback,
     )
 
@@ -241,9 +243,18 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                                     r.message_id,
                                 )
                             except ImapMessageNotFoundError:
-                                # UID truly gone — skip IMAP, still
-                                # delete from DB below.
-                                resolved.append((r, 0))
+                                cross = cross_folder_resolve(client, r.message_id)
+                                if cross is not None:
+                                    new_folder, new_uid = cross
+                                    update_record_source(
+                                        conn,
+                                        r.message_id,
+                                        source_folder=new_folder,
+                                        imap_uid=new_uid,
+                                    )
+                                    resolved.append((r, new_uid))
+                                else:
+                                    resolved.append((r, 0))
                             else:
                                 resolved.append((r, new_uid))
 
@@ -302,10 +313,12 @@ def _run_batch_archive_background(
         delete_record_by_message_id,
         init_db,
         set_watermark,
+        update_record_source,
     )
     from robotsix_auto_mail.imap import (
         ImapClient,
         ImapMessageNotFoundError,
+        cross_folder_resolve,
         resolve_uid_with_fallback,
     )
     from robotsix_auto_mail.triage import get_archive_subfolder
@@ -369,8 +382,18 @@ def _run_batch_archive_background(
                                 r.message_id,
                             )
                         except ImapMessageNotFoundError:
-                            # UID gone — skip IMAP, still delete DB row.
-                            continue
+                            cross = cross_folder_resolve(client, r.message_id)
+                            if cross is not None:
+                                new_folder, new_uid = cross
+                                update_record_source(
+                                    conn,
+                                    r.message_id,
+                                    source_folder=new_folder,
+                                    imap_uid=new_uid,
+                                )
+                                resolved_uids.append(new_uid)
+                            # else: UID truly gone — skip IMAP,
+                            # still delete DB row.
                         resolved_uids.append(new_uid)
 
                     if resolved_uids:

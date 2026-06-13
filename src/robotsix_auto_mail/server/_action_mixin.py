@@ -133,16 +133,28 @@ class _BoardActionMixin:
                             record.message_id,
                         )
                         client.delete_message(resolved_uid)
-                except ImapMessageNotFoundError as exc:
-                    folder_label = record.source_folder or "its source folder"
-                    self._send_response(
-                        f"Message {message_id} is no longer in "
-                        f"{folder_label} — the tracked UID is stale, "
-                        f"so it was not deleted and the board record "
-                        f"was kept: {exc}",
-                        status=409,
-                    )
-                    return
+                except ImapMessageNotFoundError:
+                    from robotsix_auto_mail.db import update_record_source
+                    from robotsix_auto_mail.imap import cross_folder_resolve
+
+                    try:
+                        with ImapClient(self.mail_config) as client2:
+                            cross = cross_folder_resolve(client2, record.message_id)
+                            if cross is not None:
+                                new_folder, new_uid = cross
+                                update_record_source(
+                                    conn,
+                                    message_id,
+                                    source_folder=new_folder,
+                                    imap_uid=new_uid,
+                                )
+                                client2.delete_message(new_uid)
+                    except (ImapError, OSError) as exc:
+                        self._send_response(
+                            f"IMAP cross-folder resolution failed: {exc}",
+                            status=502,
+                        )
+                        return
                 except (ImapError, OSError) as exc:
                     self._send_response(
                         f"IMAP deletion failed: {exc}",
@@ -278,16 +290,73 @@ class _BoardActionMixin:
             except ValueError as exc:
                 self._bad_request(str(exc))
                 return False
-            except ImapMessageNotFoundError as exc:
-                folder_label = record.source_folder or "its source folder"
-                self._send_response(
-                    f"Message {record.message_id} is no longer in "
-                    f"{folder_label} — the tracked UID is stale, so "
-                    f"it was not archived and the board record was "
-                    f"kept: {exc}",
-                    status=409,
+            except ImapMessageNotFoundError:
+                from robotsix_auto_mail.db import (
+                    delete_record_by_message_id,
+                    update_record_source,
                 )
-                return False
+                from robotsix_auto_mail.imap import (
+                    ImapClient,
+                    cross_folder_resolve,
+                )
+
+                try:
+                    with ImapClient(self.mail_config) as client2:
+                        cross = cross_folder_resolve(client2, record.message_id)
+                        if cross is not None:
+                            new_folder, new_uid = cross
+                            update_record_source(
+                                conn,
+                                record.message_id,
+                                source_folder=new_folder,
+                                imap_uid=new_uid,
+                            )
+                            # Compute the archive destination.
+                            delimiter = next(
+                                (
+                                    f.delimiter
+                                    for f in client2.list_folders()
+                                    if f.delimiter
+                                ),
+                                "/",
+                            )
+                            if subfolder:
+                                translated = subfolder.replace("/", delimiter)
+                                dest_folder = f"{effective_root}{delimiter}{translated}"
+                            else:
+                                dest_folder = effective_root
+                            # Security gate (mirrors
+                            # _imap_archive_move).
+                            root_prefix = f"{effective_root}{delimiter}"
+                            if (
+                                dest_folder != effective_root
+                                and not dest_folder.startswith(root_prefix)
+                            ):
+                                raise ValueError(
+                                    "Archive destination escapes archive root"
+                                )
+                            if ".." in dest_folder.split(delimiter):
+                                raise ValueError(
+                                    "Archive destination contains '..' path segment"
+                                )
+                            # Ensure destination hierarchy exists.
+                            parts = dest_folder.split(delimiter)
+                            for i in range(1, len(parts) + 1):
+                                client2.create_folder(delimiter.join(parts[:i]))
+                            client2.move_message(new_uid, dest_folder)
+                        # Mail gone or healed — delete the local record
+                        # in both cases.
+                        delete_record_by_message_id(conn, record.message_id)
+                        return True
+                except ValueError as exc:
+                    self._bad_request(str(exc))
+                    return False
+                except (ImapError, OSError) as exc:
+                    self._send_response(
+                        f"IMAP cross-folder resolution failed: {exc}",
+                        status=502,
+                    )
+                    return False
             except (ImapError, OSError) as exc:
                 self._send_response(
                     f"IMAP archive failed: {exc}",

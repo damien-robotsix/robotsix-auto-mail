@@ -51,10 +51,15 @@ class _BatchActionMixin:
 
         # -- synchronous stale-UID precheck (before redirect) --
         if self.mail_config is not None:
+            from robotsix_auto_mail.db import (
+                delete_record_by_message_id,
+                update_record_source,
+            )
             from robotsix_auto_mail.imap import (
                 ImapClient,
                 ImapError,
                 ImapMessageNotFoundError,
+                cross_folder_resolve,
                 resolve_uid_with_fallback,
             )
 
@@ -65,25 +70,33 @@ class _BatchActionMixin:
                 conn.close()
 
             if any(r.imap_uid is not None for r in records):
+                db_conn = init_db(self.db_path, skip_migrations=True)
                 try:
                     with ImapClient(self.mail_config) as client:
                         for record in records:
                             if record.imap_uid is None:
                                 continue
-                            resolve_uid_with_fallback(
-                                client,
-                                record.source_folder,
-                                record.imap_uid,
-                                record.message_id,
-                            )
-                except ImapMessageNotFoundError as exc:
-                    _release_batch_op(self.db_path)
-                    self._send_response(
-                        f"Batch delete aborted — a tracked UID is stale, "
-                        f"so no messages were deleted: {exc}",
-                        status=409,
-                    )
-                    return
+                            try:
+                                resolve_uid_with_fallback(
+                                    client,
+                                    record.source_folder,
+                                    record.imap_uid,
+                                    record.message_id,
+                                )
+                            except ImapMessageNotFoundError:
+                                cross = cross_folder_resolve(client, record.message_id)
+                                if cross is not None:
+                                    new_folder, new_uid = cross
+                                    update_record_source(
+                                        db_conn,
+                                        record.message_id,
+                                        source_folder=new_folder,
+                                        imap_uid=new_uid,
+                                    )
+                                else:
+                                    delete_record_by_message_id(
+                                        db_conn, record.message_id
+                                    )
                 except (ImapError, OSError) as exc:
                     _release_batch_op(self.db_path)
                     self._send_response(
@@ -91,6 +104,21 @@ class _BatchActionMixin:
                         status=502,
                     )
                     return
+                finally:
+                    db_conn.close()
+
+        # Re-check whether any TO_DELETE records remain after the
+        # precheck (some may have been healed or removed).
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            remaining = _collect_records_for_action(conn, "TO_DELETE")
+        finally:
+            conn.close()
+
+        if not remaining:
+            _release_batch_op(self.db_path)
+            self._redirect("/board", code=302)
+            return
 
         threading.Thread(
             target=_run_batch_delete_background,
@@ -135,10 +163,15 @@ class _BatchActionMixin:
 
         # -- synchronous stale-UID precheck (before redirect) --
         if self.mail_config is not None:
+            from robotsix_auto_mail.db import (
+                delete_record_by_message_id,
+                update_record_source,
+            )
             from robotsix_auto_mail.imap import (
                 ImapClient,
                 ImapError,
                 ImapMessageNotFoundError,
+                cross_folder_resolve,
                 resolve_uid_with_fallback,
             )
 
@@ -149,25 +182,33 @@ class _BatchActionMixin:
                 conn.close()
 
             if any(r.imap_uid is not None for r in records):
+                db_conn = init_db(self.db_path, skip_migrations=True)
                 try:
                     with ImapClient(self.mail_config) as client:
                         for record in records:
                             if record.imap_uid is None:
                                 continue
-                            resolve_uid_with_fallback(
-                                client,
-                                record.source_folder,
-                                record.imap_uid,
-                                record.message_id,
-                            )
-                except ImapMessageNotFoundError as exc:
-                    _release_batch_op(self.db_path)
-                    self._send_response(
-                        f"Batch archive aborted — a tracked UID is stale, "
-                        f"so no messages were archived: {exc}",
-                        status=409,
-                    )
-                    return
+                            try:
+                                resolve_uid_with_fallback(
+                                    client,
+                                    record.source_folder,
+                                    record.imap_uid,
+                                    record.message_id,
+                                )
+                            except ImapMessageNotFoundError:
+                                cross = cross_folder_resolve(client, record.message_id)
+                                if cross is not None:
+                                    new_folder, new_uid = cross
+                                    update_record_source(
+                                        db_conn,
+                                        record.message_id,
+                                        source_folder=new_folder,
+                                        imap_uid=new_uid,
+                                    )
+                                else:
+                                    delete_record_by_message_id(
+                                        db_conn, record.message_id
+                                    )
                 except (ImapError, OSError) as exc:
                     _release_batch_op(self.db_path)
                     self._send_response(
@@ -175,6 +216,21 @@ class _BatchActionMixin:
                         status=502,
                     )
                     return
+                finally:
+                    db_conn.close()
+
+        # Re-check whether any TO_ARCHIVE records remain after the
+        # precheck (some may have been healed or removed).
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            remaining = _collect_records_for_action(conn, "TO_ARCHIVE")
+        finally:
+            conn.close()
+
+        if not remaining:
+            _release_batch_op(self.db_path)
+            self._redirect("/board", code=302)
+            return
 
         threading.Thread(
             target=_run_batch_archive_background,
