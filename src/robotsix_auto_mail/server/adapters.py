@@ -194,11 +194,13 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
         delete_record_by_message_id,
         init_db,
         set_watermark,
+        update_record_source,
     )
     from robotsix_auto_mail.imap import (
         _BATCH_UID_CHUNK,
         ImapClient,
         ImapMessageNotFoundError,
+        cross_folder_resolve,
         resolve_uid_with_fallback,
     )
 
@@ -241,9 +243,22 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                                     r.message_id,
                                 )
                             except ImapMessageNotFoundError:
-                                # UID truly gone — skip IMAP, still
-                                # delete from DB below.
-                                resolved.append((r, 0))
+                                cross = cross_folder_resolve(client, r.message_id)
+                                if cross is not None:
+                                    new_folder, new_uid = cross
+                                    update_record_source(
+                                        conn,
+                                        r.message_id,
+                                        source_folder=new_folder,
+                                        imap_uid=new_uid,
+                                    )
+                                    # Immediately delete individually —
+                                    # client is still selected on new_folder
+                                    # and the UID won't exist in folder.
+                                    client.delete_message(new_uid)
+                                    resolved.append((r, 0))
+                                else:
+                                    resolved.append((r, 0))
                             else:
                                 resolved.append((r, new_uid))
 
@@ -252,6 +267,10 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                         chunk = resolved[start : start + _BATCH_UID_CHUNK]
                         uids = [uid for _, uid in chunk if uid]
                         if uids:
+                            # Re-select folder before batch delete
+                            # (cross_folder_resolve may have left us
+                            # on a different folder).
+                            client.select_folder(folder)
                             client.delete_messages(uids)
                         for record, _ in chunk:
                             delete_record_by_message_id(conn, record.message_id)
@@ -302,10 +321,12 @@ def _run_batch_archive_background(
         delete_record_by_message_id,
         init_db,
         set_watermark,
+        update_record_source,
     )
     from robotsix_auto_mail.imap import (
         ImapClient,
         ImapMessageNotFoundError,
+        cross_folder_resolve,
         resolve_uid_with_fallback,
     )
     from robotsix_auto_mail.triage import get_archive_subfolder
@@ -369,11 +390,33 @@ def _run_batch_archive_background(
                                 r.message_id,
                             )
                         except ImapMessageNotFoundError:
-                            # UID gone — skip IMAP, still delete DB row.
-                            continue
-                        resolved_uids.append(new_uid)
+                            cross = cross_folder_resolve(client, r.message_id)
+                            if cross is not None:
+                                new_folder, new_uid = cross
+                                update_record_source(
+                                    conn,
+                                    r.message_id,
+                                    source_folder=new_folder,
+                                    imap_uid=new_uid,
+                                )
+                                # Immediately move individually — client is
+                                # still selected on new_folder and the UID
+                                # won't exist in source_folder.
+                                parts = dest.split(delimiter)
+                                for i in range(1, len(parts) + 1):
+                                    client.create_folder(
+                                        delimiter.join(parts[:i])
+                                    )
+                                client.move_message(new_uid, dest)
+                            # else: UID truly gone — skip IMAP,
+                            # still delete DB row.
+                        else:
+                            resolved_uids.append(new_uid)
 
                     if resolved_uids:
+                        # Re-select source_folder (cross_folder_resolve
+                        # may have left us on a different folder).
+                        client.select_folder(source_folder)
                         # Ensure the destination hierarchy exists.
                         parts = dest.split(delimiter)
                         for i in range(1, len(parts) + 1):

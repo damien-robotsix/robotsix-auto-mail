@@ -17,10 +17,10 @@ if TYPE_CHECKING:
 
 from tests.conftest import _make_record
 
-from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.format import _format_date
+from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 
 # ---------------------------------------------------------------------------
 # _format_date
@@ -780,9 +780,7 @@ def test_delete_active_rule() -> None:
         conn = init_db(db_path)
         try:
             active_after = _load_active_rules(conn)
-            assert not any(
-                _rule_fingerprint(r) == fingerprint for r in active_after
-            )
+            assert not any(_rule_fingerprint(r) == fingerprint for r in active_after)
         finally:
             conn.close()
     finally:
@@ -2351,10 +2349,9 @@ def test_batch_delete_empty_column_returns_302() -> None:
 
 
 def test_delete_stale_uid_preserves_record() -> None:
-    """POST /delete with a stale UID → 409 and the local record is kept."""
+    """POST /delete with a stale UID and cross-folder search failing
+    (mail truly gone) → 302, local record removed."""
     from unittest import mock
-
-    from robotsix_auto_mail.imap import ImapMessageNotFoundError
 
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
@@ -2393,28 +2390,32 @@ def test_delete_stale_uid_preserves_record() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+            with (
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
+                mock.patch(
+                    "robotsix_auto_mail.imap.cross_folder_resolve"
+                ) as mock_cross,
+            ):
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.delete_message.side_effect = ImapMessageNotFoundError(
-                    "UID 42 not found in the selected folder (stale UID)"
-                )
+                # All searches fail → resolve_uid_with_fallback raises
+                # ImapMessageNotFoundError.
+                mock_client.search_uids.return_value = []
+                mock_cross.return_value = None  # mail gone
 
                 status, body = _post_form(
                     port, {"message_id": "stale-del"}, path="/delete"
                 )
 
-            assert status == 409, f"Expected 409, got {status}: {body}"
-            assert "stale" in body.lower()
-            assert "UID" in body
+            assert status == 302, f"Expected 302, got {status}: {body}"
         finally:
             server.shutdown()
 
-        # The local record must remain intact.
+        # The local record must be removed.
         from robotsix_auto_mail.db import get_record_by_message_id
 
         conn = init_db(db_path)
         try:
-            assert get_record_by_message_id(conn, "stale-del") is not None
+            assert get_record_by_message_id(conn, "stale-del") is None
         finally:
             conn.close()
     finally:
@@ -2422,10 +2423,9 @@ def test_delete_stale_uid_preserves_record() -> None:
 
 
 def test_archive_stale_uid_preserves_record() -> None:
-    """POST /archive with a stale UID → 409, record kept, no folder memory."""
+    """POST /archive with a stale UID and cross-folder search failing
+    (mail truly gone) → 302, local record removed, no folder memory."""
     from unittest import mock
-
-    from robotsix_auto_mail.imap import ImapMessageNotFoundError
 
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
@@ -2466,20 +2466,21 @@ def test_archive_stale_uid_preserves_record() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+            with (
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
+                mock.patch(
+                    "robotsix_auto_mail.imap.cross_folder_resolve"
+                ) as mock_cross,
+            ):
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
-                mock_client.move_message.side_effect = ImapMessageNotFoundError(
-                    "UID 42 not found in the selected folder (stale UID)"
-                )
+                mock_client.search_uids.return_value = []
+                mock_cross.return_value = None  # mail gone
 
                 status, body = _post_form(
                     port, {"message_id": "stale-arch"}, path="/archive"
                 )
 
-            assert status == 409, f"Expected 409, got {status}: {body}"
-            assert "stale" in body.lower()
-            assert "UID" in body
+            assert status == 302, f"Expected 302, got {status}: {body}"
         finally:
             server.shutdown()
 
@@ -2488,8 +2489,8 @@ def test_archive_stale_uid_preserves_record() -> None:
 
         conn = init_db(db_path)
         try:
-            # Record preserved and archive-folder memory NOT written.
-            assert get_record_by_message_id(conn, "stale-arch") is not None
+            # Record removed and archive-folder memory NOT written.
+            assert get_record_by_message_id(conn, "stale-arch") is None
             assert _load_archive_folder_memory(conn) == {}
         finally:
             conn.close()
@@ -2498,7 +2499,10 @@ def test_archive_stale_uid_preserves_record() -> None:
 
 
 def test_batch_delete_stale_uid_preserves_all_records() -> None:
-    """POST /batch-delete with one stale UID aborts and keeps every record."""
+    """POST /batch-delete with one stale UID where the mail is
+    verifiably gone: the stale record is removed from the DB,
+    the remaining record is still deleted by the background
+    worker, and the server responds with 302."""
     from unittest import mock
 
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -2551,37 +2555,41 @@ def test_batch_delete_stale_uid_preserves_all_records() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+            with (
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
+                mock.patch(
+                    "robotsix_auto_mail.imap.cross_folder_resolve"
+                ) as mock_cross,
+            ):
                 mock_client = mock_cls.return_value.__enter__.return_value
 
-                # Simulate one stale UID: UID 42 no longer exists in INBOX,
-                # and the Message-ID fallback also fails.
                 def _search_uids(criteria: str) -> list[int]:
                     if "UID 42" in criteria:
-                        return []
+                        return []  # stale
                     if "UID 43" in criteria:
                         return [43]
                     # Message-ID fallback: stale message not findable.
                     if "bd-stale-1" in criteria:
                         return []
-                    return [42, 43]  # default: both exist
+                    return [42, 43]
 
                 mock_client.search_uids.side_effect = _search_uids
+                mock_cross.return_value = None  # mail gone
 
                 status, body = _post_form(port, {}, path="/batch-delete")
 
-            assert status == 409, f"Expected 409, got {status}: {body}"
-            assert "stale" in body.lower()
+            assert status == 302, f"Expected 302, got {status}: {body}"
         finally:
             server.shutdown()
 
-        # No local DB deletions — every TO_DELETE record preserved.
+        # bd-stale-1 was removed during precheck; bd-stale-2 remains.
         from robotsix_auto_mail.db import get_record_by_message_id
 
         conn = init_db(db_path)
         try:
-            assert get_record_by_message_id(conn, "bd-stale-1") is not None
-            assert get_record_by_message_id(conn, "bd-stale-2") is not None
+            assert get_record_by_message_id(conn, "bd-stale-1") is None
+            # bd-stale-2 is still TO_DELETE and may still be present
+            # (the background thread handles it).
         finally:
             conn.close()
     finally:
@@ -2589,7 +2597,9 @@ def test_batch_delete_stale_uid_preserves_all_records() -> None:
 
 
 def test_batch_archive_stale_uid_preserves_all_records() -> None:
-    """POST /batch-archive with one stale UID aborts and keeps every record."""
+    """POST /batch-archive with one stale UID where the mail is
+    verifiably gone: the stale record is removed from the DB and
+    the server responds with 302."""
     from unittest import mock
 
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -2642,37 +2652,272 @@ def test_batch_archive_stale_uid_preserves_all_records() -> None:
 
         server, port = _start_test_server_with_mail_config(db_path, mail_config)
         try:
-            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+            with (
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
+                mock.patch(
+                    "robotsix_auto_mail.imap.cross_folder_resolve"
+                ) as mock_cross,
+            ):
                 mock_client = mock_cls.return_value.__enter__.return_value
 
-                # Simulate one stale UID: UID 42 no longer exists in INBOX,
-                # and the Message-ID fallback also fails.
                 def _search_uids(criteria: str) -> list[int]:
                     if "UID 42" in criteria:
-                        return []
+                        return []  # stale
                     if "UID 43" in criteria:
                         return [43]
-                    # Message-ID fallback: stale message not findable.
                     if "ba-stale-1" in criteria:
                         return []
-                    return [42, 43]  # default: both exist
+                    return [42, 43]
 
                 mock_client.search_uids.side_effect = _search_uids
+                mock_cross.return_value = None  # mail gone
 
                 status, body = _post_form(port, {}, path="/batch-archive")
 
-            assert status == 409, f"Expected 409, got {status}: {body}"
-            assert "stale" in body.lower()
+            assert status == 302, f"Expected 302, got {status}: {body}"
         finally:
             server.shutdown()
 
-        # No local DB deletions — every TO_ARCHIVE record preserved.
+        # ba-stale-1 was removed during precheck.
         from robotsix_auto_mail.db import get_record_by_message_id
 
         conn = init_db(db_path)
         try:
-            assert get_record_by_message_id(conn, "ba-stale-1") is not None
-            assert get_record_by_message_id(conn, "ba-stale-2") is not None
+            assert get_record_by_message_id(conn, "ba-stale-1") is None
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_delete_cross_folder_heal_and_delete() -> None:
+    """POST /delete with a stale UID where cross-folder search finds the
+    mail in another folder → heal record, IMAP-delete from new location,
+    remove local record, 302."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "heal-del",
+                    "sender": "x@x.com",
+                    "subject": "Heal delete",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "heal-del", action="TO_DELETE")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ?, source_folder = ? "
+                "WHERE message_id = ?",
+                (42, "INBOX", "heal-del"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with (
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
+                mock.patch(
+                    "robotsix_auto_mail.imap.cross_folder_resolve"
+                ) as mock_cross,
+            ):
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.search_uids.return_value = []
+                mock_cross.return_value = ("Projects", 99)
+
+                status, body = _post_form(
+                    port, {"message_id": "heal-del"}, path="/delete"
+                )
+
+            assert status == 302, f"Expected 302, got {status}: {body}"
+            # Verify the delete was called with the healed UID.
+            mock_client.delete_message.assert_called_once_with(99)
+        finally:
+            server.shutdown()
+
+        # The local record must be removed.
+        from robotsix_auto_mail.db import get_record_by_message_id
+
+        conn = init_db(db_path)
+        try:
+            assert get_record_by_message_id(conn, "heal-del") is None
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_delete_transient_imap_error_preserves_record() -> None:
+    """POST /delete with a stale UID where cross-folder search raises
+    ImapError → 502, local record preserved."""
+    from unittest import mock
+
+    from robotsix_auto_mail.imap import ImapError
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "transient-del",
+                    "sender": "x@x.com",
+                    "subject": "Transient delete",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "transient-del", action="TO_DELETE")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ? WHERE message_id = ?",
+                (42, "transient-del"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with (
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
+                mock.patch(
+                    "robotsix_auto_mail.imap.cross_folder_resolve"
+                ) as mock_cross,
+            ):
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.search_uids.return_value = []
+                mock_cross.side_effect = ImapError("connection lost")
+
+                status, body = _post_form(
+                    port, {"message_id": "transient-del"}, path="/delete"
+                )
+
+            assert status == 502, f"Expected 502, got {status}: {body}"
+        finally:
+            server.shutdown()
+
+        # The local record must remain intact.
+        from robotsix_auto_mail.db import get_record_by_message_id
+
+        conn = init_db(db_path)
+        try:
+            assert get_record_by_message_id(conn, "transient-del") is not None
+        finally:
+            conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_archive_cross_folder_heal_and_archive() -> None:
+    """POST /archive with a stale UID where cross-folder search finds the
+    mail in another folder → heal record, IMAP-move to archive from new
+    location, remove local record, 302."""
+    from unittest import mock
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "heal-arch",
+                    "sender": "x@x.com",
+                    "subject": "Heal archive",
+                    "date": "2025-01-01T00:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
+        )
+        _seed_triage_decision(db_path, "heal-arch", action="TO_ARCHIVE")
+
+        conn = init_db(db_path)
+        try:
+            conn.execute(
+                "UPDATE mail_records SET imap_uid = ?, source_folder = ? "
+                "WHERE message_id = ?",
+                (42, "INBOX", "heal-arch"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="my-archive",
+        )
+
+        server, port = _start_test_server_with_mail_config(db_path, mail_config)
+        try:
+            with (
+                mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
+                mock.patch(
+                    "robotsix_auto_mail.imap.cross_folder_resolve"
+                ) as mock_cross,
+            ):
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.search_uids.return_value = []
+                mock_cross.return_value = ("Projects", 99)
+                # The archive heal path calls list_folders on the
+                # second client to get the delimiter.
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
+
+                status, body = _post_form(
+                    port, {"message_id": "heal-arch"}, path="/archive"
+                )
+
+            assert status == 302, f"Expected 302, got {status}: {body}"
+            # Verify the move was called with the healed UID.
+            mock_client.move_message.assert_called_once()
+            move_uid = mock_client.move_message.call_args[0][0]
+            assert move_uid == 99, (
+                f"Expected move_message with UID 99 (healed), got {move_uid}"
+            )
+        finally:
+            server.shutdown()
+
+        # The local record must be removed.
+        from robotsix_auto_mail.db import get_record_by_message_id
+
+        conn = init_db(db_path)
+        try:
+            assert get_record_by_message_id(conn, "heal-arch") is None
         finally:
             conn.close()
     finally:
@@ -6553,9 +6798,7 @@ def test_parse_archive_structure_empty_string_falls_back() -> None:
 def test_parse_archive_structure_malformed_json_falls_back() -> None:
     from robotsix_auto_mail.server._constants import _parse_archive_structure
 
-    folders, delim, root = _parse_archive_structure(
-        "not json{", "my-archive"
-    )
+    folders, delim, root = _parse_archive_structure("not json{", "my-archive")
     assert folders == set()
     assert delim == "/"
     assert root == "my-archive"
