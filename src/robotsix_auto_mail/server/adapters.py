@@ -70,6 +70,17 @@ def _batch_op_running(state: str | None) -> bool:
     return state is not None and state != "idle"
 
 
+def _release_batch_op(db_path: str) -> None:
+    """Reset ``batch_op:state`` to ``"idle"`` so a later batch op can run."""
+    from robotsix_auto_mail.db import init_db, set_watermark
+
+    conn = init_db(db_path, skip_migrations=True)
+    try:
+        set_watermark(conn, "batch_op:state", "idle")
+    finally:
+        conn.close()
+
+
 def _archive_dest_folder(
     effective_root: str, subfolder: str | None, delimiter: str
 ) -> str | None:
