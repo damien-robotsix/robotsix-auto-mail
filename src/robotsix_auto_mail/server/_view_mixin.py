@@ -60,7 +60,6 @@ class _BoardViewMixin:
                 archive_root=archive_root,
                 accounts=self.accounts,
                 current_account_id=self._current_account_id,
-                user_email=self.mail_config.username if self.mail_config else None,
             )
         except Exception:
             self._send_response("Database unavailable", status=503)
@@ -115,7 +114,6 @@ class _BoardViewMixin:
             payload = _build_board_content(
                 self.db_path,
                 archive_root=archive_root,
-                user_email=self.mail_config.username if self.mail_config else None,
             )
         except Exception:
             self._serve_json({"error": "Database unavailable"}, status=503)
@@ -221,7 +219,6 @@ class _BoardViewMixin:
             subfolder = get_archive_subfolder(
                 conn, message_id, record,
                 api_key=self.mail_config.llm_api_key if self.mail_config else "",
-                user_email=self.mail_config.username if self.mail_config else None,
             )
             overrides = _load_archive_overrides(conn)
             hints = _load_llm_archive_hints(conn)

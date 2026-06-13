@@ -254,7 +254,6 @@ class _BoardActionMixin:
             record.message_id,
             record,
             api_key=self.mail_config.llm_api_key if self.mail_config else "",
-            user_email=self.mail_config.username if self.mail_config else None,
         )
 
         # Determine the archive root.
