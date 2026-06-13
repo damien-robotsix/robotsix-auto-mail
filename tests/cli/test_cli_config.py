@@ -684,7 +684,7 @@ def test_detect_settings_llm_hit(capsys: pytest.CaptureFixture[str]) -> None:
 
     provider, _mx_hosts = _detect_settings(
         email="user@example.com",
-        api_key="sk-test",
+        api_key="sk-test",  # pragma: allowlist secret
         llm_provider=None,
         autoconfig_lookup=_mock_autoconfig_none,
         mx_lookup=_mx_lookup,
@@ -703,7 +703,7 @@ def test_detect_settings_all_miss(capsys: pytest.CaptureFixture[str]) -> None:
     """Autoconfig miss, MX miss, LLM raises DetectionError → (None, mx_hosts)."""
     provider, _mx_hosts = _detect_settings(
         email="user@example.com",
-        api_key="sk-test",
+        api_key="sk-test",  # pragma: allowlist secret
         llm_provider=None,
         autoconfig_lookup=_mock_autoconfig_none,
         mx_lookup=_mock_mx_empty,
@@ -784,7 +784,7 @@ def test_refine_with_llm_success(capsys: pytest.CaptureFixture[str]) -> None:
         config,
         result,
         email="user@example.com",
-        api_key="sk-test",
+        api_key="sk-test",  # pragma: allowlist secret
         llm_provider=None,
         mx_hosts=["mx1.example.com"],
         detect_provider=_detect,
@@ -793,7 +793,7 @@ def test_refine_with_llm_success(capsys: pytest.CaptureFixture[str]) -> None:
     assert outcome.config is not None
     assert outcome.config.imap_host == "imap.good.com"
     assert outcome.config.smtp_host == "smtp.good.com"
-    assert outcome.config.password == "pw"  # preserved from original
+    assert outcome.config.password == "pw"  # preserved from original  # pragma: allowlist secret
     assert outcome.provider is not None
     assert outcome.provider.imap_host == "imap.good.com"
 
@@ -805,7 +805,7 @@ def test_refine_with_llm_error(capsys: pytest.CaptureFixture[str]) -> None:
         username="user@example.com",
         imap_host="imap.bad.com",
         smtp_host="smtp.bad.com",
-        password="pw",
+        password="pw",  # pragma: allowlist secret
     )
     result = _VerifyResult(imap_ok=False, smtp_ok=True, imap_error="refused")
 
@@ -818,7 +818,7 @@ def test_refine_with_llm_error(capsys: pytest.CaptureFixture[str]) -> None:
         config,
         result,
         email="user@example.com",
-        api_key="sk-test",
+        api_key="sk-test",  # pragma: allowlist secret
         llm_provider=None,
         mx_hosts=[],
         detect_provider=_detect_error,
@@ -837,7 +837,7 @@ def test_refine_with_llm_returns_none(capsys: pytest.CaptureFixture[str]) -> Non
         username="user@example.com",
         imap_host="imap.bad.com",
         smtp_host="smtp.bad.com",
-        password="pw",
+        password="pw",  # pragma: allowlist secret
     )
     result = _VerifyResult(imap_ok=False, smtp_ok=True, imap_error="refused")
 
@@ -850,7 +850,7 @@ def test_refine_with_llm_returns_none(capsys: pytest.CaptureFixture[str]) -> Non
         config,
         result,
         email="user@example.com",
-        api_key="sk-test",
+        api_key="sk-test",  # pragma: allowlist secret
         llm_provider=None,
         mx_hosts=[],
         detect_provider=_detect_none,
@@ -943,8 +943,8 @@ def test_verify_and_refine_success_first_try(
             llm_provider=None,
             mx_hosts=[],
             output_path=output,
-            password="pw",
-            password_from_args="pw",
+            password="pw",  # pragma: allowlist secret
+            password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
             account_id="default",
             label=None,
@@ -1034,7 +1034,7 @@ def test_verify_and_refine_auth_failure_no_retry_with_args_password(
             mx_hosts=[],
             output_path=output,
             password="cli-pass",  # pragma: allowlist secret
-            password_from_args="cli-pass",  # from --password → budget = 0
+            password_from_args="cli-pass",  # from --password → budget = 0  # pragma: allowlist secret
             no_verify=False,
             account_id="default",
             label=None,
@@ -1076,17 +1076,17 @@ def test_verify_and_refine_host_failure_llm_refine(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=verify_results,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),  # pragma: allowlist secret
     ):
         rc = _verify_and_refine(
             provider,
             email="user@example.com",
-            api_key="sk-test",
+            api_key="sk-test",  # pragma: allowlist secret
             llm_provider=None,
             mx_hosts=["mx.example.com"],
             output_path=output,
-            password="pw",
-            password_from_args="pw",
+            password="pw",  # pragma: allowlist secret
+            password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
             account_id="default",
             label=None,
@@ -1125,18 +1125,18 @@ def test_verify_and_refine_host_failure_llm_then_manual(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=verify_results,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),  # pragma: allowlist secret
         mock.patch("builtins.input", side_effect=["", "manual-smtp.com"]),
     ):
         rc = _verify_and_refine(
             provider,
             email="user@example.com",
-            api_key="sk-test",
+            api_key="sk-test",  # pragma: allowlist secret
             llm_provider=None,
             mx_hosts=[],
             output_path=output,
-            password="pw",
-            password_from_args="pw",
+            password="pw",  # pragma: allowlist secret
+            password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
             account_id="default",
             label=None,
@@ -1287,18 +1287,18 @@ def test_verify_and_refine_budget_exhausted(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=verify_results,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),  # pragma: allowlist secret
         mock.patch("builtins.input", side_effect=["", ""]),
     ):
         rc = _verify_and_refine(
             provider,
             email="user@example.com",
-            api_key="sk-test",
+            api_key="sk-test",  # pragma: allowlist secret
             llm_provider=None,
             mx_hosts=[],
             output_path=output,
-            password="pw",
-            password_from_args="pw",
+            password="pw",  # pragma: allowlist secret
+            password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
             account_id="default",
             label=None,
@@ -1341,8 +1341,8 @@ def test_verify_and_refine_multi_account_append(
             llm_provider=None,
             mx_hosts=[],
             output_path=output,
-            password="pw",
-            password_from_args="pw",
+            password="pw",  # pragma: allowlist secret
+            password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
             account_id="new-account",
             label="New Account",
@@ -1647,7 +1647,7 @@ def test_verify_and_refine_auth_retry_returns_none(
             llm_provider=None,
             mx_hosts=[],
             output_path=output,
-            password="wrong-pw",
+            password="wrong-pw",  # pragma: allowlist secret
             password_from_args=None,  # interactive → pw_budget = 2
             no_verify=False,
             account_id="default",
@@ -1676,8 +1676,8 @@ def test_verify_and_refine_password_with_no_verify(
         llm_provider=None,
         mx_hosts=[],
         output_path=output,
-        password="pw",
-        password_from_args="pw",
+        password="pw",  # pragma: allowlist secret
+        password_from_args="pw",  # pragma: allowlist secret
         no_verify=True,
         account_id="default",
         label=None,
