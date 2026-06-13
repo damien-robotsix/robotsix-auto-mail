@@ -189,6 +189,8 @@ def test_direct_tls_happy_path(cfg: MailConfig) -> None:
 
     mock_ssl.login.assert_called_once_with("user@example.com", "s3cret")
     mock_ssl.logout.assert_called_once()
+    # A socket timeout is set so a stalled read can't hang the caller forever.
+    assert patched.call_args.kwargs["timeout"] == 60
 
     assert len(folders) == 2
     assert folders[0] == MailboxInfo(
@@ -282,7 +284,7 @@ def test_starttls_happy_path(cfg: MailConfig) -> None:
         with ImapClient(cfg) as client:
             folders = client.list_folders()
 
-        patched.assert_called_once_with("imap.example.com", 143)
+        patched.assert_called_once_with("imap.example.com", 143, timeout=60)
 
     # starttls must be called *before* login
     mock_imap.starttls.assert_called_once()
@@ -316,7 +318,7 @@ def test_no_tls_happy_path(cfg: MailConfig) -> None:
     with mock.patch("imaplib.IMAP4", return_value=mock_imap) as patched:
         with ImapClient(cfg) as client:
             assert client is not None
-        patched.assert_called_once_with("imap.example.com", 143)
+        patched.assert_called_once_with("imap.example.com", 143, timeout=60)
 
     mock_imap.starttls.assert_not_called()
     mock_imap.login.assert_called_once_with("user@example.com", "s3cret")

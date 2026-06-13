@@ -33,6 +33,14 @@ _IMAP4_ERROR = imaplib.IMAP4.error
 # costs at most six round-trip pairs instead of one per message.
 _BATCH_UID_CHUNK = 100
 
+# Socket timeout (seconds) for IMAP connections.  stdlib ``imaplib`` opens
+# sockets with NO timeout by default, so a stalled server read blocks the
+# calling thread forever — which silently wedges background batch
+# delete/archive workers (their ``finally`` that clears ``batch_op:state``
+# never runs).  A generous timeout turns a stall into a raised
+# ``TimeoutError`` (caught like any other IMAP failure) instead of a hang.
+_IMAP_TIMEOUT_SECONDS = 60
+
 # Gmail rejects a normal account password over IMAP; only an App Password
 # (with 2-Step Verification enabled) or OAuth2 works.  Appended to the auth
 # error when a plain-login attempt against a Gmail host fails, so the user is
@@ -433,7 +441,12 @@ class ImapClient(_ProtocolClient):
     def _connect_direct_tls(self) -> None:
         ctx = ssl.create_default_context()
         try:
-            self._imap = imaplib.IMAP4_SSL(self._host, self._port, ssl_context=ctx)
+            self._imap = imaplib.IMAP4_SSL(
+                self._host,
+                self._port,
+                ssl_context=ctx,
+                timeout=_IMAP_TIMEOUT_SECONDS,
+            )
         except (OSError, _IMAP4_ERROR) as exc:
             raise ImapConnectionError(
                 f"Direct-TLS connection to {self._host}:{self._port} failed: {exc}"
@@ -442,7 +455,9 @@ class ImapClient(_ProtocolClient):
     def _connect_starttls(self) -> None:
         # 1. Plain connection
         try:
-            self._imap = imaplib.IMAP4(self._host, self._port)
+            self._imap = imaplib.IMAP4(
+                self._host, self._port, timeout=_IMAP_TIMEOUT_SECONDS
+            )
         except (OSError, _IMAP4_ERROR) as exc:
             raise ImapConnectionError(
                 f"Plain connection to {self._host}:{self._port} failed: {exc}"
@@ -462,7 +477,9 @@ class ImapClient(_ProtocolClient):
 
     def _connect_plain(self) -> None:
         try:
-            self._imap = imaplib.IMAP4(self._host, self._port)
+            self._imap = imaplib.IMAP4(
+                self._host, self._port, timeout=_IMAP_TIMEOUT_SECONDS
+            )
         except (OSError, _IMAP4_ERROR) as exc:
             raise ImapConnectionError(
                 f"Plain (no-TLS) connection to {self._host}:{self._port} failed: {exc}"
