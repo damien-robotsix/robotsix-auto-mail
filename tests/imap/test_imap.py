@@ -20,6 +20,8 @@ from robotsix_auto_mail.imap import (
     ImapMessageNotFoundError,
     ImapTlsError,
     MailboxInfo,
+    _is_waste_folder,
+    cross_folder_resolve,
     is_system_folder,
 )
 
@@ -1337,3 +1339,152 @@ class TestIsSystemFolderNameFallback:
         assert is_system_folder(
             MailboxInfo(name="Junk E-mail", attributes=(), delimiter="/")
         ) is True
+
+# _is_waste_folder
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Trash",
+        "Deleted Items",
+        "Deleted Messages",
+        "Bin",
+        "Papierkorb",
+        "Gelöschte Objekte",
+        "Éléments supprimés",
+        "Elementi eliminati",
+    ],
+)
+def test_is_waste_folder_matches_trash(name: str) -> None:
+    """_is_waste_folder returns True for known Trash-folder patterns."""
+    assert _is_waste_folder(name) is True
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Junk",
+        "Spam",
+        "Bulk Mail",
+        "Junk E-mail",
+        "Courrier indésirable",
+    ],
+)
+def test_is_waste_folder_matches_junk(name: str) -> None:
+    """_is_waste_folder returns True for known Junk/Spam-folder patterns."""
+    assert _is_waste_folder(name) is True
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "INBOX",
+        "Projects",
+        "Sent",
+        "Archive",
+        "Drafts",
+        "",
+        "Inbox",  # not a substring match — "inbox" does not contain any pattern
+    ],
+)
+def test_is_waste_folder_rejects_normal_names(name: str) -> None:
+    """_is_waste_folder returns False for non-waste folder names."""
+    assert _is_waste_folder(name) is False
+
+
+# ---------------------------------------------------------------------------
+# cross_folder_resolve
+# ---------------------------------------------------------------------------
+
+
+def test_cross_folder_resolve_found_in_another_folder() -> None:
+    """cross_folder_resolve finds a message relocated to a different folder."""
+    client = mock.MagicMock(spec=ImapClient)
+    client.list_folders.return_value = [
+        MailboxInfo(name="INBOX", attributes=(), delimiter="/"),
+        MailboxInfo(name="Archive", attributes=(), delimiter="/"),
+        MailboxInfo(name="Sent", attributes=(), delimiter="/"),
+    ]
+    client.select_folder.return_value = 5
+    # INBOX: no match; Archive: match UID 7
+    client.search_uids.side_effect = [
+        [],  # INBOX
+        [7],  # Archive
+    ]
+
+    result = cross_folder_resolve(client, "<test@example.com>")
+
+    assert result == ("Archive", 7)
+    assert client.select_folder.call_args_list == [
+        mock.call("INBOX"),
+        mock.call("Archive"),
+    ]
+
+
+def test_cross_folder_resolve_not_found_anywhere() -> None:
+    """cross_folder_resolve returns None when absent from all non-waste folders."""
+    client = mock.MagicMock(spec=ImapClient)
+    client.list_folders.return_value = [
+        MailboxInfo(name="INBOX", attributes=(), delimiter="/"),
+        MailboxInfo(name="Sent", attributes=(), delimiter="/"),
+    ]
+    client.select_folder.return_value = 5
+    client.search_uids.return_value = []  # never found
+
+    result = cross_folder_resolve(client, "<gone@example.com>")
+
+    assert result is None
+
+
+def test_cross_folder_resolve_skips_waste_folders() -> None:
+    """cross_folder_resolve ignores Trash/Junk folders — returns None."""
+    client = mock.MagicMock(spec=ImapClient)
+    client.list_folders.return_value = [
+        MailboxInfo(name="INBOX", attributes=(), delimiter="/"),
+        MailboxInfo(name="Trash", attributes=(), delimiter="/"),
+    ]
+    # The message is only in Trash (waste), nowhere else.
+    client.select_folder.return_value = 5
+    client.search_uids.side_effect = [
+        [],  # INBOX — no match
+    ]
+    # Trash is skipped entirely, so search_uids is only called once (for INBOX).
+
+    result = cross_folder_resolve(client, "<trashed@example.com>")
+
+    assert result is None
+    assert client.select_folder.call_count == 1
+    client.select_folder.assert_called_once_with("INBOX")
+
+
+def test_cross_folder_resolve_returns_first_match() -> None:
+    """cross_folder_resolve returns the first found match (short-circuits)."""
+    client = mock.MagicMock(spec=ImapClient)
+    client.list_folders.return_value = [
+        MailboxInfo(name="INBOX", attributes=(), delimiter="/"),
+        MailboxInfo(name="Projects", attributes=(), delimiter="/"),
+        MailboxInfo(name="Archive", attributes=(), delimiter="/"),
+    ]
+    client.select_folder.return_value = 5
+    # Found in Projects (UID 3); Archive should not be searched.
+    client.search_uids.side_effect = [
+        [],  # INBOX
+        [3],  # Projects
+    ]
+
+    result = cross_folder_resolve(client, "<msg@example.com>")
+
+    assert result == ("Projects", 3)
+    # Only two folders searched — Archive is never touched.
+    assert client.select_folder.call_count == 2
+
+
+def test_cross_folder_resolve_propagates_imap_error() -> None:
+    """cross_folder_resolve does not swallow ImapError from IMAP operations."""
+    client = mock.MagicMock(spec=ImapClient)
+    client.list_folders.side_effect = ImapError("connection lost")
+
+    with pytest.raises(ImapError, match="connection lost"):
+        cross_folder_resolve(client, "<msg@example.com>")
