@@ -361,6 +361,7 @@ class _BoardActionMixin:
         fields = parse_qs(raw)
 
         message_id = (fields.get("message_id") or [""])[0].strip()
+        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
 
         if not message_id:
             self._bad_request("Missing message_id")
@@ -378,7 +379,10 @@ class _BoardActionMixin:
         finally:
             conn.close()
 
-        self._redirect("/board", code=302)
+        if redirect_to and _is_safe_redirect_path(redirect_to):
+            self._redirect(redirect_to, code=302)
+        else:
+            self._redirect("/board", code=302)
 
     def _handle_save_notes(self) -> None:
         """Process POST /save-notes — persist notes for a mail record."""
