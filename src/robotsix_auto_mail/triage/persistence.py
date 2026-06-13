@@ -17,8 +17,6 @@ from robotsix_auto_mail.db import VALID_TRIAGE_ACTIONS
 from robotsix_auto_mail.triage._constants import (
     _AGENT_SELECTABLE_ACTIONS,
     _VALID_CONFIDENCE_LEVELS,
-    _VALID_RULE_MATCH_TYPES,
-    _VALID_RULE_STATES,
     _VALID_TRIAGE_SOURCES,
 )
 
@@ -180,90 +178,6 @@ class ArchiveSubfolderProposal(pydantic.BaseModel):
             "Empty string if no suitable folder can be determined."
         ),
     )
-
-
-class TriageRule(pydantic.BaseModel):
-    """A deterministic triage rule mapping a match condition to an action.
-
-    Matching is intentionally limited to three simple, non-regex kinds
-    (``match_type``): ``sender`` (exact lowercased email address),
-    ``domain`` (the sender's domain) and ``subject_contains`` (a
-    case-insensitive subject substring).  ``action`` is validated against
-    :data:`VALID_TRIAGE_ACTIONS`.
-    """
-
-    match_type: str
-    match_value: str
-    action: str
-
-    @pydantic.field_validator("match_type")
-    @classmethod
-    def _validate_match_type(cls, v: str) -> str:
-        if v not in _VALID_RULE_MATCH_TYPES:
-            raise ValueError(
-                "match_type must be one of "
-                f"{sorted(_VALID_RULE_MATCH_TYPES)!r}; got {v!r}"
-            )
-        return v
-
-    @pydantic.field_validator("action")
-    @classmethod
-    def _validate_action(cls, v: str) -> str:
-        if v not in VALID_TRIAGE_ACTIONS:
-            raise ValueError(
-                f"action must be one of {sorted(VALID_TRIAGE_ACTIONS)!r}; got {v!r}"
-            )
-        return v
-
-
-class TriageRuleProposal(TriageRule):
-    """A :class:`TriageRule` plus human-readable presentation fields.
-
-    Carries a ``title`` / ``body`` for display and a ``confidence`` level
-    (``low`` / ``medium`` / ``high``) reflecting the strength of the
-    evidence.  Its identity (fingerprint) is derived solely from the
-    underlying rule's ``(match_type, match_value, action)``.
-    """
-
-    title: str = pydantic.Field(..., min_length=1)
-    body: str = pydantic.Field(..., min_length=1)
-    confidence: str = pydantic.Field(default="medium")
-
-    @pydantic.field_validator("confidence")
-    @classmethod
-    def _validate_confidence(cls, v: str) -> str:
-        if v not in _VALID_CONFIDENCE_LEVELS:
-            raise ValueError(
-                "confidence must be one of "
-                f"{sorted(_VALID_CONFIDENCE_LEVELS)!r}; got {v!r}"
-            )
-        return v
-
-
-class RuleLedgerEntry(pydantic.BaseModel):
-    """One remembered rule proposal in the dedup memory ledger.
-
-    Keyed (in the ledger dict) by the rule's stable fingerprint.  The
-    ``match_type`` / ``match_value`` / ``action`` fields preserve the
-    underlying :class:`TriageRule` so accepting a proposal can reconstruct
-    it for the active-rules list.  The ``state`` (``pending`` / ``accepted``
-    / ``rejected``) suppresses re-proposal in every state.
-    """
-
-    match_type: str
-    match_value: str
-    action: str
-    title: str = ""
-    state: str = "pending"
-
-    @pydantic.field_validator("state")
-    @classmethod
-    def _validate_state(cls, v: str) -> str:
-        if v not in _VALID_RULE_STATES:
-            raise ValueError(
-                f"state must be one of {sorted(_VALID_RULE_STATES)!r}; got {v!r}"
-            )
-        return v
 
 
 # ---------------------------------------------------------------------------

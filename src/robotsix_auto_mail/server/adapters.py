@@ -37,10 +37,7 @@ def _run_triage_background(db_path: str, user_email: str | None = None) -> None:
     """Run the triage agent in a background thread, clearing the watermark on exit.
 
     Opens its own SQLite connection so it never shares a connection with
-    the HTTP request-serve thread.  After triaging, derives fresh
-    deterministic rule proposals from the updated triage history (no LLM)
-    and records the genuinely-new ones as ``pending`` so the board can
-    surface them for human validation.  The ``triage_run:state`` watermark
+    the HTTP request-serve thread.  The ``triage_run:state`` watermark
     is always set back to ``"idle"`` in a ``finally`` block — even when the
     triage module cannot be imported or ``run_triage_agent`` raises.
     """
@@ -50,18 +47,11 @@ def _run_triage_background(db_path: str, user_email: str | None = None) -> None:
     try:
         try:
             from robotsix_auto_mail.triage import (
-                propose_triage_rules,
-                record_and_filter_rule_proposals,
                 run_triage_agent,
             )
         except ImportError:
             return
         run_triage_agent(conn, user_email=user_email)
-        # Surface freshly-derived rule proposals on the board.  This is a
-        # deterministic, LLM-free scan of triage history, so it is cheap to
-        # run on every triage pass; record_and_filter only writes the
-        # ledger when there is a genuinely-new proposal.
-        record_and_filter_rule_proposals(conn, propose_triage_rules(conn))
     except Exception:  # noqa: S110  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass

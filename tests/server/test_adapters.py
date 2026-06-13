@@ -83,11 +83,6 @@ class TestRunTriageBackground:
             ) as mock_init_db,
             mock.patch("robotsix_auto_mail.db.set_watermark") as mock_set_watermark,
             mock.patch("robotsix_auto_mail.triage.run_triage_agent"),
-            mock.patch(
-                "robotsix_auto_mail.triage.propose_triage_rules",
-                return_value=[],
-            ),
-            mock.patch("robotsix_auto_mail.triage.record_and_filter_rule_proposals"),
         ):
             _run_triage_background("/fake/db.sqlite", user_email="a@b.com")
 
@@ -106,11 +101,6 @@ class TestRunTriageBackground:
                 "robotsix_auto_mail.triage.run_triage_agent",
                 side_effect=RuntimeError("boom"),
             ),
-            mock.patch(
-                "robotsix_auto_mail.triage.propose_triage_rules",
-                return_value=[],
-            ),
-            mock.patch("robotsix_auto_mail.triage.record_and_filter_rule_proposals"),
         ):
             # Must not raise.
             _run_triage_background("/fake/db.sqlite")
@@ -145,11 +135,6 @@ class TestRunTriageBackground:
             mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
             mock.patch("robotsix_auto_mail.db.set_watermark"),
             mock.patch("robotsix_auto_mail.triage.run_triage_agent") as mock_run_triage,
-            mock.patch(
-                "robotsix_auto_mail.triage.propose_triage_rules",
-                return_value=[],
-            ),
-            mock.patch("robotsix_auto_mail.triage.record_and_filter_rule_proposals"),
         ):
             _run_triage_background("/fake/db.sqlite", user_email="x@y.com")
 
@@ -161,38 +146,12 @@ class TestRunTriageBackground:
             mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
             mock.patch("robotsix_auto_mail.db.set_watermark"),
             mock.patch("robotsix_auto_mail.triage.run_triage_agent") as mock_run_triage,
-            mock.patch(
-                "robotsix_auto_mail.triage.propose_triage_rules",
-                return_value=[],
-            ),
-            mock.patch("robotsix_auto_mail.triage.record_and_filter_rule_proposals"),
         ):
             _run_triage_background("/fake/db.sqlite")
 
         mock_run_triage.assert_called_once_with(mock_conn, user_email=None)
 
-    def test_refreshes_rule_proposals_after_triage(self) -> None:
-        mock_conn = mock.MagicMock(spec=sqlite3.Connection)
-        fake_proposals = [mock.Mock()]
-        with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
-            mock.patch("robotsix_auto_mail.db.set_watermark"),
-            mock.patch("robotsix_auto_mail.triage.run_triage_agent"),
-            mock.patch(
-                "robotsix_auto_mail.triage.propose_triage_rules",
-                return_value=fake_proposals,
-            ) as mock_propose,
-            mock.patch(
-                "robotsix_auto_mail.triage.record_and_filter_rule_proposals"
-            ) as mock_record,
-        ):
-            _run_triage_background("/fake/db.sqlite")
 
-        mock_propose.assert_called_once_with(mock_conn)
-        mock_record.assert_called_once_with(mock_conn, fake_proposals)
-
-
-# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # _batch_op_running
 # ---------------------------------------------------------------------------

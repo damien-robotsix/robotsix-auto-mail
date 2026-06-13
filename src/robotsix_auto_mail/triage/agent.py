@@ -35,7 +35,6 @@ from robotsix_auto_mail.triage.classifier import (
     _load_llm_archive_hints,
     _save_llm_archive_hints,
     _sender_key,
-    apply_triage_rules,
     normalize_archive_subfolder,
     propose_archive_subfolder_llm,
 )
@@ -323,37 +322,6 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
         set_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY, json.dumps(suggestions))
 
 
-def _apply_deterministic_triage(
-    conn: sqlite3.Connection,
-    records: list[MailRecord],
-) -> tuple[list[TriageDecision], list[MailRecord]]:
-    """Apply deterministic rules, persisting matches and returning the remainder."""
-    decisions: list[TriageDecision] = []
-    remaining: list[MailRecord] = []
-    for record in records:
-        matched_action = apply_triage_rules(conn, record)
-        if matched_action is None:
-            remaining.append(record)
-            continue
-        set_triage_decision(
-            conn,
-            record.message_id,
-            matched_action,
-            source="agent",
-            reason="matched deterministic rule",
-        )
-        decisions.append(
-            TriageDecision(
-                message_id=record.message_id,
-                action=matched_action,
-                source="agent",
-                reason="matched deterministic rule",
-                confidence="medium",
-            )
-        )
-    return decisions, remaining
-
-
 def _resolve_llm_api_key(api_key: str | None) -> str:
     """Resolve the LLM key (arg -> LLM_API_KEY env -> config), raising if absent."""
     resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
@@ -591,12 +559,8 @@ def run_triage_agent(
     if not records:
         return []
 
-    # -- deterministic rule fast-path: triage matching mail without the LLM --
-    decisions, remaining = _apply_deterministic_triage(conn, records)
-
-    # Every inbox record was triaged deterministically — no LLM call needed.
-    if not remaining:
-        return decisions
+    decisions: list[TriageDecision] = []
+    remaining = records
 
     # -- resolve API key (arg -> LLM_API_KEY env -> config.llm_api_key) --
     resolved_key = _resolve_llm_api_key(api_key)

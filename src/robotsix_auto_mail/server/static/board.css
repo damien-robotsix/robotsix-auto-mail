@@ -77,30 +77,6 @@ button:hover { background: #1a4d7a; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* -- rule proposals section ---------------------------------------------- */
-.rule-proposals {
-  background: #16213e; border: 1px solid #2a2a4a; border-radius: 8px;
-  padding: 0.75rem; margin-bottom: 1rem;
-}
-.rule-proposals-header {
-  display: flex; align-items: center; gap: 0.5rem;
-  margin-bottom: 0.75rem; padding-bottom: 0.5rem;
-  border-bottom: 2px solid #2a2a4a;
-}
-.rule-proposals-header h2 { font-size: 1rem; font-weight: 600; color: #e0e0e0; }
-.rule-cards { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.rule-card {
-  background: #1a1a2e; border: 1px solid #2a2a4a;
-  border-radius: 6px; padding: 0.6rem 0.75rem; min-width: 260px;
-}
-.rule-card .rule-title { font-weight: 700; color: #e0e0e0; }
-.rule-card .rule-summary {
-  font-size: 0.85rem; color: #a0a0c0; margin-top: 0.25rem;
-}
-.rule-form { margin-top: 0.4rem; display: flex; gap: 0.25rem; }
-.rule-form button { font-size: 0.75rem; padding: 0.1rem 0.5rem; cursor: pointer; }
-.rule-empty { font-style: italic; color: #707090; }
-
 /* -- detail page --------------------------------------------------------- */
 .back-link {
     display: inline-block; margin-bottom: 1rem;
@@ -321,32 +297,4 @@ button:hover { background: #1a4d7a; }
     min-width: 240px;
     max-width: 300px;
   }
-}
-
-/* -- rules page ------------------------------------------------------------ */
-.rules-page {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 1rem;
-}
-.rules-page h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #e0e0e0;
-  margin-bottom: 0.5rem;
-}
-.rules-section {
-  background: #16213e;
-  border: 1px solid #2a2a4a;
-  border-radius: 8px;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
-}
-.rules-section h2 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #e0e0e0;
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #2a2a4a;
 }
