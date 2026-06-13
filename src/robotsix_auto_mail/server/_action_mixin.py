@@ -193,6 +193,7 @@ class _BoardActionMixin:
         (caller should return 502).
         """
         from robotsix_auto_mail.imap import ImapClient, resolve_uid_with_fallback
+        from robotsix_auto_mail.server.adapters import _archive_dest_folder
 
         with ImapClient(mail_config) as client:
             # Resolve the possibly-stale UID, selecting source_folder.
@@ -207,24 +208,9 @@ class _BoardActionMixin:
                 "/",
             )
 
-            # Build the destination IMAP folder name.
-            if subfolder:
-                translated = subfolder.replace("/", delimiter)
-                dest_folder = f"{effective_root}{delimiter}{translated}"
-            else:
-                dest_folder = effective_root
-
-            # -- security gate ---------------------------------
-            # Reject any destination that escapes the archive
-            # root (must start with root+delimiter or equal the
-            # root itself) and forbid ".." path segments.
-            root_prefix = f"{effective_root}{delimiter}"
-            if dest_folder != effective_root and not dest_folder.startswith(
-                root_prefix
-            ):
+            dest_folder = _archive_dest_folder(effective_root, subfolder, delimiter)
+            if dest_folder is None:
                 raise ValueError("Archive destination escapes archive root")
-            if ".." in dest_folder.split(delimiter):
-                raise ValueError("Archive destination contains '..' path segment")
 
             # -- ensure destination folder hierarchy exists ----
             parts = dest_folder.split(delimiter)
@@ -298,6 +284,7 @@ class _BoardActionMixin:
                     ImapClient,
                     cross_folder_resolve,
                 )
+                from robotsix_auto_mail.server.adapters import _archive_dest_folder
 
                 try:
                     with ImapClient(self.mail_config) as client2:
@@ -319,24 +306,12 @@ class _BoardActionMixin:
                                 ),
                                 "/",
                             )
-                            if subfolder:
-                                translated = subfolder.replace("/", delimiter)
-                                dest_folder = f"{effective_root}{delimiter}{translated}"
-                            else:
-                                dest_folder = effective_root
-                            # Security gate (mirrors
-                            # _imap_archive_move).
-                            root_prefix = f"{effective_root}{delimiter}"
-                            if (
-                                dest_folder != effective_root
-                                and not dest_folder.startswith(root_prefix)
-                            ):
+                            dest_folder = _archive_dest_folder(
+                                effective_root, subfolder, delimiter
+                            )
+                            if dest_folder is None:
                                 raise ValueError(
                                     "Archive destination escapes archive root"
-                                )
-                            if ".." in dest_folder.split(delimiter):
-                                raise ValueError(
-                                    "Archive destination contains '..' path segment"
                                 )
                             # Ensure destination hierarchy exists.
                             parts = dest_folder.split(delimiter)
