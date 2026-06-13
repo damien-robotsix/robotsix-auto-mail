@@ -659,7 +659,7 @@ def test_detect_settings_mx_empty_no_provider(
     """Autoconfig miss, no MX records → falls through to LLM."""
     provider, _mx_hosts = _detect_settings(
         email="user@example.com",
-        api_key="sk-test",
+        api_key="sk-test",  # pragma: allowlist secret
         llm_provider=None,
         autoconfig_lookup=_mock_autoconfig_none,
         mx_lookup=_mock_mx_empty,
@@ -736,7 +736,7 @@ def test_refine_password_returns_new_config(capsys: pytest.CaptureFixture[str]) 
     with mock.patch("getpass.getpass", return_value="newpass"):
         outcome = _refine_password(_build_config, provider)
     assert outcome.config is not None
-    assert outcome.config.password == "newpass"
+    assert outcome.config.password == "newpass"  # pragma: allowlist secret
     assert outcome.config.imap_host == "imap.test.com"
     captured = capsys.readouterr()
     assert "password was rejected" in captured.err
@@ -771,7 +771,7 @@ def test_refine_with_llm_success(capsys: pytest.CaptureFixture[str]) -> None:
         username="user@example.com",
         imap_host="imap.bad.com",
         smtp_host="smtp.bad.com",
-        password="pw",
+        password="pw",  # pragma: allowlist secret
     )
     result = _VerifyResult(imap_ok=False, smtp_ok=True, imap_error="refused")
 
@@ -993,7 +993,7 @@ def test_verify_and_refine_auth_failure_with_retry_budget(
             llm_provider=None,
             mx_hosts=[],
             output_path=output,
-            password="wrong-pw",
+            password="wrong-pw",  # pragma: allowlist secret
             password_from_args=None,  # interactive → retry budget available
             no_verify=False,
             account_id="default",
@@ -1033,7 +1033,7 @@ def test_verify_and_refine_auth_failure_no_retry_with_args_password(
             llm_provider=None,
             mx_hosts=[],
             output_path=output,
-            password="cli-pass",
+            password="cli-pass",  # pragma: allowlist secret
             password_from_args="cli-pass",  # from --password → budget = 0
             no_verify=False,
             account_id="default",
