@@ -83,6 +83,7 @@ class MailBoardAdapter:
         column_records: Mapping[str, Sequence[MailRecord]] | None = None,
         batch_running: bool = False,
         *,
+        archive_folders: Sequence[str] = (),
         record_accounts: Mapping[str, str] | None = None,
         account_labels: Mapping[str, str] | None = None,
     ) -> None:
@@ -97,6 +98,10 @@ class MailBoardAdapter:
         self.archive_subfolders = dict(archive_subfolders)
         self.folder_exists = dict(folder_exists)
         self.archive_root = archive_root
+        # Existing archive subfolders (relative paths) offered as a datalist
+        # dropdown on the per-card archive-override field — still free-text so
+        # the user can type a new folder.
+        self.archive_folders = list(archive_folders)
         self.unsubscribe_suggestions = dict(unsubscribe_suggestions)
         self.record_notes = dict(record_notes)
         # Per-column bucketed records, used by ``column_extra_html`` (which
@@ -299,6 +304,7 @@ class MailBoardAdapter:
                     f'<input type="hidden" name="message_id" value="{escaped_mid}">'
                     '<input type="text" name="subfolder"'
                     f' value="{escaped_subfolder}"'
+                    ' list="archive-folders"'
                     ' placeholder="subfolder path" size="30">'
                     '<button type="submit">Set</button>'
                     "</form>"
@@ -389,6 +395,21 @@ class MailBoardAdapter:
                 "</form>"
             )
 
+        # Datalist of existing archive folders for the per-card override
+        # dropdown (TO_ARCHIVE only; emitted once per column).  Union of the
+        # managed structure and the destinations currently proposed for this
+        # column, so any in-play folder is selectable while the field stays
+        # free-text (the user can still type a brand-new folder).
+        archive_datalist = ""
+        if status_key == "TO_ARCHIVE":
+            options = {f for f in self.archive_folders if f}
+            options.update(v for v in self.archive_subfolders.values() if v)
+            opts = "".join(
+                f'<option value="{html.escape(folder)}"></option>'
+                for folder in sorted(options)
+            )
+            archive_datalist = f'<datalist id="archive-folders">{opts}</datalist>'
+
         # Force-triage button (every column except INBOX).
         # Suppressed in aggregate mode.
         force_triage_form = ""
@@ -458,6 +479,7 @@ class MailBoardAdapter:
         return (
             '<div class="column-extra-top">'
             f"{batch_delete_form}{batch_archive_form}{force_triage_form}</div>"
+            f"{archive_datalist}"
             f"{unsubscribe_banner_html}"
         )
 

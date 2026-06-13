@@ -4234,6 +4234,35 @@ def test_mailboardadapter_card_badges() -> None:
     assert badges == ["Inbox"]
 
 
+def test_mailboardadapter_archive_override_offers_folder_dropdown() -> None:
+    """The override field is a free-text input backed by a folder datalist."""
+    mid = "<test@example.com>"
+    record = _make_record(message_id=mid)
+    adapter = MailBoardAdapter(
+        triage_by_mid={mid: "TO_ARCHIVE"},
+        archive_subfolders={mid: "Compta"},
+        folder_exists={},
+        archive_root="robotsix-mail-archive",
+        unsubscribe_suggestions={},
+        record_notes={},
+        column_records={"TO_ARCHIVE": [record]},
+        archive_folders=["Billing", "LS2N"],
+    )
+    # The per-card override input still accepts free text but is wired to the
+    # shared datalist dropdown.
+    card = adapter.card_extra_html(record)
+    assert 'name="subfolder"' in card
+    assert 'list="archive-folders"' in card
+
+    # The datalist (emitted once on the column) lists the managed structure
+    # folders plus the destination currently proposed for this column.
+    col = adapter.column_extra_html("TO_ARCHIVE")
+    assert '<datalist id="archive-folders">' in col
+    assert '<option value="Billing">' in col
+    assert '<option value="LS2N">' in col
+    assert '<option value="Compta">' in col
+
+
 def test_mailboardadapter_card_badges_unmatched_returns_inbox() -> None:
 
     adapter = MailBoardAdapter(

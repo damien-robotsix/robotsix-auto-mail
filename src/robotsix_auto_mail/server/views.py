@@ -197,6 +197,16 @@ def _gather_account_board_data(
         record_notes: dict[str, str] = {
             r.message_id: r.notes for r in all_records if r.notes
         }
+
+        # Existing archive subfolders (relative to the root) for the per-card
+        # override dropdown — strip the ``<effective_root><delimiter>`` prefix
+        # off each managed folder, dropping the root itself.
+        _root_prefix = f"{effective_root}{delimiter}"
+        archive_folders = sorted(
+            name[len(_root_prefix) :]
+            for name in existing_folders
+            if name.startswith(_root_prefix) and name != effective_root
+        )
     finally:
         conn.close()
 
@@ -206,6 +216,7 @@ def _gather_account_board_data(
         "triage_by_mid": triage_by_mid,
         "column_buckets": column_buckets,
         "archive_subfolders": archive_subfolders,
+        "archive_folders": archive_folders,
         "folder_exists": folder_exists,
         "unsubscribe_suggestions": unsubscribe_suggestions,
         "record_notes": record_notes,
@@ -234,6 +245,7 @@ def _build_board_content(
     triage_by_mid: dict[str, TriageDecision] = gathered["triage_by_mid"]
     column_buckets: dict[str, list[MailRecord]] = gathered["column_buckets"]
     archive_subfolders: dict[str, str] = gathered["archive_subfolders"]
+    archive_folders: list[str] = gathered["archive_folders"]
     folder_exists: dict[str, bool] = gathered["folder_exists"]
     unsubscribe_suggestions: dict[str, dict[str, Any]] = gathered[
         "unsubscribe_suggestions"
@@ -249,6 +261,7 @@ def _build_board_content(
         archive_subfolders=archive_subfolders,
         folder_exists=folder_exists,
         archive_root=archive_root,
+        archive_folders=archive_folders,
         unsubscribe_suggestions=unsubscribe_suggestions,
         record_notes=record_notes,
         column_records=column_buckets,
