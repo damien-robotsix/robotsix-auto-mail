@@ -33,6 +33,13 @@ repos:
         pass_filenames: true
         files: ^docs/modules\.yaml$
 
+      - id: vulture
+        name: Dead code detection (vulture)
+        entry: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:

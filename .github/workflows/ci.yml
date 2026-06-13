@@ -56,6 +56,9 @@ jobs:
       - name: Check module registration completeness
         run: uv run --frozen robotsix-modules check-registration docs/modules.yaml --root .
 
+      - name: Dead code detection (vulture)
+        run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
+
   # Reusable Python-security spine shared across robotsix repos. This single
   # call replaces the inline TruffleHog secret-scan / pip-audit / CycloneDX
   # SBOM steps that used to be hand-rolled here.
