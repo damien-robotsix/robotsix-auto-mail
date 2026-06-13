@@ -54,7 +54,7 @@ services:
       context: .
       dockerfile: Dockerfile
     command: serve --port ${BOARD_PORT:-8078}
-    restart: on-failure
+    restart: unless-stopped
 
     environment:
       MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml
