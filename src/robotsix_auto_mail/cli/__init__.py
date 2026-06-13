@@ -21,7 +21,6 @@ from robotsix_auto_mail.cli.commands import (
     _cmd_probe,
     _cmd_serve,
     _cmd_triage,
-    _cmd_triage_folder,
     _cmd_triage_set,
     _load_accounts_or_exit,
     _load_config_or_exit,

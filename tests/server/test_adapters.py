@@ -19,7 +19,6 @@ from robotsix_auto_mail.server.adapters import (
     _collect_records_for_action,
     _NonEmptyColumnsAdapter,
     _release_batch_op,
-    _run_folder_triage_background,
     _run_triage_background,
 )
 from robotsix_auto_mail.triage import set_triage_decision
@@ -151,96 +150,6 @@ class TestRunTriageBackground:
             _run_triage_background("/fake/db.sqlite")
 
         mock_run_triage.assert_called_once_with(mock_conn, user_email=None)
-
-# ---------------------------------------------------------------------------
-# _run_folder_triage_background
-# ---------------------------------------------------------------------------
-
-
-class TestRunFolderTriageBackground:
-    def _make_mail_config(self) -> mock.Mock:
-        cfg = mock.Mock()
-        cfg.username = "user@example.com"
-        cfg.llm_provider = None
-        return cfg
-
-    def test_clears_watermark_on_success(self) -> None:
-        mock_conn = mock.MagicMock(spec=sqlite3.Connection)
-        mail_config = self._make_mail_config()
-        with (
-            mock.patch(
-                "robotsix_auto_mail.db.init_db", return_value=mock_conn
-            ) as mock_init_db,
-            mock.patch("robotsix_auto_mail.db.set_watermark") as mock_set_watermark,
-            mock.patch("robotsix_auto_mail.triage.run_triage_agent"),
-            mock.patch("robotsix_auto_mail.imap.ImapClient"),
-            mock.patch("robotsix_auto_mail.pipeline.ingest_folder"),
-        ):
-            _run_folder_triage_background("/fake/db.sqlite", mail_config, "Projects")
-
-        mock_init_db.assert_called_once_with("/fake/db.sqlite", skip_migrations=True)
-        mock_set_watermark.assert_called_once_with(
-            mock_conn, "triage_run:state", "idle"
-        )
-        mock_conn.close.assert_called_once()
-
-    def test_clears_watermark_when_agent_raises(self) -> None:
-        mock_conn = mock.MagicMock(spec=sqlite3.Connection)
-        mail_config = self._make_mail_config()
-        with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
-            mock.patch("robotsix_auto_mail.db.set_watermark") as mock_set_watermark,
-            mock.patch(
-                "robotsix_auto_mail.triage.run_triage_agent",
-                side_effect=RuntimeError("boom"),
-            ),
-            mock.patch("robotsix_auto_mail.imap.ImapClient"),
-            mock.patch("robotsix_auto_mail.pipeline.ingest_folder"),
-        ):
-            # Must not raise.
-            _run_folder_triage_background("/fake/db.sqlite", mail_config, "Projects")
-
-        mock_set_watermark.assert_called_once_with(
-            mock_conn, "triage_run:state", "idle"
-        )
-        mock_conn.close.assert_called_once()
-
-    def test_passes_folder_to_ingest(self) -> None:
-        mock_conn = mock.MagicMock(spec=sqlite3.Connection)
-        mail_config = self._make_mail_config()
-        with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
-            mock.patch("robotsix_auto_mail.db.set_watermark"),
-            mock.patch("robotsix_auto_mail.triage.run_triage_agent"),
-            mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_imap_cls,
-            mock.patch("robotsix_auto_mail.pipeline.ingest_folder") as mock_ingest,
-        ):
-            _run_folder_triage_background("/fake/db.sqlite", mail_config, "Lists/Dev")
-
-        mock_imap = mock_imap_cls.return_value.__enter__.return_value
-        mock_ingest.assert_called_once_with(
-            mock_conn, mock_imap, mail_config, "Lists/Dev"
-        )
-
-    def test_passes_username_and_llm_provider_to_agent(self) -> None:
-        mock_conn = mock.MagicMock(spec=sqlite3.Connection)
-        mail_config = self._make_mail_config()
-        mail_config.username = "alice@x.com"
-        mail_config.llm_provider = "openai"
-        with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
-            mock.patch("robotsix_auto_mail.db.set_watermark"),
-            mock.patch("robotsix_auto_mail.triage.run_triage_agent") as mock_run,
-            mock.patch("robotsix_auto_mail.imap.ImapClient"),
-            mock.patch("robotsix_auto_mail.pipeline.ingest_folder"),
-        ):
-            _run_folder_triage_background("/fake/db.sqlite", mail_config, "Inbox")
-
-        mock_run.assert_called_once_with(
-            mock_conn,
-            user_email="alice@x.com",
-            provider="openai",
-        )
 
 
 # ---------------------------------------------------------------------------
