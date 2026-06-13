@@ -2193,6 +2193,247 @@ def test_triage_error_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     assert "llm exploded" in err
 
 
+# ---------------------------------------------------------------------------
+# triage-folder subcommand
+# ---------------------------------------------------------------------------
+
+
+def _raw_folder_message(message_id: str = "<a@x.com>") -> bytes:
+    """Build a minimal MIME message for the triage-folder CLI tests."""
+    return (
+        f"From: alice@example.com\r\n"
+        f"To: bob@example.com\r\n"
+        f"Subject: Hello\r\n"
+        f"Date: Wed, 15 Jan 2025 10:30:00 +0000\r\n"
+        f"Message-ID: {message_id}\r\n"
+        f"Content-Type: text/plain; charset=utf-8\r\n"
+        f"\r\n"
+        f"body"
+    ).encode("utf-8")
+
+
+def _cfg_empty_db(tmp_path: Path, name: str = "folder.db") -> MailConfig:
+    """A MailConfig pointing at an empty (uncreated) temp DB."""
+    return MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        db_path=str(tmp_path / name),
+    )
+
+
+def _patch_folder_imap(*messages: bytes) -> mock._patch[mock.MagicMock]:
+    """Patch the commands-module ImapClient to yield *messages* for a folder."""
+    mock_imap = mock.MagicMock(spec=ImapClient)
+    uids = list(range(1, len(messages) + 1))
+    mock_imap.search_uids.return_value = uids
+    mock_imap.fetch_messages.return_value = list(zip(uids, messages, strict=True))
+
+    imap_cls = mock.MagicMock()
+    imap_cls.return_value.__enter__.return_value = mock_imap
+    return mock.patch("robotsix_auto_mail.cli.commands.ImapClient", imap_cls)
+
+
+def test_parser_has_triage_folder_subcommand() -> None:
+    """The parser knows triage-folder with positional folder and flag defaults."""
+    args = build_parser().parse_args(["triage-folder", "Archive"])
+    assert args.command == "triage-folder"
+    assert args.folder == "Archive"
+    assert args.output_format == "text"
+    assert args.api_key is None
+    assert args.dry_run is False
+
+
+def test_triage_folder_text_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """triage-folder ingests the folder then triages, rendering both (text)."""
+    cfg_db = _cfg_empty_db(tmp_path)
+    result = TriageResult(
+        items=[TriageItem(index=1, action="TO_ARCHIVE", reason="reference mail")]
+    )
+    with (
+        _patch_folder_imap(_raw_folder_message("<a@x.com>")),
+        _patch_triage_llm(result),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(["triage-folder", "Archive"])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Fetched:  1 messages" in out
+    assert "Stored:   1 new" in out
+    assert "Folder Triage" in out
+    assert "<a@x.com>" in out
+    assert "TO_ARCHIVE" in out
+    assert "reference mail" in out
+
+
+def test_triage_folder_dry_run_skips_triage(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """triage-folder --dry-run stores nothing and skips the triage pass."""
+    cfg_db = _cfg_empty_db(tmp_path)
+    with (
+        _patch_folder_imap(_raw_folder_message("<a@x.com>")),
+        mock.patch("robotsix_llmio.core.get_provider") as cls,
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
+    ):
+        rc = main(["triage-folder", "Archive", "--dry-run"])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "DRY RUN — nothing stored" in out
+    assert "No mail to triage." in out
+    # No triage pass occurred.
+    cls.assert_not_called()
+
+
+def test_triage_folder_json_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """triage-folder --output-format json emits ingest counts and decisions."""
+    cfg_db = _cfg_empty_db(tmp_path)
+    result = TriageResult(
+        items=[TriageItem(index=1, action="TO_ARCHIVE", confidence="high")]
+    )
+    with (
+        _patch_folder_imap(_raw_folder_message("<a@x.com>")),
+        _patch_triage_llm(result),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(["triage-folder", "Archive", "--output-format", "json"])
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["folder"] == "Archive"
+    assert payload["fetched"] == 1
+    assert payload["stored"] == 1
+    assert payload["skipped"] == 0
+    assert payload["errors"] == 0
+    assert payload["decisions"][0]["message_id"] == "<a@x.com>"
+    assert payload["decisions"][0]["action"] == "TO_ARCHIVE"
+
+
+def test_triage_folder_imap_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An ImapError returns 1 with an Error: line on stderr."""
+    from robotsix_auto_mail.imap import ImapError
+
+    cfg_db = _cfg_empty_db(tmp_path)
+    imap_cls = mock.MagicMock(side_effect=ImapError("connection refused"))
+    with (
+        mock.patch("robotsix_auto_mail.cli.commands.ImapClient", imap_cls),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
+    ):
+        rc = main(["triage-folder", "Archive"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "Error:" in err
+    assert "connection refused" in err
+
+
+def test_triage_folder_triage_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A TriageError returns 1 with an Error: line on stderr."""
+    cfg_db = _cfg_empty_db(tmp_path)
+    with (
+        _patch_folder_imap(_raw_folder_message("<a@x.com>")),
+        mock.patch(
+            "robotsix_auto_mail.triage.run_triage_agent",
+            side_effect=TriageError("llm exploded"),
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
+    ):
+        rc = main(["triage-folder", "Archive"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "Error:" in err
+    assert "llm exploded" in err
+
+
+def test_triage_folder_system_folder_refused_without_force(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    r"""triage-folder on a \Sent folder exits 1 with an error on stderr
+    unless --force is passed."""
+    cfg_db = _cfg_empty_db(tmp_path)
+    # Build a mock ImapClient whose list_folders() returns a SPECIAL-USE
+    # Sent mailbox so the guard fires.
+    mock_imap = mock.MagicMock(spec=ImapClient)
+    sent_mbox = mock.Mock()
+    sent_mbox.name = "Sent"
+    sent_mbox.attributes = (r"\Sent",)
+    mock_imap.list_folders.return_value = [sent_mbox]
+    mock_imap.search_uids.return_value = []
+    mock_imap.fetch_messages.return_value = []
+
+    imap_cls = mock.MagicMock()
+    imap_cls.return_value.__enter__.return_value = mock_imap
+
+    with (
+        mock.patch("robotsix_auto_mail.cli.commands.ImapClient", imap_cls),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
+    ):
+        rc = main(["triage-folder", "Sent"])
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "special-use mailbox" in err
+    assert "\\Sent" in err
+    assert "--force" in err
+
+
+def test_triage_folder_system_folder_with_force_bypasses_guard(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    r"""triage-folder --force on a \Sent folder bypasses the guard and proceeds."""
+    cfg_db = _cfg_empty_db(tmp_path)
+    # Build a mock ImapClient whose list_folders() returns a SPECIAL-USE
+    # Sent mailbox — the guard should be skipped when --force is set.
+    mock_imap = mock.MagicMock(spec=ImapClient)
+    sent_mbox = mock.Mock()
+    sent_mbox.name = "Sent"
+    sent_mbox.attributes = (r"\Sent",)
+    mock_imap.list_folders.return_value = [sent_mbox]
+    mock_imap.search_uids.return_value = []
+    mock_imap.fetch_messages.return_value = []
+
+    imap_cls = mock.MagicMock()
+    imap_cls.return_value.__enter__.return_value = mock_imap
+
+    with (
+        mock.patch("robotsix_auto_mail.cli.commands.ImapClient", imap_cls),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
+        ),
+    ):
+        rc = main(["triage-folder", "Sent", "--force"])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Fetched:" in out
+
+
 def test_triage_set_success(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """triage-set records a user decision and exits 0."""
     from robotsix_auto_mail.db import init_db as real_init_db
