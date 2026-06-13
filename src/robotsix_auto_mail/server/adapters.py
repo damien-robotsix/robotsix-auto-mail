@@ -339,8 +339,11 @@ def _run_batch_archive_background(
                 by_source_dest: dict[tuple[str, str], list[MailRecord]] = defaultdict(
                     list
                 )
+                api_key = mail_config.llm_api_key if mail_config else ""
                 for record in records:
-                    subfolder = get_archive_subfolder(conn, record.message_id, record)
+                    subfolder = get_archive_subfolder(
+                        conn, record.message_id, record, api_key=api_key
+                    )
                     dest = _archive_dest_folder(effective_root, subfolder, delimiter)
                     if dest is None:
                         # Destination escapes the archive root — skip.

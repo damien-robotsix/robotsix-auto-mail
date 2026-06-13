@@ -264,7 +264,12 @@ class _BoardActionMixin:
         from robotsix_auto_mail.db import delete_record_by_message_id
 
         # Compute the effective archive subfolder.
-        subfolder = get_archive_subfolder(conn, record.message_id, record)
+        subfolder = get_archive_subfolder(
+            conn,
+            record.message_id,
+            record,
+            api_key=self.mail_config.llm_api_key if self.mail_config else "",
+        )
 
         # Determine the archive root.
         archive_root = (
