@@ -37,6 +37,7 @@ from robotsix_auto_mail.triage.classifier import (
     _sender_key,
     apply_triage_rules,
     normalize_archive_subfolder,
+    propose_archive_subfolder_llm,
 )
 from robotsix_auto_mail.triage.persistence import (
     TriageDecision,
@@ -506,6 +507,36 @@ def _update_archive_hints(
     _save_llm_archive_hints(conn, hints)
 
 
+def _fill_missing_archive_hints(
+    conn: sqlite3.Connection,
+    remaining: list[MailRecord],
+    by_index: dict[int, TriageItem],
+    api_key: str,
+    provider: str | None,
+) -> None:
+    """Propose a subfolder for TO_ARCHIVE records the classifier left blank.
+
+    The triage LLM may classify a message ``TO_ARCHIVE`` without volunteering
+    an ``archive_subfolder`` (the field is optional and the cheap model often
+    omits it).  Filling those gaps here — during the background triage run —
+    means the board can render each destination from a cached hint instead of
+    issuing an LLM call per card on every page load.  Best-effort: a missing
+    key or proposal failure leaves the hint unset (the board falls back to the
+    archive root), never aborting triage.
+    """
+    if not api_key:
+        return
+    hinted = set(_load_llm_archive_hints(conn))
+    for i, record in enumerate(remaining, start=1):
+        matched = by_index.get(i)
+        if matched is None or matched.action != "TO_ARCHIVE":
+            continue
+        if record.message_id in hinted:
+            continue
+        # Persists the hint itself; swallows its own errors.
+        propose_archive_subfolder_llm(conn, record, api_key, provider)
+
+
 def run_triage_agent(
     conn: sqlite3.Connection,
     *,
@@ -626,6 +657,11 @@ def run_triage_agent(
 
     # -- store/clear LLM archive subfolder hints -------------------------
     _update_archive_hints(conn, remaining, by_index)
+    # Fill subfolders the classifier omitted, so the board renders each
+    # TO_ARCHIVE destination from a cached hint (no LLM call per render).
+    _fill_missing_archive_hints(
+        conn, remaining, by_index, resolved_key, resolved_provider
+    )
 
     # -- check TO_DELETE senders for unsubscribe options ------------------
     _check_unsubscribe_for_to_delete(conn)
