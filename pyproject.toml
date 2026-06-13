@@ -128,7 +128,10 @@ paths = ["src/robotsix_auto_mail"]
 # ``log_message`` overrides the stdlib handler and discards every parameter;
 # ``format`` shadows the builtin and cannot be whitelisted via a file-level
 # reference (it is a local inside a method body).
-ignore_names = ["format"]
+# ``method_name`` is a required positional argument of the structlog
+# processor protocol ``(logger, method_name, event_dict)``; ``_add_trace_id``
+# does not need it but cannot drop it from the signature.
+ignore_names = ["format", "method_name"]
 
 [tool.uv.sources]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
