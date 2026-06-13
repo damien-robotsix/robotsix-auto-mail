@@ -11,9 +11,14 @@ from typing import Any
 from unittest import mock
 
 import pytest
+from hypothesis import settings
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import MailRecord, init_db
+
+settings.register_profile("ci", max_examples=200, deadline=None)
+settings.register_profile("dev", max_examples=50, deadline=None)
+settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
 
 
 @pytest.fixture(autouse=True)
