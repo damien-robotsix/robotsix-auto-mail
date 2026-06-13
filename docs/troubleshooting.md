@@ -68,7 +68,7 @@ re-fetched) are expected: ingestion is idempotent, deduplicating on
 is always safe and will not duplicate stored mail.  See
 [docs/ingestion.md](ingestion.md) for the schema and idempotency model.
 
-## Board operation — stale UID errors (409)
+## Board operation — stale UIDs
 
 When you use the board's **Move**, **Delete**, or **Archive** operations, or
 trigger a **Batch Delete**, the system communicates with your IMAP server to
@@ -83,34 +83,29 @@ in the IMAP folder where the system expects it. This typically happens when:
 - The IMAP server purged the message
 - The message was deleted via another mail client or web interface
 
-**Error behavior:**  When the board detects a stale UID, it **stops and
-returns a 409 Conflict error** instead of silently deleting the local record.
-The error message clearly states:
+**What the system does:**  When the board detects a stale UID, it does **not**
+fail immediately. Instead it opens a second IMAP connection and re-resolves the
+message across all folders by `Message-ID`:
 
-```
-Message {message-id} is no longer in INBOX — the tracked UID is stale,
-so it was not {deleted|archived} and the board record was kept.
-```
+1. **If the message is found in another folder**, the local record's
+   `source_folder` and `imap_uid` are healed to point at the new location and
+   the requested action (delete/archive) proceeds against it. You see a normal
+   redirect and no error.
+2. **If the message is not found in any folder** (it is verifiably gone from the
+   server), the stale local record is deleted and you see a normal redirect. No
+   error is raised — there is nothing left to act on.
 
-This prevents silent data loss: the local board record remains intact and you
-can investigate the actual message on the server.
+In both cases the operation completes automatically; no 409 Conflict is
+returned any more.
 
-**How to recover:**
+**When you may still see an error:**  If the re-resolution cannot be completed
+because of a transient IMAP or network problem (an `ImapError` or `OSError`,
+e.g. the server is briefly unreachable), the system **preserves the local
+record** and returns a **502** so the action is not lost. This signals a
+temporary failure rather than a stale UID.
 
-1. **Verify the message location** on your IMAP server using a mail client
-   (Thunderbird, Apple Mail, Gmail web interface, etc.). Search for the message
-   by sender or subject.
-2. **If the message is in a different folder**, manually move it back to INBOX
-   (or the folder configured in `imap_folder`) if you still want to delete or
-   archive it via the board.
-3. **If the message is gone entirely**, you can safely **delete the board record
-   manually** via the database or wait for the triage agent to re-classify it
-   (if applicable).
-4. **Re-attempt the operation** (Move/Delete/Archive) once the message is in the
-   expected location.
-
-**Why we do this:**  IMAP `STORE` and `COPY` commands that target a non-existent
-UID return success (RFC 3501) even though they affect zero messages. Without
-explicit checking, such silent no-ops would cause the board to delete its local
-record while leaving the actual message on the server — a form of data loss. The
-409 response ensures you always know when something unexpected happened.
+**How to recover:**  Manual intervention is rarely needed. Because the system
+re-resolves moved messages and cleans up records for messages that are gone,
+you normally do not have to locate the message or edit records by hand. If you
+hit a **502**, simply **re-attempt the operation** once your IMAP server is
+reachable again.
