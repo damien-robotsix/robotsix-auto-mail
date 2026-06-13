@@ -6,11 +6,21 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+permissions:
+  contents: read
+
 jobs:
   # Reusable Python-CI spine shared across robotsix repos. This single call
   # replaces the inline ruff/mypy/deptry/pytest+coverage/bandit steps that used
   # to be hand-rolled here.
   ci:
+    # python-ci.yml's `tests` job uploads SARIF, so it requests
+    # security-events: write — a caller job must grant at least that or
+    # GitHub rejects the call ("nested job 'tests' is requesting
+    # 'security-events: write'"). Mirrors mill's own caller.
+    permissions:
+      contents: read
+      security-events: write
     uses: damien-robotsix/robotsix-mill/.github/workflows/python-ci.yml@main
     with:
       python-version: "3.14"
