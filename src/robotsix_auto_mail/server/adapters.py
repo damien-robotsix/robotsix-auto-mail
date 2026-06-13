@@ -252,7 +252,11 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                                         source_folder=new_folder,
                                         imap_uid=new_uid,
                                     )
-                                    resolved.append((r, new_uid))
+                                    # Immediately delete individually —
+                                    # client is still selected on new_folder
+                                    # and the UID won't exist in folder.
+                                    client.delete_message(new_uid)
+                                    resolved.append((r, 0))
                                 else:
                                     resolved.append((r, 0))
                             else:
@@ -263,6 +267,10 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                         chunk = resolved[start : start + _BATCH_UID_CHUNK]
                         uids = [uid for _, uid in chunk if uid]
                         if uids:
+                            # Re-select folder before batch delete
+                            # (cross_folder_resolve may have left us
+                            # on a different folder).
+                            client.select_folder(folder)
                             client.delete_messages(uids)
                         for record, _ in chunk:
                             delete_record_by_message_id(conn, record.message_id)
@@ -391,12 +399,24 @@ def _run_batch_archive_background(
                                     source_folder=new_folder,
                                     imap_uid=new_uid,
                                 )
-                                resolved_uids.append(new_uid)
+                                # Immediately move individually — client is
+                                # still selected on new_folder and the UID
+                                # won't exist in source_folder.
+                                parts = dest.split(delimiter)
+                                for i in range(1, len(parts) + 1):
+                                    client.create_folder(
+                                        delimiter.join(parts[:i])
+                                    )
+                                client.move_message(new_uid, dest)
                             # else: UID truly gone — skip IMAP,
                             # still delete DB row.
-                        resolved_uids.append(new_uid)
+                        else:
+                            resolved_uids.append(new_uid)
 
                     if resolved_uids:
+                        # Re-select source_folder (cross_folder_resolve
+                        # may have left us on a different folder).
+                        client.select_folder(source_folder)
                         # Ensure the destination hierarchy exists.
                         parts = dest.split(delimiter)
                         for i in range(1, len(parts) + 1):
