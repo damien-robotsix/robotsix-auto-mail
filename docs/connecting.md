@@ -331,11 +331,68 @@ supplies the real keys there without committing them.
 | `starttls` | Plain connection upgraded to TLS via STARTTLS (IMAP port 143, SMTP port 587) |
 | `none` | No TLS at all — **insecure, for local development only** |
 
+### Gmail (app password — simplest)
+
+Gmail supports IMAP, but Google rejects your **normal account password** over
+IMAP/SMTP. The simplest working setup needs no OAuth2 client registration — an
+**App Password**:
+
+1. Enable IMAP: Gmail → **Settings** → **See all settings** →
+   **Forwarding and POP/IMAP** → **Enable IMAP** → **Save Changes**.
+2. Turn on **2-Step Verification** for your Google account — App Passwords are
+   only offered once 2FA is enabled: <https://myaccount.google.com/security>.
+3. Create an App Password at <https://myaccount.google.com/apppasswords>
+   (choose "Mail" / "Other"). Google shows a **16-character** value — copy it
+   (the spaces are cosmetic and may be omitted).
+4. Use that App Password as `auth.password` (or `MAIL_PASSWORD`), with your
+   full address as `auth.username`:
+
+   ```yaml
+   imap:
+     host: imap.gmail.com
+     port: 993
+     tls_mode: direct-tls
+   smtp:
+     host: smtp.gmail.com
+     port: 587
+     tls_mode: starttls
+   auth:
+     username: you@gmail.com
+     # the 16-char App Password, NOT your normal login password
+     password: "abcd efgh ijkl mnop"
+   ```
+
+   ```sh
+   robotsix-auto-mail probe
+   ```
+
+If you supply your normal password by mistake, authentication fails with an
+`Invalid credentials` error; because the host is Gmail, the client appends a
+reminder to use an App Password.
+
+> **Labels, not folders.** Gmail exposes its *labels* as IMAP folders, with the
+> system folders under the `[Gmail]/` namespace (`All Mail`, `Sent Mail`,
+> `Trash`, …) flagged as special-use. The self-managed archive creates its
+> folders as ordinary Gmail **labels** and archives a message by copying it to
+> the destination label and removing it from `INBOX` — so the message keeps
+> resting in **All Mail** (Gmail's native "archived" state) with the new label
+> applied. These special-use system folders are excluded from the LLM
+> archive-layout proposal, so it never files mail into `All Mail` or `Trash`.
+>
+> **Expunge behaviour (important).** Archiving relies on Gmail's *default*
+> IMAP setting — Gmail → Settings → Forwarding and POP/IMAP → *"When a message
+> is marked as deleted and expunged from the last visible IMAP folder:
+> **Archive the message**"*. If you changed this to *"Move the message to the
+> Trash"*, archiving from `INBOX` will **trash** mail instead — keep the
+> default.
+
 ### OAuth2 (XOAUTH2)
 
-Gmail deprecated password-based IMAP/SMTP auth in March 2025, and Microsoft 365
-has also deprecated basic auth. These providers (and others) now require
-**SASL XOAUTH2** — an industry-standard OAuth2-based SASL mechanism.
+Microsoft 365 has deprecated basic auth and now requires **SASL XOAUTH2** — an
+industry-standard OAuth2-based SASL mechanism. Gmail also rejects your normal
+account password, but accepts either an
+[App Password](#gmail-app-password--simplest) (simplest — see above) or
+XOAUTH2.
 
 When ``oauth2_token`` is set (in the YAML config or via ``MAIL_OAUTH2_TOKEN``),
 the IMAP and SMTP clients authenticate via XOAUTH2 instead of the legacy

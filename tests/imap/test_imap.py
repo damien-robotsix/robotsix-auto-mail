@@ -21,7 +21,11 @@ from robotsix_auto_mail.imap import (
     ImapTlsError,
     MailboxInfo,
     _is_waste_folder,
+    _parse_list_line,
     cross_folder_resolve,
+    imap_utf7_decode,
+    imap_utf7_encode,
+    is_special_use,
     is_system_folder,
 )
 
@@ -43,6 +47,72 @@ def _uid_side_effect(
         return other
 
     return _side_effect
+
+
+# ---------------------------------------------------------------------------
+# Special-use detection (Gmail labels / RFC 6154)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "attributes",
+    [
+        ("\\HasNoChildren", "\\All"),
+        ("\\Sent",),
+        ("\\Drafts",),
+        ("\\Trash",),
+        ("\\Junk",),
+        ("\\Flagged",),
+        ("\\Important",),
+        ("\\HasChildren", "\\Noselect"),
+        ("\\all",),  # case-insensitive
+    ],
+)
+def test_is_special_use_true(attributes: tuple[str, ...]) -> None:
+    """System / special-use mailboxes are recognised regardless of case."""
+    assert is_special_use(MailboxInfo("x", attributes, "/")) is True
+
+
+@pytest.mark.parametrize(
+    "attributes",
+    [
+        (),
+        ("\\HasNoChildren",),
+        ("\\HasChildren",),
+        ("\\Marked", "\\HasNoChildren"),
+    ],
+)
+def test_is_special_use_false(attributes: tuple[str, ...]) -> None:
+    """Ordinary (user) folders are not flagged as special-use."""
+    assert is_special_use(MailboxInfo("Projects", attributes, "/")) is False
+
+
+# ---------------------------------------------------------------------------
+# Modified UTF-7 mailbox-name codec (RFC 3501)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("decoded", "encoded"),
+    [
+        ("INBOX", "INBOX"),  # pure ASCII → unchanged
+        ("robotsix-mail-archive/Billing", "robotsix-mail-archive/Billing"),
+        ("Préfecture-44", "Pr&AOk-fecture-44"),  # é → modified base64
+        ("Administratif/Préfecture", "Administratif/Pr&AOk-fecture"),
+        ("R&D", "R&-D"),  # literal ampersand → &-
+        ("Ångström", "&AMU-ngstr&APY-m"),
+    ],
+)
+def test_imap_utf7_roundtrip(decoded: str, encoded: str) -> None:
+    """Encoding matches RFC 3501 and decode inverts encode."""
+    assert imap_utf7_encode(decoded) == encoded
+    assert imap_utf7_decode(encoded) == decoded
+
+
+def test_parse_list_line_decodes_utf7_name() -> None:
+    """A LIST response with a UTF-7 mailbox name is decoded to Unicode."""
+    info = _parse_list_line(b'(\\HasNoChildren) "/" "Pr&AOk-fecture-44"')
+    assert info.name == "Préfecture-44"
 
 
 # ---------------------------------------------------------------------------
@@ -130,6 +200,64 @@ def test_direct_tls_happy_path(cfg: MailConfig) -> None:
         attributes=("\\HasChildren", "\\Noselect"),
         delimiter="/",
     )
+
+
+# ---------------------------------------------------------------------------
+# Gmail app-password auth hint
+# ---------------------------------------------------------------------------
+
+
+def _gmail_cfg(**overrides: str) -> MailConfig:
+    """A Gmail MailConfig with placeholder credentials."""
+    base = {
+        "imap_host": "imap.gmail.com",
+        "smtp_host": "smtp.gmail.com",
+        "username": "you@gmail.com",
+        "password": "wrong-normal-password",
+    }
+    base.update(overrides)
+    return MailConfig(**base)  # type: ignore[arg-type]
+
+
+def test_gmail_password_failure_appends_app_password_hint() -> None:
+    """A plain-login rejection from Gmail steers the user to an App Password."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.login.side_effect = imaplib.IMAP4.error("Invalid credentials")
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with pytest.raises(ImapAuthError) as excinfo:
+            with ImapClient(_gmail_cfg()):
+                pass
+
+    message = str(excinfo.value)
+    assert "App Password" in message
+    assert "myaccount.google.com/apppasswords" in message
+
+
+def test_non_gmail_password_failure_has_no_gmail_hint() -> None:
+    """The Gmail hint is host-specific — other providers don't get it."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.login.side_effect = imaplib.IMAP4.error("Invalid credentials")
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with pytest.raises(ImapAuthError) as excinfo:
+            with ImapClient(_gmail_cfg(imap_host="imap.example.com")):
+                pass
+
+    assert "App Password" not in str(excinfo.value)
+
+
+def test_gmail_oauth2_failure_has_no_app_password_hint() -> None:
+    """An XOAUTH2 (token) failure is not a wrong-password situation."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.authenticate.side_effect = imaplib.IMAP4.error("AUTHENTICATE failed")
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with pytest.raises(ImapAuthError) as excinfo:
+            with ImapClient(_gmail_cfg(password="", oauth2_token="ya29.token")):
+                pass
+
+    assert "App Password" not in str(excinfo.value)
 
 
 # ---------------------------------------------------------------------------
@@ -1264,9 +1392,7 @@ class TestIsSystemFolderSpecialUseFlags:
         assert is_system_folder(m) is False
 
     def test_hasnochildren_flag_not_blocked(self) -> None:
-        m = MailboxInfo(
-            name="INBOX", attributes=(r"\HasNoChildren",), delimiter="/"
-        )
+        m = MailboxInfo(name="INBOX", attributes=(r"\HasNoChildren",), delimiter="/")
         assert is_system_folder(m) is False
 
     def test_multiple_flags_one_system(self) -> None:
@@ -1286,59 +1412,81 @@ class TestIsSystemFolderNameFallback:
     """Name-based fallback (case-insensitive, whitespace stripped)."""
 
     def test_sent(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="Sent", attributes=(), delimiter="/")
-        ) is True
+        assert (
+            is_system_folder(MailboxInfo(name="Sent", attributes=(), delimiter="/"))
+            is True
+        )
 
     def test_sent_case_insensitive(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="sent", attributes=(), delimiter="/")
-        ) is True
+        assert (
+            is_system_folder(MailboxInfo(name="sent", attributes=(), delimiter="/"))
+            is True
+        )
 
     def test_sent_whitespace(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="  Sent  ", attributes=(), delimiter="/")
-        ) is True
+        assert (
+            is_system_folder(MailboxInfo(name="  Sent  ", attributes=(), delimiter="/"))
+            is True
+        )
 
     def test_french_envoyes(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="Éléments envoyés", attributes=(), delimiter="/")
-        ) is True
+        assert (
+            is_system_folder(
+                MailboxInfo(name="Éléments envoyés", attributes=(), delimiter="/")
+            )
+            is True
+        )
 
     def test_french_envoyes_lowercase(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="éléments envoyés", attributes=(), delimiter="/")
-        ) is True
+        assert (
+            is_system_folder(
+                MailboxInfo(name="éléments envoyés", attributes=(), delimiter="/")
+            )
+            is True
+        )
 
     def test_deleted_items(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="Deleted Items", attributes=(), delimiter="/")
-        ) is True
+        assert (
+            is_system_folder(
+                MailboxInfo(name="Deleted Items", attributes=(), delimiter="/")
+            )
+            is True
+        )
 
     def test_inbox_not_system(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="INBOX", attributes=(), delimiter="/")
-        ) is False
+        assert (
+            is_system_folder(MailboxInfo(name="INBOX", attributes=(), delimiter="/"))
+            is False
+        )
 
     def test_archive_not_system(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="Archive", attributes=(), delimiter="/")
-        ) is False
+        assert (
+            is_system_folder(MailboxInfo(name="Archive", attributes=(), delimiter="/"))
+            is False
+        )
 
     def test_projects_not_system(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="Projects", attributes=(), delimiter="/")
-        ) is False
+        assert (
+            is_system_folder(MailboxInfo(name="Projects", attributes=(), delimiter="/"))
+            is False
+        )
 
     def test_sent_items(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="Sent Items", attributes=(), delimiter="/")
-        ) is True
+        assert (
+            is_system_folder(
+                MailboxInfo(name="Sent Items", attributes=(), delimiter="/")
+            )
+            is True
+        )
 
     def test_junk_email(self) -> None:
-        assert is_system_folder(
-            MailboxInfo(name="Junk E-mail", attributes=(), delimiter="/")
-        ) is True
+        assert (
+            is_system_folder(
+                MailboxInfo(name="Junk E-mail", attributes=(), delimiter="/")
+            )
+            is True
+        )
+
 
 # _is_waste_folder
 # ---------------------------------------------------------------------------

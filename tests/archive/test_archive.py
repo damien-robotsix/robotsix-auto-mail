@@ -42,6 +42,12 @@ def _folder(name: str, delimiter: str = "/") -> MailboxInfo:
     return MailboxInfo(name=name, attributes=(), delimiter=delimiter)
 
 
+def _special_folder(
+    name: str, attributes: tuple[str, ...], delimiter: str = "/"
+) -> MailboxInfo:
+    return MailboxInfo(name=name, attributes=attributes, delimiter=delimiter)
+
+
 def _patch_llm(folders: list[str]) -> mock._patch[mock.MagicMock]:
     """Patch get_provider to return *folders* from the LLM."""
     mock_run_result = mock.MagicMock()
@@ -268,6 +274,44 @@ def test_setup_archive_custom_root_passed_to_llm() -> None:
 
         prompt = provider.build_agent.call_args.kwargs["system_prompt"]
         assert "custom-archive" in prompt
+    finally:
+        conn.close()
+
+
+def test_setup_archive_excludes_special_use_folders_from_llm() -> None:
+    """Gmail's special-use system folders are kept out of the LLM input."""
+    conn = init_db(":memory:")
+    try:
+        client = _FakeImapClient(
+            [
+                _folder("INBOX"),
+                _folder("Projects/acme"),
+                _special_folder("[Gmail]", ("\\HasChildren", "\\Noselect")),
+                _special_folder("[Gmail]/All Mail", ("\\All",)),
+                _special_folder("[Gmail]/Sent Mail", ("\\Sent",)),
+                _special_folder("[Gmail]/Trash", ("\\Trash",)),
+                _special_folder("[Gmail]/Important", ("\\Important",)),
+            ]
+        )
+        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+            with mock.patch("robotsix_llmio.core.get_provider") as cls:
+                mock_run_result = mock.MagicMock()
+                mock_run_result.output = ArchiveStructure(folders=[])
+                mock_handle = mock.MagicMock()
+                mock_handle.run_sync.return_value = mock_run_result
+                provider = cls.return_value
+                provider.build_agent.return_value = mock_handle
+                provider.call_with_retry.side_effect = lambda fn, what: fn()
+
+                setup_archive(conn, cast(ImapClient, client))
+
+        user_message = mock_handle.run_sync.call_args.args[0]
+        # Ordinary folders inform the layout; system folders are filtered out.
+        assert "INBOX" in user_message
+        assert "Projects/acme" in user_message
+        assert "[Gmail]" not in user_message
+        assert "All Mail" not in user_message
+        assert "Trash" not in user_message
     finally:
         conn.close()
 
