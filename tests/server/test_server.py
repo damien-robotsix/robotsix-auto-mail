@@ -7102,9 +7102,7 @@ def test_multi_account_delete_rule_with_account_param() -> None:
             assert resp.headers.get("Location") == "/rules?account=A"
 
             # GET /rules?account=A — rule should be gone.
-            _s, body, _h = _get(
-                f"http://127.0.0.1:{port}/rules?account=A"
-            )
+            _s, body, _h = _get(f"http://127.0.0.1:{port}/rules?account=A")
             assert "spam@a.com" not in body
         finally:
             server.shutdown()
