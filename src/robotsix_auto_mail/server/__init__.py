@@ -83,9 +83,6 @@ from robotsix_auto_mail.server.views import (
     _render_recipients as _render_recipients,
 )
 from robotsix_auto_mail.server.views import (
-    _render_rule_card as _render_rule_card,
-)
-from robotsix_auto_mail.server.views import (
     _render_triage_section as _render_triage_section,
 )
 
@@ -109,7 +106,6 @@ __all__ = [
     "_render_move_form",
     "_render_notes_section",
     "_render_recipients",
-    "_render_rule_card",
     "_render_triage_section",
     "_run_triage_background",
     "make_board_handler",

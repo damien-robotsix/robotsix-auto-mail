@@ -2253,175 +2253,6 @@ def test_triage_set_unknown_message_id(
     assert "<missing@x.com>" in err
 
 
-# ---------------------------------------------------------------------------
-# triage-rules / triage-rules-set subcommands
-# ---------------------------------------------------------------------------
-
-
-def _cfg_with_rule_history(
-    tmp_path: Path, sender: str = "alice@example.com", count: int = 3
-) -> MailConfig:
-    """A MailConfig whose DB has *count* consistent 'TO_ARCHIVE' decisions."""
-    from robotsix_auto_mail.db import MailRecord, insert_record
-    from robotsix_auto_mail.db import init_db as real_init_db
-    from robotsix_auto_mail.triage import set_triage_decision
-
-    db_path = str(tmp_path / "rules.db")
-    conn = real_init_db(db_path)
-    for i in range(count):
-        mid = f"<m{i}@x.com>"
-        insert_record(
-            conn,
-            MailRecord(
-                message_id=mid,
-                sender=sender,
-                subject="Hello",
-                date="2025-06-01T12:00:00",
-                body_plain="hi",
-            ),
-        )
-        set_triage_decision(conn, mid, "TO_ARCHIVE", source="agent")
-    conn.close()
-    return MailConfig(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-        username="user@example.com",
-        password="s3cret",
-        db_path=db_path,
-    )
-
-
-def test_parser_has_triage_rules_subcommand() -> None:
-    """The parser knows triage-rules with its output-format default."""
-    args = build_parser().parse_args(["triage-rules", "--output-format", "json"])
-    assert args.command == "triage-rules"
-    assert args.output_format == "json"
-
-
-def test_parser_has_triage_rules_set_subcommand() -> None:
-    """The parser knows triage-rules-set with positional args."""
-    args = build_parser().parse_args(["triage-rules-set", "abc123", "accepted"])
-    assert args.command == "triage-rules-set"
-    assert args.fingerprint == "abc123"
-    assert args.state == "accepted"
-
-
-def test_triage_rules_text_output(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """triage-rules proposes a rule and lists active rules (text, exit 0)."""
-    cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch(
-        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
-    ):
-        rc = main(["triage-rules"])
-
-    assert rc == 0
-    out = capsys.readouterr().out
-    assert "Triage Rule Proposals" in out
-    assert "alice@example.com" in out
-    assert "TO_ARCHIVE" in out
-    assert "fingerprint:" in out
-    assert "Active rules:" in out
-
-
-def test_triage_rules_json_output(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """triage-rules --output-format json prints proposals + active rules."""
-    cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch(
-        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
-    ):
-        rc = main(["triage-rules", "--output-format", "json"])
-
-    assert rc == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert len(payload["proposals"]) == 1
-    proposal = payload["proposals"][0]
-    assert proposal["match_type"] == "sender"
-    assert proposal["match_value"] == "alice@example.com"
-    assert proposal["action"] == "TO_ARCHIVE"
-    assert proposal["fingerprint"]
-    assert payload["active_rules"] == []
-
-
-def test_triage_rules_dedup_on_second_run(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A second triage-rules run suppresses the already-recorded proposal."""
-    cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch(
-        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
-    ):
-        main(["triage-rules", "--output-format", "json"])
-        capsys.readouterr()
-        rc = main(["triage-rules", "--output-format", "json"])
-
-    assert rc == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["proposals"] == []
-
-
-def test_triage_rules_set_accept_makes_active(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """triage-rules-set accepted adds the rule to the active set (exit 0)."""
-    from robotsix_auto_mail.db import init_db as real_init_db
-    from robotsix_auto_mail.triage import _load_active_rules
-
-    cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch(
-        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
-    ):
-        main(["triage-rules", "--output-format", "json"])
-        fingerprint = json.loads(capsys.readouterr().out)["proposals"][0]["fingerprint"]
-        rc = main(["triage-rules-set", fingerprint, "accepted"])
-
-    assert rc == 0
-    assert "Recorded triage rule state" in capsys.readouterr().out
-    conn = real_init_db(cfg_db.db_path)
-    try:
-        active = _load_active_rules(conn)
-        assert len(active) == 1
-        assert active[0].match_value == "alice@example.com"
-        assert active[0].action == "TO_ARCHIVE"
-    finally:
-        conn.close()
-
-
-def test_triage_rules_set_unknown_fingerprint(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """triage-rules-set exits 1 with a clear message on unknown fingerprint."""
-    cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch(
-        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
-    ):
-        rc = main(["triage-rules-set", "deadbeef", "accepted"])
-
-    assert rc == 1
-    err = capsys.readouterr().err
-    assert "No triage rule proposal" in err
-    assert "deadbeef" in err
-
-
-def test_triage_rules_set_invalid_state(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """triage-rules-set exits 1 with a clear message on an invalid state."""
-    cfg_db = _cfg_with_rule_history(tmp_path)
-    with mock.patch(
-        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
-    ):
-        rc = main(["triage-rules-set", "deadbeef", "pending"])
-
-    assert rc == 1
-    err = capsys.readouterr().err
-    assert "invalid state" in err
-    assert "pending" in err
-
-
 def _refine_test_config() -> MailConfig:
     """Build a minimal MailConfig for refinement-helper unit tests."""
     return MailConfig(
@@ -2600,8 +2431,6 @@ def _two_accounts(tmp_path: Path) -> MailAccountsConfig:
         "serve",
         "triage",
         "triage-set",
-        "triage-rules",
-        "triage-rules-set",
         "config-sync",
         "config-sync-set",
     ],
@@ -2610,7 +2439,6 @@ def test_account_flag_accepted_by_subcommands(command: str) -> None:
     """Every account-consuming subcommand accepts ``--account ID``."""
     extra = {
         "triage-set": ["m@id", "INBOX"],
-        "triage-rules-set": ["fp", "accepted"],
         "config-sync-set": ["fp", "accepted"],
     }.get(command, [])
     args = build_parser().parse_args([command, "--account", "work", *extra])

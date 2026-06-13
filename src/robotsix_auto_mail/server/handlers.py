@@ -106,7 +106,6 @@ class BoardHandler(
                 lambda p: p.startswith("/archive-proposal/"),
                 self._serve_archive_proposal,
             ),
-            (lambda p: p == "/rules", self._serve_rules),
         ]
         for matches, handler in routes:
             if matches(path):
@@ -136,9 +135,6 @@ class BoardHandler(
             "/archive": self._handle_archive,
             "/batch-delete": self._handle_batch_delete,
             "/batch-archive": self._handle_batch_archive,
-            "/batch-archive-folder": self._handle_batch_archive_folder,
-            "/rule-action": self._handle_rule_action,
-            "/rule-delete": self._handle_rule_delete,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
             "/force-triage-column": self._handle_force_triage_column,

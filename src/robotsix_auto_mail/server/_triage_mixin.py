@@ -6,15 +6,9 @@ from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING
-from urllib.parse import parse_qs
 
 from robotsix_auto_mail.server.adapters import (
     _run_triage_background,
-)
-from robotsix_auto_mail.triage import (
-    TriageError,
-    delete_active_rule,
-    set_rule_state,
 )
 
 
@@ -25,64 +19,6 @@ class _TriageMixin:
         from ._board_handler_protocol import BoardHandlerProtocol
 
     self: BoardHandlerProtocol
-
-    def _handle_rule_action(self) -> None:
-        """Process POST /rule-action — accept/reject a rule proposal."""
-        from robotsix_auto_mail.db import init_db
-
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
-
-        # parse_qs returns {key: [value, ...]} — extract first value.
-        fingerprint = (fields.get("fingerprint") or [""])[0].strip()
-        decision = (fields.get("decision") or [""])[0].strip()
-
-        if not fingerprint or not decision:
-            self._bad_request("Missing fingerprint or decision")
-            return
-
-        decision_to_state = {"accept": "accepted", "reject": "rejected"}
-        mapped_state = decision_to_state.get(decision)
-        if mapped_state is None:
-            self._bad_request(f"Invalid decision: {decision!r}")
-            return
-
-        conn = init_db(self.db_path)
-        try:
-            set_rule_state(conn, fingerprint, mapped_state)
-        except TriageError:
-            self._not_found()
-            return
-        finally:
-            conn.close()
-
-        self._redirect("/board", code=302)
-
-    def _handle_rule_delete(self) -> None:
-        """Process POST /rule-delete — delete an active triage rule."""
-        from robotsix_auto_mail.db import init_db
-
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
-
-        fingerprint = (fields.get("fingerprint") or [""])[0].strip()
-
-        if not fingerprint:
-            self._bad_request("Missing fingerprint")
-            return
-
-        conn = init_db(self.db_path)
-        try:
-            delete_active_rule(conn, fingerprint)
-        except TriageError:
-            self._not_found()
-            return
-        finally:
-            conn.close()
-
-        self._redirect("/rules", code=302)
 
     def _handle_run_triage(self) -> None:
         """Process POST /run-triage — launch triage agent in a background thread.

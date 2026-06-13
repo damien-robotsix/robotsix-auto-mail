@@ -19,11 +19,9 @@ from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.triage import (
     TRIAGE_ACTION_LABELS,
     TRIAGE_ACTION_ORDER,
-    RuleLedgerEntry,
     TriageDecision,
     get_archive_subfolder,
     get_triage_decision,
-    list_rule_proposals,
     list_triage_decisions,
 )
 
@@ -128,10 +126,6 @@ def _gather_account_board_data(
                 column = "INBOX"
             column_buckets[column].append(record)
 
-        # List (read-only) the pending deterministic-rule proposals so the
-        # board can surface them for human validation.
-        proposals = list_rule_proposals(conn, "pending")
-
         # -- archive proposal context -------------------------------------
         # Read the archive_structure watermark to know which folders exist.
         archive_raw = get_watermark(conn, "archive_structure")
@@ -211,7 +205,6 @@ def _gather_account_board_data(
         "batch_op": batch_op,
         "triage_by_mid": triage_by_mid,
         "column_buckets": column_buckets,
-        "proposals": proposals,
         "archive_subfolders": archive_subfolders,
         "folder_exists": folder_exists,
         "unsubscribe_suggestions": unsubscribe_suggestions,
@@ -223,7 +216,7 @@ def _build_board_content(
     db_path: str,
     archive_root: str = DEFAULT_ARCHIVE_ROOT,
 ) -> dict[str, Any]:
-    """Return ``{"columns_html": …, "proposals_html": …, "triage_running": …}``.
+    """Return ``{"columns_html": …, "triage_running": …}``.
 
     Opens a fresh database connection, gathers every mail record and
     buckets them into kanban columns based on each record's triage
@@ -240,7 +233,6 @@ def _build_board_content(
     batch_op = gathered["batch_op"]
     triage_by_mid: dict[str, TriageDecision] = gathered["triage_by_mid"]
     column_buckets: dict[str, list[MailRecord]] = gathered["column_buckets"]
-    proposals = gathered["proposals"]
     archive_subfolders: dict[str, str] = gathered["archive_subfolders"]
     folder_exists: dict[str, bool] = gathered["folder_exists"]
     unsubscribe_suggestions: dict[str, dict[str, Any]] = gathered[
@@ -272,26 +264,8 @@ def _build_board_content(
     }
     columns_html = _render_board_columns(adapter, cards)
 
-    # -- rule proposals --------------------------------------------------------
-    proposals_count = len(proposals)
-    if proposals:
-        rule_cards_html = "".join(
-            _render_rule_card(fingerprint, entry) for fingerprint, entry in proposals
-        )
-    else:
-        rule_cards_html = '<div class="rule-empty">No pending rule proposals</div>'
-    proposals_html = (
-        '<div class="rule-proposals">'
-        '<div class="rule-proposals-header">'
-        "<h2>Rule proposals</h2>"
-        f'<span class="count rule-count">{proposals_count}</span></div>'
-        f'<div class="rule-cards">{rule_cards_html}</div>'
-        "</div>"
-    )
-
     return {
         "columns_html": columns_html,
-        "proposals_html": proposals_html,
         "triage_running": triage_running,
         "batch_op": batch_op,
         "unsubscribe_suggestions": unsubscribe_suggestions,
@@ -329,12 +303,6 @@ def _build_global_board_content(
     account_labels: dict[str, str] = {}
     triage_running: bool = False
 
-    # Rule proposals: collect per-account, keyed by fingerprint so
-    # duplicates across accounts (same fingerprint) keep the first seen.
-    merged_proposals: dict[str, tuple[str, RuleLedgerEntry]] = {}
-    # Track which account each proposal belongs to (fingerprint → account_id).
-    proposal_accounts: dict[str, str] = {}
-
     for account in accounts.accounts:
         aid = account.account_id
         label = account.label if account.label else aid
@@ -365,15 +333,6 @@ def _build_global_board_content(
         merged_unsubscribe.update(gathered["unsubscribe_suggestions"])
         merged_record_notes.update(gathered["record_notes"])
 
-        # Merge rule proposals (dedup by fingerprint, first wins).
-        for fingerprint, entry in gathered["proposals"]:
-            if fingerprint not in merged_proposals:
-                merged_proposals[fingerprint] = (fingerprint, entry)
-                proposal_accounts[fingerprint] = aid
-
-    # Convert proposals back to list (in insertion order).
-    proposals: list[tuple[str, RuleLedgerEntry]] = list(merged_proposals.values())
-
     adapter = MailBoardAdapter(
         triage_by_mid=merged_triage_by_mid,
         archive_subfolders=merged_archive_subfolders,
@@ -394,29 +353,8 @@ def _build_global_board_content(
     }
     columns_html = _render_board_columns(adapter, cards)
 
-    # Rule proposals HTML — per-card forms carry ?account=<owning id>.
-    proposals_count = len(proposals)
-    if proposals:
-        rule_cards_html = "".join(
-            _render_rule_card(
-                fingerprint, entry, account_id=proposal_accounts.get(fingerprint)
-            )
-            for fingerprint, entry in proposals
-        )
-    else:
-        rule_cards_html = '<div class="rule-empty">No pending rule proposals</div>'
-    proposals_html = (
-        '<div class="rule-proposals">'
-        '<div class="rule-proposals-header">'
-        "<h2>Rule proposals</h2>"
-        f'<span class="count rule-count">{proposals_count}</span></div>'
-        f'<div class="rule-cards">{rule_cards_html}</div>'
-        "</div>"
-    )
-
     return {
         "columns_html": columns_html,
-        "proposals_html": proposals_html,
         "triage_running": triage_running,
         "unsubscribe_suggestions": merged_unsubscribe,
     }
@@ -448,7 +386,6 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
 def _render_board_page_shell(
     *,
     columns_html: str,
-    proposals_html: str,
     triage_running: bool,
     picker_html: str,
     account_qs: str,
@@ -497,11 +434,10 @@ def _render_board_page_shell(
         '<link rel="stylesheet" href="/static/automail/board.css">\n'
         "</head>\n"
         "<body>\n"
-        '<h1>Mail Board</h1> <a href="/rules" class="nav-link">Rules</a>\n'
+        "<h1>Mail Board</h1>\n"
         f'<span id="triage-control">{triage_control_html}</span>\n'
         f'<span id="batch-control">{batch_control_html}</span>\n'
         f"{picker_html}\n"
-        f"{proposals_html}\n"
         '<div class="board-wrapper">\n'
         '<div class="board">\n'
         f"{columns_html}"
@@ -593,7 +529,6 @@ def _build_board_html(
 
     return _render_board_page_shell(
         columns_html=content["columns_html"],
-        proposals_html=content["proposals_html"],
         triage_running=content["triage_running"],
         picker_html=picker_html,
         account_qs=account_qs,
@@ -646,7 +581,6 @@ def _build_global_board_html(
 
     return _render_board_page_shell(
         columns_html=content["columns_html"],
-        proposals_html=content["proposals_html"],
         triage_running=content["triage_running"],
         picker_html=picker_html,
         account_qs="",  # page-level; cards carry their own
@@ -1018,189 +952,4 @@ def _render_triage_section(triage_decision: TriageDecision | None) -> str:
         '<div class="detail-label">Triage</div>'
         f'<div class="detail-value">{triage_value}</div>'
         "</div>\n"
-    )
-
-
-def _build_rules_html(
-    db_path: str,
-    *,
-    accounts: MailAccountsConfig | None = None,
-    current_account_id: str | None = None,
-) -> str:
-    """Build the full ``/rules`` HTML document.
-
-    When *current_account_id* is ``"__all__"`` or *db_path* is
-    ``"__aggregate__"``, renders a message asking the user to select an
-    account.  Otherwise renders active rules and pending proposals for
-    the selected account.
-    """
-    from robotsix_auto_mail.db import init_db
-
-    # -- account picker ---------------------------------------------------
-    picker_html = ""
-    multi_account = accounts is not None and len(accounts.ids()) >= 2
-    if multi_account and accounts is not None:
-        options_parts: list[str] = []
-        for account_id in accounts.ids():
-            account = accounts.get(account_id)
-            display = account.label if account.label else account.account_id
-            sel = " selected" if account_id == current_account_id else ""
-            options_parts.append(
-                f'<option value="{html.escape(account_id)}"{sel}>'
-                f"{html.escape(display)}</option>"
-            )
-        picker_html = (
-            '<select id="account-picker"'
-            " onchange=\"window.location.href='/rules?account='"
-            '+encodeURIComponent(this.value)">'
-            f"{''.join(options_parts)}"
-            "</select>"
-        )
-
-    # -- aggregate / global view ------------------------------------------
-    if current_account_id == "__all__" or db_path == "__aggregate__":
-        return (
-            "<!DOCTYPE html>\n"
-            '<html lang="en">\n'
-            "<head>\n"
-            '<meta charset="utf-8">\n'
-            "<title>Triage Rules</title>\n"
-            '<link rel="stylesheet" href="/static/board.css">\n'
-            '<link rel="stylesheet" href="/static/automail/board.css">\n'
-            "</head>\n"
-            "<body>\n"
-            '<div class="rules-page">\n'
-            '<a class="back-link" href="/board">← Back to Board</a>\n'
-            "<h1>Triage Rules</h1>\n"
-            f"{picker_html}\n"
-            '<div class="rules-section">'
-            "<p>Select an account to view rules.</p>"
-            "</div>\n"
-            "</div>\n"
-            "</body>\n"
-            "</html>"
-        )
-
-    # -- single-account view ----------------------------------------------
-    conn = init_db(db_path, skip_migrations=True)
-    try:
-        # Load active rules
-        from robotsix_auto_mail.triage import (
-            _load_active_rules,
-            _load_rule_ledger,
-            _rule_fingerprint,
-            list_rule_proposals,
-        )
-
-        active_rules = _load_active_rules(conn)
-        ledger = _load_rule_ledger(conn)
-
-        # Build active rule cards
-        active_cards_parts: list[str] = []
-        for rule in active_rules:
-            fp = _rule_fingerprint(rule)
-            # Try to get a title from the ledger
-            ledger_entry = ledger.get(fp)
-            if ledger_entry is not None and ledger_entry.title:
-                title = html.escape(ledger_entry.title)
-            else:
-                # Generate a label from the match type
-                if rule.match_type == "sender":
-                    title = "Sender rule"
-                elif rule.match_type == "domain":
-                    title = "Domain rule"
-                elif rule.match_type == "subject_contains":
-                    title = "Subject rule"
-                else:
-                    title = f"{rule.match_type} rule"
-            summary = html.escape(
-                f"{rule.match_type}={rule.match_value} -> {rule.action}"
-            )
-            fp_escaped = html.escape(fp)
-            active_cards_parts.append(
-                '<div class="rule-card">'
-                f'<div class="rule-title">{title}</div>'
-                f'<div class="rule-summary">{summary}</div>'
-                f'<form class="rule-form" method="post" action="/rule-delete">'
-                f'<input type="hidden" name="fingerprint" value="{fp_escaped}">'
-                '<button type="submit" name="decision" value="delete">Delete</button>'
-                "</form>"
-                "</div>"
-            )
-
-        active_html: str
-        if active_cards_parts:
-            active_html = f'<div class="rule-cards">{"".join(active_cards_parts)}</div>'
-        else:
-            active_html = '<div class="rule-empty">No active rules</div>'
-
-        # Load pending proposals
-        proposals = list_rule_proposals(conn, state="pending")
-
-        proposals_html: str
-        if proposals:
-            rule_cards_html = "".join(
-                _render_rule_card(fp, entry, account_id=current_account_id)
-                for fp, entry in proposals
-            )
-            proposals_html = f'<div class="rule-cards">{rule_cards_html}</div>'
-        else:
-            proposals_html = '<div class="rule-empty">No pending proposals</div>'
-    finally:
-        conn.close()
-
-    return (
-        "<!DOCTYPE html>\n"
-        '<html lang="en">\n'
-        "<head>\n"
-        '<meta charset="utf-8">\n'
-        "<title>Triage Rules</title>\n"
-        '<link rel="stylesheet" href="/static/board.css">\n'
-        '<link rel="stylesheet" href="/static/automail/board.css">\n'
-        "</head>\n"
-        "<body>\n"
-        '<div class="rules-page">\n'
-        '<a class="back-link" href="/board">← Back to Board</a>\n'
-        "<h1>Triage Rules</h1>\n"
-        f"{picker_html}\n"
-        '<div class="rules-section">'
-        "<h2>Active Rules</h2>\n"
-        f"{active_html}\n"
-        "</div>\n"
-        '<div class="rules-section">'
-        "<h2>Pending Proposals</h2>\n"
-        f"{proposals_html}\n"
-        "</div>\n"
-        "</div>\n"
-        "</body>\n"
-        "</html>"
-    )
-
-
-def _render_rule_card(
-    fingerprint: str, entry: RuleLedgerEntry, *, account_id: str | None = None
-) -> str:
-    """Render one pending rule proposal as a ``.rule-card`` HTML string.
-
-    Every interpolated value is passed through ``html.escape`` because the
-    board pages use manual f-strings (no Jinja2 autoescape).
-
-    When *account_id* is set the rule form ``action`` carries
-    ``?account=<quoted id>`` so ``/rule-action`` routes to the owning
-    account's DB.
-    """
-    title = html.escape(entry.title)
-    summary = html.escape(f"{entry.match_type}={entry.match_value} -> {entry.action}")
-    fp = html.escape(fingerprint)
-    account_qs = f"?account={quote(account_id, safe='')}" if account_id else ""
-    return (
-        '<div class="rule-card">'
-        f'<div class="rule-title">{title}</div>'
-        f'<div class="rule-summary">{summary}</div>'
-        f'<form class="rule-form" method="post" action="/rule-action{account_qs}">'
-        f'<input type="hidden" name="fingerprint" value="{fp}">'
-        '<button type="submit" name="decision" value="accept">Accept</button>'
-        '<button type="submit" name="decision" value="reject">Reject</button>'
-        "</form>"
-        "</div>"
     )

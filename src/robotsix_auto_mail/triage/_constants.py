@@ -63,25 +63,6 @@ _MEMORY_WATERMARK_KEY = "triage_human_memory"
 #: Accepted confidence levels (mirrors ``DriftProposal.confidence``).
 _VALID_CONFIDENCE_LEVELS = frozenset({"low", "medium", "high"})
 
-#: Accepted :class:`TriageRule` match types.
-_VALID_RULE_MATCH_TYPES = frozenset({"sender", "domain", "subject_contains"})
-
-#: Accepted :class:`RuleLedgerEntry` states.  All three suppress re-proposal
-#: of a rule once it has been recorded (mirrors ``config_sync_agent`` vocabulary).
-_VALID_RULE_STATES = frozenset({"pending", "accepted", "rejected"})
-
-#: Watermark key owned by this module for the rule-proposal dedup ledger.
-#: Persisted in ``db.py``'s ``watermark`` key-value table as JSON (no new
-#: tables / files), mirroring :mod:`robotsix_auto_mail.config.config_sync_agent`.
-_RULE_LEDGER_WATERMARK_KEY = "triage_rules_ledger"
-
-#: Watermark key owned by this module for the accepted (active) rules list.
-_RULE_ACTIVE_WATERMARK_KEY = "triage_rules_active"
-
-#: Minimum number of consistent, non-``HUMAN_TRIAGE`` decisions before a rule
-#: is proposed for a sender (or, in total, for a domain).
-_RULE_MIN_DECISIONS = 3
-
 #: Watermark key owned by this module for user archive subfolder overrides.
 _ARCHIVE_OVERRIDES_WATERMARK_KEY = "archive_subfolder_overrides"
 

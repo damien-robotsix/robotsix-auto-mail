@@ -21,8 +21,7 @@ from robotsix_auto_mail.cli.commands import (
     _cmd_probe,
     _cmd_serve,
     _cmd_triage,
-    _cmd_triage_rules,
-    _cmd_triage_rules_set,
+    _cmd_triage_folder,
     _cmd_triage_set,
     _load_accounts_or_exit,
     _load_config_or_exit,
@@ -254,34 +253,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Triage action: INBOX, HUMAN_TRIAGE, TO_ARCHIVE, TO_DELETE, or TO_ANSWER.",
     )
 
-    triage_rules_parser = sub.add_parser(
-        "triage-rules",
-        help="Propose deterministic triage rules from triage history and "
-        "list the accepted (active) rules (advisory; no LLM call)",
-    )
-    _add_account_arg(triage_rules_parser)
-    triage_rules_parser.add_argument(
-        "--output-format",
-        choices=["text", "json"],
-        default="text",
-        help="Output format for rule proposals (default: %(default)s).",
-    )
-
-    triage_rules_set_parser = sub.add_parser(
-        "triage-rules-set",
-        help="Accept or reject a proposed triage rule by fingerprint; "
-        "accepted rules become active deterministic rules",
-    )
-    _add_account_arg(triage_rules_set_parser)
-    triage_rules_set_parser.add_argument(
-        "fingerprint",
-        help="Fingerprint of the triage rule proposal.",
-    )
-    triage_rules_set_parser.add_argument(
-        "state",
-        help="New state: accepted or rejected.",
-    )
-
     config_sync_set_parser = sub.add_parser(
         "config-sync-set",
         help="Mark a config-drift finding accepted or rejected so it is "
@@ -412,12 +383,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "triage-set":
         return _cmd_triage_set(args)
-
-    if args.command == "triage-rules":
-        return _cmd_triage_rules(args)
-
-    if args.command == "triage-rules-set":
-        return _cmd_triage_rules_set(args)
 
     if args.command == "config-sync-set":
         return _cmd_config_sync_set(args)

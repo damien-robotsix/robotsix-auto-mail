@@ -49,33 +49,6 @@ def test_format_date_none_returns_none() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _seed_rule_proposal(
-    db_path: str, match_type: str, match_value: str, action: str
-) -> None:
-    """Seed one pending rule proposal into *db_path* via the triage API."""
-    from robotsix_auto_mail.triage import (
-        TriageRuleProposal,
-        record_and_filter_rule_proposals,
-    )
-
-    conn = init_db(db_path)
-    try:
-        record_and_filter_rule_proposals(
-            conn,
-            [
-                TriageRuleProposal(
-                    match_type=match_type,
-                    match_value=match_value,
-                    action=action,
-                    title=f"Triage {match_value} as {action}",
-                    body="b",
-                )
-            ],
-        )
-    finally:
-        conn.close()
-
-
 def _populate_db(db_path: str, inserts: list[dict[str, str]]) -> None:
     """Open *db_path*, insert rows, commit, close."""
     conn = init_db(db_path)
@@ -234,9 +207,7 @@ def test_board_content_endpoint_returns_json() -> None:
             payload = _json.loads(body)
             assert isinstance(payload, dict)
             assert "columns_html" in payload
-            assert "proposals_html" in payload
             assert 'class="board-column"' in payload["columns_html"]
-            assert "Rule proposals" in payload["proposals_html"]
         finally:
             server.shutdown()
     finally:
@@ -555,258 +526,6 @@ def _post_to_path(port: int, path: str, fields: dict[str, str]) -> HTTPResponse:
     resp = opener.open(req)
     resp.read()
     return cast("HTTPResponse", resp)
-
-
-def test_rule_action_accept_redirects_and_activates() -> None:
-    fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    try:
-        _seed_rule_proposal(db_path, "sender", "spam@x.com", "TO_DELETE")
-        conn = init_db(db_path)
-        try:
-            from robotsix_auto_mail.triage import (
-                TriageRule,
-                _load_active_rules,
-                _rule_fingerprint,
-                list_rule_proposals,
-            )
-
-            fingerprint = list_rule_proposals(conn, "pending")[0][0]
-        finally:
-            conn.close()
-
-        server, port = _start_test_server(db_path)
-        try:
-            resp = _post_to_path(
-                port,
-                "/rule-action",
-                {"fingerprint": fingerprint, "decision": "accept"},
-            )
-            assert resp.status == 302
-            assert resp.headers.get("Location") == "/board"
-        finally:
-            server.shutdown()
-
-        # The rule is now active.
-        conn = init_db(db_path)
-        try:
-            active = _load_active_rules(conn)
-            assert any(_rule_fingerprint(r) == fingerprint for r in active)
-            assert isinstance(active[0], TriageRule)
-        finally:
-            conn.close()
-    finally:
-        os.unlink(db_path)
-
-
-def test_rule_action_reject_redirects() -> None:
-    fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    try:
-        _seed_rule_proposal(db_path, "sender", "spam@x.com", "TO_DELETE")
-        conn = init_db(db_path)
-        try:
-            from robotsix_auto_mail.triage import list_rule_proposals
-
-            fingerprint = list_rule_proposals(conn, "pending")[0][0]
-        finally:
-            conn.close()
-
-        server, port = _start_test_server(db_path)
-        try:
-            resp = _post_to_path(
-                port,
-                "/rule-action",
-                {"fingerprint": fingerprint, "decision": "reject"},
-            )
-            assert resp.status == 302
-            assert resp.headers.get("Location") == "/board"
-        finally:
-            server.shutdown()
-    finally:
-        os.unlink(db_path)
-
-
-def test_rule_action_unknown_fingerprint_not_found() -> None:
-    server, port = _start_test_server(":memory:")
-    try:
-        resp = _post_to_path(
-            port,
-            "/rule-action",
-            {"fingerprint": "deadbeef", "decision": "accept"},
-        )
-        assert resp.status == 404
-    finally:
-        server.shutdown()
-
-
-def test_rule_action_invalid_decision_bad_request() -> None:
-    server, port = _start_test_server(":memory:")
-    try:
-        resp = _post_to_path(
-            port,
-            "/rule-action",
-            {"fingerprint": "deadbeef", "decision": "bogus"},
-        )
-        assert resp.status == 400
-    finally:
-        server.shutdown()
-
-
-def test_rule_action_missing_fingerprint_bad_request() -> None:
-    server, port = _start_test_server(":memory:")
-    try:
-        resp = _post_to_path(port, "/rule-action", {"decision": "accept"})
-        assert resp.status == 400
-    finally:
-        server.shutdown()
-
-
-def test_rules_page_returns_200_and_html() -> None:
-    server, port = _start_test_server(":memory:")
-    try:
-        resp = urlopen(f"http://127.0.0.1:{port}/rules")
-        assert resp.status == 200
-        content_type = resp.headers.get("Content-Type") or ""
-        assert "text/html" in content_type
-        body = resp.read().decode("utf-8")
-        assert "Triage Rules" in body
-        assert 'href="/board"' in body
-    finally:
-        server.shutdown()
-
-
-def test_rules_page_shows_active_rules() -> None:
-    fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    try:
-        # Seed a pending proposal and accept it to make it active.
-        _seed_rule_proposal(db_path, "sender", "spam@x.com", "TO_DELETE")
-        conn = init_db(db_path)
-        try:
-            from robotsix_auto_mail.triage import (
-                list_rule_proposals,
-                set_rule_state,
-            )
-
-            fingerprint = list_rule_proposals(conn, "pending")[0][0]
-            set_rule_state(conn, fingerprint, "accepted")
-        finally:
-            conn.close()
-
-        server, port = _start_test_server(db_path)
-        try:
-            resp = urlopen(f"http://127.0.0.1:{port}/rules")
-            assert resp.status == 200
-            body = resp.read().decode("utf-8")
-            # The active rule should appear with its match details.
-            assert "spam@x.com" in body
-            assert "TO_DELETE" in body
-            assert "sender" in body
-            # Delete button should be present.
-            assert "/rule-delete" in body
-        finally:
-            server.shutdown()
-    finally:
-        os.unlink(db_path)
-
-
-def test_rules_page_shows_pending_proposals() -> None:
-    fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    try:
-        _seed_rule_proposal(db_path, "domain", "example.com", "TO_ARCHIVE")
-
-        server, port = _start_test_server(db_path)
-        try:
-            resp = urlopen(f"http://127.0.0.1:{port}/rules")
-            assert resp.status == 200
-            body = resp.read().decode("utf-8")
-            # The pending proposal should appear.
-            assert "example.com" in body
-            assert "TO_ARCHIVE" in body
-            # Accept/Reject buttons should be present.
-            assert "/rule-action" in body
-            assert "accept" in body.lower()
-            assert "reject" in body.lower()
-        finally:
-            server.shutdown()
-    finally:
-        os.unlink(db_path)
-
-
-def test_delete_active_rule() -> None:
-    fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    try:
-        # Seed and accept a rule.
-        _seed_rule_proposal(db_path, "sender", "spam@x.com", "TO_DELETE")
-        conn = init_db(db_path)
-        try:
-            from robotsix_auto_mail.triage import (
-                _load_active_rules,
-                _rule_fingerprint,
-                list_rule_proposals,
-                set_rule_state,
-            )
-
-            fingerprint = list_rule_proposals(conn, "pending")[0][0]
-            set_rule_state(conn, fingerprint, "accepted")
-            # Verify it's active before the test.
-            active_before = _load_active_rules(conn)
-            assert any(_rule_fingerprint(r) == fingerprint for r in active_before)
-        finally:
-            conn.close()
-
-        server, port = _start_test_server(db_path)
-        try:
-            # POST to delete.
-            resp = _post_to_path(
-                port,
-                "/rule-delete",
-                {"fingerprint": fingerprint},
-            )
-            assert resp.status == 302
-            assert resp.headers.get("Location") == "/rules"
-
-            # Now GET /rules and verify the rule is gone.
-            resp2 = urlopen(f"http://127.0.0.1:{port}/rules")
-            body = resp2.read().decode("utf-8")
-            assert "spam@x.com" not in body
-        finally:
-            server.shutdown()
-
-        # Also verify directly in the DB that the rule is no longer active.
-        conn = init_db(db_path)
-        try:
-            active_after = _load_active_rules(conn)
-            assert not any(_rule_fingerprint(r) == fingerprint for r in active_after)
-        finally:
-            conn.close()
-    finally:
-        os.unlink(db_path)
-
-
-def test_delete_active_rule_missing_fingerprint() -> None:
-    server, port = _start_test_server(":memory:")
-    try:
-        resp = _post_to_path(port, "/rule-delete", {})
-        assert resp.status == 400
-    finally:
-        server.shutdown()
-
-
-def test_delete_active_rule_unknown_fingerprint() -> None:
-    server, port = _start_test_server(":memory:")
-    try:
-        resp = _post_to_path(
-            port,
-            "/rule-delete",
-            {"fingerprint": "nonexistent12345"},
-        )
-        assert resp.status == 404
-    finally:
-        server.shutdown()
 
 
 def test_move_success_redirects_302() -> None:
@@ -2097,71 +1816,6 @@ def test_run_triage_background_clears_watermark() -> None:
     finally:
         os.unlink(db_path)
 
-
-def test_run_triage_background_generates_rule_proposals() -> None:
-    """After triage, the background thread derives deterministic rule
-    proposals from triage history and records them as pending so the board
-    can surface them."""
-    import time
-
-    from robotsix_auto_mail.db import get_watermark
-    from robotsix_auto_mail.db import init_db as _init_db
-    from robotsix_auto_mail.triage import list_rule_proposals
-
-    fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    try:
-        # Three already-triaged messages from one sender, all TO_ARCHIVE —
-        # enough consistent evidence (>= _RULE_MIN_DECISIONS) for a sender
-        # rule proposal.  All have decisions, so triage finds zero untriaged
-        # records and returns immediately (no LLM call).
-        inserts = [
-            {
-                "message_id": f"msg-{i}",
-                "sender": "alice@example.com",
-                "subject": f"Newsletter {i}",
-                "date": "2025-01-01T00:00:00",
-                "body_plain": "body",
-                "status": "no_action",
-            }
-            for i in range(3)
-        ]
-        _populate_db(db_path, inserts)
-        for i in range(3):
-            _seed_triage_decision(db_path, f"msg-{i}", action="TO_ARCHIVE")
-
-        server, port = _start_test_server(db_path)
-        try:
-            resp = _post_to_path(port, "/run-triage", {})
-            assert resp.status == 302
-
-            # Poll until the watermark clears (no LLM call → fast).
-            deadline = time.monotonic() + 5
-            while time.monotonic() < deadline:
-                conn = _init_db(db_path, skip_migrations=True)
-                try:
-                    state = get_watermark(conn, "triage_run:state")
-                finally:
-                    conn.close()
-                if state != "running":
-                    break
-                time.sleep(0.05)
-
-            conn = _init_db(db_path, skip_migrations=True)
-            try:
-                proposals = list_rule_proposals(conn, "pending")
-            finally:
-                conn.close()
-            assert any(
-                entry.match_type == "sender"
-                and entry.match_value == "alice@example.com"
-                and entry.action == "TO_ARCHIVE"
-                for _fingerprint, entry in proposals
-            ), f"Expected a sender rule proposal, got {proposals!r}"
-        finally:
-            server.shutdown()
-    finally:
-        os.unlink(db_path)
 
 
 # ---------------------------------------------------------------------------
@@ -4705,7 +4359,6 @@ def test_handler_board_uses_library_css_classes() -> None:
             assert "data-subject" in body
             assert "side-panel" in body
             assert "triage-control" in body
-            assert "rule-proposals" in body
         finally:
             server.shutdown()
     finally:
@@ -4772,7 +4425,6 @@ def test_handler_board_content_json_keys() -> None:
             payload = json.loads(body)
             for key in (
                 "columns_html",
-                "proposals_html",
                 "triage_running",
                 "batch_op",
                 "unsubscribe_suggestions",
@@ -7036,7 +6688,6 @@ def test_global_content_builder_aggregation() -> None:
 
         # Standard keys present.
         assert "columns_html" in result
-        assert "proposals_html" in result
         assert "triage_running" in result
         assert "unsubscribe_suggestions" in result
 
@@ -7070,7 +6721,6 @@ def test_global_content_builder_returns_correct_keys() -> None:
         result = _build_global_board_content(accounts)
         assert set(result.keys()) == {
             "columns_html",
-            "proposals_html",
             "triage_running",
             "unsubscribe_suggestions",
         }
@@ -7219,7 +6869,6 @@ def test_global_board_content_json_aggregate() -> None:
             assert status == 200
             payload = json.loads(body)
             assert "columns_html" in payload
-            assert "proposals_html" in payload
             assert "triage_running" in payload
             assert "unsubscribe_suggestions" in payload
             # Both accounts' cards in the JSON.
@@ -7313,7 +6962,6 @@ def test_single_account_output_unchanged() -> None:
         result = _build_board_content(db_a)
         # Standard keys present.
         assert "columns_html" in result
-        assert "proposals_html" in result
         assert "triage_running" in result
         assert "batch_op" in result
         assert "unsubscribe_suggestions" in result
