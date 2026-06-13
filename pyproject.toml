@@ -49,13 +49,20 @@ docs = [
 [tool.ruff]
 target-version = "py312"
 src = ["src"]
+# vulture_whitelist.py is a generated dead-code allowlist: bare attribute
+# references (B018 "useless expression"), late imports (E402), and unsorted
+# imports (I001) are inherent to its format, not real lint issues.
+extend-exclude = ["vulture_whitelist.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "S", "B", "N", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/robotsix_auto_mail/detect.py" = ["E501"]
-"tests/**/*.py" = ["S101", "S105", "S106"]
+# Tests are exempt from line-length (long fixture strings, docstrings, and
+# inline `# pragma: allowlist secret` comments) and from N802 (fake IMAP
+# server handlers are named after protocol verbs: _cmd_LOGIN, _cmd_LIST...).
+"tests/**/*.py" = ["S101", "S105", "S106", "E501", "N802"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -793,7 +793,9 @@ def test_refine_with_llm_success(capsys: pytest.CaptureFixture[str]) -> None:
     assert outcome.config is not None
     assert outcome.config.imap_host == "imap.good.com"
     assert outcome.config.smtp_host == "smtp.good.com"
-    assert outcome.config.password == "pw"  # preserved from original  # pragma: allowlist secret
+    assert (
+        outcome.config.password == "pw"
+    )  # preserved from original  # pragma: allowlist secret
     assert outcome.provider is not None
     assert outcome.provider.imap_host == "imap.good.com"
 
@@ -1076,7 +1078,9 @@ def test_verify_and_refine_host_failure_llm_refine(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=verify_results,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),  # pragma: allowlist secret
+        mock.patch.dict(
+            os.environ, {"LLM_API_KEY": "sk-test"}
+        ),  # pragma: allowlist secret
     ):
         rc = _verify_and_refine(
             provider,
@@ -1125,7 +1129,9 @@ def test_verify_and_refine_host_failure_llm_then_manual(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=verify_results,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),  # pragma: allowlist secret
+        mock.patch.dict(
+            os.environ, {"LLM_API_KEY": "sk-test"}
+        ),  # pragma: allowlist secret
         mock.patch("builtins.input", side_effect=["", "manual-smtp.com"]),
     ):
         rc = _verify_and_refine(
@@ -1287,7 +1293,9 @@ def test_verify_and_refine_budget_exhausted(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=verify_results,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),  # pragma: allowlist secret
+        mock.patch.dict(
+            os.environ, {"LLM_API_KEY": "sk-test"}
+        ),  # pragma: allowlist secret
         mock.patch("builtins.input", side_effect=["", ""]),
     ):
         rc = _verify_and_refine(
@@ -1470,7 +1478,9 @@ def test_existing_accounts_for_append_mono_validation_error(
 ) -> None:
     """Mono YAML that parses but fails MailConfig schema → graceful fallback."""
     path = tmp_path / "bad_mono.yaml"
-    path.write_text("auth:\n  username: user@example.com\nimap:\n  host: imap.example.com\n")
+    path.write_text(
+        "auth:\n  username: user@example.com\nimap:\n  host: imap.example.com\n"
+    )
     # Force MailConfig.from_yaml to raise to cover the except path.
     with mock.patch(
         "robotsix_auto_mail.cli.config.MailConfig.from_yaml",

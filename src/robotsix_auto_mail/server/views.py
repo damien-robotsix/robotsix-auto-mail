@@ -1038,7 +1038,6 @@ def _build_rules_html(
 
     # -- account picker ---------------------------------------------------
     picker_html = ""
-    account_qs = ""
     multi_account = accounts is not None and len(accounts.ids()) >= 2
     if multi_account and accounts is not None:
         options_parts: list[str] = []
@@ -1057,8 +1056,6 @@ def _build_rules_html(
             f"{''.join(options_parts)}"
             "</select>"
         )
-    if multi_account and current_account_id:
-        account_qs = "&account=" + quote(current_account_id, safe="")
 
     # -- aggregate / global view ------------------------------------------
     if current_account_id == "__all__" or db_path == "__aggregate__":
@@ -1088,8 +1085,12 @@ def _build_rules_html(
     conn = init_db(db_path, skip_migrations=True)
     try:
         # Load active rules
-        from robotsix_auto_mail.triage import _load_active_rules, _rule_fingerprint
-        from robotsix_auto_mail.triage import _load_rule_ledger, list_rule_proposals
+        from robotsix_auto_mail.triage import (
+            _load_active_rules,
+            _load_rule_ledger,
+            _rule_fingerprint,
+            list_rule_proposals,
+        )
 
         active_rules = _load_active_rules(conn)
         ledger = _load_rule_ledger(conn)

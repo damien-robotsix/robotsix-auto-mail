@@ -825,8 +825,7 @@ def _build_config_from_env(
         elif spec.kind == "log_level":
             if raw.upper() not in _VALID_LOG_LEVELS:
                 errors.append(
-                    f"{label} must be one of "
-                    f"{sorted(_VALID_LOG_LEVELS)!r}, got {raw!r}"
+                    f"{label} must be one of {sorted(_VALID_LOG_LEVELS)!r}, got {raw!r}"
                 )
             kwargs[spec.field_name] = raw
         elif spec.kind == "log_format":
@@ -1208,14 +1207,12 @@ def _build_account_from_env(index: int) -> MailAccount:
     raw_lvl = os.environ.get("LOG_LEVEL", "")
     if raw_lvl and raw_lvl.upper() not in _VALID_LOG_LEVELS:
         errs.append(
-            f"LOG_LEVEL must be one of {sorted(_VALID_LOG_LEVELS)!r}, "
-            f"got {raw_lvl!r}"
+            f"LOG_LEVEL must be one of {sorted(_VALID_LOG_LEVELS)!r}, got {raw_lvl!r}"
         )
     raw_fmt = os.environ.get("LOG_FORMAT", "")
     if raw_fmt and raw_fmt.lower() not in _VALID_LOG_FORMATS:
         errs.append(
-            f"LOG_FORMAT must be one of {sorted(_VALID_LOG_FORMATS)!r}, "
-            f"got {raw_fmt!r}"
+            f"LOG_FORMAT must be one of {sorted(_VALID_LOG_FORMATS)!r}, got {raw_fmt!r}"
         )
     if errs:
         raise ConfigurationError("\n".join(errs))

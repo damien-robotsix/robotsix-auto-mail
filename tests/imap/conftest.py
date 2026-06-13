@@ -42,7 +42,9 @@ class SimpleIMAPHandler(socketserver.StreamRequestHandler):
 
             tag = parts[0].decode("utf-8", errors="replace")
             cmd = parts[1].upper()
-            args_str = parts[2].decode("utf-8", errors="replace") if len(parts) > 2 else ""
+            args_str = (
+                parts[2].decode("utf-8", errors="replace") if len(parts) > 2 else ""
+            )
 
             method = getattr(self, f"_cmd_{cmd.decode()}", None)
             if method is not None:
