@@ -135,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
 
     log_path = state_dir / f"{prefix}.log"
     deployed_file = _deployed_marker(state_dir, prefix)
-    lock_path = Path("/tmp") / f"{prefix}.lock"  # noqa: S108
+    lock_path = Path("/tmp") / f"{prefix}.lock"  # noqa: S108  # nosec B108  # intentional: cross-process flock in a well-known location
 
     handler = logging.FileHandler(log_path)
     handler.setFormatter(
