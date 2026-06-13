@@ -361,14 +361,12 @@ def _run_batch_archive_background(
                     list
                 )
                 api_key = mail_config.llm_api_key if mail_config else ""
-                user_email = mail_config.username if mail_config else None
                 for record in records:
                     subfolder = get_archive_subfolder(
                         conn,
                         record.message_id,
                         record,
                         api_key=api_key,
-                        user_email=user_email,
                     )
                     dest = _archive_dest_folder(effective_root, subfolder, delimiter)
                     if dest is None:
