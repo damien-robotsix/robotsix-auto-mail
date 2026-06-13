@@ -258,8 +258,15 @@ def _run_batch_archive_background(
     db_path: str,
     mail_config: MailConfig | None,
     archive_root: str = DEFAULT_ARCHIVE_ROOT,
+    subfolder_filter: str | None = None,
 ) -> None:
     """Archive every ``TO_ARCHIVE`` mail from IMAP + local DB in the background.
+
+    When *subfolder_filter* is not ``None``, only records whose effective
+    archive subfolder (per :func:`get_archive_subfolder`) equals it are
+    archived — the rest of the ``TO_ARCHIVE`` column is left untouched.  This
+    backs the per-destination "Archive this folder" buttons; ``None`` archives
+    the whole column (the "Archive All" button).
 
     Mirrors :func:`_run_batch_delete_background` but each record's
     destination differs, so UIDs are grouped by their effective destination
@@ -288,6 +295,14 @@ def _run_batch_archive_background(
     conn = init_db(db_path, skip_migrations=True)
     try:
         records = _collect_records_for_action(conn, "TO_ARCHIVE")
+        if subfolder_filter is not None:
+            fkey = mail_config.llm_api_key if mail_config else ""
+            records = [
+                r
+                for r in records
+                if get_archive_subfolder(conn, r.message_id, r, api_key=fkey)
+                == subfolder_filter
+            ]
         total = len(records)
         set_watermark(
             conn,

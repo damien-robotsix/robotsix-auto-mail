@@ -946,6 +946,15 @@ appears only when the operation is not already running:
   operation, minimizing round-trips (a 518-mail column with multiple destination
   folders costs at most ~6 IMAP round-trip pairs instead of one per message).
 
+- **Per-destination groups** (`TO_ARCHIVE` column): the column's cards are
+  ordered by destination folder and split into labelled groups, each headed by
+  the destination (and card count) and an **Archive these N →** button. The
+  button archives only that group's mail to its destination via
+  `POST /batch-archive-folder` (form field `folder` = the destination subfolder
+  relative to the archive root; empty = the root). This lets you review and
+  approve one destination at a time instead of the whole column. It shares the
+  same single-flight guard and background worker as **Archive All**.
+
 **Progress and single-flight guard.**  Only one batch operation (delete or
 archive) can run at a time per account — a second request to start an operation
 while one is already in flight returns a 302 redirect to `/board` with no action.
@@ -1242,6 +1251,32 @@ with the remaining records.
 
 An optional `?account=<id>` query parameter is supported in multi-account mode
 (see [Multi-account request routing](#multi-account-request-routing)).
+
+#### `POST /batch-archive-folder` — archive one destination group
+
+Archives only the `TO_ARCHIVE` mail whose proposed destination equals the
+posted folder, leaving the rest of the column untouched. Backs the board's
+per-destination **Archive these N →** buttons.
+
+##### Request
+
+```sh
+curl -X POST http://localhost:8080/batch-archive-folder \
+  -d 'folder=Billing'
+```
+
+Form-encoded body parameter:
+- `folder` (required): the destination subfolder **relative to the archive
+  root** (e.g. `Billing`, `Finance/Banking`). An empty value targets the
+  archive root itself.
+
+##### Behavior
+
+Identical to `POST /batch-archive` — same `batch_op:state` single-flight guard,
+synchronous stale-UID precheck, and background worker — except the worker keeps
+only the records whose effective subfolder (per the archive-folder
+recommendation logic) equals `folder`. Returns a 302 redirect to `/board`.
+An optional `?account=<id>` query parameter is supported in multi-account mode.
 
 ## The `config-sync` command
 

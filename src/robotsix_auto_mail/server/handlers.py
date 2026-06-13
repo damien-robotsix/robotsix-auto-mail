@@ -136,6 +136,7 @@ class BoardHandler(
             "/archive": self._handle_archive,
             "/batch-delete": self._handle_batch_delete,
             "/batch-archive": self._handle_batch_archive,
+            "/batch-archive-folder": self._handle_batch_archive_folder,
             "/rule-action": self._handle_rule_action,
             "/rule-delete": self._handle_rule_delete,
             "/config-sync": self._handle_config_sync,

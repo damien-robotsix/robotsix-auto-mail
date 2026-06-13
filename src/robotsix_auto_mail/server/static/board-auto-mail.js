@@ -112,6 +112,72 @@
   }
 
   /* ==================================================================
+   * 2b. Per-destination archive groups (TO_ARCHIVE column)
+   *
+   * The server sorts TO_ARCHIVE cards by destination and tags each with
+   * data-archive-dest, so contiguous runs are whole groups.  We inject a
+   * header (folder + count + "Archive these" button) before each run.  The
+   * button posts the destination to /batch-archive-folder, archiving just
+   * that group.  Re-run after every board refresh (idempotent).
+   * ================================================================ */
+
+  function buildArchiveGroupHeader(dest, count) {
+    var label = dest || "Archive root";
+    var wrap = document.createElement("div");
+    wrap.className = "archive-group";
+
+    var lbl = document.createElement("span");
+    lbl.className = "archive-group-label";
+    lbl.textContent = "📁 " + label + " (" + count + ")";
+    wrap.appendChild(lbl);
+
+    var form = document.createElement("form");
+    form.className = "archive-group-form";
+    form.method = "post";
+    form.action = "/batch-archive-folder" + accountQs;
+    form.onsubmit = function () {
+      return confirm("Archive " + count + " mail to " + label + "?");
+    };
+    var input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "folder";
+    input.value = dest; // .value is safe — no HTML injection
+    form.appendChild(input);
+    var btn = document.createElement("button");
+    btn.type = "submit";
+    btn.className = "archive-btn archive-group-btn";
+    btn.textContent = "Archive these " + count + " →";
+    form.appendChild(btn);
+    wrap.appendChild(form);
+    return wrap;
+  }
+
+  function renderArchiveGroups() {
+    // Clear any headers from a previous render (idempotent on refresh).
+    var old = document.querySelectorAll(".archive-group");
+    for (var i = 0; i < old.length; i++) old[i].remove();
+
+    var extras = document.querySelectorAll(".card-extra[data-archive-dest]");
+    var groups = [];
+    var cur = null;
+    for (var j = 0; j < extras.length; j++) {
+      var dest = extras[j].getAttribute("data-archive-dest") || "";
+      var card = extras[j].closest(".board-card");
+      if (!card) continue;
+      if (!cur || cur.dest !== dest) {
+        cur = { dest: dest, firstCard: card, count: 0 };
+        groups.push(cur);
+      }
+      cur.count += 1;
+    }
+    for (var k = 0; k < groups.length; k++) {
+      var g = groups[k];
+      var header = buildArchiveGroupHeader(g.dest, g.count);
+      g.firstCard.parentNode.insertBefore(header, g.firstCard);
+    }
+  }
+
+  /* ==================================================================
    * 3.  Hash routing + Escape key
    * ================================================================ */
 
@@ -173,6 +239,7 @@
       .then(function (data) {
         var board = document.querySelector(".board");
         if (board) board.innerHTML = data.columns_html;
+        renderArchiveGroups();
 
         var proposals = document.querySelector(".rule-proposals");
         if (proposals) proposals.outerHTML = data.proposals_html;
@@ -230,6 +297,7 @@
 
   function init() {
     attachCardClickInterceptor();
+    renderArchiveGroups();
     attachHashRouting();
     attachEscapeKey();
     startRefreshLoop();

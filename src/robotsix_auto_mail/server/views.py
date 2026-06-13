@@ -171,6 +171,23 @@ def _gather_account_board_data(
                 full_path = effective_root
             folder_exists[record.message_id] = full_path in existing_folders
 
+        # Order TO_ARCHIVE cards by destination so the board JS renders
+        # contiguous per-folder groups (each with an "Archive these" button).
+        # ``list.sort`` is stable, so the prior within-folder order is kept.
+        to_archive_bucket = column_buckets.get("TO_ARCHIVE")
+        if to_archive_bucket:
+            to_archive_bucket.sort(
+                key=lambda r: archive_subfolders.get(r.message_id, "")
+            )
+
+        # Order TO_ARCHIVE cards by destination so the board JS can render
+        # contiguous per-folder groups (stable sort preserves the existing
+        # date order within each destination).
+        if column_buckets.get("TO_ARCHIVE"):
+            column_buckets["TO_ARCHIVE"].sort(
+                key=lambda r: archive_subfolders.get(r.message_id, "")
+            )
+
         # -- unsubscribe suggestions for TO_DELETE column -----------------
         suggestions_raw = get_watermark(conn, "unsubscribe_suggestions")
         unsubscribe_suggestions: dict[str, dict[str, Any]] = {}
