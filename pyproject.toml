@@ -21,6 +21,7 @@ dev = [
     "mypy",
     "pytest",
     "pytest-cov>=7.1.0",
+    "pytest-xdist",
     "hypothesis>=6",
     "deptry",
     "hatchling",
