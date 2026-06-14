@@ -43,9 +43,6 @@ ArchiveFolderMemory.updated_at
 # Framework overrides — called by the parent class / stdlib framework.
 # ===========================================================================
 
-from robotsix_auto_mail.format import _HTMLStripper
-_HTMLStripper.handle_data
-
 from robotsix_auto_mail.server.handlers import BoardHandler
 BoardHandler.do_GET
 BoardHandler.do_POST
