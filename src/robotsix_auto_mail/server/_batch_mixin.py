@@ -35,10 +35,18 @@ class _BatchActionMixin:
         itself (``resolve_uid_with_fallback`` / ``cross_folder_resolve``).
         Progress and completion show via the board's batch banner and the
         30-second auto-refresh.
+
+        In the aggregate ("All mailboxes") view the request resolves to
+        ``self._aggregate`` and is fanned out across every account by
+        :meth:`_handle_batch_delete_aggregate`.
         """
         import threading
 
         from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
+
+        if self._aggregate and self.accounts is not None:
+            self._handle_batch_delete_aggregate()
+            return
 
         conn = init_db(self.db_path, skip_migrations=True)
         try:
@@ -58,6 +66,47 @@ class _BatchActionMixin:
             args=(self.db_path, self.mail_config),
             daemon=True,
         ).start()
+
+        self._redirect("/board", code=302)
+
+    def _handle_batch_delete_aggregate(self) -> None:
+        """Fan out batch-delete across every configured account.
+
+        Each account owns its DB, IMAP connection and ``batch_op:state``
+        watermark, so a single-account POST handler cannot span them.  This
+        starts one independent background worker per account that has
+        ``TO_DELETE`` mail and is not already running a batch op — accounts
+        that are busy or have nothing to delete are skipped.  Workers run
+        concurrently; each clears its own watermark on completion, and the
+        aggregate board banner sums their progress.
+        """
+        import threading
+
+        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
+
+        accounts = self.accounts
+        if accounts is None:  # pragma: no cover - guarded by the caller
+            self._redirect("/board", code=302)
+            return
+
+        for account in accounts.accounts:
+            db_path = account.config.db_path
+            conn = init_db(db_path, skip_migrations=True)
+            try:
+                if _batch_op_running(get_watermark(conn, "batch_op:state")):
+                    continue
+                # Nothing to do → don't spawn a no-op worker / set "running".
+                if not _collect_records_for_action(conn, "TO_DELETE"):
+                    continue
+                set_watermark(conn, "batch_op:state", "running")
+            finally:
+                conn.close()
+
+            threading.Thread(
+                target=_run_batch_delete_background,
+                args=(db_path, account.config),
+                daemon=True,
+            ).start()
 
         self._redirect("/board", code=302)
 

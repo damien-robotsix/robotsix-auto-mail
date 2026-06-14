@@ -315,6 +315,13 @@ def _build_global_board_content(
     record_accounts: dict[str, str] = {}
     account_labels: dict[str, str] = {}
     triage_running: bool = False
+    # Aggregate batch-op progress across accounts.  Each account runs its
+    # own worker against its own DB; we sum their done/total so the banner
+    # shows combined progress for the fanned-out "Delete All".
+    batch_running: bool = False
+    batch_done: int = 0
+    batch_total: int = 0
+    batch_verb: str | None = None
 
     for account in accounts.accounts:
         aid = account.account_id
@@ -327,6 +334,18 @@ def _build_global_board_content(
         )
 
         triage_running = triage_running or gathered["triage_running"]
+
+        account_batch = gathered["batch_op"]
+        if account_batch is not None:
+            batch_running = True
+            done = account_batch.get("done")
+            total = account_batch.get("total")
+            if isinstance(done, int):
+                batch_done += done
+            if isinstance(total, int):
+                batch_total += total
+            if account_batch.get("op") and batch_verb is None:
+                batch_verb = account_batch["op"]
 
         # Merge column buckets.
         for action in _BOARD_COLUMNS:
@@ -354,7 +373,9 @@ def _build_global_board_content(
         unsubscribe_suggestions=merged_unsubscribe,
         record_notes=merged_record_notes,
         column_records=merged_buckets,
-        batch_running=False,  # batch ops are per-account, suppressed in aggregate
+        # Suppress the column-wide Delete-All button while any account's
+        # fanned-out batch op is still in flight (the banner takes over).
+        batch_running=batch_running,
         record_accounts=record_accounts,
         account_labels=account_labels,
     )
@@ -366,10 +387,15 @@ def _build_global_board_content(
     }
     columns_html = _render_board_columns(adapter, cards)
 
+    batch_op: dict[str, Any] | None = None
+    if batch_running:
+        batch_op = {"op": batch_verb, "done": batch_done, "total": batch_total}
+
     return {
         "columns_html": columns_html,
         "triage_running": triage_running,
         "unsubscribe_suggestions": merged_unsubscribe,
+        "batch_op": batch_op,
     }
 
 
@@ -598,7 +624,8 @@ def _build_global_board_html(
         picker_html=picker_html,
         account_qs="",  # page-level; cards carry their own
         fetch_qs=fetch_qs,
-        batch_control_html="",  # batch ops are per-account, suppressed
+        # Combined progress of the fanned-out per-account batch workers.
+        batch_control_html=_batch_banner_html(content.get("batch_op")),
         data_account_js=True,
     )
 
