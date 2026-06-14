@@ -145,3 +145,48 @@ datastore and the watch interval:
 | `MAIL_INGEST_INTERVAL` | `ingest.interval_minutes` | `15` | Minutes between cycles in `--watch` mode |
 
 The database is created automatically on first use — no manual setup is needed.
+
+## Log events and monitoring
+
+The `ingest_mail()` function emits structured log events that are useful for
+monitoring and debugging. The most important one is the final `batch_summary`
+event, which is emitted after every ingestion run (successful or not) and
+contains metrics about what happened.
+
+### The `batch_summary` event
+
+Emitted once per `ingest` run, after all messages have been processed and
+stored (or skipped).  When ingesting via `ingest --watch`, one event is
+emitted per cycle.
+
+**Fields:**
+
+| Field | Type | Meaning |
+|---|---|---|
+| `total_fetched` | int | Number of messages retrieved from IMAP since the watermark. |
+| `stored` | int | Number of messages newly inserted into `mail_records`. |
+| `skipped` | int | Number of messages skipped as duplicates (same `Message-ID` already in database). |
+| `error_count` | int | Number of per-message errors (parse failures, DB write errors, etc.). |
+| `triaged` | int | Number of triage decisions produced by the post-ingest triage pass (0 when triage is disabled, in dry-run mode, or when triage raised an error). |
+| `duration_ms` | float | Wall-clock duration of the ingestion run in milliseconds, measured using `time.perf_counter()` (monotonic, robust against system clock adjustments). Useful for detecting slow IMAP servers or degraded LLM performance. |
+
+**Example** (JSON log output with `logging.format: json`):
+
+```json
+{
+  "event": "batch_summary",
+  "total_fetched": 5,
+  "stored": 4,
+  "skipped": 1,
+  "error_count": 0,
+  "triaged": 2,
+  "duration_ms": 1234.5,
+  "timestamp": "2025-06-14T12:34:56.789012Z"
+}
+```
+
+**Operational value:** The `duration_ms` field is the single most useful signal
+for detecting operational problems in a cron or systemd one-shot ingestion job.
+A sudden spike often indicates a slow IMAP server (e.g. due to backlog or
+network issues), degrading LLM-assisted triage performance, or other resource
+contention. Monitoring this field allows early detection of such problems.
