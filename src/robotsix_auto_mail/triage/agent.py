@@ -242,7 +242,10 @@ def _detect_unsubscribe_for_sender(
         "- method: one of 'body_link', 'mailto', or 'none'\n"
         "- url: the unsubscribe URL or mailto address (empty if none)\n"
         "- description: a short human-readable summary\n"
-        "- confidence: 'low', 'medium', or 'high'"
+        "- confidence: 'low', 'medium', or 'high'\n"
+        "\n"
+        "Return ONLY a JSON object matching the schema — no explanation, "
+        "no markdown fences."
     )
 
     user_message = (
