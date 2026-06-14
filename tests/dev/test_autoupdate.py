@@ -22,7 +22,7 @@ from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail import autoupdate
+from robotsix_auto_mail.dev import autoupdate
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -89,7 +89,7 @@ def test_capture_passes_through_and_forwards_flags(
 ) -> None:
     sentinel = _cp(stdout="hi")
     run = mock.MagicMock(return_value=sentinel)
-    monkeypatch.setattr("robotsix_auto_mail.autoupdate.subprocess.run", run)
+    monkeypatch.setattr("robotsix_auto_mail.dev.autoupdate.subprocess.run", run)
 
     result = autoupdate._capture(["git", "status"], cwd=tmp_path)
 
@@ -111,7 +111,7 @@ def test_run_logged_appends_and_adds_trailing_newline(
 ) -> None:
     log_path = tmp_path / "run.log"
     monkeypatch.setattr(
-        "robotsix_auto_mail.autoupdate.subprocess.run",
+        "robotsix_auto_mail.dev.autoupdate.subprocess.run",
         lambda *a, **k: _cp(0, stdout="out", stderr="err"),
     )
 
@@ -126,7 +126,7 @@ def test_run_logged_preserves_existing_trailing_newline(
 ) -> None:
     log_path = tmp_path / "run.log"
     monkeypatch.setattr(
-        "robotsix_auto_mail.autoupdate.subprocess.run",
+        "robotsix_auto_mail.dev.autoupdate.subprocess.run",
         lambda *a, **k: _cp(3, stdout="line\n", stderr=""),
     )
 
@@ -141,7 +141,7 @@ def test_run_logged_writes_nothing_on_empty_output(
 ) -> None:
     log_path = tmp_path / "run.log"
     monkeypatch.setattr(
-        "robotsix_auto_mail.autoupdate.subprocess.run",
+        "robotsix_auto_mail.dev.autoupdate.subprocess.run",
         lambda *a, **k: _cp(0, stdout="", stderr=""),
     )
 
@@ -156,7 +156,7 @@ def test_run_logged_forwards_env_and_cwd(
 ) -> None:
     log_path = tmp_path / "run.log"
     run = mock.MagicMock(return_value=_cp(0))
-    monkeypatch.setattr("robotsix_auto_mail.autoupdate.subprocess.run", run)
+    monkeypatch.setattr("robotsix_auto_mail.dev.autoupdate.subprocess.run", run)
     env = {"DOCKER_GID": "999"}
 
     autoupdate._run_logged(["docker", "x"], log_path=log_path, cwd=tmp_path, env=env)
@@ -306,10 +306,10 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Any, None,
             return lock_dir
         return built
 
-    monkeypatch.setattr("robotsix_auto_mail.autoupdate.Path", fake_path)
+    monkeypatch.setattr("robotsix_auto_mail.dev.autoupdate.Path", fake_path)
     # flock succeeds by default; contention tests override this.
     monkeypatch.setattr(
-        "robotsix_auto_mail.autoupdate.fcntl.flock", lambda *a, **k: None
+        "robotsix_auto_mail.dev.autoupdate.fcntl.flock", lambda *a, **k: None
     )
 
     yield SimpleNamespace(state_dir=state_dir, repo=repo, prefix="auto-mail-autoupdate")
@@ -351,7 +351,7 @@ def _happy_rules(
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, fake: FakeRun) -> None:
-    monkeypatch.setattr("robotsix_auto_mail.autoupdate.subprocess.run", fake)
+    monkeypatch.setattr("robotsix_auto_mail.dev.autoupdate.subprocess.run", fake)
 
 
 def test_main_lock_contention_returns_zero(
@@ -360,7 +360,7 @@ def test_main_lock_contention_returns_zero(
     def raise_oserror(*a: Any, **k: Any) -> None:
         raise OSError("locked")
 
-    monkeypatch.setattr("robotsix_auto_mail.autoupdate.fcntl.flock", raise_oserror)
+    monkeypatch.setattr("robotsix_auto_mail.dev.autoupdate.fcntl.flock", raise_oserror)
     fake = FakeRun([], default=_cp(0))
     _install(monkeypatch, fake)
 
