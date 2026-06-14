@@ -3,38 +3,37 @@
 from __future__ import annotations
 
 from datetime import datetime
-from html.parser import HTMLParser
 from typing import TYPE_CHECKING
+
+try:
+    from robotsix_llmio.core import html_to_text
+except ImportError:
+    # Fallback for robotsix_llmio builds that predate ``html_to_text``
+    # landing in ``robotsix_llmio.core`` (core/text_utils.py). This mirrors
+    # that helper (stdlib ``re`` + ``html`` only) so the produced plaintext
+    # stays equivalent regardless of the installed robotsix_llmio version.
+    import html as _html
+    import re as _re
+
+    _DROP_BLOCKS = _re.compile(
+        r"<(script|style|noscript|svg)\b[^>]*>.*?</\1>",
+        _re.IGNORECASE | _re.DOTALL,
+    )
+    _TAG = _re.compile(r"<[^>]+>")
+    _WHITESPACE = _re.compile(r"\s+")
+
+    def html_to_text(html_text: str) -> str:
+        """Strip HTML markup down to whitespace-collapsed plaintext."""
+        text = _DROP_BLOCKS.sub(" ", html_text)
+        text = _TAG.sub(" ", text)
+        text = _html.unescape(text)
+        return _WHITESPACE.sub(" ", text).strip()
+
 
 if TYPE_CHECKING:
     from robotsix_auto_mail.db import MailRecord
 
 _BODY_PREVIEW_LIMIT = 150
-
-
-class _HTMLStripper(HTMLParser):
-    """Collect text nodes from HTML, discarding tags."""
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self._parts: list[str] = []
-
-    def handle_data(self, data: str) -> None:
-        self._parts.append(data)
-
-
-def _strip_html(html_text: str) -> str:
-    """Strip HTML tags using stdlib :class:`HTMLParser`.
-
-    Returns the plain-text content with whitespace runs collapsed.
-    """
-    if not html_text or not html_text.strip():
-        return ""
-    stripper = _HTMLStripper()
-    stripper.feed(html_text)
-    text = "".join(stripper._parts)
-    # Collapse whitespace runs.
-    return " ".join(text.split())
 
 
 def _effective_body_plain(record: MailRecord) -> str:
@@ -47,7 +46,7 @@ def _effective_body_plain(record: MailRecord) -> str:
     """
     if record.body_plain.strip():
         return record.body_plain
-    return _strip_html(record.body_html)
+    return html_to_text(record.body_html)
 
 
 def _format_date(raw: str) -> str:
