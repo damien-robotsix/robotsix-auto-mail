@@ -947,6 +947,17 @@ progress banner once complete. If a batch operation is interrupted by a containe
 restart (SIGKILL), the watermark is reset at startup so the board recovers
 cleanly without a wedged banner.
 
+**All-mailboxes (aggregate) view.**  In multi-account mode the **All mailboxes**
+selection shows a unified board merging every account's cards. The **Delete All**
+button is available here too: it posts to `/batch-delete?account=__all__`, which
+fans the operation out to every account that has `TO_DELETE` mail — starting one
+independent background worker per account (each against its own database and IMAP
+connection). Accounts already running a batch op, or with nothing to delete, are
+skipped. The progress banner sums the per-account workers' progress, and the
+button is suppressed while any of them is still in flight. The **Archive All**,
+per-destination archive, and **Force Triage** controls remain per-account and do
+not appear in the aggregate view (switch to a single account to use them).
+
 **Re-triggering after interruption.**  Because each batch processes records in
 chunks and commits to the database per chunk, a mid-operation restart leaves
 already-deleted/archived records removed from the database. Re-triggering the same

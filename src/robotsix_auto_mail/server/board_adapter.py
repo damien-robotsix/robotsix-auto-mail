@@ -384,13 +384,20 @@ class MailBoardAdapter:
 
         # Batch-delete button (TO_DELETE only).  Suppressed while a batch op
         # is running, mirroring how the triage banner replaces its form.
-        # Also suppressed in aggregate mode.
+        # In aggregate mode the form targets ``/batch-delete?account=__all__``,
+        # which the handler fans out to every account's own DB + IMAP worker.
         batch_delete_form = ""
-        if status_key == "TO_DELETE" and not self._batch_running and not aggregate:
+        if status_key == "TO_DELETE" and not self._batch_running:
+            if aggregate:
+                delete_action = "/batch-delete?account=__all__"
+                delete_scope = "across ALL mailboxes "
+            else:
+                delete_action = "/batch-delete"
+                delete_scope = ""
             batch_delete_form = (
-                '<form class="delete-form" method="post" action="/batch-delete"'
+                f'<form class="delete-form" method="post" action="{delete_action}"'
                 ' onsubmit="return confirm('
-                "'Permanently delete ALL mail in this column"
+                f"'Permanently delete ALL mail in this column {delete_scope}"
                 " from mailbox and database?')\">"
                 '<button type="submit" class="delete-btn">Delete All</button>'
                 "</form>"

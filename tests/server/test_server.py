@@ -6778,7 +6778,7 @@ def test_global_content_builder_aggregation() -> None:
 
 def test_global_content_builder_returns_correct_keys() -> None:
     """_build_global_board_content returns the same JSON keys as
-    _build_board_content (minus the per-account-only batch_op)."""
+    _build_board_content, including the aggregated ``batch_op``."""
     fd_a, db_a = tempfile.mkstemp(suffix=".db")
     fd_b, db_b = tempfile.mkstemp(suffix=".db")
     os.close(fd_a)
@@ -6792,7 +6792,97 @@ def test_global_content_builder_returns_correct_keys() -> None:
             "columns_html",
             "triage_running",
             "unsubscribe_suggestions",
+            "batch_op",
         }
+        # No batch op running → aggregated batch_op is None.
+        assert result["batch_op"] is None
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_global_content_builder_aggregates_batch_op() -> None:
+    """_build_global_board_content sums per-account batch-op progress so the
+    aggregate banner reflects the combined fan-out."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup_with_triage(db_a, db_b)
+        from robotsix_auto_mail.db import init_db, set_watermark
+        from robotsix_auto_mail.server.views import _build_global_board_content
+
+        for path, done, total in ((db_a, 2, 5), (db_b, 1, 3)):
+            conn = init_db(path, skip_migrations=True)
+            try:
+                set_watermark(
+                    conn,
+                    "batch_op:state",
+                    json.dumps({"op": "delete", "done": done, "total": total}),
+                )
+            finally:
+                conn.close()
+
+        result = _build_global_board_content(accounts)
+        assert result["batch_op"] == {"op": "delete", "done": 3, "total": 8}
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+def test_global_batch_delete_fans_out_across_accounts() -> None:
+    """POST /batch-delete?account=__all__ deletes every account's TO_DELETE
+    mail and leaves other columns untouched."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup_with_triage(db_a, db_b)
+        # Account B already has TO_ANSWER + INBOX; add a TO_DELETE so the
+        # fan-out has work to do in both accounts.
+        _populate_db(
+            db_b,
+            [
+                {
+                    "message_id": "msg-b-delete",
+                    "sender": "bob@b.com",
+                    "subject": "B Delete",
+                    "date": "2025-02-03T00:00:00",
+                    "body_plain": "Body B delete",
+                    "status": "to_read",
+                }
+            ],
+        )
+        _seed_triage_decision(db_b, "msg-b-delete", action="TO_DELETE")
+
+        server, port = _start_test_server_with_accounts(accounts, "A")
+        try:
+            resp = _post_to_path(port, "/batch-delete?account=__all__", {})
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+            _wait_for_batch_idle(db_a)
+            _wait_for_batch_idle(db_b)
+        finally:
+            server.shutdown()
+
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+
+        conn_a = init_db(db_a)
+        try:
+            assert get_record_by_message_id(conn_a, "msg-a-delete") is None
+            assert get_record_by_message_id(conn_a, "msg-a-inbox") is not None
+        finally:
+            conn_a.close()
+        conn_b = init_db(db_b)
+        try:
+            assert get_record_by_message_id(conn_b, "msg-b-delete") is None
+            # Non-delete columns survive.
+            assert get_record_by_message_id(conn_b, "msg-b-answer") is not None
+            assert get_record_by_message_id(conn_b, "msg-b-inbox") is not None
+        finally:
+            conn_b.close()
     finally:
         os.unlink(db_a)
         os.unlink(db_b)
@@ -6828,8 +6918,10 @@ def test_global_board_page_all_accounts_param() -> None:
             assert "All mailboxes" in body
             # No folder-triage form in aggregate mode.
             assert 'action="/run-folder-triage"' not in body
-            # No batch-delete / force-triage forms in aggregate mode.
-            assert 'action="/batch-delete"' not in body
+            # Delete-All fans out across accounts (TO_DELETE column seeded
+            # via msg-a-delete), targeting the aggregate endpoint.
+            assert 'action="/batch-delete?account=__all__"' in body
+            # Archive / force-triage remain per-account and stay suppressed.
             assert 'action="/batch-archive"' not in body
             assert 'action="/force-triage-column"' not in body
             # No Run triage / refresh-btn (manual-control check).
