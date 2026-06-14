@@ -71,6 +71,10 @@ modules:
       (MailAccountsConfig) and per-account SQLite DB isolation.
     paths:
       - src/robotsix_auto_mail/config/__init__.py
+      - src/robotsix_auto_mail/config/loader.py
+      - src/robotsix_auto_mail/config/model.py
+      - src/robotsix_auto_mail/config/render.py
+      - src/robotsix_auto_mail/config/schema.py
       - src/robotsix_auto_mail/config/config_sync_agent.py
       - tests/config/test_config.py
       - .env.example
