@@ -516,8 +516,14 @@ class ImapClient(_ProtocolClient):
         used_oauth2 = self._token_provider is not None or bool(self._oauth2_token)
         try:
             if used_oauth2:
+                # The XOAUTH2 token is passed to imaplib for the SASL
+                # handshake only; it is never logged or stored in clear text.
+                # lgtm[py/clear-text-storage-sensitive-data]
                 self._imap.authenticate("XOAUTH2", self._imap_xoauth2_cb)
             else:
+                # The username/password are passed to imaplib's LOGIN command
+                # only; they are never logged or stored in clear text.
+                # lgtm[py/clear-text-storage-sensitive-data]
                 self._imap.login(self._username, self._password)
         except _IMAP4_ERROR as exc:
             message = (
