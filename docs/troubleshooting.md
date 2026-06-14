@@ -6,6 +6,9 @@ This is the error-oriented companion to [docs/connecting.md](connecting.md)
 on connection, TLS, and authentication diagnosis and does **not** duplicate
 the deployment FAQ entries.
 
+For how CodeQL alerts are verified and suppressed in this repository, see
+[docs/codeql-verification.md](codeql-verification.md).
+
 ## First diagnostic step: `probe`
 
 When anything connection-related goes wrong, run:

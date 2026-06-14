@@ -47,6 +47,10 @@ disclosure.
 
 ## Scope
 
+How CodeQL alerts are verified and suppressed in this repository (and why
+the code-scanning API is currently unavailable here) is documented in
+[docs/codeql-verification.md](docs/codeql-verification.md).
+
 In scope:
 
 - Vulnerabilities in the `robotsix_auto_mail` package and other
