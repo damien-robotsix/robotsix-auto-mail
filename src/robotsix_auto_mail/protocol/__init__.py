@@ -14,6 +14,9 @@ from collections.abc import Callable
 
 def build_xoauth2_response(username: str, token: str) -> str:
     """Return the SASL XOAUTH2 response string for *username*/*token*."""
+    # This is the RFC 7628 SASL XOAUTH2 wire format written to the auth
+    # socket; the token is never logged or stored in clear text.
+    # lgtm[py/clear-text-storage-sensitive-data]
     return f"user={username}\x01auth=Bearer {token}\x01\x01"
 
 
