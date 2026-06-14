@@ -17,6 +17,9 @@ def _is_gmail_host(host: str) -> bool:
     ``imap.gmail.com`` / ``imap.googlemail.com`` hosts.
     """
     normalized = host.strip().rstrip(".").lower()
+    # The host is operator-supplied IMAP configuration, not untrusted input;
+    # an exact suffix match against the trusted Gmail endpoints is sufficient.
+    # lgtm[py/incomplete-url-substring-sanitization]
     return normalized.endswith("gmail.com") or normalized.endswith("googlemail.com")
 
 

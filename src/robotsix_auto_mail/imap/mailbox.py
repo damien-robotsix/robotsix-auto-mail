@@ -16,7 +16,9 @@ from .errors import ImapMessageNotFoundError
 from .utils import imap_utf7_decode
 
 if TYPE_CHECKING:
-    from .client import ImapClient
+    # Type-only import, guarded by TYPE_CHECKING — never executed at runtime,
+    # so there is no real import cycle between mailbox and client.
+    from .client import ImapClient  # lgtm[py/unsafe-cyclic-import]
 
 
 # ---------------------------------------------------------------------------

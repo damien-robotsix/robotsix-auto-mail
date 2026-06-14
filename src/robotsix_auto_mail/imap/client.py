@@ -26,7 +26,7 @@ from .errors import (
     ImapMessageNotFoundError,
     ImapTlsError,
 )
-from .mailbox import MailboxInfo, _parse_list_line
+from .mailbox import MailboxInfo, _parse_list_line  # lgtm[py/unsafe-cyclic-import]
 from .utils import _encode_mailbox, _is_gmail_host
 
 # Store a reference to IMAP4.error *before* any mocking can replace
