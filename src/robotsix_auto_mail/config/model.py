@@ -15,7 +15,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Final
 
-from robotsix_yaml_config import YamlConfigError, read_yaml_file
+from robotsix_yaml_config import (  # type: ignore[import-untyped]
+    YamlConfigError,
+    read_yaml_file,
+)
 
 from robotsix_auto_mail.config.schema import (
     _FIELD_SPECS,
