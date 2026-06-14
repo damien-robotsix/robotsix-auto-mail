@@ -453,7 +453,9 @@ class ImapClient(_ProtocolClient):
         if self._imap is not None:
             try:
                 self._imap.logout()
-            except Exception:  # noqa: S110  # nosec B110
+            # Deliberate best-effort cleanup: a logout failure here is
+            # non-actionable (the connection may already be dead).
+            except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
                 # Connection may already be dead - best-effort close.
                 pass
         # In case logout() left the socket dangling, close it ourselves.
@@ -478,6 +480,10 @@ class ImapClient(_ProtocolClient):
     def _connect_starttls(self) -> None:
         # 1. Plain connection
         try:
+            # Plaintext socket opened only to negotiate the STARTTLS upgrade
+            # immediately below; this is the operator-selected
+            # tls_mode == "starttls" path, not an unencrypted session.
+            # lgtm[py/clear-text-transmission-sensitive-data]
             self._imap = imaplib.IMAP4(
                 self._host, self._port, timeout=_IMAP_TIMEOUT_SECONDS
             )
@@ -500,6 +506,11 @@ class ImapClient(_ProtocolClient):
 
     def _connect_plain(self) -> None:
         try:
+            # No-TLS connection reached only via the explicit,
+            # operator-selected tls_mode == "none" configuration (a supported
+            # option for local/test servers or networks that terminate TLS
+            # externally); not a default and not silently downgraded.
+            # lgtm[py/clear-text-transmission-sensitive-data]
             self._imap = imaplib.IMAP4(
                 self._host, self._port, timeout=_IMAP_TIMEOUT_SECONDS
             )
@@ -556,7 +567,9 @@ class ImapClient(_ProtocolClient):
             sock = getattr(self._imap, "sock", None)
             if sock is not None:
                 sock.close()
-        except Exception:  # noqa: S110  # nosec B110
+        # Deliberate best-effort cleanup: a socket-close failure here is
+        # non-actionable (the connection may already be dead).
+        except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
             pass
 
     # -- public methods ----------------------------------------------------
@@ -657,7 +670,9 @@ class ImapClient(_ProtocolClient):
             return
         try:
             self._imap.subscribe(_encode_mailbox(name))
-        except Exception:  # noqa: S110  # nosec B110
+        # Deliberate best-effort step: a subscribe failure is non-actionable
+        # and must not abort the folder creation it follows.
+        except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
             pass
 
     def search_uids(self, criteria: str = "ALL") -> list[int]:
