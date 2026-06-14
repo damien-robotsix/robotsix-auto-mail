@@ -110,7 +110,9 @@ modules:
       SQLite datastore: schema, MailRecord, insert, watermark.
     paths:
       - src/robotsix_auto_mail/db/__init__.py
+      - src/robotsix_auto_mail/db/_migrate.py
       - tests/db/test_db.py
+      - tests/db/test_migrate.py
 
   - id: detect
     description: >-

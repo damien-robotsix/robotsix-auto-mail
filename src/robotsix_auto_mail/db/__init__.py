@@ -14,6 +14,8 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ._migrate import run_additive_migrations
+
 #: Canonical triage state vocabulary — the six kanban columns.
 #: ``INBOX`` means "not triaged" (no ``triage_decisions`` row, or an
 #: explicit reset).
@@ -126,6 +128,20 @@ CREATE TABLE IF NOT EXISTS triage_decisions (
 """
 
 
+#: Additive ``mail_records`` columns applied at startup for legacy DBs that
+#: predate them.  Each entry is a column DDL fragment passed to
+#: :func:`._migrate.run_additive_migrations`; the fragments are byte-for-byte
+#: equivalent to the column definitions previously added by the per-column
+#: ``_migrate_add_*`` functions, in the same order.
+_ADDITIVE_COLUMNS: tuple[str, ...] = (
+    "unsubscribe_header TEXT NOT NULL DEFAULT ''",
+    "notes TEXT NOT NULL DEFAULT ''",
+    "draft_text TEXT NOT NULL DEFAULT ''",
+    "sent_reply_text TEXT NOT NULL DEFAULT ''",
+    "source_folder TEXT NOT NULL DEFAULT 'INBOX'",
+)
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -159,11 +175,7 @@ def init_db(
     if not skip_migrations:
         _migrate_legacy_statuses(conn)
         _migrate_status_to_triage(conn)
-        _migrate_add_unsubscribe_header(conn)
-        _migrate_add_notes(conn)
-        _migrate_add_draft_text(conn)
-        _migrate_add_sent_reply_text(conn)
-        _migrate_add_source_folder(conn)
+        run_additive_migrations(conn, "mail_records", _ADDITIVE_COLUMNS)
     return conn
 
 
@@ -227,84 +239,6 @@ WHERE mr.status = ?
             (action, _utc_now_iso(), old_status),
         )
     conn.commit()
-
-
-def _migrate_add_unsubscribe_header(conn: sqlite3.Connection) -> None:
-    """Add ``unsubscribe_header`` column to ``mail_records`` for existing DBs.
-
-    Idempotent: if the column already exists the ``ALTER TABLE`` raises
-    ``sqlite3.OperationalError`` which is caught and ignored.
-    """
-    try:
-        conn.execute(
-            "ALTER TABLE mail_records "
-            "ADD COLUMN unsubscribe_header TEXT NOT NULL DEFAULT ''"
-        )
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
-
-
-def _migrate_add_notes(conn: sqlite3.Connection) -> None:
-    """Add ``notes`` column to ``mail_records`` for existing DBs.
-
-    Idempotent: if the column already exists the ``ALTER TABLE`` raises
-    ``sqlite3.OperationalError`` which is caught and ignored.
-    """
-    try:
-        conn.execute(
-            "ALTER TABLE mail_records ADD COLUMN notes TEXT NOT NULL DEFAULT ''"
-        )
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
-
-
-def _migrate_add_draft_text(conn: sqlite3.Connection) -> None:
-    """Add ``draft_text`` column to ``mail_records`` for existing DBs.
-
-    Idempotent: if the column already exists the ``ALTER TABLE`` raises
-    ``sqlite3.OperationalError`` which is caught and ignored.
-    """
-    try:
-        conn.execute(
-            "ALTER TABLE mail_records ADD COLUMN draft_text TEXT NOT NULL DEFAULT ''"
-        )
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
-
-
-def _migrate_add_sent_reply_text(conn: sqlite3.Connection) -> None:
-    """Add ``sent_reply_text`` column to ``mail_records`` for existing DBs.
-
-    Idempotent: if the column already exists the ``ALTER TABLE`` raises
-    ``sqlite3.OperationalError`` which is caught and ignored.
-    """
-    try:
-        conn.execute(
-            "ALTER TABLE mail_records "
-            "ADD COLUMN sent_reply_text TEXT NOT NULL DEFAULT ''"
-        )
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
-
-
-def _migrate_add_source_folder(conn: sqlite3.Connection) -> None:
-    """Add ``source_folder`` column to ``mail_records`` for existing DBs.
-
-    Idempotent: if the column already exists the ``ALTER TABLE`` raises
-    ``sqlite3.OperationalError`` which is caught and ignored.
-    """
-    try:
-        conn.execute(
-            "ALTER TABLE mail_records "
-            "ADD COLUMN source_folder TEXT NOT NULL DEFAULT 'INBOX'"
-        )
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
 
 
 def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
