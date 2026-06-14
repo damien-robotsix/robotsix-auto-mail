@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import sqlite3
+import time
 
 import structlog
 
@@ -134,6 +135,8 @@ class IngestResult:
         triaged: Number of triage decisions produced by the
             automatic post-ingest triage pass (0 when triage is
             disabled, dry-run, or raised).
+        duration_ms: Wall-clock duration of the ingestion run in
+            milliseconds (monotonic ``time.perf_counter`` delta).
     """
 
     total_fetched: int
@@ -141,6 +144,7 @@ class IngestResult:
     skipped: int
     errors: list[IngestError]
     triaged: int = 0
+    duration_ms: float = 0.0
 
 
 def _process_messages(
@@ -307,6 +311,7 @@ def ingest_mail(
         archive_enabled=config.archive_enabled,
         triage_on_ingest=config.triage_on_ingest,
     )
+    _t0 = time.perf_counter()
     if not dry_run and config.archive_enabled:
         try:
             setup_archive(
@@ -360,6 +365,7 @@ def ingest_mail(
         except Exception:
             _logger.exception("triage_failed")
 
+    duration_ms = round((time.perf_counter() - _t0) * 1000, 1)
     _logger.info(
         "batch_summary",
         total_fetched=total_fetched,
@@ -367,6 +373,7 @@ def ingest_mail(
         skipped=skipped,
         error_count=len(errors),
         triaged=triaged,
+        duration_ms=duration_ms,
     )
 
     return IngestResult(
@@ -375,6 +382,7 @@ def ingest_mail(
         skipped=skipped,
         errors=errors,
         triaged=triaged,
+        duration_ms=duration_ms,
     )
 
 
