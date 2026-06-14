@@ -20,6 +20,7 @@ nav:
   - Dependencies: dependencies.md
   - Testing: testing.md
   - Troubleshooting: troubleshooting.md
+  - CodeQL Verification: codeql-verification.md
   - Contributing: CONTRIBUTING.md
   - Changelog: CHANGELOG.md
   - Decisions:
