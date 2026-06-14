@@ -81,10 +81,11 @@ jobs:
       run-trufflehog: true
       trufflehog-pr-diff: false
       # Locked-requirements audit: export uv.lock to this file, then run
-      # `pip-audit -r`. Drops the two first-party VCS packages, which are not on
-      # PyPI and break pip's --require-hashes mode. Also drops the root project
-      # robotsix-auto-mail itself: its editable `-e .` form has no hashable
-      # single file under pip's --require-hashes mode, which aborts pip-audit.
+      # `pip-audit -r`. Drops the three first-party VCS packages, which are not
+      # on PyPI and break pip's --require-hashes mode. Also drops the root
+      # project robotsix-auto-mail itself: its editable `-e .` form has no
+      # hashable single file under pip's --require-hashes mode, which aborts
+      # pip-audit.
       run-pip-audit: true
       pip-audit-requirements-file: requirements-locked.txt
-      pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board robotsix-auto-mail"
+      pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board robotsix-auto-mail robotsix-llmio"
