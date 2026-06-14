@@ -243,7 +243,6 @@ modules:
       - docs/index.md
       - mkdocs.yml
       - docs/architecture.md
-      - docs/agent-communication-architecture.md
       - docs/codeql-verification.md
       - docs/connecting.md
       - docs/deployment.md

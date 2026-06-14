@@ -10,15 +10,10 @@ markdown_extensions:
   - admonition
   - toc:
       permalink: true
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.superfences
 nav:
   - Home: index.md
   - Architecture: architecture.md
-  - Agent Communication Architecture: agent-communication-architecture.md
   - Ingestion: ingestion.md
   - Connecting: connecting.md
   - Deployment: deployment.md
