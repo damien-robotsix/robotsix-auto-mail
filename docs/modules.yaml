@@ -117,6 +117,8 @@ modules:
     paths:
       - src/robotsix_auto_mail/db/__init__.py
       - src/robotsix_auto_mail/db/_migrate.py
+      - src/robotsix_auto_mail/db/models.py
+      - src/robotsix_auto_mail/db/queries.py
       - tests/db/test_db.py
       - tests/db/test_migrate.py
 
