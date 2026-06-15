@@ -7,7 +7,6 @@ All the logic that was previously in ``detect/__init__.py``, split out so
 from __future__ import annotations
 
 import json
-import os
 import urllib.parse
 from xml.etree import ElementTree  # nosec B405
 
@@ -17,7 +16,10 @@ from robotsix_llmio.core import Tier, run_agent
 
 from robotsix_auto_mail.config import (
     DEFAULT_DB_PATH,
+    ConfigurationError,
     MailConfig,
+    resolve_llm_api_key,
+    resolve_llm_provider,
 )
 from robotsix_auto_mail.detect.models import (
     DetectedProvider,
@@ -404,20 +406,13 @@ def detect_provider(
         DetectionError: If the API key is missing, the LLM returns an
             invalid response, or any other error occurs.
     """
-    # -- resolve API key --
-    resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
-    if not resolved_key:
-        raise DetectionError(
-            "No LLM API key found — set the LLM_API_KEY environment "
-            "variable or add an `llm.api_key` entry to your config file"
-        )
+    # -- resolve API key + provider via the shared config helpers --
+    try:
+        resolved_key = resolve_llm_api_key(api_key)
+    except ConfigurationError as e:
+        raise DetectionError(str(e)) from e
 
-    # -- resolve provider --
-    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
-    if not resolved_provider:
-        from robotsix_auto_mail.config import load_llm_provider
-
-        resolved_provider = load_llm_provider()
+    resolved_provider = resolve_llm_provider(provider)
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput

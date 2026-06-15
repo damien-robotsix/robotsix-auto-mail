@@ -13,13 +13,15 @@ optional LLM extra, mirroring :mod:`robotsix_auto_mail.triage`.
 
 from __future__ import annotations
 
-import os
 import sqlite3
 
 from pydantic import BaseModel
 from robotsix_llmio.core import Tier
 
-from robotsix_auto_mail.config import load_llm, load_llm_provider
+from robotsix_auto_mail.config import (
+    resolve_llm_api_key,
+    resolve_llm_provider,
+)
 from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
@@ -129,24 +131,15 @@ def generate_draft_reply(
     from pydantic_ai import PromptedOutput
     from robotsix_llmio.core import get_provider, run_agent
 
-    # -- resolve API key (arg -> config.load_llm()) --
-    resolved_key = api_key
-    if not resolved_key:
-        resolved_key = load_llm()
-    if not resolved_key:
-        raise DraftGenerationError(
-            "No LLM API key found — set the LLM_API_KEY environment "
-            "variable or add an `llm.api_key` entry to your config file"
-        )
-
-    # -- resolve provider (arg -> LLM_PROVIDER env -> config.load_llm_provider()) --
-    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
-    if not resolved_provider:
-        resolved_provider = load_llm_provider()
-
     user_message = _build_draft_user_message(record)
 
     try:
+        # -- resolve API key (arg -> LLM_API_KEY env -> config) --
+        resolved_key = resolve_llm_api_key(api_key)
+
+        # -- resolve provider (arg -> LLM_PROVIDER env -> config) --
+        resolved_provider = resolve_llm_provider(provider)
+
         llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
         agent_handle = llm_provider.build_agent(
             tier=tier,
