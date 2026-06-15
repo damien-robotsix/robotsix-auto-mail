@@ -52,6 +52,9 @@ board = [
     "robotsix-board-agent @ git+https://github.com/damien-robotsix/robotsix-board-agent.git@main",
 ]
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.ruff]
 target-version = "py312"
 src = ["src"]
