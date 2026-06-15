@@ -96,6 +96,7 @@ class BoardHandler(
             (lambda p: p == "/", lambda: self._redirect("/board")),
             (lambda p: p == "/board", self._serve_board),
             (lambda p: p == "/board-content", self._serve_board_content),
+            (lambda p: p == "/healthz", self._serve_healthz),
             (lambda p: p.startswith("/static/"), self._serve_static),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
@@ -278,6 +279,22 @@ class BoardHandler(
             status=status,
             content_type="application/json; charset=utf-8",
         )
+
+    def _serve_healthz(self) -> None:
+        """Serve GET /healthz — liveness/readiness check."""
+        import sqlite3
+
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("SELECT 1")
+            conn.close()
+        except Exception:
+            self._serve_json(
+                {"status": "unhealthy", "checks": {"database": "unreachable"}},
+                status=503,
+            )
+        else:
+            self._serve_json({"status": "healthy"}, status=200)
 
     def log_message(self, format: str, *args: object) -> None:
         """Suppress logging to stderr (keep server quiet)."""

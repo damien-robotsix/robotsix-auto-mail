@@ -2264,3 +2264,63 @@ def test_build_board_html_legacy_no_accounts_kwarg() -> None:
 
 
 # ===========================================================================
+# GET /healthz tests
+# ===========================================================================
+
+
+def test_healthz_valid_db_returns_200() -> None:
+    """GET /healthz with a valid DB returns 200 and {"status": "healthy"}."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        server, port = _start_test_server(db_path)
+        try:
+            resp = urlopen(f"http://127.0.0.1:{port}/healthz")
+            assert resp.status == 200
+            content_type = resp.headers.get("Content-Type", "")
+            assert "application/json" in content_type
+            body = resp.read().decode("utf-8")
+            import json as _json
+
+            payload = _json.loads(body)
+            assert payload == {"status": "healthy"}
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_healthz_missing_db_returns_503() -> None:
+    """GET /healthz with a missing/corrupt DB returns 503 and error payload."""
+    import urllib.error
+
+    server, port = _start_test_server("/dev/null/nonexistent.db")
+    try:
+        try:
+            urlopen(f"http://127.0.0.1:{port}/healthz")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 503
+            content_type = exc.headers.get("Content-Type", "")
+            assert "application/json" in content_type
+            body = exc.read().decode("utf-8")
+            import json as _json
+
+            payload = _json.loads(body)
+            assert payload["status"] == "unhealthy"
+            assert "database" in payload["checks"]
+            assert payload["checks"]["database"] == "unreachable"
+        else:
+            raise AssertionError("Expected HTTPError for 503")
+    finally:
+        server.shutdown()
+
+
+def test_healthz_content_type_is_json() -> None:
+    """GET /healthz response Content-Type is application/json."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/healthz")
+        content_type = resp.headers.get("Content-Type", "")
+        assert "application/json" in content_type
+    finally:
+        server.shutdown()
