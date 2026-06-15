@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Sequence
+from datetime import datetime, timezone
 
 
 def add_column_if_missing(
@@ -67,3 +68,81 @@ def run_additive_migrations(
     """
     for column_ddl in column_ddls:
         add_column_if_missing(conn, table, column_ddl)
+
+
+# ---------------------------------------------------------------------------
+# Legacy status migrations (run by init_db at startup)
+# ---------------------------------------------------------------------------
+
+#: One-time remap of legacy workflow-internal status values to the new
+#: awaiting-action column set.  Applied at startup by :func:`init_db` so no
+#: row is left with an invalid status.  ``done`` is unchanged and therefore
+#: omitted.
+_LEGACY_STATUS_MIGRATION: dict[str, str] = {
+    "inbox": "to_read",
+    "triaging": "needs_reply",
+    "archive": "no_action",
+}
+
+
+def _migrate_legacy_statuses(conn: sqlite3.Connection) -> None:
+    """Remap any legacy ``mail_records.status`` values to the new column set.
+
+    Idempotent: rows already using the new awaiting-action statuses are left
+    untouched, so this is safe to run on every ``init_db`` call.
+    """
+    for old_status, new_status in _LEGACY_STATUS_MIGRATION.items():
+        conn.execute(
+            "UPDATE mail_records SET status = ? WHERE status = ?",
+            (new_status, old_status),
+        )
+    conn.commit()
+
+
+_STATUS_TO_TRIAGE_ACTION: dict[str, str] = {
+    "needs_reply": "TO_ANSWER",
+    "waiting": "INBOX",
+    "no_action": "TO_ARCHIVE",
+    "done": "TO_ARCHIVE",
+}
+
+
+def _utc_now_iso() -> str:
+    """Return the current UTC time as an ISO-8601 string."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _migrate_status_to_triage(conn: sqlite3.Connection) -> None:
+    """One-time migration: mirror non-default ``mail_records.status`` values
+    into ``triage_decisions`` for rows that lack a decision.
+
+    Only rows whose ``status`` is not ``"to_read"`` (the default) AND
+    that have no corresponding row in ``triage_decisions`` are migrated.
+    The mapping table is:
+
+    - ``needs_reply → answer``
+    - ``waiting → waiting``
+    - ``no_action → archive``
+    - ``done → ignore``
+
+    Migrated rows are inserted with ``source="user"`` and
+    ``reason="migrated from legacy status"``.  Rows already present in
+    ``triage_decisions`` are skipped.  Idempotent: running multiple
+    times never inserts duplicates.
+    """
+    now = _utc_now_iso()
+    for old_status, action in _STATUS_TO_TRIAGE_ACTION.items():
+        conn.execute(
+            """\
+INSERT OR IGNORE INTO triage_decisions
+    (message_id, action, source, reason, confidence, updated_at)
+SELECT mr.message_id, ?, 'user', 'migrated from legacy status', 'medium', ?
+FROM mail_records mr
+WHERE mr.status = ?
+  AND mr.message_id NOT IN (
+      SELECT message_id FROM triage_decisions
+  )
+""",
+            (action, now, old_status),
+        )
+    conn.commit()
