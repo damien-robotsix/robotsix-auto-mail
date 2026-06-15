@@ -36,6 +36,10 @@ class _BoardViewMixin:
 
     self: BoardHandlerProtocol
 
+    # Declare the attribute type so that mypy doesn't infer ``None`` from
+    # the ``self._account_cookie = None`` assignment in _serve_email_detail.
+    _account_cookie: str | None
+
     def _serve_board(self) -> None:
         """Render and serve the kanban board HTML."""
         if self._aggregate and self.accounts is not None:
