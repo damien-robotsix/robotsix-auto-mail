@@ -35,6 +35,9 @@ jobs:
   # keep their own steps and stay blocking on every push + PR.
   repo-checks:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - uses: actions/checkout@v4
@@ -68,6 +71,14 @@ jobs:
 
       - name: Dead code detection (vulture)
         run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
+
+      - name: Scan GitHub Actions workflows (zizmor)
+        run: uv run --frozen zizmor --format=sarif .github/workflows/ > zizmor-results.sarif
+
+      - name: Upload SARIF results
+        uses: actions/upload-sarif@v3
+        with:
+          sarif_file: zizmor-results.sarif
 
   # Reusable Python-security spine shared across robotsix repos. This single
   # call replaces the inline TruffleHog secret-scan / pip-audit / CycloneDX
