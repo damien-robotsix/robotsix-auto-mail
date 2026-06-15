@@ -73,10 +73,12 @@ jobs:
         run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
 
       - name: Scan GitHub Actions workflows (zizmor)
-        run: uv run --frozen zizmor --format=sarif .github/workflows/ > zizmor-results.sarif
+        run: |
+          pip install zizmor
+          zizmor --format=sarif .github/workflows/ > zizmor-results.sarif
 
       - name: Upload SARIF results
-        uses: actions/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: zizmor-results.sarif
 

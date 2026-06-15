@@ -58,11 +58,11 @@ repos:
       - id: actionlint
         args: [-shellcheck=]
 
-  - repo: https://github.com/woodruffw/zizmor
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: v1.6.0
     hooks:
       - id: zizmor
-        args: [--sarif, .github/workflows/]
+        args: [--format=sarif, .github/workflows/]
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.9.4
