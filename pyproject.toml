@@ -37,6 +37,8 @@ dev = [
     "robotsix-modules",
     # vulture: dead-code detection (CI + pre-commit gate).
     "vulture>=2.16",
+    # zizmor: GitHub Actions security scanning (CI + pre-commit gate).
+    "zizmor",
 ]
 llm = [
     "robotsix-llmio[openrouter-deepseek,tracing]",
