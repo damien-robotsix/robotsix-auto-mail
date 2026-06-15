@@ -15,7 +15,6 @@ deterministic import path, mirroring :mod:`robotsix_auto_mail.detect`.
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 import typing
 
@@ -23,6 +22,11 @@ import pydantic
 from robotsix_llmio.core import Tier, run_agent
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
+from robotsix_auto_mail.config import (
+    ConfigurationError,
+    resolve_llm_api_key,
+    resolve_llm_provider,
+)
 from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.imap import ImapClient, is_special_use
 
@@ -124,19 +128,13 @@ def determine_archive_structure(
             response, or any other error occurs.
     """
     # -- resolve API key --
-    resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
-    if not resolved_key:
-        raise ArchiveError(
-            "No LLM API key found — set the LLM_API_KEY environment "
-            "variable or add an `llm.api_key` entry to your config file"
-        )
+    try:
+        resolved_key = resolve_llm_api_key(api_key)
+    except ConfigurationError as exc:
+        raise ArchiveError(str(exc)) from exc
 
     # -- resolve provider --
-    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
-    if not resolved_provider:
-        from robotsix_auto_mail.config import load_llm_provider
-
-        resolved_provider = load_llm_provider()
+    resolved_provider = resolve_llm_provider(provider)
 
     # -- lazy import so the rest of the CLI works without the
     #    LLM provider extra --
@@ -235,7 +233,7 @@ def setup_archive(
     # from the layout the LLM proposes.  For non-Gmail mailboxes, whose
     # folders carry no special-use attributes, this filter is a no-op.
     informational_folders = [f.name for f in existing if not is_special_use(f)]
-    resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
+    resolved_key = resolve_llm_api_key(api_key, raise_on_missing=False)
     if resolved_key:
         subpaths = determine_archive_structure(
             informational_folders,

@@ -9,13 +9,16 @@ keep module-load time low.
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 
 from robotsix_llmio.core import Tier, run_agent
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
-from robotsix_auto_mail.config import load_llm
+from robotsix_auto_mail.config import (
+    ConfigurationError,
+    resolve_llm_api_key,
+    resolve_llm_provider,
+)
 from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
@@ -216,18 +219,12 @@ def _detect_unsubscribe_for_sender(
     # -- LLM path: scan body for unsubscribe options --------------------
 
     # Resolve API key with the same precedence as run_triage_agent.
-    resolved_key = os.environ.get("LLM_API_KEY", "")
-    if not resolved_key:
-        resolved_key = load_llm()
+    resolved_key = resolve_llm_api_key(raise_on_missing=False)
     if not resolved_key:
         return None
 
     # Resolve provider.
-    resolved_provider = os.environ.get("LLM_PROVIDER", "")
-    if not resolved_provider:
-        from robotsix_auto_mail.config import load_llm_provider
-
-        resolved_provider = load_llm_provider()
+    resolved_provider = resolve_llm_provider()
 
     from pydantic_ai import PromptedOutput
     from robotsix_llmio.core import get_provider
@@ -323,29 +320,6 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
 
     if updated:
         set_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY, json.dumps(suggestions))
-
-
-def _resolve_llm_api_key(api_key: str | None) -> str:
-    """Resolve the LLM key (arg -> LLM_API_KEY env -> config), raising if absent."""
-    resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
-    if not resolved_key:
-        resolved_key = load_llm()
-    if not resolved_key:
-        raise TriageError(
-            "No LLM API key found — set the LLM_API_KEY environment "
-            "variable or add an `llm.api_key` entry to your config file"
-        )
-    return resolved_key
-
-
-def _resolve_llm_provider(provider: str | None) -> str:
-    """Resolve the LLM provider (arg -> LLM_PROVIDER env -> config)."""
-    resolved = provider or os.environ.get("LLM_PROVIDER", "")
-    if not resolved:
-        from robotsix_auto_mail.config import load_llm_provider
-
-        resolved = load_llm_provider()
-    return resolved
 
 
 def _is_non_semantic_subfolder(subfolder: str) -> bool:
@@ -566,10 +540,13 @@ def run_triage_agent(
     remaining = records
 
     # -- resolve API key (arg -> LLM_API_KEY env -> config.llm_api_key) --
-    resolved_key = _resolve_llm_api_key(api_key)
+    try:
+        resolved_key = resolve_llm_api_key(api_key)
+    except ConfigurationError as exc:
+        raise TriageError(str(exc)) from exc
 
     # -- resolve provider (arg -> LLM_PROVIDER env -> config.llm_provider) --
-    resolved_provider = _resolve_llm_provider(provider)
+    resolved_provider = resolve_llm_provider(provider)
 
     # -- read archive structure + per-sender/domain history for the prompt --
     archive_folders, archive_folder_history, archive_folder_usage = (

@@ -43,6 +43,12 @@ from robotsix_auto_mail.config.loader import (
 from robotsix_auto_mail.config.loader import (
     logger as logger,
 )
+from robotsix_auto_mail.config.loader import (
+    resolve_llm_api_key as resolve_llm_api_key,
+)
+from robotsix_auto_mail.config.loader import (
+    resolve_llm_provider as resolve_llm_provider,
+)
 from robotsix_auto_mail.config.model import (
     _ACCOUNT_ID_RE as _ACCOUNT_ID_RE,
 )
@@ -175,4 +181,6 @@ __all__ = [
     "load_llm_provider",
     "logger",
     "render_accounts_yaml",
+    "resolve_llm_api_key",
+    "resolve_llm_provider",
 ]
