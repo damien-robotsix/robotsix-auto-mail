@@ -158,6 +158,7 @@ modules:
       - tests/imap/conftest.py
       - tests/imap/test_imap.py
       - tests/imap/test_imap_integration.py
+      - tests/imap/test_imap_utils.py
 
   - id: oauth2
     description: >-
