@@ -3,6 +3,10 @@ on:
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   bump:
     uses: damien-robotsix/robotsix-mill/.github/workflows/deps-bump.yml@main
