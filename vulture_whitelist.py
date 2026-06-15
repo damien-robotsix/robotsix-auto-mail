@@ -63,6 +63,15 @@ BoardAdapter.card_extra_html
 BoardAdapter.column_extra_html
 
 # ===========================================================================
+# Dataclass fields — populated from config and consumed by BoardAgent
+# (imported from optional dependency); vulture cannot trace the usage.
+# ===========================================================================
+
+from robotsix_auto_mail.lifespan import BoardAgentSettings
+BoardAgentSettings.api_token
+BoardAgentSettings.enable_write_ops
+
+# ===========================================================================
 # Genuinely dead code — removal deferred to a separate ticket.
 # ===========================================================================
 
