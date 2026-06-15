@@ -54,11 +54,13 @@ modules:
 
   - id: cli
     description: >-
-      CLI entry point exposing probe and ingest subcommands.
+      CLI entry point exposing probe and ingest subcommands,
+      plus the optional board-agent lifecycle management.
     paths:
       - src/robotsix_auto_mail/cli/__init__.py
       - src/robotsix_auto_mail/cli/commands.py
       - src/robotsix_auto_mail/cli/config.py
+      - src/robotsix_auto_mail/lifespan.py
       - tests/cli/test_cli.py
       - tests/cli/test_cli_config.py
 
@@ -255,6 +257,7 @@ modules:
       - docs/index.md
       - mkdocs.yml
       - docs/architecture.md
+      - docs/board-agent.md
       - docs/codeql-verification.md
       - docs/connecting.md
       - docs/deployment.md

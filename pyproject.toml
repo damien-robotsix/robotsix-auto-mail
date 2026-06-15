@@ -49,7 +49,7 @@ docs = [
     "mkdocs-material>=9.5",
 ]
 board = [
-    "robotsix-board-agent",
+    "robotsix-board-agent @ git+https://github.com/damien-robotsix/robotsix-board-agent.git@main",
 ]
 
 [tool.ruff]
@@ -151,7 +151,6 @@ ignore_names = ["format", "method_name"]
 
 [tool.uv.sources]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
-robotsix-board-agent = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git", rev = "main" }
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "main" }
 robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "main" }
