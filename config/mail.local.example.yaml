@@ -19,6 +19,16 @@
 # llm: and langfuse: are application-wide (top-level) sections — they apply
 # to every account.  Bare LLM_API_KEY / LANGFUSE_* env vars override them.
 
+# Board agent — optional.  When enabled, the board agent registers with the
+# agent-comm registry and drives the mill board programmatically.
+# Requires the robotsix-board-agent package to be installed.
+# board_agent:
+#   enabled: false
+#   api_url: ""
+#   api_token: ""
+#   repo_id: ""
+#   write_ops: true
+
 # LLM provider — used by the `detect` command and future LLM-assisted mail
 # processing.  The LLM_API_KEY / LLM_PROVIDER environment variables override
 # these values.

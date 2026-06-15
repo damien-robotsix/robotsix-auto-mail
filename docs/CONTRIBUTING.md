@@ -13,8 +13,6 @@ extras:
 
 ```sh
 uv sync --extra dev
-# or, with pip:
-pip install -e '.[dev]'
 ```
 
 The dev extras pull in `pytest`, `mypy`, `ruff`, and `deptry` — the tools

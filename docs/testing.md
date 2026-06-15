@@ -10,8 +10,6 @@ Install the dev extras first (this pulls in `pytest`, `mypy`, and `ruff`):
 
 ```sh
 uv sync --extra dev
-# or, with pip:
-pip install -e '.[dev]'
 ```
 
 Then run the suite:

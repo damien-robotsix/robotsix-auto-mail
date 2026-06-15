@@ -117,6 +117,14 @@ class MailConfig:
     log_format: str = "console"
     log_file_dir: str = ".mail_log"
 
+    # Board agent integration — optional; when enabled, the board agent
+    # registers with the agent-comm registry and drives the mill board.
+    board_agent_enabled: bool = False
+    board_agent_api_url: str = ""
+    board_agent_api_token: str = ""
+    board_agent_repo_id: str = ""
+    board_agent_write_ops: bool = True
+
     # -- masking -----------------------------------------------------------
 
     _SECRET_FIELDS = (
@@ -125,6 +133,7 @@ class MailConfig:
         "oauth2_token",
         "oauth2_client_secret",
         "langfuse_secret_key",
+        "board_agent_api_token",
     )
 
     def __repr__(self) -> str:
