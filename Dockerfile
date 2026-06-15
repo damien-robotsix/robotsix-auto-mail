@@ -72,4 +72,7 @@ USER mailbot
 # (.data/mail.db) both land in the bind-mounted / persisted locations.
 WORKDIR /home/mailbot
 
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/healthz || exit 1
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
