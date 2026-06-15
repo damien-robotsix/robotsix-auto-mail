@@ -117,6 +117,15 @@ class MailConfig:
     log_format: str = "console"
     log_file_dir: str = ".mail_log"
 
+    # Board agent — optional agent-comm bridge to the mill board.
+    # Disabled by default; enable to let other agents drive the board
+    # programmatically via agent-comm messages.
+    board_agent_enabled: bool = False
+    board_agent_api_url: str = ""
+    board_agent_api_token: str = ""
+    board_agent_repo_id: str = ""
+    board_agent_write_ops: bool = True
+
     # -- masking -----------------------------------------------------------
 
     _SECRET_FIELDS = (
@@ -125,6 +134,7 @@ class MailConfig:
         "oauth2_token",
         "oauth2_client_secret",
         "langfuse_secret_key",
+        "board_agent_api_token",
     )
 
     def __repr__(self) -> str:
@@ -568,6 +578,14 @@ class MailAccountsConfig:
         global_langfuse_secret_key: str = ""
         global_langfuse_base_url: str = ""
 
+        # -- top-level board_agent section (application-wide) --------------
+
+        global_board_agent_enabled: bool = False
+        global_board_agent_api_url: str = ""
+        global_board_agent_api_token: str = ""
+        global_board_agent_repo_id: str = ""
+        global_board_agent_write_ops: bool = True
+
         if isinstance(data, dict):
             llm_section = _get_table(data, "llm")
             if llm_section is not None:
@@ -584,6 +602,24 @@ class MailAccountsConfig:
                 )
                 global_langfuse_base_url = _get_str(langfuse_section, "base_url", "")
 
+            board_agent_section = _get_table(data, "board_agent")
+            if board_agent_section is not None:
+                global_board_agent_enabled = _get_bool(
+                    board_agent_section, "enabled", False
+                )
+                global_board_agent_api_url = _get_str(
+                    board_agent_section, "api_url", ""
+                )
+                global_board_agent_api_token = _get_str(
+                    board_agent_section, "api_token", ""
+                )
+                global_board_agent_repo_id = _get_str(
+                    board_agent_section, "repo_id", ""
+                )
+                global_board_agent_write_ops = _get_bool(
+                    board_agent_section, "write_ops", True
+                )
+
         accounts: list[MailAccount] = []
         for entry in accounts_raw:
             if not isinstance(entry, dict):
@@ -599,7 +635,7 @@ class MailAccountsConfig:
 
             # llm: and langfuse: are now top-level (application-wide);
             # per-account blocks are rejected with an actionable error.
-            for section_name in ("llm", "langfuse"):
+            for section_name in ("llm", "langfuse", "board_agent"):
                 if section_name in entry:
                     raise ConfigurationError(
                         f"account {raw_id!r} has a per-account "
@@ -614,7 +650,8 @@ class MailAccountsConfig:
             if not has_store_path:
                 cfg = dataclasses.replace(cfg, db_path=f".data/{raw_id}/mail.db")
 
-            # Apply top-level llm/langfuse values (global wins over defaults).
+            # Apply top-level llm / langfuse / board_agent values
+            # (global wins over defaults).
             cfg = dataclasses.replace(
                 cfg,
                 llm_api_key=global_llm_api_key or cfg.llm_api_key,
@@ -624,6 +661,14 @@ class MailAccountsConfig:
                 langfuse_secret_key=global_langfuse_secret_key
                 or cfg.langfuse_secret_key,
                 langfuse_base_url=global_langfuse_base_url or cfg.langfuse_base_url,
+                board_agent_enabled=global_board_agent_enabled,
+                board_agent_api_url=global_board_agent_api_url
+                or cfg.board_agent_api_url,
+                board_agent_api_token=global_board_agent_api_token
+                or cfg.board_agent_api_token,
+                board_agent_repo_id=global_board_agent_repo_id
+                or cfg.board_agent_repo_id,
+                board_agent_write_ops=global_board_agent_write_ops,
             )
 
             accounts.append(MailAccount(account_id=raw_id, config=cfg, label=raw_label))
@@ -732,6 +777,23 @@ def _build_account_from_env(index: int) -> MailAccount:
         log_level=os.environ.get("LOG_LEVEL", cfg.log_level),
         log_format=os.environ.get("LOG_FORMAT", cfg.log_format),
         log_file_dir=os.environ.get("LOG_FILE_DIR", cfg.log_file_dir),
+        board_agent_enabled=_parse_bool(
+            "BOARD_AGENT_ENABLED",
+            os.environ.get("BOARD_AGENT_ENABLED", str(cfg.board_agent_enabled)),
+        ),
+        board_agent_api_url=os.environ.get(
+            "BOARD_AGENT_API_URL", cfg.board_agent_api_url
+        ),
+        board_agent_api_token=os.environ.get(
+            "BOARD_AGENT_API_TOKEN", cfg.board_agent_api_token
+        ),
+        board_agent_repo_id=os.environ.get(
+            "BOARD_AGENT_REPO_ID", cfg.board_agent_repo_id
+        ),
+        board_agent_write_ops=_parse_bool(
+            "BOARD_AGENT_WRITE_OPS",
+            os.environ.get("BOARD_AGENT_WRITE_OPS", str(cfg.board_agent_write_ops)),
+        ),
     )
 
     # Validate global logging fields (skipped by _build_config_from_env).

@@ -1220,6 +1220,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+board-agent = [
+    { name = "robotsix-board-agent" },
+]
 dev = [
     { name = "deptry" },
     { name = "hatchling" },
@@ -1262,6 +1265,7 @@ requires-dist = [
     { name = "pytest-xdist", marker = "extra == 'dev'" },
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
     { name = "robotsix-board", git = "https://github.com/damien-robotsix/robotsix-board.git?rev=main" },
+    { name = "robotsix-board-agent", marker = "extra == 'board-agent'", git = "https://github.com/damien-robotsix/robotsix-board-agent.git?rev=main" },
     { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=main" },
     { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=main" },
     { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=main" },
@@ -1274,12 +1278,22 @@ requires-dist = [
     { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.16" },
     { name = "zizmor", marker = "extra == 'dev'" },
 ]
-provides-extras = ["dev", "llm", "microsoft", "docs"]
+provides-extras = ["dev", "llm", "microsoft", "board-agent", "docs"]
 
 [[package]]
 name = "robotsix-board"
 version = "0.1.0"
 source = { git = "https://github.com/damien-robotsix/robotsix-board.git?rev=main#a364bf5116dcea5c35b036d158d2f3e47b8caeec" }
+
+[[package]]
+name = "robotsix-board-agent"
+version = "0.1.0"
+source = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git?rev=main#a270ea7e2985c86b9a9edeaf405e37b90ed8d3ac" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "robotsix-llmio" },
+]
 
 [[package]]
 name = "robotsix-llmio"
