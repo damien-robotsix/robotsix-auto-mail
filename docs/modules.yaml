@@ -229,9 +229,17 @@ modules:
       - src/robotsix_auto_mail/server/static/board.css
       - src/robotsix_auto_mail/server/static/board-auto-mail.js
       - src/robotsix_auto_mail/server/board_adapter.py
-      - tests/server/test_server.py
-      - tests/server/test_board_adapter.py
+      - tests/server/conftest.py
       - tests/server/test_adapters.py
+      - tests/server/test_archive_structure.py
+      - tests/server/test_board_adapter.py
+      - tests/server/test_board_handler.py
+      - tests/server/test_format_date.py
+      - tests/server/test_global_board.py
+      - tests/server/test_redirect_safety.py
+      - tests/server/test_server_archive.py
+      - tests/server/test_server_draft.py
+      - tests/server/test_server_triage.py
       - scripts/smoke_board.sh
 
   - id: docs
