@@ -227,6 +227,10 @@ class _BoardViewMixin:
 
         Supports ``?embed=1`` to return a fragment suitable for an
         iframe (no full-page chrome, no refresh).
+
+        In embed mode the account cookie is cleared so the parent
+        board's cookie is preserved (the same fix as commit ``34f2479``
+        for board-card actions).
         """
         from urllib.parse import parse_qs, urlparse
 
@@ -240,12 +244,22 @@ class _BoardViewMixin:
         embed = qs.get("embed", ["0"])[0] == "1"
         focus_draft = qs.get("draft", ["0"])[0] == "1"
 
+        # Preserve the parent board's account cookie: when the detail
+        # pane iframe loads with ``?account=<cardAccount>`` the request
+        # arms a Set-Cookie that would overwrite whatever cookie the
+        # parent board set (e.g. ``__all__`` for the aggregate view).
+        # Clearing ``_account_cookie`` prevents that emission.
+        if embed:
+            self._account_cookie = None
+
         try:
             detail_html = _build_detail_html(
                 self.db_path,
                 message_id,
                 embed=embed,
                 focus_draft=focus_draft,
+                current_account_id=self._current_account_id,
+                is_aggregate=self._aggregate,
             )
         except Exception:
             self._send_response("Database unavailable", status=503)
