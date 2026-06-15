@@ -24,7 +24,6 @@ def _build_detail_html(
     embed: bool = False,
     focus_draft: bool = False,
     current_account_id: str | None = None,
-    is_aggregate: bool = False,
 ) -> str | None:
     """Build a full HTML detail page for a single ``MailRecord``.
 

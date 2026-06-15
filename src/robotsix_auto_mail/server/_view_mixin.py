@@ -259,7 +259,6 @@ class _BoardViewMixin:
                 embed=embed,
                 focus_draft=focus_draft,
                 current_account_id=self._current_account_id,
-                is_aggregate=self._aggregate,
             )
         except Exception:
             self._send_response("Database unavailable", status=503)

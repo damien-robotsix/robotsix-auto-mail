@@ -313,9 +313,7 @@ class TestBuildDetailHtml:
             ),
             mock.patch(self._PATCH_TRIG, return_value=decision),
         ):
-            result = _build_detail_html(
-                ":memory:", record.message_id, embed=True
-            )
+            result = _build_detail_html(":memory:", record.message_id, embed=True)
 
         assert result is not None
         assert 'name="redirect_to"' in result
