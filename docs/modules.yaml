@@ -125,6 +125,8 @@ modules:
       (Mozilla ISPDB, autoconfig XML, LLM fallback).
     paths:
       - src/robotsix_auto_mail/detect/__init__.py
+      - src/robotsix_auto_mail/detect/detector.py
+      - src/robotsix_auto_mail/detect/models.py
       - tests/detect/test_detect.py
 
   - id: archive
