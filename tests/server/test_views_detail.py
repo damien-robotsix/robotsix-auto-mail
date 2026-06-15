@@ -220,6 +220,133 @@ class TestBuildDetailHtml:
         assert result is not None
         assert "(no triage decision)" in result
 
+    # -- account-aware output tests ----------------------------------------
+
+    def test_legacy_no_account_has_plain_move_action(self):
+        """Without *current_account_id*, the move form action is ``/move``."""
+        record = _make_record()
+        decision = TriageDecision(
+            message_id=record.message_id, action="INBOX", source="agent"
+        )
+        fake_conn = mock.Mock()
+
+        with (
+            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.db.get_record_by_message_id",
+                return_value=record,
+            ),
+            mock.patch(self._PATCH_TRIG, return_value=decision),
+        ):
+            result = _build_detail_html(":memory:", record.message_id)
+
+        assert result is not None
+        assert 'action="/move"' in result
+        assert "?account=" not in result
+
+    def test_real_account_adds_query_to_move_action(self):
+        """A real *current_account_id* adds ``?account=<id>`` to the form."""
+        record = _make_record()
+        decision = TriageDecision(
+            message_id=record.message_id, action="INBOX", source="agent"
+        )
+        fake_conn = mock.Mock()
+
+        with (
+            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.db.get_record_by_message_id",
+                return_value=record,
+            ),
+            mock.patch(self._PATCH_TRIG, return_value=decision),
+        ):
+            result = _build_detail_html(
+                ":memory:", record.message_id, current_account_id="acct-42"
+            )
+
+        assert result is not None
+        assert 'action="/move?account=acct-42"' in result
+
+    def test_embed_with_account_adds_account_to_redirect(self):
+        """Embed mode with *current_account_id* carries ``&account=<id>``."""
+        record = _make_record()
+        decision = TriageDecision(
+            message_id=record.message_id, action="INBOX", source="agent"
+        )
+        fake_conn = mock.Mock()
+
+        with (
+            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.db.get_record_by_message_id",
+                return_value=record,
+            ),
+            mock.patch(self._PATCH_TRIG, return_value=decision),
+        ):
+            result = _build_detail_html(
+                ":memory:",
+                record.message_id,
+                embed=True,
+                current_account_id="acct-42",
+            )
+
+        assert result is not None
+        assert 'name="redirect_to"' in result
+        assert "&account=acct-42" in result
+        # The redirect URL starts with /email/...?embed=1 and ends with the
+        # account suffix.
+        assert '"/email/' in result
+
+    def test_embed_without_account_omits_account_from_redirect(self):
+        """Embed mode without *current_account_id* omits ``&account=``."""
+        record = _make_record()
+        decision = TriageDecision(
+            message_id=record.message_id, action="INBOX", source="agent"
+        )
+        fake_conn = mock.Mock()
+
+        with (
+            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.db.get_record_by_message_id",
+                return_value=record,
+            ),
+            mock.patch(self._PATCH_TRIG, return_value=decision),
+        ):
+            result = _build_detail_html(":memory:", record.message_id, embed=True)
+
+        assert result is not None
+        assert 'name="redirect_to"' in result
+        assert "&account=" not in result
+
+    def test_aggregate_sentinel_omits_account(self):
+        """``current_account_id="__all__"`` is treated as no-account."""
+        record = _make_record()
+        decision = TriageDecision(
+            message_id=record.message_id, action="INBOX", source="agent"
+        )
+        fake_conn = mock.Mock()
+
+        with (
+            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.db.get_record_by_message_id",
+                return_value=record,
+            ),
+            mock.patch(self._PATCH_TRIG, return_value=decision),
+        ):
+            result = _build_detail_html(
+                ":memory:",
+                record.message_id,
+                embed=True,
+                current_account_id="__all__",
+            )
+
+        assert result is not None
+        assert 'action="/move"' in result
+        assert "?account=" not in result
+        assert "&account=" not in result
+
 
 # ---------------------------------------------------------------------------
 # _render_body

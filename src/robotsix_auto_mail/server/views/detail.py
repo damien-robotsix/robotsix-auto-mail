@@ -23,11 +23,17 @@ def _build_detail_html(
     *,
     embed: bool = False,
     focus_draft: bool = False,
+    current_account_id: str | None = None,
 ) -> str | None:
     """Build a full HTML detail page for a single ``MailRecord``.
 
     Returns the HTML string, or ``None`` when *message_id* is not found.
     Raises an exception on database errors (caller catches for 503).
+
+    When *current_account_id* is a real account id (not the aggregate
+    sentinel ``"__all__"``), the move form ``action`` and embed-mode
+    ``redirect_to`` carry an ``account`` query parameter so the POST
+    routes to the correct account's database.
     """
     from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
@@ -69,11 +75,22 @@ def _build_detail_html(
     quoted_mid = quote(record.message_id, safe="")
     redirect_input = ""
     if embed:
+        account_param = ""
+        if current_account_id is not None and current_account_id != "__all__":
+            account_param = "&account=" + html.escape(
+                quote(current_account_id, safe="")
+            )
         redirect_input = (
             '<input type="hidden" name="redirect_to"'
-            f' value="/email/{html.escape(quoted_mid)}?embed=1">'
+            f' value="/email/{html.escape(quoted_mid)}?embed=1{account_param}">'
         )
-    move_form = _render_move_form(record, current_action, redirect_input)
+    # Pass the account id so the move form action carries ?account=<id>.
+    move_account_id: str | None = None
+    if current_account_id is not None and current_account_id != "__all__":
+        move_account_id = current_account_id
+    move_form = _render_move_form(
+        record, current_action, redirect_input, account_id=move_account_id
+    )
 
     # Subject for title (truncated to ~60 chars)
     raw_subject = record.subject.strip() or "(no subject)"
