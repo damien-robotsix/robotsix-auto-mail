@@ -11,14 +11,21 @@ from typing import Any
 from unittest import mock
 
 import pytest
-from hypothesis import settings
+
+try:
+    from hypothesis import settings
+
+    settings.register_profile("ci", max_examples=200, deadline=None)
+    settings.register_profile("dev", max_examples=50, deadline=None)
+    settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
+except ImportError:
+    # hypothesis is a dev dependency; when it's not installed (e.g. a minimal
+    # CI environment without network), property-based tests are skipped but
+    # the rest of the suite still collects and runs.
+    pass
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import MailRecord, init_db
-
-settings.register_profile("ci", max_examples=200, deadline=None)
-settings.register_profile("dev", max_examples=50, deadline=None)
-settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
 
 
 @pytest.fixture(autouse=True)

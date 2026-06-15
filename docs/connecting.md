@@ -275,6 +275,11 @@ auth:
 | `logging.level` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `logging.format` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
 | `logging.file_dir` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |
+| `board_agent.enabled` | no | `false` | Enable the board agent (agent-comm integration with the mill board) |
+| `board_agent.api_url` | no | – | Board REST API base URL (required when board_agent.enabled is true) |
+| `board_agent.api_token` | no | – | Board REST API authentication token (redacted in logs/repr) |
+| `board_agent.repo_id` | no | – | Repository id to scope board operations to |
+| `board_agent.write_ops` | no | `true` | Allow write operations (create, comment, transition, etc.) via the board agent |
 
 **Trace ID injection.** Every log event automatically includes a `trace_id` field that correlates logs with OpenTelemetry / Langfuse recordings. When a Langfuse trace is active (see `langfuse.public_key` / `langfuse.secret_key` above), the `trace_id` is stamped as a 32-character lowercase hexadecimal string; when no trace is active (or OpenTelemetry is absent), it is set to `"-"`. This is transparent — no configuration is needed — and applies to both `json` and `console` log formats.
 
@@ -324,6 +329,11 @@ supplies the real keys there without committing them.
 | `LOG_LEVEL` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `LOG_FORMAT` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
 | `LOG_FILE_DIR` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |
+| `BOARD_AGENT_ENABLED` | no | `false` | Enable the board agent (agent-comm integration with the mill board) |
+| `BOARD_AGENT_API_URL` | no | – | Board REST API base URL (required when BOARD_AGENT_ENABLED is true) |
+| `BOARD_AGENT_API_TOKEN` | no | – | Board REST API authentication token (redacted in logs/repr) |
+| `BOARD_AGENT_REPO_ID` | no | – | Repository id to scope board operations to |
+| `BOARD_AGENT_WRITE_OPS` | no | `true` | Allow write operations (create, comment, transition, etc.) via the board agent |
 
 **TLS modes**
 

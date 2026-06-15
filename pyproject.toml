@@ -48,6 +48,9 @@ docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
 ]
+board = [
+    "robotsix-board-agent",
+]
 
 [tool.ruff]
 target-version = "py312"
@@ -101,7 +104,19 @@ module = "robotsix_board"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = "robotsix_agent_comm"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "robotsix_board_agent"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = "msal"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "hypothesis"
 ignore_missing_imports = true
 
 [tool.deptry]
@@ -136,6 +151,7 @@ ignore_names = ["format", "method_name"]
 
 [tool.uv.sources]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
+robotsix-board-agent = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git", rev = "main" }
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "main" }
 robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "main" }

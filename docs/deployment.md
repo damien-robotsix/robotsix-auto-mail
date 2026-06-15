@@ -522,4 +522,6 @@ docker compose run robotsix-auto-mail ingest
   precedence rules, and the `probe`/`board` commands.
 - **[docs/ingestion.md](ingestion.md)** — ingestion pipeline, schema,
   idempotency guarantees, and `ingest` CLI usage.
+- **[docs/board-agent.md](board-agent.md)** — enabling and configuring the
+  optional board agent for agent-comm integration.
 - **[README.md](../README.md)** — project overview, layout, and status.

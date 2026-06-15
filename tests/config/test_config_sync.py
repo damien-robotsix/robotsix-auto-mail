@@ -91,6 +91,14 @@ accounts:
     #   format: console
     #   file_dir: .mail_log
 
+    # Board agent — optional; drives the mill board via agent-comm.
+    # board_agent:
+    #   enabled: false
+    #   api_url: ""
+    #   api_token: ""
+    #   repo_id: ""
+    #   write_ops: true
+
   - id: work
     label: Work
     imap:
@@ -135,6 +143,11 @@ LANGFUSE_BASE_URL=
 LOG_LEVEL=INFO
 LOG_FORMAT=console
 LOG_FILE_DIR=.mail_log
+BOARD_AGENT_ENABLED=false
+BOARD_AGENT_API_URL=
+BOARD_AGENT_API_TOKEN=
+BOARD_AGENT_REPO_ID=
+BOARD_AGENT_WRITE_OPS=true
 """
 
 _ACCOUNTS_EXAMPLE = """\
@@ -196,6 +209,11 @@ _DOCS_YAML_TABLE = """\
 | `logging.level` | no | `INFO` | Log level |
 | `logging.format` | no | `console` | Log format |
 | `logging.file_dir` | no | `.mail_log` | Log file directory |
+| `board_agent.enabled` | no | `false` | Enable the board agent |
+| `board_agent.api_url` | no | - | Board REST API base URL |
+| `board_agent.api_token` | no | - | Board REST API auth token |
+| `board_agent.repo_id` | no | - | Repository id for board operations |
+| `board_agent.write_ops` | no | `true` | Allow write operations via the board agent |
 """
 
 _DOCS_ENV_TABLE = """\
@@ -232,6 +250,11 @@ _DOCS_ENV_TABLE = """\
 | `LOG_LEVEL` | no | `INFO` | Log level |
 | `LOG_FORMAT` | no | `console` | Log format |
 | `LOG_FILE_DIR` | no | `.mail_log` | Log file directory |
+| `BOARD_AGENT_ENABLED` | no | `false` | Enable the board agent |
+| `BOARD_AGENT_API_URL` | no | - | Board REST API base URL |
+| `BOARD_AGENT_API_TOKEN` | no | - | Board REST API auth token |
+| `BOARD_AGENT_REPO_ID` | no | - | Repository id for board operations |
+| `BOARD_AGENT_WRITE_OPS` | no | `true` | Allow write operations via the board agent |
 """
 
 
