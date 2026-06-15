@@ -28,18 +28,25 @@ class _BoardActionMixin:
 
     self: BoardHandlerProtocol
 
+    def _parse_request_body(self, *fields: str) -> dict[str, str]:
+        """Parse the request body as URL-encoded form data.
+
+        Returns a dict mapping each requested *field* name to its
+        first value, stripped of leading/trailing whitespace.
+        """
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        parsed = parse_qs(raw)
+        return {field: (parsed.get(field) or [""])[0].strip() for field in fields}
+
     def _handle_move(self) -> None:
         """Process POST /move — update a card's triage decision and redirect."""
         from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
-
-        # parse_qs returns {key: [value, ...]} — extract first value.
-        message_id = (fields.get("message_id") or [""])[0].strip()
-        triage_action = (fields.get("triage_action") or [""])[0].strip()
-        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+        f = self._parse_request_body("message_id", "triage_action", "redirect_to")
+        message_id = f["message_id"]
+        triage_action = f["triage_action"]
+        redirect_to = f["redirect_to"]
 
         if not message_id or not triage_action:
             self._bad_request("Missing message_id or triage_action")
@@ -97,12 +104,9 @@ class _BoardActionMixin:
             init_db,
         )
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
-
-        message_id = (fields.get("message_id") or [""])[0].strip()
-        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+        f = self._parse_request_body("message_id", "redirect_to")
+        message_id = f["message_id"]
+        redirect_to = f["redirect_to"]
 
         if not message_id:
             self._bad_request("Missing message_id")
@@ -356,12 +360,9 @@ class _BoardActionMixin:
         """
         from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
-
-        message_id = (fields.get("message_id") or [""])[0].strip()
-        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+        f = self._parse_request_body("message_id", "redirect_to")
+        message_id = f["message_id"]
+        redirect_to = f["redirect_to"]
 
         if not message_id:
             self._bad_request("Missing message_id")
@@ -392,13 +393,10 @@ class _BoardActionMixin:
             update_notes,
         )
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
-
-        message_id = (fields.get("message_id") or [""])[0].strip()
-        notes = (fields.get("notes") or [""])[0]
-        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+        f = self._parse_request_body("message_id", "redirect_to", "notes")
+        message_id = f["message_id"]
+        redirect_to = f["redirect_to"]
+        notes = f["notes"]
 
         if not message_id:
             self._bad_request("Missing message_id")
