@@ -245,6 +245,7 @@ modules:
       - tests/server/test_server_archive.py
       - tests/server/test_server_draft.py
       - tests/server/test_server_triage.py
+      - tests/server/test_views_detail.py
       - scripts/smoke_board.sh
 
   - id: docs
