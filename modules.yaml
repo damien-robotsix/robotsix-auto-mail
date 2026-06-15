@@ -1,0 +1,310 @@
+# Canonical module taxonomy for robotsix-auto-mail.
+#
+# Each module declares an id, a human-readable description, and the
+# set of repo-relative file paths it owns.  Every file in the repo
+# must belong to exactly one module.  Paths use forward slashes.
+#
+# This file is the source of truth for drift detection: any file not
+# listed here is "unclassified"; any listed path that no longer exists
+# is "stale"; any new module proposal must start by adding an entry here.
+
+modules:
+  - id: core
+    description: >-
+      Project root, package identity, build configuration, and roadmap.
+    paths:
+      - .mail_data/.gitkeep
+      - .mail_log/.gitkeep
+      - src/robotsix_auto_mail/__init__.py
+      - src/robotsix_auto_mail/_constants.py
+      - src/robotsix_auto_mail/format.py
+      - tests/core/test_format.py
+      - pyproject.toml
+      - uv.lock
+      - vulture_whitelist.py
+      - .gitignore
+      - .python-version
+      - LICENSE
+      - CLAUDE.md
+      - README.md
+      - SECURITY.md
+      - ROADMAP.md
+      - tests/__init__.py
+      - tests/conftest.py
+      - tests/test_stub.py
+
+  - id: docker
+    description: >-
+      Docker image definition, Compose orchestration, and
+      container entrypoint.
+    paths:
+      - .dockerignore
+      - Dockerfile
+      - docker-compose.yml
+      - entrypoint.sh
+
+  - id: dev
+    description: >-
+      Developer and deployment helper scripts.
+    paths:
+      - dev/auto-mail-autoupdate.sh
+      - src/robotsix_auto_mail/dev/__init__.py
+      - src/robotsix_auto_mail/dev/autoupdate.py
+      - tests/dev/test_autoupdate.py
+
+  - id: cli
+    description: >-
+      CLI entry point exposing probe and ingest subcommands.
+    paths:
+      - src/robotsix_auto_mail/cli/__init__.py
+      - src/robotsix_auto_mail/cli/commands.py
+      - src/robotsix_auto_mail/cli/config.py
+      - tests/cli/test_cli.py
+      - tests/cli/test_cli_config.py
+
+  - id: config
+    description: >-
+      Configuration loading (YAML file + env), config template,
+      the deterministic drift-detection script, and the optional
+      LLM-driven drift-advisory agent. Together they keep the
+      MailConfig dataclass, env example, YAML example, and
+      connecting docs in sync. Also covers multi-account loading
+      (MailAccountsConfig) and per-account SQLite DB isolation.
+    paths:
+      - src/robotsix_auto_mail/config/__init__.py
+      - src/robotsix_auto_mail/config/loader.py
+      - src/robotsix_auto_mail/config/model.py
+      - src/robotsix_auto_mail/config/render.py
+      - src/robotsix_auto_mail/config/schema.py
+      - src/robotsix_auto_mail/config/config_sync_agent.py
+      - tests/config/test_config.py
+      - .env.example
+      - config/.gitkeep
+      - config/mail.local.example.yaml
+      - scripts/config/check_config_sync.py
+      - tests/config/test_config_sync.py
+      - tests/config/test_config_sync_agent.py
+      - tests/config/test_accounts_config.py
+      - tests/config/test_account_isolation.py
+
+  - id: triage
+    description: >-
+      LLM-driven inbox triage agent and local triage-decision
+      persistence: classifies inbox mail into advisory action statuses
+      (answer / archive / delete / ignore / user_triage) stored in the
+      triage_decisions table without moving mail in the mailbox.
+    paths:
+      - src/robotsix_auto_mail/triage/__init__.py
+      - src/robotsix_auto_mail/triage/_constants.py
+      - src/robotsix_auto_mail/triage/agent.py
+      - src/robotsix_auto_mail/triage/classifier.py
+      - src/robotsix_auto_mail/triage/persistence.py
+      - tests/triage/test_triage.py
+
+  - id: draft
+    description: >-
+      LLM-driven draft-reply generation for a single ingested mail:
+      prepares a concise reply in the incoming mail's language and
+      persists it for board review without ever sending email.
+    paths:
+      - src/robotsix_auto_mail/draft/__init__.py
+      - tests/draft/test_draft.py
+
+  - id: db
+    description: >-
+      SQLite datastore: schema, MailRecord, insert, watermark.
+    paths:
+      - src/robotsix_auto_mail/db/__init__.py
+      - src/robotsix_auto_mail/db/_migrate.py
+      - tests/db/test_db.py
+      - tests/db/test_migrate.py
+
+  - id: detect
+    description: >-
+      MX-record provider detection and auto-configuration lookup
+      (Mozilla ISPDB, autoconfig XML, LLM fallback).
+    paths:
+      - src/robotsix_auto_mail/detect/__init__.py
+      - src/robotsix_auto_mail/detect/detector.py
+      - src/robotsix_auto_mail/detect/models.py
+      - tests/detect/test_detect.py
+
+  - id: archive
+    description: >-
+      Self-managed archive folder structure: first-run LLM layout
+      proposal rooted at robotsix-mail-archive, remembered via the
+      watermark table.
+    paths:
+      - src/robotsix_auto_mail/archive/__init__.py
+      - tests/archive/test_archive.py
+
+  - id: protocol
+    description: >-
+      Shared protocol-client base class: common TLS-mode dispatch
+      and config fields for the IMAP and SMTP clients.
+    paths:
+      - src/robotsix_auto_mail/protocol/__init__.py
+      - tests/protocol/test_base_client.py
+
+  - id: imap
+    description: >-
+      Low-level IMAP client (stdlib imaplib wrapper).
+    paths:
+      - src/robotsix_auto_mail/imap/__init__.py
+      - src/robotsix_auto_mail/imap/client.py
+      - src/robotsix_auto_mail/imap/errors.py
+      - src/robotsix_auto_mail/imap/mailbox.py
+      - src/robotsix_auto_mail/imap/utils.py
+      - tests/imap/conftest.py
+      - tests/imap/test_imap.py
+      - tests/imap/test_imap_integration.py
+
+  - id: oauth2
+    description: >-
+      MSAL-backed OAuth2 token provider for Microsoft 365 (XOAUTH2):
+      device-code consent, a persistent per-account token cache, and
+      silent access-token refresh. msal is an optional dependency
+      behind the [microsoft] extra, imported lazily.
+    paths:
+      - src/robotsix_auto_mail/oauth2/__init__.py
+      - tests/oauth2/test_msal_provider.py
+
+  - id: parser
+    description: >-
+      MIME to MailRecord parsing.
+    paths:
+      - src/robotsix_auto_mail/parser/__init__.py
+      - tests/parser/test_parser.py
+      - tests/parser/test_parser_properties.py
+
+  - id: pipeline
+    description: >-
+      Ingestion orchestration: fetch, parse, store, watermark.
+    paths:
+      - src/robotsix_auto_mail/pipeline/__init__.py
+      - tests/pipeline/test_pipeline.py
+
+  - id: smtp
+    description: >-
+      SMTP sending client.
+    paths:
+      - src/robotsix_auto_mail/smtp/__init__.py
+      - tests/smtp/test_smtp_client.py
+
+  - id: tracing
+    description: >-
+      Langfuse observability via robotsix_llmio's OTel layer: initialises
+      the tracer provider and wraps each LLM call site (detect, archive,
+      triage, config_sync_agent) with named root spans carrying input and
+      output attribution.
+    paths:
+      - src/robotsix_auto_mail/tracing/__init__.py
+      - tests/tracing/test_tracing.py
+
+  - id: logging
+    description: >-
+      Central structlog-based logging configuration: env-driven
+      setup_logging() entry point bridging stdlib logging into a
+      shared JSON/console renderer.
+    paths:
+      - src/robotsix_auto_mail/logging/__init__.py
+      - tests/logging/test_logging_config.py
+
+  - id: server
+    description: >-
+      HTTP kanban board server exposing the mail database as
+      a read/write web UI, plus the runtime-verification smoke
+      test that boots the server and asserts its key routes.
+    paths:
+      - src/robotsix_auto_mail/server/__init__.py
+      - src/robotsix_auto_mail/server/_constants.py
+      - src/robotsix_auto_mail/server/adapters.py
+      - src/robotsix_auto_mail/server/handlers.py
+      - src/robotsix_auto_mail/server/_action_mixin.py
+      - src/robotsix_auto_mail/server/_batch_mixin.py
+      - src/robotsix_auto_mail/server/_board_handler_protocol.py
+      - src/robotsix_auto_mail/server/_config_mixin.py
+      - src/robotsix_auto_mail/server/_draft_mixin.py
+      - src/robotsix_auto_mail/server/_triage_mixin.py
+      - src/robotsix_auto_mail/server/_view_mixin.py
+      - src/robotsix_auto_mail/server/views/__init__.py
+      - src/robotsix_auto_mail/server/views/board.py
+      - src/robotsix_auto_mail/server/views/detail.py
+      - src/robotsix_auto_mail/server/views/forms.py
+      - src/robotsix_auto_mail/server/static/board.css
+      - src/robotsix_auto_mail/server/static/board-auto-mail.js
+      - src/robotsix_auto_mail/server/board_adapter.py
+      - tests/server/conftest.py
+      - tests/server/test_adapters.py
+      - tests/server/test_archive_structure.py
+      - tests/server/test_board_adapter.py
+      - tests/server/test_board_handler.py
+      - tests/server/test_format_date.py
+      - tests/server/test_global_board.py
+      - tests/server/test_redirect_safety.py
+      - tests/server/test_server_archive.py
+      - tests/server/test_server_draft.py
+      - tests/server/test_server_triage.py
+      - scripts/smoke_board.sh
+
+  - id: docs
+    description: >-
+      User-facing documentation and architecture decisions.
+    paths:
+      - docs/CHANGELOG.md
+      - docs/CONTRIBUTING.md
+      - docs/dependencies.md
+      - docs/index.md
+      - mkdocs.yml
+      - docs/architecture.md
+      - docs/codeql-verification.md
+      - docs/connecting.md
+      - docs/deployment.md
+      - docs/ingestion.md
+      - docs/testing.md
+      - docs/troubleshooting.md
+      - docs/modules.yaml
+      - docs/decisions/0001-programming-language.md
+
+  - id: ci
+    description: >-
+      CI and developer-side quality-gate tooling: GitHub Actions
+      workflows (main pipeline and uv.lock auto-update), dependency
+      updates, and local pre-commit hooks (including the
+      detect-secrets baseline).
+    paths:
+      - .github/codeql/codeql-config.yml
+      - .github/workflows/ci.yml
+      - .github/workflows/codeql.yml
+      - .github/workflows/deps-bump.yml
+      - .github/workflows/docs.yml
+      - .github/workflows/lockfile.yml
+      - .github/workflows/pre-commit.yml
+      - .github/workflows/release.yml
+      - .hadolint.yaml
+      - .pre-commit-config.yaml
+      - .secrets.baseline
+      - renovate.json
+
+  - id: mill
+    description: >-
+      Robotsix-mill board orchestration configuration: board settings
+      and the periodic scheduled-agent task definitions that drive the
+      autonomous workflow.
+    paths:
+      - .robotsix-mill/config.yaml
+      - .robotsix-mill/periodic/agent_check.yaml
+      - .robotsix-mill/periodic/audit.yaml
+      - .robotsix-mill/periodic/bc_check.yaml
+      - .robotsix-mill/periodic/board_cleanup.yaml
+      - .robotsix-mill/periodic/config_sync.yaml
+      - .robotsix-mill/periodic/data_dir_audit.yaml
+      - .robotsix-mill/periodic/completeness_check.yaml
+      - .robotsix-mill/periodic/copy_paste.yaml
+      - .robotsix-mill/periodic/health.yaml
+      - .robotsix-mill/periodic/langfuse_cleanup.yaml
+      - .robotsix-mill/periodic/module_curator.yaml
+      - .robotsix-mill/periodic/survey.yaml
+      - .robotsix-mill/periodic/cost_reconciliation.yaml
+      - .robotsix-mill/periodic/test_gap.yaml
+      - .robotsix-mill/periodic/trace_review.yaml

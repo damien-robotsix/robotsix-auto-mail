@@ -1,0 +1,2081 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Automated mail ingestion, triage, and board for robotsix-auto-mail.">
+      
+      
+      
+      
+        <link rel="prev" href="../connecting/">
+      
+      
+        <link rel="next" href="../dependencies/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Deployment - robotsix-auto-mail</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#deployment-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="robotsix-auto-mail" class="md-header__button md-logo" aria-label="robotsix-auto-mail" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            robotsix-auto-mail
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Deployment
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/damien-robotsix/robotsix-auto-mail" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="robotsix-auto-mail" class="md-nav__button md-logo" aria-label="robotsix-auto-mail" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    robotsix-auto-mail
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/damien-robotsix/robotsix-auto-mail" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingestion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connecting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connecting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#first-time-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First-time setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="First-time setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-clone-the-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Clone the repository
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-your-local-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create your local configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2a-alternative-auto-detect-provider-settings-detect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2a. Alternative: auto-detect provider settings (detect)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run locally
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Run locally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#probe-connectivity-always-run-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Probe connectivity (always run first)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ingest-mail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ingest mail
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#view-the-inbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View the inbox
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start-the-web-board" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start the web board
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ephemeral-containers-persistent-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ephemeral containers, persistent data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration quick-reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration quick-reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-configuration-reaches-the-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How configuration reaches the container
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker-composeyml-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        docker-compose.yml structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="docker-compose.yml structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#servicesrobotsix-auto-mail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        services.robotsix-auto-mail
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#volumes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Volumes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#servicesboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        services.board
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#production-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Production deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pull-the-published-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull the published image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-the-production-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build the production image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tag-and-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tag and push
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-on-a-production-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run on a production host
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-entrypoint-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the entrypoint does
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#updating-a-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Updating a deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Updating a deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-reset-including-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full reset (including database)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting-faq" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting / FAQ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting / FAQ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#missing-required-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Missing required configuration"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-file-not-found-homemailbotconfigmaillocalyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Config file not found: /home/mailbot/config/mail.local.yaml"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#imap-smtp-connectivity-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IMAP / SMTP connectivity failures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#volume-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Volume permissions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#envsubst-command-not-found-or-envsubst-is-silently-skipped" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "envsubst: command not found" (or envsubst is silently skipped)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-is-locked-sqlite-database-corruption" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "database is locked" / SQLite database corruption
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#further-reading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Further reading
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../codeql-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CodeQL Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CHANGELOG/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/0001-programming-language/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0001 — Programming language
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#first-time-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First-time setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="First-time setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-clone-the-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Clone the repository
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-your-local-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create your local configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2a-alternative-auto-detect-provider-settings-detect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2a. Alternative: auto-detect provider settings (detect)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run locally
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Run locally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#probe-connectivity-always-run-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Probe connectivity (always run first)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ingest-mail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ingest mail
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#view-the-inbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View the inbox
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start-the-web-board" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start the web board
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ephemeral-containers-persistent-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ephemeral containers, persistent data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration quick-reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration quick-reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-configuration-reaches-the-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How configuration reaches the container
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker-composeyml-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        docker-compose.yml structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="docker-compose.yml structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#servicesrobotsix-auto-mail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        services.robotsix-auto-mail
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#volumes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Volumes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#servicesboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        services.board
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#production-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Production deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pull-the-published-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull the published image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-the-production-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build the production image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tag-and-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tag and push
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-on-a-production-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run on a production host
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-entrypoint-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the entrypoint does
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#updating-a-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Updating a deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Updating a deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-reset-including-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full reset (including database)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting-faq" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting / FAQ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting / FAQ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#missing-required-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Missing required configuration"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-file-not-found-homemailbotconfigmaillocalyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Config file not found: /home/mailbot/config/mail.local.yaml"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#imap-smtp-connectivity-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IMAP / SMTP connectivity failures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#volume-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Volume permissions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#envsubst-command-not-found-or-envsubst-is-silently-skipped" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "envsubst: command not found" (or envsubst is silently skipped)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-is-locked-sqlite-database-corruption" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "database is locked" / SQLite database corruption
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#further-reading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Further reading
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="deployment-guide">Deployment Guide<a class="headerlink" href="#deployment-guide" title="Permanent link">&para;</a></h1>
+<p>How to build, run, and maintain the <code>robotsix-auto-mail</code> container — from
+first checkout to production push.</p>
+<p><code>robotsix-auto-mail</code> is a <strong>CLI tool</strong> with an optional long-running
+<strong>web board daemon</strong>. Most operations (<code>probe</code>, <code>ingest</code>, <code>board</code>) are
+one-shot CLI invocations via <code>docker compose run</code>. The web kanban board
+is a persistent HTTP daemon started via <code>docker compose up board</code>.
+This guide covers both patterns.</p>
+<hr />
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>What</th>
+<th>Minimum</th>
+<th>Check with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Docker Engine</td>
+<td>20.10+</td>
+<td><code>docker --version</code></td>
+</tr>
+<tr>
+<td>Docker Compose</td>
+<td>Compose plugin 2.0+</td>
+<td><code>docker compose version</code></td>
+</tr>
+<tr>
+<td>Git</td>
+<td>any recent</td>
+<td><code>git --version</code></td>
+</tr>
+</tbody>
+</table>
+<p>Installation guides (do <strong>not</strong> reproduce here):
+- <a href="https://docs.docker.com/engine/install/">Docker Engine install</a>
+- <a href="https://docs.docker.com/compose/install/">Docker Compose install</a></p>
+<hr />
+<h2 id="first-time-setup">First-time setup<a class="headerlink" href="#first-time-setup" title="Permanent link">&para;</a></h2>
+<h3 id="1-clone-the-repository">1. Clone the repository<a class="headerlink" href="#1-clone-the-repository" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/your-org/robotsix-auto-mail.git
+<span class="nb">cd</span><span class="w"> </span>robotsix-auto-mail
+</code></pre></div>
+<h3 id="2-create-your-local-configuration">2. Create your local configuration<a class="headerlink" href="#2-create-your-local-configuration" title="Permanent link">&para;</a></h3>
+<p>The recommended path is a single YAML config file:</p>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>config/mail.local.example.yaml<span class="w"> </span>config/mail.local.yaml
+</code></pre></div>
+<p>Then edit <code>config/mail.local.yaml</code> with your real IMAP and SMTP credentials:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$EDITOR</span><span class="w"> </span>config/mail.local.yaml
+</code></pre></div>
+<h3 id="2a-alternative-auto-detect-provider-settings-detect">2a. Alternative: auto-detect provider settings (detect)<a class="headerlink" href="#2a-alternative-auto-detect-provider-settings-detect" title="Permanent link">&para;</a></h3>
+<p>Instead of manually creating <code>config/mail.local.yaml</code>, you can auto-generate
+it from just your email address:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">LLM_API_KEY</span><span class="o">=</span>sk-or-v1-…
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>detect<span class="w"> </span>user@gmail.com
+</code></pre></div>
+<p>This calls an LLM to look up the correct IMAP/SMTP settings and writes
+<code>config/mail.local.yaml</code>, prompting for your password and including it in
+that file.  See <a href="../connecting/#auto-detection-with-detect">docs/connecting.md</a>
+for full details.</p>
+<p>The file <code>config/mail.local.yaml</code> is <strong>git-ignored</strong> (<code>config/mail.local.yaml</code>
+in <code>.gitignore</code>), so your credentials stay local and never land in the repo.</p>
+<p><strong>Using environment variables instead:</strong>  copy <code>.env.example</code> to <code>.env</code>, edit
+it, and source it before running commands:</p>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>.env.example<span class="w"> </span>.env
+<span class="nv">$EDITOR</span><span class="w"> </span>.env
+<span class="nb">set</span><span class="w"> </span>-a<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>.env<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">set</span><span class="w"> </span>+a
+</code></pre></div>
+<p>(No <code>python-dotenv</code> is used at runtime; you must export the variables into
+the shell or pass them via <code>docker compose run -e …</code>.)</p>
+<hr />
+<h2 id="build">Build<a class="headerlink" href="#build" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>build
+</code></pre></div>
+<p>The <a href="../Dockerfile"><code>Dockerfile</code></a> has two stages:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>builder</code></td>
+<td>Installs the Python package (wheel) from <code>pyproject.toml</code></td>
+</tr>
+<tr>
+<td><code>production</code></td>
+<td>Copies <strong>only</strong> the installed artifacts from <code>builder</code>, creates a non-root <code>mailbot</code> user (UID 1000), and sets the entrypoint</td>
+</tr>
+</tbody>
+</table>
+<p>The final image runs as <code>mailbot</code> (UID 1000).  The base image exposes no ports
+and has no healthcheck — CLI operations are one-shot.  The <code>board</code> service in
+<code>docker-compose.yml</code> maps a port for the long-running web server.</p>
+<p>To build without the Compose cache:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>build<span class="w"> </span>--no-cache
+</code></pre></div>
+<hr />
+<h2 id="run-locally">Run locally<a class="headerlink" href="#run-locally" title="Permanent link">&para;</a></h2>
+<p>CLI operations (<code>probe</code>, <code>ingest</code>, <code>board</code>) use <code>docker compose run</code> — they are
+one-shot commands.  The web board is a long-running daemon started with
+<code>docker compose up board</code>; see <a href="#start-the-web-board">Start the web board</a>.</p>
+<h3 id="probe-connectivity-always-run-first">Probe connectivity (always run first)<a class="headerlink" href="#probe-connectivity-always-run-first" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>probe
+</code></pre></div>
+<p>This opens an IMAP and SMTP connection, prints server diagnostics, and exits
+with code <code>0</code> when both succeed.  No email is read or sent — it is a read-only
+sanity check.  See <a href="../connecting/#the-probe-command">docs/connecting.md</a> for
+sample output.</p>
+<h3 id="ingest-mail">Ingest mail<a class="headerlink" href="#ingest-mail" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest
+</code></pre></div>
+<p>Fetches new messages from the configured IMAP inbox and stores them in the
+local SQLite database.  See <a href="../ingestion/">docs/ingestion.md</a> for the full
+pipeline.</p>
+<h3 id="view-the-inbox">View the inbox<a class="headerlink" href="#view-the-inbox" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>board
+</code></pre></div>
+<p>Prints a read-only view of stored messages.  Requires a prior <code>ingest</code> run.
+See <a href="../connecting/#the-board-command">docs/connecting.md</a> for output format.</p>
+<h3 id="start-the-web-board">Start the web board<a class="headerlink" href="#start-the-web-board" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>board
+<span class="c1"># → http://localhost:${BOARD_PORT:-8078}/board</span>
+</code></pre></div>
+<p>The board service runs as a long-lived daemon (restart policy: <code>on-failure</code>).
+It listens on the port set by <code>BOARD_PORT</code> (default: <strong>8078</strong>).  Open the URL
+in a browser to see the four-column kanban board with per-card Move dropdowns.
+Press <code>Ctrl-C</code> to stop the daemon.</p>
+<p><strong>Note:</strong> the Docker default port is <strong>8078</strong> (set via <code>${BOARD_PORT:-8078}</code> in
+<code>docker-compose.yml</code>), which differs from the native CLI default of 8080.  Set
+<code>BOARD_PORT</code> in your shell or <code>.env</code> file to use a different port:
+<code>BOARD_PORT=9090 docker compose up board</code>.</p>
+<h3 id="ephemeral-containers-persistent-data">Ephemeral containers, persistent data<a class="headerlink" href="#ephemeral-containers-persistent-data" title="Permanent link">&para;</a></h3>
+<p>Each <code>docker compose run</code> creates a <strong>new, ephemeral</strong> container that is
+removed when the command exits.  The SQLite database lives outside the
+container in <code>./.mail_data</code> on the host (a git-ignored bind-mount), so it
+persists across runs and container lifecycles.</p>
+<p>To inspect it:</p>
+<div class="highlight"><pre><span></span><code>ls<span class="w"> </span>-la<span class="w"> </span>.mail_data/<span class="w">        </span><span class="c1"># mail.db lives here</span>
+</code></pre></div>
+<hr />
+<h2 id="configuration-quick-reference">Configuration quick-reference<a class="headerlink" href="#configuration-quick-reference" title="Permanent link">&para;</a></h2>
+<p>Configuration resolves through one cascade: built-in defaults → YAML file →
+environment variables (which win field-by-field).</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Mechanism</th>
+<th>How to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>YAML file</strong></td>
+<td>A single <code>config/mail.local.yaml</code></td>
+<td>Recommended. Copy <code>config/mail.local.example.yaml</code> → <code>config/mail.local.yaml</code> and edit.</td>
+</tr>
+<tr>
+<td><strong>Env vars</strong></td>
+<td><code>MAIL_IMAP_HOST</code>, <code>MAIL_SMTP_HOST</code>, <code>MAIL_USERNAME</code>, <code>MAIL_PASSWORD</code> (and optional <code>MAIL_IMAP_PORT</code>, …)</td>
+<td>Set in shell or via <code>docker compose run -e …</code>. Either set all four required vars or supply a config file, or the entrypoint will refuse to start.</td>
+</tr>
+</tbody>
+</table>
+<p>Full precedence rules and every config key are documented in
+<strong><a href="../connecting/">docs/connecting.md</a></strong>.  Do not duplicate that reference
+here — the connecting doc is authoritative.</p>
+<h3 id="how-configuration-reaches-the-container">How configuration reaches the container<a class="headerlink" href="#how-configuration-reaches-the-container" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>docker-compose.yml</code> sets <code>MAIL_CONFIG_PATH=/home/mailbot/config/mail.local.yaml</code>.</li>
+<li>The <code>./config:/home/mailbot/config</code> bind-mount maps the host <code>config/</code>
+  directory into the container.</li>
+<li>Editing <code>config/mail.local.yaml</code> on the host takes effect on the <strong>next</strong>
+  <code>docker compose run</code> — no rebuild required.</li>
+</ul>
+<hr />
+<h2 id="docker-composeyml-structure"><code>docker-compose.yml</code> structure<a class="headerlink" href="#docker-composeyml-structure" title="Permanent link">&para;</a></h2>
+<p>The Compose file defines two services that share the same image and data:
+<code>robotsix-auto-mail</code> (the periodic ingester) and <code>board</code> (the web board).</p>
+<h3 id="servicesrobotsix-auto-mail"><code>services.robotsix-auto-mail</code><a class="headerlink" href="#servicesrobotsix-auto-mail" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Value</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>build.context</code></td>
+<td><code>.</code></td>
+<td>Build from the repo root.</td>
+</tr>
+<tr>
+<td><code>build.dockerfile</code></td>
+<td><code>Dockerfile</code></td>
+<td>The multi-stage Dockerfile.</td>
+</tr>
+<tr>
+<td><code>command</code></td>
+<td><code>ingest --watch</code></td>
+<td>Default: run the periodic ingester. Overridden by <code>docker compose run … &lt;cmd&gt;</code> for one-shot commands.</td>
+</tr>
+<tr>
+<td><code>stdin_open</code></td>
+<td><code>true</code></td>
+<td>Keeps stdin open so one-shot interactive commands (e.g. <code>detect</code>'s password prompt) work.</td>
+</tr>
+<tr>
+<td><code>tty</code></td>
+<td><code>false</code></td>
+<td>No pseudo-TTY allocation; output is plain streams.</td>
+</tr>
+<tr>
+<td><code>restart</code></td>
+<td><code>unless-stopped</code></td>
+<td>The default command is a long-running daemon, so it should stay up.</td>
+</tr>
+<tr>
+<td><code>environment</code></td>
+<td><code>MAIL_CONFIG_PATH</code>, <code>LLM_API_KEY</code></td>
+<td>Points the tool at the mounted config and passes LLM credentials through.</td>
+</tr>
+<tr>
+<td><code>volumes</code></td>
+<td>Two entries (see below)</td>
+<td>Config bind-mount + data bind-mount.</td>
+</tr>
+</tbody>
+</table>
+<p><code>docker compose up -d</code> runs this service (the ingester) alongside <code>board</code>.
+A one-shot command overrides <code>command:</code> at runtime — e.g.
+<code>docker compose run robotsix-auto-mail probe</code>.</p>
+<h3 id="volumes">Volumes<a class="headerlink" href="#volumes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Volume</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>./config:/home/mailbot/config</code></td>
+<td>Bind-mount</td>
+<td>Makes host config files available inside the container without a build.</td>
+</tr>
+<tr>
+<td><code>./.mail_data:/home/mailbot/.data</code></td>
+<td>Bind-mount</td>
+<td>Persists the SQLite database in the project dir (git-ignored), at the container's default store location.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="servicesboard"><code>services.board</code><a class="headerlink" href="#servicesboard" title="Permanent link">&para;</a></h3>
+<p>The <code>board</code> service runs the same image but starts the web server:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Value</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>command</code></td>
+<td><code>serve --port ${BOARD_PORT:-8078}</code></td>
+<td>Starts the web server as a daemon.</td>
+</tr>
+<tr>
+<td><code>restart</code></td>
+<td><code>on-failure</code></td>
+<td>Restarts if the process crashes.</td>
+</tr>
+<tr>
+<td><code>ports</code></td>
+<td><code>"${BOARD_PORT:-8078}:${BOARD_PORT:-8078}"</code></td>
+<td>Maps the board port to the host so browsers can reach it.</td>
+</tr>
+<tr>
+<td><code>environment</code></td>
+<td><code>MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml</code></td>
+<td>Same config as the ingester.</td>
+</tr>
+<tr>
+<td><code>volumes</code></td>
+<td>Same as the ingester</td>
+<td>Shares <code>./.mail_data</code> so the ingester and board see the same database.</td>
+</tr>
+</tbody>
+</table>
+<p>There is no <code>stdin_open</code> or <code>tty</code> — the board is a daemon, not an
+interactive process.</p>
+<hr />
+<h2 id="production-deployment">Production deployment<a class="headerlink" href="#production-deployment" title="Permanent link">&para;</a></h2>
+<h3 id="pull-the-published-image">Pull the published image<a class="headerlink" href="#pull-the-published-image" title="Permanent link">&para;</a></h3>
+<p>On every <code>v*</code> git tag, the <a href="../.github/workflows/release.yml"><code>release.yml</code></a>
+workflow builds the <code>Dockerfile</code> and publishes a semver-tagged image to the
+GitHub Container Registry, complete with SLSA build provenance and an SBOM
+attestation. Instead of building locally you can pull a versioned image
+directly:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/damien-robotsix/robotsix-auto-mail:v1.0.0
+</code></pre></div>
+<p>Tags follow semver (<code>v1.0.0</code>, <code>1.0</code>, <code>1</code>) plus a commit <code>sha-&lt;short&gt;</code> tag.</p>
+<h3 id="build-the-production-image">Build the production image<a class="headerlink" href="#build-the-production-image" title="Permanent link">&para;</a></h3>
+<p>The same <code>Dockerfile</code> that works for local development also targets
+production — its final stage is already a slim, non-root production image:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>build
+</code></pre></div>
+<p>For a versioned, registry-ready build:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>registry.example.com/robotsix-auto-mail:v1.0.0<span class="w"> </span>.
+</code></pre></div>
+<h3 id="tag-and-push">Tag and push<a class="headerlink" href="#tag-and-push" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>tag<span class="w"> </span>robotsix-auto-mail:latest<span class="w"> </span>registry.example.com/robotsix-auto-mail:v1.0.0
+docker<span class="w"> </span>push<span class="w"> </span>registry.example.com/robotsix-auto-mail:v1.0.0
+</code></pre></div>
+<h3 id="run-on-a-production-host">Run on a production host<a class="headerlink" href="#run-on-a-production-host" title="Permanent link">&para;</a></h3>
+<p>The same <code>docker compose run</code> pattern works — just make sure <code>config/</code> is
+populated with the production credentials and the image is pulled:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># On the production host, with config/mail.local.yaml in place:</span>
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>probe
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest
+</code></pre></div>
+<p>If you are not using Compose on the production host, replicate the setup
+with a plain <code>docker run</code>:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/config:/home/mailbot/config&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/.mail_data:/home/mailbot/.data&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">MAIL_CONFIG_PATH</span><span class="o">=</span>/home/mailbot/config/mail.local.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>registry.example.com/robotsix-auto-mail:v1.0.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>probe
+</code></pre></div>
+<h3 id="what-the-entrypoint-does">What the entrypoint does<a class="headerlink" href="#what-the-entrypoint-does" title="Permanent link">&para;</a></h3>
+<p>Before the Python interpreter starts, <a href="../entrypoint.sh"><code>entrypoint.sh</code></a>
+validates that either:</p>
+<ul>
+<li>All four <code>MAIL_*</code> environment variables are set, <strong>or</strong></li>
+<li><code>MAIL_CONFIG_PATH</code> points to a readable config file.</li>
+</ul>
+<p>If neither condition is met, the script prints a clear error message to
+<code>stderr</code> and exits with code <code>1</code>.  This means config failures surface
+immediately — no Python traceback, no mysterious <code>KeyError</code> deep in the
+config loader.</p>
+<p>The entrypoint also supports optional <code>envsubst</code> templating: if <code>envsubst</code>
+is available in the image and a config file is in use, the file is run
+through <code>envsubst</code> before the Python CLI sees it.  If <code>envsubst</code> is not
+present (it usually isn't in the slim image), the raw config file is used
+as-is — this is not an error.</p>
+<hr />
+<h2 id="updating-a-deployment">Updating a deployment<a class="headerlink" href="#updating-a-deployment" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>Pull the latest code:</strong></p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>pull
+</code></pre></div>
+</li>
+<li>
+<p><strong>Rebuild the image:</strong></p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>build
+</code></pre></div>
+</li>
+<li>
+<p><strong>Run as normal — the next invocation picks up the new image:</strong></p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest
+</code></pre></div>
+</li>
+</ol>
+<p>Because CLI invocations are one-shot, there is no zero-downtime concern
+for <code>probe</code>, <code>ingest</code>, or <code>board</code>.  Each <code>docker compose run</code> creates a
+fresh container from the current image.  If the web board daemon is
+running (<code>docker compose up board</code>), restart it after a rebuild:
+<code>docker compose up -d board</code> (or <code>docker compose restart board</code>).</p>
+<h3 id="full-reset-including-database">Full reset (including database)<a class="headerlink" href="#full-reset-including-database" title="Permanent link">&para;</a></h3>
+<p>If you want to wipe the SQLite database and start fresh:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>down
+rm<span class="w"> </span>-rf<span class="w"> </span>./.mail_data
+</code></pre></div>
+<p>Because the database is a host bind-mount (not a named volume), removing the
+<code>./.mail_data</code> directory is what clears it — <code>docker compose down -v</code> will
+not.  The next <code>ingest</code> re-creates the database from scratch and fetches all
+messages from the watermark baseline.</p>
+<hr />
+<h2 id="troubleshooting-faq">Troubleshooting / FAQ<a class="headerlink" href="#troubleshooting-faq" title="Permanent link">&para;</a></h2>
+<h3 id="missing-required-configuration">"Missing required configuration"<a class="headerlink" href="#missing-required-configuration" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Missing required configuration.
+
+Provide either:
+  • All four MAIL_* environment variables:
+      MAIL_IMAP_HOST, MAIL_SMTP_HOST, MAIL_USERNAME, MAIL_PASSWORD
+  • A YAML config file via MAIL_CONFIG_PATH
+</code></pre></div>
+<p>The entrypoint validated config before launching Python and found neither
+environment variables nor a readable config file.</p>
+<p><strong>Diagnose:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check that the config file exists and has content</span>
+cat<span class="w"> </span>config/mail.local.yaml
+
+<span class="c1"># Check that the bind-mount is working</span>
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ls<span class="w"> </span>-l<span class="w"> </span>/home/mailbot/config/mail.local.yaml
+</code></pre></div>
+<p><strong>Fix:</strong>  ensure <code>config/mail.local.yaml</code> exists and is readable, <strong>or</strong> set
+all four <code>MAIL_*</code> env vars.  If using env vars, pass them explicitly:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span><span class="nv">MAIL_IMAP_HOST</span><span class="o">=</span>imap.example.com<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">MAIL_SMTP_HOST</span><span class="o">=</span>smtp.example.com<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">MAIL_USERNAME</span><span class="o">=</span>user@example.com<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">MAIL_PASSWORD</span><span class="o">=</span>your-password<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>robotsix-auto-mail<span class="w"> </span>probe
+</code></pre></div>
+<hr />
+<h3 id="config-file-not-found-homemailbotconfigmaillocalyaml">"Config file not found: /home/mailbot/config/mail.local.yaml"<a class="headerlink" href="#config-file-not-found-homemailbotconfigmaillocalyaml" title="Permanent link">&para;</a></h3>
+<p>The entrypoint found <code>MAIL_CONFIG_PATH</code> set but could not read the file at
+that path inside the container.</p>
+<p><strong>Diagnose:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Does the file exist on the host?</span>
+ls<span class="w"> </span>-l<span class="w"> </span>config/mail.local.yaml
+
+<span class="c1"># Is the bind-mount working?</span>
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ls<span class="w"> </span>-la<span class="w"> </span>/home/mailbot/config/
+</code></pre></div>
+<p><strong>Fix:</strong>  create the file (<code>cp config/mail.local.example.yaml config/mail.local.yaml</code>)
+or verify the bind-mount isn't being shadowed by another volume definition.</p>
+<hr />
+<h3 id="imap-smtp-connectivity-failures">IMAP / SMTP connectivity failures<a class="headerlink" href="#imap-smtp-connectivity-failures" title="Permanent link">&para;</a></h3>
+<p><code>robotsix-auto-mail</code> exposes <strong>no ports</strong> — there is no local port conflict.</p>
+<p>If <code>probe</code> fails with a connection error, the remote mail server is
+unreachable from the container.  Possible causes:</p>
+<ul>
+<li>Firewall or VPN blocking outbound IMAP (993) / SMTP (587).</li>
+<li>Incorrect <code>imap.host</code> or <code>smtp.host</code> in <code>config/mail.local.yaml</code>.</li>
+</ul>
+<p><strong>Diagnose:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run probe as first step — it gives targeted error messages</span>
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>probe
+</code></pre></div>
+<p><strong>Fix:</strong>  verify the hostnames and ports in your config.  Check that the
+host running Docker can reach those hosts on the configured ports.</p>
+<hr />
+<h3 id="volume-permissions">Volume permissions<a class="headerlink" href="#volume-permissions" title="Permanent link">&para;</a></h3>
+<p>The container runs as <code>mailbot</code> (UID 1000) and writes the database into the
+bind-mounted <code>./.mail_data</code>.  On the host the files will be owned by UID 1000;
+if your host user is not UID 1000 you may need to adjust ownership, and
+overriding the user (e.g. <code>docker compose run --user root</code>) can leave files
+that future runs as <code>mailbot</code> cannot read.</p>
+<p><strong>Diagnose:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># See what user the container runs as</span>
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>whoami
+
+<span class="c1"># Inspect data ownership</span>
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ls<span class="w"> </span>-la<span class="w"> </span>/home/mailbot/.data/
+ls<span class="w"> </span>-la<span class="w"> </span>./.mail_data/<span class="w">      </span><span class="c1"># on the host</span>
+</code></pre></div>
+<p><strong>Fix:</strong>  do not override <code>--user</code> unless you have a specific reason.  If
+the data was created under a different UID, reset it:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>down
+rm<span class="w"> </span>-rf<span class="w"> </span>./.mail_data
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest<span class="w">   </span><span class="c1"># re-creates the db as mailbot</span>
+</code></pre></div>
+<hr />
+<h3 id="envsubst-command-not-found-or-envsubst-is-silently-skipped">"envsubst: command not found" (or envsubst is silently skipped)<a class="headerlink" href="#envsubst-command-not-found-or-envsubst-is-silently-skipped" title="Permanent link">&para;</a></h3>
+<p><code>entrypoint.sh</code> uses <code>envsubst</code> for optional config-file templating <strong>only
+if it is available</strong>.  The slim Python image does not include <code>gettext</code>
+(which provides <code>envsubst</code>), so templating is silently skipped.</p>
+<p>This is <strong>not an error</strong> — the raw config file is used as-is.  If you need
+<code>envsubst</code> (e.g. to inject secrets at runtime), install <code>gettext</code> in a
+custom image or use a different base.  The entrypoint was designed to
+degrade gracefully here.</p>
+<hr />
+<h3 id="database-is-locked-sqlite-database-corruption">"database is locked" / SQLite database corruption<a class="headerlink" href="#database-is-locked-sqlite-database-corruption" title="Permanent link">&para;</a></h3>
+<p>If two <code>ingest</code> commands run concurrently against the same <code>./.mail_data</code>
+database, SQLite may return <code>database is locked</code>.  The tool does not use
+WAL mode by default, so concurrent writers will contend.</p>
+<p><strong>Fix:</strong>  do not run concurrent <code>ingest</code> commands.  The tool is designed
+for sequential, single-writer access.  If you have scheduled (cron) runs,
+ensure the previous run has completed before starting the next:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Example cron wrapper — flock prevents overlap</span>
+flock<span class="w"> </span>-n<span class="w"> </span>/tmp/mail-ingest.lock<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest
+</code></pre></div>
+<p>If the database is already corrupted, reset it:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>down<span class="w"> </span>-v
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest
+</code></pre></div>
+<hr />
+<h2 id="further-reading">Further reading<a class="headerlink" href="#further-reading" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><a href="../connecting/">docs/connecting.md</a></strong> — full config key reference,
+  precedence rules, and the <code>probe</code>/<code>board</code> commands.</li>
+<li><strong><a href="../ingestion/">docs/ingestion.md</a></strong> — ingestion pipeline, schema,
+  idempotency guarantees, and <code>ingest</code> CLI usage.</li>
+<li><strong><a href="../README.md">README.md</a></strong> — project overview, layout, and status.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
