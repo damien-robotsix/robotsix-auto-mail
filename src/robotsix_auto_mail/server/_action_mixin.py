@@ -28,16 +28,26 @@ class _BoardActionMixin:
 
     self: BoardHandlerProtocol
 
-    def _parse_request_body(self, *fields: str) -> dict[str, str]:
+    def _parse_request_body(
+        self, *fields: str, no_strip: frozenset[str] = frozenset()
+    ) -> dict[str, str]:
         """Parse the request body as URL-encoded form data.
 
         Returns a dict mapping each requested *field* name to its
-        first value, stripped of leading/trailing whitespace.
+        first value.  Values are stripped of leading/trailing
+        whitespace *unless* the field name appears in *no_strip*.
         """
         content_length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(content_length).decode("utf-8")
         parsed = parse_qs(raw)
-        return {field: (parsed.get(field) or [""])[0].strip() for field in fields}
+        return {
+            field: (
+                (parsed.get(field) or [""])[0].strip()
+                if field not in no_strip
+                else (parsed.get(field) or [""])[0]
+            )
+            for field in fields
+        }
 
     def _handle_move(self) -> None:
         """Process POST /move — update a card's triage decision and redirect."""
@@ -393,7 +403,9 @@ class _BoardActionMixin:
             update_notes,
         )
 
-        f = self._parse_request_body("message_id", "redirect_to", "notes")
+        f = self._parse_request_body(
+            "message_id", "redirect_to", "notes", no_strip=frozenset({"notes"})
+        )
         message_id = f["message_id"]
         redirect_to = f["redirect_to"]
         notes = f["notes"]
