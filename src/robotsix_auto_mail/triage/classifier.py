@@ -10,13 +10,16 @@ LLM-provider imports stay lazy inside
 from __future__ import annotations
 
 import json
-import os
 import re
 import sqlite3
 from email.utils import parseaddr
 
 from robotsix_llmio.core import Tier, run_agent
 
+from robotsix_auto_mail.config import (
+    resolve_llm_api_key,
+    resolve_llm_provider,
+)
 from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS,
     MailRecord,
@@ -269,16 +272,12 @@ def propose_archive_subfolder_llm(
     swallowed so the board falls back to the deterministic proposal.
     """
     # -- resolve API key --
-    resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
+    resolved_key = resolve_llm_api_key(api_key, raise_on_missing=False)
     if not resolved_key:
         return  # No API key → silently return
 
     # -- resolve provider --
-    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
-    if not resolved_provider:
-        from robotsix_auto_mail.config import load_llm_provider
-
-        resolved_provider = load_llm_provider()
+    resolved_provider = resolve_llm_provider(provider)
 
     # -- load existing archive folders from watermark --
     archive_raw = get_watermark(conn, "archive_structure")

@@ -100,6 +100,54 @@ def load_llm_provider() -> str:
     return provider or "openrouter-deepseek"
 
 
+def resolve_llm_api_key(
+    api_key: str | None = None, raise_on_missing: bool = True
+) -> str:
+    """Resolve LLM API key: arg → ``LLM_API_KEY`` env → config file.
+
+    Args:
+        api_key: An explicit key, usually from a CLI parameter.
+        raise_on_missing: When ``True`` (the default), raise
+            :class:`ConfigurationError` if no key is found.
+
+    Returns:
+        The resolved key (may be empty when *raise_on_missing* is
+        ``False`` and no key is configured).
+
+    Raises:
+        ConfigurationError: When *raise_on_missing* is ``True`` and no
+            key is found.
+    """
+    resolved = api_key or os.environ.get("LLM_API_KEY", "")
+    if not resolved:
+        resolved = load_llm()
+    if not resolved and raise_on_missing:
+        raise ConfigurationError(
+            "No LLM API key found — set the LLM_API_KEY environment "
+            "variable or add an `llm.api_key` entry to your config file"
+        )
+    return resolved
+
+
+def resolve_llm_provider(provider: str | None = None, default: str = "") -> str:
+    """Resolve LLM provider: arg → ``LLM_PROVIDER`` env → config file.
+
+    Args:
+        provider: An explicit provider name, usually from a CLI
+            parameter.
+        default: Fallback value when no provider is configured anywhere
+            (default ``""`` — the caller, not this function, decides
+            the ultimate default).
+
+    Returns:
+        The resolved provider name, or *default*.
+    """
+    resolved = provider or os.environ.get("LLM_PROVIDER", "")
+    if not resolved:
+        resolved = load_llm_provider()
+    return resolved or default
+
+
 def load_accounts() -> MailAccountsConfig:
     """Load ``MailAccountsConfig`` through the same cascade as :func:`load`.
 

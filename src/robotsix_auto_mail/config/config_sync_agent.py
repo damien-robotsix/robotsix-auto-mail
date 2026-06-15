@@ -19,7 +19,6 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
-import os
 import sqlite3
 import sys
 from pathlib import Path
@@ -30,8 +29,9 @@ from robotsix_llmio.core import Tier, get_provider, run_agent
 from robotsix_auto_mail.config import (
     _FIELD_SPECS,
     _REQUIRED,
-    load_llm,
-    load_llm_provider,
+    ConfigurationError,
+    resolve_llm_api_key,
+    resolve_llm_provider,
 )
 from robotsix_auto_mail.db import get_watermark, set_watermark
 
@@ -381,19 +381,13 @@ def run_config_sync_agent(
     resolved_root = repo_root if repo_root is not None else _default_repo_root()
 
     # -- resolve API key (arg -> LLM_API_KEY env -> config.llm_api_key) --
-    resolved_key = api_key or os.environ.get("LLM_API_KEY", "")
-    if not resolved_key:
-        resolved_key = load_llm()
-    if not resolved_key:
-        raise ConfigSyncError(
-            "No LLM API key found — set the LLM_API_KEY environment "
-            "variable or add an `llm.api_key` entry to your config file"
-        )
+    try:
+        resolved_key = resolve_llm_api_key(api_key)
+    except ConfigurationError as e:
+        raise ConfigSyncError(str(e)) from e
 
     # -- resolve provider (arg -> LLM_PROVIDER env -> config.llm_provider) --
-    resolved_provider = provider or os.environ.get("LLM_PROVIDER", "")
-    if not resolved_provider:
-        resolved_provider = load_llm_provider()
+    resolved_provider = resolve_llm_provider(provider)
 
     # -- gather the four surfaces + the ground-truth mappings --
     surfaces = _read_config_surfaces(resolved_root)
