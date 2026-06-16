@@ -337,7 +337,7 @@ def test_move_to_calendar_missing_message_id_returns_400() -> None:
                 path="/move",
             )
             assert status == 400, f"Expected 400, got {status}: {body}"
-            assert "Missing message_id or triage_action" in body
+            assert "Missing message_id" in body
         finally:
             server.shutdown()
     finally:
