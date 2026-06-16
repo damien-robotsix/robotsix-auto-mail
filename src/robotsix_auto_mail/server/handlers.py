@@ -36,6 +36,7 @@ from robotsix_auto_mail.server._calendar_mixin import _CalendarMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
 from robotsix_auto_mail.server._constants import GLOBAL_VIEW_ACCOUNT_ID
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
+from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._triage_mixin import _TriageMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
@@ -44,6 +45,7 @@ class BoardHandler(
     _BoardViewMixin,
     _BoardActionMixin,
     _BatchActionMixin,
+    _ReconcileMixin,
     _TriageMixin,
     _DraftMixin,
     _ConfigMixin,
@@ -145,6 +147,7 @@ class BoardHandler(
             "/batch-archive-folder": self._handle_batch_archive_folder,
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
+            "/reconcile": self._handle_reconcile,
             "/force-triage-column": self._handle_force_triage_column,
             "/archive-proposal": self._handle_archive_proposal,
             "/save-notes": self._handle_save_notes,

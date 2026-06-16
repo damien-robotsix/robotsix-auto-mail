@@ -7,6 +7,8 @@ import dataclasses
 import errno
 import json
 import sys
+import threading
+import time
 from pathlib import Path
 from typing import TextIO
 
@@ -727,6 +729,8 @@ def _clear_stale_triage_state(accounts: MailAccountsConfig) -> None:
             try:
                 if get_watermark(conn, "triage_run:state") == "running":
                     set_watermark(conn, "triage_run:state", "idle")
+                if get_watermark(conn, "reconcile:state") == "running":
+                    set_watermark(conn, "reconcile:state", "idle")
                 batch_state = get_watermark(conn, "batch_op:state")
                 if batch_state is not None and batch_state != "idle":
                     set_watermark(conn, "batch_op:state", "idle")
@@ -736,6 +740,42 @@ def _clear_stale_triage_state(accounts: MailAccountsConfig) -> None:
             # Best-effort: a bad/unopenable account DB must never abort the
             # boot loop or crash the server.
             continue
+
+
+def _reconcile_loop(accounts: MailAccountsConfig) -> None:
+    """Periodically reconcile every account in a background daemon thread.
+
+    For each account, spawns ``_run_reconcile_background`` in its own
+    daemon thread (non-blocking) so one slow IMAP server doesn't delay
+    reconciliation of other accounts.  Uses the per-account
+    ``reconcile:state`` watermark to prevent overlapping runs.
+    """
+    import threading
+
+    from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
+    from robotsix_auto_mail.server.adapters import _run_reconcile_background
+
+    interval_minutes = max(
+        1, min(acct.config.ingest_interval_minutes for acct in accounts.accounts)
+    )
+    while True:
+        for acct in accounts.accounts:
+            try:
+                conn = init_db(acct.config.db_path, skip_migrations=True)
+                try:
+                    if get_watermark(conn, "reconcile:state") != "running":
+                        set_watermark(conn, "reconcile:state", "running")
+                        threading.Thread(
+                            target=_run_reconcile_background,
+                            args=(acct.config.db_path, acct.config),
+                            daemon=True,
+                        ).start()
+                finally:
+                    conn.close()
+            except Exception:  # noqa: S110  # nosec B110
+                # A bad DB must not kill the loop.
+                pass
+        time.sleep(interval_minutes * 60)
 
 
 def _cmd_serve(
@@ -769,6 +809,8 @@ def _cmd_serve(
     # behind by a SIGKILL'd worker thread on a prior container run.  At a fresh
     # process start there is no live worker, so any such flag is safe to clear.
     _clear_stale_triage_state(accounts)
+
+    threading.Thread(target=_reconcile_loop, args=(accounts,), daemon=True).start()
 
     board_agent_handle = None
     if default.config.board_agent_enabled:

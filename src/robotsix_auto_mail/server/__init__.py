@@ -41,6 +41,9 @@ from robotsix_auto_mail.server.adapters import (
     _NonEmptyColumnsAdapter as _NonEmptyColumnsAdapter,
 )
 from robotsix_auto_mail.server.adapters import (
+    _run_reconcile_background as _run_reconcile_background,
+)
+from robotsix_auto_mail.server.adapters import (
     _run_triage_background as _run_triage_background,
 )
 from robotsix_auto_mail.server.handlers import (
@@ -107,6 +110,7 @@ __all__ = [
     "_render_notes_section",
     "_render_recipients",
     "_render_triage_section",
+    "_run_reconcile_background",
     "_run_triage_background",
     "make_board_handler",
 ]
