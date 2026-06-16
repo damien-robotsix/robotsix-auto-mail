@@ -167,8 +167,7 @@ modules:
       - src/robotsix_auto_mail/calendar/dispatch.py
       - src/robotsix_auto_mail/calendar/listener.py
       - src/robotsix_auto_mail/calendar/schema.py
-      - src/robotsix_auto_mail/server/_calendar_mixin.py
-      - tests/server/test_calendar.py
+      - tests/calendar/test_calendar.py
 
   - id: protocol
     description: >-
@@ -256,6 +255,7 @@ modules:
       - src/robotsix_auto_mail/server/_action_mixin.py
       - src/robotsix_auto_mail/server/_batch_mixin.py
       - src/robotsix_auto_mail/server/_board_handler_protocol.py
+      - src/robotsix_auto_mail/server/_calendar_mixin.py
       - src/robotsix_auto_mail/server/_config_mixin.py
       - src/robotsix_auto_mail/server/_draft_mixin.py
       - src/robotsix_auto_mail/server/_reconcile_mixin.py
