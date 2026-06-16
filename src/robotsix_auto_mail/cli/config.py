@@ -178,7 +178,7 @@ def _existing_account_ids(path: Path) -> set[str]:
     ``{"default"}`` (it will be converted to a ``"default"`` account on
     append); a missing/empty file yields an empty set.
     """
-    from robotsix_yaml_config import (  # type: ignore[import-untyped]
+    from robotsix_yaml_config import (
         YamlConfigError,
         read_yaml_file,
     )

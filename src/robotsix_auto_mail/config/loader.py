@@ -13,7 +13,7 @@ import logging
 import os
 from pathlib import Path
 
-from robotsix_yaml_config import (  # type: ignore[import-untyped]
+from robotsix_yaml_config import (
     YamlConfigError,
     read_yaml_file,
 )

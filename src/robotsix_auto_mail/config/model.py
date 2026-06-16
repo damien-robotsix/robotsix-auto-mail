@@ -15,7 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Final
 
-from robotsix_yaml_config import (  # type: ignore[import-untyped]
+from robotsix_yaml_config import (
     YamlConfigError,
     read_yaml_file,
 )
