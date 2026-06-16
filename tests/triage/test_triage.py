@@ -663,6 +663,7 @@ def test_valid_triage_actions_vocabulary() -> None:
             "PENDING_ACTION",
             "TO_ARCHIVE",
             "TO_DELETE",
+            "TO_CALENDAR",
             "TO_ANSWER",
             "DRAFT_READY",
         }
@@ -683,22 +684,23 @@ def test_build_triage_system_prompt_mentions_canonical_actions() -> None:
 
 
 def test_triage_action_order_is_canonical_columns() -> None:
-    """TRIAGE_ACTION_ORDER is exactly the seven canonical columns in display order."""
+    """TRIAGE_ACTION_ORDER is exactly the eight canonical columns in display order."""
     assert TRIAGE_ACTION_ORDER == (
         "INBOX",
         "HUMAN_TRIAGE",
         "PENDING_ACTION",
         "TO_ARCHIVE",
         "TO_DELETE",
+        "TO_CALENDAR",
         "TO_ANSWER",
         "DRAFT_READY",
     )
 
 
 def test_triage_action_labels_cover_every_action() -> None:
-    """TRIAGE_ACTION_LABELS has exactly the 7 canonical keys, each value non-empty."""
+    """TRIAGE_ACTION_LABELS has exactly the 8 canonical keys, each value non-empty."""
     assert set(TRIAGE_ACTION_LABELS.keys()) == set(VALID_TRIAGE_ACTIONS)
-    assert len(TRIAGE_ACTION_LABELS) == 7
+    assert len(TRIAGE_ACTION_LABELS) == 8
     for _action, label in TRIAGE_ACTION_LABELS.items():
         assert isinstance(label, str) and len(label) > 0
     assert tuple(TRIAGE_ACTION_LABELS) == TRIAGE_ACTION_ORDER

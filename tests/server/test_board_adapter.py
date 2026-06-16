@@ -42,6 +42,7 @@ def test_columns_order_and_labels() -> None:
         ("PENDING_ACTION", "Pending action"),
         ("TO_ARCHIVE", "To archive"),
         ("TO_DELETE", "To delete"),
+        ("TO_CALENDAR", "To calendar"),
         ("TO_ANSWER", "To answer"),
         ("DRAFT_READY", "Draft ready"),
     ]

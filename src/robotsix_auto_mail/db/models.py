@@ -20,6 +20,7 @@ VALID_TRIAGE_ACTIONS = frozenset(
         "PENDING_ACTION",
         "TO_ARCHIVE",
         "TO_DELETE",
+        "TO_CALENDAR",
         "TO_ANSWER",
         "DRAFT_READY",
     }
