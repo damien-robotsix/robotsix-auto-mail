@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ def start_calendar_listener(db_path: str) -> Handle | None:
     agent = Agent("robotsix-auto-mail", registry=registry)
 
     # Inject the db_path into the callback closure.
-    def _on_notification(notification: dict) -> None:
+    def _on_notification(notification: dict[str, Any]) -> None:
         _handle_calendar_response(db_path, notification)
 
     agent.on_notification = _on_notification
@@ -79,7 +80,7 @@ def stop_calendar_listener(handle: Handle | None) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _handle_calendar_response(db_path: str, body: dict) -> None:
+def _handle_calendar_response(db_path: str, body: dict[str, Any]) -> None:
     """Parse and persist a calendar-agent response notification.
 
     Pure function — callable directly for tests without spinning up a

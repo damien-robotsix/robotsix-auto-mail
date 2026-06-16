@@ -169,7 +169,7 @@ paths = ["src/robotsix_auto_mail"]
 # ``method_name`` is a required positional argument of the structlog
 # processor protocol ``(logger, method_name, event_dict)``; ``_add_trace_id``
 # does not need it but cannot drop it from the signature.
-ignore_names = ["format", "method_name"]
+ignore_names = ["format", "method_name", "on_notification"]
 
 [tool.uv.sources]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
