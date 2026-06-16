@@ -167,7 +167,14 @@ class _BoardActionMixin:
                     def _dispatch_bg() -> None:
                         from robotsix_auto_mail.db import init_db
 
-                        bg_conn = init_db(self.db_path, skip_migrations=True)
+                        try:
+                            bg_conn = init_db(self.db_path, skip_migrations=True)
+                        except Exception:
+                            # Cannot open the DB at all — nothing we
+                            # can do.  The daemon thread will exit
+                            # silently; the main request already
+                            # completed with the card in TO_CALENDAR.
+                            return
                         try:
                             try:
                                 dispatch_calendar_request(event)

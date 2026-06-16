@@ -215,6 +215,18 @@ def test_dispatch_unexpected_error() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _wait_for_mock_call(mock_obj: mock.MagicMock, timeout: float = 5.0) -> None:
+    """Poll until *mock_obj* has been called at least once."""
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if mock_obj.call_count >= 1:
+            return
+        time.sleep(0.02)
+    raise AssertionError(f"{mock_obj!r} was not called within {timeout}s")
+
+
 def _wait_for_dispatch(mock_dispatch: mock.MagicMock, timeout: float = 5.0) -> None:
     """Poll until *mock_dispatch* has been called at least once."""
     import time
@@ -402,16 +414,20 @@ def test_move_to_calendar_unknown_message_id_returns_404() -> None:
 
 
 def test_move_to_calendar_dispatch_error_card_stays() -> None:
-    """On CalendarDispatchError, the card stays in TO_CALENDAR (no reroute)."""
+    """On CalendarDispatchError, the card stays in TO_CALENDAR (no reroute)
+    and an error indicator is recorded on the card."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
         _setup_db_with_record(db_path)
 
+        error_msg = "Calendar agent is not available"
         with mock.patch(
             _MOCK_DISPATCH_PATH,
-            side_effect=CalendarDispatchError("Calendar agent is not available"),
-        ):
+            side_effect=CalendarDispatchError(error_msg),
+        ), mock.patch(
+            "robotsix_auto_mail.db.update_calendar_event_ref"
+        ) as mock_update_ref:
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
@@ -430,6 +446,14 @@ def test_move_to_calendar_dispatch_error_card_stays() -> None:
                 assert (
                     _triage_action(db_path, "<cal-test@example.com>") == "TO_CALENDAR"
                 )
+
+                # Error indicator must be recorded (runs in bg thread).
+                _wait_for_mock_call(mock_update_ref)
+                mock_update_ref.assert_called_once()
+                args, _kwargs = mock_update_ref.call_args
+                assert args[2] == f"error: {error_msg}", (
+                    f"Expected 'error: {error_msg}', got {args[2]!r}"
+                )
             finally:
                 server.shutdown()
     finally:
@@ -438,7 +462,7 @@ def test_move_to_calendar_dispatch_error_card_stays() -> None:
 
 def test_move_to_calendar_unexpected_error_card_stays() -> None:
     """On an unexpected exception during dispatch, the card stays in
-    TO_CALENDAR (no reroute)."""
+    TO_CALENDAR (no reroute) and a generic error indicator is recorded."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
@@ -447,7 +471,9 @@ def test_move_to_calendar_unexpected_error_card_stays() -> None:
         with mock.patch(
             _MOCK_DISPATCH_PATH,
             side_effect=RuntimeError("unexpected boom"),
-        ):
+        ), mock.patch(
+            "robotsix_auto_mail.db.update_calendar_event_ref"
+        ) as mock_update_ref:
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
@@ -463,6 +489,14 @@ def test_move_to_calendar_unexpected_error_card_stays() -> None:
                 # Card must remain in TO_CALENDAR.
                 assert (
                     _triage_action(db_path, "<cal-test@example.com>") == "TO_CALENDAR"
+                )
+
+                # Error indicator must be recorded (runs in bg thread).
+                _wait_for_mock_call(mock_update_ref)
+                mock_update_ref.assert_called_once()
+                args, _kwargs = mock_update_ref.call_args
+                assert args[2] == "error: Internal error", (
+                    f"Expected 'error: Internal error', got {args[2]!r}"
                 )
             finally:
                 server.shutdown()
@@ -546,7 +580,9 @@ def test_move_to_calendar_setup_failure_still_redirects() -> None:
         with mock.patch(
             "robotsix_auto_mail.format._effective_body_plain",
             side_effect=ValueError("body extraction failed"),
-        ):
+        ), mock.patch(
+            "robotsix_auto_mail.db.update_calendar_event_ref"
+        ) as mock_update_ref:
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
@@ -563,6 +599,14 @@ def test_move_to_calendar_setup_failure_still_redirects() -> None:
                 # Card must land in TO_CALENDAR.
                 assert (
                     _triage_action(db_path, "<cal-test@example.com>") == "TO_CALENDAR"
+                )
+
+                # Error indicator must be recorded (synchronous — outer
+                # except block runs in-request, no polling needed).
+                mock_update_ref.assert_called_once()
+                args, _kwargs = mock_update_ref.call_args
+                assert args[2] == "error: Internal error", (
+                    f"Expected 'error: Internal error', got {args[2]!r}"
                 )
             finally:
                 server.shutdown()
