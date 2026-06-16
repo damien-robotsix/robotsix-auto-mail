@@ -49,9 +49,7 @@ def dispatch_calendar_request(event: CalendarEventRequest) -> None:
         from robotsix_agent_comm.sdk import Agent
         from robotsix_agent_comm.transport import AgentNotFoundError, DeliveryError
     except ImportError as exc:
-        raise CalendarDispatchError(
-            "Agent communication is not available"
-        ) from exc
+        raise CalendarDispatchError("Agent communication is not available") from exc
 
     registry = _get_registry()
 

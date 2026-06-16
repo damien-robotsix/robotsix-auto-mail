@@ -19,6 +19,7 @@ from robotsix_auto_mail.calendar import (
 # Helpers — inject/remove fake agent-comm modules
 # ---------------------------------------------------------------------------
 
+
 def _install_fake_agent_comm_modules(
     *,
     agent_side_effect: object = None,
@@ -36,7 +37,9 @@ def _install_fake_agent_comm_modules(
     # -- Agent mock --
     mock_agent_instance = mock.MagicMock()
     if send_notification_side_effect is not None:
-        mock_agent_instance.send_notification.side_effect = send_notification_side_effect
+        mock_agent_instance.send_notification.side_effect = (
+            send_notification_side_effect
+        )
     mock_agent_cls = mock.MagicMock(return_value=mock_agent_instance)
 
     agent_not_found_error = type("AgentNotFoundError", (Exception,), {})
@@ -270,9 +273,7 @@ def test_add_to_calendar_missing_message_id() -> None:
     try:
         server, port = _start_test_server(db_path)
         try:
-            status, body = _post_form(
-                port, {}, path="/add-to-calendar"
-            )
+            status, body = _post_form(port, {}, path="/add-to-calendar")
             assert status == 400, f"Expected 400, got {status}: {body}"
             payload = json.loads(body)
             assert payload["status"] == "error"
