@@ -483,9 +483,7 @@ def test_move_missing_status_returns_400() -> None:
         )
         server, port = _start_test_server(db_path)
         try:
-            status, body = _post_form(
-                port, {"message_id": "missing-status"}
-            )
+            status, body = _post_form(port, {"message_id": "missing-status"})
             assert status == 400
             assert "Missing triage_action" in body
         finally:
