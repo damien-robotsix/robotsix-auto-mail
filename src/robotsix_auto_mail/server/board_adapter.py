@@ -251,6 +251,24 @@ class MailBoardAdapter:
                 f"✉️ {truncated}</span>"
             )
 
+        # Calendar indicator (board card).
+        calendar_indicator = ""
+        if card.calendar_event_ref:
+            event_ref = card.calendar_event_ref
+            if event_ref.startswith("error: "):
+                error_msg = event_ref[len("error: ") :]
+                calendar_indicator = (
+                    '<span class="card-calendar-indicator card-calendar-error"'
+                    f' title="{html.escape(error_msg, quote=True)}">'
+                    "\u26a0\ufe0f</span>"
+                )
+            else:
+                calendar_indicator = (
+                    '<span class="card-calendar-indicator card-calendar-success"'
+                    f' title="{html.escape(event_ref, quote=True)}">'
+                    "\u2705</span>"
+                )
+
         # Draft-reply button (TO_ANSWER only) — a single click POSTs to
         # /generate-draft so the LLM prepares a draft reply.  No
         # ``redirect_to`` is sent, so the handler falls back to the trusted
@@ -366,6 +384,7 @@ class MailBoardAdapter:
             f'<div class="body-preview">{body_html_render}</div>'
             f"{notes_indicator}"
             f"{draft_indicator}"
+            f"{calendar_indicator}"
             f"{archive_html}"
             f"{move_form}"
             f"{draft_button}"

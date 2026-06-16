@@ -63,6 +63,25 @@ class CalendarEventRequest(BaseModel):
     extracted_dates: list[str] = Field(default_factory=list)
 
 
+class CalendarEventResponse(BaseModel):
+    """Message received from the ``"robotsix-calendar"`` agent in response
+    to a ``CalendarEventRequest``.
+
+    Attributes:
+        correlation_id: UUID matching the originating request, used to
+            correlate the response back to the ``MailRecord``.
+        status: ``"success"`` or ``"error"``.
+        event_ref: Human-readable event reference (e.g. a calendar link
+            or event ID) on success; empty string on error.
+        message: Human-readable feedback message (e.g. error reason).
+    """
+
+    correlation_id: str
+    status: str
+    event_ref: str = ""
+    message: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Extraction helpers
 # ---------------------------------------------------------------------------

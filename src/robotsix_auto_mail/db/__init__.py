@@ -37,6 +37,9 @@ from .queries import (
     delete_record_by_message_id as delete_record_by_message_id,
 )
 from .queries import (
+    get_record_by_correlation_id as get_record_by_correlation_id,
+)
+from .queries import (
     get_record_by_message_id as get_record_by_message_id,
 )
 from .queries import (
@@ -64,6 +67,12 @@ from .queries import (
     set_watermark as set_watermark,
 )
 from .queries import (
+    update_calendar_correlation_id as update_calendar_correlation_id,
+)
+from .queries import (
+    update_calendar_event_ref as update_calendar_event_ref,
+)
+from .queries import (
     update_draft_text as update_draft_text,
 )
 from .queries import (
@@ -81,6 +90,7 @@ __all__ = [
     "VALID_TRIAGE_ACTIONS",
     "MailRecord",
     "delete_record_by_message_id",
+    "get_record_by_correlation_id",
     "get_record_by_message_id",
     "get_watermark",
     "init_db",
@@ -91,6 +101,8 @@ __all__ = [
     "row_to_mailrecord",
     "run_additive_migrations",
     "set_watermark",
+    "update_calendar_correlation_id",
+    "update_calendar_event_ref",
     "update_draft_text",
     "update_notes",
     "update_record_source",
