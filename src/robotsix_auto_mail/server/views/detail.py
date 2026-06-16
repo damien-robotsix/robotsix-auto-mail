@@ -401,9 +401,7 @@ def _render_calendar_feedback(record: MailRecord) -> str:
         feedback = (
             ' <span class="calendar-feedback calendar-success"'
             f' title="{html.escape(event_ref, quote=True)}">'
-            "\u2705 Event added to calendar: {}</span>".format(
-                html.escape(event_ref)
-            )
+            "\u2705 Event added to calendar: {}</span>".format(html.escape(event_ref))
         )
 
     return (

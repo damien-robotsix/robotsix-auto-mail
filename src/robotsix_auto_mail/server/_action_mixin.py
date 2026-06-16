@@ -161,9 +161,7 @@ class _BoardActionMixin:
                     # Card stays in TO_CALENDAR; error is visible via
                     # the calendar indicator on the board card.
                 except Exception:
-                    update_calendar_event_ref(
-                        conn, message_id, "error: Internal error"
-                    )
+                    update_calendar_event_ref(conn, message_id, "error: Internal error")
                 else:
                     # Reroute: if the prior triage decision was
                     # TO_ANSWER the mail still needs a reply;

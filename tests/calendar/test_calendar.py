@@ -237,9 +237,7 @@ def _setup_db_with_record(
     )
 
 
-_MOCK_DISPATCH_PATH = (
-    "robotsix_auto_mail.calendar.dispatch_calendar_request"
-)
+_MOCK_DISPATCH_PATH = "robotsix_auto_mail.calendar.dispatch_calendar_request"
 
 
 def test_move_to_calendar_dispatches_and_reroutes_to_archive() -> None:
@@ -274,10 +272,7 @@ def test_move_to_calendar_dispatches_and_reroutes_to_archive() -> None:
                 assert "2025-06-15" in event.extracted_dates
 
                 # Card should be rerouted to TO_ARCHIVE (no prior TO_ANSWER).
-                assert (
-                    _triage_action(db_path, "<cal-test@example.com>")
-                    == "TO_ARCHIVE"
-                )
+                assert _triage_action(db_path, "<cal-test@example.com>") == "TO_ARCHIVE"
             finally:
                 server.shutdown()
     finally:
@@ -322,10 +317,7 @@ def test_move_to_calendar_reroutes_to_answer_when_prior_was_to_answer() -> None:
                 assert status == 302
 
                 # Card should be rerouted back to TO_ANSWER.
-                assert (
-                    _triage_action(db_path, "<cal-test@example.com>")
-                    == "TO_ANSWER"
-                )
+                assert _triage_action(db_path, "<cal-test@example.com>") == "TO_ANSWER"
             finally:
                 server.shutdown()
     finally:
@@ -402,8 +394,7 @@ def test_move_to_calendar_dispatch_error_card_stays() -> None:
 
                 # Card must remain in TO_CALENDAR.
                 assert (
-                    _triage_action(db_path, "<cal-test@example.com>")
-                    == "TO_CALENDAR"
+                    _triage_action(db_path, "<cal-test@example.com>") == "TO_CALENDAR"
                 )
             finally:
                 server.shutdown()
@@ -437,8 +428,7 @@ def test_move_to_calendar_unexpected_error_card_stays() -> None:
 
                 # Card must remain in TO_CALENDAR.
                 assert (
-                    _triage_action(db_path, "<cal-test@example.com>")
-                    == "TO_CALENDAR"
+                    _triage_action(db_path, "<cal-test@example.com>") == "TO_CALENDAR"
                 )
             finally:
                 server.shutdown()
@@ -498,9 +488,7 @@ def test_move_to_calendar_angle_bracket_fallback() -> None:
                 assert status == 302, f"Expected 302, got {status}: {body}"
                 mock_dispatch.assert_called_once()
                 # Card should be rerouted to TO_ARCHIVE.
-                assert (
-                    _triage_action(db_path, message_id_stored) == "TO_ARCHIVE"
-                )
+                assert _triage_action(db_path, message_id_stored) == "TO_ARCHIVE"
             finally:
                 server.shutdown()
     finally:
