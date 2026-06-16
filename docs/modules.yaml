@@ -236,6 +236,8 @@ modules:
       - src/robotsix_auto_mail/server/static/board.css
       - src/robotsix_auto_mail/server/static/board-auto-mail.js
       - src/robotsix_auto_mail/server/board_adapter.py
+      - src/robotsix_auto_mail/board_agent.py
+      - docs/board-agent.md
       - tests/server/conftest.py
       - tests/server/test_adapters.py
       - tests/server/test_archive_structure.py

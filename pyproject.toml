@@ -136,6 +136,11 @@ extend_exclude = ["scripts"]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter-deepseek]
 # (declared in the [llm] extra); the lazy import in detect.py is intentional.
 DEP003 = ["pydantic_ai"]
+# robotsix_agent_comm is a transitive dependency of the optional
+# [board-agent] extra (robotsix-board-agent). The import in board_agent.py
+# is guarded by try/except ImportError so the server gracefully degrades
+# when the extra is not installed.
+DEP001 = ["robotsix_agent_comm"]
 
 [tool.vulture]
 paths = ["src/robotsix_auto_mail"]
