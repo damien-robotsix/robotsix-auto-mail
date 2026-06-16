@@ -65,6 +65,8 @@ class MailRecord:
     notes: str = ""
     draft_text: str = ""
     sent_reply_text: str = ""
+    calendar_event_ref: str = ""
+    calendar_correlation_id: str = ""
 
     id: int = 0  # assigned by DB; ignored on insert
 
@@ -90,7 +92,9 @@ CREATE TABLE IF NOT EXISTS mail_records (
     status          TEXT    NOT NULL DEFAULT '{DEFAULT_STATUS}',
     notes           TEXT    NOT NULL DEFAULT '',
     draft_text      TEXT    NOT NULL DEFAULT '',
-    sent_reply_text TEXT    NOT NULL DEFAULT ''
+    sent_reply_text TEXT    NOT NULL DEFAULT '',
+    calendar_event_ref TEXT NOT NULL DEFAULT '',
+    calendar_correlation_id TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS watermark (
@@ -123,4 +127,6 @@ _ADDITIVE_COLUMNS: tuple[str, ...] = (
     "draft_text TEXT NOT NULL DEFAULT ''",
     "sent_reply_text TEXT NOT NULL DEFAULT ''",
     "source_folder TEXT NOT NULL DEFAULT 'INBOX'",
+    "calendar_event_ref TEXT NOT NULL DEFAULT ''",
+    "calendar_correlation_id TEXT NOT NULL DEFAULT ''",
 )

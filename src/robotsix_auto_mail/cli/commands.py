@@ -751,6 +751,10 @@ def _cmd_serve(
     from http.server import HTTPServer
 
     from robotsix_auto_mail.board_agent import start_board_agent, stop_board_agent
+    from robotsix_auto_mail.calendar import (
+        start_calendar_listener,
+        stop_calendar_listener,
+    )
     from robotsix_auto_mail.server import make_board_handler
 
     default = accounts.get(default_account_id)
@@ -770,6 +774,8 @@ def _cmd_serve(
     if default.config.board_agent_enabled:
         board_agent_handle = start_board_agent(default.config)
 
+    calendar_listener_handle = start_calendar_listener(default.config.db_path)
+
     print(f"Serving board on http://0.0.0.0:{port}/board")
     try:
         # Binding to 0.0.0.0 is intentional: ``serve_board`` is a local dev
@@ -785,6 +791,7 @@ def _cmd_serve(
         raise
     finally:
         stop_board_agent(board_agent_handle)
+        stop_calendar_listener(calendar_listener_handle)
     return 0
 
 

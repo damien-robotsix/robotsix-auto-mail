@@ -73,11 +73,13 @@ def insert_record(conn: sqlite3.Connection, record: MailRecord) -> int | None:
 INSERT INTO mail_records
     (imap_uid, source_folder, message_id, sender, subject, date,
      recipients_json, body_plain, body_html, attachments_json,
-     unsubscribe_header, status, notes, draft_text, sent_reply_text)
+     unsubscribe_header, status, notes, draft_text, sent_reply_text,
+     calendar_event_ref, calendar_correlation_id)
 VALUES
     (:imap_uid, :source_folder, :message_id, :sender, :subject, :date,
      :recipients_json, :body_plain, :body_html, :attachments_json,
-     :unsubscribe_header, :status, :notes, :draft_text, :sent_reply_text)
+     :unsubscribe_header, :status, :notes, :draft_text, :sent_reply_text,
+     :calendar_event_ref, :calendar_correlation_id)
 """,
             {
                 "imap_uid": record.imap_uid,
@@ -95,6 +97,8 @@ VALUES
                 "notes": record.notes,
                 "draft_text": record.draft_text,
                 "sent_reply_text": record.sent_reply_text,
+                "calendar_event_ref": record.calendar_event_ref,
+                "calendar_correlation_id": record.calendar_correlation_id,
             },
         )
     except sqlite3.IntegrityError:
@@ -261,6 +265,8 @@ def row_to_mailrecord(
         notes=data["notes"],
         draft_text=data["draft_text"],
         sent_reply_text=data["sent_reply_text"],
+        calendar_event_ref=data.get("calendar_event_ref", ""),
+        calendar_correlation_id=data.get("calendar_correlation_id", ""),
         id=data["id"],
     )
 
@@ -319,3 +325,63 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value
         (key, value),
     )
     conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Calendar helpers
+# ---------------------------------------------------------------------------
+
+
+def update_calendar_event_ref(
+    conn: sqlite3.Connection,
+    message_id: str,
+    event_ref: str,
+) -> bool:
+    """Update ``mail_records.calendar_event_ref`` for *message_id*.
+
+    Returns ``True`` if a row was updated, ``False`` if no matching
+    ``message_id`` exists.
+    """
+    cur = conn.execute(
+        "UPDATE mail_records SET calendar_event_ref = ? WHERE message_id = ?",
+        (event_ref, message_id),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def update_calendar_correlation_id(
+    conn: sqlite3.Connection,
+    message_id: str,
+    correlation_id: str,
+) -> bool:
+    """Update ``mail_records.calendar_correlation_id`` for *message_id*.
+
+    Returns ``True`` if a row was updated, ``False`` if no matching
+    ``message_id`` exists.
+    """
+    cur = conn.execute(
+        "UPDATE mail_records SET calendar_correlation_id = ? WHERE message_id = ?",
+        (correlation_id, message_id),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def get_record_by_correlation_id(
+    conn: sqlite3.Connection,
+    correlation_id: str,
+) -> MailRecord | None:
+    """Return the ``MailRecord`` for *correlation_id*, or ``None`` if not found.
+
+    Read-only — does **not** call ``conn.commit()``.
+    """
+    cur = conn.execute(
+        "SELECT * FROM mail_records WHERE calendar_correlation_id = ?",
+        (correlation_id,),
+    )
+    row = cur.fetchone()
+    if row is None:
+        return None
+    col_names = [desc[0] for desc in cur.description]
+    return row_to_mailrecord(row, col_names)

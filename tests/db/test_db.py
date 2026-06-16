@@ -203,6 +203,8 @@ def test_init_db_creates_mail_records_table() -> None:
             "notes": "TEXT",
             "draft_text": "TEXT",
             "sent_reply_text": "TEXT",
+            "calendar_event_ref": "TEXT",
+            "calendar_correlation_id": "TEXT",
         }
         for name, type_ in expected.items():
             assert name in cols, f"Column {name} missing"

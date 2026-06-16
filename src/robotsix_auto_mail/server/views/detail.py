@@ -381,7 +381,15 @@ def _render_triage_section(triage_decision: TriageDecision | None) -> str:
 
 
 def _render_add_to_calendar_button(record: MailRecord) -> str:
-    """Render the 'Add to Calendar' action button with inline confirmation."""
+    """Render the 'Add to Calendar' action button with inline confirmation.
+
+    When ``calendar_event_ref`` already holds a success value (non-empty
+    and not starting with ``"error: "``), the button is disabled and
+    shows a "Calendar event created" label instead.
+    """
+    event_ref = record.calendar_event_ref
+    success_completed = bool(event_ref) and not event_ref.startswith("error: ")
+
     summary = extract_calendar_summary(record)
     payload = json.dumps(
         {
@@ -390,24 +398,66 @@ def _render_add_to_calendar_button(record: MailRecord) -> str:
             "summary": summary,
         }
     )
-    # Use data-* attributes so the inline onclick can read them safely
-    # without worrying about HTML/JS escaping of dynamic content.
+
+    if success_completed:
+        title_attr = html.escape(
+            f"Calendar event already created ({event_ref})", quote=True
+        )
+        button_html = (
+            '<button class="add-to-calendar-btn" disabled'
+            f' title="{title_attr}">'
+            "Calendar event created</button>"
+        )
+    else:
+        button_html = (
+            '<button class="add-to-calendar-btn"'
+            f' data-calendar-payload="{html.escape(payload, quote=True)}"'
+            f' data-calendar-summary="{html.escape(summary, quote=True)}"'
+            ' onclick="'
+            "var s=this.getAttribute('data-calendar-summary');"
+            "if(confirm(s)){"
+            "var p=JSON.parse(this.getAttribute('data-calendar-payload'));"
+            "var w=window.parent!==window?window.parent:window;"
+            "if(typeof w.addToCalendar==='function')w.addToCalendar(p);"
+            "}"
+            '">'
+            "Add to Calendar</button>"
+        )
+
+    feedback_html = _render_calendar_feedback(record)
+
     return (
         '<div class="detail-field">'
         '<div class="detail-label">Calendar</div>'
         '<div class="detail-value">'
-        '<button class="add-to-calendar-btn"'
-        f' data-calendar-payload="{html.escape(payload, quote=True)}"'
-        f' data-calendar-summary="{html.escape(summary, quote=True)}"'
-        ' onclick="'
-        "var s=this.getAttribute('data-calendar-summary');"
-        "if(confirm(s)){"
-        "var p=JSON.parse(this.getAttribute('data-calendar-payload'));"
-        "var w=window.parent!==window?window.parent:window;"
-        "if(typeof w.addToCalendar==='function')w.addToCalendar(p);"
-        "}"
-        '">'
-        "Add to Calendar</button>"
+        f"{button_html}"
+        f"{feedback_html}"
         "</div>"
         "</div>\n"
+    )
+
+
+def _render_calendar_feedback(record: MailRecord) -> str:
+    """Render calendar feedback below the 'Add to Calendar' button.
+
+    Returns an inline success or error indicator when
+    ``calendar_event_ref`` is set.  Returns an empty string when no
+    calendar response has been received yet.
+    """
+    event_ref = record.calendar_event_ref
+    if not event_ref:
+        return ""
+
+    if event_ref.startswith("error: "):
+        error_msg = event_ref[len("error: "):] or "Unknown error"
+        return (
+            ' <span class="calendar-feedback calendar-error"'
+            f' title="{html.escape(error_msg, quote=True)}">'
+            "\u26a0\ufe0f {}</span>".format(html.escape(error_msg))
+        )
+
+    return (
+        ' <span class="calendar-feedback calendar-success"'
+        f' title="{html.escape(event_ref, quote=True)}">'
+        "\u2705 Event added to calendar: {}</span>".format(html.escape(event_ref))
     )
