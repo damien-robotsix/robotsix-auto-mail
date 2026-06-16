@@ -606,6 +606,7 @@ class TestRenderAddToCalendarButton:
         assert 'onclick="' in result
         # Extract the onclick value
         import re
+
         match = re.search(r'onclick="([^"]*)"', result)
         assert match is not None
         onclick = match.group(1)
@@ -615,6 +616,7 @@ class TestRenderAddToCalendarButton:
         record = _make_record()
         result = _render_add_to_calendar_button(record)
         import re
+
         match = re.search(r'onclick="([^"]*)"', result)
         assert match is not None
         onclick = match.group(1)
@@ -624,6 +626,7 @@ class TestRenderAddToCalendarButton:
         record = _make_record(subject='Meeting "important" notes')
         result = _render_add_to_calendar_button(record)
         import re
+
         match = re.search(r'data-calendar-summary="([^"]*)"', result)
         assert match is not None
         attr_value = match.group(1)
