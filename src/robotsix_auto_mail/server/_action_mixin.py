@@ -13,6 +13,7 @@ from robotsix_auto_mail.server._constants import _is_safe_redirect_path
 from robotsix_auto_mail.triage import (
     VALID_TRIAGE_ACTIONS,
     get_archive_subfolder,
+    get_triage_decision,
     propose_archive_subfolder_llm,
     record_archive_folder_choice,
     record_human_decision,
@@ -110,14 +111,73 @@ class _BoardActionMixin:
                 self._bad_request(f"Invalid triage action: {triage_action!r}")
                 return False
 
+            message_id = record.message_id
+
+            # Capture prior triage decision for TO_CALENDAR reroute logic
+            # before we overwrite it with the move target.
+            prior_action: str | None = None
+            if triage_action == "TO_CALENDAR":
+                prior = get_triage_decision(conn, message_id)
+                prior_action = prior.action if prior is not None else None
+
             set_triage_decision(
                 conn,
-                record.message_id,
+                message_id,
                 triage_action,
                 source="user",
                 reason=f"moved to {triage_action}",
             )
-            record_human_decision(conn, record.message_id, triage_action)
+            record_human_decision(conn, message_id, triage_action)
+
+            if triage_action == "TO_CALENDAR":
+                # -- Dispatch calendar request on column move ----------
+                from robotsix_auto_mail.calendar import (
+                    CalendarDispatchError,
+                    CalendarEventRequest,
+                    dispatch_calendar_request,
+                    extract_dates_from_body,
+                )
+                from robotsix_auto_mail.db import (
+                    update_calendar_correlation_id,
+                    update_calendar_event_ref,
+                )
+                from robotsix_auto_mail.format import _effective_body_plain
+
+                body_text = _effective_body_plain(record)
+                event = CalendarEventRequest(
+                    message_id=record.message_id,
+                    subject=record.subject,
+                    sender=record.sender,
+                    body_text=body_text,
+                    email_date=record.date,
+                    extracted_dates=extract_dates_from_body(body_text),
+                )
+                update_calendar_correlation_id(conn, message_id, event.correlation_id)
+
+                try:
+                    dispatch_calendar_request(event)
+                except CalendarDispatchError as exc:
+                    update_calendar_event_ref(conn, message_id, f"error: {exc}")
+                    # Card stays in TO_CALENDAR; error is visible via
+                    # the calendar indicator on the board card.
+                except Exception:
+                    update_calendar_event_ref(
+                        conn, message_id, "error: Internal error"
+                    )
+                else:
+                    # Reroute: if the prior triage decision was
+                    # TO_ANSWER the mail still needs a reply;
+                    # otherwise it goes to the archive column.
+                    next_action = (
+                        "TO_ANSWER" if prior_action == "TO_ANSWER" else "TO_ARCHIVE"
+                    )
+                    set_triage_decision(
+                        conn,
+                        message_id,
+                        next_action,
+                        source="agent",
+                        reason="calendar dispatched — rerouted from TO_CALENDAR",
+                    )
 
             if triage_action == "TO_ARCHIVE":
                 try:

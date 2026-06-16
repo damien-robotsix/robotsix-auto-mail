@@ -158,10 +158,10 @@ modules:
   - id: calendar
     description: >-
       Fire-and-forget calendar event dispatch to the robotsix-calendar
-      agent over the robotsix_agent_comm message bus, plus the HTTP
-      endpoint (POST /add-to-calendar) that triggers it from the board;
-      also includes the background listener that consumes calendar-agent
-      response notifications and persists event references.
+      agent over the robotsix_agent_comm message bus, triggered by
+      moving a mail into the TO_CALENDAR board column; also includes
+      the background listener that consumes calendar-agent response
+      notifications and persists event references.
     paths:
       - src/robotsix_auto_mail/calendar/__init__.py
       - src/robotsix_auto_mail/calendar/dispatch.py

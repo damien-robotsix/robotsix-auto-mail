@@ -1,14 +1,18 @@
-"""Tests for POST /add-to-calendar and dispatch_calendar_request."""
+"""Tests for calendar dispatch via TO_CALENDAR column move and dispatch_calendar_request."""
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 import tempfile
 from unittest import mock
 
-from tests.server.conftest import _populate_db, _post_form, _start_test_server
+from tests.server.conftest import (
+    _populate_db,
+    _post_form,
+    _start_test_server,
+    _triage_action,
+)
 
 from robotsix_auto_mail.calendar import (
     CalendarDispatchError,
@@ -207,7 +211,7 @@ def test_dispatch_unexpected_error() -> None:
 
 
 # ---------------------------------------------------------------------------
-# HTTP integration tests — POST /add-to-calendar
+# HTTP integration tests — POST /move with triage_action=TO_CALENDAR
 # ---------------------------------------------------------------------------
 
 
@@ -233,26 +237,32 @@ def _setup_db_with_record(
     )
 
 
-def test_add_to_calendar_success() -> None:
-    """POST /add-to-calendar with valid message_id returns 200 dispatched."""
+_MOCK_DISPATCH_PATH = (
+    "robotsix_auto_mail.calendar.dispatch_calendar_request"
+)
+
+
+def test_move_to_calendar_dispatches_and_reroutes_to_archive() -> None:
+    """Moving a card to TO_CALENDAR triggers dispatch and reroutes to
+    TO_ARCHIVE when there is no prior TO_ANSWER triage decision."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
         _setup_db_with_record(db_path)
 
-        with mock.patch(
-            "robotsix_auto_mail.server._calendar_mixin.dispatch_calendar_request"
-        ) as mock_dispatch:
+        with mock.patch(_MOCK_DISPATCH_PATH) as mock_dispatch:
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
                     port,
-                    {"message_id": "<cal-test@example.com>"},
-                    path="/add-to-calendar",
+                    {
+                        "message_id": "<cal-test@example.com>",
+                        "triage_action": "TO_CALENDAR",
+                    },
+                    path="/move",
                 )
-                assert status == 200, f"Expected 200, got {status}: {body}"
-                payload = json.loads(body)
-                assert payload == {"status": "dispatched"}
+                # Success = 302 redirect (not a JSON response).
+                assert status == 302, f"Expected 302, got {status}: {body}"
 
                 # Verify dispatch was called with correct event.
                 mock_dispatch.assert_called_once()
@@ -262,32 +272,68 @@ def test_add_to_calendar_success() -> None:
                 assert event.subject == "Calendar integration test"
                 assert event.sender == "alice@example.com"
                 assert "2025-06-15" in event.extracted_dates
+
+                # Card should be rerouted to TO_ARCHIVE (no prior TO_ANSWER).
+                assert (
+                    _triage_action(db_path, "<cal-test@example.com>")
+                    == "TO_ARCHIVE"
+                )
             finally:
                 server.shutdown()
     finally:
         os.unlink(db_path)
 
 
-def test_add_to_calendar_missing_message_id() -> None:
-    """POST /add-to-calendar without message_id returns 400 JSON."""
+def test_move_to_calendar_reroutes_to_answer_when_prior_was_to_answer() -> None:
+    """When the prior triage action was TO_ANSWER, successful dispatch
+    reroutes back to TO_ANSWER."""
+    from robotsix_auto_mail.triage import set_triage_decision
+    from robotsix_auto_mail.db import init_db
+
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
-        server, port = _start_test_server(db_path)
+        _setup_db_with_record(db_path)
+
+        # Seed a prior TO_ANSWER triage decision.
+        conn = init_db(db_path)
         try:
-            status, body = _post_form(port, {}, path="/add-to-calendar")
-            assert status == 400, f"Expected 400, got {status}: {body}"
-            payload = json.loads(body)
-            assert payload["status"] == "error"
-            assert "Missing message_id" in payload["message"]
+            set_triage_decision(
+                conn,
+                "<cal-test@example.com>",
+                "TO_ANSWER",
+                source="agent",
+                reason="needs reply",
+            )
         finally:
-            server.shutdown()
+            conn.close()
+
+        with mock.patch(_MOCK_DISPATCH_PATH):
+            server, port = _start_test_server(db_path)
+            try:
+                status, _ = _post_form(
+                    port,
+                    {
+                        "message_id": "<cal-test@example.com>",
+                        "triage_action": "TO_CALENDAR",
+                    },
+                    path="/move",
+                )
+                assert status == 302
+
+                # Card should be rerouted back to TO_ANSWER.
+                assert (
+                    _triage_action(db_path, "<cal-test@example.com>")
+                    == "TO_ANSWER"
+                )
+            finally:
+                server.shutdown()
     finally:
         os.unlink(db_path)
 
 
-def test_add_to_calendar_unknown_message_id() -> None:
-    """POST /add-to-calendar with unknown message_id returns 404 JSON."""
+def test_move_to_calendar_missing_message_id_returns_400() -> None:
+    """POST /move without message_id returns 400."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
@@ -295,108 +341,114 @@ def test_add_to_calendar_unknown_message_id() -> None:
         try:
             status, body = _post_form(
                 port,
-                {"message_id": "<nonexistent@example.com>"},
-                path="/add-to-calendar",
+                {"triage_action": "TO_CALENDAR"},
+                path="/move",
             )
-            assert status == 404, f"Expected 404, got {status}: {body}"
-            payload = json.loads(body)
-            assert payload["status"] == "error"
-            assert "Not found" in payload["message"]
+            assert status == 400, f"Expected 400, got {status}: {body}"
+            assert "Missing message_id or triage_action" in body
         finally:
             server.shutdown()
     finally:
         os.unlink(db_path)
 
 
-def test_add_to_calendar_dispatch_error() -> None:
-    """POST /add-to-calendar returns 502 JSON on CalendarDispatchError."""
+def test_move_to_calendar_unknown_message_id_returns_404() -> None:
+    """POST /move with unknown message_id returns 404."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        server, port = _start_test_server(db_path)
+        try:
+            status, body = _post_form(
+                port,
+                {
+                    "message_id": "<nonexistent@example.com>",
+                    "triage_action": "TO_CALENDAR",
+                },
+                path="/move",
+            )
+            assert status == 404, f"Expected 404, got {status}: {body}"
+            assert "Not found" in body
+        finally:
+            server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_move_to_calendar_dispatch_error_card_stays() -> None:
+    """On CalendarDispatchError, the card stays in TO_CALENDAR (no reroute)."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
         _setup_db_with_record(db_path)
 
         with mock.patch(
-            "robotsix_auto_mail.server._calendar_mixin.dispatch_calendar_request",
+            _MOCK_DISPATCH_PATH,
             side_effect=CalendarDispatchError("Calendar agent is not available"),
         ):
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
                     port,
-                    {"message_id": "<cal-test@example.com>"},
-                    path="/add-to-calendar",
+                    {
+                        "message_id": "<cal-test@example.com>",
+                        "triage_action": "TO_CALENDAR",
+                    },
+                    path="/move",
                 )
-                assert status == 502, f"Expected 502, got {status}: {body}"
-                payload = json.loads(body)
-                assert payload["status"] == "error"
-                assert "Calendar agent is not available" in payload["message"]
+                # The handler still returns a 302 redirect (move succeeded,
+                # calendar dispatch failed — error is on the card indicator).
+                assert status == 302, f"Expected 302, got {status}: {body}"
+
+                # Card must remain in TO_CALENDAR.
+                assert (
+                    _triage_action(db_path, "<cal-test@example.com>")
+                    == "TO_CALENDAR"
+                )
             finally:
                 server.shutdown()
     finally:
         os.unlink(db_path)
 
 
-def test_add_to_calendar_dispatch_delivery_error() -> None:
-    """POST /add-to-calendar returns 502 JSON with delivery failure message."""
+def test_move_to_calendar_unexpected_error_card_stays() -> None:
+    """On an unexpected exception during dispatch, the card stays in
+    TO_CALENDAR (no reroute)."""
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
         _setup_db_with_record(db_path)
 
         with mock.patch(
-            "robotsix_auto_mail.server._calendar_mixin.dispatch_calendar_request",
-            side_effect=CalendarDispatchError(
-                "Failed to deliver calendar request: timeout"
-            ),
-        ):
-            server, port = _start_test_server(db_path)
-            try:
-                status, body = _post_form(
-                    port,
-                    {"message_id": "<cal-test@example.com>"},
-                    path="/add-to-calendar",
-                )
-                assert status == 502, f"Expected 502, got {status}: {body}"
-                payload = json.loads(body)
-                assert payload["status"] == "error"
-                assert "Failed to deliver calendar request" in payload["message"]
-            finally:
-                server.shutdown()
-    finally:
-        os.unlink(db_path)
-
-
-def test_add_to_calendar_unexpected_error() -> None:
-    """POST /add-to-calendar returns 500 JSON on unexpected exceptions."""
-    fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    try:
-        _setup_db_with_record(db_path)
-
-        with mock.patch(
-            "robotsix_auto_mail.server._calendar_mixin.dispatch_calendar_request",
+            _MOCK_DISPATCH_PATH,
             side_effect=RuntimeError("unexpected boom"),
         ):
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
                     port,
-                    {"message_id": "<cal-test@example.com>"},
-                    path="/add-to-calendar",
+                    {
+                        "message_id": "<cal-test@example.com>",
+                        "triage_action": "TO_CALENDAR",
+                    },
+                    path="/move",
                 )
-                assert status == 500, f"Expected 500, got {status}: {body}"
-                payload = json.loads(body)
-                assert payload["status"] == "error"
-                assert payload["message"] == "Internal error"
+                assert status == 302, f"Expected 302, got {status}: {body}"
+
+                # Card must remain in TO_CALENDAR.
+                assert (
+                    _triage_action(db_path, "<cal-test@example.com>")
+                    == "TO_CALENDAR"
+                )
             finally:
                 server.shutdown()
     finally:
         os.unlink(db_path)
 
 
-def test_add_to_calendar_realistic_message_id() -> None:
-    """POST /add-to-calendar with a Message-ID containing ``<``, ``>``,
-    ``@``, ``+``, ``/``, ``=`` resolves the record (no 404) and dispatches.
+def test_move_to_calendar_realistic_message_id() -> None:
+    """Moving a card with a Message-ID containing ``<``, ``>``, ``@``,
+    ``+``, ``/``, ``=`` resolves the record (no 404) and dispatches.
     """
     message_id = "<abc+def/ghi=123@mail.example.com>"
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -404,30 +456,27 @@ def test_add_to_calendar_realistic_message_id() -> None:
     try:
         _setup_db_with_record(db_path, message_id=message_id)
 
-        with mock.patch(
-            "robotsix_auto_mail.server._calendar_mixin.dispatch_calendar_request"
-        ) as mock_dispatch:
+        with mock.patch(_MOCK_DISPATCH_PATH) as mock_dispatch:
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
                     port,
-                    {"message_id": message_id},
-                    path="/add-to-calendar",
+                    {"message_id": message_id, "triage_action": "TO_CALENDAR"},
+                    path="/move",
                 )
-                assert status == 200, f"Expected 200, got {status}: {body}"
-                payload = json.loads(body)
-                assert payload == {"status": "dispatched"}
+                assert status == 302, f"Expected 302, got {status}: {body}"
                 mock_dispatch.assert_called_once()
+                # Card should be rerouted to TO_ARCHIVE.
+                assert _triage_action(db_path, message_id) == "TO_ARCHIVE"
             finally:
                 server.shutdown()
     finally:
         os.unlink(db_path)
 
 
-def test_add_to_calendar_angle_bracket_fallback() -> None:
-    """POST /add-to-calendar resolves the record even when the request
-    omits angle brackets that the stored message_id includes (or vice
-    versa)."""
+def test_move_to_calendar_angle_bracket_fallback() -> None:
+    """Moving a card resolves the record even when the request omits angle
+    brackets that the stored message_id includes (or vice versa)."""
     message_id_stored = "<cal-test@example.com>"
     message_id_posted = "cal-test@example.com"
     fd, db_path = tempfile.mkstemp(suffix=".db")
@@ -435,20 +484,23 @@ def test_add_to_calendar_angle_bracket_fallback() -> None:
     try:
         _setup_db_with_record(db_path, message_id=message_id_stored)
 
-        with mock.patch(
-            "robotsix_auto_mail.server._calendar_mixin.dispatch_calendar_request"
-        ) as mock_dispatch:
+        with mock.patch(_MOCK_DISPATCH_PATH) as mock_dispatch:
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
                     port,
-                    {"message_id": message_id_posted},
-                    path="/add-to-calendar",
+                    {
+                        "message_id": message_id_posted,
+                        "triage_action": "TO_CALENDAR",
+                    },
+                    path="/move",
                 )
-                assert status == 200, f"Expected 200, got {status}: {body}"
-                payload = json.loads(body)
-                assert payload == {"status": "dispatched"}
+                assert status == 302, f"Expected 302, got {status}: {body}"
                 mock_dispatch.assert_called_once()
+                # Card should be rerouted to TO_ARCHIVE.
+                assert (
+                    _triage_action(db_path, message_id_stored) == "TO_ARCHIVE"
+                )
             finally:
                 server.shutdown()
     finally:

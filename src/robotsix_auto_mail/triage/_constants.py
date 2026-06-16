@@ -22,6 +22,7 @@ TRIAGE_ACTION_ORDER: tuple[str, ...] = (
     "PENDING_ACTION",
     "TO_ARCHIVE",
     "TO_DELETE",
+    "TO_CALENDAR",
     "TO_ANSWER",
     "DRAFT_READY",
 )
@@ -33,6 +34,7 @@ TRIAGE_ACTION_LABELS: dict[str, str] = {
     "PENDING_ACTION": "Pending action",
     "TO_ARCHIVE": "To archive",
     "TO_DELETE": "To delete",
+    "TO_CALENDAR": "To calendar",
     "TO_ANSWER": "To answer",
     "DRAFT_READY": "Draft ready",
 }

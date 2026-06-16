@@ -7,7 +7,6 @@ import json
 from typing import Any
 from urllib.parse import quote
 
-from robotsix_auto_mail.calendar import extract_calendar_summary
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.format import _effective_body_plain, _format_date
 from robotsix_auto_mail.server.views.forms import _render_move_form
@@ -25,7 +24,6 @@ def _build_detail_html(
     embed: bool = False,
     focus_draft: bool = False,
     current_account_id: str | None = None,
-    calendar_enabled: bool = True,
 ) -> str | None:
     """Build a full HTML detail page for a single ``MailRecord``.
 
@@ -110,7 +108,7 @@ def _build_detail_html(
     attach_html = _render_attachments(attachments)
     imap_uid_section = _render_imap_uid_section(record)
     triage_section = _render_triage_section(triage_decision)
-    calendar_button = _render_add_to_calendar_button(record, enabled=calendar_enabled)
+    calendar_feedback = _render_calendar_feedback(record)
 
     # The inner detail fields (Sender through IMAP UID) are identical for
     # the embedded fragment and the full standalone page.
@@ -130,7 +128,7 @@ def _build_detail_html(
         f"{move_form}</div>"
         "</div>\n"
         f"{triage_section}"
-        f"{calendar_button}"
+        f"{calendar_feedback}"
         '<div class="detail-field">'
         '<div class="detail-label">To</div>'
         f'<div class="detail-value">{to_html}</div>'
@@ -381,70 +379,8 @@ def _render_triage_section(triage_decision: TriageDecision | None) -> str:
     )
 
 
-def _render_add_to_calendar_button(record: MailRecord, *, enabled: bool = True) -> str:
-    """Render the 'Add to Calendar' action button with inline confirmation.
-
-    Returns an empty string when *enabled* is False.
-
-    When ``calendar_event_ref`` already holds a success value (non-empty
-    and not starting with ``"error: "``), the button is disabled and
-    shows a "Calendar event created" label instead.
-    """
-    if not enabled:
-        return ""
-
-    event_ref = record.calendar_event_ref
-    success_completed = bool(event_ref) and not event_ref.startswith("error: ")
-
-    summary = extract_calendar_summary(record)
-    payload = json.dumps(
-        {
-            "messageId": record.message_id,
-            "subject": record.subject,
-            "summary": summary,
-        }
-    )
-
-    if success_completed:
-        title_attr = html.escape(
-            f"Calendar event already created ({event_ref})", quote=True
-        )
-        button_html = (
-            '<button class="add-to-calendar-btn" disabled'
-            f' title="{title_attr}">'
-            "Calendar event created</button>"
-        )
-    else:
-        button_html = (
-            '<button class="add-to-calendar-btn"'
-            f' data-calendar-payload="{html.escape(payload, quote=True)}"'
-            f' data-calendar-summary="{html.escape(summary, quote=True)}"'
-            ' onclick="'
-            "var s=this.getAttribute('data-calendar-summary');"
-            "if(confirm(s)){"
-            "var p=JSON.parse(this.getAttribute('data-calendar-payload'));"
-            "var w=window.parent!==window?window.parent:window;"
-            "if(typeof w.addToCalendar==='function')w.addToCalendar(p);"
-            "}"
-            '">'
-            "Add to Calendar</button>"
-        )
-
-    feedback_html = _render_calendar_feedback(record)
-
-    return (
-        '<div class="detail-field">'
-        '<div class="detail-label">Calendar</div>'
-        '<div class="detail-value">'
-        f"{button_html}"
-        f"{feedback_html}"
-        "</div>"
-        "</div>\n"
-    )
-
-
 def _render_calendar_feedback(record: MailRecord) -> str:
-    """Render calendar feedback below the 'Add to Calendar' button.
+    """Render calendar feedback in the mail detail view.
 
     Returns an inline success or error indicator when
     ``calendar_event_ref`` is set.  Returns an empty string when no
@@ -456,14 +392,25 @@ def _render_calendar_feedback(record: MailRecord) -> str:
 
     if event_ref.startswith("error: "):
         error_msg = event_ref[len("error: ") :] or "Unknown error"
-        return (
+        feedback = (
             ' <span class="calendar-feedback calendar-error"'
             f' title="{html.escape(error_msg, quote=True)}">'
             "\u26a0\ufe0f {}</span>".format(html.escape(error_msg))
         )
+    else:
+        feedback = (
+            ' <span class="calendar-feedback calendar-success"'
+            f' title="{html.escape(event_ref, quote=True)}">'
+            "\u2705 Event added to calendar: {}</span>".format(
+                html.escape(event_ref)
+            )
+        )
 
     return (
-        ' <span class="calendar-feedback calendar-success"'
-        f' title="{html.escape(event_ref, quote=True)}">'
-        "\u2705 Event added to calendar: {}</span>".format(html.escape(event_ref))
+        '<div class="detail-field">'
+        '<div class="detail-label">Calendar</div>'
+        '<div class="detail-value">'
+        f"{feedback}"
+        "</div>"
+        "</div>\n"
     )
