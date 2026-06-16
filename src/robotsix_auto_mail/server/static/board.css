@@ -286,6 +286,18 @@ button:hover { background: #1a4d7a; }
   cursor: default;
 }
 
+/* -- branch label that is also a leaf (clickable) ------------------------ */
+.ft-branch-leaf {
+  cursor: pointer;
+}
+.ft-branch-leaf:hover {
+  color: #ffffff;
+  background: #2a3a5a;
+  border-radius: 2px;
+  padding: 0.05rem 0.2rem;
+  margin: 0 -0.2rem;
+}
+
 /* -- leaf label (clickable) --------------------------------------------- */
 .ft-leaf {
   color: #c0d0f0;

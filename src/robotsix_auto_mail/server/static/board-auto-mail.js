@@ -262,8 +262,16 @@
       toggle.textContent = "\u25b6"; // ▶
 
       var label = document.createElement("span");
-      label.className = "ft-branch";
       label.textContent = "\u{1F4C1} " + name;
+      if (node._leaf) {
+        label.className = "ft-branch ft-branch-leaf";
+        label.addEventListener("click", function (e) {
+          e.stopPropagation();
+          selectArchiveFolder(fullPath);
+        });
+      } else {
+        label.className = "ft-branch";
+      }
 
       var childContainer = document.createElement("div");
       childContainer.className = "ft-children";
