@@ -81,7 +81,7 @@ def fetch_new_messages(
     if watermark_raw is not None:
         try:
             watermark_uid = int(watermark_raw)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             watermark_uid = None
         if watermark_uid is not None:
             uids = [u for u in uids if u > watermark_uid]

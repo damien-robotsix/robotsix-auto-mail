@@ -562,7 +562,7 @@ def autoconfig_lookup(
             if resp.status != 200:
                 continue
             xml_text = resp.data.decode("utf-8", errors="replace")
-        except (urllib3.exceptions.HTTPError, OSError, ValueError):
+        except urllib3.exceptions.HTTPError, OSError, ValueError:
             continue
         provider = _parse_autoconfig_xml(xml_text)
         if provider is not None:
@@ -598,7 +598,7 @@ def mx_lookup(email_address: str, *, timeout: float = 5.0) -> list[str]:
         if resp.status != 200:
             return []
         data = json.loads(resp.data.decode("utf-8", errors="replace"))
-    except (urllib3.exceptions.HTTPError, OSError, ValueError):
+    except urllib3.exceptions.HTTPError, OSError, ValueError:
         return []
     if not isinstance(data, dict):
         return []

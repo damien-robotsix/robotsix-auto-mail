@@ -91,7 +91,7 @@ def _parse_archive_structure(
                 existing_folders = set(data["folders"])
                 delimiter = data.get("delimiter", "/")
                 effective_root = data["folders"][0] if data["folders"] else archive_root
-        except (json.JSONDecodeError, TypeError, KeyError):
+        except json.JSONDecodeError, TypeError, KeyError:
             # Malformed watermark JSON — fall back to the defaults
             # (empty folder set, "/" delimiter, archive_root) set above.
             pass

@@ -150,7 +150,7 @@ def _prompt_hosts(config: MailConfig, result: _VerifyResult) -> MailConfig | Non
             ans = input(f"Enter SMTP host [{config.smtp_host}]: ").strip()
             if ans:
                 smtp_host, changed = ans, True
-    except (EOFError, KeyboardInterrupt):
+    except EOFError, KeyboardInterrupt:
         return None
     if not changed:
         return None
@@ -178,7 +178,7 @@ def _existing_account_ids(path: Path) -> set[str]:
     ``{"default"}`` (it will be converted to a ``"default"`` account on
     append); a missing/empty file yields an empty set.
     """
-    from robotsix_yaml_config import (  # type: ignore[import-untyped]
+    from robotsix_yaml_config import (
         YamlConfigError,
         read_yaml_file,
     )
@@ -253,7 +253,7 @@ def _get_password(args: argparse.Namespace) -> str | None:
     if password is None and not args.stdout:
         try:
             password = getpass.getpass("Email password: ")
-        except (EOFError, KeyboardInterrupt):
+        except EOFError, KeyboardInterrupt:
             sys.stderr.write("\nDetection cancelled.\n")
             return None
     elif password is None and args.stdout:
@@ -344,7 +344,7 @@ def _refine_password(
     sys.stderr.write("The server is reachable but the password was rejected.\n")
     try:
         new_pw = getpass.getpass("Re-enter email password: ")
-    except (EOFError, KeyboardInterrupt):
+    except EOFError, KeyboardInterrupt:
         return _RefineOutcome()
     if not new_pw:
         return _RefineOutcome()

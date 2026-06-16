@@ -405,7 +405,7 @@ def _cmd_migrate_config(args: argparse.Namespace) -> int:
     original is backed up to ``<path>.bak`` first.  ``--dry-run`` prints the
     migrated YAML and writes nothing (neither the file nor the backup).
     """
-    from robotsix_yaml_config import (  # type: ignore[import-untyped]
+    from robotsix_yaml_config import (
         YamlConfigError,
         read_yaml_file,
     )

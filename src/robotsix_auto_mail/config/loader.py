@@ -13,7 +13,7 @@ import logging
 import os
 from pathlib import Path
 
-from robotsix_yaml_config import (  # type: ignore[import-untyped]
+from robotsix_yaml_config import (
     YamlConfigError,
     read_yaml_file,
 )
@@ -68,7 +68,7 @@ def load_llm() -> str:
                 # (caught below) — the LLM key then degrades to env-only.
                 accounts = MailAccountsConfig.from_yaml(config_path, validate=False)
                 file_cfg: MailConfig | None = accounts.default.config
-            except (ConfigurationError, FileNotFoundError, OSError):
+            except ConfigurationError, FileNotFoundError, OSError:
                 file_cfg = None
             if file_cfg is not None:
                 api_key = api_key or file_cfg.llm_api_key
@@ -92,7 +92,7 @@ def load_llm_provider() -> str:
             try:
                 accounts = MailAccountsConfig.from_yaml(config_path, validate=False)
                 file_cfg: MailConfig | None = accounts.default.config
-            except (ConfigurationError, FileNotFoundError, OSError):
+            except ConfigurationError, FileNotFoundError, OSError:
                 file_cfg = None
             if file_cfg is not None:
                 provider = provider or file_cfg.llm_provider

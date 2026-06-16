@@ -57,5 +57,5 @@ def _format_date(raw: str) -> str:
     try:
         dt = datetime.fromisoformat(raw)
         return dt.strftime("%Y-%m-%d %H:%M")
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return raw

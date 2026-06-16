@@ -301,7 +301,7 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
     if raw is not None:
         try:
             suggestions = json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
+        except json.JSONDecodeError, TypeError:
             # Malformed suggestions-cache JSON — keep the empty dict above.
             pass
 
@@ -349,7 +349,7 @@ def _load_archive_guidance(
                 archive_folders = data
             else:
                 archive_folders = data["folders"]
-        except (json.JSONDecodeError, TypeError, KeyError):
+        except json.JSONDecodeError, TypeError, KeyError:
             archive_folders = None
 
     folder_memory = _load_archive_folder_memory(conn)
