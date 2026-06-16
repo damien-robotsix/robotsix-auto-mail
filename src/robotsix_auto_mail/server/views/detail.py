@@ -405,9 +405,7 @@ def _extract_calendar_summary(record: MailRecord) -> str:
     if body:
         matches = list(dict.fromkeys(_DATE_TIME_RE.findall(body)))
         if matches:
-            lines.append(
-                "Date/time references in body: " + ", ".join(matches[:10])
-            )
+            lines.append("Date/time references in body: " + ", ".join(matches[:10]))
     return "\n".join(lines)
 
 
@@ -436,7 +434,7 @@ def _render_add_to_calendar_button(record: MailRecord) -> str:
         "var p=JSON.parse(this.getAttribute('data-calendar-payload'));"
         "var w=window.parent!==window?window.parent:window;"
         "if(typeof w.addToCalendar==='function')w.addToCalendar(p);"
-        '}'
+        "}"
         '">'
         "Add to Calendar</button>"
         "</div>"
