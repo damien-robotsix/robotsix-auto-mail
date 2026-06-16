@@ -60,6 +60,39 @@ def _run_triage_background(db_path: str, user_email: str | None = None) -> None:
         conn.close()
 
 
+def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> None:
+    """Run reconcile_records in a background thread, clearing the watermark on exit.
+
+    Opens its own SQLite connection and IMAP connection so it never shares
+    a connection with the HTTP request-serve thread.  The ``reconcile:state``
+    watermark is always set back to ``"idle"`` in a ``finally`` block.
+    """
+    import structlog
+
+    logger = structlog.get_logger(__name__)
+
+    from robotsix_auto_mail.db import init_db, set_watermark
+    from robotsix_auto_mail.imap import ImapClient, ImapError
+    from robotsix_auto_mail.pipeline import reconcile_records
+
+    conn = init_db(db_path, skip_migrations=True)
+    try:
+        if mail_config is None:
+            return
+        try:
+            with ImapClient(mail_config) as client:
+                healed, removed = reconcile_records(conn, client)
+                logger.info("reconcile_done", healed=healed, removed=removed)
+        except ImapError as exc:
+            logger.warning("reconcile_imap_error", error=str(exc))
+    except Exception:  # noqa: S110  # nosec B110
+        # Swallow all exceptions — the watermark is always cleared.
+        pass
+    finally:
+        set_watermark(conn, "reconcile:state", "idle")
+        conn.close()
+
+
 def _batch_op_running(state: str | None) -> bool:
     """Return whether *state* (the ``batch_op:state`` watermark) means running.
 
