@@ -258,6 +258,7 @@ modules:
       - src/robotsix_auto_mail/server/_board_handler_protocol.py
       - src/robotsix_auto_mail/server/_config_mixin.py
       - src/robotsix_auto_mail/server/_draft_mixin.py
+      - src/robotsix_auto_mail/server/_reconcile_mixin.py
       - src/robotsix_auto_mail/server/_triage_mixin.py
       - src/robotsix_auto_mail/server/_view_mixin.py
       - src/robotsix_auto_mail/server/views/__init__.py
@@ -279,6 +280,7 @@ modules:
       - tests/server/test_redirect_safety.py
       - tests/server/test_server_archive.py
       - tests/server/test_server_draft.py
+      - tests/server/test_server_reconcile.py
       - tests/server/test_server_triage.py
       - tests/server/test_views_detail.py
       - scripts/smoke_board.sh

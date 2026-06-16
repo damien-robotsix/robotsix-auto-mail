@@ -13,7 +13,6 @@ from tests.server.conftest import (
 
 from robotsix_auto_mail.db import set_watermark
 
-
 # ---------------------------------------------------------------------------
 # POST /reconcile tests
 # ---------------------------------------------------------------------------

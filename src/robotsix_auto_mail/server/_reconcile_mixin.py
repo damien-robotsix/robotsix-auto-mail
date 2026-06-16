@@ -42,8 +42,6 @@ class _ReconcileMixin:
             conn.close()
 
         if self._aggregate and self.accounts is not None:
-            from robotsix_auto_mail.config import MailAccountsConfig
-
             accounts = self.accounts  # type: MailAccountsConfig
             for acct in accounts.accounts:
                 threading.Thread(
