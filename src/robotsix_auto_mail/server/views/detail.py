@@ -52,7 +52,7 @@ def _build_detail_html(
     # Parse JSON fields
     try:
         recipients = json.loads(record.recipients_json)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         recipients = {"to": [], "cc": []}
     to_list: list[str] = (
         recipients.get("to", []) if isinstance(recipients, dict) else []
@@ -63,7 +63,7 @@ def _build_detail_html(
 
     try:
         attachments = json.loads(record.attachments_json)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         attachments = []
     if not isinstance(attachments, list):
         attachments = []

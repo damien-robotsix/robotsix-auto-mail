@@ -289,7 +289,7 @@ def propose_archive_subfolder_llm(
                 existing_folders = data
             else:
                 existing_folders = data["folders"]
-        except (json.JSONDecodeError, TypeError, KeyError):
+        except json.JSONDecodeError, TypeError, KeyError:
             existing_folders = []
 
     # -- load sender memory for this sender --

@@ -89,7 +89,7 @@ def _gather_account_board_data(
         if batch_raw is not None and batch_raw != "idle":
             try:
                 parsed = json.loads(batch_raw)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 parsed = None
             if isinstance(parsed, dict):
                 batch_op = {
@@ -145,7 +145,7 @@ def _gather_account_board_data(
                     effective_root = (
                         data["folders"][0] if data["folders"] else archive_root
                     )
-            except (json.JSONDecodeError, TypeError, KeyError):
+            except json.JSONDecodeError, TypeError, KeyError:
                 # Malformed archive_structure watermark — keep the empty
                 # folder set / "/" delimiter / archive_root defaults set above.
                 pass
@@ -186,7 +186,7 @@ def _gather_account_board_data(
         if suggestions_raw is not None:
             try:
                 unsubscribe_suggestions = json.loads(suggestions_raw)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 # Malformed unsubscribe_suggestions watermark — leave the
                 # empty suggestions dict initialised above.
                 pass

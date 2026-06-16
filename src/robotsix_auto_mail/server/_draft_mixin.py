@@ -21,7 +21,7 @@ def _compute_reply_all_cc(record: MailRecord, from_addr: str) -> list[str] | Non
     """Compute the CC list for a reply-all, excluding self and the original sender."""
     try:
         recipients = json.loads(record.recipients_json)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         recipients = {}
     orig_to = recipients.get("to", []) if isinstance(recipients, dict) else []
     orig_cc = recipients.get("cc", []) if isinstance(recipients, dict) else []

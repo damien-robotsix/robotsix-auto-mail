@@ -48,7 +48,7 @@ def _decode_content(part: email.message.EmailMessage) -> str:
     for cs in charsets:
         try:
             return payload.decode(cs, errors="replace")
-        except (LookupError, ValueError):
+        except LookupError, ValueError:
             continue
 
     return payload.decode("ascii", errors="replace")
@@ -135,7 +135,7 @@ def parse_message(
         try:
             dt = email.utils.parsedate_to_datetime(raw_date)
             date_str = dt.isoformat()
-        except (ValueError, TypeError, OverflowError):
+        except ValueError, TypeError, OverflowError:
             date_str = ""
 
     # -- body & attachments ---------------------------------------------------
