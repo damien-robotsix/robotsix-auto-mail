@@ -131,51 +131,98 @@ class _BoardActionMixin:
 
             if triage_action == "TO_CALENDAR":
                 # -- Dispatch calendar request on column move ----------
-                from robotsix_auto_mail.calendar import (
-                    CalendarDispatchError,
-                    CalendarEventRequest,
-                    dispatch_calendar_request,
-                    extract_dates_from_body,
-                )
-                from robotsix_auto_mail.db import (
-                    update_calendar_correlation_id,
-                    update_calendar_event_ref,
-                )
-                from robotsix_auto_mail.format import _effective_body_plain
-
-                body_text = _effective_body_plain(record)
-                event = CalendarEventRequest(
-                    message_id=record.message_id,
-                    subject=record.subject,
-                    sender=record.sender,
-                    body_text=body_text,
-                    email_date=record.date,
-                    extracted_dates=extract_dates_from_body(body_text),
-                )
-                update_calendar_correlation_id(conn, message_id, event.correlation_id)
-
                 try:
-                    dispatch_calendar_request(event)
-                except CalendarDispatchError as exc:
-                    update_calendar_event_ref(conn, message_id, f"error: {exc}")
-                    # Card stays in TO_CALENDAR; error is visible via
-                    # the calendar indicator on the board card.
+                    from robotsix_auto_mail.calendar import (
+                        CalendarDispatchError,
+                        CalendarEventRequest,
+                        dispatch_calendar_request,
+                        extract_dates_from_body,
+                    )
+                    from robotsix_auto_mail.db import (
+                        update_calendar_correlation_id,
+                        update_calendar_event_ref,
+                    )
+                    from robotsix_auto_mail.format import _effective_body_plain
+
+                    body_text = _effective_body_plain(record)
+                    event = CalendarEventRequest(
+                        message_id=record.message_id,
+                        subject=record.subject,
+                        sender=record.sender,
+                        body_text=body_text,
+                        email_date=record.date,
+                        extracted_dates=extract_dates_from_body(body_text),
+                    )
+                    update_calendar_correlation_id(
+                        conn, message_id, event.correlation_id
+                    )
+
+                    # Fire-and-forget: dispatch in a background daemon
+                    # thread so a slow/hung transport never blocks the
+                    # HTTP request.  The board's calendar-response
+                    # listener (f860) already updates cards
+                    # asynchronously.
+                    import threading
+
+                    def _dispatch_bg() -> None:
+                        from robotsix_auto_mail.db import init_db
+
+                        try:
+                            bg_conn = init_db(self.db_path, skip_migrations=True)
+                        except Exception:
+                            # Cannot open the DB at all — nothing we
+                            # can do.  The daemon thread will exit
+                            # silently; the main request already
+                            # completed with the card in TO_CALENDAR.
+                            return
+                        try:
+                            try:
+                                dispatch_calendar_request(event)
+                            except CalendarDispatchError as exc:
+                                update_calendar_event_ref(
+                                    bg_conn, message_id, f"error: {exc}"
+                                )
+                            except Exception:
+                                update_calendar_event_ref(
+                                    bg_conn, message_id, "error: Internal error"
+                                )
+                            else:
+                                # Reroute: if the prior triage decision
+                                # was TO_ANSWER the mail still needs a
+                                # reply; otherwise it goes to the
+                                # archive column.
+                                next_action = (
+                                    "TO_ANSWER"
+                                    if prior_action == "TO_ANSWER"
+                                    else "TO_ARCHIVE"
+                                )
+                                set_triage_decision(
+                                    bg_conn,
+                                    message_id,
+                                    next_action,
+                                    source="agent",
+                                    reason=(
+                                        "calendar dispatched — rerouted"
+                                        " from TO_CALENDAR"
+                                    ),
+                                )
+                        finally:
+                            bg_conn.close()
+
+                    threading.Thread(target=_dispatch_bg, daemon=True).start()
                 except Exception:
-                    update_calendar_event_ref(conn, message_id, "error: Internal error")
-                else:
-                    # Reroute: if the prior triage decision was
-                    # TO_ANSWER the mail still needs a reply;
-                    # otherwise it goes to the archive column.
-                    next_action = (
-                        "TO_ANSWER" if prior_action == "TO_ANSWER" else "TO_ARCHIVE"
-                    )
-                    set_triage_decision(
-                        conn,
-                        message_id,
-                        next_action,
-                        source="agent",
-                        reason="calendar dispatched — rerouted from TO_CALENDAR",
-                    )
+                    # Any failure in setup (imports, body extraction,
+                    # correlation-id update, thread start) records an
+                    # error indicator and the card lands in TO_CALENDAR
+                    # — the move always completes normally.
+                    try:
+                        from robotsix_auto_mail.db import update_calendar_event_ref
+
+                        update_calendar_event_ref(
+                            conn, message_id, "error: Internal error"
+                        )
+                    except Exception:  # noqa: S110  # nosec B110
+                        pass
 
             if triage_action == "TO_ARCHIVE":
                 try:
