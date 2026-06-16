@@ -136,6 +136,10 @@ ignore_missing_imports = true
 module = "msal"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "robotsix_yaml_config"
+ignore_missing_imports = true
+
 [tool.deptry]
 # Treat everything under [project.optional-dependencies][dev] (ruff, mypy,
 # pytest, hatchling, types-PyYAML, robotsix-llmio, deptry) as dev-only.
