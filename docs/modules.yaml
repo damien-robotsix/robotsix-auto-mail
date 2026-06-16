@@ -25,6 +25,7 @@ modules:
       - vulture_whitelist.py
       - .gitignore
       - .python-version
+      - CHANGELOG.md
       - LICENSE
       - CLAUDE.md
       - README.md
