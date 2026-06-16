@@ -422,12 +422,15 @@ def test_move_to_calendar_dispatch_error_card_stays() -> None:
         _setup_db_with_record(db_path)
 
         error_msg = "Calendar agent is not available"
-        with mock.patch(
-            _MOCK_DISPATCH_PATH,
-            side_effect=CalendarDispatchError(error_msg),
-        ), mock.patch(
-            "robotsix_auto_mail.db.update_calendar_event_ref"
-        ) as mock_update_ref:
+        with (
+            mock.patch(
+                _MOCK_DISPATCH_PATH,
+                side_effect=CalendarDispatchError(error_msg),
+            ),
+            mock.patch(
+                "robotsix_auto_mail.db.update_calendar_event_ref"
+            ) as mock_update_ref,
+        ):
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
@@ -468,12 +471,15 @@ def test_move_to_calendar_unexpected_error_card_stays() -> None:
     try:
         _setup_db_with_record(db_path)
 
-        with mock.patch(
-            _MOCK_DISPATCH_PATH,
-            side_effect=RuntimeError("unexpected boom"),
-        ), mock.patch(
-            "robotsix_auto_mail.db.update_calendar_event_ref"
-        ) as mock_update_ref:
+        with (
+            mock.patch(
+                _MOCK_DISPATCH_PATH,
+                side_effect=RuntimeError("unexpected boom"),
+            ),
+            mock.patch(
+                "robotsix_auto_mail.db.update_calendar_event_ref"
+            ) as mock_update_ref,
+        ):
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
@@ -577,12 +583,15 @@ def test_move_to_calendar_setup_failure_still_redirects() -> None:
     try:
         _setup_db_with_record(db_path)
 
-        with mock.patch(
-            "robotsix_auto_mail.format._effective_body_plain",
-            side_effect=ValueError("body extraction failed"),
-        ), mock.patch(
-            "robotsix_auto_mail.db.update_calendar_event_ref"
-        ) as mock_update_ref:
+        with (
+            mock.patch(
+                "robotsix_auto_mail.format._effective_body_plain",
+                side_effect=ValueError("body extraction failed"),
+            ),
+            mock.patch(
+                "robotsix_auto_mail.db.update_calendar_event_ref"
+            ) as mock_update_ref,
+        ):
             server, port = _start_test_server(db_path)
             try:
                 status, body = _post_form(
