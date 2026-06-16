@@ -90,6 +90,86 @@ call is wrapped in a best-effort `try`/`except` that logs the failure (via
 only persists its watermark on success, a failed run naturally retries on
 the next ingestion.
 
+## Calendar (Add to Calendar)
+
+The 'Add to Calendar' action lets a user send an email's date/time
+references to the ``robotsix-calendar`` agent for event creation, directly
+from the mail detail view in the web board.
+
+### How the dispatch works
+
+1. The detail view renders an **Add to Calendar** button (see
+   `_render_add_to_calendar_button` in `server/views/detail.py`).
+2. Clicking the button fires a JS `confirm()` dialog showing a calendar
+   summary (`extract_calendar_summary` from `calendar.py`).
+3. On confirmation, `window.addToCalendar(payload)` in
+   `board-auto-mail.js` sends a `POST /add-to-calendar` with JSON body.
+4. The server-side handler (`_CalendarMixin._handle_add_to_calendar` in
+   `server/_calendar_mixin.py`) calls `dispatch_calendar_request` from
+   `calendar.py`.
+5. `dispatch_calendar_request` builds a `CalendarEventRequest` Pydantic
+   model, then calls `Agent.send_notification(recipient="robotsix-calendar",
+   body=...)` — a **fire-and-forget** send via the `robotsix_agent_comm`
+   message bus.  No response is awaited.
+
+### Message format (inter-agent contract)
+
+`CalendarEventRequest` (defined in `calendar.py`) carries:
+
+| Field | Type | Purpose |
+|---|---|---|
+| `correlation_id` | `str` | Unique identifier for request/response lifecycle |
+| `message_id` | `str` | The original email's Message-ID |
+| `subject` | `str` | Email subject line |
+| `sender` | `str` | Email sender address |
+| `body_text` | `str` | Plain-text body of the email |
+| `email_date` | `str` | ISO-8601 timestamp of the email |
+| `extracted_dates` | `list[str]` | Date/time references extracted via `DATE_TIME_RE` from `extract_dates_from_body` |
+
+The `extract_calendar_summary` helper builds a human-readable summary string
+for the confirmation dialog.
+
+### UI: the detail view button
+
+The button is rendered by `_render_add_to_calendar_button` in
+`server/views/detail.py`.  It appears in a "Calendar" field row in the
+detail view.
+
+- When `calendar_event_ref` is empty (no response yet): active button with
+  `data-calendar-payload` / `data-calendar-summary` attributes and an inline
+  `onclick` handler that calls `confirm()` then `window.addToCalendar()`.
+- When `calendar_event_ref` holds a success (non-empty, not starting with
+  `"error: "`): the button is **disabled** and relabeled "Calendar event
+  created".
+- A `calendar-feedback` span renders success/error indicators below the
+  button.
+
+The JS dispatch lives in `static/board-auto-mail.js` (`addToCalendar`
+function) — unchanged by this ticket.
+
+### Configuration
+
+- **`calendar.enabled`** (env `MAIL_CALENDAR_ENABLED`): `bool`, default
+  `True`.  Per-account field (NOT a top-level section like `board_agent`).
+  Each account can independently enable/disable the calendar action.
+
+### Enabling / disabling
+
+Default enabled.  Set `calendar.enabled: false` in the YAML config (or
+`MAIL_CALENDAR_ENABLED=false` in the environment) to hide the button and
+suppress dispatch entirely.
+
+### Graceful degradation
+
+When the `robotsix_agent_comm` package is not installed and the feature is
+enabled, the `POST /add-to-calendar` handler catches `CalendarDispatchError`
+and returns HTTP 503 with an error message.  The button still appears
+(unless disabled) but the user sees an error alert from the JS error
+handler.
+
+When `calendar_enabled=False`, the button is not rendered at all — no
+dependency is needed.
+
 ## Project layout
 
 Static assets (CSS, JS, images) for the web board template live in

@@ -94,6 +94,12 @@ accounts:
     # Inbox triage agent — runs automatically after each ingest cycle.
     # triage:
     #   on_ingest: true
+    # Calendar (Add to Calendar) — agent-comm dispatch to the
+    # robotsix-calendar agent.  When enabled, the detail view shows
+    # an 'Add to Calendar' button that sends a CalendarEventRequest
+    # message via the robotsix_agent_comm message bus.
+    # calendar:
+    #   enabled: true
     # Logging configuration — application-wide.
     # logging:
     #   level: INFO
@@ -145,6 +151,7 @@ MAIL_ARCHIVE_ROOT=robotsix-mail-archive
 MAIL_ARCHIVE_NAMESPACE=
 MAIL_ARCHIVE_ENABLED=true
 MAIL_TRIAGE_ON_INGEST=true
+MAIL_CALENDAR_ENABLED=true
 LLM_API_KEY=sk-or-v1-…
 LLM_PROVIDER=openrouter-deepseek
 LANGFUSE_PUBLIC_KEY=
@@ -211,6 +218,7 @@ _DOCS_YAML_TABLE = """\
 | `archive.namespace` | no | `""` | IMAP namespace prefix for archive folders |
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
+| `calendar.enabled` | no | `true` | Enable 'Add to Calendar' in detail view |
 | `llm.api_key` | no | - | LLM provider API key |
 | `llm.provider` | no | `"openrouter-deepseek"` | LLM backend name |
 | `langfuse.public_key` | no | - | Langfuse public key for LLM tracing |
@@ -251,6 +259,7 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_ARCHIVE_NAMESPACE` | no |  | IMAP namespace prefix for archive folders |
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to manage the archive structure |
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Run inbox triage automatically after ingest |
+| `MAIL_CALENDAR_ENABLED` | no | `true` | Enable 'Add to Calendar' in detail view |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
 | `LLM_API_KEY` | no | - | LLM provider API key |
 | `LLM_PROVIDER` | no | `openrouter-deepseek` | LLM backend name |

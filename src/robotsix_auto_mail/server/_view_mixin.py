@@ -300,6 +300,13 @@ class _BoardViewMixin:
         if embed:
             self._account_cookie = None
 
+        # Resolve calendar_enabled from the current account's config.
+        # Default to True when mail_config is None (should not happen
+        # for the detail view, but the protocol allows it).
+        calendar_enabled = (
+            self.mail_config.calendar_enabled if self.mail_config is not None else True
+        )
+
         try:
             detail_html = _build_detail_html(
                 self.db_path,
@@ -307,6 +314,7 @@ class _BoardViewMixin:
                 embed=embed,
                 focus_draft=focus_draft,
                 current_account_id=self._current_account_id,
+                calendar_enabled=calendar_enabled,
             )
         except Exception:
             self._send_response("Database unavailable", status=503)

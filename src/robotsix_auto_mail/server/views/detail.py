@@ -25,6 +25,7 @@ def _build_detail_html(
     embed: bool = False,
     focus_draft: bool = False,
     current_account_id: str | None = None,
+    calendar_enabled: bool = True,
 ) -> str | None:
     """Build a full HTML detail page for a single ``MailRecord``.
 
@@ -109,7 +110,7 @@ def _build_detail_html(
     attach_html = _render_attachments(attachments)
     imap_uid_section = _render_imap_uid_section(record)
     triage_section = _render_triage_section(triage_decision)
-    calendar_button = _render_add_to_calendar_button(record)
+    calendar_button = _render_add_to_calendar_button(record, enabled=calendar_enabled)
 
     # The inner detail fields (Sender through IMAP UID) are identical for
     # the embedded fragment and the full standalone page.
@@ -380,13 +381,18 @@ def _render_triage_section(triage_decision: TriageDecision | None) -> str:
     )
 
 
-def _render_add_to_calendar_button(record: MailRecord) -> str:
+def _render_add_to_calendar_button(record: MailRecord, *, enabled: bool = True) -> str:
     """Render the 'Add to Calendar' action button with inline confirmation.
+
+    Returns an empty string when *enabled* is False.
 
     When ``calendar_event_ref`` already holds a success value (non-empty
     and not starting with ``"error: "``), the button is disabled and
     shows a "Calendar event created" label instead.
     """
+    if not enabled:
+        return ""
+
     event_ref = record.calendar_event_ref
     success_completed = bool(event_ref) and not event_ref.startswith("error: ")
 

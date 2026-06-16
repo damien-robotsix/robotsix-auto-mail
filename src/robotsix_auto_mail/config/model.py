@@ -92,6 +92,10 @@ class MailConfig:
     # Run the inbox triage agent automatically at the end of each ingest.
     triage_on_ingest: bool = True
 
+    # Whether the 'Add to Calendar' button is rendered in the detail view
+    # and dispatch to the robotsix-calendar agent is attempted.
+    calendar_enabled: bool = True
+
     # OAuth2 / XOAUTH2 credentials (Gmail, Microsoft 365, etc.).
     # Optional; when ``oauth2_token`` is set, SASL XOAUTH2 is used
     # instead of password-based ``login()``.
