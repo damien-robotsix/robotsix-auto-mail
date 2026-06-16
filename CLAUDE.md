@@ -3,6 +3,16 @@
 robotsix-auto-mail fetches mail over IMAP, parses it, and stores it in a
 local SQLite datastore, with an HTTP kanban board for review.
 
+## PyPI packaging metadata
+
+The `pyproject.toml` (repo root) includes standard PyPI metadata:
+
+- **`license = "MIT"`** — matches the `LICENSE` file at repo root.
+- **`classifiers`** — `Development Status :: 4 - Beta`, `License :: OSI Approved :: MIT License`, `Programming Language :: Python :: 3.14`, `Operating System :: OS Independent`.
+- **`keywords`** — `["mail", "imap", "smtp", "triage", "kanban"]`.
+- **`[project.urls]`** — `Homepage`, `Repository`, `Documentation`, `Issues`, `Changelog` — all pointing to the GitHub repo and GitHub Pages docs site.
+- **`CHANGELOG.md`** at repo root documents unreleased changes.
+
 ## Archive feature
 
 robotsix-auto-mail manages its own archive folder hierarchy, independent of
