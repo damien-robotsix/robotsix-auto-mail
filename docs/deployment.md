@@ -146,18 +146,19 @@ See [docs/connecting.md](connecting.md#the-board-command) for output format.
 
 ```sh
 docker compose up board
-# → http://localhost:${BOARD_PORT:-8078}/board
+# → http://localhost:${BOARD_PORT:-8080}/board
 ```
 
-The board service runs as a long-lived daemon (restart policy: `on-failure`).
-It listens on the port set by `BOARD_PORT` (default: **8078**).  Open the URL
-in a browser to see the four-column kanban board with per-card Move dropdowns.
-Press `Ctrl-C` to stop the daemon.
+The board service runs as a long-lived daemon (restart policy:
+`unless-stopped`).  Inside the container it always serves on **8080** (so the
+image healthcheck `GET :8080/healthz` passes); `BOARD_PORT` remaps only the
+host-side port (default: **8080**).  Open the URL in a browser to see the
+four-column kanban board with per-card Move dropdowns.  Press `Ctrl-C` to stop
+the daemon.
 
-**Note:** the Docker default port is **8078** (set via `${BOARD_PORT:-8078}` in
-`docker-compose.yml`), which differs from the native CLI default of 8080.  Set
-`BOARD_PORT` in your shell or `.env` file to use a different port:
-`BOARD_PORT=9090 docker compose up board`.
+**Note:** set `BOARD_PORT` in your shell or `.env` file to publish on a
+different host port: `BOARD_PORT=9090 docker compose up board` maps host 9090
+→ container 8080.
 
 ### Ephemeral containers, persistent data
 
@@ -233,9 +234,9 @@ The `board` service runs the same image but starts the web server:
 
 | Key | Value | Why |
 |---|---|---|
-| `command` | `serve --port ${BOARD_PORT:-8078}` | Starts the web server as a daemon. |
-| `restart` | `on-failure` | Restarts if the process crashes. |
-| `ports` | `"${BOARD_PORT:-8078}:${BOARD_PORT:-8078}"` | Maps the board port to the host so browsers can reach it. |
+| `command` | `serve --port 8080` | Starts the web server as a daemon on the fixed container port 8080. |
+| `restart` | `unless-stopped` | Restarts if the process crashes. |
+| `ports` | `"${BOARD_PORT:-8080}:8080"` | Maps host `BOARD_PORT` (default 8080) to the container's 8080. |
 | `environment` | `MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml` | Same config as the ingester. |
 | `volumes` | Same as the ingester | Shares `./.mail_data` so the ingester and board see the same database. |
 
@@ -281,6 +282,26 @@ docker build -t registry.example.com/robotsix-auto-mail:v1.0.0 .
 docker tag robotsix-auto-mail:latest registry.example.com/robotsix-auto-mail:v1.0.0
 docker push registry.example.com/robotsix-auto-mail:v1.0.0
 ```
+
+### Continuous deployment (server.robotsix.net)
+
+For the always-on `server.robotsix.net` deployment, the
+[`deploy/`](../deploy/) directory holds a self-contained stack that **pulls**
+the published image instead of building it, and keeps it up to date
+automatically:
+
+- Pushing to `main` publishes a moving `ghcr.io/.../robotsix-auto-mail:main`
+  image (`release.yml` now triggers on `main` as well as `v*` tags).
+- [`deploy/docker-compose.yml`](../deploy/docker-compose.yml) runs the
+  `ingester`, the `board` (bound to `127.0.0.1:8080`), and **Watchtower**,
+  which polls GHCR every 5 minutes and redeploys the labeled services on a
+  new image.
+- The host's shared **nginx** terminates TLS and enforces HTTP basic auth
+  for `mail.robotsix.net`, proxying to the loopback board
+  ([`deploy/nginx/mail.robotsix.net.conf`](../deploy/nginx/mail.robotsix.net.conf)).
+
+Full server bring-up steps (config, GHCR access, htpasswd, certbot, nginx)
+are in **[deploy/README.md](../deploy/README.md)**.
 
 ### Run on a production host
 

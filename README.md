@@ -80,7 +80,7 @@ Start the read-only kanban board to view ingested mail in a browser:
 # Native (port 8080 by default)
 robotsix-auto-mail serve
 
-# Docker (port 8078 by default, configurable via BOARD_PORT)
+# Docker (host port 8080 by default, configurable via BOARD_PORT)
 docker compose up board
 
 # Then open http://localhost:<port>/board

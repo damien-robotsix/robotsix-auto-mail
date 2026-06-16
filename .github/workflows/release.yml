@@ -1,7 +1,13 @@
 name: Release image
 
+# Publishes container images to GHCR:
+#   - push to `main`  -> moving `main` tag (Watchtower's continuous-deploy target)
+#   - push of a `v*` tag -> semver tags (`1.2.3`, `1.2`, `1`) plus `latest`
+# Every build also gets a `sha-<short>` tag. See deploy/README.md for how the
+# server consumes the `main` tag via Watchtower.
 on:
   push:
+    branches: ['main']
     tags: ['v*']
   workflow_dispatch:
 
@@ -34,6 +40,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
+            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}

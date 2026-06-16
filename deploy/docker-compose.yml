@@ -1,0 +1,80 @@
+# -------------------------------------------------------------------------
+# robotsix-auto-mail — continuous-deploy stack for server.robotsix.net.
+#
+# Unlike the repo-root docker-compose.yml (which BUILDS the image for local
+# development), this stack PULLS the published image from GHCR and lets
+# Watchtower redeploy it automatically whenever a new `main` image is
+# pushed (see ../.github/workflows/release.yml).
+#
+# Services:
+#   - ingester   : long-running `ingest --watch` (fetches mail on an interval)
+#   - board      : the web kanban board, bound to 127.0.0.1 ONLY. A shared
+#                  host nginx terminates TLS + basic auth for mail.robotsix.net
+#                  and proxies to it (see nginx/mail.robotsix.net.conf).
+#   - watchtower : polls GHCR and redeploys the two labeled services on a new
+#                  image, then prunes the old one.
+#
+# Bring-up and one-shot commands (detect, probe, migrate-config) are
+# documented in ./README.md.
+# -------------------------------------------------------------------------
+
+name: robotsix-auto-mail
+
+services:
+  ingester:
+    image: ghcr.io/damien-robotsix/robotsix-auto-mail:${IMAGE_TAG:-main}
+    command: ingest --watch
+    restart: unless-stopped
+    stdin_open: true
+    environment:
+      MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml
+      LLM_API_KEY: ${LLM_API_KEY:-}
+    volumes:
+      - ./config:/home/mailbot/config
+      - ./data:/home/mailbot/.data
+      - ./logs:/home/mailbot/.mail_log
+    # The ingester runs no HTTP server, so the image's HTTP healthcheck
+    # (GET :8080/healthz) can never pass — disable it for this service.
+    healthcheck:
+      disable: true
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  board:
+    image: ghcr.io/damien-robotsix/robotsix-auto-mail:${IMAGE_TAG:-main}
+    # The image healthcheck probes :8080, so the board must serve on 8080.
+    command: serve --port 8080
+    restart: unless-stopped
+    environment:
+      MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml
+    # Loopback-only publish: the board has NO auth of its own, so it must
+    # never be reachable directly from the internet. The shared host nginx
+    # proxies mail.robotsix.net -> 127.0.0.1:8080 with TLS + basic auth.
+    ports:
+      - "127.0.0.1:${BOARD_PORT:-8080}:8080"
+    volumes:
+      - ./config:/home/mailbot/config
+      - ./data:/home/mailbot/.data
+      - ./logs:/home/mailbot/.mail_log
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    restart: unless-stopped
+    environment:
+      # Only watch containers carrying the enable=true label above, so
+      # Watchtower never touches other stacks on this host.
+      WATCHTOWER_LABEL_ENABLE: "true"
+      # Remove the previous image after a successful update.
+      WATCHTOWER_CLEANUP: "true"
+      # Poll GHCR every 5 minutes.
+      WATCHTOWER_POLL_INTERVAL: "300"
+      # Update services one at a time instead of stopping all, then starting all.
+      WATCHTOWER_ROLLING_RESTART: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # If the GHCR package is PRIVATE, Watchtower needs pull credentials.
+      # Run `docker login ghcr.io` on the host, then uncomment the next line
+      # (path is for a root-owned daemon; adjust for your user).
+      # - /root/.docker/config.json:/config.json:ro
