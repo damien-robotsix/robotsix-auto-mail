@@ -394,6 +394,67 @@ def test_add_to_calendar_unexpected_error() -> None:
         os.unlink(db_path)
 
 
+def test_add_to_calendar_realistic_message_id() -> None:
+    """POST /add-to-calendar with a Message-ID containing ``<``, ``>``,
+    ``@``, ``+``, ``/``, ``=`` resolves the record (no 404) and dispatches.
+    """
+    message_id = "<abc+def/ghi=123@mail.example.com>"
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _setup_db_with_record(db_path, message_id=message_id)
+
+        with mock.patch(
+            "robotsix_auto_mail.server._calendar_mixin.dispatch_calendar_request"
+        ) as mock_dispatch:
+            server, port = _start_test_server(db_path)
+            try:
+                status, body = _post_form(
+                    port,
+                    {"message_id": message_id},
+                    path="/add-to-calendar",
+                )
+                assert status == 200, f"Expected 200, got {status}: {body}"
+                payload = json.loads(body)
+                assert payload == {"status": "dispatched"}
+                mock_dispatch.assert_called_once()
+            finally:
+                server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_add_to_calendar_angle_bracket_fallback() -> None:
+    """POST /add-to-calendar resolves the record even when the request
+    omits angle brackets that the stored message_id includes (or vice
+    versa)."""
+    message_id_stored = "<cal-test@example.com>"
+    message_id_posted = "cal-test@example.com"
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _setup_db_with_record(db_path, message_id=message_id_stored)
+
+        with mock.patch(
+            "robotsix_auto_mail.server._calendar_mixin.dispatch_calendar_request"
+        ) as mock_dispatch:
+            server, port = _start_test_server(db_path)
+            try:
+                status, body = _post_form(
+                    port,
+                    {"message_id": message_id_posted},
+                    path="/add-to-calendar",
+                )
+                assert status == 200, f"Expected 200, got {status}: {body}"
+                payload = json.loads(body)
+                assert payload == {"status": "dispatched"}
+                mock_dispatch.assert_called_once()
+            finally:
+                server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
 # ============================================================================
 # Unit tests — extract_dates_from_body
 # ============================================================================
