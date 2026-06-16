@@ -90,7 +90,12 @@ The board shows ingested mail in four columns — Inbox, Triaging, Done,
 Archive — with per-card Move dropdowns and a 30-second auto-refresh. Cards
 display triage badges showing the decision action (e.g. answer, archive)
 with the reason visible on hover. Click any card to view full details
-including the triage action, reason, and confidence. Cards marked "Needs reply"
+including the triage action, reason, and confidence. Cards with date/time references in the body also show an **Add to Calendar**
+button that dispatches a calendar event request to the `robotsix-calendar`
+agent over the agent-comm message bus. See
+[docs/connecting.md](docs/connecting.md#calendar-add-to-calendar) for details.
+
+Cards marked "Needs reply"
 have a **Draft reply** button that triggers LLM-driven draft generation — click it
 to have the LLM prepare a professional reply draft from the incoming message.
 When you send a reply, the original message re-enters the triage queue with the

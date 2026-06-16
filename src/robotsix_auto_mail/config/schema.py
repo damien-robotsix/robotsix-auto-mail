@@ -234,6 +234,15 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
         False,
     ),
+    _FieldSpec(
+        "calendar_enabled",
+        "MAIL_CALENDAR_ENABLED",
+        "calendar.enabled",
+        "bool",
+        True,
+        False,
+        False,
+    ),
     # OAuth2 / XOAUTH2 — optional; when oauth2_token is set, SASL XOAUTH2
     # is used instead of password-based login().
     _FieldSpec(
