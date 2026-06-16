@@ -578,10 +578,35 @@
    * ================================================================ */
 
   function addToCalendar(data) {
-    // Stub: fired when the user confirms the "Add to Calendar" dialog
-    // in the detail panel.  ``data`` is {messageId, subject, summary}.
-    // The dispatch logic (calendar-agent integration) hooks in here.
-    console.log("[add-to-calendar] confirmed:", data);
+    // POST the calendar request to the server.  The server dispatches
+    // the request to the robotsix-calendar agent over the agent-comm
+    // message bus and returns JSON (never a redirect).
+    var body = "message_id=" + encodeURIComponent(data.messageId) + fetchQs;
+    fetch("/add-to-calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body,
+    })
+      .then(function (r) {
+        // All responses from /add-to-calendar are JSON (including 4xx/5xx).
+        return r.json().then(function (payload) {
+          return { ok: r.ok, status: r.status, payload: payload };
+        });
+      })
+      .then(function (result) {
+        if (result.ok && result.payload.status === "dispatched") {
+          alert("Calendar request sent.");
+        } else {
+          var msg =
+            result.payload && result.payload.message
+              ? result.payload.message
+              : "Unknown error";
+          alert("Failed to send calendar request: " + msg);
+        }
+      })
+      .catch(function () {
+        alert("Failed to send calendar request.");
+      });
   }
 
   /* ==================================================================

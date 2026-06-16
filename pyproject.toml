@@ -129,6 +129,10 @@ module = "robotsix_agent_comm"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = "robotsix_agent_comm.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = "msal"
 ignore_missing_imports = true
 
