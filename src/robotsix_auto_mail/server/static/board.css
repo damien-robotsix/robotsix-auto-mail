@@ -373,6 +373,15 @@ button:hover { background: #1a4d7a; }
 .draft-reply-btn:hover { background: #1d4ed8; }
 .draft-reply-form { display: inline; }
 
+/* -- add-to-calendar button ---------------------------------------------- */
+.add-to-calendar-btn {
+  background: #7b1fa2; color: #fff; border: none;
+  padding: 0.25rem 0.6rem; border-radius: 4px;
+  cursor: pointer; font-size: 0.8rem;
+  margin-top: 0.3rem;
+}
+.add-to-calendar-btn:hover { background: #6a1b9a; }
+
 /* -- empty board placeholder --------------------------------------------- */
 .empty-board {
     grid-column: 1 / -1;
