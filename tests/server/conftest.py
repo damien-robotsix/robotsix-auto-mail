@@ -5,8 +5,11 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from collections.abc import Generator
 from typing import TYPE_CHECKING, cast
 from urllib.request import urlopen
+
+import pytest
 
 if TYPE_CHECKING:
     from http.client import HTTPResponse
@@ -17,6 +20,47 @@ from tests.conftest import _make_record
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
+
+
+@pytest.fixture
+def db_accounts() -> Generator[tuple[str, str, MailAccountsConfig]]:
+    """Yield (db_a, db_b, accounts) with two triage-seeded DBs; cleanup after."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup_with_triage(db_a, db_b)
+        yield db_a, db_b, accounts
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+@pytest.fixture
+def db_accounts_no_triage() -> Generator[tuple[str, str, MailAccountsConfig]]:
+    """Yield (db_a, db_b, accounts) with two DBs (no triage seeding); cleanup after."""
+    fd_a, db_a = tempfile.mkstemp(suffix=".db")
+    fd_b, db_b = tempfile.mkstemp(suffix=".db")
+    os.close(fd_a)
+    os.close(fd_b)
+    try:
+        accounts = _two_account_setup(db_a, db_b)
+        yield db_a, db_b, accounts
+    finally:
+        os.unlink(db_a)
+        os.unlink(db_b)
+
+
+@pytest.fixture
+def single_db() -> Generator[str]:
+    """Yield a single temp DB path; cleanup after."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        yield db_path
+    finally:
+        os.unlink(db_path)
 
 
 def _populate_db(db_path: str, inserts: list[dict[str, str]]) -> None:
