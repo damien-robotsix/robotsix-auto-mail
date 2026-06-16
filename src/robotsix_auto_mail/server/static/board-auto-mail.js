@@ -581,8 +581,8 @@
     // POST the calendar request to the server.  The server dispatches
     // the request to the robotsix-calendar agent over the agent-comm
     // message bus and returns JSON (never a redirect).
-    var body = "message_id=" + encodeURIComponent(data.messageId) + fetchQs;
-    fetch("/add-to-calendar", {
+    var body = "message_id=" + encodeURIComponent(data.messageId);
+    fetch("/add-to-calendar" + fetchQs, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body,

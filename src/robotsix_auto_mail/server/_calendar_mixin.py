@@ -47,6 +47,11 @@ class _CalendarMixin:
         # -- 1. Parse message_id --
         f = self._parse_request_body("message_id")
         message_id = f.get("message_id", "")
+        logger.debug(
+            "add-to-calendar: received message_id=%r (length=%d)",
+            message_id,
+            len(message_id),
+        )
 
         if not message_id:
             self._serve_json(
@@ -60,6 +65,10 @@ class _CalendarMixin:
         try:
             record = get_record_by_message_id(conn, message_id)
             if record is None:
+                logger.warning(
+                    "add-to-calendar: record not found for message_id=%r",
+                    message_id,
+                )
                 self._serve_json(
                     {"status": "error", "message": "Not found"},
                     status=404,

@@ -116,14 +116,29 @@ def get_record_by_message_id(
 ) -> MailRecord | None:
     """Return the ``MailRecord`` for *message_id*, or ``None`` if not found.
 
+    Tries the exact *message_id* first.  If no row matches, strips
+    surrounding angle brackets (``<`` / ``>``) and retries.  If that
+    also yields no match, adds angle brackets and retries one last
+    time.  This makes the lookup resilient to callers that may or may
+    not include the brackets.
+
     Read-only — does **not** call ``conn.commit()``.
     """
-    cur = conn.execute("SELECT * FROM mail_records WHERE message_id = ?", (message_id,))
-    row = cur.fetchone()
-    if row is None:
-        return None
-    col_names = [desc[0] for desc in cur.description]
-    return row_to_mailrecord(row, col_names)
+    candidates = [message_id]
+    stripped = message_id.strip()
+    if stripped.startswith("<") and stripped.endswith(">"):
+        candidates.append(stripped[1:-1])
+    else:
+        candidates.append(f"<{stripped}>")
+    for candidate in candidates:
+        cur = conn.execute(
+            "SELECT * FROM mail_records WHERE message_id = ?", (candidate,)
+        )
+        row = cur.fetchone()
+        if row is not None:
+            col_names = [desc[0] for desc in cur.description]
+            return row_to_mailrecord(row, col_names)
+    return None
 
 
 def record_exists(conn: sqlite3.Connection, message_id: str) -> bool:
