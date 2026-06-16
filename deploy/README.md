@@ -44,8 +44,14 @@ cd /opt/robotsix-auto-mail
 
 ```sh
 cp .env.example .env
-$EDITOR .env          # set LLM_API_KEY if not using config/llm.api_key
+$EDITOR .env
 ```
+
+**Set `LLM_API_KEY` in `.env`** even if you also put `llm.api_key` in the
+config file. The compose file passes `LLM_API_KEY` into the container, and an
+empty value overrides the config key field — so leaving it blank disables the
+LLM. If you prefer to keep the key only in `config/mail.local.yaml`, copy it
+into `.env` as well so the two agree.
 
 ### 3. Mail configuration
 
@@ -60,6 +66,19 @@ $EDITOR config/mail.local.yaml
 
 # Option B — auto-detect from your address (needs LLM_API_KEY in .env):
 docker compose run --rm ingester detect damien.robotsix@gmail.com
+```
+
+### 3a. Fix bind-mount ownership
+
+The container runs as UID 1000 (`mailbot`), but files you create on the host
+are owned by your login user. Give UID 1000 ownership of the config file and
+the data/log directories, or the container cannot read its config (the
+entrypoint reports `Config file not found`) or write the database:
+
+```sh
+sudo chown 1000:1000 config/mail.local.yaml
+sudo chown -R 1000:1000 data logs
+chmod 600 config/mail.local.yaml      # contains credentials
 ```
 
 Verify connectivity before starting the daemons:
@@ -97,7 +116,9 @@ internet — that's the next step.
 
 ## nginx + TLS + basic auth
 
-The board has no authentication, so the proxy must enforce it.
+The board has no authentication, so the proxy must enforce it. This uses the
+certbot `--nginx` installer to manage TLS (the same pattern as the host's
+other vhosts). DNS for `mail.robotsix.net` must already point at the server.
 
 ### 1. Basic-auth credentials
 
@@ -107,26 +128,57 @@ sudo htpasswd -c /etc/nginx/htpasswd/mail.robotsix.net damien
 # add more users without -c:  sudo htpasswd /etc/nginx/htpasswd/mail.robotsix.net someone
 ```
 
-### 2. TLS certificate
+### 2. Install the bootstrap vhost (HTTP only, no auth yet)
 
-Point `mail.robotsix.net` DNS at the server first, then obtain a cert with
-your existing certbot:
-
-```sh
-sudo certbot certonly --nginx -d mail.robotsix.net
-```
-
-(`certonly` so certbot does not rewrite the vhost below.)
-
-### 3. Install the vhost
+`nginx/mail.robotsix.net.conf` is an HTTP-only reverse proxy. Install it first
+so certbot can solve the ACME challenge over port 80 — do **not** add basic
+auth yet, or the challenge can be blocked.
 
 ```sh
 sudo cp nginx/mail.robotsix.net.conf /etc/nginx/sites-available/mail.robotsix.net
-sudo ln -s ../sites-available/mail.robotsix.net /etc/nginx/sites-enabled/
+sudo ln -sf ../sites-available/mail.robotsix.net /etc/nginx/sites-enabled/mail.robotsix.net
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Browse to `https://mail.robotsix.net/board` and authenticate.
+### 3. Obtain the certificate (certbot injects TLS + the HTTPS redirect)
+
+```sh
+sudo certbot --nginx -d mail.robotsix.net --non-interactive --redirect
+```
+
+certbot rewrites the vhost: the original block becomes the `listen 443 ssl`
+server, and a new port-80 block 301-redirects to HTTPS.
+
+### 4. Add basic auth to the HTTPS block
+
+Add it to the 443 block only — leaving port 80 (now a pure redirect) auth-free
+so future certbot renewals are never blocked:
+
+```sh
+sudo python3 - <<'PY'
+p = "/etc/nginx/sites-available/mail.robotsix.net"
+s = open(p).read()
+if "auth_basic" not in s:
+    s = s.replace(
+        "    location / {\n",
+        '    auth_basic           "robotsix-auto-mail";\n'
+        "    auth_basic_user_file /etc/nginx/htpasswd/mail.robotsix.net;\n\n"
+        "    location / {\n",
+        1,
+    )
+    open(p, "w").write(s)
+PY
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 5. Verify
+
+```sh
+curl -s -o /dev/null -w "%{http_code}\n" https://mail.robotsix.net/board          # 401
+curl -s -o /dev/null -w "%{http_code}\n" -u user:pass https://mail.robotsix.net/board  # 200
+```
+
+Then browse to `https://mail.robotsix.net/board` and authenticate.
 
 ---
 

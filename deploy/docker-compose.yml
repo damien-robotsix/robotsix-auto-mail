@@ -72,6 +72,11 @@ services:
       WATCHTOWER_POLL_INTERVAL: "300"
       # Update services one at a time instead of stopping all, then starting all.
       WATCHTOWER_ROLLING_RESTART: "true"
+      # Docker Engine 29+ rejects API clients older than 1.44; the version
+      # bundled in containrrr/watchtower is older, so pin the negotiated API
+      # version (otherwise watchtower crash-loops with "client version ... is
+      # too old").
+      DOCKER_API_VERSION: "1.44"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # If the GHCR package is PRIVATE, Watchtower needs pull credentials.
