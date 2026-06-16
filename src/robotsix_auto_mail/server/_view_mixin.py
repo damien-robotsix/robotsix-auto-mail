@@ -200,8 +200,16 @@ class _BoardViewMixin:
         Reads the ``archive_structure`` watermark, strips the effective-root
         prefix, translates the IMAP hierarchy delimiter to ``/``, and returns
         the sorted list of relative subfolder paths.
+
+        Short-circuits in aggregate (``?account=__all__``) mode — the JS
+        already suppresses the fetch, but a direct ``curl`` must not leak
+        data from whichever account's DB ``self.db_path`` happens to point at.
         """
         from robotsix_auto_mail.db import get_watermark, init_db
+
+        if self._aggregate:
+            self._serve_json({"delimiter": "/", "folders": []})
+            return
 
         archive_root = (
             self.mail_config.archive_root

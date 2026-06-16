@@ -202,6 +202,7 @@
     // guard defensively.
     if (dataAccountJs) {
       folderCache = [];
+      hideBrowseButtons();
       return;
     }
     fetch("/archive-folders" + fetchQs)

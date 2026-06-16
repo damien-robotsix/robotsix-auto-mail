@@ -327,7 +327,7 @@ class MailBoardAdapter:
                 if self.archive_folders and not self._record_accounts:
                     archive_html += (
                         '<button type="button" class="archive-browse-btn"'
-                        f' data-message-id="{escaped_mid}">'
+                        f' data-message-id="{quoted_mid}">'
                         "\U0001f4c1 Browse</button>"
                     )
                 archive_html += (
