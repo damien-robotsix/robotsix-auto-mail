@@ -194,6 +194,42 @@ class _BoardViewMixin:
             }
         )
 
+    def _serve_archive_folders(self) -> None:
+        """Serve GET /archive-folders — JSON with delimiter + flat subfolder list.
+
+        Reads the ``archive_structure`` watermark, strips the effective-root
+        prefix, translates the IMAP hierarchy delimiter to ``/``, and returns
+        the sorted list of relative subfolder paths.
+        """
+        from robotsix_auto_mail.db import get_watermark, init_db
+
+        archive_root = (
+            self.mail_config.archive_root
+            if self.mail_config is not None
+            else DEFAULT_ARCHIVE_ROOT
+        )
+
+        conn = init_db(self.db_path, skip_migrations=True)
+        try:
+            archive_raw = get_watermark(conn, "archive_structure")
+            existing_folders, delimiter, effective_root = _parse_archive_structure(
+                archive_raw, archive_root
+            )
+        finally:
+            conn.close()
+
+        # Strip effective-root prefix and translate IMAP delimiter to "/".
+        _root_prefix = f"{effective_root}{delimiter}"
+        folders: list[str] = []
+        for name in sorted(existing_folders):
+            if name.startswith(_root_prefix) and name != effective_root:
+                rel = name[len(_root_prefix) :]
+                if delimiter != "/":
+                    rel = rel.replace(delimiter, "/")
+                folders.append(rel)
+
+        self._serve_json({"delimiter": "/", "folders": folders})
+
     def _serve_email_status(self) -> None:
         """Serve GET /email/{message_id}/status — return triage action as text.
 

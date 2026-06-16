@@ -97,6 +97,10 @@ class BoardHandler(
             (lambda p: p == "/board", self._serve_board),
             (lambda p: p == "/board-content", self._serve_board_content),
             (lambda p: p == "/healthz", self._serve_healthz),
+            (
+                lambda p: p == "/archive-folders",
+                self._serve_archive_folders,
+            ),
             (lambda p: p.startswith("/static/"), self._serve_static),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
