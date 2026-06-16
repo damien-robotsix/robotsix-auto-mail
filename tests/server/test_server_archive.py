@@ -1123,44 +1123,98 @@ def test_archive_proposal_post_missing_message_id_400() -> None:
 
 def test_archive_proposal_post_dotdot_segment_400() -> None:
     """POST /archive-proposal with '..' path segment returns 400."""
-    server, port = _start_test_server(":memory:")
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
     try:
-        resp = _post_to_path(
-            port,
-            "/archive-proposal",
-            {"message_id": "abc", "subfolder": "Lists/../etc"},
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "dotdot-test",
+                    "sender": "a@b.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
         )
-        assert resp.status == 400
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/archive-proposal",
+                {"message_id": "dotdot-test", "subfolder": "Lists/../etc"},
+            )
+            assert resp.status == 400
+        finally:
+            server.shutdown()
     finally:
-        server.shutdown()
+        os.unlink(db_path)
 
 
 def test_archive_proposal_post_absolute_path_400() -> None:
     """POST /archive-proposal with absolute path returns 400."""
-    server, port = _start_test_server(":memory:")
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
     try:
-        resp = _post_to_path(
-            port,
-            "/archive-proposal",
-            {"message_id": "abc", "subfolder": "/etc/passwd"},
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "abs-path-test",
+                    "sender": "a@b.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
         )
-        assert resp.status == 400
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/archive-proposal",
+                {"message_id": "abs-path-test", "subfolder": "/etc/passwd"},
+            )
+            assert resp.status == 400
+        finally:
+            server.shutdown()
     finally:
-        server.shutdown()
+        os.unlink(db_path)
 
 
 def test_archive_proposal_post_overly_long_subfolder_400() -> None:
     """POST /archive-proposal with subfolder exceeding 256 chars returns 400."""
-    server, port = _start_test_server(":memory:")
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
     try:
-        resp = _post_to_path(
-            port,
-            "/archive-proposal",
-            {"message_id": "abc", "subfolder": "x" * 257},
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "long-sub-test",
+                    "sender": "a@b.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "body",
+                    "status": "to_read",
+                },
+            ],
         )
-        assert resp.status == 400
+        server, port = _start_test_server(db_path)
+        try:
+            resp = _post_to_path(
+                port,
+                "/archive-proposal",
+                {"message_id": "long-sub-test", "subfolder": "x" * 257},
+            )
+            assert resp.status == 400
+        finally:
+            server.shutdown()
     finally:
-        server.shutdown()
+        os.unlink(db_path)
 
 
 # ---------------------------------------------------------------------------
