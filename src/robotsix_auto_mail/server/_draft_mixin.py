@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, quote
 
 from robotsix_auto_mail.db import MailRecord
@@ -50,55 +50,32 @@ class _DraftMixin:
 
     def _handle_save_draft(self) -> None:
         """Process POST /save-draft — persist draft text and move to DRAFT_READY."""
-        from robotsix_auto_mail.db import (
-            get_record_by_message_id,
-            init_db,
-            update_draft_text,
-        )
+        from robotsix_auto_mail.db import update_draft_text
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
+        def save_draft_action(
+            conn: Any, record: MailRecord, redirect_to: str, draft_text: str
+        ) -> bool:
+            update_draft_text(conn, record.message_id, draft_text)
 
-        message_id = (fields.get("message_id") or [""])[0].strip()
-        draft_text = (fields.get("draft_text") or [""])[0]
-        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
-
-        if not message_id:
-            self._bad_request("Missing message_id")
-            return
-
-        # Verify the record exists (read-only check).
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            if get_record_by_message_id(conn, message_id) is None:
-                self._not_found()
-                return
-        finally:
-            conn.close()
-
-        # Persist draft text and move to DRAFT_READY.
-        conn = init_db(self.db_path)
-        try:
-            update_draft_text(conn, message_id, draft_text)
-
-            current = get_triage_decision(conn, message_id)
+            current = get_triage_decision(conn, record.message_id)
             if current is None or current.action != "DRAFT_READY":
                 set_triage_decision(
                     conn,
-                    message_id,
+                    record.message_id,
                     "DRAFT_READY",
                     source="user",
                     reason="draft saved",
                 )
-                record_human_decision(conn, message_id, "DRAFT_READY")
-        finally:
-            conn.close()
+                record_human_decision(conn, record.message_id, "DRAFT_READY")
+            return True
 
-        if redirect_to and _is_safe_redirect_path(redirect_to):
-            self._redirect(redirect_to, code=302)
-        else:
-            self._redirect("/board", code=302)
+        self._handle_post_action(
+            "message_id",
+            "draft_text",
+            "redirect_to",
+            no_strip=frozenset({"draft_text"}),
+            action=save_draft_action,
+        )
 
     def _handle_send_draft(self) -> None:
         """Process POST /send-draft — send the saved draft via SMTP, then
@@ -110,46 +87,25 @@ class _DraftMixin:
         cleared so the email re-enters the untriaged pool and the triage
         agent owns the post-answer disposition.
         """
-        from robotsix_auto_mail.db import (
-            get_record_by_message_id,
-            init_db,
-            update_sent_reply_text,
-        )
+        from robotsix_auto_mail.db import update_sent_reply_text
         from robotsix_auto_mail.triage import delete_triage_decision
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
+        def send_draft_action(
+            conn: Any, record: MailRecord, redirect_to: str, reply_mode: str
+        ) -> bool:
+            if reply_mode not in ("reply", "reply_all"):
+                self._bad_request(f"Invalid reply_mode: {reply_mode!r}")
+                return False
 
-        message_id = (fields.get("message_id") or [""])[0].strip()
-        reply_mode = (fields.get("reply_mode") or [""])[0].strip()
-        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
-
-        if not message_id:
-            self._bad_request("Missing message_id")
-            return
-
-        # Validate reply mode up-front (cheap, no DB access).
-        if reply_mode not in ("reply", "reply_all"):
-            self._bad_request(f"Invalid reply_mode: {reply_mode!r}")
-            return
-
-        # SMTP must be configured to send anything.
-        if self.mail_config is None or not self.mail_config.smtp_host:
-            self._bad_request("SMTP is not configured")
-            return
-        mail_config = self.mail_config
-
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            record = get_record_by_message_id(conn, message_id)
-            if record is None:
-                self._not_found()
-                return
+            # SMTP must be configured to send anything.
+            if self.mail_config is None or not self.mail_config.smtp_host:
+                self._bad_request("SMTP is not configured")
+                return False
+            mail_config = self.mail_config
 
             if not record.draft_text.strip():
                 self._bad_request("Draft is empty; nothing to send")
-                return
+                return False
 
             # -- compute recipients ------------------------------------
             from_addr = mail_config.username
@@ -159,7 +115,7 @@ class _DraftMixin:
             # (a self-sent message that slipped through triage).
             if to_addr.strip().lower() == from_addr.strip().lower():
                 self._bad_request("Refusing to send a reply to your own address")
-                return
+                return False
 
             cc = (
                 _compute_reply_all_cc(record, from_addr)
@@ -191,13 +147,14 @@ class _DraftMixin:
             #    untriaged pool (no archive move, no record deletion) ----
             update_sent_reply_text(conn, record.message_id, record.draft_text)
             delete_triage_decision(conn, record.message_id)
-        finally:
-            conn.close()
+            return True
 
-        if redirect_to and _is_safe_redirect_path(redirect_to):
-            self._redirect(redirect_to, code=302)
-        else:
-            self._redirect("/board", code=302)
+        self._handle_post_action(
+            "message_id",
+            "reply_mode",
+            "redirect_to",
+            action=send_draft_action,
+        )
 
     def _handle_generate_draft(self) -> None:
         """Process POST /generate-draft — LLM-generate a draft reply.

@@ -459,19 +459,39 @@ def test_move_missing_message_id_returns_400() -> None:
     try:
         status, body = _post_form(port, {"triage_action": "TO_ARCHIVE"})
         assert status == 400
-        assert "Missing message_id or triage_action" in body
+        assert "Missing message_id" in body
     finally:
         server.shutdown()
 
 
 def test_move_missing_status_returns_400() -> None:
-    server, port = _start_test_server(":memory:")
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
     try:
-        status, body = _post_form(port, {"message_id": "anything"})
-        assert status == 400
-        assert "Missing message_id or triage_action" in body
+        _populate_db(
+            db_path,
+            [
+                {
+                    "message_id": "missing-status",
+                    "sender": "x@x.com",
+                    "subject": "Test",
+                    "date": "2025-06-01T12:00:00",
+                    "body_plain": "Hello",
+                    "status": "to_read",
+                },
+            ],
+        )
+        server, port = _start_test_server(db_path)
+        try:
+            status, body = _post_form(
+                port, {"message_id": "missing-status"}
+            )
+            assert status == 400
+            assert "Missing triage_action" in body
+        finally:
+            server.shutdown()
     finally:
-        server.shutdown()
+        os.unlink(db_path)
 
 
 def test_move_empty_message_id_returns_400() -> None:
@@ -482,7 +502,7 @@ def test_move_empty_message_id_returns_400() -> None:
             {"message_id": "  ", "triage_action": "TO_ARCHIVE"},
         )
         assert status == 400
-        assert "Missing message_id or triage_action" in body
+        assert "Missing message_id" in body
     finally:
         server.shutdown()
 

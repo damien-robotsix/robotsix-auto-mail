@@ -49,74 +49,29 @@ class _BoardActionMixin:
             for field in fields
         }
 
-    def _handle_move(self) -> None:
-        """Process POST /move — update a card's triage decision and redirect."""
+    def _handle_post_action(
+        self,
+        *fields: str,
+        action: Any,
+        no_strip: frozenset[str] = frozenset(),
+    ) -> None:
+        """Shared POST handler skeleton.
+
+        1. Parses the request body for the declared *fields*.
+        2. Validates ``message_id`` (returns 400 if missing).
+        3. Opens a read-only DB connection, looks up the record,
+           and returns 404 if absent.
+        4. Delegates to *action(conn, record, redirect_to,
+           \\*\\*extra_fields)* for the handler-specific logic.
+           When *action* returns ``False`` the redirect is skipped
+           (the callback already sent a response).
+        5. Closes the connection and performs a safe redirect.
+        """
         from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
-        f = self._parse_request_body("message_id", "triage_action", "redirect_to")
-        message_id = f["message_id"]
-        triage_action = f["triage_action"]
-        redirect_to = f["redirect_to"]
-
-        if not message_id or not triage_action:
-            self._bad_request("Missing message_id or triage_action")
-            return
-
-        if triage_action not in VALID_TRIAGE_ACTIONS:
-            self._bad_request(f"Invalid triage action: {triage_action!r}")
-            return
-
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            # Verify the record exists before upserting a triage decision
-            # (foreign key would reject it anyway, but we want a clean 404).
-            record = get_record_by_message_id(conn, message_id)
-            if record is None:
-                self._not_found()
-                return
-            set_triage_decision(
-                conn,
-                message_id,
-                triage_action,
-                source="user",
-                reason=f"moved to {triage_action}",
-            )
-            record_human_decision(conn, message_id, triage_action)
-
-            if triage_action == "TO_ARCHIVE":
-                try:
-                    if record is not None and self.mail_config is not None:
-                        propose_archive_subfolder_llm(
-                            conn,
-                            record,
-                            self.mail_config.llm_api_key,
-                            provider=(
-                                self.mail_config.llm_provider
-                                if self.mail_config
-                                else None
-                            ),
-                        )
-                except Exception:  # noqa: S110  # nosec B110
-                    pass  # Non-fatal: board falls back to deterministic proposal
-        finally:
-            conn.close()
-
-        if redirect_to and _is_safe_redirect_path(redirect_to):
-            self._redirect(redirect_to, code=302)
-        else:
-            self._redirect("/board", code=302)
-
-    def _handle_delete(self) -> None:
-        """Process POST /delete — delete mail from IMAP mailbox and local DB."""
-        from robotsix_auto_mail.db import (
-            delete_record_by_message_id,
-            get_record_by_message_id,
-            init_db,
-        )
-
-        f = self._parse_request_body("message_id", "redirect_to")
-        message_id = f["message_id"]
-        redirect_to = f["redirect_to"]
+        f = self._parse_request_body(*fields, no_strip=no_strip)
+        message_id = f.get("message_id", "")
+        redirect_to = f.get("redirect_to", "")
 
         if not message_id:
             self._bad_request("Missing message_id")
@@ -129,6 +84,70 @@ class _BoardActionMixin:
                 self._not_found()
                 return
 
+            extra = {
+                k: v for k, v in f.items() if k not in ("message_id", "redirect_to")
+            }
+            if action(conn, record, redirect_to, **extra) is False:
+                return
+        finally:
+            conn.close()
+
+        if redirect_to and _is_safe_redirect_path(redirect_to):
+            self._redirect(redirect_to, code=302)
+        else:
+            self._redirect("/board", code=302)
+
+    def _handle_move(self) -> None:
+        """Process POST /move — update a card's triage decision and redirect."""
+
+        def move_action(
+            conn: Any, record: MailRecord, redirect_to: str, triage_action: str
+        ) -> bool:
+            if not triage_action:
+                self._bad_request("Missing triage_action")
+                return False
+            if triage_action not in VALID_TRIAGE_ACTIONS:
+                self._bad_request(f"Invalid triage action: {triage_action!r}")
+                return False
+
+            set_triage_decision(
+                conn,
+                record.message_id,
+                triage_action,
+                source="user",
+                reason=f"moved to {triage_action}",
+            )
+            record_human_decision(conn, record.message_id, triage_action)
+
+            if triage_action == "TO_ARCHIVE":
+                try:
+                    if self.mail_config is not None:
+                        propose_archive_subfolder_llm(
+                            conn,
+                            record,
+                            self.mail_config.llm_api_key,
+                            provider=(
+                                self.mail_config.llm_provider
+                                if self.mail_config
+                                else None
+                            ),
+                        )
+                except Exception:  # noqa: S110  # nosec B110
+                    pass  # Non-fatal: board falls back to deterministic proposal
+            return True
+
+        self._handle_post_action(
+            "message_id",
+            "triage_action",
+            "redirect_to",
+            action=move_action,
+        )
+
+    def _handle_delete(self) -> None:
+        """Process POST /delete — delete mail from IMAP mailbox and local DB."""
+        from robotsix_auto_mail.db import delete_record_by_message_id
+
+        def delete_action(conn: Any, record: MailRecord, redirect_to: str) -> bool:
             # -- IMAP deletion (when config and UID are both available) --
             if self.mail_config is not None and record.imap_uid is not None:
                 from robotsix_auto_mail.imap import (
@@ -158,7 +177,7 @@ class _BoardActionMixin:
                                 new_folder, new_uid = cross
                                 update_record_source(
                                     conn,
-                                    message_id,
+                                    record.message_id,
                                     source_folder=new_folder,
                                     imap_uid=new_uid,
                                 )
@@ -168,23 +187,23 @@ class _BoardActionMixin:
                             f"IMAP cross-folder resolution failed: {exc}",
                             status=502,
                         )
-                        return
+                        return False
                 except (ImapError, OSError) as exc:
                     self._send_response(
                         f"IMAP deletion failed: {exc}",
                         status=502,
                     )
-                    return
+                    return False
 
             # -- local DB deletion --
-            delete_record_by_message_id(conn, message_id)
-        finally:
-            conn.close()
+            delete_record_by_message_id(conn, record.message_id)
+            return True
 
-        if redirect_to and _is_safe_redirect_path(redirect_to):
-            self._redirect(redirect_to, code=302)
-        else:
-            self._redirect("/board", code=302)
+        self._handle_post_action(
+            "message_id",
+            "redirect_to",
+            action=delete_action,
+        )
 
     def _imap_archive_move(
         self,
@@ -368,69 +387,30 @@ class _BoardActionMixin:
         """Process POST /archive — move mail to archive folder via IMAP
         and remove it from the local database.
         """
-        from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
-        f = self._parse_request_body("message_id", "redirect_to")
-        message_id = f["message_id"]
-        redirect_to = f["redirect_to"]
+        def archive_action(conn: Any, record: MailRecord, redirect_to: str) -> bool:
+            return self._archive_and_delete(conn, record)
 
-        if not message_id:
-            self._bad_request("Missing message_id")
-            return
-
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            record = get_record_by_message_id(conn, message_id)
-            if record is None:
-                self._not_found()
-                return
-
-            if not self._archive_and_delete(conn, record):
-                return
-        finally:
-            conn.close()
-
-        if redirect_to and _is_safe_redirect_path(redirect_to):
-            self._redirect(redirect_to, code=302)
-        else:
-            self._redirect("/board", code=302)
+        self._handle_post_action(
+            "message_id",
+            "redirect_to",
+            action=archive_action,
+        )
 
     def _handle_save_notes(self) -> None:
         """Process POST /save-notes — persist notes for a mail record."""
-        from robotsix_auto_mail.db import (
-            get_record_by_message_id,
-            init_db,
-            update_notes,
+        from robotsix_auto_mail.db import update_notes
+
+        def save_notes_action(
+            conn: Any, record: MailRecord, redirect_to: str, notes: str
+        ) -> bool:
+            update_notes(conn, record.message_id, notes)
+            return True
+
+        self._handle_post_action(
+            "message_id",
+            "redirect_to",
+            "notes",
+            no_strip=frozenset({"notes"}),
+            action=save_notes_action,
         )
-
-        f = self._parse_request_body(
-            "message_id", "redirect_to", "notes", no_strip=frozenset({"notes"})
-        )
-        message_id = f["message_id"]
-        redirect_to = f["redirect_to"]
-        notes = f["notes"]
-
-        if not message_id:
-            self._bad_request("Missing message_id")
-            return
-
-        # Verify the record exists (read-only check).
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            if get_record_by_message_id(conn, message_id) is None:
-                self._not_found()
-                return
-        finally:
-            conn.close()
-
-        # Persist the notes.
-        conn = init_db(self.db_path)
-        try:
-            update_notes(conn, message_id, notes)
-        finally:
-            conn.close()
-
-        if redirect_to and _is_safe_redirect_path(redirect_to):
-            self._redirect(redirect_to, code=302)
-        else:
-            self._redirect("/board", code=302)

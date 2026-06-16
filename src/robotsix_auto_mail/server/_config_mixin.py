@@ -4,10 +4,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from urllib.parse import parse_qs
+from typing import TYPE_CHECKING, Any
 
-from robotsix_auto_mail.server._constants import _is_safe_redirect_path
 from robotsix_auto_mail.triage import (
     record_archive_folder_choice,
     set_archive_subfolder_override,
@@ -66,47 +64,36 @@ class _ConfigMixin:
 
     def _handle_archive_proposal(self) -> None:
         """Process POST /archive-proposal — store a user override and redirect."""
-        from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
+        def archive_proposal_action(
+            conn: Any, record: Any, redirect_to: str, subfolder: str
+        ) -> bool:
+            if subfolder:
+                if subfolder.startswith("/"):
+                    self._bad_request("Subfolder must not be an absolute path")
+                    return False
+                if any(segment == ".." for segment in subfolder.split("/")):
+                    self._bad_request("Subfolder must not contain '..' segments")
+                    return False
+                if len(subfolder) > 256:
+                    self._bad_request(
+                        "Subfolder exceeds maximum length of 256 characters"
+                    )
+                    return False
 
-        message_id = (fields.get("message_id") or [""])[0].strip()
-        subfolder = (fields.get("subfolder") or [""])[0].strip()
-        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
-
-        if not message_id:
-            self._bad_request("Missing message_id")
-            return
-
-        if subfolder:
-            if subfolder.startswith("/"):
-                self._bad_request("Subfolder must not be an absolute path")
-                return
-            if any(segment == ".." for segment in subfolder.split("/")):
-                self._bad_request("Subfolder must not contain '..' segments")
-                return
-            if len(subfolder) > 256:
-                self._bad_request("Subfolder exceeds maximum length of 256 characters")
-                return
-
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            set_archive_subfolder_override(conn, message_id, subfolder)
+            set_archive_subfolder_override(conn, record.message_id, subfolder)
             # -- record the human-confirmed folder choice (best-effort);
             #    an empty subfolder (clearing the override) records nothing --
             if subfolder:
                 try:
-                    record = get_record_by_message_id(conn, message_id)
-                    if record is not None:
-                        record_archive_folder_choice(conn, record, subfolder)
+                    record_archive_folder_choice(conn, record, subfolder)
                 except Exception:  # noqa: S110  # nosec B110
                     pass  # Non-fatal: memory is advisory only
-        finally:
-            conn.close()
+            return True
 
-        if redirect_to and _is_safe_redirect_path(redirect_to):
-            self._redirect(redirect_to, code=302)
-        else:
-            self._redirect("/board", code=302)
+        self._handle_post_action(
+            "message_id",
+            "subfolder",
+            "redirect_to",
+            action=archive_proposal_action,
+        )
