@@ -449,7 +449,7 @@ def _render_calendar_feedback(record: MailRecord) -> str:
         return ""
 
     if event_ref.startswith("error: "):
-        error_msg = event_ref[len("error: "):] or "Unknown error"
+        error_msg = event_ref[len("error: ") :] or "Unknown error"
         return (
             ' <span class="calendar-feedback calendar-error"'
             f' title="{html.escape(error_msg, quote=True)}">'

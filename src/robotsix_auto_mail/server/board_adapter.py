@@ -256,7 +256,7 @@ class MailBoardAdapter:
         if card.calendar_event_ref:
             event_ref = card.calendar_event_ref
             if event_ref.startswith("error: "):
-                error_msg = event_ref[len("error: "):]
+                error_msg = event_ref[len("error: ") :]
                 calendar_indicator = (
                     '<span class="card-calendar-indicator card-calendar-error"'
                     f' title="{html.escape(error_msg, quote=True)}">'

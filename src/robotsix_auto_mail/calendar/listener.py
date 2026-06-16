@@ -35,9 +35,7 @@ def start_calendar_listener(db_path: str) -> Handle | None:
         from robotsix_agent_comm.sdk import Agent
         from robotsix_agent_comm.transport import Registry
     except ImportError:
-        logger.warning(
-            "robotsix_agent_comm not installed; calendar listener disabled."
-        )
+        logger.warning("robotsix_agent_comm not installed; calendar listener disabled.")
         return None
 
     registry = Registry()
