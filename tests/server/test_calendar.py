@@ -13,6 +13,8 @@ from tests.server.conftest import _populate_db, _post_form, _start_test_server
 from robotsix_auto_mail.calendar import (
     CalendarDispatchError,
     CalendarEventRequest,
+    extract_calendar_summary,
+    extract_dates_from_body,
 )
 
 # ---------------------------------------------------------------------------
@@ -390,3 +392,132 @@ def test_add_to_calendar_unexpected_error() -> None:
                 server.shutdown()
     finally:
         os.unlink(db_path)
+
+
+# ============================================================================
+# Unit tests — extract_dates_from_body
+# ============================================================================
+
+
+def test_extract_dates_iso() -> None:
+    result = extract_dates_from_body("2025-06-15")
+    assert result == ["2025-06-15"]
+
+
+def test_extract_dates_us_slash() -> None:
+    result = extract_dates_from_body("6/15/2025")
+    assert result == ["6/15/2025"]
+
+
+def test_extract_dates_dotted() -> None:
+    result = extract_dates_from_body("15.06.2025")
+    assert result == ["15.06.2025"]
+
+
+def test_extract_dates_month_name() -> None:
+    result = extract_dates_from_body("Jun 15")
+    assert result == ["Jun 15"]
+
+
+def test_extract_dates_month_full() -> None:
+    result = extract_dates_from_body("December 25")
+    assert result == ["December 25"]
+
+
+def test_extract_dates_time_12h() -> None:
+    result = extract_dates_from_body("3:00 PM")
+    assert result == ["3:00 PM"]
+
+
+def test_extract_dates_time_24h() -> None:
+    result = extract_dates_from_body("14:30")
+    assert result == ["14:30"]
+
+
+def test_extract_dates_multiple() -> None:
+    result = extract_dates_from_body("2025-06-15 at 3:00 PM and 6/15/2025")
+    assert result == ["2025-06-15", "3:00 PM", "6/15/2025"]
+
+
+def test_extract_dates_empty_string() -> None:
+    result = extract_dates_from_body("")
+    assert result == []
+
+
+def test_extract_dates_no_match() -> None:
+    result = extract_dates_from_body("No dates here")
+    assert result == []
+
+
+def test_extract_dates_caps_at_10() -> None:
+    # 15 ISO dates, only 10 should be returned.
+    body = " ".join("2025-06-{:02d}".format(i) for i in range(1, 16))
+    result = extract_dates_from_body(body)
+    assert len(result) == 10
+
+
+def test_extract_dates_deduplicates() -> None:
+    result = extract_dates_from_body("2025-06-15 2025-06-15")
+    assert result == ["2025-06-15"]
+
+
+# ============================================================================
+# Unit tests — extract_calendar_summary
+# ============================================================================
+
+
+def test_summary_includes_subject() -> None:
+    from tests.conftest import _make_record
+
+    record = _make_record(subject="Lunch meeting")
+    result = extract_calendar_summary(record)
+    assert "Subject: Lunch meeting" in result
+
+
+def test_summary_includes_formatted_date() -> None:
+    from tests.conftest import _make_record
+
+    record = _make_record(date="2025-06-15T12:00:00")
+    result = extract_calendar_summary(record)
+    assert "Email date:" in result
+    assert "2025-06-15" in result
+
+
+def test_summary_includes_extracted_dates() -> None:
+    from tests.conftest import _make_record
+
+    record = _make_record(body_plain="Meet on 2025-06-20")
+    result = extract_calendar_summary(record)
+    assert "Date/time references in body: 2025-06-20" in result
+
+
+def test_summary_empty_subject_shows_placeholder() -> None:
+    from tests.conftest import _make_record
+
+    record = _make_record(subject="")
+    result = extract_calendar_summary(record)
+    assert "Subject: (no subject)" in result
+
+
+def test_summary_whitespace_only_subject() -> None:
+    from tests.conftest import _make_record
+
+    record = _make_record(subject="   ")
+    result = extract_calendar_summary(record)
+    assert "Subject: (no subject)" in result
+
+
+def test_summary_no_body_omits_date_references() -> None:
+    from tests.conftest import _make_record
+
+    record = _make_record(body_plain="", body_html="")
+    result = extract_calendar_summary(record)
+    assert "Date/time references" not in result
+
+
+def test_summary_no_dates_in_body_omits_date_references() -> None:
+    from tests.conftest import _make_record
+
+    record = _make_record(body_plain="Hello world")
+    result = extract_calendar_summary(record)
+    assert "Date/time references" not in result

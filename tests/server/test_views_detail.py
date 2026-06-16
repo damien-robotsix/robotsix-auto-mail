@@ -7,6 +7,7 @@ from unittest import mock
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server.views.detail import (
     _build_detail_html,
+    _render_add_to_calendar_button,
     _render_attachments,
     _render_body,
     _render_draft_section,
@@ -75,6 +76,7 @@ class TestBuildDetailHtml:
         assert "<!DOCTYPE html>" in result
         assert "<title>Mail: Test Subject</title>" in result
         assert "sender@example.com" in result
+        assert "add-to-calendar-btn" in result
         assert "← Back to board" in result
         mock_init.assert_called_once_with(":memory:", skip_migrations=True)
         mock_get.assert_called_once_with(fake_conn, record.message_id)
@@ -553,3 +555,98 @@ class TestRenderTriageSection:
         assert "TO_DELETE" in result
         assert "Spam detected" in result
         assert "triage-reason" in result
+
+
+# ---------------------------------------------------------------------------
+# _render_add_to_calendar_button
+# ---------------------------------------------------------------------------
+
+
+class TestRenderAddToCalendarButton:
+    def test_renders_button_with_correct_css_class(self):
+        record = _make_record()
+        result = _render_add_to_calendar_button(record)
+        assert '<button class="add-to-calendar-btn"' in result
+
+    def test_button_text_is_add_to_calendar(self):
+        record = _make_record()
+        result = _render_add_to_calendar_button(record)
+        assert ">Add to Calendar<" in result
+
+    def test_includes_data_calendar_summary_attribute(self):
+        record = _make_record(subject="Lunch meeting")
+        result = _render_add_to_calendar_button(record)
+        assert 'data-calendar-summary="' in result
+        assert "Lunch meeting" in result
+
+    def test_data_calendar_payload_is_valid_json(self):
+        record = _make_record(
+            message_id="<cal@test.com>",
+            subject="Team sync",
+        )
+        result = _render_add_to_calendar_button(record)
+
+        import html
+        import json
+        import re
+
+        match = re.search(r'data-calendar-payload="([^"]*)"', result)
+        assert match is not None, "data-calendar-payload attribute not found"
+        raw_value = match.group(1)
+        unescaped = html.unescape(raw_value)
+        payload = json.loads(unescaped)
+        assert payload["messageId"] == "<cal@test.com>"
+        assert payload["subject"] == "Team sync"
+        assert isinstance(payload["summary"], str)
+        assert "Team sync" in payload["summary"]
+
+    def test_onclick_contains_confirm_call(self):
+        record = _make_record()
+        result = _render_add_to_calendar_button(record)
+        assert 'onclick="' in result
+        # Extract the onclick value
+        import re
+
+        match = re.search(r'onclick="([^"]*)"', result)
+        assert match is not None
+        onclick = match.group(1)
+        assert "confirm(" in onclick
+
+    def test_onclick_references_add_to_calendar_dispatch(self):
+        record = _make_record()
+        result = _render_add_to_calendar_button(record)
+        import re
+
+        match = re.search(r'onclick="([^"]*)"', result)
+        assert match is not None
+        onclick = match.group(1)
+        assert "addToCalendar" in onclick
+
+    def test_html_escapes_quote_characters_in_summary(self):
+        record = _make_record(subject='Meeting "important" notes')
+        result = _render_add_to_calendar_button(record)
+        import re
+
+        match = re.search(r'data-calendar-summary="([^"]*)"', result)
+        assert match is not None
+        attr_value = match.group(1)
+        assert "&quot;" in attr_value
+        assert '"' not in attr_value  # no raw double-quote inside attribute
+
+    def test_html_escapes_angle_brackets_in_subject(self):
+        record = _make_record(subject="<script>alert(1)</script>")
+        result = _render_add_to_calendar_button(record)
+        assert "&lt;script&gt;" in result
+        assert "<script>" not in result
+
+    def test_handles_empty_subject(self):
+        record = _make_record(subject="")
+        result = _render_add_to_calendar_button(record)
+        assert "(no subject)" in result
+        assert '<button class="add-to-calendar-btn"' in result
+
+    def test_renders_with_body_containing_no_dates(self):
+        record = _make_record(body_plain="No dates here")
+        result = _render_add_to_calendar_button(record)
+        assert '<button class="add-to-calendar-btn"' in result
+        assert "Date/time references" not in result
