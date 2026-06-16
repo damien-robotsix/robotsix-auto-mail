@@ -297,6 +297,18 @@
   }
 
   /* ==================================================================
+   * 4b. Add-to-Calendar callback (consumed by dispatch logic in a
+   *     follow-up ticket)
+   * ================================================================ */
+
+  function addToCalendar(data) {
+    // Stub: fired when the user confirms the "Add to Calendar" dialog
+    // in the detail panel.  ``data`` is {messageId, subject, summary}.
+    // The dispatch logic (calendar-agent integration) hooks in here.
+    console.log("[add-to-calendar] confirmed:", data);
+  }
+
+  /* ==================================================================
    * 5.  Bootstrap
    * ================================================================ */
 
@@ -317,4 +329,5 @@
   // -- Expose public API on window ------------------------------------
   window.closeDetail = closeDetail;
   window.refreshBoard = refreshBoard;
+  window.addToCalendar = addToCalendar;
 })();

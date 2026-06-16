@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from typing import Any
 from urllib.parse import quote
 
@@ -108,6 +109,7 @@ def _build_detail_html(
     attach_html = _render_attachments(attachments)
     imap_uid_section = _render_imap_uid_section(record)
     triage_section = _render_triage_section(triage_decision)
+    calendar_button = _render_add_to_calendar_button(record)
 
     # The inner detail fields (Sender through IMAP UID) are identical for
     # the embedded fragment and the full standalone page.
@@ -127,6 +129,7 @@ def _build_detail_html(
         f"{move_form}</div>"
         "</div>\n"
         f"{triage_section}"
+        f"{calendar_button}"
         '<div class="detail-field">'
         '<div class="detail-label">To</div>'
         f'<div class="detail-value">{to_html}</div>'
@@ -373,5 +376,69 @@ def _render_triage_section(triage_decision: TriageDecision | None) -> str:
         '<div class="detail-field">'
         '<div class="detail-label">Triage</div>'
         f'<div class="detail-value">{triage_value}</div>'
+        "</div>\n"
+    )
+
+
+_DATE_TIME_RE = re.compile(
+    r"\b(?:\d{4}-\d{2}-\d{2}"  # ISO dates: 2025-06-15
+    r"|\d{1,2}/\d{1,2}/\d{2,4}"  # US/EU dates: 6/15/2025
+    r"|\d{1,2}\.\d{1,2}\.\d{2,4}"  # dotted dates: 15.06.2025
+    r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}"  # Jun 15
+    r"|\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)"  # times: 3:00 PM
+    r"\b",
+    re.IGNORECASE,
+)
+
+
+def _extract_calendar_summary(record: MailRecord) -> str:
+    """Extract a human-readable calendar summary from *record*.
+
+    Returns a string describing the email's subject, date, and any
+    date/time references found in the body text.
+    """
+    lines: list[str] = []
+    lines.append(f"Subject: {record.subject.strip() or '(no subject)'}")
+    lines.append(f"Email date: {_format_date(record.date)}")
+
+    body = _effective_body_plain(record)
+    if body:
+        matches = list(dict.fromkeys(_DATE_TIME_RE.findall(body)))
+        if matches:
+            lines.append(
+                "Date/time references in body: " + ", ".join(matches[:10])
+            )
+    return "\n".join(lines)
+
+
+def _render_add_to_calendar_button(record: MailRecord) -> str:
+    """Render the 'Add to Calendar' action button with inline confirmation."""
+    summary = _extract_calendar_summary(record)
+    payload = json.dumps(
+        {
+            "messageId": record.message_id,
+            "subject": record.subject,
+            "summary": summary,
+        }
+    )
+    # Use data-* attributes so the inline onclick can read them safely
+    # without worrying about HTML/JS escaping of dynamic content.
+    return (
+        '<div class="detail-field">'
+        '<div class="detail-label">Calendar</div>'
+        '<div class="detail-value">'
+        '<button class="add-to-calendar-btn"'
+        f' data-calendar-payload="{html.escape(payload, quote=True)}"'
+        f' data-calendar-summary="{html.escape(summary, quote=True)}"'
+        ' onclick="'
+        "var s=this.getAttribute('data-calendar-summary');"
+        "if(confirm(s)){"
+        "var p=JSON.parse(this.getAttribute('data-calendar-payload'));"
+        "var w=window.parent!==window?window.parent:window;"
+        "if(typeof w.addToCalendar==='function')w.addToCalendar(p);"
+        '}'
+        '">'
+        "Add to Calendar</button>"
+        "</div>"
         "</div>\n"
     )
