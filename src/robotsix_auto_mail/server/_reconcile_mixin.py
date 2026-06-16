@@ -10,6 +10,9 @@ from robotsix_auto_mail.server.adapters import (
     _run_reconcile_background,
 )
 
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailAccountsConfig  # noqa: F401
+
 
 class _ReconcileMixin:
     """Mixin providing the POST /reconcile handler for BoardHandler."""
