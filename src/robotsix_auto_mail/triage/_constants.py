@@ -50,6 +50,7 @@ _AGENT_SELECTABLE_ACTIONS: frozenset[str] = VALID_TRIAGE_ACTIONS - {
     "INBOX",
     "DRAFT_READY",
     "PENDING_ACTION",
+    "TO_CALENDAR",
 }
 
 #: Accepted decision sources.
