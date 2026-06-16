@@ -15,28 +15,35 @@
 # ===========================================================================
 
 from robotsix_auto_mail.config.config_sync_agent import DriftProposal
+
 DriftProposal._validate_confidence
 
 from robotsix_auto_mail.config.config_sync_agent import LedgerEntry
+
 LedgerEntry._validate_state
 
 from robotsix_auto_mail.detect import DetectedProvider
+
 DetectedProvider._validate_tls_mode
 
 from robotsix_auto_mail.triage.persistence import TriageItem
+
 TriageItem._coerce_action
 TriageItem._validate_confidence
 
 from robotsix_auto_mail.triage.persistence import TriageDecision
+
 TriageDecision._validate_action
 TriageDecision._validate_source
 
 from robotsix_auto_mail.triage.persistence import SenderMemory
+
 SenderMemory._validate_action
 SenderMemory.last_action
 SenderMemory.updated_at
 
 from robotsix_auto_mail.triage.persistence import ArchiveFolderMemory
+
 ArchiveFolderMemory.updated_at
 
 # ===========================================================================
@@ -44,6 +51,7 @@ ArchiveFolderMemory.updated_at
 # ===========================================================================
 
 from robotsix_auto_mail.server.handlers import BoardHandler
+
 BoardHandler.do_GET
 BoardHandler.do_POST
 BoardHandler.log_message
@@ -53,6 +61,7 @@ BoardHandler.log_message
 # ===========================================================================
 
 from robotsix_auto_mail.server.board_adapter import BoardAdapter
+
 BoardAdapter.card_id
 BoardAdapter.card_title
 BoardAdapter.card_badges
@@ -67,12 +76,19 @@ BoardAdapter.column_extra_html
 # ===========================================================================
 
 from robotsix_auto_mail.config import logger
+
 logger  # noqa
 
+from robotsix_auto_mail.config.model import MailConfig
+
+MailConfig.calendar_enabled
+
 from robotsix_auto_mail.detect import ProviderEntry
+
 ProviderEntry.in_managed_hosting
 
 from robotsix_auto_mail.protocol import _ProtocolClient
+
 _ProtocolClient._oauth2_client_id
 _ProtocolClient._oauth2_client_secret
 
@@ -82,6 +98,7 @@ _ProtocolClient._oauth2_client_secret
 # ===========================================================================
 
 from robotsix_auto_mail.calendar.schema import CalendarEventRequest
+
 CalendarEventRequest.correlation_id
 CalendarEventRequest.body_text
 CalendarEventRequest.email_date
