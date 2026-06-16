@@ -45,6 +45,19 @@ modules:
       - docker-compose.yml
       - entrypoint.sh
 
+  - id: deploy
+    description: >-
+      Continuous-deployment stack for server.robotsix.net: a Compose
+      file that pulls the published GHCR image and runs the ingester,
+      the loopback-bound board, and Watchtower (auto-update on a new
+      `main` image), an nginx TLS + basic-auth reverse-proxy vhost for
+      mail.robotsix.net, plus the env example and operator runbook.
+    paths:
+      - deploy/.env.example
+      - deploy/README.md
+      - deploy/docker-compose.yml
+      - deploy/nginx/mail.robotsix.net.conf
+
   - id: dev
     description: >-
       Developer and deployment helper scripts.
