@@ -750,6 +750,7 @@ def _cmd_serve(
     """
     from http.server import HTTPServer
 
+    from robotsix_auto_mail.board_agent import start_board_agent, stop_board_agent
     from robotsix_auto_mail.server import make_board_handler
 
     default = accounts.get(default_account_id)
@@ -765,6 +766,10 @@ def _cmd_serve(
     # process start there is no live worker, so any such flag is safe to clear.
     _clear_stale_triage_state(accounts)
 
+    board_agent_handle = None
+    if default.config.board_agent_enabled:
+        board_agent_handle = start_board_agent(default.config)
+
     print(f"Serving board on http://0.0.0.0:{port}/board")
     try:
         # Binding to 0.0.0.0 is intentional: ``serve_board`` is a local dev
@@ -778,6 +783,8 @@ def _cmd_serve(
             print(f"Port {port} is already in use.", file=sys.stderr)
             return 1
         raise
+    finally:
+        stop_board_agent(board_agent_handle)
     return 0
 
 

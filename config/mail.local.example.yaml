@@ -16,7 +16,7 @@
 # `accounts:` key) is DEPRECATED but still loads. Run
 # `robotsix-auto-mail migrate-config` to convert an old config to this shape.
 #
-# llm: and langfuse: are application-wide (top-level) sections — they apply
+# llm:, langfuse:, and board_agent: are application-wide (top-level) sections — they apply
 # to every account.  Bare LLM_API_KEY / LANGFUSE_* env vars override them.
 
 # LLM provider — used by the `detect` command and future LLM-assisted mail
@@ -32,6 +32,15 @@
 #   public_key: ""
 #   secret_key: ""
 #   base_url: ""
+
+# Board agent — optional agent-comm bridge to the mill board.
+# When enabled, other agents can drive the board programmatically.
+# board_agent:
+#   enabled: false
+#   api_url: ""
+#   api_token: ""
+#   repo_id: ""
+#   write_ops: true
 
 # Optional: name the default account. Absent → the first entry below.
 default_account: personal

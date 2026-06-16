@@ -14,6 +14,9 @@ import email.policy
 import json
 
 import pytest
+
+pytest.importorskip("hypothesis")
+
 from hypothesis import assume, given
 from hypothesis import strategies as st
 

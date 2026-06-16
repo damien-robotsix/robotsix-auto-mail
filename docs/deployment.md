@@ -520,6 +520,8 @@ docker compose run robotsix-auto-mail ingest
 
 - **[docs/connecting.md](connecting.md)** — full config key reference,
   precedence rules, and the `probe`/`board` commands.
+- **[docs/board-agent.md](board-agent.md)** — optional agent-comm bridge
+  to the mill board (disabled by default).
 - **[docs/ingestion.md](ingestion.md)** — ingestion pipeline, schema,
   idempotency guarantees, and `ingest` CLI usage.
 - **[README.md](../README.md)** — project overview, layout, and status.

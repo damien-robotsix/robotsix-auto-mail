@@ -61,6 +61,9 @@ llm = [
 microsoft = [
     "msal>=1.28",
 ]
+board-agent = [
+    "robotsix-board-agent",
+]
 docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
@@ -118,6 +121,14 @@ module = "robotsix_board"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = "robotsix_board_agent"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "robotsix_agent_comm"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = "msal"
 ignore_missing_imports = true
 
@@ -140,6 +151,11 @@ extend_exclude = ["scripts"]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter-deepseek]
 # (declared in the [llm] extra); the lazy import in detect.py is intentional.
 DEP003 = ["pydantic_ai"]
+# robotsix_agent_comm is a transitive dependency of the optional
+# [board-agent] extra (robotsix-board-agent). The import in board_agent.py
+# is guarded by try/except ImportError so the server gracefully degrades
+# when the extra is not installed.
+DEP001 = ["robotsix_agent_comm"]
 
 [tool.vulture]
 paths = ["src/robotsix_auto_mail"]
@@ -153,6 +169,7 @@ ignore_names = ["format", "method_name"]
 
 [tool.uv.sources]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
+robotsix-board-agent = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git", rev = "main" }
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "main" }
 robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "main" }

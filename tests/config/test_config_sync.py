@@ -48,6 +48,15 @@ _YAML_EXAMPLE = """\
 #   secret_key: ""
 #   base_url: ""
 
+# Board agent — optional agent-comm bridge to the mill board.
+# When enabled, other agents can drive the board programmatically.
+# board_agent:
+#   enabled: false
+#   api_url: ""
+#   api_token: ""
+#   repo_id: ""
+#   write_ops: true
+
 default_account: personal
 
 accounts:
@@ -90,6 +99,15 @@ accounts:
     #   level: INFO
     #   format: console
     #   file_dir: .mail_log
+
+    # Board agent — optional agent-comm bridge to the mill board.
+    # When enabled, other agents can drive the board programmatically.
+    # board_agent:
+    #   enabled: false
+    #   api_url: ""
+    #   api_token: ""
+    #   repo_id: ""
+    #   write_ops: true
 
   - id: work
     label: Work
@@ -135,6 +153,11 @@ LANGFUSE_BASE_URL=
 LOG_LEVEL=INFO
 LOG_FORMAT=console
 LOG_FILE_DIR=.mail_log
+BOARD_AGENT_ENABLED=false
+BOARD_AGENT_API_URL=
+BOARD_AGENT_API_TOKEN=
+BOARD_AGENT_REPO_ID=
+BOARD_AGENT_WRITE_OPS=true
 """
 
 _ACCOUNTS_EXAMPLE = """\
@@ -193,6 +216,11 @@ _DOCS_YAML_TABLE = """\
 | `langfuse.public_key` | no | - | Langfuse public key for LLM tracing |
 | `langfuse.secret_key` | no | - | Langfuse secret key for LLM tracing |
 | `langfuse.base_url` | no | - | Langfuse base URL for LLM tracing |
+| `board_agent.enabled` | no | `false` | Enable the board agent (agent-comm bridge) |
+| `board_agent.api_url` | no | - | Board agent API base URL |
+| `board_agent.api_token` | no | - | Board agent API authentication token |
+| `board_agent.repo_id` | no | - | Board repository identifier |
+| `board_agent.write_ops` | no | `true` | Allow write operations via the board agent |
 | `logging.level` | no | `INFO` | Log level |
 | `logging.format` | no | `console` | Log format |
 | `logging.file_dir` | no | `.mail_log` | Log file directory |
@@ -229,6 +257,11 @@ _DOCS_ENV_TABLE = """\
 | `LANGFUSE_PUBLIC_KEY` | no | - | Langfuse public key for LLM tracing |
 | `LANGFUSE_SECRET_KEY` | no | - | Langfuse secret key for LLM tracing |
 | `LANGFUSE_BASE_URL` | no | - | Langfuse base URL for LLM tracing |
+| `BOARD_AGENT_ENABLED` | no | `false` | Enable the board agent (agent-comm bridge) |
+| `BOARD_AGENT_API_URL` | no | - | Board agent API base URL |
+| `BOARD_AGENT_API_TOKEN` | no | - | Board agent API authentication token |
+| `BOARD_AGENT_REPO_ID` | no | - | Board repository identifier |
+| `BOARD_AGENT_WRITE_OPS` | no | `true` | Allow write operations via the board agent |
 | `LOG_LEVEL` | no | `INFO` | Log level |
 | `LOG_FORMAT` | no | `console` | Log format |
 | `LOG_FILE_DIR` | no | `.mail_log` | Log file directory |
