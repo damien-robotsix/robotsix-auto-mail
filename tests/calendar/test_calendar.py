@@ -287,8 +287,8 @@ def test_move_to_calendar_dispatches_and_reroutes_to_archive() -> None:
 def test_move_to_calendar_reroutes_to_answer_when_prior_was_to_answer() -> None:
     """When the prior triage action was TO_ANSWER, successful dispatch
     reroutes back to TO_ANSWER."""
-    from robotsix_auto_mail.triage import set_triage_decision
     from robotsix_auto_mail.db import init_db
+    from robotsix_auto_mail.triage import set_triage_decision
 
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
