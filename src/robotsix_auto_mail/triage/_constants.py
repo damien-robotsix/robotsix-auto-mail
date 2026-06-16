@@ -65,7 +65,10 @@ _VALID_TRIAGE_SOURCES = frozenset({"agent", "user"})
 _MEMORY_WATERMARK_KEY = "triage_human_memory"
 
 #: Accepted confidence levels (mirrors ``DriftProposal.confidence``).
-_VALID_CONFIDENCE_LEVELS = frozenset({"low", "medium", "high"})
+#: Re-exported from the shared module for backward compatibility.
+from robotsix_auto_mail._shared.pydantic_utils import (
+    VALID_CONFIDENCE_LEVELS as _VALID_CONFIDENCE_LEVELS,
+)
 
 #: Watermark key owned by this module for user archive subfolder overrides.
 _ARCHIVE_OVERRIDES_WATERMARK_KEY = "archive_subfolder_overrides"

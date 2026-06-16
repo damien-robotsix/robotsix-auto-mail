@@ -48,7 +48,11 @@ _SURFACE_FILES: tuple[str, ...] = (
 )
 
 #: Accepted ``DriftProposal.confidence`` levels.
-_VALID_CONFIDENCE_LEVELS = frozenset({"low", "medium", "high"})
+#: Imported from the shared module (canonical definition).
+from robotsix_auto_mail._shared.pydantic_utils import (
+    VALID_CONFIDENCE_LEVELS as _VALID_CONFIDENCE_LEVELS,
+    validate_confidence,
+)
 
 #: Watermark key owned by this module for the dedup memory ledger.
 #:
@@ -92,12 +96,7 @@ class DriftProposal(pydantic.BaseModel):
     @pydantic.field_validator("confidence")
     @classmethod
     def _validate_confidence(cls, v: str) -> str:
-        if v not in _VALID_CONFIDENCE_LEVELS:
-            raise ValueError(
-                "confidence must be one of "
-                f"{sorted(_VALID_CONFIDENCE_LEVELS)!r}; got {v!r}"
-            )
-        return v
+        return validate_confidence(v)
 
 
 class ConfigSyncResult(pydantic.BaseModel):
