@@ -155,6 +155,18 @@ modules:
       - src/robotsix_auto_mail/archive/__init__.py
       - tests/archive/test_archive.py
 
+  - id: calendar
+    description: >-
+      Fire-and-forget calendar event dispatch to the robotsix-calendar
+      agent over the robotsix_agent_comm message bus, plus the HTTP
+      endpoint (POST /add-to-calendar) that triggers it from the board.
+    paths:
+      - src/robotsix_auto_mail/calendar/__init__.py
+      - src/robotsix_auto_mail/calendar/dispatch.py
+      - src/robotsix_auto_mail/calendar/schema.py
+      - src/robotsix_auto_mail/server/_calendar_mixin.py
+      - tests/server/test_calendar.py
+
   - id: protocol
     description: >-
       Shared protocol-client base class: common TLS-mode dispatch

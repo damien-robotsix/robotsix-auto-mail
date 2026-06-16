@@ -32,6 +32,7 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
+from robotsix_auto_mail.server._calendar_mixin import _CalendarMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
 from robotsix_auto_mail.server._constants import GLOBAL_VIEW_ACCOUNT_ID
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
@@ -46,6 +47,7 @@ class BoardHandler(
     _TriageMixin,
     _DraftMixin,
     _ConfigMixin,
+    _CalendarMixin,
     BaseHTTPRequestHandler,
 ):
     """Request handler for the robotsix-auto-mail board server.
@@ -149,6 +151,7 @@ class BoardHandler(
             "/save-draft": self._handle_save_draft,
             "/send-draft": self._handle_send_draft,
             "/generate-draft": self._handle_generate_draft,
+            "/add-to-calendar": self._handle_add_to_calendar,
         }
         # Dispatch on the bare path so ``?account=<id>`` query strings do
         # not defeat exact-match routing.

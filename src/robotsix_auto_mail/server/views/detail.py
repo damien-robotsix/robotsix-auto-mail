@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import html
 import json
-import re
 from typing import Any
 from urllib.parse import quote
 
+from robotsix_auto_mail.calendar import extract_calendar_summary
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.format import _effective_body_plain, _format_date
 from robotsix_auto_mail.server.views.forms import _render_move_form
@@ -380,38 +380,9 @@ def _render_triage_section(triage_decision: TriageDecision | None) -> str:
     )
 
 
-_DATE_TIME_RE = re.compile(
-    r"\b(?:\d{4}-\d{2}-\d{2}"  # ISO dates: 2025-06-15
-    r"|\d{1,2}/\d{1,2}/\d{2,4}"  # US/EU dates: 6/15/2025
-    r"|\d{1,2}\.\d{1,2}\.\d{2,4}"  # dotted dates: 15.06.2025
-    r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}"  # Jun 15
-    r"|\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)"  # times: 3:00 PM
-    r"\b",
-    re.IGNORECASE,
-)
-
-
-def _extract_calendar_summary(record: MailRecord) -> str:
-    """Extract a human-readable calendar summary from *record*.
-
-    Returns a string describing the email's subject, date, and any
-    date/time references found in the body text.
-    """
-    lines: list[str] = []
-    lines.append(f"Subject: {record.subject.strip() or '(no subject)'}")
-    lines.append(f"Email date: {_format_date(record.date)}")
-
-    body = _effective_body_plain(record)
-    if body:
-        matches = list(dict.fromkeys(_DATE_TIME_RE.findall(body)))
-        if matches:
-            lines.append("Date/time references in body: " + ", ".join(matches[:10]))
-    return "\n".join(lines)
-
-
 def _render_add_to_calendar_button(record: MailRecord) -> str:
     """Render the 'Add to Calendar' action button with inline confirmation."""
-    summary = _extract_calendar_summary(record)
+    summary = extract_calendar_summary(record)
     payload = json.dumps(
         {
             "messageId": record.message_id,
