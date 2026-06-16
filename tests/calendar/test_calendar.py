@@ -215,6 +215,35 @@ def test_dispatch_unexpected_error() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _wait_for_dispatch(mock_dispatch: mock.MagicMock, timeout: float = 5.0) -> None:
+    """Poll until *mock_dispatch* has been called at least once."""
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if mock_dispatch.call_count >= 1:
+            return
+        time.sleep(0.02)
+    raise AssertionError("dispatch_calendar_request was not called within timeout")
+
+
+def _wait_for_triage_action(
+    db_path: str, message_id: str, expected: str, timeout: float = 5.0
+) -> None:
+    """Poll until the triage action for *message_id* equals *expected*."""
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if _triage_action(db_path, message_id) == expected:
+            return
+        time.sleep(0.02)
+    actual = _triage_action(db_path, message_id)
+    raise AssertionError(
+        f"Expected triage action {expected!r}, got {actual!r} after {timeout}s"
+    )
+
+
 def _setup_db_with_record(
     db_path: str,
     message_id: str = "<cal-test@example.com>",
@@ -262,6 +291,9 @@ def test_move_to_calendar_dispatches_and_reroutes_to_archive() -> None:
                 # Success = 302 redirect (not a JSON response).
                 assert status == 302, f"Expected 302, got {status}: {body}"
 
+                # Dispatch runs in a background thread — wait for it.
+                _wait_for_dispatch(mock_dispatch)
+
                 # Verify dispatch was called with correct event.
                 mock_dispatch.assert_called_once()
                 event = mock_dispatch.call_args[0][0]
@@ -272,7 +304,7 @@ def test_move_to_calendar_dispatches_and_reroutes_to_archive() -> None:
                 assert "2025-06-15" in event.extracted_dates
 
                 # Card should be rerouted to TO_ARCHIVE (no prior TO_ANSWER).
-                assert _triage_action(db_path, "<cal-test@example.com>") == "TO_ARCHIVE"
+                _wait_for_triage_action(db_path, "<cal-test@example.com>", "TO_ARCHIVE")
             finally:
                 server.shutdown()
     finally:
@@ -303,7 +335,7 @@ def test_move_to_calendar_reroutes_to_answer_when_prior_was_to_answer() -> None:
         finally:
             conn.close()
 
-        with mock.patch(_MOCK_DISPATCH_PATH):
+        with mock.patch(_MOCK_DISPATCH_PATH) as mock_dispatch:
             server, port = _start_test_server(db_path)
             try:
                 status, _ = _post_form(
@@ -316,8 +348,10 @@ def test_move_to_calendar_reroutes_to_answer_when_prior_was_to_answer() -> None:
                 )
                 assert status == 302
 
-                # Card should be rerouted back to TO_ANSWER.
-                assert _triage_action(db_path, "<cal-test@example.com>") == "TO_ANSWER"
+                # Dispatch runs in a background thread — wait for it
+                # and the reroute to TO_ANSWER.
+                _wait_for_dispatch(mock_dispatch)
+                _wait_for_triage_action(db_path, "<cal-test@example.com>", "TO_ANSWER")
             finally:
                 server.shutdown()
     finally:
@@ -455,9 +489,12 @@ def test_move_to_calendar_realistic_message_id() -> None:
                     path="/move",
                 )
                 assert status == 302, f"Expected 302, got {status}: {body}"
+
+                # Dispatch runs in a background thread — wait for it.
+                _wait_for_dispatch(mock_dispatch)
                 mock_dispatch.assert_called_once()
                 # Card should be rerouted to TO_ARCHIVE.
-                assert _triage_action(db_path, message_id) == "TO_ARCHIVE"
+                _wait_for_triage_action(db_path, message_id, "TO_ARCHIVE")
             finally:
                 server.shutdown()
     finally:
@@ -486,9 +523,92 @@ def test_move_to_calendar_angle_bracket_fallback() -> None:
                     path="/move",
                 )
                 assert status == 302, f"Expected 302, got {status}: {body}"
+
+                # Dispatch runs in a background thread — wait for it.
+                _wait_for_dispatch(mock_dispatch)
                 mock_dispatch.assert_called_once()
                 # Card should be rerouted to TO_ARCHIVE.
-                assert _triage_action(db_path, message_id_stored) == "TO_ARCHIVE"
+                _wait_for_triage_action(db_path, message_id_stored, "TO_ARCHIVE")
+            finally:
+                server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_move_to_calendar_setup_failure_still_redirects() -> None:
+    """When setup code (e.g. _effective_body_plain) raises, the move still
+    returns 302 and the card lands in TO_CALENDAR with an error indicator."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _setup_db_with_record(db_path)
+
+        with mock.patch(
+            "robotsix_auto_mail.format._effective_body_plain",
+            side_effect=ValueError("body extraction failed"),
+        ):
+            server, port = _start_test_server(db_path)
+            try:
+                status, body = _post_form(
+                    port,
+                    {
+                        "message_id": "<cal-test@example.com>",
+                        "triage_action": "TO_CALENDAR",
+                    },
+                    path="/move",
+                )
+                # Must still redirect — no 500/502.
+                assert status == 302, f"Expected 302, got {status}: {body}"
+
+                # Card must land in TO_CALENDAR.
+                assert (
+                    _triage_action(db_path, "<cal-test@example.com>") == "TO_CALENDAR"
+                )
+            finally:
+                server.shutdown()
+    finally:
+        os.unlink(db_path)
+
+
+def test_move_to_calendar_dispatch_hang_does_not_block() -> None:
+    """When dispatch_calendar_request hangs forever, the /move request
+    still returns 302 immediately (fire-and-forget background thread)."""
+    import time
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        _setup_db_with_record(db_path)
+
+        # Make dispatch block forever.
+        def _hang_forever(_event: object) -> None:
+            while True:
+                time.sleep(60)
+
+        with mock.patch(_MOCK_DISPATCH_PATH, side_effect=_hang_forever):
+            server, port = _start_test_server(db_path)
+            try:
+                t0 = time.monotonic()
+                status, body = _post_form(
+                    port,
+                    {
+                        "message_id": "<cal-test@example.com>",
+                        "triage_action": "TO_CALENDAR",
+                    },
+                    path="/move",
+                )
+                elapsed = time.monotonic() - t0
+
+                # Must return 302 quickly (well under 5 seconds).
+                assert status == 302, f"Expected 302, got {status}: {body}"
+                assert elapsed < 5.0, (
+                    f"Request took {elapsed:.1f}s — should return immediately"
+                )
+
+                # Card lands in TO_CALENDAR (synchronous set_triage_decision).
+                assert (
+                    _triage_action(db_path, "<cal-test@example.com>") == "TO_CALENDAR"
+                )
             finally:
                 server.shutdown()
     finally:
