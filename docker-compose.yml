@@ -5,7 +5,7 @@
 #   - robotsix-auto-mail : long-running ingester (fetches new mail on an
 #     interval set by ingest.interval_minutes in config, default 15 min)
 #   - board              : the read-only web board at
-#     http://localhost:${BOARD_PORT:-8078}/board
+#     http://localhost:${BOARD_PORT:-8080}/board
 #
 # One-shot commands override the default command via `docker compose run`:
 #
@@ -46,6 +46,11 @@ services:
       # Log bind-mount — persistent debug logs survive container restarts.
       - ./.mail_log:/home/mailbot/.mail_log
 
+    # The ingester runs no HTTP server, so the image's HTTP healthcheck
+    # (GET :8080/healthz) can never pass — disable it for this service.
+    healthcheck:
+      disable: true
+
   # -----------------------------------------------------------------------
   # board — long-running kanban-board daemon
   # -----------------------------------------------------------------------
@@ -53,14 +58,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: serve --port ${BOARD_PORT:-8078}
+    # Always serve on 8080 inside the container so the image healthcheck
+    # (GET :8080/healthz) passes; BOARD_PORT only remaps the host side.
+    command: serve --port 8080
     restart: unless-stopped
 
     environment:
       MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml
 
     ports:
-      - "${BOARD_PORT:-8078}:${BOARD_PORT:-8078}"
+      - "${BOARD_PORT:-8080}:8080"
 
     volumes:
       - ./config:/home/mailbot/config
