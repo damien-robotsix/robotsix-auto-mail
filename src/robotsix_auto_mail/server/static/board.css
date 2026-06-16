@@ -226,6 +226,104 @@ button:hover { background: #1a4d7a; }
   font-size: 0.8rem; color: #666;
 }
 
+/* -- archive browse button (folder-tree popover trigger) ----------------- */
+.archive-browse-btn {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+  background: #1a3a6a;
+  color: #c0d0f0;
+  border: 1px solid #3a5a8a;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.archive-browse-btn:hover {
+  background: #2a4a7a;
+  color: #e0e0f0;
+}
+
+/* -- folder-tree popover ------------------------------------------------- */
+.folder-tree-popover {
+  position: absolute;
+  z-index: 2000;
+  background: #1a1e2e;
+  border: 1px solid #3a3a6a;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 0.4rem 0;
+  min-width: 220px;
+  max-width: 380px;
+  max-height: 60vh;
+  overflow-y: auto;
+  color: #d0d0e0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+/* -- tree node rows ------------------------------------------------------ */
+.ft-node {
+  white-space: nowrap;
+  padding-right: 0.6rem;
+}
+
+/* -- expand / collapse toggle ------------------------------------------- */
+.ft-toggle {
+  display: inline-block;
+  width: 1em;
+  font-size: 0.7rem;
+  color: #8090b0;
+  cursor: pointer;
+  user-select: none;
+  margin-right: 0.15rem;
+}
+.ft-toggle:hover {
+  color: #c0d0f0;
+}
+
+/* -- branch label -------------------------------------------------------- */
+.ft-branch {
+  color: #a0b0d0;
+  cursor: default;
+}
+
+/* -- branch label that is also a leaf (clickable) ------------------------ */
+.ft-branch-leaf {
+  cursor: pointer;
+}
+.ft-branch-leaf:hover {
+  color: #ffffff;
+  background: #2a3a5a;
+  border-radius: 2px;
+  padding: 0.05rem 0.2rem;
+  margin: 0 -0.2rem;
+}
+
+/* -- leaf label (clickable) --------------------------------------------- */
+.ft-leaf {
+  color: #c0d0f0;
+  cursor: pointer;
+}
+.ft-leaf:hover {
+  color: #ffffff;
+  background: #2a3a5a;
+  border-radius: 2px;
+  padding: 0.05rem 0.2rem;
+  margin: 0 -0.2rem;
+}
+
+/* -- children container (hidden by default when collapsed) --------------- */
+.ft-children {
+  /* no extra margin — depth is handled via padding-left on each .ft-node */
+}
+
+/* -- empty-state message ------------------------------------------------- */
+.ft-empty {
+  padding: 0.5rem 0.8rem;
+  color: #707090;
+  font-style: italic;
+  font-size: 0.78rem;
+}
+
 /* -- archive proposal inline section ------------------------------------- */
 .archive-proposal {
   margin-top: 0.35rem; font-size: 0.8rem;

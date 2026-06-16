@@ -319,6 +319,18 @@ class MailBoardAdapter:
                     f' value="{escaped_subfolder}"'
                     ' list="archive-folders"'
                     ' placeholder="subfolder path" size="30">'
+                )
+                # Browse button — opens the folder-tree popover to select
+                # an existing archive subfolder.  Suppressed when no
+                # archive subfolders exist yet (fresh setup) and in
+                # aggregate mode (the tree is per-account only).
+                if self.archive_folders and not self._record_accounts:
+                    archive_html += (
+                        '<button type="button" class="archive-browse-btn"'
+                        f' data-message-id="{quoted_mid}">'
+                        "\U0001f4c1 Browse</button>"
+                    )
+                archive_html += (
                     '<button type="submit">Set</button>'
                     "</form>"
                     '<form class="archive-confirm-form" method="post"'

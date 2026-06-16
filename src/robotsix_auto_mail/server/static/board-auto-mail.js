@@ -183,6 +183,270 @@
   }
 
   /* ==================================================================
+   * 2c. Folder-tree browser (Browse button → popover)
+   *
+   * Fetches /archive-folders once on page load and caches the flat list.
+   * The flat list is parsed into a nested tree (split on "/").
+   * A click on any ".archive-browse-btn" opens a positioned popover with
+   * the expandable tree; clicking a leaf fills the sibling text input and
+   * closes the popover.  Suppressed in aggregate (dataAccountJs) mode.
+   * ================================================================ */
+
+  var folderCache = null; // null = not fetched yet, [] = empty
+  var folderPopover = null;
+  var folderBrowseBtn = null;
+
+  function fetchFolders() {
+    if (folderCache !== null) return;
+    // Suppress in aggregate mode — the server also omits the button, but
+    // guard defensively.
+    if (dataAccountJs) {
+      folderCache = [];
+      hideBrowseButtons();
+      return;
+    }
+    fetch("/archive-folders" + fetchQs)
+      .then(function (r) {
+        if (!r.ok) throw new Error("bad status");
+        return r.json();
+      })
+      .then(function (data) {
+        folderCache = data.folders || [];
+        if (folderCache.length === 0) {
+          hideBrowseButtons();
+        }
+      })
+      .catch(function () {
+        folderCache = [];
+        hideBrowseButtons();
+      });
+  }
+
+  function hideBrowseButtons() {
+    var btns = document.querySelectorAll(".archive-browse-btn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].style.display = "none";
+    }
+  }
+
+  function buildFolderTree(folders) {
+    var root = { _children: {} };
+    folders.forEach(function (path) {
+      var parts = path.split("/");
+      var node = root;
+      for (var i = 0; i < parts.length; i++) {
+        var part = parts[i];
+        if (!node._children[part]) {
+          node._children[part] = { _children: {} };
+        }
+        node = node._children[part];
+      }
+      node._leaf = true;
+    });
+    return root;
+  }
+
+  function renderTree(name, node, depth, fullPath) {
+    var children = Object.keys(node._children);
+    var hasChildren = children.length > 0;
+    var isLeaf = node._leaf && !hasChildren;
+
+    var row = document.createElement("div");
+    row.className = "ft-node";
+    row.style.paddingLeft = (depth * 1.2 + 0.3) + "em";
+    row.setAttribute("data-ft-path", fullPath);
+
+    if (hasChildren) {
+      var toggle = document.createElement("span");
+      toggle.className = "ft-toggle";
+      toggle.textContent = "\u25b6"; // ▶
+
+      var label = document.createElement("span");
+      label.textContent = "\u{1F4C1} " + name;
+      if (node._leaf) {
+        label.className = "ft-branch ft-branch-leaf";
+        label.addEventListener("click", function (e) {
+          e.stopPropagation();
+          selectArchiveFolder(fullPath);
+        });
+      } else {
+        label.className = "ft-branch";
+      }
+
+      var childContainer = document.createElement("div");
+      childContainer.className = "ft-children";
+      childContainer.style.display = "none";
+
+      children.sort().forEach(function (childName) {
+        var childNode = node._children[childName];
+        var childFullPath = fullPath ? fullPath + "/" + childName : childName;
+        childContainer.appendChild(
+          renderTree(childName, childNode, depth + 1, childFullPath)
+        );
+      });
+
+      toggle.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var collapsed = childContainer.style.display === "none";
+        childContainer.style.display = collapsed ? "block" : "none";
+        toggle.textContent = collapsed ? "\u25bc" : "\u25b6"; // ▼ / ▶
+      });
+
+      row.appendChild(toggle);
+      row.appendChild(label);
+      row.appendChild(childContainer);
+    } else if (isLeaf) {
+      var leafLabel = document.createElement("span");
+      leafLabel.className = "ft-leaf";
+      leafLabel.textContent = "\u{1F4C4} " + name;
+      leafLabel.addEventListener("click", function (e) {
+        e.stopPropagation();
+        selectArchiveFolder(fullPath);
+      });
+      row.appendChild(leafLabel);
+    } else {
+      // Empty intermediate node (should not happen with the current
+      // data model, but handle gracefully).
+      var emptyLabel = document.createElement("span");
+      emptyLabel.className = "ft-branch";
+      emptyLabel.textContent = "\u{1F4C1} " + name;
+      row.appendChild(emptyLabel);
+    }
+
+    return row;
+  }
+
+  function selectArchiveFolder(path) {
+    if (!folderBrowseBtn) return;
+    var mid = folderBrowseBtn.getAttribute("data-message-id");
+    var card = document.querySelector(
+      '.card-extra[data-message-id="' + CSS.escape(mid) + '"]'
+    );
+    if (!card) return;
+    var form = card.querySelector(".archive-override-form");
+    if (!form) return;
+    var input = form.querySelector('input[name="subfolder"]');
+    if (!input) return;
+    input.value = path;
+    closeFolderPopover();
+    // Focus the Set button so the user can immediately confirm.
+    var setBtn = form.querySelector('button[type="submit"]');
+    if (setBtn) setBtn.focus();
+  }
+
+  function openFolderPopover(btn) {
+    closeFolderPopover();
+    if (!folderCache || folderCache.length === 0) return;
+
+    folderBrowseBtn = btn;
+
+    var popover = document.createElement("div");
+    popover.className = "folder-tree-popover";
+
+    var tree = buildFolderTree(folderCache);
+    var rootKeys = Object.keys(tree._children).sort();
+    for (var i = 0; i < rootKeys.length; i++) {
+      var name = rootKeys[i];
+      var node = tree._children[name];
+      popover.appendChild(renderTree(name, node, 0, name));
+    }
+    if (rootKeys.length === 0) {
+      var emptyMsg = document.createElement("div");
+      emptyMsg.className = "ft-empty";
+      emptyMsg.textContent = "(no subfolders)";
+      popover.appendChild(emptyMsg);
+    }
+
+    document.body.appendChild(popover);
+    folderPopover = popover;
+
+    positionFolderPopover(btn, popover);
+
+    // Close on next outside click (deferred so the current click
+    // doesn't immediately close it).
+    setTimeout(function () {
+      document.addEventListener("click", folderOutsideClick, true);
+    }, 0);
+  }
+
+  function positionFolderPopover(btn, popover) {
+    var rect = btn.getBoundingClientRect();
+    var scrollX = window.pageXOffset;
+    var scrollY = window.pageYOffset;
+
+    popover.style.position = "absolute";
+    popover.style.top = (rect.bottom + scrollY + 4) + "px";
+    popover.style.left = (rect.left + scrollX) + "px";
+
+    // Nudge into the viewport if it overflows on the right or bottom.
+    var popRect = popover.getBoundingClientRect();
+    if (popRect.right > window.innerWidth - 8) {
+      var adjLeft = window.innerWidth - popRect.width - 8 + scrollX;
+      if (adjLeft < 8) adjLeft = 8;
+      popover.style.left = adjLeft + "px";
+    }
+    if (popRect.bottom > window.innerHeight - 8) {
+      var adjTop = rect.top + scrollY - popRect.height - 4;
+      if (adjTop < 8) adjTop = 8;
+      popover.style.top = adjTop + "px";
+    }
+  }
+
+  function closeFolderPopover() {
+    if (folderPopover) {
+      folderPopover.remove();
+      folderPopover = null;
+      document.removeEventListener("click", folderOutsideClick, true);
+    }
+    folderBrowseBtn = null;
+  }
+
+  function folderOutsideClick(e) {
+    if (
+      folderPopover &&
+      !folderPopover.contains(e.target) &&
+      (!folderBrowseBtn || !folderBrowseBtn.contains(e.target))
+    ) {
+      closeFolderPopover();
+    }
+  }
+
+  // Escape key closes the popover (appended to the existing Escape handler
+  // below in section 3).
+
+  // Delegate click on Browse buttons.
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".archive-browse-btn");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (folderPopover && folderBrowseBtn === btn) {
+      closeFolderPopover();
+    } else {
+      // Re-fetch in case the cache was never populated (e.g. fetch failed
+      // silently earlier).
+      if (folderCache === null) {
+        fetch("/archive-folders" + fetchQs)
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            folderCache = data.folders || [];
+            if (folderCache.length) openFolderPopover(btn);
+          })
+          .catch(function () {});
+        return;
+      }
+      openFolderPopover(btn);
+    }
+  });
+
+  // Kick off the folder fetch on load.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", fetchFolders);
+  } else {
+    fetchFolders();
+  }
+
+  /* ==================================================================
    * 3.  Hash routing + Escape key
    * ================================================================ */
 
@@ -216,7 +480,15 @@
 
   function attachEscapeKey() {
     window.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") closeDetail();
+      if (e.key === "Escape") {
+        // Close the folder-tree popover first (if open); otherwise
+        // close the detail panel.
+        if (folderPopover) {
+          closeFolderPopover();
+        } else {
+          closeDetail();
+        }
+      }
     });
   }
 
@@ -227,6 +499,10 @@
   var refreshTimer = null;
 
   function refreshBoard(force) {
+    // Close the folder-tree popover if open — the card HTML it
+    // references will be replaced.
+    if (folderPopover) closeFolderPopover();
+
     var sidePanel = document.getElementById("side-panel");
     if (!force && sidePanel && sidePanel.classList.contains("open")) return;
 
