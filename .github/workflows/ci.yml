@@ -75,9 +75,7 @@ jobs:
         run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
 
       - name: Scan GitHub Actions workflows (zizmor)
-        run: |
-          pip install zizmor
-          zizmor --format=sarif .github/workflows/ > zizmor-results.sarif
+        run: uv run --frozen zizmor --format=sarif .github/workflows/ > zizmor-results.sarif
 
       - name: Upload SARIF results
         uses: github/codeql-action/upload-sarif@v3
@@ -96,14 +94,14 @@ jobs:
       run-trufflehog: true
       trufflehog-pr-diff: false
       # Locked-requirements audit: export uv.lock to this file, then run
-      # `pip-audit -r`. Drops the three first-party VCS packages, which are not
+      # `pip-audit -r`. Drops the four first-party VCS packages, which are not
       # on PyPI and break pip's --require-hashes mode. Also drops the root
       # project robotsix-auto-mail itself: its editable `-e .` form has no
       # hashable single file under pip's --require-hashes mode, which aborts
       # pip-audit.
       run-pip-audit: true
       pip-audit-requirements-file: requirements-locked.txt
-      pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board robotsix-auto-mail robotsix-llmio"
+      pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board robotsix-auto-mail robotsix-llmio robotsix-modules"
 
   # Diff-scoped dependency review gate on pull requests. Uses GitHub's
   # dependency-review-action to (a) block PRs that add dependencies with known
@@ -129,3 +127,4 @@ jobs:
             LGPL-2.1-only, LGPL-2.1-or-later,
             LGPL-3.0-only, LGPL-3.0-or-later
           comment-summary-in-pr: true
+mmary-in-pr: true
