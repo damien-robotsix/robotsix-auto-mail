@@ -13,10 +13,10 @@ from datetime import datetime, timezone
 
 import pydantic
 
+from robotsix_auto_mail._shared.pydantic_utils import validate_confidence
 from robotsix_auto_mail.db import VALID_TRIAGE_ACTIONS
 from robotsix_auto_mail.triage._constants import (
     _AGENT_SELECTABLE_ACTIONS,
-    _VALID_CONFIDENCE_LEVELS,
     _VALID_TRIAGE_SOURCES,
 )
 
@@ -60,12 +60,7 @@ class TriageItem(pydantic.BaseModel):
     @pydantic.field_validator("confidence")
     @classmethod
     def _validate_confidence(cls, v: str) -> str:
-        if v not in _VALID_CONFIDENCE_LEVELS:
-            raise ValueError(
-                "confidence must be one of "
-                f"{sorted(_VALID_CONFIDENCE_LEVELS)!r}; got {v!r}"
-            )
-        return v
+        return validate_confidence(v)
 
 
 class TriageResult(pydantic.BaseModel):

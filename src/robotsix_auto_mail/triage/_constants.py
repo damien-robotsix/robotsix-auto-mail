@@ -7,6 +7,9 @@ submodules can share them without risking circular imports.
 
 from __future__ import annotations
 
+from robotsix_auto_mail._shared.pydantic_utils import (
+    VALID_CONFIDENCE_LEVELS as _VALID_CONFIDENCE_LEVELS,
+)
 from robotsix_auto_mail.db import VALID_TRIAGE_ACTIONS
 
 # ---------------------------------------------------------------------------
@@ -64,9 +67,6 @@ _VALID_TRIAGE_SOURCES = frozenset({"agent", "user"})
 #: mechanism and a single DB file instead of a parallel format.
 _MEMORY_WATERMARK_KEY = "triage_human_memory"
 
-#: Accepted confidence levels (mirrors ``DriftProposal.confidence``).
-_VALID_CONFIDENCE_LEVELS = frozenset({"low", "medium", "high"})
-
 #: Watermark key owned by this module for user archive subfolder overrides.
 _ARCHIVE_OVERRIDES_WATERMARK_KEY = "archive_subfolder_overrides"
 
@@ -81,3 +81,19 @@ _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY = "archive_folder_memory"
 
 #: Watermark key owned by this module for unsubscribe-suggestion cache.
 _UNSUBSCRIBE_SUGGESTIONS_KEY = "unsubscribe_suggestions"
+
+# ---------------------------------------------------------------------------
+# Explicit re-exports (required by mypy --strict / --no-implicit-reexport)
+# ---------------------------------------------------------------------------
+__all__ = [
+    "TRIAGE_ACTION_LABELS",
+    "TRIAGE_ACTION_ORDER",
+    "_AGENT_SELECTABLE_ACTIONS",
+    "_ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY",
+    "_ARCHIVE_LLM_HINTS_WATERMARK_KEY",
+    "_ARCHIVE_OVERRIDES_WATERMARK_KEY",
+    "_MEMORY_WATERMARK_KEY",
+    "_UNSUBSCRIBE_SUGGESTIONS_KEY",
+    "_VALID_CONFIDENCE_LEVELS",
+    "_VALID_TRIAGE_SOURCES",
+]

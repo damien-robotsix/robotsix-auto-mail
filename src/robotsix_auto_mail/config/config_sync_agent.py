@@ -26,6 +26,7 @@ from pathlib import Path
 import pydantic
 from robotsix_llmio.core import Tier, get_provider, run_agent
 
+from robotsix_auto_mail._shared.pydantic_utils import validate_confidence
 from robotsix_auto_mail.config import (
     _FIELD_SPECS,
     _REQUIRED,
@@ -46,10 +47,6 @@ _SURFACE_FILES: tuple[str, ...] = (
     ".env.example",
     "docs/connecting.md",
 )
-
-#: Accepted ``DriftProposal.confidence`` levels.
-_VALID_CONFIDENCE_LEVELS = frozenset({"low", "medium", "high"})
-
 #: Watermark key owned by this module for the dedup memory ledger.
 #:
 #: The ledger is persisted in ``db.py``'s ``watermark`` key-value table —
@@ -92,12 +89,7 @@ class DriftProposal(pydantic.BaseModel):
     @pydantic.field_validator("confidence")
     @classmethod
     def _validate_confidence(cls, v: str) -> str:
-        if v not in _VALID_CONFIDENCE_LEVELS:
-            raise ValueError(
-                "confidence must be one of "
-                f"{sorted(_VALID_CONFIDENCE_LEVELS)!r}; got {v!r}"
-            )
-        return v
+        return validate_confidence(v)
 
 
 class ConfigSyncResult(pydantic.BaseModel):
