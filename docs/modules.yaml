@@ -83,7 +83,15 @@ modules:
       - src/robotsix_auto_mail/cli/commands.py
       - src/robotsix_auto_mail/cli/config.py
       - tests/cli/test_cli.py
+      - tests/cli/test_cli_board.py
       - tests/cli/test_cli_config.py
+      - tests/cli/test_cli_config_sync.py
+      - tests/cli/test_cli_detect.py
+      - tests/cli/test_cli_ingest.py
+      - tests/cli/test_cli_migrate.py
+      - tests/cli/test_cli_probe.py
+      - tests/cli/test_cli_refine.py
+      - tests/cli/test_cli_triage.py
 
   - id: config
     description: >-

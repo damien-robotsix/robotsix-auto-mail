@@ -95,8 +95,6 @@ def _refine_host_result() -> "_VerifyResult":
 # ---------------------------------------------------------------------------
 
 
-
-
 def test_refine_password_stops_on_cancel() -> None:
     """_refine_password signals stop when the prompt is cancelled."""
     from robotsix_auto_mail.cli import _refine_password
@@ -143,8 +141,6 @@ def test_refine_password_eof() -> None:
 # ---------------------------------------------------------------------------
 # _refine_with_llm
 # ---------------------------------------------------------------------------
-
-
 
 
 def test_refine_with_llm_success(capsys: pytest.CaptureFixture[str]) -> None:
@@ -278,7 +274,6 @@ def test_refine_manual_eof(cfg: MailConfig) -> None:
     with mock.patch("builtins.input", side_effect=EOFError):
         outcome = _refine_manual(cfg, result)
     assert outcome.config is None
-
 
 
 def test_refine_manual_stops_when_prompt_returns_none() -> None:
