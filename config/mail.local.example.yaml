@@ -99,15 +99,6 @@ accounts:
     #   broker_client_cert: ""
     #   broker_client_key: ""
     #   broker_token: ""
-    #   # Transport mode: "in-process" (default) or "brokered".
-    #   transport: in-process
-    #   # Broker settings (required when transport: brokered).
-    #   broker_host: ""
-    #   broker_port: 8443
-    #   broker_tls_ca: ""
-    #   broker_client_cert: ""
-    #   broker_client_key: ""
-    #   broker_token: ""
     # Logging configuration — application-wide.
     # logging:
     #   level: INFO
