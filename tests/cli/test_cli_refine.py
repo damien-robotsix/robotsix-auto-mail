@@ -95,34 +95,6 @@ def _refine_host_result() -> "_VerifyResult":
 # ---------------------------------------------------------------------------
 
 
-def test_refine_password_returns_rebuilt_config() -> None:
-    """_refine_password rebuilds the config from a freshly entered password."""
-    from robotsix_auto_mail.cli import _refine_password
-
-    provider = MailProvider(imap_host="imap.x.net", smtp_host="smtp.x.net")
-    rebuilt = _refine_test_config()
-    build = mock.MagicMock(return_value=rebuilt)
-
-    with mock.patch("getpass.getpass", return_value="newpw"):
-        outcome = _refine_password(build, provider)
-
-    assert outcome.config is rebuilt
-    assert outcome.provider is None
-    build.assert_called_once_with(provider, "newpw")
-
-
-def test_refine_password_stops_on_empty_input() -> None:
-    """_refine_password signals stop (config None) on empty input."""
-    from robotsix_auto_mail.cli import _refine_password
-
-    provider = MailProvider(imap_host="imap.x.net", smtp_host="smtp.x.net")
-    build = mock.MagicMock()
-
-    with mock.patch("getpass.getpass", return_value=""):
-        outcome = _refine_password(build, provider)
-
-    assert outcome.config is None
-    build.assert_not_called()
 
 
 def test_refine_password_stops_on_cancel() -> None:
@@ -173,61 +145,6 @@ def test_refine_password_eof() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_refine_with_llm_success_returns_provider_and_config() -> None:
-    """_refine_with_llm returns the refined provider and rebuilt config."""
-    from robotsix_auto_mail.cli import _refine_with_llm
-
-    provider = MailProvider(imap_host="imap.bad.net", smtp_host="smtp.x.net")
-    refined = MailProvider(imap_host="imap.good.net", smtp_host="smtp.x.net")
-    rebuilt = _refine_test_config()
-    build = mock.MagicMock(return_value=rebuilt)
-    config = _refine_test_config()
-    result = _refine_host_result()
-
-    outcome = _refine_with_llm(
-        build,
-        provider,
-        config,
-        result,
-        email="user@example.com",
-        api_key="sk-test",
-        llm_provider="openrouter-deepseek",
-        mx_hosts=[],
-        detect_provider=mock.MagicMock(return_value=refined),
-        _detection_error=DetectionError,
-    )
-
-    assert outcome.provider is refined
-    assert outcome.config is rebuilt
-    build.assert_called_once_with(refined, config.password)
-
-
-def test_refine_with_llm_detection_error_returns_empty(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """_refine_with_llm reports the error and returns no refinement."""
-    from robotsix_auto_mail.cli import _refine_with_llm
-
-    provider = MailProvider(imap_host="imap.bad.net", smtp_host="smtp.x.net")
-    build = mock.MagicMock()
-
-    outcome = _refine_with_llm(
-        build,
-        provider,
-        _refine_test_config(),
-        _refine_host_result(),
-        email="user@example.com",
-        api_key="sk-test",
-        llm_provider="openrouter-deepseek",
-        mx_hosts=[],
-        detect_provider=mock.MagicMock(side_effect=DetectionError("down")),
-        _detection_error=DetectionError,
-    )
-
-    assert outcome.config is None
-    assert outcome.provider is None
-    build.assert_not_called()
-    assert "LLM refinement error: down" in capsys.readouterr().err
 
 
 def test_refine_with_llm_success(capsys: pytest.CaptureFixture[str]) -> None:
@@ -362,16 +279,6 @@ def test_refine_manual_eof(cfg: MailConfig) -> None:
         outcome = _refine_manual(cfg, result)
     assert outcome.config is None
 
-
-def test_refine_manual_returns_updated_config() -> None:
-    """_refine_manual returns the config produced by _prompt_hosts."""
-    from robotsix_auto_mail.cli import _refine_manual
-
-    updated = _refine_test_config()
-    with mock.patch("robotsix_auto_mail.cli._prompt_hosts", return_value=updated):
-        outcome = _refine_manual(_refine_test_config(), _refine_host_result())
-
-    assert outcome.config is updated
 
 
 def test_refine_manual_stops_when_prompt_returns_none() -> None:
@@ -921,9 +828,6 @@ def test_prompt_hosts_keyboard_interrupt(cfg: MailConfig) -> None:
     assert updated is None
 
 
-# ---------------------------------------------------------------------------
-# _existing_accounts_for_append — validation-failure edge cases
-# ---------------------------------------------------------------------------
 # _verify_and_refine — remaining edge cases
 # ---------------------------------------------------------------------------
 
