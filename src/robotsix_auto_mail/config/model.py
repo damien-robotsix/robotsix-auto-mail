@@ -23,6 +23,7 @@ from robotsix_yaml_config import (
 from robotsix_auto_mail.config.schema import (
     _FIELD_SPECS,
     _REQUIRED,
+    _VALID_CALENDAR_TRANSPORTS,
     _VALID_LOG_FORMATS,
     _VALID_LOG_LEVELS,
     _VALID_TLS_MODES,
@@ -130,6 +131,15 @@ class MailConfig:
     board_agent_repo_id: str = ""
     board_agent_write_ops: bool = True
 
+    # Calendar (Add to Calendar) — agent-comm dispatch transport.
+    calendar_transport: str = "in-process"
+    calendar_broker_host: str = ""
+    calendar_broker_port: int = 8443
+    calendar_broker_tls_ca: str = ""
+    calendar_broker_client_cert: str = ""
+    calendar_broker_client_key: str = ""
+    calendar_broker_token: str = ""
+
     # -- masking -----------------------------------------------------------
 
     _SECRET_FIELDS = (
@@ -139,6 +149,7 @@ class MailConfig:
         "oauth2_client_secret",
         "langfuse_secret_key",
         "board_agent_api_token",
+        "calendar_broker_token",
     )
 
     def __repr__(self) -> str:
@@ -226,6 +237,14 @@ class MailConfig:
                     errors.append(
                         f"{spec.yaml_path} must be one of "
                         f"{sorted(_VALID_LOG_FORMATS)!r}, got {value!r}"
+                    )
+                kwargs[spec.field_name] = value
+            elif spec.kind == "calendar_transport":
+                value = _get_str(section, key_name, spec.default)
+                if value not in _VALID_CALENDAR_TRANSPORTS:
+                    errors.append(
+                        f"{spec.yaml_path} must be one of "
+                        f"{sorted(_VALID_CALENDAR_TRANSPORTS)!r}, got {value!r}"
                     )
                 kwargs[spec.field_name] = value
             else:  # "str"
@@ -385,6 +404,13 @@ def _build_config_from_env(
                 errors.append(
                     f"{label} must be one of "
                     f"{sorted(_VALID_LOG_FORMATS)!r}, got {raw!r}"
+                )
+            kwargs[spec.field_name] = raw
+        elif spec.kind == "calendar_transport":
+            if raw not in _VALID_CALENDAR_TRANSPORTS:
+                errors.append(
+                    f"{label} must be one of "
+                    f"{sorted(_VALID_CALENDAR_TRANSPORTS)!r}, got {raw!r}"
                 )
             kwargs[spec.field_name] = raw
         else:  # "tls_mode"

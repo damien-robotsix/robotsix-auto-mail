@@ -183,9 +183,11 @@ modules:
       - src/robotsix_auto_mail/calendar/dispatch.py
       - src/robotsix_auto_mail/calendar/listener.py
       - src/robotsix_auto_mail/calendar/schema.py
+      - src/robotsix_auto_mail/calendar/transport.py
       - tests/calendar/conftest.py
       - tests/calendar/test_calendar.py
       - tests/calendar/test_listener.py
+      - tests/calendar/test_transport.py
 
   - id: protocol
     description: >-

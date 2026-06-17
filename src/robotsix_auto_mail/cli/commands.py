@@ -816,7 +816,9 @@ def _cmd_serve(
     if default.config.board_agent_enabled:
         board_agent_handle = start_board_agent(default.config)
 
-    calendar_listener_handle = start_calendar_listener(default.config.db_path)
+    calendar_listener_handle = start_calendar_listener(
+        default.config.db_path, config=default.config
+    )
 
     print(f"Serving board on http://0.0.0.0:{port}/board")
     try:
