@@ -7,7 +7,7 @@ submodules can share them without risking circular imports.
 
 from __future__ import annotations
 
-from robotsix_auto_mail._shared.pydantic_utils import (  # noqa: F401 — re-exported
+from robotsix_auto_mail._shared.pydantic_utils import (
     VALID_CONFIDENCE_LEVELS as _VALID_CONFIDENCE_LEVELS,
 )
 from robotsix_auto_mail.db import VALID_TRIAGE_ACTIONS
@@ -81,3 +81,19 @@ _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY = "archive_folder_memory"
 
 #: Watermark key owned by this module for unsubscribe-suggestion cache.
 _UNSUBSCRIBE_SUGGESTIONS_KEY = "unsubscribe_suggestions"
+
+# ---------------------------------------------------------------------------
+# Explicit re-exports (required by mypy --strict / --no-implicit-reexport)
+# ---------------------------------------------------------------------------
+__all__ = [
+    "TRIAGE_ACTION_LABELS",
+    "TRIAGE_ACTION_ORDER",
+    "_AGENT_SELECTABLE_ACTIONS",
+    "_ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY",
+    "_ARCHIVE_LLM_HINTS_WATERMARK_KEY",
+    "_ARCHIVE_OVERRIDES_WATERMARK_KEY",
+    "_MEMORY_WATERMARK_KEY",
+    "_UNSUBSCRIBE_SUGGESTIONS_KEY",
+    "_VALID_CONFIDENCE_LEVELS",
+    "_VALID_TRIAGE_SOURCES",
+]
