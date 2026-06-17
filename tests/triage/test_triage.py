@@ -12,7 +12,6 @@ from unittest import mock
 
 import pydantic
 import pytest
-from robotsix_llmio.core import Tier
 from tests.conftest import _make_record
 
 from robotsix_auto_mail.db import (
@@ -434,7 +433,7 @@ def test_run_triage_agent_happy_path(
 def test_run_triage_agent_uses_cheap_tier(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """build_agent is called with Tier.CHEAP by default."""
+    """build_agent is called with level=1 (cheap) by default."""
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
@@ -446,7 +445,7 @@ def test_run_triage_agent_uses_cheap_tier(
             run_triage_agent(conn)
             provider = cls.return_value
         provider.build_agent.assert_called_once()
-        assert provider.build_agent.call_args.kwargs["tier"] == Tier.CHEAP
+        assert provider.build_agent.call_args.kwargs["level"] == 1
     finally:
         conn.close()
 

@@ -142,7 +142,7 @@ def generate_draft_reply(
 
         llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
         agent_handle = llm_provider.build_agent(
-            tier=tier,
+            level=1 if tier == Tier.CHEAP else 2,
             system_prompt=_build_draft_system_prompt(),
             output_type=PromptedOutput(DraftResult),
         )

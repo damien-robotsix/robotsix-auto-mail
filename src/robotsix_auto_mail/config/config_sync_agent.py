@@ -391,7 +391,7 @@ def run_config_sync_agent(
     # -- build agent --
     llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
-        tier=tier,
+        level=1 if tier == Tier.CHEAP else 2,
         system_prompt=_build_config_sync_system_prompt(),
         output_type=PromptedOutput(ConfigSyncResult),
     )

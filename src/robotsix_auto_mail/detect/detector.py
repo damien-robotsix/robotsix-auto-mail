@@ -423,7 +423,7 @@ def detect_provider(
 
     llm_provider = _get_provider(provider=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
-        tier=tier,
+        level=1 if tier == Tier.CHEAP else 2,
         system_prompt=_DETECT_SYSTEM_PROMPT,
         output_type=PromptedOutput(DetectedProvider),
     )

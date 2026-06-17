@@ -12,7 +12,6 @@ from unittest import mock
 
 import pydantic
 import pytest
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail.config.config_sync_agent import (
     ConfigSyncError,
@@ -118,14 +117,14 @@ def test_run_config_sync_agent_happy_path(
 def test_run_config_sync_agent_uses_cheap_tier(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """build_agent is called with Tier.CHEAP by default."""
+    """build_agent is called with level=1 (cheap) by default."""
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     _handle, patcher = _patch_llm(ConfigSyncResult(proposals=[]))
     with patcher as cls:
         run_config_sync_agent()
         provider = cls.return_value
     provider.build_agent.assert_called_once()
-    assert provider.build_agent.call_args.kwargs["tier"] == Tier.CHEAP
+    assert provider.build_agent.call_args.kwargs["level"] == 1
 
 
 def test_run_config_sync_agent_empty_no_drift(

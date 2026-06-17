@@ -404,7 +404,7 @@ def test_detect_provider_missing_api_key() -> None:
 
 
 def test_detect_provider_tier_default() -> None:
-    """When no tier arg is passed, build_agent is called with Tier.CHEAP."""
+    """When no tier arg is passed, build_agent is called with level=1 (cheap)."""
     with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
         mock_run_result = mock.MagicMock()
         mock_run_result.output = DetectedProvider(
@@ -426,11 +426,11 @@ def test_detect_provider_tier_default() -> None:
 
         mock_provider.build_agent.assert_called_once()
         call_kwargs = mock_provider.build_agent.call_args.kwargs
-        assert call_kwargs["tier"] == Tier.CHEAP
+        assert call_kwargs["level"] == 1
 
 
 def test_detect_provider_explicit_tier() -> None:
-    """When tier=Tier.DEFAULT is passed, build_agent is called with it."""
+    """When tier=Tier.DEFAULT is passed, build_agent is called with level=2."""
     with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
         mock_run_result = mock.MagicMock()
         mock_run_result.output = DetectedProvider(
@@ -452,7 +452,7 @@ def test_detect_provider_explicit_tier() -> None:
 
         mock_provider.build_agent.assert_called_once()
         call_kwargs = mock_provider.build_agent.call_args.kwargs
-        assert call_kwargs["tier"] == Tier.DEFAULT
+        assert call_kwargs["level"] == 2
 
 
 # ---------------------------------------------------------------------------

@@ -46,7 +46,8 @@ def _effective_body_plain(record: MailRecord) -> str:
     """
     if record.body_plain.strip():
         return record.body_plain
-    return html_to_text(record.body_html)
+    text: str = html_to_text(record.body_html)
+    return text
 
 
 def _format_date(raw: str) -> str:
