@@ -104,3 +104,28 @@ jobs:
       run-pip-audit: true
       pip-audit-requirements-file: requirements-locked.txt
       pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board robotsix-auto-mail robotsix-llmio"
+
+  # Diff-scoped dependency review gate on pull requests. Uses GitHub's
+  # dependency-review-action to (a) block PRs that add dependencies with known
+  # CVEs rated moderate or higher and (b) deny strong-copyleft licenses
+  # incompatible with this project's MIT license.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write       # needed for comment-summary-in-pr
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: moderate
+          deny-licenses: >-
+            GPL-2.0-only, GPL-2.0-or-later,
+            GPL-3.0-only, GPL-3.0-or-later,
+            AGPL-3.0-only, AGPL-3.0-or-later,
+            LGPL-2.1-only, LGPL-2.1-or-later,
+            LGPL-3.0-only, LGPL-3.0-or-later
+          comment-summary-in-pr: true
