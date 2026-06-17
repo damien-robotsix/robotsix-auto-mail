@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
@@ -120,14 +121,23 @@ class _BoardActionMixin:
                 prior = get_triage_decision(conn, message_id)
                 prior_action = prior.action if prior is not None else None
 
-            set_triage_decision(
-                conn,
-                message_id,
-                triage_action,
-                source="user",
-                reason=f"moved to {triage_action}",
-            )
-            record_human_decision(conn, message_id, triage_action)
+            try:
+                set_triage_decision(
+                    conn,
+                    message_id,
+                    triage_action,
+                    source="user",
+                    reason=f"moved to {triage_action}",
+                )
+                record_human_decision(conn, message_id, triage_action)
+            except sqlite3.IntegrityError:
+                # Defense in depth: a stale CHECK constraint (legacy DB
+                # predating a new triage action) makes the upsert raise
+                # IntegrityError.  Persisting the decision is impossible,
+                # but the move must not crash the worker into a 502 — send
+                # a clean error response and skip the success redirect.
+                self._bad_request(f"Could not move to {triage_action}")
+                return False
 
             if triage_action == "TO_CALENDAR":
                 # -- Dispatch calendar request on column move ----------
