@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import sqlite3
-import tempfile
 from typing import TYPE_CHECKING
 from unittest import mock
 from urllib.request import Request, urlopen
@@ -26,8 +24,6 @@ from tests.server.conftest import (
     _start_test_server_with_accounts,
     _start_test_server_with_mail_config,
     _triage_action,
-    _two_account_setup,
-    _two_account_setup_with_labels,
 )
 
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
@@ -1768,25 +1764,19 @@ def test_get_routing_isolates_accounts(
         server.shutdown()
 
 
-def test_get_default_account_no_param() -> None:
+def test_get_default_account_no_param(
+    db_accounts_no_triage_b: tuple[str, str, MailAccountsConfig],
+) -> None:
     """GET /board-content with no param and ≥2 accounts defaults to aggregate."""
-    fd_a, db_a = tempfile.mkstemp(suffix=".db")
-    fd_b, db_b = tempfile.mkstemp(suffix=".db")
-    os.close(fd_a)
-    os.close(fd_b)
+    _db_a, _db_b, accounts = db_accounts_no_triage_b
+    server, port = _start_test_server_with_accounts(accounts, "B")
     try:
-        accounts = _two_account_setup(db_a, db_b, default_account_id="B")
-        server, port = _start_test_server_with_accounts(accounts, "B")
-        try:
-            _s, body, _h = _get(f"http://127.0.0.1:{port}/board-content")
-            # Aggregate view shows cards from both accounts.
-            assert "bob@b.com" in body
-            assert "alice@a.com" in body
-        finally:
-            server.shutdown()
+        _s, body, _h = _get(f"http://127.0.0.1:{port}/board-content")
+        # Aggregate view shows cards from both accounts.
+        assert "bob@b.com" in body
+        assert "alice@a.com" in body
     finally:
-        os.unlink(db_a)
-        os.unlink(db_b)
+        server.shutdown()
 
 
 def test_post_move_isolates_accounts(
@@ -1881,32 +1871,26 @@ def test_cookie_persistence(
         server.shutdown()
 
 
-def test_picker_visible_multi_account() -> None:
+def test_picker_visible_multi_account(
+    db_accounts_with_labels_no_triage: tuple[str, str, MailAccountsConfig],
+) -> None:
     """A 2-account board defaults to aggregate with 'All mailboxes' selected."""
-    fd_a, db_a = tempfile.mkstemp(suffix=".db")
-    fd_b, db_b = tempfile.mkstemp(suffix=".db")
-    os.close(fd_a)
-    os.close(fd_b)
+    _db_a, _db_b, accounts = db_accounts_with_labels_no_triage
+    server, port = _start_test_server_with_accounts(accounts, "A")
     try:
-        accounts = _two_account_setup_with_labels(db_a, db_b)
-        server, port = _start_test_server_with_accounts(accounts, "A")
-        try:
-            status, body, _h = _get(f"http://127.0.0.1:{port}/board")
-            assert status == 200
-            assert '<select id="account-picker"' in body
-            assert '<option value="__all__"' in body
-            assert '<option value="A"' in body
-            assert '<option value="B"' in body
-            # Default (no query, no cookie, ≥2 accounts) → aggregate.
-            assert '<option value="__all__" selected>' in body
-            assert '<option value="A" selected>' not in body
-            # Non-None label renders escaped as the option text.
-            assert "Alice &lt;Work&gt;" in body
-        finally:
-            server.shutdown()
+        status, body, _h = _get(f"http://127.0.0.1:{port}/board")
+        assert status == 200
+        assert '<select id="account-picker"' in body
+        assert '<option value="__all__"' in body
+        assert '<option value="A"' in body
+        assert '<option value="B"' in body
+        # Default (no query, no cookie, ≥2 accounts) → aggregate.
+        assert '<option value="__all__" selected>' in body
+        assert '<option value="A" selected>' not in body
+        # Non-None label renders escaped as the option text.
+        assert "Alice &lt;Work&gt;" in body
     finally:
-        os.unlink(db_a)
-        os.unlink(db_b)
+        server.shutdown()
 
 
 def test_picker_reflects_selection(
