@@ -152,10 +152,10 @@ def _start_test_server_with_mail_config(
     return server, assigned_port
 
 
-def _post_form(
-    port: int, fields: dict[str, str], path: str = "/move"
-) -> tuple[int, str]:
-    """POST url-encoded *fields* to *path* on the test server."""
+def _build_opener(
+    port: int, fields: dict[str, str], path: str
+) -> tuple[urllib.request.OpenerDirector, urllib.request.Request]:
+    """Build an opener and request for POSTing url-encoded *fields* to *path*."""
     data = urllib.parse.urlencode(fields).encode("utf-8")
     url = f"http://127.0.0.1:{port}{path}"
 
@@ -165,6 +165,14 @@ def _post_form(
         data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
+    return opener, req
+
+
+def _post_form(
+    port: int, fields: dict[str, str], path: str = "/move"
+) -> tuple[int, str]:
+    """POST url-encoded *fields* to *path* on the test server."""
+    opener, req = _build_opener(port, fields, path)
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
     return resp.status, body
@@ -178,15 +186,7 @@ def _post_form_resp(
     Like :func:`_post_form` but returns the response object so the raw
     ``Location``/headers can be inspected (does not follow redirects).
     """
-    data = urllib.parse.urlencode(fields).encode("utf-8")
-    url = f"http://127.0.0.1:{port}{path}"
-
-    opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-    req = urllib.request.Request(  # noqa: S310
-        url,
-        data=data,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
+    opener, req = _build_opener(port, fields, path)
     resp = opener.open(req)
     resp.read()
     return cast("HTTPResponse", resp)
@@ -198,15 +198,7 @@ def _post_to_path(port: int, path: str, fields: dict[str, str]) -> HTTPResponse:
     Does not follow redirects and captures error responses so 302/400/404
     can be inspected directly.
     """
-    data = urllib.parse.urlencode(fields).encode("utf-8")
-    url = f"http://127.0.0.1:{port}{path}"
-
-    opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-    req = urllib.request.Request(  # noqa: S310
-        url,
-        data=data,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
+    opener, req = _build_opener(port, fields, path)
     resp = opener.open(req)
     resp.read()
     return cast("HTTPResponse", resp)
