@@ -268,6 +268,13 @@ auth:
 | `archive.enabled` | no | `true` | Whether to create/manage the archive folder structure |
 | `triage.on_ingest` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
 | `calendar.enabled` | no | `true` | Whether the 'Add to Calendar' button appears in the detail view and dispatches to the `robotsix-calendar` agent |
+| `calendar.transport` | no | `"in-process"` | Transport mode for calendar dispatch — `in-process` (local `Registry`) or `brokered` (secured broker server) |
+| `calendar.broker_host` | no | – | Broker server hostname (required when `transport: brokered`) |
+| `calendar.broker_port` | no | `8443` | Broker server port |
+| `calendar.broker_tls_ca` | no | – | Path to CA certificate PEM for broker TLS verification |
+| `calendar.broker_client_cert` | no | – | Path to client certificate PEM for mutual TLS (optional) |
+| `calendar.broker_client_key` | no | – | Path to client key PEM for mutual TLS (optional) |
+| `calendar.broker_token` | no | – | Agent authentication token for the broker (redacted in logs/repr) |
 | `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing (may instead be supplied via `LLM_API_KEY`) |
 | `llm.provider` | no | `"openrouter-deepseek"` | LLM backend name (e.g. `openrouter-deepseek`, `claude-sdk`); see robotsix-llmio README for available backends |
 | `langfuse.public_key` | no | – | Langfuse public key; when set with the secret key, every LLM agent run is traced |
@@ -391,6 +398,13 @@ with the following fields:
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to create/manage the archive folder structure |
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
 | `MAIL_CALENDAR_ENABLED` | no | `true` | Whether the 'Add to Calendar' button appears (and dispatch is attempted) |
+| `CALENDAR_TRANSPORT` | no | `in-process` | Transport mode for calendar dispatch — `in-process` or `brokered` |
+| `CALENDAR_BROKER_HOST` | no | – | Broker server hostname (required when `CALENDAR_TRANSPORT=brokered`) |
+| `CALENDAR_BROKER_PORT` | no | `8443` | Broker server port |
+| `CALENDAR_BROKER_TLS_CA` | no | – | Path to CA certificate PEM for broker TLS verification |
+| `CALENDAR_BROKER_CLIENT_CERT` | no | – | Path to client certificate PEM for mutual TLS (optional) |
+| `CALENDAR_BROKER_CLIENT_KEY` | no | – | Path to client key PEM for mutual TLS (optional) |
+| `CALENDAR_BROKER_TOKEN` | no | – | Agent authentication token for the broker (redacted in logs/repr) |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
 | `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |
 | `LLM_PROVIDER` | no | `openrouter-deepseek` | LLM backend name (overrides `llm.provider`); see robotsix-llmio README for available backends |

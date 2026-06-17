@@ -95,6 +95,9 @@ from robotsix_auto_mail.config.schema import (
     _REQUIRED as _REQUIRED,
 )
 from robotsix_auto_mail.config.schema import (
+    _VALID_CALENDAR_TRANSPORTS as _VALID_CALENDAR_TRANSPORTS,
+)
+from robotsix_auto_mail.config.schema import (
     _VALID_LOG_FORMATS as _VALID_LOG_FORMATS,
 )
 from robotsix_auto_mail.config.schema import (
@@ -157,6 +160,7 @@ __all__ = [
     "_ENV_ACCOUNT_INDEX_RE",
     "_FIELD_SPECS",
     "_REQUIRED",
+    "_VALID_CALENDAR_TRANSPORTS",
     "_VALID_LOG_FORMATS",
     "_VALID_LOG_LEVELS",
     "_VALID_TLS_MODES",

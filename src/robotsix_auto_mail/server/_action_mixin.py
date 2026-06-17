@@ -187,7 +187,9 @@ class _BoardActionMixin:
                             return
                         try:
                             try:
-                                dispatch_calendar_request(event)
+                                dispatch_calendar_request(
+                                    event, config=self.mail_config
+                                )
                             except CalendarDispatchError as exc:
                                 update_calendar_event_ref(
                                     bg_conn, message_id, f"error: {exc}"

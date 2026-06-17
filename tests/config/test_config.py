@@ -319,6 +319,23 @@ def test_from_env_invalid_log_format() -> None:
         assert "LOG_FORMAT" in msg
 
 
+def test_from_env_invalid_calendar_transport() -> None:
+    """Invalid CALENDAR_TRANSPORT → ConfigurationError."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "imap.example.com",
+        "MAIL_SMTP_HOST": "smtp.example.com",
+        "MAIL_USERNAME": "u",
+        "MAIL_PASSWORD": "p",
+        "CALENDAR_TRANSPORT": "tls",
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        with pytest.raises(ConfigurationError) as exc:
+            MailConfig.from_env()
+        msg = str(exc.value)
+        assert "CALENDAR_TRANSPORT" in msg
+        assert "tls" in msg
+
+
 # ---------------------------------------------------------------------------
 # from_yaml
 # ---------------------------------------------------------------------------

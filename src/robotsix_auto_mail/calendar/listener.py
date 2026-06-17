@@ -12,35 +12,93 @@ Architecture (same pattern as ``board_agent.py``):
   ``on_notification`` callback that fires for every incoming message.
 - The callback validates the payload, looks up the record, and
   updates the DB.
+
+Transport selection follows ``MailConfig.calendar_transport``:
+``"in-process"`` uses a local ``Registry()``; ``"brokered"`` connects
+to the secured broker server over TLS with token auth.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import ssl
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config.model import MailConfig
 
 logger = logging.getLogger(__name__)
 
 Handle = object  # opaque handle returned by start_calendar_listener
 
 
-def start_calendar_listener(db_path: str) -> Handle | None:
+def start_calendar_listener(
+    db_path: str, *, config: "MailConfig | None" = None
+) -> Handle | None:
     """Start a daemon thread running the calendar-response event loop.
 
     Returns an opaque handle for later ``stop_calendar_listener``, or
     ``None`` when the ``robotsix_agent_comm`` dependency is not installed.
+    When *config* is provided and ``calendar_transport`` is ``"brokered"``
+    but the broker connection cannot be established, logs a warning and
+    returns ``None`` (graceful degradation — the server does not crash).
     """
     try:
         from robotsix_agent_comm.sdk import Agent
-        from robotsix_agent_comm.transport import Registry
     except ImportError:
         logger.warning("robotsix_agent_comm not installed; calendar listener disabled.")
         return None
 
-    registry = Registry()
-    agent = Agent("robotsix-auto-mail", registry=registry)
+    try:
+        if config is not None:
+            from .transport import build_calendar_transport_from_config
+
+            try:
+                registry, transport_obj = build_calendar_transport_from_config(config)
+            except ImportError:
+                logger.warning(
+                    "robotsix_agent_comm not installed; calendar listener disabled."
+                )
+                return None
+            except ValueError as exc:
+                logger.warning(
+                    "Calendar broker configuration incomplete: %s; "
+                    "calendar listener disabled.",
+                    exc,
+                )
+                return None
+            except ssl.SSLError as exc:
+                logger.warning(
+                    "Calendar broker TLS handshake failed: %s; "
+                    "calendar listener disabled.",
+                    exc,
+                )
+                return None
+            except OSError as exc:
+                logger.warning(
+                    "Calendar broker unreachable: %s; calendar listener disabled.",
+                    exc,
+                )
+                return None
+        else:
+            from .transport import _get_in_process_registry
+
+            registry = _get_in_process_registry()
+            transport_obj = None
+
+        agent_kwargs: dict[str, object] = {"registry": registry}
+        if transport_obj is not None:
+            agent_kwargs["transport"] = transport_obj
+        agent = Agent("robotsix-auto-mail", **agent_kwargs)
+    except Exception:
+        logger.warning(
+            "Failed to initialise calendar listener transport; "
+            "calendar listener disabled.",
+            exc_info=True,
+        )
+        return None
 
     # Inject the db_path into the callback closure.
     def _on_notification(notification: dict[str, Any]) -> None:
