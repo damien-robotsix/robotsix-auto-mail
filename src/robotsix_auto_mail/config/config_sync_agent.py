@@ -26,6 +26,7 @@ from pathlib import Path
 import pydantic
 from robotsix_llmio.core import Tier, get_provider, run_agent
 
+from robotsix_auto_mail._shared.pydantic_utils import validate_confidence
 from robotsix_auto_mail.config import (
     _FIELD_SPECS,
     _REQUIRED,
@@ -46,14 +47,6 @@ _SURFACE_FILES: tuple[str, ...] = (
     ".env.example",
     "docs/connecting.md",
 )
-
-#: Accepted ``DriftProposal.confidence`` levels.
-#: Imported from the shared module (canonical definition).
-from robotsix_auto_mail._shared.pydantic_utils import (
-    VALID_CONFIDENCE_LEVELS as _VALID_CONFIDENCE_LEVELS,
-    validate_confidence,
-)
-
 #: Watermark key owned by this module for the dedup memory ledger.
 #:
 #: The ledger is persisted in ``db.py``'s ``watermark`` key-value table —

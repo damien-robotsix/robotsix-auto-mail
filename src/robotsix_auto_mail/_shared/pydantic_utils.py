@@ -20,7 +20,6 @@ def validate_confidence(v: str) -> str:
     """
     if v not in VALID_CONFIDENCE_LEVELS:
         raise ValueError(
-            "confidence must be one of "
-            f"{sorted(VALID_CONFIDENCE_LEVELS)!r}; got {v!r}"
+            f"confidence must be one of {sorted(VALID_CONFIDENCE_LEVELS)!r}; got {v!r}"
         )
     return v

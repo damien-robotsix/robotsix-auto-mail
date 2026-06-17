@@ -7,6 +7,9 @@ submodules can share them without risking circular imports.
 
 from __future__ import annotations
 
+from robotsix_auto_mail._shared.pydantic_utils import (  # noqa: F401 — re-exported
+    VALID_CONFIDENCE_LEVELS as _VALID_CONFIDENCE_LEVELS,
+)
 from robotsix_auto_mail.db import VALID_TRIAGE_ACTIONS
 
 # ---------------------------------------------------------------------------
@@ -63,12 +66,6 @@ _VALID_TRIAGE_SOURCES = frozenset({"agent", "user"})
 #: its dedup ledger.  Reusing the watermark table keeps a single storage
 #: mechanism and a single DB file instead of a parallel format.
 _MEMORY_WATERMARK_KEY = "triage_human_memory"
-
-#: Accepted confidence levels (mirrors ``DriftProposal.confidence``).
-#: Re-exported from the shared module for backward compatibility.
-from robotsix_auto_mail._shared.pydantic_utils import (
-    VALID_CONFIDENCE_LEVELS as _VALID_CONFIDENCE_LEVELS,
-)
 
 #: Watermark key owned by this module for user archive subfolder overrides.
 _ARCHIVE_OVERRIDES_WATERMARK_KEY = "archive_subfolder_overrides"
