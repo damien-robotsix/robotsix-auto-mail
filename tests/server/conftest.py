@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import urllib.parse
+import urllib.request
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast
 from urllib.request import urlopen
@@ -20,6 +22,35 @@ from tests.conftest import _make_record
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """An opener handler that refuses to follow redirects."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: object,
+        code: int,
+        msg: object,
+        hdrs: object,
+        newurl: str,
+    ) -> None:
+        return None
+
+
+class CaptureError(urllib.request.HTTPDefaultErrorHandler):
+    """An opener handler that returns the error response body instead of raising."""
+
+    def http_error_default(  # type: ignore[override]
+        self,
+        req: urllib.request.Request,
+        fp: object,
+        code: int,
+        msg: object,
+        hdrs: object,
+    ) -> object:
+        return fp
 
 
 @pytest.fixture
@@ -125,34 +156,8 @@ def _post_form(
     port: int, fields: dict[str, str], path: str = "/move"
 ) -> tuple[int, str]:
     """POST url-encoded *fields* to *path* on the test server."""
-    import urllib.request
-
     data = urllib.parse.urlencode(fields).encode("utf-8")
     url = f"http://127.0.0.1:{port}{path}"
-
-    # Don't follow redirects, and capture 400/404 bodies.
-    class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(
-            self,
-            req: urllib.request.Request,
-            fp: object,
-            code: int,
-            msg: object,
-            hdrs: object,
-            newurl: str,
-        ) -> None:
-            return None
-
-    class CaptureError(urllib.request.HTTPDefaultErrorHandler):
-        def http_error_default(  # type: ignore[override]
-            self,
-            req: urllib.request.Request,
-            fp: object,
-            code: int,
-            msg: object,
-            hdrs: object,
-        ) -> object:
-            return fp
 
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
     req = urllib.request.Request(  # noqa: S310
@@ -173,33 +178,8 @@ def _post_form_resp(
     Like :func:`_post_form` but returns the response object so the raw
     ``Location``/headers can be inspected (does not follow redirects).
     """
-    import urllib.request
-
     data = urllib.parse.urlencode(fields).encode("utf-8")
     url = f"http://127.0.0.1:{port}{path}"
-
-    class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(
-            self,
-            req: urllib.request.Request,
-            fp: object,
-            code: int,
-            msg: object,
-            hdrs: object,
-            newurl: str,
-        ) -> None:
-            return None
-
-    class CaptureError(urllib.request.HTTPDefaultErrorHandler):
-        def http_error_default(  # type: ignore[override]
-            self,
-            req: urllib.request.Request,
-            fp: object,
-            code: int,
-            msg: object,
-            hdrs: object,
-        ) -> object:
-            return fp
 
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
     req = urllib.request.Request(  # noqa: S310
@@ -218,33 +198,8 @@ def _post_to_path(port: int, path: str, fields: dict[str, str]) -> HTTPResponse:
     Does not follow redirects and captures error responses so 302/400/404
     can be inspected directly.
     """
-    import urllib.request
-
     data = urllib.parse.urlencode(fields).encode("utf-8")
     url = f"http://127.0.0.1:{port}{path}"
-
-    class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(
-            self,
-            req: urllib.request.Request,
-            fp: object,
-            code: int,
-            msg: object,
-            hdrs: object,
-            newurl: str,
-        ) -> None:
-            return None
-
-    class CaptureError(urllib.request.HTTPDefaultErrorHandler):
-        def http_error_default(  # type: ignore[override]
-            self,
-            req: urllib.request.Request,
-            fp: object,
-            code: int,
-            msg: object,
-            hdrs: object,
-        ) -> object:
-            return fp
 
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
     req = urllib.request.Request(  # noqa: S310
@@ -293,20 +248,7 @@ def _move_and_get_location(redirect_to: str) -> HTTPResponse:
 
 def _post_config_sync(port: int) -> tuple[int, str]:
     """POST an empty body to /config-sync; return (status, body)."""
-    import urllib.request
-
     url = f"http://127.0.0.1:{port}/config-sync"
-
-    class CaptureError(urllib.request.HTTPDefaultErrorHandler):
-        def http_error_default(  # type: ignore[override]
-            self,
-            req: urllib.request.Request,
-            fp: object,
-            code: int,
-            msg: object,
-            hdrs: object,
-        ) -> object:
-            return fp
 
     opener = urllib.request.build_opener(CaptureError())
     req = urllib.request.Request(url, data=b"", method="POST")  # noqa: S310
