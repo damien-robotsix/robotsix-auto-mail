@@ -14,6 +14,7 @@ from pathlib import Path
 from ._migrate import (
     _migrate_legacy_statuses,
     _migrate_status_to_triage,
+    _migrate_triage_action_check,
     run_additive_migrations,
 )
 from .models import (
@@ -53,6 +54,7 @@ def init_db(
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     if not skip_migrations:
+        _migrate_triage_action_check(conn)
         _migrate_legacy_statuses(conn)
         _migrate_status_to_triage(conn)
         run_additive_migrations(conn, "mail_records", _ADDITIVE_COLUMNS)

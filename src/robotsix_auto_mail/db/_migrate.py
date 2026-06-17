@@ -21,6 +21,14 @@ import sqlite3
 from collections.abc import Sequence
 from datetime import datetime, timezone
 
+from .models import VALID_TRIAGE_ACTIONS
+
+#: Mirror of :data:`robotsix_auto_mail.db.models._TRIAGE_ACTION_CHECK_VALUES` —
+#: the ``IN (...)`` value list for the ``triage_decisions.action`` CHECK
+#: constraint, derived from :data:`VALID_TRIAGE_ACTIONS` so that a rebuilt
+#: table always reflects the live vocabulary and future additions self-heal.
+_TRIAGE_ACTION_CHECK_VALUES = ", ".join(repr(a) for a in sorted(VALID_TRIAGE_ACTIONS))
+
 
 def add_column_if_missing(
     conn: sqlite3.Connection,
@@ -146,3 +154,69 @@ WHERE mr.status = ?
             (action, now, old_status),
         )
     conn.commit()
+
+
+def _migrate_triage_action_check(conn: sqlite3.Connection) -> None:
+    """Rebuild ``triage_decisions`` when its stored CHECK constraint is stale.
+
+    SQLite bakes the ``action IN (...)`` CHECK vocabulary into the table at
+    ``CREATE TABLE`` time and offers no ``ALTER`` to change a CHECK.  A DB
+    created before a new action was added to :data:`VALID_TRIAGE_ACTIONS`
+    therefore keeps rejecting that action forever, even though
+    ``init_db``'s ``CREATE TABLE IF NOT EXISTS`` is a no-op on the existing
+    table.  This migration detects that drift by reading the stored DDL from
+    ``sqlite_master`` and — when any current action is missing — rebuilds the
+    table with the up-to-date constraint, copying every row across.
+
+    The vocabulary is derived from :data:`VALID_TRIAGE_ACTIONS`
+    (via :data:`_TRIAGE_ACTION_CHECK_VALUES`) so future additions self-heal.
+
+    Idempotent: when the stored DDL already permits every current action the
+    function returns without touching the table.
+    """
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master "
+        "WHERE type = 'table' AND name = 'triage_decisions'"
+    ).fetchone()
+    if row is None or row[0] is None:
+        return
+    stored_ddl: str = row[0]
+    if all(repr(action) in stored_ddl for action in VALID_TRIAGE_ACTIONS):
+        return
+
+    # SQLite cannot ALTER a CHECK constraint, so rebuild the table:
+    # create-with-current-DDL, copy rows, drop old, rename.  ``PRAGMA
+    # foreign_keys`` must be toggled outside any transaction, so commit any
+    # pending work first, then wrap the rebuild itself in a transaction.
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys=OFF;")
+    try:
+        conn.execute(
+            f"""
+CREATE TABLE triage_decisions_new (
+    message_id  TEXT NOT NULL UNIQUE,
+    action      TEXT NOT NULL CHECK(action IN (
+                    {_TRIAGE_ACTION_CHECK_VALUES}
+                )),
+    source      TEXT NOT NULL,
+    reason      TEXT NOT NULL DEFAULT '',
+    confidence  TEXT NOT NULL DEFAULT 'medium',
+    updated_at  TEXT NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES mail_records(message_id)
+)
+"""
+        )
+        conn.execute(
+            "INSERT INTO triage_decisions_new "
+            "(message_id, action, source, reason, confidence, updated_at) "
+            "SELECT message_id, action, source, reason, confidence, updated_at "
+            "FROM triage_decisions"
+        )
+        conn.execute("DROP TABLE triage_decisions")
+        conn.execute("ALTER TABLE triage_decisions_new RENAME TO triage_decisions")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.execute("PRAGMA foreign_keys=ON;")
