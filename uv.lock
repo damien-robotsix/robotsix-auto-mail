@@ -1224,6 +1224,7 @@ board-agent = [
     { name = "robotsix-board-agent" },
 ]
 dev = [
+    { name = "cryptography" },
     { name = "deptry" },
     { name = "hatchling" },
     { name = "hypothesis" },
@@ -1252,6 +1253,7 @@ microsoft = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", marker = "extra == 'dev'" },
     { name = "deptry", marker = "extra == 'dev'" },
     { name = "hatchling", marker = "extra == 'dev'" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6" },

@@ -38,6 +38,10 @@ dev = [
     "pytest-xdist",
     "pytest-cov>=7.1.0",
     "hypothesis>=6",
+    # cryptography is a test-only need: tests/calendar/test_transport.py
+    # generates throwaway X.509 CA/client certs on the fly to exercise the
+    # TLS SSLContext builder in calendar/transport.py.
+    "cryptography",
     "deptry",
     "hatchling",
     # pyyaml is no longer used by the package itself (YAML loading is delegated
