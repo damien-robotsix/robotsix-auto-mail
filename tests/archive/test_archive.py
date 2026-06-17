@@ -8,7 +8,6 @@ from typing import cast
 from unittest import mock
 
 import pytest
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.archive import (
@@ -122,7 +121,7 @@ def test_determine_archive_structure_success() -> None:
 
 
 def test_determine_archive_structure_uses_cheap_tier() -> None:
-    """build_agent is called with Tier.CHEAP by default."""
+    """build_agent is called with level=1 (cheap) by default."""
     with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
         with mock.patch("robotsix_llmio.core.get_provider") as cls:
             mock_run_result = mock.MagicMock()
@@ -136,7 +135,7 @@ def test_determine_archive_structure_uses_cheap_tier() -> None:
             determine_archive_structure(["INBOX"])
 
         provider.build_agent.assert_called_once()
-        assert provider.build_agent.call_args.kwargs["tier"] == Tier.CHEAP
+        assert provider.build_agent.call_args.kwargs["level"] == 1
         mock_handle.close.assert_called_once()
 
 

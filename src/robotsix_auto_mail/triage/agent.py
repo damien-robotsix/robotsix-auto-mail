@@ -253,7 +253,7 @@ def _detect_unsubscribe_for_sender(
 
     llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
-        tier=Tier.CHEAP,
+        level=1,
         system_prompt=system_prompt,
         output_type=PromptedOutput(UnsubscribeDetection),
     )
@@ -560,7 +560,7 @@ def run_triage_agent(
     # -- build agent --
     llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
-        tier=tier,
+        level=1 if tier == Tier.CHEAP else 2,
         system_prompt=_build_triage_system_prompt(
             archive_folders,
             archive_folder_history or None,
