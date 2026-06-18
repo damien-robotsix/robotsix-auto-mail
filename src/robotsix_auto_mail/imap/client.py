@@ -14,7 +14,7 @@ from __future__ import annotations
 import imaplib
 import re
 import ssl
-from typing import Any
+from typing import Any, Iterator
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.protocol import _ProtocolClient, build_xoauth2_response
@@ -520,6 +520,24 @@ class ImapClient(_ProtocolClient):
         # Delete the original from the source mailbox.
         self.delete_message(uid)
 
+    def _filter_valid_uids(self, uids: list[int]) -> Iterator[tuple[str, list[int]]]:
+        """Yield ``(valid_set_str, valid_uids_list)`` for each batch of *uids*.
+
+        Chunks *uids* into groups of :data:`_BATCH_UID_CHUNK` and performs a
+        ``UID SEARCH`` pre-verification on each chunk to filter out stale UIDs
+        that are no longer present in the selected folder.  Chunks where every
+        UID is stale are silently skipped.
+        """
+        for start in range(0, len(uids), _BATCH_UID_CHUNK):
+            chunk = uids[start : start + _BATCH_UID_CHUNK]
+            uid_set = ",".join(str(uid) for uid in chunk)
+            existing = set(self.search_uids(f"UID {uid_set}"))
+            valid_uids = [uid for uid in chunk if uid in existing]
+            if not valid_uids:
+                continue
+            valid_set = ",".join(str(uid) for uid in valid_uids)
+            yield valid_set, valid_uids
+
     def delete_messages(self, uids: list[int]) -> None:
         """Mark a whole UID set ``\\Deleted`` and expunge, in chunks.
 
@@ -542,20 +560,7 @@ class ImapClient(_ProtocolClient):
         if self._imap is None:
             raise ImapError("Not connected")
 
-        for start in range(0, len(uids), _BATCH_UID_CHUNK):
-            chunk = uids[start : start + _BATCH_UID_CHUNK]
-            uid_set = ",".join(str(uid) for uid in chunk)
-
-            # Pre-verify which UIDs actually exist in the selected folder.
-            # A STORE matching zero UIDs is a conformant OK no-op
-            # (RFC 3501), so guard against stale UIDs before issuing any
-            # destructive command.
-            existing = set(self.search_uids(f"UID {uid_set}"))
-            valid_uids = [uid for uid in chunk if uid in existing]
-            if not valid_uids:
-                continue
-
-            valid_set = ",".join(str(uid) for uid in valid_uids)
+        for valid_set, _valid_uids in self._filter_valid_uids(uids):
 
             status, _ = self._imap.uid("STORE", valid_set, "+FLAGS", "(\\Deleted)")
             if status != "OK":
@@ -590,17 +595,7 @@ class ImapClient(_ProtocolClient):
         if self._imap is None:
             raise ImapError("Not connected")
 
-        for start in range(0, len(uids), _BATCH_UID_CHUNK):
-            chunk = uids[start : start + _BATCH_UID_CHUNK]
-            uid_set = ",".join(str(uid) for uid in chunk)
-
-            # Pre-verify which UIDs actually exist.
-            existing = set(self.search_uids(f"UID {uid_set}"))
-            valid_uids = [uid for uid in chunk if uid in existing]
-            if not valid_uids:
-                continue
-
-            valid_set = ",".join(str(uid) for uid in valid_uids)
+        for valid_set, valid_uids in self._filter_valid_uids(uids):
 
             status, data = self._imap.uid(
                 "COPY", valid_set, _encode_mailbox(dest_folder)
