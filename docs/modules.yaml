@@ -331,6 +331,7 @@ modules:
       updates, and local pre-commit hooks (including the
       detect-secrets baseline).
     paths:
+      - .github/CODEOWNERS
       - .github/codeql/codeql-config.yml
       - .github/workflows/ci.yml
       - .github/workflows/codeql.yml
