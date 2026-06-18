@@ -561,7 +561,6 @@ class ImapClient(_ProtocolClient):
             raise ImapError("Not connected")
 
         for valid_set, _valid_uids in self._filter_valid_uids(uids):
-
             status, _ = self._imap.uid("STORE", valid_set, "+FLAGS", "(\\Deleted)")
             if status != "OK":
                 raise ImapError(
@@ -596,7 +595,6 @@ class ImapClient(_ProtocolClient):
             raise ImapError("Not connected")
 
         for valid_set, valid_uids in self._filter_valid_uids(uids):
-
             status, data = self._imap.uid(
                 "COPY", valid_set, _encode_mailbox(dest_folder)
             )
