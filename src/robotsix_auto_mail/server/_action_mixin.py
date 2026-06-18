@@ -35,7 +35,7 @@ class _BoardActionMixin:
         self,
         watermark_key: str,
         target: Callable[..., None] | None = None,
-        args: tuple = (),
+        args: tuple[Any, ...] = (),
         *,
         running_check: Callable[[str | None], bool] | None = None,
         precheck: Callable[[Any], bool] | None = None,
