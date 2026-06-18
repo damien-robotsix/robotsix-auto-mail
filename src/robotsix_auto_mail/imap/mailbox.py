@@ -12,8 +12,12 @@ import dataclasses
 import shlex
 from typing import TYPE_CHECKING
 
+import structlog
+
 from .errors import ImapMessageNotFoundError
 from .utils import imap_utf7_decode
+
+_logger = structlog.get_logger(__name__)
 
 if TYPE_CHECKING:
     # Type-only import, guarded by TYPE_CHECKING — never executed at runtime,
@@ -193,8 +197,18 @@ def _is_waste_folder(name: str) -> bool:
 def cross_folder_resolve(
     client: "ImapClient",
     message_id: str,
+    source_folder: str | None = None,
 ) -> tuple[str, int] | None:
     """Search all non-waste folders for *message_id* via its header.
+
+    When *source_folder* is given, it is checked first:
+    - If the message is found there (possibly under a new UID after a
+      ``UIDVALIDITY`` change), return ``(source_folder, uid)`` immediately.
+    - If *source_folder* cannot be selected (``ImapError``, e.g. folder was
+      deleted), fall through to the full-folder search.
+    - If *source_folder* is selectable but the message is absent, fall
+      through to the full-folder search (skipping *source_folder* to avoid
+      a duplicate ``SELECT``).
 
     Calls ``list_folders()``, skips folders where
     ``_is_waste_folder(name)`` is ``True``, selects each remaining folder
@@ -209,10 +223,32 @@ def cross_folder_resolve(
     Propagates ``ImapError`` (and subclasses) on connection/auth/protocol
     failures — it never swallows transient errors.
     """
+    # -- Optional same-folder first check ---------------------------------
+    if source_folder is not None:
+        try:
+            client.select_folder(source_folder)
+            uids = client.search_uids(f'HEADER Message-ID "{message_id}"')
+            if uids:
+                return (source_folder, uids[0])
+        except Exception:
+            # ImapError (or other unexpected failure) on the explicit
+            # source-folder SELECT / SEARCH — fall through to the
+            # full-folder search below.
+            _logger.debug(
+                "Source-folder search failed, falling back to full-folder search",
+                source_folder=source_folder,
+                message_id=message_id,
+                exc_info=True,
+            )
+
+    # -- Full-folder search -----------------------------------------------
     for folder in client.list_folders():
         if _is_waste_folder(folder.name):
             continue
         if any(attr.lower() == "\\noselect" for attr in folder.attributes):
+            continue
+        # Skip source_folder when it was already checked above.
+        if source_folder is not None and folder.name == source_folder:
             continue
         client.select_folder(folder.name)
         uids = client.search_uids(f'HEADER Message-ID "{message_id}"')
