@@ -5,11 +5,12 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import TYPE_CHECKING, Any
+import threading
+from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
-from robotsix_auto_mail.db import MailRecord
+from robotsix_auto_mail.db import MailRecord, get_watermark, init_db, set_watermark
 from robotsix_auto_mail.server._constants import _is_safe_redirect_path
 from robotsix_auto_mail.triage import (
     VALID_TRIAGE_ACTIONS,
@@ -29,6 +30,60 @@ class _BoardActionMixin:
         from ._board_handler_protocol import BoardHandlerProtocol
 
     self: BoardHandlerProtocol
+
+    def _launch_background_worker(
+        self,
+        watermark_key: str,
+        target: Callable[..., None] | None = None,
+        args: tuple = (),
+        *,
+        running_check: Callable[[str | None], bool] | None = None,
+        precheck: Callable[[Any], bool] | None = None,
+        db_path: str | None = None,
+        redirect: bool = True,
+    ) -> bool:
+        """Acquire a single-flight watermark and optionally spawn a daemon thread.
+
+        Returns ``True`` when the watermark was acquired (and, when *target*
+        is not ``None``, the worker thread was started).  Returns ``False``
+        when the watermark is already held or *precheck* returns ``False``.
+
+        When *redirect* is ``True`` (the default) the handler redirects to
+        ``/board`` on both the failure paths **and** after a successful
+        spawn.  Set *redirect* to ``False`` when the caller needs to
+        control the response itself (e.g. in an aggregate fan-out loop).
+        """
+        _path = db_path if db_path is not None else self.db_path
+
+        conn = init_db(_path, skip_migrations=True)
+        try:
+            if precheck is not None and not precheck(conn):
+                if redirect:
+                    self._redirect("/board", code=302)
+                return False
+
+            if running_check is not None:
+                _is_running = running_check
+            else:
+
+                def _is_running(s: str | None) -> bool:
+                    return s == "running"
+
+            if _is_running(get_watermark(conn, watermark_key)):
+                if redirect:
+                    self._redirect("/board", code=302)
+                return False
+
+            set_watermark(conn, watermark_key, "running")
+        finally:
+            conn.close()
+
+        if target is not None:
+            threading.Thread(target=target, args=args, daemon=True).start()
+            if redirect:
+                self._redirect("/board", code=302)
+
+        return True
 
     def _parse_request_body(
         self, *fields: str, no_strip: frozenset[str] = frozenset()

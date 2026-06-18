@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import threading
 from typing import TYPE_CHECKING
 
 from robotsix_auto_mail.server.adapters import (
@@ -31,18 +32,8 @@ class _ReconcileMixin:
         the thread clears the watermark in a ``finally`` block so the board
         always recovers.
         """
-        import threading
-
-        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
-
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            if get_watermark(conn, "reconcile:state") == "running":
-                self._redirect("/board", code=302)
-                return
-            set_watermark(conn, "reconcile:state", "running")
-        finally:
-            conn.close()
+        if not self._launch_background_worker("reconcile:state"):
+            return
 
         if self._aggregate and self.accounts is not None:
             accounts = self.accounts  # type: MailAccountsConfig

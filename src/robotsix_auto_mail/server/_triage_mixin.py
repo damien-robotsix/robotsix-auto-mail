@@ -29,29 +29,14 @@ class _TriageMixin:
         thread clears the watermark in a ``finally`` block so the board
         always recovers.
         """
-        import threading
-
-        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
-
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            if get_watermark(conn, "triage_run:state") == "running":
-                self._redirect("/board", code=302)
-                return
-            set_watermark(conn, "triage_run:state", "running")
-        finally:
-            conn.close()
-
-        threading.Thread(
-            target=_run_triage_background,
-            args=(
+        self._launch_background_worker(
+            "triage_run:state",
+            _run_triage_background,
+            (
                 self.db_path,
                 self.mail_config.username if self.mail_config is not None else None,
             ),
-            daemon=True,
-        ).start()
-
-        self._redirect("/board", code=302)
+        )
 
     def _handle_force_triage_column(self) -> None:
         """Process POST /force-triage-column — reset triage decisions for
@@ -62,14 +47,11 @@ class _TriageMixin:
         already running).  The watermark guard ensures only one triage
         run is in flight at a time.
         """
-        import threading
         import urllib.parse
 
         from robotsix_auto_mail.db import (
             VALID_TRIAGE_ACTIONS,
-            get_watermark,
             init_db,
-            set_watermark,
         )
         from robotsix_auto_mail.triage import (
             TriageError,
@@ -108,22 +90,11 @@ class _TriageMixin:
             return
 
         # -- launch triage (same pattern as _handle_run_triage) -----------
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            if get_watermark(conn, "triage_run:state") == "running":
-                self._redirect("/board", code=302)
-                return
-            set_watermark(conn, "triage_run:state", "running")
-        finally:
-            conn.close()
-
-        threading.Thread(
-            target=_run_triage_background,
-            args=(
+        self._launch_background_worker(
+            "triage_run:state",
+            _run_triage_background,
+            (
                 self.db_path,
                 self.mail_config.username if self.mail_config is not None else None,
             ),
-            daemon=True,
-        ).start()
-
-        self._redirect("/board", code=302)
+        )
