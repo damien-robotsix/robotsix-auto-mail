@@ -1137,10 +1137,11 @@ def test_reconcile_empty_db(
     imap.search_uids.assert_not_called()
 
 
-def test_reconcile_heals_moved_mail(
+def test_reconcile_prunes_user_moved_mail(
     conn: sqlite3.Connection,
 ) -> None:
-    """UID not in source folder; cross_folder_resolve finds it elsewhere → heal."""
+    """UID not in source folder; cross_folder_resolve finds it in a different
+    folder → record is REMOVED (user moved it manually, not auto-mail)."""
     from robotsix_auto_mail.db import insert_record
 
     # Seed a record.
@@ -1166,17 +1167,59 @@ def test_reconcile_heals_moved_mail(
     ) as mock_resolve:
         healed, removed = reconcile_records(conn, imap)
 
+    # Different folder → prune, not heal.
+    assert healed == 0
+    assert removed == 1
+
+    # Record should be gone.
+    assert get_record_by_message_id(conn, "<moved@x>") is None
+
+    # Verify cross_folder_resolve was called with source_folder.
+    mock_resolve.assert_called_once_with(imap, "<moved@x>", source_folder="INBOX")
+
+
+def test_reconcile_heals_uid_reassignment(
+    conn: sqlite3.Connection,
+) -> None:
+    """UID not in source folder; cross_folder_resolve finds it in the SAME
+    folder with a new UID (UIDVALIDITY change) → record is HEALED."""
+    from robotsix_auto_mail.db import insert_record
+
+    insert_record(
+        conn,
+        MailRecord(
+            message_id="<renumbered@x>",
+            sender="x@x.com",
+            subject="Renumbered",
+            date="2025-01-01T00:00:00",
+            imap_uid=42,
+            source_folder="INBOX",
+        ),
+    )
+
+    imap = _mock_imap_client()
+    # UID 42 is NOT in INBOX (old UID gone).
+    imap.search_uids.return_value = []
+
+    # cross_folder_resolve with source_folder="INBOX" finds it still in INBOX
+    # but under a new UID (99).
+    with mock.patch(
+        "robotsix_auto_mail.imap.cross_folder_resolve",
+        return_value=("INBOX", 99),
+    ) as mock_resolve:
+        healed, removed = reconcile_records(conn, imap)
+
+    # Same folder, new UID → heal.
     assert healed == 1
     assert removed == 0
 
-    # Record should be updated with the new location.
-    updated = get_record_by_message_id(conn, "<moved@x>")
+    # Record should be updated with the new UID, same source_folder.
+    updated = get_record_by_message_id(conn, "<renumbered@x>")
     assert updated is not None
-    assert updated.source_folder == "Projects"
-    assert updated.imap_uid == 77
+    assert updated.source_folder == "INBOX"
+    assert updated.imap_uid == 99
 
-    # Verify cross_folder_resolve was called with the correct message_id.
-    mock_resolve.assert_called_once_with(imap, "<moved@x>")
+    mock_resolve.assert_called_once_with(imap, "<renumbered@x>", source_folder="INBOX")
 
 
 def test_reconcile_removes_deleted_mail(
@@ -1216,13 +1259,14 @@ def test_reconcile_removes_deleted_mail(
 def test_reconcile_mixed_scenario(
     conn: sqlite3.Connection,
 ) -> None:
-    """Three records: one fine, one moved, one deleted."""
+    """Three records: one fine, one same-folder UID reassignment (healed),
+    one different-folder user move (removed)."""
     from robotsix_auto_mail.db import insert_record
 
     for mid, uid in [
         ("<fine@x>", 1),
-        ("<moved@x>", 2),
-        ("<deleted@x>", 3),
+        ("<renumbered@x>", 2),
+        ("<moved@x>", 3),
     ]:
         insert_record(
             conn,
@@ -1240,11 +1284,13 @@ def test_reconcile_mixed_scenario(
     # search_uids returns only UID 1 — UIDs 2 and 3 are missing.
     imap.search_uids.return_value = [1]
 
-    def _fake_resolve(client, message_id):
+    def _fake_resolve(client, message_id, source_folder=None):
+        if message_id == "<renumbered@x>":
+            # Same folder, new UID → should be healed.
+            return ("INBOX", 99)
         if message_id == "<moved@x>":
+            # Different folder → should be removed.
             return ("Projects", 77)
-        if message_id == "<deleted@x>":
-            return None
         raise AssertionError(f"unexpected resolve call for {message_id}")
 
     with mock.patch(
@@ -1262,14 +1308,14 @@ def test_reconcile_mixed_scenario(
     assert fine.source_folder == "INBOX"
     assert fine.imap_uid == 1
 
-    # Moved record healed.
-    moved = get_record_by_message_id(conn, "<moved@x>")
-    assert moved is not None
-    assert moved.source_folder == "Projects"
-    assert moved.imap_uid == 77
+    # Renumbered record healed (same folder, new UID).
+    renumbered = get_record_by_message_id(conn, "<renumbered@x>")
+    assert renumbered is not None
+    assert renumbered.source_folder == "INBOX"
+    assert renumbered.imap_uid == 99
 
-    # Deleted record gone.
-    assert get_record_by_message_id(conn, "<deleted@x>") is None
+    # Moved record gone (different folder).
+    assert get_record_by_message_id(conn, "<moved@x>") is None
 
 
 def test_reconcile_transient_error_preserves_records(

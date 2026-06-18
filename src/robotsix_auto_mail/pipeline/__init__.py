@@ -449,21 +449,31 @@ def reconcile_records(
             for missing_uid in missing_uids:
                 message_id = uid_map[missing_uid]
                 try:
-                    resolved = cross_folder_resolve(imap_client, message_id)
+                    resolved = cross_folder_resolve(
+                        imap_client, message_id, source_folder=folder
+                    )
                 except ImapError:
                     _logger.warning("reconcile_resolve_error", message_id=message_id)
                     continue
 
                 if resolved is not None:
                     new_folder, new_uid = resolved
-                    update_record_source(
-                        db_conn,
-                        message_id,
-                        source_folder=new_folder,
-                        imap_uid=new_uid,
-                    )
-                    db_conn.commit()
-                    healed += 1
+                    if new_folder == folder:
+                        # Same folder, new UID (e.g. UIDVALIDITY change) → heal.
+                        update_record_source(
+                            db_conn,
+                            message_id,
+                            source_folder=new_folder,
+                            imap_uid=new_uid,
+                        )
+                        db_conn.commit()
+                        healed += 1
+                    else:
+                        # Different folder → user (not auto-mail) moved the
+                        # message; prune the record.
+                        delete_record_by_message_id(db_conn, message_id)
+                        db_conn.commit()
+                        removed += 1
                 else:
                     delete_record_by_message_id(db_conn, message_id)
                     db_conn.commit()
