@@ -40,34 +40,17 @@ class _BatchActionMixin:
         ``self._aggregate`` and is fanned out across every account by
         :meth:`_handle_batch_delete_aggregate`.
         """
-        import threading
-
-        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
-
         if self._aggregate and self.accounts is not None:
             self._handle_batch_delete_aggregate()
             return
 
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            if _batch_op_running(get_watermark(conn, "batch_op:state")):
-                self._redirect("/board", code=302)
-                return
-            # Nothing to do → don't spawn a no-op worker / set "running".
-            if not _collect_records_for_action(conn, "TO_DELETE"):
-                self._redirect("/board", code=302)
-                return
-            set_watermark(conn, "batch_op:state", "running")
-        finally:
-            conn.close()
-
-        threading.Thread(
-            target=_run_batch_delete_background,
-            args=(self.db_path, self.mail_config),
-            daemon=True,
-        ).start()
-
-        self._redirect("/board", code=302)
+        self._launch_background_worker(
+            "batch_op:state",
+            _run_batch_delete_background,
+            (self.db_path, self.mail_config),
+            running_check=_batch_op_running,
+            precheck=lambda conn: bool(_collect_records_for_action(conn, "TO_DELETE")),
+        )
 
     def _handle_batch_delete_aggregate(self) -> None:
         """Fan out batch-delete across every configured account.
@@ -80,10 +63,6 @@ class _BatchActionMixin:
         concurrently; each clears its own watermark on completion, and the
         aggregate board banner sums their progress.
         """
-        import threading
-
-        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
-
         accounts = self.accounts
         if accounts is None:  # pragma: no cover - guarded by the caller
             self._redirect("/board", code=302)
@@ -91,22 +70,17 @@ class _BatchActionMixin:
 
         for account in accounts.accounts:
             db_path = account.config.db_path
-            conn = init_db(db_path, skip_migrations=True)
-            try:
-                if _batch_op_running(get_watermark(conn, "batch_op:state")):
-                    continue
-                # Nothing to do → don't spawn a no-op worker / set "running".
-                if not _collect_records_for_action(conn, "TO_DELETE"):
-                    continue
-                set_watermark(conn, "batch_op:state", "running")
-            finally:
-                conn.close()
-
-            threading.Thread(
-                target=_run_batch_delete_background,
-                args=(db_path, account.config),
-                daemon=True,
-            ).start()
+            self._launch_background_worker(
+                "batch_op:state",
+                _run_batch_delete_background,
+                (db_path, account.config),
+                running_check=_batch_op_running,
+                precheck=lambda conn: bool(
+                    _collect_records_for_action(conn, "TO_DELETE")
+                ),
+                db_path=db_path,
+                redirect=False,
+            )
 
         self._redirect("/board", code=302)
 
@@ -141,33 +115,16 @@ class _BatchActionMixin:
         destination, heals stale UIDs itself, and batch-moves each group.
         Progress shows via the board's batch banner and 30-second refresh.
         """
-        import threading
-
-        from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
-
         archive_root = (
             self.mail_config.archive_root
             if self.mail_config is not None
             else DEFAULT_ARCHIVE_ROOT
         )
 
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
-            if _batch_op_running(get_watermark(conn, "batch_op:state")):
-                self._redirect("/board", code=302)
-                return
-            # Nothing to do → don't spawn a no-op worker / set "running".
-            if not _collect_records_for_action(conn, "TO_ARCHIVE"):
-                self._redirect("/board", code=302)
-                return
-            set_watermark(conn, "batch_op:state", "running")
-        finally:
-            conn.close()
-
-        threading.Thread(
-            target=_run_batch_archive_background,
-            args=(self.db_path, self.mail_config, archive_root, subfolder),
-            daemon=True,
-        ).start()
-
-        self._redirect("/board", code=302)
+        self._launch_background_worker(
+            "batch_op:state",
+            _run_batch_archive_background,
+            (self.db_path, self.mail_config, archive_root, subfolder),
+            running_check=_batch_op_running,
+            precheck=lambda conn: bool(_collect_records_for_action(conn, "TO_ARCHIVE")),
+        )
