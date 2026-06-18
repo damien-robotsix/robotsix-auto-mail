@@ -16,6 +16,7 @@ modules:
     paths:
       - src/robotsix_auto_mail/_shared/__init__.py
       - src/robotsix_auto_mail/_shared/pydantic_utils.py
+      - tests/_shared/test_pydantic_utils.py
 
   - id: core
     description: >-
