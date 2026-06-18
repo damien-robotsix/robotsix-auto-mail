@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from unittest import mock
 from urllib.request import urlopen
 
@@ -19,6 +21,17 @@ from tests.server.conftest import (
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import init_db
+
+
+@contextmanager
+def _patch_smtp_and_imap() -> Iterator[tuple[mock.MagicMock, mock.MagicMock]]:
+    with (
+        mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
+        mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
+    ):
+        imap_client = imap_cls.return_value.__enter__.return_value
+        imap_client.list_folders.return_value = [mock.Mock(delimiter="/")]
+        yield smtp_cls, imap_cls
 
 
 def test_move_to_draft_ready(single_db: str) -> None:
@@ -244,13 +257,7 @@ def test_send_draft_reply_sends_and_requeues_for_triage(single_db: str) -> None:
         single_db, _dummy_send_mail_config()
     )
     try:
-        with (
-            mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
-            mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
-        ):
-            imap_client = imap_cls.return_value.__enter__.return_value
-            imap_client.list_folders.return_value = [mock.Mock(delimiter="/")]
-
+        with _patch_smtp_and_imap() as (smtp_cls, imap_cls):
             resp = _post_to_path(
                 port,
                 "/send-draft",
@@ -270,7 +277,7 @@ def test_send_draft_reply_sends_and_requeues_for_triage(single_db: str) -> None:
             assert not kwargs["cc"]
 
             # No IMAP archive move was performed in the send path.
-            imap_client.move_message.assert_not_called()
+            imap_cls.return_value.__enter__.return_value.move_message.assert_not_called()
 
         # The record is retained, its sent reply body is stored, and its
         # triage decision was cleared so it appears as untriaged.
@@ -337,13 +344,7 @@ def test_send_draft_reply_all_cc_recipients(single_db: str) -> None:
         single_db, _dummy_send_mail_config()
     )
     try:
-        with (
-            mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
-            mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
-        ):
-            imap_client = imap_cls.return_value.__enter__.return_value
-            imap_client.list_folders.return_value = [mock.Mock(delimiter="/")]
-
+        with _patch_smtp_and_imap() as (smtp_cls, _imap_cls):
             resp = _post_to_path(
                 port,
                 "/send-draft",
@@ -377,13 +378,7 @@ def test_send_draft_subject_not_double_prefixed(single_db: str) -> None:
         single_db, _dummy_send_mail_config()
     )
     try:
-        with (
-            mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
-            mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
-        ):
-            imap_client = imap_cls.return_value.__enter__.return_value
-            imap_client.list_folders.return_value = [mock.Mock(delimiter="/")]
-
+        with _patch_smtp_and_imap() as (smtp_cls, _imap_cls):
             _post_to_path(
                 port,
                 "/send-draft",
@@ -421,10 +416,7 @@ def test_send_draft_validation_errors(single_db: str) -> None:
         single_db, _dummy_send_mail_config()
     )
     try:
-        with (
-            mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
-            mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
-        ):
+        with _patch_smtp_and_imap() as (smtp_cls, imap_cls):
             # Missing message_id → 400.
             assert (
                 _post_to_path(port, "/send-draft", {"reply_mode": "reply"}).status
