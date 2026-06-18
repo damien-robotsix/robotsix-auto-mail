@@ -12,8 +12,12 @@ import dataclasses
 import shlex
 from typing import TYPE_CHECKING
 
+import structlog
+
 from .errors import ImapMessageNotFoundError
 from .utils import imap_utf7_decode
+
+_logger = structlog.get_logger(__name__)
 
 if TYPE_CHECKING:
     # Type-only import, guarded by TYPE_CHECKING — never executed at runtime,
@@ -230,7 +234,12 @@ def cross_folder_resolve(
             # ImapError (or other unexpected failure) on the explicit
             # source-folder SELECT / SEARCH — fall through to the
             # full-folder search below.
-            pass
+            _logger.debug(
+                "Source-folder search failed, falling back to full-folder search",
+                source_folder=source_folder,
+                message_id=message_id,
+                exc_info=True,
+            )
 
     # -- Full-folder search -----------------------------------------------
     for folder in client.list_folders():

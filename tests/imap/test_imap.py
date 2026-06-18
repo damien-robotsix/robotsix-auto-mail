@@ -1572,9 +1572,7 @@ def test_cross_folder_resolve_source_folder_first() -> None:
         [99],  # source_folder (INBOX) — found with new UID
     ]
 
-    result = cross_folder_resolve(
-        client, "<test@example.com>", source_folder="INBOX"
-    )
+    result = cross_folder_resolve(client, "<test@example.com>", source_folder="INBOX")
 
     # Must return immediately — no other folders searched.
     assert result == ("INBOX", 99)
@@ -1594,13 +1592,11 @@ def test_cross_folder_resolve_source_folder_not_found_falls_through() -> None:
     ]
     client.select_folder.return_value = 5
     client.search_uids.side_effect = [
-        [],   # source_folder (INBOX) — not found
+        [],  # source_folder (INBOX) — not found
         [7],  # Archive — found
     ]
 
-    result = cross_folder_resolve(
-        client, "<msg@example.com>", source_folder="INBOX"
-    )
+    result = cross_folder_resolve(client, "<msg@example.com>", source_folder="INBOX")
 
     assert result == ("Archive", 7)
     # INBOX is selected twice: once for the explicit check, skipped in the loop.
@@ -1632,9 +1628,7 @@ def test_cross_folder_resolve_source_folder_imap_error_falls_through() -> None:
 
     client.select_folder.side_effect = _select_side_effect
 
-    result = cross_folder_resolve(
-        client, "<msg@example.com>", source_folder="INBOX"
-    )
+    result = cross_folder_resolve(client, "<msg@example.com>", source_folder="INBOX")
 
     assert result == ("Archive", 7)
     # INBOX was attempted (and failed), then Archive was tried.
@@ -1653,7 +1647,7 @@ def test_cross_folder_resolve_source_folder_none_backward_compat() -> None:
     ]
     client.select_folder.return_value = 5
     client.search_uids.side_effect = [
-        [],   # INBOX
+        [],  # INBOX
         [3],  # Projects
     ]
 
