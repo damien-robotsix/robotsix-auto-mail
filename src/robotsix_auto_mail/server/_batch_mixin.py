@@ -93,12 +93,7 @@ class _BatchActionMixin:
         that filter.  Same single-flight guard, precheck and background worker
         as the column-wide "Archive All", scoped to one destination.
         """
-        from urllib.parse import parse_qs
-
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
-        folder = (fields.get("folder") or [""])[0].strip()
+        folder = self._parse_request_body("folder")["folder"]
         self._handle_batch_archive(subfolder=folder)
 
     def _handle_batch_archive(self, subfolder: str | None = None) -> None:

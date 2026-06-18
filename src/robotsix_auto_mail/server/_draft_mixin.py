@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING, Any
-from urllib.parse import parse_qs, quote
+from urllib.parse import quote
 
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._constants import _is_safe_redirect_path
@@ -169,12 +169,10 @@ class _DraftMixin:
         """
         from robotsix_auto_mail.db import init_db
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        fields = parse_qs(raw)
+        fields = self._parse_request_body("message_id", "redirect_to")
 
-        message_id = (fields.get("message_id") or [""])[0].strip()
-        redirect_to = (fields.get("redirect_to") or [""])[0].strip()
+        message_id = fields["message_id"]
+        redirect_to = fields["redirect_to"]
 
         if not message_id:
             self._bad_request("Missing message_id")

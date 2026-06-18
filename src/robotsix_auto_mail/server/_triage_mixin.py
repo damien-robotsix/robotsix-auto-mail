@@ -47,8 +47,6 @@ class _TriageMixin:
         already running).  The watermark guard ensures only one triage
         run is in flight at a time.
         """
-        import urllib.parse
-
         from robotsix_auto_mail.db import (
             VALID_TRIAGE_ACTIONS,
             init_db,
@@ -59,14 +57,8 @@ class _TriageMixin:
         )
 
         # -- parse body ---------------------------------------------------
-        content_length = int(self.headers.get("content-length", "0"))
-        raw_body = self.rfile.read(content_length) if content_length else b""
-        params = urllib.parse.parse_qs(raw_body.decode("utf-8"))
-        action_list = params.get("action", [])
-        if not action_list or not action_list[0].strip():
-            self._bad_request("Missing 'action' parameter")
-            return
-        action = action_list[0].strip()
+        params = self._parse_request_body("action")
+        action = params["action"]
         if action not in VALID_TRIAGE_ACTIONS:
             self._bad_request(f"Invalid triage action: {action!r}")
             return
