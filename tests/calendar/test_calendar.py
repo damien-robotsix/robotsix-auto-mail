@@ -110,6 +110,8 @@ def test_dispatch_calendar_request_success() -> None:
 
 def test_dispatch_import_error() -> None:
     """dispatch_calendar_request raises CalendarDispatchError on ImportError."""
+    import builtins
+
     from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
 
     event = CalendarEventRequest(
@@ -120,13 +122,28 @@ def test_dispatch_import_error() -> None:
         email_date="2025-01-01T00:00:00",
     )
 
-    # Do NOT install fake modules — the import will fail, which is what
-    # we want to test.
-    try:
-        dispatch_calendar_request(event)
-        raise AssertionError("expected CalendarDispatchError")
-    except CalendarDispatchError as exc:
-        assert "Agent communication is not available" in str(exc)
+    # Remove cached robotix_agent_comm modules and block re-import so the
+    # lazy import inside dispatch_calendar_request raises ImportError.
+    saved = {}
+    for key in list(sys.modules):
+        if key.startswith("robotsix_agent_comm"):
+            saved[key] = sys.modules.pop(key)
+
+    _orig_import = builtins.__import__
+
+    def _block_agent_comm(name: str, *args: object, **kwargs: object) -> object:
+        if name.startswith("robotsix_agent_comm"):
+            raise ImportError(f"No module named {name!r}")
+        return _orig_import(name, *args, **kwargs)
+
+    with mock.patch("builtins.__import__", new=_block_agent_comm):
+        try:
+            dispatch_calendar_request(event)
+            raise AssertionError("expected CalendarDispatchError")
+        except CalendarDispatchError as exc:
+            assert "Agent communication is not available" in str(exc)
+        finally:
+            sys.modules.update(saved)
 
 
 def test_dispatch_agent_not_found_error() -> None:
