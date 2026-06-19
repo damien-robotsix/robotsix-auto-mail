@@ -250,16 +250,21 @@ interactive process.
 ### Pull the published image
 
 On every `v*` git tag, the [`release.yml`](../.github/workflows/release.yml)
-workflow builds the `Dockerfile` and publishes a semver-tagged image to the
-GitHub Container Registry, complete with SLSA build provenance and an SBOM
-attestation. Instead of building locally you can pull a versioned image
-directly:
+workflow delegates to the shared
+[`docker-release.yml`](https://github.com/damien-robotsix/robotsix-mill/blob/main/.github/workflows/docker-release.yml)
+reusable workflow from `robotsix-mill`, which builds the `Dockerfile` and
+publishes a semver-tagged image to the GitHub Container Registry complete with
+SLSA build provenance and an SBOM attestation. A separate `trivy` job then
+scans the published image and uploads SARIF results to GitHub Code Scanning.
+Instead of building locally you can pull a versioned image directly:
 
 ```sh
 docker pull ghcr.io/damien-robotsix/robotsix-auto-mail:v1.0.0
 ```
 
-Tags follow semver (`v1.0.0`, `1.0`, `1`) plus a commit `sha-<short>` tag.
+Tags produced by the reusable workflow:
+- **Tag push** (`v1.0.0`): `1.0.0`, `sha-<short>`
+- **Branch push** (`main`): `main`, `latest`, `sha-<short>`
 
 ### Build the production image
 
@@ -291,7 +296,8 @@ the published image instead of building it, and keeps it up to date
 automatically:
 
 - Pushing to `main` publishes a moving `ghcr.io/.../robotsix-auto-mail:main`
-  image (`release.yml` now triggers on `main` as well as `v*` tags).
+  image (the reusable `docker-release.yml` workflow tags both `main` pushes
+  and `v*` tag pushes).
 - [`deploy/docker-compose.yml`](../deploy/docker-compose.yml) runs the
   `ingester`, the `board` (bound to `127.0.0.1:8080`), and **Watchtower**,
   which polls GHCR every 5 minutes and redeploys the labeled services on a
