@@ -568,19 +568,32 @@ class TestHandleGenerateDraft:
         return handler
 
     def test_import_error_degradation(self, tmp_db_path: str) -> None:
-        """When robotsix_auto_mail.draft is not importable, redirect gracefully."""
+        """When robotsix_auto_mail.draft is not importable, redirect gracefully.
+
+        Uses ``mock.patch.dict`` to set the module entry to ``None`` in
+        ``sys.modules``, which forces Python to raise ``ImportError``
+        (as if the optional extra were not installed) rather than
+        attempting a re-import that would likely succeed because its
+        dependencies are core packages.
+        """
         handler = self._setup_handler(tmp_db_path, "any-id")
         handler._redirect_generate_draft = mock.MagicMock()
 
-        # Hide the draft module to trigger ImportError inside _handle_generate_draft.
-        draft_mod = sys.modules.pop("robotsix_auto_mail.draft", None)
-        try:
+        with (
+            mock.patch.dict(sys.modules, {"robotsix_auto_mail.draft": None}),
+            mock.patch(
+                "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
+            ) as mock_set,
+            mock.patch("robotsix_auto_mail.db.init_db") as mock_init_db,
+        ):
             handler._handle_generate_draft()
-        finally:
-            if draft_mod is not None:
-                sys.modules["robotsix_auto_mail.draft"] = draft_mod
 
+        # The ImportError path must redirect but NOT open a DB connection
+        # or set a triage decision (both happen only after a successful
+        # draft import).
         handler._redirect_generate_draft.assert_called_once_with("any-id", "/board")
+        mock_init_db.assert_not_called()
+        mock_set.assert_not_called()
 
     def test_draft_generation_error_swallowed(self, single_db: str) -> None:
         _populate_db(
@@ -599,15 +612,6 @@ class TestHandleGenerateDraft:
         handler = self._setup_handler(single_db, "gen-err")
         handler._redirect_generate_draft = mock.MagicMock()
 
-        with mock.patch(
-            "robotsix_auto_mail.draft.generate_draft_reply",
-            side_effect=Exception("should be caught as DraftGenerationError"),
-        ):
-            # The code catches DraftGenerationError specifically, so a plain
-            # Exception should propagate.  We need to raise the right type.
-            pass
-
-        # Use the actual DraftGenerationError.
         from robotsix_auto_mail.draft import DraftGenerationError
 
         with (
