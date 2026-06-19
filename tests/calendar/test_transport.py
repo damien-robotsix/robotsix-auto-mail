@@ -320,17 +320,20 @@ def test_build_brokered_missing_host_raises_value_error() -> None:
         )
 
 
-def test_build_brokered_missing_ca_raises_value_error() -> None:
-    """Brokered mode without CA raises ValueError."""
+def test_build_brokered_without_ca_uses_system_trust() -> None:
+    """Brokered mode without a CA file is allowed (system trust) and returns
+    a transport pair — the deployed broker uses a publicly-trusted cert."""
     _install_minimal_agent_comm()
 
-    with pytest.raises(ValueError, match=r"missing.*TLS CA"):
-        build_calendar_transport(
-            mode="brokered",
-            broker_host="localhost",
-            ca_path="",
-            token="test-token",
-        )
+    registry, transport = build_calendar_transport(
+        mode="brokered",
+        broker_host="ai-broker.robotsix.net",
+        broker_port=443,
+        ca_path="",
+        token="test-token",
+    )
+    assert registry is not None
+    assert transport is not None
 
 
 def test_build_brokered_missing_token_raises_value_error() -> None:
@@ -347,10 +350,10 @@ def test_build_brokered_missing_token_raises_value_error() -> None:
 
 
 def test_build_brokered_missing_multiple_fields() -> None:
-    """Brokered mode missing multiple fields lists all in error."""
+    """Brokered mode missing multiple required fields lists all in error."""
     _install_minimal_agent_comm()
 
-    with pytest.raises(ValueError, match="missing host, TLS CA, token"):
+    with pytest.raises(ValueError, match="missing host, token"):
         build_calendar_transport(
             mode="brokered",
             broker_host="",
@@ -485,10 +488,10 @@ def test_calendar_transport_defaults_to_in_process() -> None:
     assert cfg.calendar_transport == "in-process"
 
 
-def test_calendar_broker_port_defaults_to_8443() -> None:
-    """Default broker port is 8443."""
+def test_calendar_broker_port_defaults_to_443() -> None:
+    """Default broker port is 443 (the public TLS endpoint)."""
     cfg = MailConfig(imap_host="h", smtp_host="h", username="u", password="p")
-    assert cfg.calendar_broker_port == 8443
+    assert cfg.calendar_broker_port == 443
 
 
 def test_calendar_broker_token_is_masked_in_repr() -> None:

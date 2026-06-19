@@ -68,6 +68,12 @@ microsoft = [
 board-agent = [
     "robotsix-board-agent",
 ]
+# Calendar (Add to Calendar) integration — talks to the robotsix-calendar
+# agent over the agent-comm broker. Optional so the core mail server has no
+# hard dependency; install with `.[calendar]` (the deployed image does).
+calendar = [
+    "robotsix-agent-comm",
+]
 docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
@@ -164,10 +170,10 @@ extend_exclude = ["scripts"]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter-deepseek]
 # (declared in the [llm] extra); the lazy import in detect.py is intentional.
 DEP003 = ["pydantic_ai"]
-# robotsix_agent_comm is a transitive dependency of the optional
-# [board-agent] extra (robotsix-board-agent). The import in board_agent.py
-# is guarded by try/except ImportError so the server gracefully degrades
-# when the extra is not installed.
+# robotsix_agent_comm is declared in the optional [calendar] extra (and pulled
+# transitively by [board-agent]). Imports in calendar/*.py and board_agent.py
+# are guarded by try/except ImportError so the server gracefully degrades when
+# the extra is not installed.
 DEP001 = ["robotsix_agent_comm"]
 
 [tool.vulture]
@@ -181,6 +187,7 @@ paths = ["src/robotsix_auto_mail"]
 ignore_names = ["format", "method_name", "on_notification"]
 
 [tool.uv.sources]
+robotsix-agent-comm = { git = "https://github.com/damien-robotsix/robotsix-agent-comm.git", rev = "main" }
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
 robotsix-board-agent = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git", rev = "main" }
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "main" }

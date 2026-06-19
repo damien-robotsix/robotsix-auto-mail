@@ -222,11 +222,10 @@ class _BoardActionMixin:
                         conn, message_id, event.correlation_id
                     )
 
-                    # Fire-and-forget: dispatch in a background daemon
-                    # thread so a slow/hung transport never blocks the
-                    # HTTP request.  The board's calendar-response
-                    # listener (f860) already updates cards
-                    # asynchronously.
+                    # Dispatch in a background daemon thread so a slow/hung
+                    # transport never blocks the HTTP request. The request's
+                    # correlated reply updates the card (event ref or error)
+                    # and reroutes it once the calendar agent responds.
                     import threading
 
                     def _dispatch_bg() -> None:
@@ -242,7 +241,7 @@ class _BoardActionMixin:
                             return
                         try:
                             try:
-                                dispatch_calendar_request(
+                                event_ref = dispatch_calendar_request(
                                     event, config=self.mail_config
                                 )
                             except CalendarDispatchError as exc:
@@ -254,6 +253,13 @@ class _BoardActionMixin:
                                     bg_conn, message_id, "error: Internal error"
                                 )
                             else:
+                                # Record the calendar agent's confirmation so
+                                # the card shows a success indicator.
+                                update_calendar_event_ref(
+                                    bg_conn,
+                                    message_id,
+                                    str(event_ref) if event_ref else "Event created",
+                                )
                                 # Reroute: if the prior triage decision
                                 # was TO_ANSWER the mail still needs a
                                 # reply; otherwise it goes to the

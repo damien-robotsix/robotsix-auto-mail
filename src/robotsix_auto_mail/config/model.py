@@ -156,7 +156,7 @@ class MailConfig:
     # Calendar (Add to Calendar) — agent-comm dispatch transport.
     calendar_transport: str = "in-process"
     calendar_broker_host: str = ""
-    calendar_broker_port: int = 8443
+    calendar_broker_port: int = 443
     calendar_broker_tls_ca: str = ""
     calendar_broker_client_cert: str = ""
     calendar_broker_client_key: str = ""

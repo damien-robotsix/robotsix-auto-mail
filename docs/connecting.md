@@ -270,8 +270,8 @@ auth:
 | `calendar.enabled` | no | `true` | Whether the 'Add to Calendar' button appears in the detail view and dispatches to the `robotsix-calendar` agent |
 | `calendar.transport` | no | `"in-process"` | Transport mode for calendar dispatch — `in-process` (local `Registry`) or `brokered` (secured broker server) |
 | `calendar.broker_host` | no | – | Broker server hostname (required when `transport: brokered`) |
-| `calendar.broker_port` | no | `8443` | Broker server port |
-| `calendar.broker_tls_ca` | no | – | Path to CA certificate PEM for broker TLS verification |
+| `calendar.broker_port` | no | `443` | Broker server port |
+| `calendar.broker_tls_ca` | no | – | Path to a custom CA PEM for broker TLS verification (optional — defaults to system trust) |
 | `calendar.broker_client_cert` | no | – | Path to client certificate PEM for mutual TLS (optional) |
 | `calendar.broker_client_key` | no | – | Path to client key PEM for mutual TLS (optional) |
 | `calendar.broker_token` | no | – | Agent authentication token for the broker (redacted in logs/repr) |
@@ -400,8 +400,8 @@ with the following fields:
 | `MAIL_CALENDAR_ENABLED` | no | `true` | Whether the 'Add to Calendar' button appears (and dispatch is attempted) |
 | `CALENDAR_TRANSPORT` | no | `in-process` | Transport mode for calendar dispatch — `in-process` or `brokered` |
 | `CALENDAR_BROKER_HOST` | no | – | Broker server hostname (required when `CALENDAR_TRANSPORT=brokered`) |
-| `CALENDAR_BROKER_PORT` | no | `8443` | Broker server port |
-| `CALENDAR_BROKER_TLS_CA` | no | – | Path to CA certificate PEM for broker TLS verification |
+| `CALENDAR_BROKER_PORT` | no | `443` | Broker server port |
+| `CALENDAR_BROKER_TLS_CA` | no | – | Path to a custom CA PEM for broker TLS verification (optional — defaults to system trust) |
 | `CALENDAR_BROKER_CLIENT_CERT` | no | – | Path to client certificate PEM for mutual TLS (optional) |
 | `CALENDAR_BROKER_CLIENT_KEY` | no | – | Path to client key PEM for mutual TLS (optional) |
 | `CALENDAR_BROKER_TOKEN` | no | – | Agent authentication token for the broker (redacted in logs/repr) |

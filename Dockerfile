@@ -50,7 +50,7 @@ COPY src/ src/
 # --system installs into the image's system Python (the same
 # /usr/local/lib/python3.14/site-packages/ path the production
 # stage copies from), matching the previous `pip install` layout.
-RUN uv export --frozen --no-emit-project --no-hashes --extra llm --extra microsoft -o /tmp/requirements.txt && \
+RUN uv export --frozen --no-emit-project --no-hashes --extra llm --extra microsoft --extra calendar -o /tmp/requirements.txt && \
     for attempt in 1 2 3 4 5; do \
       uv pip install --system --no-cache-dir -r /tmp/requirements.txt && \
       uv pip install --system --no-cache-dir --no-deps . && \

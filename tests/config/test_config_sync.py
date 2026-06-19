@@ -104,7 +104,7 @@ accounts:
     #   transport: in-process
     #   # Broker settings (required when transport: brokered).
     #   broker_host: ""
-    #   broker_port: 8443
+    #   broker_port: 443
     #   broker_tls_ca: ""
     #   broker_client_cert: ""
     #   broker_client_key: ""
@@ -163,7 +163,7 @@ MAIL_TRIAGE_ON_INGEST=true
 MAIL_CALENDAR_ENABLED=true
 CALENDAR_TRANSPORT=in-process
 CALENDAR_BROKER_HOST=
-CALENDAR_BROKER_PORT=8443
+CALENDAR_BROKER_PORT=443
 CALENDAR_BROKER_TLS_CA=
 CALENDAR_BROKER_CLIENT_CERT=
 CALENDAR_BROKER_CLIENT_KEY=
@@ -237,7 +237,7 @@ _DOCS_YAML_TABLE = """\
 | `calendar.enabled` | no | `true` | Enable 'Add to Calendar' in detail view |
 | `calendar.transport` | no | `in-process` | Transport mode for calendar dispatch |
 | `calendar.broker_host` | no | - | Broker server hostname |
-| `calendar.broker_port` | no | `8443` | Broker server port |
+| `calendar.broker_port` | no | `443` | Broker server port |
 | `calendar.broker_tls_ca` | no | - | Path to CA certificate PEM for broker TLS |
 | `calendar.broker_client_cert` | no | - | Path to client certificate PEM for mutual TLS |
 | `calendar.broker_client_key` | no | - | Path to client key PEM for mutual TLS |
@@ -285,7 +285,7 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_CALENDAR_ENABLED` | no | `true` | Enable 'Add to Calendar' in detail view |
 | `CALENDAR_TRANSPORT` | no | `in-process` | Transport mode for calendar dispatch |
 | `CALENDAR_BROKER_HOST` | no | - | Broker server hostname |
-| `CALENDAR_BROKER_PORT` | no | `8443` | Broker server port |
+| `CALENDAR_BROKER_PORT` | no | `443` | Broker server port |
 | `CALENDAR_BROKER_TLS_CA` | no | - | Path to CA certificate PEM for broker TLS |
 | `CALENDAR_BROKER_CLIENT_CERT` | no | - | Path to client certificate PEM for mutual TLS |
 | `CALENDAR_BROKER_CLIENT_KEY` | no | - | Path to client key PEM for mutual TLS |

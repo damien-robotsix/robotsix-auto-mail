@@ -26,42 +26,63 @@ from robotsix_auto_mail.calendar import (
 
 def _install_fake_agent_comm_modules(
     *,
-    agent_side_effect: object = None,
-    send_notification_side_effect: object = None,
+    send_request_side_effect: object = None,
+    reply_body: object = None,
 ) -> dict[str, mock.MagicMock]:
     """Install synthetic ``robotsix_agent_comm.*`` modules into ``sys.modules``
     and return mocks keyed by short name.
 
-    When *agent_side_effect* is set, ``robotsix_agent_comm.sdk.Agent`` is
-    patched to raise that exception on access (simulating an ImportError
-    inside the try/except in ``dispatch_calendar_request``).
+    The fake ``Agent`` instance's ``send_request`` either returns a reply mock
+    carrying *reply_body* or raises *send_request_side_effect*.
     """
     mocks: dict[str, mock.MagicMock] = {}
 
     # -- Agent mock --
     mock_agent_instance = mock.MagicMock()
-    if send_notification_side_effect is not None:
-        mock_agent_instance.send_notification.side_effect = (
-            send_notification_side_effect
+    if send_request_side_effect is not None:
+        mock_agent_instance.send_request.side_effect = send_request_side_effect
+    else:
+        reply = mock.MagicMock()
+        reply.body = (
+            reply_body
+            if reply_body is not None
+            else {
+                "result": {
+                    "event": {"uid": "evt-1"},
+                    "confirmation_text": "Created event 'Test'",
+                },
+                "correlation_id": "corr-x",
+            }
         )
+        mock_agent_instance.send_request.return_value = reply
+        mocks["reply"] = reply
     mock_agent_cls = mock.MagicMock(return_value=mock_agent_instance)
 
     agent_not_found_error = type("AgentNotFoundError", (Exception,), {})
     delivery_error = type("DeliveryError", (Exception,), {})
+    transport_error = type("TransportError", (Exception,), {})
+    transport_timeout_error = type("TransportTimeoutError", (Exception,), {})
+    error_cls = type("Error", (), {})
 
     transport_mod = mock.MagicMock()
     transport_mod.AgentNotFoundError = agent_not_found_error
     transport_mod.DeliveryError = delivery_error
+    transport_mod.TransportError = transport_error
+    transport_mod.TransportTimeoutError = transport_timeout_error
     transport_mod.Registry = mock.MagicMock
 
     sdk_mod = mock.MagicMock()
     sdk_mod.Agent = mock_agent_cls
+
+    protocol_mod = mock.MagicMock()
+    protocol_mod.Error = error_cls
 
     # Top-level package module (empty, just needs to exist).
     top_mod = mock.MagicMock()
 
     sys.modules["robotsix_agent_comm"] = top_mod
     sys.modules["robotsix_agent_comm.sdk"] = sdk_mod
+    sys.modules["robotsix_agent_comm.protocol"] = protocol_mod
     sys.modules["robotsix_agent_comm.transport"] = transport_mod
 
     mocks["agent_instance"] = mock_agent_instance
@@ -70,6 +91,9 @@ def _install_fake_agent_comm_modules(
     mocks["sdk"] = sdk_mod
     mocks["AgentNotFoundError"] = agent_not_found_error
     mocks["DeliveryError"] = delivery_error
+    mocks["TransportError"] = transport_error
+    mocks["TransportTimeoutError"] = transport_timeout_error
+    mocks["Error"] = error_cls
     return mocks
 
 
@@ -79,16 +103,8 @@ def _remove_fake_agent_comm_modules() -> None:
             del sys.modules[key]
 
 
-# ---------------------------------------------------------------------------
-# Unit tests — dispatch_calendar_request
-# ---------------------------------------------------------------------------
-
-
-def test_dispatch_calendar_request_success() -> None:
-    """dispatch_calendar_request sends a notification via Agent."""
-    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
-
-    event = CalendarEventRequest(
+def _sample_event() -> CalendarEventRequest:
+    return CalendarEventRequest(
         message_id="<test@example.com>",
         subject="Test",
         sender="sender@example.com",
@@ -96,16 +112,78 @@ def test_dispatch_calendar_request_success() -> None:
         email_date="2025-01-01T00:00:00",
     )
 
+
+# ---------------------------------------------------------------------------
+# Unit tests — dispatch_calendar_request
+# ---------------------------------------------------------------------------
+
+
+def test_dispatch_calendar_request_success() -> None:
+    """dispatch_calendar_request sends an add_to_calendar request and returns
+    the calendar agent's confirmation reference."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    event = _sample_event()
     mocks = _install_fake_agent_comm_modules()
     try:
-        dispatch_calendar_request(event)
+        result = dispatch_calendar_request(event)
     finally:
         _remove_fake_agent_comm_modules()
 
-    mocks["agent_instance"].send_notification.assert_called_once_with(
-        recipient="robotsix-calendar",
-        body=event.model_dump(),
+    assert result == "Created event 'Test'"
+    mocks["agent_instance"].send_request.assert_called_once()
+    args, _kwargs = mocks["agent_instance"].send_request.call_args
+    assert args[0] == "robotsix-calendar"
+    assert args[1] == {"add_to_calendar": event.model_dump()}
+
+
+def test_dispatch_calendar_request_falls_back_to_event_uid() -> None:
+    """With no confirmation_text the event UID is returned as the reference."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    mocks = _install_fake_agent_comm_modules(
+        reply_body={"result": {"event": {"uid": "evt-42"}}, "correlation_id": "c"},
     )
+    try:
+        result = dispatch_calendar_request(_sample_event())
+    finally:
+        _remove_fake_agent_comm_modules()
+
+    assert result == "evt-42"
+    assert "reply" in mocks
+
+
+def test_dispatch_calendar_error_reply_raises() -> None:
+    """An ``{"error": ...}`` reply maps to CalendarDispatchError."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    _install_fake_agent_comm_modules(
+        reply_body={"error": {"code": "missing_dates", "message": "no dates"}},
+    )
+    try:
+        try:
+            dispatch_calendar_request(_sample_event())
+            raise AssertionError("expected CalendarDispatchError")
+        except CalendarDispatchError as exc:
+            assert "Calendar agent error" in str(exc)
+            assert "no dates" in str(exc)
+    finally:
+        _remove_fake_agent_comm_modules()
+
+
+def test_dispatch_malformed_reply_raises() -> None:
+    """A reply with neither result nor error maps to CalendarDispatchError."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    _install_fake_agent_comm_modules(reply_body={"unexpected": True})
+    try:
+        try:
+            dispatch_calendar_request(_sample_event())
+            raise AssertionError("expected CalendarDispatchError")
+        except CalendarDispatchError as exc:
+            assert "malformed" in str(exc)
+    finally:
+        _remove_fake_agent_comm_modules()
 
 
 def test_dispatch_import_error() -> None:
@@ -150,24 +228,16 @@ def test_dispatch_agent_not_found_error() -> None:
     """dispatch_calendar_request raises CalendarDispatchError on AgentNotFoundError."""
     from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
 
-    event = CalendarEventRequest(
-        message_id="<test@example.com>",
-        subject="Test",
-        sender="sender@example.com",
-        body_text="Body",
-        email_date="2025-01-01T00:00:00",
-    )
-
     mocks = _install_fake_agent_comm_modules()
     # Use the AgentNotFoundError class from the fake transport module so
     # it matches the one dispatch_calendar_request imports at runtime.
     agent_not_found_error = mocks["AgentNotFoundError"]
-    mocks["agent_instance"].send_notification.side_effect = agent_not_found_error(
+    mocks["agent_instance"].send_request.side_effect = agent_not_found_error(
         "robotsix-calendar"
     )
     try:
         try:
-            dispatch_calendar_request(event)
+            dispatch_calendar_request(_sample_event())
             raise AssertionError("expected CalendarDispatchError")
         except CalendarDispatchError as exc:
             assert "Calendar agent is not available" in str(exc)
@@ -179,20 +249,12 @@ def test_dispatch_delivery_error() -> None:
     """dispatch_calendar_request raises CalendarDispatchError on DeliveryError."""
     from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
 
-    event = CalendarEventRequest(
-        message_id="<test@example.com>",
-        subject="Test",
-        sender="sender@example.com",
-        body_text="Body",
-        email_date="2025-01-01T00:00:00",
-    )
-
     mocks = _install_fake_agent_comm_modules()
     delivery_error = mocks["DeliveryError"]
-    mocks["agent_instance"].send_notification.side_effect = delivery_error("timeout")
+    mocks["agent_instance"].send_request.side_effect = delivery_error("timeout")
     try:
         try:
-            dispatch_calendar_request(event)
+            dispatch_calendar_request(_sample_event())
             raise AssertionError("expected CalendarDispatchError")
         except CalendarDispatchError as exc:
             assert "Failed to deliver calendar request" in str(exc)
@@ -204,20 +266,12 @@ def test_dispatch_unexpected_error() -> None:
     """dispatch_calendar_request wraps unexpected exceptions."""
     from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
 
-    event = CalendarEventRequest(
-        message_id="<test@example.com>",
-        subject="Test",
-        sender="sender@example.com",
-        body_text="Body",
-        email_date="2025-01-01T00:00:00",
-    )
-
-    _ = _install_fake_agent_comm_modules(
-        send_notification_side_effect=RuntimeError("boom"),
+    _install_fake_agent_comm_modules(
+        send_request_side_effect=RuntimeError("boom"),
     )
     try:
         try:
-            dispatch_calendar_request(event)
+            dispatch_calendar_request(_sample_event())
             raise AssertionError("expected CalendarDispatchError")
         except CalendarDispatchError as exc:
             assert "Failed to deliver calendar request" in str(exc)
