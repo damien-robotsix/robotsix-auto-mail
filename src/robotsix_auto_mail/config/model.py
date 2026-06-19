@@ -65,7 +65,8 @@ def _read_config_yaml(path: str | Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
     try:
-        return read_yaml_file(path)
+        data: dict[str, Any] = read_yaml_file(path)
+        return data
     except YamlConfigError as exc:
         raise ConfigurationError(f"Invalid YAML in {path}: {exc}") from exc
 
