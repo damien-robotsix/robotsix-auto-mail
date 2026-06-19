@@ -354,8 +354,7 @@ def _load_archive_guidance(
 
     if archive_folders is not None:
         archive_folders = [
-            f for f in (normalize_archive_subfolder(f) for f in archive_folders)
-            if f
+            f for f in (normalize_archive_subfolder(f) for f in archive_folders) if f
         ]
 
     folder_memory = _load_archive_folder_memory(conn)
