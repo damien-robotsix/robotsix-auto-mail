@@ -255,13 +255,28 @@ def test_handle_valid_response_uses_real_schema(monkeypatch) -> None:
 
 def test_start_missing_sdk_returns_none() -> None:
     """When robotsix_agent_comm is not installed, returns None."""
-    # Ensure modules are absent.
+    import builtins
+
+    # Remove cached modules and block re-import so the
+    # lazy import inside start_calendar_listener raises ImportError.
+    saved = {}
     for key in list(sys.modules):
         if key.startswith("robotsix_agent_comm"):
-            del sys.modules[key]
+            saved[key] = sys.modules.pop(key)
 
-    handle = start_calendar_listener(":memory:")
-    assert handle is None
+    _orig_import = builtins.__import__
+
+    def _block_agent_comm(name: str, *args: object, **kwargs: object) -> object:
+        if name.startswith("robotsix_agent_comm"):
+            raise ImportError(f"No module named {name!r}")
+        return _orig_import(name, *args, **kwargs)
+
+    with mock.patch("builtins.__import__", new=_block_agent_comm):
+        try:
+            handle = start_calendar_listener(":memory:")
+            assert handle is None
+        finally:
+            sys.modules.update(saved)
 
 
 def test_start_available_sdk_returns_handle() -> None:

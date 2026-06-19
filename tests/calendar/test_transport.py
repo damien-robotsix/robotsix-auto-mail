@@ -228,10 +228,28 @@ def test_build_in_process_reuses_singleton() -> None:
 
 def test_build_in_process_missing_dep_raises_import_error() -> None:
     """When robotsix_agent_comm is not installed, import fails."""
-    # No modules installed — should raise ImportError from within
-    # the lazy import inside _get_in_process_registry.
-    with pytest.raises(ImportError):
-        build_calendar_transport(mode="in-process")
+    import builtins
+
+    # Remove cached modules and block re-import so the
+    # lazy import inside _get_in_process_registry raises ImportError.
+    saved = {}
+    for key in list(sys.modules):
+        if key.startswith("robotsix_agent_comm"):
+            saved[key] = sys.modules.pop(key)
+
+    _orig_import = builtins.__import__
+
+    def _block_agent_comm(name: str, *args: object, **kwargs: object) -> object:
+        if name.startswith("robotsix_agent_comm"):
+            raise ImportError(f"No module named {name!r}")
+        return _orig_import(name, *args, **kwargs)
+
+    with mock.patch("builtins.__import__", new=_block_agent_comm):
+        try:
+            with pytest.raises(ImportError):
+                build_calendar_transport(mode="in-process")
+        finally:
+            sys.modules.update(saved)
 
 
 # ---------------------------------------------------------------------------
@@ -343,15 +361,38 @@ def test_build_brokered_missing_multiple_fields() -> None:
 
 def test_build_brokered_import_error_raises() -> None:
     """When robotsix_agent_comm is not installed, brokered raises ImportError."""
-    # No fake modules — the import inside build_calendar_transport
-    # should raise ImportError because importlib.import_module fails.
-    with pytest.raises(ImportError):
-        build_calendar_transport(
-            mode="brokered",
-            broker_host="localhost",
-            ca_path="/nonexistent/ca.pem",
-            token="test-token",
-        )
+    import importlib
+
+    # Remove cached modules so the import machinery cannot return them
+    # from the module cache.
+    saved = {}
+    for key in list(sys.modules):
+        if key.startswith("robotsix_agent_comm"):
+            saved[key] = sys.modules.pop(key)
+
+    # build_calendar_transport uses importlib.import_module (not a
+    # regular ``import`` statement) for the brokered path, so we must
+    # mock importlib.import_module — mocking builtins.__import__ is
+    # insufficient because the importlib bootstrap machinery holds a
+    # frozen reference to the C-level __import__.
+    _orig_import_module = importlib.import_module
+
+    def _block_import_module(name: str, package: object = None) -> object:
+        if name.startswith("robotsix_agent_comm"):
+            raise ImportError(f"No module named {name!r}")
+        return _orig_import_module(name, package=package)
+
+    with mock.patch("importlib.import_module", new=_block_import_module):
+        try:
+            with pytest.raises(ImportError):
+                build_calendar_transport(
+                    mode="brokered",
+                    broker_host="localhost",
+                    ca_path="/nonexistent/ca.pem",
+                    token="test-token",
+                )
+        finally:
+            sys.modules.update(saved)
 
 
 def test_build_unknown_mode_raises_value_error() -> None:

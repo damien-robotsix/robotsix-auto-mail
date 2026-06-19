@@ -88,7 +88,7 @@ def dispatch_calendar_request(
         agent_kwargs: dict[str, object] = {"registry": registry}
         if transport_obj is not None:
             agent_kwargs["transport"] = transport_obj
-        agent = Agent(**agent_kwargs)
+        agent = Agent("robotsix-calendar", **agent_kwargs)
         agent.send_notification(
             recipient="robotsix-calendar",
             body=event.model_dump(),
