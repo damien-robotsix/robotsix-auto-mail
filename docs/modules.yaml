@@ -296,6 +296,7 @@ modules:
       - tests/server/test_archive_structure.py
       - tests/server/test_board_adapter.py
       - tests/server/test_board_handler.py
+      - tests/server/test_board_views_unit.py
       - tests/server/test_draft_mixin.py
       - tests/server/test_format_date.py
       - tests/server/test_global_board.py
