@@ -540,6 +540,7 @@
         if (bc) {
           var op = data.batch_op;
           if (op) {
+            var verbs = CFG.batch_op_verbs || ["archive", "delete"];
             var verb = op.op === "archive" ? "Archiving" : "Deleting";
             var prog =
               typeof op.done === "number" && typeof op.total === "number"

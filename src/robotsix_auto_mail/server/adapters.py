@@ -7,7 +7,19 @@ from typing import Any
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
 from robotsix_auto_mail.db import MailRecord
+from robotsix_auto_mail.server._constants import BATCH_OP_VERBS
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
+
+
+def _batch_progress(op: str, done: int, total: int) -> str:
+    """Return a ``batch_op:state`` progress JSON payload.
+
+    *op* must be a member of `BATCH_OP_VERBS` — the single source of
+    truth for valid batch-operation verbs.
+    """
+    if op not in BATCH_OP_VERBS:
+        raise ValueError(f"Unknown batch op verb: {op!r}")
+    return json.dumps({"op": op, "done": done, "total": total})
 
 
 class _NonEmptyColumnsAdapter:
@@ -177,7 +189,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
         set_watermark(
             conn,
             "batch_op:state",
-            json.dumps({"op": "delete", "done": 0, "total": total}),
+            _batch_progress("delete", 0, total),
         )
 
         need_imap = mail_config is not None and any(
@@ -245,7 +257,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                         set_watermark(
                             conn,
                             "batch_op:state",
-                            json.dumps({"op": "delete", "done": done, "total": total}),
+                            _batch_progress("delete", done, total),
                         )
         else:
             # DB-only delete (no IMAP configured or no tracked UIDs).
@@ -256,7 +268,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                 set_watermark(
                     conn,
                     "batch_op:state",
-                    json.dumps({"op": "delete", "done": done, "total": total}),
+                    _batch_progress("delete", done, total),
                 )
     except Exception:  # noqa: S110  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
@@ -319,7 +331,7 @@ def _run_batch_archive_background(
         set_watermark(
             conn,
             "batch_op:state",
-            json.dumps({"op": "archive", "done": 0, "total": total}),
+            _batch_progress("archive", 0, total),
         )
 
         namespace = mail_config.archive_namespace if mail_config is not None else ""
@@ -407,7 +419,7 @@ def _run_batch_archive_background(
                     set_watermark(
                         conn,
                         "batch_op:state",
-                        json.dumps({"op": "archive", "done": done, "total": total}),
+                        _batch_progress("archive", done, total),
                     )
         else:
             # DB-only archive (no IMAP configured or no tracked UIDs).
@@ -418,7 +430,7 @@ def _run_batch_archive_background(
                 set_watermark(
                     conn,
                     "batch_op:state",
-                    json.dumps({"op": "archive", "done": done, "total": total}),
+                    _batch_progress("archive", done, total),
                 )
     except Exception:  # noqa: S110  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.

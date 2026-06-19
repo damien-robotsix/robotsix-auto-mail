@@ -43,6 +43,12 @@ _BOARD_COLUMNS = TRIAGE_ACTION_ORDER
 #: with a real account named ``__all__`` are out of scope.
 GLOBAL_VIEW_ACCOUNT_ID: str = "__all__"
 
+#: The set of valid batch-operation verbs used in the ``batch_op:state``
+#: watermark and the board UI.  Adding a verb here automatically makes
+#: it available to the JavaScript overlay via the ``#board-config`` JSON
+#: payload so the two sides stay in sync without manual coordination.
+BATCH_OP_VERBS: frozenset[str] = frozenset({"archive", "delete"})
+
 
 def _is_safe_redirect_path(location: str) -> bool:
     """Return ``True`` if *location* is a safe same-origin relative path.
