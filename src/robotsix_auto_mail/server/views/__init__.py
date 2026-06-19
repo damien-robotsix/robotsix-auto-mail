@@ -42,6 +42,9 @@ from robotsix_auto_mail.server.views.detail import (
     _render_body as _render_body,
 )
 from robotsix_auto_mail.server.views.detail import (
+    _render_calendar_feedback as _render_calendar_feedback,
+)
+from robotsix_auto_mail.server.views.detail import (
     _render_draft_section as _render_draft_section,
 )
 from robotsix_auto_mail.server.views.detail import (
@@ -72,6 +75,7 @@ __all__ = [
     "_render_board_columns",
     "_render_board_page_shell",
     "_render_body",
+    "_render_calendar_feedback",
     "_render_draft_section",
     "_render_imap_uid_section",
     "_render_move_form",
