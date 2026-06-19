@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   publish:
-    uses: damien-robotsix/robotsix-mill/.github/workflows/docker-release.yml@3c5ac1dda3069742afbdd79dc326d9db4d97f17f  # main
+    uses: damien-robotsix/robotsix-mill/.github/workflows/docker-release.yml@main
     permissions:
       contents: read
       packages: write
