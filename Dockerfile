@@ -43,12 +43,22 @@ COPY src/ src/
 #     extras (the latter pulls in msal for Microsoft OAuth2).
 #   - the project itself is then installed with --no-deps so its deps are
 #     NOT re-resolved.
+#   - the two `uv pip install` commands are wrapped in a retry loop
+#     (5 attempts with exponential backoff) to survive transient PyPI
+#     connection failures (e.g. broken pipe mid-download); already-
+#     installed packages are skipped, so retries are idempotent.
 # --system installs into the image's system Python (the same
 # /usr/local/lib/python3.14/site-packages/ path the production
 # stage copies from), matching the previous `pip install` layout.
 RUN uv export --frozen --no-emit-project --no-hashes --extra llm --extra microsoft -o /tmp/requirements.txt && \
-    uv pip install --system --no-cache-dir -r /tmp/requirements.txt && \
-    uv pip install --system --no-cache-dir --no-deps .
+    for attempt in 1 2 3 4 5; do \
+      uv pip install --system --no-cache-dir -r /tmp/requirements.txt && \
+      uv pip install --system --no-cache-dir --no-deps . && \
+      { success=1; break; }; \
+      echo "uv install attempt ${attempt} failed; retrying in $((attempt * 5))s"; \
+      sleep $((attempt * 5)); \
+    done; \
+    [ -n "${success:-}" ]
 
 # ---------------------------------------------------------------------------
 # Production stage — minimal runtime image with only the installed artifacts
