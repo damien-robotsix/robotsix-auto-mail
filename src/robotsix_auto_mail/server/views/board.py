@@ -410,7 +410,11 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
     """
     if batch_op is None:
         return ""
-    verb = BATCH_OP_VERB_LABELS.get(batch_op.get("op"), "Processing")
+    op = batch_op.get("op")
+    if isinstance(op, str):
+        verb = BATCH_OP_VERB_LABELS.get(op, "Processing")
+    else:
+        verb = "Processing"
     done = batch_op.get("done")
     total = batch_op.get("total")
     if isinstance(done, int) and isinstance(total, int):
