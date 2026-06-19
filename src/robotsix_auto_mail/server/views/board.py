@@ -12,7 +12,11 @@ from robotsix_board import render_board
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailAccountsConfig
 from robotsix_auto_mail.db import MailRecord, list_records
-from robotsix_auto_mail.server._constants import _BOARD_COLUMNS
+from robotsix_auto_mail.server._constants import (
+    _BOARD_COLUMNS,
+    BATCH_OP_VERB_LABELS,
+    BATCH_OP_VERBS,
+)
 from robotsix_auto_mail.server.adapters import _NonEmptyColumnsAdapter
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.triage import (
@@ -406,7 +410,11 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
     """
     if batch_op is None:
         return ""
-    verb = "Archiving" if batch_op.get("op") == "archive" else "Deleting"
+    op = batch_op.get("op")
+    if isinstance(op, str):
+        verb = BATCH_OP_VERB_LABELS.get(op, "Processing")
+    else:
+        verb = "Processing"
     done = batch_op.get("done")
     total = batch_op.get("total")
     if isinstance(done, int) and isinstance(total, int):
@@ -459,6 +467,8 @@ def _render_board_page_shell(
         "account_qs": account_qs,
         "fetch_qs": fetch_qs,
         "data_account_js": data_account_js,
+        "batch_op_verbs": sorted(BATCH_OP_VERBS),
+        "batch_op_verb_labels": BATCH_OP_VERB_LABELS,
     }
 
     return (
