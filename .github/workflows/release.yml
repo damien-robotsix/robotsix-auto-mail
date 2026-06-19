@@ -1,10 +1,12 @@
 name: Release image
 
-# Publishes container images to GHCR:
-#   - push to `main`  -> moving `main` tag (Watchtower's continuous-deploy target)
-#   - push of a `v*` tag -> semver tags (`1.2.3`, `1.2`, `1`) plus `latest`
-# Every build also gets a `sha-<short>` tag. See deploy/README.md for how the
-# server consumes the `main` tag via Watchtower.
+# Publishes container images to GHCR via the shared docker-release
+# reusable workflow in robotsix-mill, then runs a Trivy vulnerability
+# scan with SARIF upload to Code Scanning.
+#
+# Tags produced by the reusable (see docker-release.yml in robotsix-mill):
+#   push to `main`  -> `main`, `sha-<short>`, `latest`
+#   push of a `v*` tag -> `1.2.3`, `sha-<short>`
 on:
   push:
     branches: ['main']
@@ -24,47 +26,36 @@ concurrency:
 
 jobs:
   publish:
+    uses: damien-robotsix/robotsix-mill/.github/workflows/docker-release.yml@3c5ac1dda3069742afbdd79dc326d9db4d97f17f  # main
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
+  trivy:
+    needs: publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-        with:
-          persist-credentials: false
-
-      # The default `docker` driver cannot emit provenance/SBOM attestations
-      # (see the build step). setup-buildx-action provisions the
-      # `docker-container` driver, which supports them.
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
-
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha
-
-      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          provenance: mode=max   # SLSA build provenance
-          sbom: true             # CycloneDX/SPDX SBOM attestation
+      - name: Compute image reference
+        id: ref
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+            TAG="${TAG#v}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Scan published image with Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          image-ref: ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
+          image-ref: ghcr.io/${{ github.repository }}:${{ steps.ref.outputs.tag }}
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
