@@ -108,7 +108,7 @@ def test_dispatch_calendar_request_success() -> None:
     )
 
 
-def test_dispatch_import_error() -> None:
+def test_dispatch_import_error(monkeypatch) -> None:
     """dispatch_calendar_request raises CalendarDispatchError on ImportError."""
     from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
 
@@ -120,8 +120,17 @@ def test_dispatch_import_error() -> None:
         email_date="2025-01-01T00:00:00",
     )
 
-    # Do NOT install fake modules — the import will fail, which is what
-    # we want to test.
+    # Force the agent-comm import to fail DETERMINISTICALLY. Relying on
+    # agent-comm being absent is fragile: it is installed transitively
+    # (via the board-agent extra) in the mill's test gate, so the import
+    # then succeeds and execution falls through to ``Agent(...)`` — which
+    # is NOT what this test means to exercise. A ``None`` entry in
+    # ``sys.modules`` makes the import raise ``ImportError`` regardless of
+    # whether the real package is installed. (monkeypatch auto-restores.)
+    monkeypatch.setitem(sys.modules, "robotsix_agent_comm", None)
+    monkeypatch.setitem(sys.modules, "robotsix_agent_comm.sdk", None)
+    monkeypatch.setitem(sys.modules, "robotsix_agent_comm.transport", None)
+
     try:
         dispatch_calendar_request(event)
         raise AssertionError("expected CalendarDispatchError")

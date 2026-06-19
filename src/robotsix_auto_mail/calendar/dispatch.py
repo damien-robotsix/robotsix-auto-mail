@@ -88,7 +88,11 @@ def dispatch_calendar_request(
         agent_kwargs: dict[str, object] = {"registry": registry}
         if transport_obj is not None:
             agent_kwargs["transport"] = transport_obj
-        agent = Agent(**agent_kwargs)
+        # ``agent_id`` is a required positional on ``Agent.__init__``; pass the
+        # sender id (matching listener.py's ``Agent("robotsix-auto-mail", …)``).
+        # Omitting it raised ``TypeError: Agent.__init__() missing 1 required
+        # positional argument`` whenever agent-comm was actually installed.
+        agent = Agent("robotsix-auto-mail", **agent_kwargs)
         agent.send_notification(
             recipient="robotsix-calendar",
             body=event.model_dump(),
