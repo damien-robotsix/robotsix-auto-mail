@@ -13,6 +13,7 @@ import json
 import re
 import sqlite3
 from email.utils import parseaddr
+from typing import cast
 
 from robotsix_llmio.core import run_agent
 
@@ -118,23 +119,39 @@ def _sanitise_subfolder(raw: str) -> str:
     return sanitised
 
 
+def _load_json_watermark(conn: sqlite3.Connection, key: str) -> dict[str, object]:
+    """Read a JSON-serialised dict watermark, returning {} when absent."""
+    raw = get_watermark(conn, key)
+    if raw is None:
+        return {}
+    return cast(dict[str, object], json.loads(raw))
+
+
+def _save_json_watermark(
+    conn: sqlite3.Connection, key: str, data: dict[str, object]
+) -> None:
+    """Persist *data* as a JSON-serialised watermark."""
+    set_watermark(conn, key, json.dumps(data))
+
+
 def _load_archive_overrides(conn: sqlite3.Connection) -> dict[str, str]:
     """Load user overrides from the watermark table.
 
     Returns ``{message_id: subfolder}``, empty dict on first use.
     """
-    raw = get_watermark(conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY)
-    if raw is None:
-        return {}
-    data: dict[str, object] = json.loads(raw)
-    return {k: str(v) for k, v in data.items()}
+    return {
+        k: str(v)
+        for k, v in _load_json_watermark(conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY).items()
+    }
 
 
 def _save_archive_overrides(
     conn: sqlite3.Connection, overrides: dict[str, str]
 ) -> None:
     """Persist *overrides* to the watermark table (json round-trip)."""
-    set_watermark(conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY, json.dumps(overrides))
+    _save_json_watermark(
+        conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY, cast("dict[str, object]", overrides)
+    )
 
 
 def _load_llm_archive_hints(conn: sqlite3.Connection) -> dict[str, str]:
@@ -142,16 +159,17 @@ def _load_llm_archive_hints(conn: sqlite3.Connection) -> dict[str, str]:
 
     Returns ``{message_id: subfolder}``, empty dict on first use.
     """
-    raw = get_watermark(conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY)
-    if raw is None:
-        return {}
-    data: dict[str, object] = json.loads(raw)
-    return {k: str(v) for k, v in data.items()}
+    return {
+        k: str(v)
+        for k, v in _load_json_watermark(conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY).items()
+    }
 
 
 def _save_llm_archive_hints(conn: sqlite3.Connection, hints: dict[str, str]) -> None:
     """Persist *hints* to the watermark table (json round-trip)."""
-    set_watermark(conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY, json.dumps(hints))
+    _save_json_watermark(
+        conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY, cast("dict[str, object]", hints)
+    )
 
 
 def _load_archive_folder_memory(
@@ -162,12 +180,11 @@ def _load_archive_folder_memory(
     Returns ``{key: ArchiveFolderMemory}`` keyed by sender key and sender
     domain; an empty dict when the memory has never been written.
     """
-    raw = get_watermark(conn, _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY)
-    if raw is None:
-        return {}
-    data: dict[str, object] = json.loads(raw)
     return {
-        key: ArchiveFolderMemory.model_validate(entry) for key, entry in data.items()
+        key: ArchiveFolderMemory.model_validate(entry)
+        for key, entry in _load_json_watermark(
+            conn, _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY
+        ).items()
     }
 
 
@@ -176,7 +193,9 @@ def _save_archive_folder_memory(
 ) -> None:
     """Persist *memory* to the watermark table (json round-trip)."""
     payload = {key: entry.model_dump() for key, entry in memory.items()}
-    set_watermark(conn, _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY, json.dumps(payload))
+    _save_json_watermark(
+        conn, _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY, cast("dict[str, object]", payload)
+    )
 
 
 def record_archive_folder_choice(
