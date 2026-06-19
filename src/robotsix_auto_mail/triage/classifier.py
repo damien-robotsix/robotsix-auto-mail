@@ -17,6 +17,7 @@ from typing import cast
 
 from robotsix_llmio.core import run_agent
 
+from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.config import (
     resolve_llm_api_key,
     resolve_llm_provider,
@@ -362,6 +363,7 @@ def propose_archive_subfolder_llm(
             "relates to an ongoing project, rather than inventing a new "
             "folder or a date bucket.\n"
         )
+    system_prompt += "\nFolder taxonomy rules:\n" + _ARCHIVE_TAXONOMY_GUIDANCE + "\n"
 
     # -- build user message --
     body_snippet = record.body_plain[:1000] if record.body_plain else ""
