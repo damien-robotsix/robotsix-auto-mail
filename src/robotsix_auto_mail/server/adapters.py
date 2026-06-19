@@ -93,7 +93,9 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
             return
         try:
             with ImapClient(mail_config) as client:
-                healed, removed = reconcile_records(conn, client)
+                healed, removed = reconcile_records(
+                    conn, client, monitored_folder=mail_config.imap_folder
+                )
                 logger.info("reconcile_done", healed=healed, removed=removed)
         except ImapError as exc:
             logger.warning("reconcile_imap_error", error=str(exc))

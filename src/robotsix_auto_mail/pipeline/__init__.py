@@ -389,8 +389,22 @@ def ingest_mail(
 def reconcile_records(
     db_conn: sqlite3.Connection,
     imap_client: ImapClient,
+    monitored_folder: str | None = None,
 ) -> tuple[int, int]:
     """Verify tracked records' UIDs; heal moved mails, remove deleted ones.
+
+    The board only ever tracks mail that lives in the account's *monitored*
+    folder (``imap_folder``): ingest stamps ``source_folder`` to it, and every
+    board action that moves a message elsewhere (archive/move/delete) also
+    removes the record.  So a live record's ``source_folder`` should always
+    equal *monitored_folder*.  When *monitored_folder* is given, any record
+    whose ``source_folder`` differs from it has drifted out of the monitored
+    folder — the user archived/moved it directly in their mailbox (or it was
+    left behind by the pre-#502 reconcile that healed cross-folder moves
+    instead of pruning them) — and is pruned outright.
+
+    When *monitored_folder* is ``None`` the drift check is skipped (legacy
+    behaviour): each ``source_folder`` group is reconciled in place.
 
     Returns ``(healed, removed)`` counts.
     """
@@ -417,6 +431,18 @@ def reconcile_records(
 
         # 3. For each source folder, verify tracked UIDs are still present.
         for folder, uid_map in folder_uids.items():
+            # Any record whose source_folder is not the monitored folder has
+            # left the board's only valid location — prune the whole group
+            # without an IMAP round-trip.  This self-heals records stranded by
+            # the pre-#502 reconcile, which rewrote source_folder to wherever a
+            # user-moved mail landed instead of pruning it.
+            if monitored_folder is not None and folder != monitored_folder:
+                for message_id in uid_map.values():
+                    delete_record_by_message_id(db_conn, message_id)
+                    removed += 1
+                db_conn.commit()
+                continue
+
             # Select the folder — skip on error (e.g. folder was deleted).
             try:
                 imap_client.select_folder(folder)

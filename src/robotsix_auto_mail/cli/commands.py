@@ -132,7 +132,9 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
             result = _cli.ingest_mail(conn, imap_client, config, dry_run=dry_run)
             if not dry_run and result is not None:
                 try:
-                    healed, removed = reconcile_records(conn, imap_client)
+                    healed, removed = reconcile_records(
+                        conn, imap_client, monitored_folder=config.imap_folder
+                    )
                     if healed or removed:
                         sys.stdout.write(
                             f"Reconciliation: {healed} healed, {removed} removed\n"
