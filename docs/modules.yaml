@@ -345,9 +345,11 @@ modules:
       - .github/workflows/lockfile.yml
       - .github/workflows/pre-commit.yml
       - .github/workflows/release.yml
+      - .github/workflows/scan-container.yml
       - .hadolint.yaml
       - .pre-commit-config.yaml
       - .secrets.baseline
+      - .trivyignore
       - renovate.json
 
   - id: mill

@@ -1,0 +1,32 @@
+name: Weekly container vulnerability rescan
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  security-events: write
+  issues: write
+
+jobs:
+  weekly-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan ghcr.io image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:main
+          format: sarif
+          output: trivy-weekly-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 0
+          vuln-type: os,library
+
+      - name: Upload weekly SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-weekly-results.sarif
