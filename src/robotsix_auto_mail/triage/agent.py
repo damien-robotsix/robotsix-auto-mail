@@ -352,6 +352,11 @@ def _load_archive_guidance(
         except json.JSONDecodeError, TypeError, KeyError:
             archive_folders = None
 
+    if archive_folders is not None:
+        archive_folders = [
+            f for f in (normalize_archive_subfolder(f) for f in archive_folders) if f
+        ]
+
     folder_memory = _load_archive_folder_memory(conn)
     archive_folder_usage: dict[str, int] = {}
     for entry in folder_memory.values():
