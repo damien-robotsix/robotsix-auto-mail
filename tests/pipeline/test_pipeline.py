@@ -1395,6 +1395,64 @@ def test_reconcile_chunks_uid_search(
     mock_resolve.assert_not_called()
 
 
+def test_reconcile_prunes_record_drifted_from_monitored_folder(
+    conn: sqlite3.Connection,
+) -> None:
+    """A record whose source_folder != monitored_folder is pruned outright,
+    without any IMAP round-trip.
+
+    This is the self-heal path for records stranded by the pre-#502 reconcile,
+    which rewrote source_folder to wherever a user-moved mail landed (e.g. an
+    archive sub-folder) instead of pruning the record.
+    """
+    from robotsix_auto_mail.db import insert_record
+
+    # A live INBOX record (should survive) ...
+    insert_record(
+        conn,
+        MailRecord(
+            message_id="<inbox@x>",
+            sender="x@x.com",
+            subject="Still in inbox",
+            date="2025-01-01T00:00:00",
+            imap_uid=10,
+            source_folder="INBOX",
+        ),
+    )
+    # ... and a record stranded in an archive sub-folder.
+    insert_record(
+        conn,
+        MailRecord(
+            message_id="<archived@x>",
+            sender="x@x.com",
+            subject="User-archived",
+            date="2025-01-01T00:00:00",
+            imap_uid=360,
+            source_folder="INBOX.archive.Projects",
+        ),
+    )
+
+    imap = _mock_imap_client()
+    # INBOX UID 10 is still present.
+    imap.search_uids.return_value = [10]
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.cross_folder_resolve",
+    ) as mock_resolve:
+        healed, removed = reconcile_records(conn, imap, monitored_folder="INBOX")
+
+    assert healed == 0
+    assert removed == 1
+
+    # The drifted record is gone; the INBOX record survives.
+    assert get_record_by_message_id(conn, "<archived@x>") is None
+    assert get_record_by_message_id(conn, "<inbox@x>") is not None
+
+    # The drifted folder is pruned without selecting it or resolving it.
+    imap.select_folder.assert_called_once_with("INBOX")
+    mock_resolve.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # CLI ingest subcommand tests
 # ---------------------------------------------------------------------------
