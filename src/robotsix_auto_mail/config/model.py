@@ -50,6 +50,28 @@ _ENV_ACCOUNT_INDEX_RE: Final[re.Pattern[str]] = re.compile(r"^MAIL_ACCOUNTS_(\d+
 
 
 # ---------------------------------------------------------------------------
+# Shared YAML-reader helper
+# ---------------------------------------------------------------------------
+
+
+def _read_config_yaml(path: str | Path) -> dict[str, Any]:
+    """Open *path*, validate its existence, and return the parsed YAML dict.
+
+    ``read_yaml_file`` returns an empty dict for a missing file; we
+    still want ``from_yaml`` to surface a ``FileNotFoundError`` so
+    callers (e.g. ``load()``) can distinguish "no file" from "empty file".
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found: {path}")
+    try:
+        data: dict[str, Any] = read_yaml_file(path)
+        return data
+    except YamlConfigError as exc:
+        raise ConfigurationError(f"Invalid YAML in {path}: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
 # MailConfig
 # ---------------------------------------------------------------------------
 
@@ -308,18 +330,7 @@ class MailConfig:
             FileNotFoundError: If *path* does not exist.
         """
         path = Path(path)
-
-        # ``read_yaml_file`` returns an empty dict for a missing file; we
-        # still want ``from_yaml`` to surface a FileNotFoundError so callers
-        # (e.g. ``load()``) can distinguish "no file" from "empty file".
-        if not path.exists():
-            raise FileNotFoundError(f"Config file not found: {path}")
-
-        try:
-            data = read_yaml_file(path)
-        except YamlConfigError as exc:
-            raise ConfigurationError(f"Invalid YAML in {path}: {exc}") from exc
-
+        data = _read_config_yaml(path)
         return cls._parse_config_dict(data, path, validate=validate)
 
 
@@ -581,13 +592,7 @@ class MailAccountsConfig:
             FileNotFoundError: If *path* does not exist.
         """
         path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Config file not found: {path}")
-
-        try:
-            data = read_yaml_file(path)
-        except YamlConfigError as exc:
-            raise ConfigurationError(f"Invalid YAML in {path}: {exc}") from exc
+        data = _read_config_yaml(path)
 
         accounts_raw = data.get("accounts") if isinstance(data, dict) else None
         if accounts_raw is None:
