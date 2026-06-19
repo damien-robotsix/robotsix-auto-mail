@@ -291,6 +291,7 @@ modules:
       - src/robotsix_auto_mail/board_agent.py
       - docs/board-agent.md
       - tests/server/conftest.py
+      - tests/server/test_action_mixin.py
       - tests/server/test_adapters.py
       - tests/server/test_archive_structure.py
       - tests/server/test_board_adapter.py
