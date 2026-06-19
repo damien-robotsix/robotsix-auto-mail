@@ -77,8 +77,10 @@ def build_calendar_transport(
     Parameters:
         mode: ``"in-process"`` (default) or ``"brokered"``.
         broker_host: Broker server hostname (required for brokered).
-        broker_port: Broker server port (default 8443).
-        ca_path: Path to CA certificate PEM (required for brokered).
+        broker_port: Broker server port (default 443).
+        ca_path: Path to a custom CA certificate PEM. Optional — when empty,
+            the system trust store is used (the deployed broker is fronted by
+            a publicly-trusted TLS endpoint).
         client_cert_path: Path to client certificate PEM (mutual TLS).
         client_key_path: Path to client key PEM (mutual TLS).
         token: Agent authentication token (required for brokered).
@@ -89,7 +91,7 @@ def build_calendar_transport(
 
     Raises:
         ValueError: When *mode* is ``"brokered"`` but required fields
-            (host, CA, token) are missing.
+            (host, token) are missing.
         ImportError: When ``robotsix_agent_comm`` is not installed and
             a brokered transport is requested (callers must catch).
     """
@@ -102,12 +104,11 @@ def build_calendar_transport(
             f"expected 'in-process' or 'brokered'"
         )
 
-    # Validate required brokered fields.
+    # Validate required brokered fields. A CA file is optional — the deployed
+    # broker uses a publicly-trusted cert, so system trust is the default.
     missing: list[str] = []
     if not broker_host:
         missing.append("host")
-    if not ca_path:
-        missing.append("TLS CA")
     if not token:
         missing.append("token")
     if missing:
@@ -115,10 +116,8 @@ def build_calendar_transport(
             "Calendar broker configuration incomplete: missing " + ", ".join(missing)
         )
 
-    # Dynamic attribute access on transport module — the pinned
-    # robotsix_agent_comm dep predates the broker work, so static
-    # imports of BrokeredRegistry / NetworkedBrokerTransport would
-    # fail mypy against the old revision.
+    # Dynamic attribute access on transport module — keeps mypy green even when
+    # the pinned robotsix_agent_comm predates the broker symbols.
     import importlib
 
     transport_mod = importlib.import_module("robotsix_agent_comm.transport")
@@ -128,7 +127,18 @@ def build_calendar_transport(
         transport_mod, "NetworkedBrokerTransport"
     )
 
-    ssl_context = build_ssl_context(ca_path, client_cert_path, client_key_path)
+    # Custom CA only when provided; otherwise default system trust.
+    if ca_path:
+        ssl_context = build_ssl_context(ca_path, client_cert_path, client_key_path)
+    else:
+        ssl_context = ssl.create_default_context()
+        if client_cert_path:
+            if client_key_path:
+                ssl_context.load_cert_chain(
+                    certfile=client_cert_path, keyfile=client_key_path
+                )
+            else:
+                ssl_context.load_cert_chain(certfile=client_cert_path)
 
     registry = BrokeredRegistry(
         broker_host,
