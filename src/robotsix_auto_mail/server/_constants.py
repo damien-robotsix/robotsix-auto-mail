@@ -49,6 +49,16 @@ GLOBAL_VIEW_ACCOUNT_ID: str = "__all__"
 #: payload so the two sides stay in sync without manual coordination.
 BATCH_OP_VERBS: frozenset[str] = frozenset({"archive", "delete"})
 
+#: Human-readable progressive-form labels for each batch-op verb,
+#: keyed by verb.  Used by both the Python ``_batch_banner_html`` and
+#: the JavaScript progress banner (via ``#board-config``) so that
+#: adding a new verb to ``BATCH_OP_VERBS`` only requires adding its
+#: label here — no ternary edits in either language.
+BATCH_OP_VERB_LABELS: dict[str, str] = {
+    "archive": "Archiving",
+    "delete": "Deleting",
+}
+
 
 def _is_safe_redirect_path(location: str) -> bool:
     """Return ``True`` if *location* is a safe same-origin relative path.
