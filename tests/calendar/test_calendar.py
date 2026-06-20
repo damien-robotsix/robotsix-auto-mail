@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from unittest import mock
 
+import pytest
 from tests.server.conftest import (
     _populate_db,
     _post_form,
@@ -161,12 +162,10 @@ def test_dispatch_calendar_error_reply_raises() -> None:
         reply_body={"error": {"code": "missing_dates", "message": "no dates"}},
     )
     try:
-        try:
+        with pytest.raises(
+            CalendarDispatchError, match=r"Calendar agent error.*no dates"
+        ):
             dispatch_calendar_request(_sample_event())
-            raise AssertionError("expected CalendarDispatchError")
-        except CalendarDispatchError as exc:
-            assert "Calendar agent error" in str(exc)
-            assert "no dates" in str(exc)
     finally:
         _remove_fake_agent_comm_modules()
 
@@ -177,11 +176,8 @@ def test_dispatch_malformed_reply_raises() -> None:
 
     _install_fake_agent_comm_modules(reply_body={"unexpected": True})
     try:
-        try:
+        with pytest.raises(CalendarDispatchError, match="malformed"):
             dispatch_calendar_request(_sample_event())
-            raise AssertionError("expected CalendarDispatchError")
-        except CalendarDispatchError as exc:
-            assert "malformed" in str(exc)
     finally:
         _remove_fake_agent_comm_modules()
 
@@ -216,10 +212,10 @@ def test_dispatch_import_error() -> None:
 
     with mock.patch("builtins.__import__", new=_block_agent_comm):
         try:
-            dispatch_calendar_request(event)
-            raise AssertionError("expected CalendarDispatchError")
-        except CalendarDispatchError as exc:
-            assert "Agent communication is not available" in str(exc)
+            with pytest.raises(
+                CalendarDispatchError, match="Agent communication is not available"
+            ):
+                dispatch_calendar_request(event)
         finally:
             sys.modules.update(saved)
 
@@ -236,11 +232,10 @@ def test_dispatch_agent_not_found_error() -> None:
         "robotsix-calendar"
     )
     try:
-        try:
+        with pytest.raises(
+            CalendarDispatchError, match="Calendar agent is not available"
+        ):
             dispatch_calendar_request(_sample_event())
-            raise AssertionError("expected CalendarDispatchError")
-        except CalendarDispatchError as exc:
-            assert "Calendar agent is not available" in str(exc)
     finally:
         _remove_fake_agent_comm_modules()
 
@@ -253,11 +248,10 @@ def test_dispatch_delivery_error() -> None:
     delivery_error = mocks["DeliveryError"]
     mocks["agent_instance"].send_request.side_effect = delivery_error("timeout")
     try:
-        try:
+        with pytest.raises(
+            CalendarDispatchError, match="Failed to deliver calendar request"
+        ):
             dispatch_calendar_request(_sample_event())
-            raise AssertionError("expected CalendarDispatchError")
-        except CalendarDispatchError as exc:
-            assert "Failed to deliver calendar request" in str(exc)
     finally:
         _remove_fake_agent_comm_modules()
 
@@ -270,11 +264,10 @@ def test_dispatch_unexpected_error() -> None:
         send_request_side_effect=RuntimeError("boom"),
     )
     try:
-        try:
+        with pytest.raises(
+            CalendarDispatchError, match="Failed to deliver calendar request"
+        ):
             dispatch_calendar_request(_sample_event())
-            raise AssertionError("expected CalendarDispatchError")
-        except CalendarDispatchError as exc:
-            assert "Failed to deliver calendar request" in str(exc)
     finally:
         _remove_fake_agent_comm_modules()
 

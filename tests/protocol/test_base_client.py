@@ -139,9 +139,8 @@ def test_dispatch_tls_none() -> None:
 def test_dispatch_tls_unknown_mode_raises() -> None:
     """_dispatch_tls() raises ValueError for an unknown mode, no helper run."""
     client = _make_client(tls_mode="bogus")
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(ValueError, match="bogus"):
         client._dispatch_tls()
-    assert "bogus" in str(exc.value)
     client.direct_tls_spy.assert_not_called()
     client.starttls_spy.assert_not_called()
     client.plain_spy.assert_not_called()

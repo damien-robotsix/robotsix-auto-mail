@@ -776,12 +776,9 @@ def test_archive_proposal_endpoint_unknown_404() -> None:
 
     server, port = _start_test_server(":memory:")
     try:
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/archive-proposal/nonexistent")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 404
-        else:
-            raise AssertionError("Expected HTTPError 404")
+        assert exc_info.value.code == 404
     finally:
         server.shutdown()
 

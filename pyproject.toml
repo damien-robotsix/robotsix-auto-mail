@@ -90,7 +90,7 @@ src = ["src"]
 extend-exclude = ["vulture_whitelist.py"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "S", "B", "N", "RUF", "ANN"]
+select = ["E", "F", "I", "S", "B", "N", "RUF", "ANN", "PT"]
 ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]

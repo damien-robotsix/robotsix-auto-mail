@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from unittest import mock
 from urllib.request import Request, urlopen
 
+import pytest
+
 if TYPE_CHECKING:
     pass
 
@@ -150,18 +152,13 @@ def test_board_content_db_unavailable_returns_503() -> None:
 
     server, port = _start_test_server("/dev/null/nonexistent.db")
     try:
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/board-content")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 503
-            body = exc.read().decode("utf-8")
-            import json as _json
-
-            payload = _json.loads(body)
-            assert "error" in payload
-            assert "Database unavailable" in payload["error"]
-        else:
-            raise AssertionError("Expected HTTPError for 503")
+        assert exc_info.value.code == 503
+        body = exc_info.value.read().decode("utf-8")
+        payload = json.loads(body)
+        assert "error" in payload
+        assert "Database unavailable" in payload["error"]
     finally:
         server.shutdown()
 
@@ -171,12 +168,9 @@ def test_handler_nonexistent_returns_404() -> None:
 
     server, port = _start_test_server(":memory:")
     try:
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/nonexistent")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 404
-        else:
-            raise AssertionError("Expected HTTPError for 404")
+        assert exc_info.value.code == 404
     finally:
         server.shutdown()
 
@@ -187,14 +181,11 @@ def test_handler_missing_db_returns_503() -> None:
     # Point to a path inside /dev/null so init_db raises an error.
     server, port = _start_test_server("/dev/null/nonexistent.db")
     try:
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/board")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 503
-            body = exc.read().decode("utf-8")
-            assert "Database unavailable" in body
-        else:
-            raise AssertionError("Expected HTTPError for 503")
+        assert exc_info.value.code == 503
+        body = exc_info.value.read().decode("utf-8")
+        assert "Database unavailable" in body
     finally:
         server.shutdown()
 
@@ -644,12 +635,9 @@ def test_email_status_unknown_message_id_returns_404() -> None:
     try:
         import urllib.error
 
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/email/nonexistent/status")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 404
-        else:
-            raise AssertionError("Expected HTTPError 404")
+        assert exc_info.value.code == 404
     finally:
         server.shutdown()
 
@@ -720,12 +708,9 @@ def test_handler_email_detail_unknown_returns_404() -> None:
     try:
         import urllib.error
 
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/email/does-not-exist")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 404
-        else:
-            raise AssertionError("Expected HTTPError 404")
+        assert exc_info.value.code == 404
     finally:
         server.shutdown()
 
@@ -736,14 +721,11 @@ def test_handler_email_detail_missing_db_returns_503() -> None:
 
     server, port = _start_test_server("/dev/null/nonexistent.db")
     try:
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/email/anything")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 503
-            body = exc.read().decode("utf-8")
-            assert "Database unavailable" in body
-        else:
-            raise AssertionError("Expected HTTPError for 503")
+        assert exc_info.value.code == 503
+        body = exc_info.value.read().decode("utf-8")
+        assert "Database unavailable" in body
     finally:
         server.shutdown()
 
@@ -1056,12 +1038,9 @@ def test_handler_email_detail_embed_unknown_returns_404() -> None:
     try:
         import urllib.error
 
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/email/does-not-exist?embed=1")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 404
-        else:
-            raise AssertionError("Expected HTTPError 404")
+        assert exc_info.value.code == 404
     finally:
         server.shutdown()
 
@@ -1156,12 +1135,9 @@ def test_config_sync_unknown_post_path_returns_404() -> None:
             data=b"",
             method="POST",
         )
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(req)  # noqa: S310
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 404
-        else:
-            raise AssertionError("Expected HTTPError 404")
+        assert exc_info.value.code == 404
     finally:
         server.shutdown()
 
@@ -1626,12 +1602,9 @@ def test_handler_static_unknown_returns_404() -> None:
 
     server, port = _start_test_server(":memory:")
     try:
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/static/nonexistent.xyz")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 404
-        else:
-            raise AssertionError("Expected HTTPError for 404")
+        assert exc_info.value.code == 404
     finally:
         server.shutdown()
 
@@ -1814,22 +1787,18 @@ def test_unknown_explicit_account_is_404(
     _db_a, _db_b, accounts = db_accounts_no_triage
     server, port = _start_test_server_with_accounts(accounts, "A")
     try:
-        try:
+        with pytest.raises(HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/board?account=bogus").close()
-            raise AssertionError("expected 404")
-        except HTTPError as exc:
-            assert exc.code == 404
+        assert exc_info.value.code == 404
 
         req = Request(
             f"http://127.0.0.1:{port}/move?account=bogus",
             data=b"message_id=msg-a&triage_action=read",
             method="POST",
         )
-        try:
+        with pytest.raises(HTTPError) as exc_info:
             urlopen(req).close()  # noqa: S310
-            raise AssertionError("expected 404")
-        except HTTPError as exc:
-            assert exc.code == 404
+        assert exc_info.value.code == 404
     finally:
         server.shutdown()
 
@@ -2042,21 +2011,16 @@ def test_healthz_missing_db_returns_503() -> None:
 
     server, port = _start_test_server("/dev/null/nonexistent.db")
     try:
-        try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/healthz")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 503
-            content_type = exc.headers.get("Content-Type", "")
-            assert "application/json" in content_type
-            body = exc.read().decode("utf-8")
-            import json as _json
-
-            payload = _json.loads(body)
-            assert payload["status"] == "unhealthy"
-            assert "database" in payload["checks"]
-            assert payload["checks"]["database"] == "unreachable"
-        else:
-            raise AssertionError("Expected HTTPError for 503")
+        assert exc_info.value.code == 503
+        content_type = exc_info.value.headers.get("Content-Type", "")
+        assert "application/json" in content_type
+        body = exc_info.value.read().decode("utf-8")
+        payload = json.loads(body)
+        assert payload["status"] == "unhealthy"
+        assert "database" in payload["checks"]
+        assert payload["checks"]["database"] == "unreachable"
     finally:
         server.shutdown()
 
