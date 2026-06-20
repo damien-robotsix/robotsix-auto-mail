@@ -143,7 +143,7 @@ def test_ingest_all_accounts_isolates_records_and_watermark(
             "robotsix_auto_mail.pipeline.fetch_new_messages", side_effect=fake_fetch
         ),
         mock.patch(
-            "robotsix_auto_mail.cli.commands.reconcile_records",
+            "robotsix_auto_mail.cli.commands_ingest.reconcile_records",
             return_value=(0, 0),
         ),
     ):
@@ -270,7 +270,7 @@ def test_single_account_ingest_is_unchanged(
             "robotsix_auto_mail.pipeline.fetch_new_messages", side_effect=fake_fetch
         ),
         mock.patch(
-            "robotsix_auto_mail.cli.commands.reconcile_records",
+            "robotsix_auto_mail.cli.commands_ingest.reconcile_records",
             return_value=(0, 0),
         ),
     ):

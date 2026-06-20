@@ -156,16 +156,16 @@ def test_stop_board_agent_handles_cleanup_exceptions() -> None:
 
 def test_serve_board_gate_respects_board_agent_enabled() -> None:
     """_cmd_serve only calls start_board_agent when board_agent_enabled is True."""
-    from robotsix_auto_mail.cli.commands import _cmd_serve
+    from robotsix_auto_mail.cli.commands_serve import _cmd_serve
 
     with (
         mock.patch("robotsix_auto_mail.board_agent.start_board_agent") as mock_start,
         mock.patch("robotsix_auto_mail.board_agent.stop_board_agent") as mock_stop,
         mock.patch("robotsix_auto_mail.server.make_board_handler") as mock_make_handler,
-        mock.patch("robotsix_auto_mail.cli.commands._clear_stale_triage_state"),
-        mock.patch("robotsix_auto_mail.cli.commands._reconcile_loop"),
+        mock.patch("robotsix_auto_mail.cli.commands_serve._clear_stale_triage_state"),
+        mock.patch("robotsix_auto_mail.cli.commands_serve._reconcile_loop"),
         mock.patch("http.server.HTTPServer") as mock_http_server,
-        mock.patch("robotsix_auto_mail.cli.commands.threading.Thread"),
+        mock.patch("robotsix_auto_mail.cli.commands_serve.threading.Thread"),
     ):
         # --- enabled=True (default from _make_config) ---
         cfg_enabled = _make_config()
