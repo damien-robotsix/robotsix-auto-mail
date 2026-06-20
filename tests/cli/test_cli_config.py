@@ -28,7 +28,15 @@ from robotsix_auto_mail.smtp import SmtpAuthError, SmtpClient, SmtpError
 
 
 @pytest.mark.parametrize(
-    ("imap_ok", "smtp_ok", "imap_auth", "smtp_auth", "expect_ok", "expect_host", "expect_auth_only"),
+    (
+        "imap_ok",
+        "smtp_ok",
+        "imap_auth",
+        "smtp_auth",
+        "expect_ok",
+        "expect_host",
+        "expect_auth_only",
+    ),
     [
         # Both ok
         (True, True, False, False, True, False, False),
