@@ -22,7 +22,7 @@ This module re-exports the public and previously-importable symbols so
 
 from __future__ import annotations
 
-from robotsix_llmio.core import get_provider as get_provider
+from robotsix_llmio.core import get_provider_for_identifier
 
 from robotsix_auto_mail.detect.detector import (
     _DETECT_SYSTEM_PROMPT as _DETECT_SYSTEM_PROMPT,
@@ -74,7 +74,7 @@ __all__ = [
     "ProviderEntry",
     "autoconfig_lookup",
     "detect_provider",
-    "get_provider",
+    "get_provider_for_identifier",
     "is_microsoft_provider",
     "mx_lookup",
     "provider_from_mx",

@@ -59,7 +59,7 @@ def _patch_llm(folders: list[str]) -> mock._patch[mock.MagicMock]:
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     return mock.patch(
-        "robotsix_llmio.core.get_provider",
+        "robotsix_llmio.core.get_provider_for_identifier",
         return_value=mock_provider,
     )
 
@@ -104,7 +104,7 @@ def test_provider_not_bound_at_module_level() -> None:
     """
     import robotsix_auto_mail.archive as archive_mod
 
-    assert not hasattr(archive_mod, "get_provider")
+    assert not hasattr(archive_mod, "get_provider_for_identifier")
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ def test_determine_archive_structure_success() -> None:
 def test_determine_archive_structure_uses_cheap_tier() -> None:
     """build_agent is called with level=1 (cheap) by default."""
     with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
-        with mock.patch("robotsix_llmio.core.get_provider") as cls:
+        with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
             mock_run_result = mock.MagicMock()
             mock_run_result.output = ArchiveStructure(folders=[])
             mock_handle = mock.MagicMock()
@@ -155,7 +155,7 @@ def test_determine_archive_structure_llm_error_wrapped() -> None:
         mock_provider.build_agent.return_value = mock_handle
         mock_handle.run_sync.side_effect = RuntimeError("timeout")
         with mock.patch(
-            "robotsix_llmio.core.get_provider",
+            "robotsix_llmio.core.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             with pytest.raises(ArchiveError) as exc:
@@ -256,7 +256,7 @@ def test_setup_archive_custom_root_passed_to_llm() -> None:
     try:
         client = _FakeImapClient([_folder("INBOX")])
         with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
-            with mock.patch("robotsix_llmio.core.get_provider") as cls:
+            with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
                 mock_run_result = mock.MagicMock()
                 mock_run_result.output = ArchiveStructure(folders=[])
                 mock_handle = mock.MagicMock()
@@ -293,7 +293,7 @@ def test_setup_archive_excludes_special_use_folders_from_llm() -> None:
             ]
         )
         with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
-            with mock.patch("robotsix_llmio.core.get_provider") as cls:
+            with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
                 mock_run_result = mock.MagicMock()
                 mock_run_result.output = ArchiveStructure(folders=[])
                 mock_handle = mock.MagicMock()
@@ -327,7 +327,7 @@ def test_setup_archive_subsequent_run_short_circuits() -> None:
         persisted = [ARCHIVE_ROOT, f"{ARCHIVE_ROOT}/Receipts"]
         set_watermark(conn, _ARCHIVE_WATERMARK_KEY, json.dumps(persisted))
         client = mock.MagicMock()
-        with mock.patch("robotsix_llmio.core.get_provider") as cls:
+        with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
             result = setup_archive(conn, client)
         assert result == persisted
         client.list_folders.assert_not_called()
@@ -348,7 +348,7 @@ def test_setup_archive_no_api_key_falls_back_to_root() -> None:
     try:
         client = _FakeImapClient([_folder("INBOX")])
         with mock.patch.dict(os.environ, {}, clear=True):
-            with mock.patch("robotsix_llmio.core.get_provider") as cls:
+            with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
                 result = setup_archive(conn, cast(ImapClient, client))
         assert result == [ARCHIVE_ROOT]
         assert client.created == [ARCHIVE_ROOT]
@@ -441,7 +441,7 @@ def test_setup_archive_namespace_llm_sees_original_root() -> None:
     try:
         client = _FakeImapClient([_folder("INBOX")])
         with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
-            with mock.patch("robotsix_llmio.core.get_provider") as cls:
+            with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
                 mock_run_result = mock.MagicMock()
                 mock_run_result.output = ArchiveStructure(folders=[])
                 mock_handle = mock.MagicMock()

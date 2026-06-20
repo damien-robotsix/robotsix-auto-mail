@@ -419,9 +419,9 @@ def detect_provider(
 
     # -- build agent --
     # -- lazy lookup so tests can mock the package-level name --
-    from robotsix_auto_mail.detect import get_provider as _get_provider
+    from robotsix_auto_mail.detect import get_provider_for_identifier as _get_provider
 
-    llm_provider = _get_provider(provider=resolved_provider, api_key=resolved_key)
+    llm_provider = _get_provider(identifier=resolved_provider, api_key=resolved_key)
     agent_handle = llm_provider.build_agent(
         level=1 if tier == Tier.CHEAP else 2,
         system_prompt=_DETECT_SYSTEM_PROMPT,

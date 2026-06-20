@@ -181,7 +181,7 @@ def test_generate_draft_generates_and_moves_to_draft_ready(single_db: str) -> No
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     with mock.patch(
-        "robotsix_llmio.core.get_provider",
+        "robotsix_llmio.core.get_provider_for_identifier",
         return_value=mock_provider,
     ):
         server, port = _start_test_server_with_mail_config(single_db, mail_config)
