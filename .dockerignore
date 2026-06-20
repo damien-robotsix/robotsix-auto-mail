@@ -27,7 +27,8 @@ build/
 config/mail.toml
 
 # Documentation
-README.md
+# README.md MUST stay in the build context: pyproject.toml declares
+# readme = "README.md"; hatchling reads it at wheel-build time.
 ROADMAP.md
 LICENSE
 docs/
