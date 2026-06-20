@@ -10,7 +10,7 @@ import sys
 import time as time
 
 from robotsix_auto_mail import __version__
-from robotsix_auto_mail.cli.commands import (
+from robotsix_auto_mail.cli.commands import (  # lgtm[py/unsafe-cyclic-import]
     _load_accounts_or_exit,
     _load_config_or_exit,
 )

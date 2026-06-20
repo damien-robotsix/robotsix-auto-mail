@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-import robotsix_auto_mail.cli as _cli
+import robotsix_auto_mail.cli as _cli  # lgtm[py/unsafe-cyclic-import]
 from robotsix_auto_mail.config import (
     ConfigurationError,
     MailAccountsConfig,
