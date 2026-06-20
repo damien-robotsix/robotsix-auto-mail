@@ -292,7 +292,16 @@ modules:
       - tests/server/test_adapters.py
       - tests/server/test_archive_structure.py
       - tests/server/test_board_adapter.py
-      - tests/server/test_board_handler.py
+      - tests/server/test_board_handler_root.py
+      - tests/server/test_board_handler_move.py
+      - tests/server/test_board_handler_email_status.py
+      - tests/server/test_board_handler_email_embed.py
+      - tests/server/test_board_handler_config_sync.py
+      - tests/server/test_board_handler_triage_display.py
+      - tests/server/test_board_handler_board.py
+      - tests/server/test_board_handler_static.py
+      - tests/server/test_board_handler_email_detail.py
+      - tests/server/test_board_handler_healthz.py
       - tests/server/test_board_views_unit.py
       - tests/server/test_draft_mixin.py
       - tests/server/test_format_date.py
