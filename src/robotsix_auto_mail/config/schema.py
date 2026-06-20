@@ -425,7 +425,7 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         "CALENDAR_BROKER_PORT",
         "calendar.broker_port",
         "int",
-        8443,
+        443,
         False,
         False,
     ),
