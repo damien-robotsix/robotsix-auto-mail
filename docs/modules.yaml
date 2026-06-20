@@ -304,6 +304,7 @@ modules:
       - tests/server/test_server_triage.py
       - tests/server/test_view_mixin.py
       - tests/server/test_views_detail.py
+      - tests/server/test_views_forms.py
       - tests/test_board_agent.py
       - scripts/smoke_board.sh
 
