@@ -332,7 +332,7 @@ def test_detect_provider_success() -> None:
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_auto_mail.detect.get_provider",
+            "robotsix_auto_mail.detect.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             result = detect_provider("user@example.com")
@@ -365,14 +365,14 @@ def test_detect_provider_passes_api_key_arg() -> None:
         mock_provider_cls = mock.MagicMock(return_value=mock_provider)
 
         with mock.patch(
-            "robotsix_auto_mail.detect.get_provider",
+            "robotsix_auto_mail.detect.get_provider_for_identifier",
             mock_provider_cls,
         ):
             result = detect_provider("user@example.com", api_key="sk-arg-key")
 
         assert result.imap_host == "imap.example.com"
         mock_provider_cls.assert_called_once_with(
-            provider="openrouter-deepseek", api_key="sk-arg-key"
+            identifier="openrouter-deepseek", api_key="sk-arg-key"
         )
 
 
@@ -385,7 +385,7 @@ def test_detect_provider_llm_call_error() -> None:
         mock_handle.run_sync.side_effect = RuntimeError("LLM API timeout")
 
         with mock.patch(
-            "robotsix_auto_mail.detect.get_provider",
+            "robotsix_auto_mail.detect.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             with pytest.raises(DetectionError) as exc:
@@ -419,7 +419,7 @@ def test_detect_provider_tier_default() -> None:
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_auto_mail.detect.get_provider",
+            "robotsix_auto_mail.detect.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             detect_provider("user@example.com")
@@ -445,7 +445,7 @@ def test_detect_provider_explicit_tier() -> None:
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_auto_mail.detect.get_provider",
+            "robotsix_auto_mail.detect.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             detect_provider("user@example.com", tier=Tier.DEFAULT)

@@ -139,10 +139,12 @@ def determine_archive_structure(
     # -- lazy import so the rest of the CLI works without the
     #    LLM provider extra --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider
+    from robotsix_llmio.core import get_provider_for_identifier
 
     # -- build agent --
-    llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
+    llm_provider = get_provider_for_identifier(
+        identifier=resolved_provider, api_key=resolved_key
+    )
     agent_handle = llm_provider.build_agent(
         level=1 if tier == Tier.CHEAP else 2,
         system_prompt=_build_archive_system_prompt(archive_root),

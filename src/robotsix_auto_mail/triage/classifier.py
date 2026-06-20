@@ -375,10 +375,12 @@ def propose_archive_subfolder_llm(
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider
+    from robotsix_llmio.core import get_provider_for_identifier
 
     try:
-        llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
+        llm_provider = get_provider_for_identifier(
+            identifier=resolved_provider, api_key=resolved_key
+        )
         agent_handle = llm_provider.build_agent(
             level=1,
             system_prompt=system_prompt,

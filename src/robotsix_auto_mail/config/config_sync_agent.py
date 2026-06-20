@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 import pydantic
-from robotsix_llmio.core import Tier, get_provider, run_agent
+from robotsix_llmio.core import Tier, get_provider_for_identifier, run_agent
 
 from robotsix_auto_mail._shared.pydantic_utils import validate_confidence
 from robotsix_auto_mail.config import (
@@ -389,7 +389,9 @@ def run_config_sync_agent(
     from pydantic_ai import PromptedOutput
 
     # -- build agent --
-    llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
+    llm_provider = get_provider_for_identifier(
+        identifier=resolved_provider, api_key=resolved_key
+    )
     agent_handle = llm_provider.build_agent(
         level=1 if tier == Tier.CHEAP else 2,
         system_prompt=_build_config_sync_system_prompt(),

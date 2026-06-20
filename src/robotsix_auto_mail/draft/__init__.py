@@ -129,7 +129,7 @@ def generate_draft_reply(
 
     # -- lazy imports so the module loads without pydantic_ai installed --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider, run_agent
+    from robotsix_llmio.core import get_provider_for_identifier, run_agent
 
     user_message = _build_draft_user_message(record)
 
@@ -140,7 +140,9 @@ def generate_draft_reply(
         # -- resolve provider (arg -> LLM_PROVIDER env -> config) --
         resolved_provider = resolve_llm_provider(provider)
 
-        llm_provider = get_provider(provider=resolved_provider, api_key=resolved_key)
+        llm_provider = get_provider_for_identifier(
+            identifier=resolved_provider, api_key=resolved_key
+        )
         agent_handle = llm_provider.build_agent(
             level=1 if tier == Tier.CHEAP else 2,
             system_prompt=_build_draft_system_prompt(),

@@ -45,7 +45,7 @@ def _patch_config_sync_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     return mock.patch(
-        "robotsix_auto_mail.config.config_sync_agent.get_provider",
+        "robotsix_auto_mail.config.config_sync_agent.get_provider_for_identifier",
         return_value=mock_provider,
     )
 
@@ -155,7 +155,7 @@ def test_config_sync_api_key_precedence(
         rc = main(["config-sync", "--api-key", "sk-cli"])
 
     assert rc == 0
-    cls.assert_called_once_with(provider="openrouter-deepseek", api_key="sk-cli")
+    cls.assert_called_once_with(identifier="openrouter-deepseek", api_key="sk-cli")
 
 
 def test_config_sync_dedup_forwards_conn(

@@ -229,7 +229,7 @@ def test_move_to_archive_triggers_llm(single_db: str) -> None:
         llm_api_key="sk-test",
     )
 
-    with mock.patch("robotsix_llmio.core.get_provider") as mock_provider_cls:
+    with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as mock_provider_cls:
         server, port = _start_test_server_with_mail_config(single_db, mail_config)
         try:
             status, body = _post_form(
@@ -272,7 +272,7 @@ def test_move_to_archive_llm_failure_still_redirects(single_db: str) -> None:
     mock_provider.build_agent.side_effect = RuntimeError("LLM crashed")
 
     with mock.patch(
-        "robotsix_llmio.core.get_provider",
+        "robotsix_llmio.core.get_provider_for_identifier",
         return_value=mock_provider,
     ):
         server, port = _start_test_server_with_mail_config(single_db, mail_config)
@@ -320,7 +320,7 @@ def test_move_to_other_column_skips_llm(single_db: str) -> None:
         llm_api_key="sk-test",
     )
 
-    with mock.patch("robotsix_llmio.core.get_provider") as mock_provider_cls:
+    with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as mock_provider_cls:
         server, port = _start_test_server_with_mail_config(single_db, mail_config)
         try:
             status, body = _post_form(
