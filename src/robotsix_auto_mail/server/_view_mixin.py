@@ -307,6 +307,10 @@ class _BoardViewMixin:
                 embed=embed,
                 focus_draft=focus_draft,
                 current_account_id=self._current_account_id,
+                calendar_enabled=(
+                    self.mail_config is not None
+                    and self.mail_config.calendar_enabled
+                ),
             )
         except Exception:
             self._send_response("Database unavailable", status=503)

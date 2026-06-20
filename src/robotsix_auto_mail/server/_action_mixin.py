@@ -195,6 +195,9 @@ class _BoardActionMixin:
                 return False
 
             if triage_action == "TO_CALENDAR":
+                if self.mail_config is not None and not self.mail_config.calendar_enabled:
+                    self._bad_request("Calendar integration is disabled")
+                    return False
                 # -- Dispatch calendar request on column move ----------
                 try:
                     from robotsix_auto_mail.calendar import (
