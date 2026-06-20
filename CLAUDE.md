@@ -190,3 +190,10 @@ When you add or change a user-facing CLI subcommand in
 `src/robotsix_auto_mail/cli.py`, document it in `docs/connecting.md` in the
 same PR, following the `config-sync` command section pattern (purpose,
 optional-extra requirements, flags, example invocation, and output).
+
+## Testing conventions
+
+**Rule:** When a test file exceeds ~500 lines and has clear thematic
+sections (separated by `# -----` or `# =====` comment blocks), split it
+into domain-focused modules under the same directory. One module per
+endpoint, handler mixin, or logical concern.
