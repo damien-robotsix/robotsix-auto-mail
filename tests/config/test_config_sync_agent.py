@@ -146,7 +146,9 @@ def test_run_config_sync_agent_missing_api_key(
     monkeypatch.delenv("LLM_API_KEY", raising=False)
     # Point the config loader at a non-existent file so no key is resolved.
     monkeypatch.setenv("MAIL_CONFIG_PATH", str(tmp_path / "missing.yaml"))
-    with mock.patch("robotsix_auto_mail.config.config_sync_agent.get_provider_for_identifier") as cls:
+    with mock.patch(
+        "robotsix_auto_mail.config.config_sync_agent.get_provider_for_identifier"
+    ) as cls:
         with pytest.raises(ConfigSyncError) as exc:
             run_config_sync_agent(api_key=None)
     assert "LLM_API_KEY" in str(exc.value)
