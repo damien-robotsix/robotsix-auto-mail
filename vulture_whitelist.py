@@ -79,10 +79,6 @@ from robotsix_auto_mail.config import logger
 
 logger  # noqa
 
-from robotsix_auto_mail.config.model import MailConfig
-
-MailConfig.calendar_enabled
-
 from robotsix_auto_mail.detect import ProviderEntry
 
 ProviderEntry.in_managed_hosting

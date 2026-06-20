@@ -494,7 +494,15 @@ class TestHandleMove:
                 },
             ],
         )
-        handler = _FakeHandler(single_db)
+        handler = _FakeHandler(
+            single_db,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="test",
+                password="test",
+            ),
+        )
         handler.headers.get.return_value = 90
         handler.rfile.read.return_value = (
             b"message_id=cal-corr&triage_action=TO_CALENDAR&redirect_to=/board"
@@ -535,7 +543,15 @@ class TestHandleMove:
         )
         # No prior triage decision → prior_action is None → reroutes
         # to TO_ARCHIVE.
-        handler = _FakeHandler(single_db)
+        handler = _FakeHandler(
+            single_db,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="test",
+                password="test",
+            ),
+        )
         handler.headers.get.return_value = 100
         handler.rfile.read.return_value = (
             b"message_id=cal-reroute-arch&triage_action=TO_CALENDAR&redirect_to=/board"
@@ -577,7 +593,15 @@ class TestHandleMove:
         )
         # The record already has a TO_ANSWER triage decision.
         _seed_triage_decision(single_db, "cal-prior-answer", action="TO_ANSWER")
-        handler = _FakeHandler(single_db)
+        handler = _FakeHandler(
+            single_db,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="test",
+                password="test",
+            ),
+        )
         handler.headers.get.return_value = 110
         handler.rfile.read.return_value = (
             b"message_id=cal-prior-answer&triage_action=TO_CALENDAR&redirect_to=/board"
@@ -613,7 +637,15 @@ class TestHandleMove:
                 },
             ],
         )
-        handler = _FakeHandler(single_db)
+        handler = _FakeHandler(
+            single_db,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="test",
+                password="test",
+            ),
+        )
         handler.headers.get.return_value = 80
         handler.rfile.read.return_value = (
             b"message_id=cal-err&triage_action=TO_CALENDAR&redirect_to=/board"
@@ -655,7 +687,15 @@ class TestHandleMove:
                 },
             ],
         )
-        handler = _FakeHandler(single_db)
+        handler = _FakeHandler(
+            single_db,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="test",
+                password="test",
+            ),
+        )
         handler.headers.get.return_value = 90
         handler.rfile.read.return_value = (
             b"message_id=cal-setup-err&triage_action=TO_CALENDAR&redirect_to=/board"
