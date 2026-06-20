@@ -99,20 +99,20 @@ class TestServeStatic:
 
 class TestServeBoard:
     def test_aggregate_success(
-        self, tmp_db_path: str, _mock_build_global_board_html: mock.MagicMock
+        self, tmp_db_path: str, mock_build_global_board_html: mock.MagicMock
     ) -> None:
         handler = _FakeHandler(tmp_db_path, _aggregate=True)
         handler.accounts = mock.MagicMock()
         handler._serve_board()
         handler._send_response.assert_called_once_with(
-            _mock_build_global_board_html.return_value,
+            mock_build_global_board_html.return_value,
             content_type="text/html; charset=utf-8",
         )
 
     def test_aggregate_503_on_exception(
-        self, tmp_db_path: str, _mock_build_global_board_html: mock.MagicMock
+        self, tmp_db_path: str, mock_build_global_board_html: mock.MagicMock
     ) -> None:
-        _mock_build_global_board_html.side_effect = RuntimeError("boom")
+        mock_build_global_board_html.side_effect = RuntimeError("boom")
         handler = _FakeHandler(tmp_db_path, _aggregate=True)
         handler.accounts = mock.MagicMock()
         handler._serve_board()
@@ -121,19 +121,19 @@ class TestServeBoard:
         )
 
     def test_single_account_success(
-        self, tmp_db_path: str, _mock_build_board_html: mock.MagicMock
+        self, tmp_db_path: str, mock_build_board_html: mock.MagicMock
     ) -> None:
         handler = _FakeHandler(tmp_db_path, _aggregate=False)
         handler._serve_board()
         handler._send_response.assert_called_once_with(
-            _mock_build_board_html.return_value,
+            mock_build_board_html.return_value,
             content_type="text/html; charset=utf-8",
         )
 
     def test_single_account_503_on_exception(
-        self, tmp_db_path: str, _mock_build_board_html: mock.MagicMock
+        self, tmp_db_path: str, mock_build_board_html: mock.MagicMock
     ) -> None:
-        _mock_build_board_html.side_effect = RuntimeError("boom")
+        mock_build_board_html.side_effect = RuntimeError("boom")
         handler = _FakeHandler(tmp_db_path, _aggregate=False)
         handler._serve_board()
         handler._send_response.assert_called_once_with(
@@ -148,19 +148,19 @@ class TestServeBoard:
 
 class TestServeBoardContent:
     def test_aggregate_success(
-        self, tmp_db_path: str, _mock_build_global_board_content: mock.MagicMock
+        self, tmp_db_path: str, mock_build_global_board_content: mock.MagicMock
     ) -> None:
         handler = _FakeHandler(tmp_db_path, _aggregate=True)
         handler.accounts = mock.MagicMock()
         handler._serve_board_content()
         handler._serve_json.assert_called_once_with(
-            _mock_build_global_board_content.return_value
+            mock_build_global_board_content.return_value
         )
 
     def test_aggregate_503_on_exception(
-        self, tmp_db_path: str, _mock_build_global_board_content: mock.MagicMock
+        self, tmp_db_path: str, mock_build_global_board_content: mock.MagicMock
     ) -> None:
-        _mock_build_global_board_content.side_effect = RuntimeError("boom")
+        mock_build_global_board_content.side_effect = RuntimeError("boom")
         handler = _FakeHandler(tmp_db_path, _aggregate=True)
         handler.accounts = mock.MagicMock()
         handler._serve_board_content()
@@ -169,18 +169,18 @@ class TestServeBoardContent:
         )
 
     def test_single_account_success(
-        self, tmp_db_path: str, _mock_build_board_content: mock.MagicMock
+        self, tmp_db_path: str, mock_build_board_content: mock.MagicMock
     ) -> None:
         handler = _FakeHandler(tmp_db_path, _aggregate=False)
         handler._serve_board_content()
         handler._serve_json.assert_called_once_with(
-            _mock_build_board_content.return_value
+            mock_build_board_content.return_value
         )
 
     def test_single_account_503_on_exception(
-        self, tmp_db_path: str, _mock_build_board_content: mock.MagicMock
+        self, tmp_db_path: str, mock_build_board_content: mock.MagicMock
     ) -> None:
-        _mock_build_board_content.side_effect = RuntimeError("boom")
+        mock_build_board_content.side_effect = RuntimeError("boom")
         handler = _FakeHandler(tmp_db_path, _aggregate=False)
         handler._serve_board_content()
         handler._serve_json.assert_called_once_with(
@@ -195,18 +195,18 @@ class TestServeBoardContent:
 
 class TestServeEmailStatus:
     @pytest.fixture(autouse=True)
-    def _patch_db(self, _mock_init_db: mock.MagicMock) -> None:
+    def patch_db(self, mock_init_db: mock.MagicMock) -> None:
         pass
 
     def test_returns_action_text(
         self,
         tmp_db_path: str,
-        _mock_init_db: mock.MagicMock,
-        _mock_get_record_by_message_id: mock.MagicMock,
-        _mock_get_triage_decision: mock.MagicMock,
+        mock_init_db: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_triage_decision: mock.MagicMock,
     ) -> None:
-        _mock_get_record_by_message_id.return_value = mock.MagicMock()
-        _mock_get_triage_decision.return_value = mock.MagicMock(action="TO_ARCHIVE")
+        mock_get_record_by_message_id.return_value = mock.MagicMock()
+        mock_get_triage_decision.return_value = mock.MagicMock(action="TO_ARCHIVE")
         handler = _FakeHandler(tmp_db_path, path="/email/test%40example.com/status")
         handler._serve_email_status()
         handler._send_response.assert_called_once_with("TO_ARCHIVE")
@@ -214,12 +214,12 @@ class TestServeEmailStatus:
     def test_inbox_fallback_when_no_decision(
         self,
         tmp_db_path: str,
-        _mock_init_db: mock.MagicMock,
-        _mock_get_record_by_message_id: mock.MagicMock,
-        _mock_get_triage_decision: mock.MagicMock,
+        mock_init_db: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_triage_decision: mock.MagicMock,
     ) -> None:
-        _mock_get_record_by_message_id.return_value = mock.MagicMock()
-        _mock_get_triage_decision.return_value = None
+        mock_get_record_by_message_id.return_value = mock.MagicMock()
+        mock_get_triage_decision.return_value = None
         handler = _FakeHandler(tmp_db_path, path="/email/test%40example.com/status")
         handler._serve_email_status()
         handler._send_response.assert_called_once_with("INBOX")
@@ -227,10 +227,10 @@ class TestServeEmailStatus:
     def test_404_when_record_not_found(
         self,
         tmp_db_path: str,
-        _mock_init_db: mock.MagicMock,
-        _mock_get_record_by_message_id: mock.MagicMock,
+        mock_init_db: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
     ) -> None:
-        _mock_get_record_by_message_id.return_value = None
+        mock_get_record_by_message_id.return_value = None
         handler = _FakeHandler(tmp_db_path, path="/email/unknown%40example.com/status")
         handler._serve_email_status()
         handler._not_found.assert_called_once()
@@ -244,13 +244,13 @@ class TestServeEmailStatus:
 
 class TestServeEmailDetail:
     @pytest.fixture(autouse=True)
-    def _patch_build_detail(self, _mock_build_detail_html: mock.MagicMock) -> None:
+    def patch_build_detail(self, mock_build_detail_html: mock.MagicMock) -> None:
         pass
 
     def test_embed_mode_clears_account_cookie(
-        self, tmp_db_path: str, _mock_build_detail_html: mock.MagicMock
+        self, tmp_db_path: str, mock_build_detail_html: mock.MagicMock
     ) -> None:
-        _mock_build_detail_html.return_value = "<html>detail</html>"
+        mock_build_detail_html.return_value = "<html>detail</html>"
         handler = _FakeHandler(
             tmp_db_path,
             path="/email/test%40example.com?embed=1",
@@ -263,12 +263,12 @@ class TestServeEmailDetail:
         )
 
     def test_focus_draft_mode_passed_through(
-        self, tmp_db_path: str, _mock_build_detail_html: mock.MagicMock
+        self, tmp_db_path: str, mock_build_detail_html: mock.MagicMock
     ) -> None:
-        _mock_build_detail_html.return_value = "<html>draft</html>"
+        mock_build_detail_html.return_value = "<html>draft</html>"
         handler = _FakeHandler(tmp_db_path, path="/email/test%40example.com?draft=1")
         handler._serve_email_detail()
-        _mock_build_detail_html.assert_called_once_with(
+        mock_build_detail_html.assert_called_once_with(
             tmp_db_path,
             "test@example.com",
             embed=False,
@@ -281,9 +281,9 @@ class TestServeEmailDetail:
         )
 
     def test_normal_mode_does_not_touch_account_cookie(
-        self, tmp_db_path: str, _mock_build_detail_html: mock.MagicMock
+        self, tmp_db_path: str, mock_build_detail_html: mock.MagicMock
     ) -> None:
-        _mock_build_detail_html.return_value = "<html>detail</html>"
+        mock_build_detail_html.return_value = "<html>detail</html>"
         handler = _FakeHandler(
             tmp_db_path,
             path="/email/test%40example.com",
@@ -293,9 +293,9 @@ class TestServeEmailDetail:
         assert handler._account_cookie == "keep-me"
 
     def test_503_on_exception(
-        self, tmp_db_path: str, _mock_build_detail_html: mock.MagicMock
+        self, tmp_db_path: str, mock_build_detail_html: mock.MagicMock
     ) -> None:
-        _mock_build_detail_html.side_effect = RuntimeError("boom")
+        mock_build_detail_html.side_effect = RuntimeError("boom")
         handler = _FakeHandler(tmp_db_path, path="/email/test%40example.com")
         handler._serve_email_detail()
         handler._send_response.assert_called_once_with(
@@ -303,9 +303,9 @@ class TestServeEmailDetail:
         )
 
     def test_404_when_detail_html_is_none(
-        self, tmp_db_path: str, _mock_build_detail_html: mock.MagicMock
+        self, tmp_db_path: str, mock_build_detail_html: mock.MagicMock
     ) -> None:
-        _mock_build_detail_html.return_value = None
+        mock_build_detail_html.return_value = None
         handler = _FakeHandler(tmp_db_path, path="/email/test%40example.com")
         handler._serve_email_detail()
         handler._not_found.assert_called_once()
@@ -321,22 +321,22 @@ class TestServeArchiveProposal:
     @pytest.fixture(autouse=True)
     def _patch_imports(
         self,
-        _mock_init_db: mock.MagicMock,
-        _mock_get_record_by_message_id: mock.MagicMock,
-        _mock_get_archive_subfolder: mock.MagicMock,
-        _mock_load_archive_overrides: mock.MagicMock,
-        _mock_load_llm_archive_hints: mock.MagicMock,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_init_db: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_archive_subfolder: mock.MagicMock,
+        mock_load_archive_overrides: mock.MagicMock,
+        mock_load_llm_archive_hints: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
         pass
 
     def test_404_when_record_not_found(
         self,
         tmp_db_path: str,
-        _mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
     ) -> None:
-        _mock_get_record_by_message_id.return_value = None
+        mock_get_record_by_message_id.return_value = None
         handler = _FakeHandler(tmp_db_path, path="/archive-proposal/test%40example.com")
         handler._serve_archive_proposal()
         handler._not_found.assert_called_once()
@@ -344,20 +344,20 @@ class TestServeArchiveProposal:
     def test_override_source(
         self,
         tmp_db_path: str,
-        _mock_get_record_by_message_id: mock.MagicMock,
-        _mock_get_archive_subfolder: mock.MagicMock,
-        _mock_load_archive_overrides: mock.MagicMock,
-        _mock_load_llm_archive_hints: mock.MagicMock,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_archive_subfolder: mock.MagicMock,
+        mock_load_archive_overrides: mock.MagicMock,
+        mock_load_llm_archive_hints: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
         mid = "override@example.com"
-        _mock_get_record_by_message_id.return_value = mock.MagicMock()
-        _mock_get_archive_subfolder.return_value = "Projects/Widgets"
-        _mock_load_archive_overrides.return_value = {mid: "Projects/Widgets"}
-        _mock_load_llm_archive_hints.return_value = {}
-        _mock_get_watermark.return_value = '{"delimiter":"/","folders":["Root","Root/Projects","Root/Projects/Widgets"]}'
-        _mock_parse_archive_structure.return_value = (
+        mock_get_record_by_message_id.return_value = mock.MagicMock()
+        mock_get_archive_subfolder.return_value = "Projects/Widgets"
+        mock_load_archive_overrides.return_value = {mid: "Projects/Widgets"}
+        mock_load_llm_archive_hints.return_value = {}
+        mock_get_watermark.return_value = '{"delimiter":"/","folders":["Root","Root/Projects","Root/Projects/Widgets"]}'
+        mock_parse_archive_structure.return_value = (
             {"Root", "Root/Projects", "Root/Projects/Widgets"},
             "/",
             "Root",
@@ -380,22 +380,22 @@ class TestServeArchiveProposal:
     def test_llm_source(
         self,
         tmp_db_path: str,
-        _mock_get_record_by_message_id: mock.MagicMock,
-        _mock_get_archive_subfolder: mock.MagicMock,
-        _mock_load_archive_overrides: mock.MagicMock,
-        _mock_load_llm_archive_hints: mock.MagicMock,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_archive_subfolder: mock.MagicMock,
+        mock_load_archive_overrides: mock.MagicMock,
+        mock_load_llm_archive_hints: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
         mid = "llm@example.com"
-        _mock_get_record_by_message_id.return_value = mock.MagicMock()
-        _mock_get_archive_subfolder.return_value = "Archive/2024"
-        _mock_load_archive_overrides.return_value = {}
-        _mock_load_llm_archive_hints.return_value = {mid: "Archive/2024"}
-        _mock_get_watermark.return_value = (
+        mock_get_record_by_message_id.return_value = mock.MagicMock()
+        mock_get_archive_subfolder.return_value = "Archive/2024"
+        mock_load_archive_overrides.return_value = {}
+        mock_load_llm_archive_hints.return_value = {mid: "Archive/2024"}
+        mock_get_watermark.return_value = (
             '{"delimiter":"/","folders":["Root","Root/Archive","Root/Archive/2024"]}'
         )
-        _mock_parse_archive_structure.return_value = (
+        mock_parse_archive_structure.return_value = (
             {"Root", "Root/Archive", "Root/Archive/2024"},
             "/",
             "Root",
@@ -418,22 +418,22 @@ class TestServeArchiveProposal:
     def test_rule_source(
         self,
         tmp_db_path: str,
-        _mock_get_record_by_message_id: mock.MagicMock,
-        _mock_get_archive_subfolder: mock.MagicMock,
-        _mock_load_archive_overrides: mock.MagicMock,
-        _mock_load_llm_archive_hints: mock.MagicMock,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_archive_subfolder: mock.MagicMock,
+        mock_load_archive_overrides: mock.MagicMock,
+        mock_load_llm_archive_hints: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
         mid = "rule@example.com"
-        _mock_get_record_by_message_id.return_value = mock.MagicMock()
-        _mock_get_archive_subfolder.return_value = "Misc"
-        _mock_load_archive_overrides.return_value = {}
-        _mock_load_llm_archive_hints.return_value = {}
-        _mock_get_watermark.return_value = (
+        mock_get_record_by_message_id.return_value = mock.MagicMock()
+        mock_get_archive_subfolder.return_value = "Misc"
+        mock_load_archive_overrides.return_value = {}
+        mock_load_llm_archive_hints.return_value = {}
+        mock_get_watermark.return_value = (
             '{"delimiter":"/","folders":["Root","Root/Misc"]}'
         )
-        _mock_parse_archive_structure.return_value = (
+        mock_parse_archive_structure.return_value = (
             {"Root", "Root/Misc"},
             "/",
             "Root",
@@ -456,22 +456,22 @@ class TestServeArchiveProposal:
     def test_folder_exists_with_custom_delimiter(
         self,
         tmp_db_path: str,
-        _mock_get_record_by_message_id: mock.MagicMock,
-        _mock_get_archive_subfolder: mock.MagicMock,
-        _mock_load_archive_overrides: mock.MagicMock,
-        _mock_load_llm_archive_hints: mock.MagicMock,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_archive_subfolder: mock.MagicMock,
+        mock_load_archive_overrides: mock.MagicMock,
+        mock_load_llm_archive_hints: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
         mid = "rule@example.com"
-        _mock_get_record_by_message_id.return_value = mock.MagicMock()
-        _mock_get_archive_subfolder.return_value = "A/B/C"
-        _mock_load_archive_overrides.return_value = {}
-        _mock_load_llm_archive_hints.return_value = {}
-        _mock_get_watermark.return_value = (
+        mock_get_record_by_message_id.return_value = mock.MagicMock()
+        mock_get_archive_subfolder.return_value = "A/B/C"
+        mock_load_archive_overrides.return_value = {}
+        mock_load_llm_archive_hints.return_value = {}
+        mock_get_watermark.return_value = (
             '{"delimiter":"/","folders":["Root","Root/A","Root/A/B","Root/A/B/C"]}'
         )
-        _mock_parse_archive_structure.return_value = (
+        mock_parse_archive_structure.return_value = (
             {"Root", "Root/A", "Root/A/B", "Root/A/B/C"},
             "/",
             "Root",
@@ -494,19 +494,19 @@ class TestServeArchiveProposal:
     def test_none_subfolder(
         self,
         tmp_db_path: str,
-        _mock_get_record_by_message_id: mock.MagicMock,
-        _mock_get_archive_subfolder: mock.MagicMock,
-        _mock_load_archive_overrides: mock.MagicMock,
-        _mock_load_llm_archive_hints: mock.MagicMock,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_archive_subfolder: mock.MagicMock,
+        mock_load_archive_overrides: mock.MagicMock,
+        mock_load_llm_archive_hints: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
-        _mock_get_record_by_message_id.return_value = mock.MagicMock()
-        _mock_get_archive_subfolder.return_value = ""
-        _mock_load_archive_overrides.return_value = {}
-        _mock_load_llm_archive_hints.return_value = {}
-        _mock_get_watermark.return_value = '{"delimiter":"/","folders":["Root"]}'
-        _mock_parse_archive_structure.return_value = (
+        mock_get_record_by_message_id.return_value = mock.MagicMock()
+        mock_get_archive_subfolder.return_value = ""
+        mock_load_archive_overrides.return_value = {}
+        mock_load_llm_archive_hints.return_value = {}
+        mock_get_watermark.return_value = '{"delimiter":"/","folders":["Root"]}'
+        mock_parse_archive_structure.return_value = (
             {"Root"},
             "/",
             "Root",
@@ -529,9 +529,9 @@ class TestServeArchiveFolders:
     @pytest.fixture(autouse=True)
     def _patch_imports(
         self,
-        _mock_init_db: mock.MagicMock,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_init_db: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
         pass
 
@@ -543,11 +543,11 @@ class TestServeArchiveFolders:
     def test_returns_sorted_subfolders(
         self,
         tmp_db_path: str,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
-        _mock_get_watermark.return_value = "ignored"
-        _mock_parse_archive_structure.return_value = (
+        mock_get_watermark.return_value = "ignored"
+        mock_parse_archive_structure.return_value = (
             {"Root", "Root/2024", "Root/2023", "Root/2024/Q1"},
             "/",
             "Root",
@@ -561,11 +561,11 @@ class TestServeArchiveFolders:
     def test_strips_effective_root_and_translates_delimiter(
         self,
         tmp_db_path: str,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
-        _mock_get_watermark.return_value = "ignored"
-        _mock_parse_archive_structure.return_value = (
+        mock_get_watermark.return_value = "ignored"
+        mock_parse_archive_structure.return_value = (
             {"INBOX.Archive", "INBOX.Archive.2024", "INBOX.Archive.2024.Q1"},
             ".",
             "INBOX.Archive",
@@ -579,11 +579,11 @@ class TestServeArchiveFolders:
     def test_empty_folders(
         self,
         tmp_db_path: str,
-        _mock_get_watermark: mock.MagicMock,
-        _mock_parse_archive_structure: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
-        _mock_get_watermark.return_value = "ignored"
-        _mock_parse_archive_structure.return_value = (
+        mock_get_watermark.return_value = "ignored"
+        mock_parse_archive_structure.return_value = (
             {"Root"},
             "/",
             "Root",
@@ -606,7 +606,7 @@ def _patch_serve_board_deps() -> None:
 
 
 @pytest.fixture
-def _mock_build_board_html() -> "mock._patch":
+def mock_build_board_html() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.server._view_mixin._build_board_html",
         autospec=True,
@@ -616,7 +616,7 @@ def _mock_build_board_html() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_build_global_board_html() -> "mock._patch":
+def mock_build_global_board_html() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.server._view_mixin._build_global_board_html",
         autospec=True,
@@ -626,7 +626,7 @@ def _mock_build_global_board_html() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_build_board_content() -> "mock._patch":
+def mock_build_board_content() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.server._view_mixin._build_board_content",
         autospec=True,
@@ -636,7 +636,7 @@ def _mock_build_board_content() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_build_global_board_content() -> "mock._patch":
+def mock_build_global_board_content() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.server._view_mixin._build_global_board_content",
         autospec=True,
@@ -646,7 +646,7 @@ def _mock_build_global_board_content() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_build_detail_html() -> "mock._patch":
+def mock_build_detail_html() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.server._view_mixin._build_detail_html",
         autospec=True,
@@ -656,7 +656,7 @@ def _mock_build_detail_html() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_init_db() -> "mock._patch":
+def mock_init_db() -> "mock._patch":
     # init_db is imported locally inside _serve_archive_proposal,
     # _serve_archive_folders, and _serve_email_status — patch at source.
     with mock.patch(
@@ -667,7 +667,7 @@ def _mock_init_db() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_get_record_by_message_id() -> "mock._patch":
+def mock_get_record_by_message_id() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.db.get_record_by_message_id",
         autospec=True,
@@ -676,7 +676,7 @@ def _mock_get_record_by_message_id() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_get_triage_decision() -> "mock._patch":
+def mock_get_triage_decision() -> "mock._patch":
     # Imported at module level in _view_mixin.
     with mock.patch(
         "robotsix_auto_mail.server._view_mixin.get_triage_decision",
@@ -686,7 +686,7 @@ def _mock_get_triage_decision() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_get_archive_subfolder() -> "mock._patch":
+def mock_get_archive_subfolder() -> "mock._patch":
     # Imported at module level in _view_mixin.
     with mock.patch(
         "robotsix_auto_mail.server._view_mixin.get_archive_subfolder",
@@ -697,7 +697,7 @@ def _mock_get_archive_subfolder() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_load_archive_overrides() -> "mock._patch":
+def mock_load_archive_overrides() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.triage._load_archive_overrides",
         autospec=True,
@@ -707,7 +707,7 @@ def _mock_load_archive_overrides() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_load_llm_archive_hints() -> "mock._patch":
+def mock_load_llm_archive_hints() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.triage._load_llm_archive_hints",
         autospec=True,
@@ -717,7 +717,7 @@ def _mock_load_llm_archive_hints() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_get_watermark() -> "mock._patch":
+def mock_get_watermark() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.db.get_watermark",
         autospec=True,
@@ -727,7 +727,7 @@ def _mock_get_watermark() -> "mock._patch":
 
 
 @pytest.fixture
-def _mock_parse_archive_structure() -> "mock._patch":
+def mock_parse_archive_structure() -> "mock._patch":
     with mock.patch(
         "robotsix_auto_mail.server._view_mixin._parse_archive_structure",
         autospec=True,

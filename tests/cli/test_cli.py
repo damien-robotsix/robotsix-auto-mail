@@ -308,7 +308,8 @@ def test_auth_login_ambiguous_account_errors(
 
     assert rc == 1
     err = capsys.readouterr().err
-    assert "personal" in err and "work" in err
+    assert "personal" in err
+    assert "work" in err
 
 
 def test_auth_login_unknown_account_errors(

@@ -495,5 +495,7 @@ def test_main_full_happy_path_writes_marker_and_sets_gid(
     assert marker.read_text() == f"{remote}\n"
     build_env = fake.env_for(["docker", "compose", "build"])
     up_env = fake.env_for(["docker", "compose", "up"])
-    assert build_env is not None and build_env["DOCKER_GID"] == "999"
-    assert up_env is not None and up_env["DOCKER_GID"] == "999"
+    assert build_env is not None
+    assert build_env["DOCKER_GID"] == "999"
+    assert up_env is not None
+    assert up_env["DOCKER_GID"] == "999"

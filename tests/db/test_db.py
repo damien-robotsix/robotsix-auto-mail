@@ -584,7 +584,8 @@ def test_list_records_returns_all_fields() -> None:
         )
         assert r.status == "to_read"
         assert r.notes == "test notes"
-        assert r.id is not None and r.id > 0
+        assert r.id is not None
+        assert r.id > 0
     finally:
         conn.close()
 

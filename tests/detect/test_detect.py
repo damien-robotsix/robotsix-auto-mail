@@ -268,7 +268,7 @@ def test_provider_to_config_explicit_db_path() -> None:
 
 
 @pytest.mark.parametrize(
-    "imap_host,smtp_host",
+    ("imap_host", "smtp_host"),
     [
         ("outlook.office365.com", "smtp.office365.com"),
         ("OUTLOOK.OFFICE365.COM", "SMTP.OFFICE365.COM"),
@@ -284,7 +284,7 @@ def test_is_microsoft_provider_true(imap_host: str, smtp_host: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "imap_host,smtp_host",
+    ("imap_host", "smtp_host"),
     [
         ("imap.gmail.com", "smtp.gmail.com"),
         ("imap.fastmail.com", "smtp.fastmail.com"),

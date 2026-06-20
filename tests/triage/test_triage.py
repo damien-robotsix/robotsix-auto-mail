@@ -701,7 +701,8 @@ def test_triage_action_labels_cover_every_action() -> None:
     assert set(TRIAGE_ACTION_LABELS.keys()) == set(VALID_TRIAGE_ACTIONS)
     assert len(TRIAGE_ACTION_LABELS) == 8
     for _action, label in TRIAGE_ACTION_LABELS.items():
-        assert isinstance(label, str) and len(label) > 0
+        assert isinstance(label, str)
+        assert len(label) > 0
     assert tuple(TRIAGE_ACTION_LABELS) == TRIAGE_ACTION_ORDER
 
 
