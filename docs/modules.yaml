@@ -78,10 +78,20 @@ modules:
 
   - id: cli
     description: >-
-      CLI entry point exposing probe and ingest subcommands.
+      CLI entry point exposing probe, ingest, board, serve, detect,
+      config-sync, triage, migrate-config, and auth subcommands.
     paths:
       - src/robotsix_auto_mail/cli/__init__.py
       - src/robotsix_auto_mail/cli/commands.py
+      - src/robotsix_auto_mail/cli/commands_auth.py
+      - src/robotsix_auto_mail/cli/commands_board.py
+      - src/robotsix_auto_mail/cli/commands_config_sync.py
+      - src/robotsix_auto_mail/cli/commands_detect.py
+      - src/robotsix_auto_mail/cli/commands_ingest.py
+      - src/robotsix_auto_mail/cli/commands_migrate.py
+      - src/robotsix_auto_mail/cli/commands_probe.py
+      - src/robotsix_auto_mail/cli/commands_serve.py
+      - src/robotsix_auto_mail/cli/commands_triage.py
       - src/robotsix_auto_mail/cli/config.py
       - tests/cli/test_cli.py
       - tests/cli/test_cli_board.py

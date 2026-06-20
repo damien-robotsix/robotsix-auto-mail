@@ -76,6 +76,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             provider_to_config(
                 provider,
                 args.email,
+                # lgtm[py/hardcoded-credentials]
                 password="",  # nosec B106 - intentionally omitted from stdout
             ),
             db_path=f".data/{account_id}/mail.db",
