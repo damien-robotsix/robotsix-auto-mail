@@ -169,6 +169,11 @@ class _BoardActionMixin:
 
             message_id = record.message_id
 
+            if triage_action == "TO_CALENDAR":
+                if self.mail_config is not None and not self.mail_config.calendar_enabled:
+                    self._bad_request("Calendar integration is disabled")
+                    return False
+
             # Capture prior triage decision for TO_CALENDAR reroute logic
             # before we overwrite it with the move target.
             prior_action: str | None = None
@@ -195,9 +200,6 @@ class _BoardActionMixin:
                 return False
 
             if triage_action == "TO_CALENDAR":
-                if self.mail_config is not None and not self.mail_config.calendar_enabled:
-                    self._bad_request("Calendar integration is disabled")
-                    return False
                 # -- Dispatch calendar request on column move ----------
                 try:
                     from robotsix_auto_mail.calendar import (
