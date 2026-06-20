@@ -308,8 +308,7 @@ class _BoardViewMixin:
                 focus_draft=focus_draft,
                 current_account_id=self._current_account_id,
                 calendar_enabled=(
-                    self.mail_config is not None
-                    and self.mail_config.calendar_enabled
+                    self.mail_config is not None and self.mail_config.calendar_enabled
                 ),
             )
         except Exception:
