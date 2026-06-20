@@ -50,7 +50,7 @@ def test_board_empty_inbox(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) 
 
     with (
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
-        mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
+        mock.patch("robotsix_auto_mail.cli.commands_board.init_db", return_value=conn),
     ):
         rc = main(["board"])
 
@@ -117,7 +117,7 @@ VALUES
 
     with (
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
-        mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
+        mock.patch("robotsix_auto_mail.cli.commands_board.init_db", return_value=conn),
     ):
         rc = main(["board"])
 
@@ -203,7 +203,7 @@ VALUES
 
     with (
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
-        mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
+        mock.patch("robotsix_auto_mail.cli.commands_board.init_db", return_value=conn),
     ):
         rc = main(["board"])
 
@@ -248,7 +248,7 @@ def test_board_header_uses_print_header(
 
     with (
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
-        mock.patch("robotsix_auto_mail.cli.init_db", return_value=conn),
+        mock.patch("robotsix_auto_mail.cli.commands_board.init_db", return_value=conn),
     ):
         main(["board"])
 

@@ -11,22 +11,40 @@ import time as time
 
 from robotsix_auto_mail import __version__
 from robotsix_auto_mail.cli.commands import (
-    _cmd_auth_login,
-    _cmd_board,
-    _cmd_config_sync,
-    _cmd_config_sync_set,
-    _cmd_detect,
-    _cmd_ingest,
-    _cmd_migrate_config,
-    _cmd_probe,
-    _cmd_serve,
-    _cmd_triage,
-    _cmd_triage_set,
     _load_accounts_or_exit,
     _load_config_or_exit,
 )
-from robotsix_auto_mail.cli.commands import (
+from robotsix_auto_mail.cli.commands_auth import (
+    _cmd_auth_login,
+)
+from robotsix_auto_mail.cli.commands_board import (
+    _cmd_board,
+)
+from robotsix_auto_mail.cli.commands_config_sync import (
+    _cmd_config_sync,
+    _cmd_config_sync_set,
+)
+from robotsix_auto_mail.cli.commands_detect import (
+    _cmd_detect,
+)
+from robotsix_auto_mail.cli.commands_ingest import (
+    _cmd_ingest,
+)
+from robotsix_auto_mail.cli.commands_ingest import (
     _ingest_cycle as _ingest_cycle,
+)
+from robotsix_auto_mail.cli.commands_migrate import (
+    _cmd_migrate_config,
+)
+from robotsix_auto_mail.cli.commands_probe import (
+    _cmd_probe,
+)
+from robotsix_auto_mail.cli.commands_serve import (
+    _cmd_serve,
+)
+from robotsix_auto_mail.cli.commands_triage import (
+    _cmd_triage,
+    _cmd_triage_set,
 )
 from robotsix_auto_mail.cli.config import (
     _prompt_hosts as _prompt_hosts,

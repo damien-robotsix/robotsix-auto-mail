@@ -259,7 +259,7 @@ def test_clear_stale_triage_state_resets_running_flags(
 ) -> None:
     """A boot-clear resets every orphaned ``running`` flag to ``idle`` while
     leaving non-running flags untouched and tolerating a missing account DB."""
-    from robotsix_auto_mail.cli.commands import _clear_stale_triage_state
+    from robotsix_auto_mail.cli.commands_triage import _clear_stale_triage_state
     from robotsix_auto_mail.db import get_watermark
 
     # Account A: orphaned "running" flag (should be reset to "idle").
@@ -320,7 +320,7 @@ def test_clear_stale_triage_state_resets_stale_batch_op(
     """A boot-clear also resets a stale ``batch_op:state`` (a non-idle JSON
     progress payload left by a SIGKILL'd batch worker) to ``"idle"`` for
     every configured account."""
-    from robotsix_auto_mail.cli.commands import _clear_stale_triage_state
+    from robotsix_auto_mail.cli.commands_triage import _clear_stale_triage_state
     from robotsix_auto_mail.db import get_watermark
 
     # Account A: orphaned running batch-delete progress payload.
