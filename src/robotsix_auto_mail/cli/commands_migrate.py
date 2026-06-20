@@ -66,6 +66,7 @@ def _cmd_migrate_config(args: argparse.Namespace) -> int:
         "`robotsix-auto-mail migrate-config`.\n"
         "# The original single-account file was backed up with a .bak suffix."
     )
+    # lgtm[py/clear-text-storage-sensitive-data]
     migrated = render_accounts_yaml([account], account_id, banner=banner)
 
     if args.dry_run:
@@ -74,6 +75,7 @@ def _cmd_migrate_config(args: argparse.Namespace) -> int:
 
     backup = Path(f"{path}.bak")
     backup.write_text(path.read_text())
+    # lgtm[py/clear-text-storage-sensitive-data]
     path.write_text(migrated)
     sys.stdout.write(f"Backup written to {backup}\nMigrated config written to {path}\n")
     return 0

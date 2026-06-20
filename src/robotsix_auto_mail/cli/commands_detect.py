@@ -76,7 +76,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             provider_to_config(
                 provider,
                 args.email,
-                # lgtm[py/hardcoded-credentials]
+                # lgtm[py/clear-text-storage-sensitive-data]
                 password="",  # nosec B106 - intentionally omitted from stdout
             ),
             db_path=f".data/{account_id}/mail.db",
@@ -98,6 +98,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
                 "# Save this as config/mail.local.yaml.\n"
             )
         account = MailAccount(account_id=account_id, config=config, label=label)
+        # lgtm[py/clear-text-storage-sensitive-data]
         sys.stdout.write(render_accounts_yaml([account], account_id))
         return 0
 

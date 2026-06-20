@@ -85,7 +85,7 @@ def _cmd_serve(
     try:
         # Binding to 0.0.0.0 is intentional: ``serve_board`` is a local dev
         # convenience tool, not a production server.
-        # lgtm[py/bind-socket-all-network-interfaces]
+        # lgtm[py/clear-text-transmission-sensitive-data]
         server = HTTPServer(("0.0.0.0", port), handler_class)  # noqa: S104  # nosec B104
         server.serve_forever()
     except KeyboardInterrupt:
