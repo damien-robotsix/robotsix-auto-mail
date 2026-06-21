@@ -51,12 +51,18 @@ repos:
       - id: check-merge-conflict
       - id: detect-private-key
       - id: check-added-large-files
+      - id: check-executables-have-shebangs
 
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:
       - id: actionlint
         args: [-shellcheck=]
+
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: 2f8d22a8eda713543888a02fa03b9e1e0f8cbd59  # frozen: v0.11.0
+    hooks:
+      - id: shellcheck
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: v1.6.0
