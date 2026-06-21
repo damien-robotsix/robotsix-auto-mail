@@ -14,7 +14,7 @@ set -uo pipefail
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Self-locating: REPO is the parent of this script's dev/ folder.
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)" || exit 1
 REPO="$(dirname "$SCRIPT_DIR")"
 STATE_DIR="$(dirname "$REPO")"          # runtime files live outside the repo
 

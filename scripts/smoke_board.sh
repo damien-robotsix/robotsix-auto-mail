@@ -64,7 +64,7 @@ SERVER_PID=$!
 
 # Readiness poll: wait until /board answers 200, with a bounded timeout.
 ready=0
-for _ in $(seq 1 40); do
+for _ in {1..40}; do
     if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
         diagnose "boot" "server process exited before becoming ready"
         exit 1
@@ -96,8 +96,8 @@ fetch() {
 
 # --- Assertion 1: GET /board -> 200 + DOM markers ---
 fetch /board
-status="$(cat "${STATUS_FILE}")"
-body="$(cat "${BODY_FILE}")"
+status="$(<"${STATUS_FILE}")"
+body="$(<"${BODY_FILE}")"
 if [[ "${status}" != "200" ]]; then
     diagnose "GET /board" "${status}" "expected HTTP 200"
     exit 1
@@ -113,8 +113,8 @@ fi
 
 # --- Assertion 2: GET /board-content -> 200 + JSON key columns_html ---
 fetch /board-content
-status="$(cat "${STATUS_FILE}")"
-body="$(cat "${BODY_FILE}")"
+status="$(<"${STATUS_FILE}")"
+body="$(<"${BODY_FILE}")"
 if [[ "${status}" != "200" ]]; then
     diagnose "GET /board-content" "${status}" "expected HTTP 200"
     exit 1
@@ -126,7 +126,7 @@ fi
 
 # --- Assertion 3: GET /static/board.css -> 200 (robotsix_board assets) ---
 fetch /static/board.css
-status="$(cat "${STATUS_FILE}")"
+status="$(<"${STATUS_FILE}")"
 if [[ "${status}" != "200" ]]; then
     diagnose "GET /static/board.css" "${status}" "expected HTTP 200 (robotsix_board static assets)"
     exit 1
