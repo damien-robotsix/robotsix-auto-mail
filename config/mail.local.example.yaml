@@ -20,11 +20,11 @@
 # to every account.  Bare LLM_API_KEY / LANGFUSE_* env vars override them.
 
 # LLM provider — used by the `detect` command and future LLM-assisted mail
-# processing.  The LLM_API_KEY / LLM_PROVIDER environment variables override
+# processing.  The LLM_API_KEY / LLM_PROVIDER_MODEL environment variables override
 # these values.
 # llm:
 #   api_key: sk-or-v1-…
-#   provider: openrouter-deepseek
+#   provider_model: openrouter-deepseek
 
 # Langfuse observability — optional.  When public_key/secret_key are set,
 # every LLM agent run is traced to the configured Langfuse project.

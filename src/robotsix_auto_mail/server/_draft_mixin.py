@@ -197,8 +197,10 @@ class _DraftMixin:
                     api_key=(
                         self.mail_config.llm_api_key if self.mail_config else None
                     ),
-                    provider=(
-                        self.mail_config.llm_provider if self.mail_config else None
+                    provider_model=(
+                        self.mail_config.llm_provider_model
+                        if self.mail_config
+                        else None
                     ),
                 )
             except DraftGenerationError:

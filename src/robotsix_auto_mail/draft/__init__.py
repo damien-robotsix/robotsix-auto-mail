@@ -20,7 +20,7 @@ from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail.config import (
     resolve_llm_api_key,
-    resolve_llm_provider,
+    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -98,7 +98,7 @@ def generate_draft_reply(
     message_id: str,
     *,
     api_key: str | None = None,
-    provider: str | None = None,
+    provider_model: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> str:
     """Generate, persist, and return an LLM draft reply for *message_id*.
@@ -114,9 +114,9 @@ def generate_draft_reply(
         message_id: The ``mail_records`` message id to draft a reply for.
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``config.load_llm()``.
-        provider: LLM backend name (e.g. ``openrouter-deepseek``).  Resolves
-            with the precedence ``provider`` argument → ``LLM_PROVIDER``
-            env var → ``config.load_llm_provider()``.
+        provider_model: LLM provider-model identifier (e.g. ``openrouter-deepseek``).
+            Resolves with the precedence ``provider_model`` argument →
+            ``LLM_PROVIDER_MODEL`` env var → ``config.load_llm_provider_model()``.
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
 
     Raises:
@@ -137,11 +137,11 @@ def generate_draft_reply(
         # -- resolve API key (arg -> LLM_API_KEY env -> config) --
         resolved_key = resolve_llm_api_key(api_key)
 
-        # -- resolve provider (arg -> LLM_PROVIDER env -> config) --
-        resolved_provider = resolve_llm_provider(provider)
+        # -- resolve provider (arg -> LLM_PROVIDER_MODEL env -> config) --
+        resolved_provider_model = resolve_llm_provider_model(provider_model)
 
         llm_provider = get_provider_for_identifier(
-            identifier=resolved_provider, api_key=resolved_key
+            identifier=resolved_provider_model, api_key=resolved_key
         )
         agent_handle = llm_provider.build_agent(
             level=1 if tier == Tier.CHEAP else 2,

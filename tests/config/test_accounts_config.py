@@ -528,7 +528,7 @@ def test_from_yaml_top_level_llm_applied_to_all_accounts(tmp_path: Path) -> None
         """\
 llm:
   api_key: sk-global
-  provider: openrouter-deepseek
+  provider_model: openrouter-deepseek
 accounts:
   - id: a
     imap:
@@ -550,9 +550,9 @@ accounts:
     )
     accounts = MailAccountsConfig.from_yaml(yaml_file)
     assert accounts.get("a").config.llm_api_key == "sk-global"
-    assert accounts.get("a").config.llm_provider == "openrouter-deepseek"
+    assert accounts.get("a").config.llm_provider_model == "openrouter-deepseek"
     assert accounts.get("b").config.llm_api_key == "sk-global"
-    assert accounts.get("b").config.llm_provider == "openrouter-deepseek"
+    assert accounts.get("b").config.llm_provider_model == "openrouter-deepseek"
 
 
 def test_from_yaml_top_level_langfuse_applied_to_all_accounts(
@@ -683,7 +683,7 @@ def test_render_accounts_yaml_emits_top_level_llm() -> None:
         "alpha",
         _cfg(
             llm_api_key="sk-test",
-            llm_provider="openrouter-deepseek",
+            llm_provider_model="openrouter-deepseek",
             db_path=".data/alpha/mail.db",
         ),
     )
@@ -741,13 +741,13 @@ def test_render_accounts_yaml_emits_llm_when_only_provider_non_default() -> None
     account = MailAccount(
         "alpha",
         _cfg(
-            llm_provider="claude-sdk",
+            llm_provider_model="claude-sdk",
             db_path=".data/alpha/mail.db",
         ),
     )
     text = render_accounts_yaml([account], "alpha")
     assert "llm:" in text
-    assert 'provider: "claude-sdk"' in text
+    assert 'provider_model: "claude-sdk"' in text
     assert "api_key:" not in text  # empty api_key not emitted
 
 
@@ -757,10 +757,10 @@ def test_render_accounts_yaml_emits_llm_when_only_provider_non_default() -> None
 
 
 def test_from_env_multi_account_bare_llm_vars() -> None:
-    """Bare LLM_API_KEY / LLM_PROVIDER populate global fields in multi-account env."""
+    """Bare LLM_API_KEY / LLM_PROVIDER_MODEL populate global fields in multi-account env."""
     env = {
         "LLM_API_KEY": "sk-bare",
-        "LLM_PROVIDER": "claude-sdk",
+        "LLM_PROVIDER_MODEL": "claude-sdk",
         "MAIL_ACCOUNTS_0_ID": "a",
         "MAIL_ACCOUNTS_0_IMAP_HOST": "imap.a.com",
         "MAIL_ACCOUNTS_0_SMTP_HOST": "smtp.a.com",
@@ -775,9 +775,9 @@ def test_from_env_multi_account_bare_llm_vars() -> None:
     with mock.patch.dict(os.environ, env, clear=True):
         accounts = MailAccountsConfig.from_env()
     assert accounts.get("a").config.llm_api_key == "sk-bare"
-    assert accounts.get("a").config.llm_provider == "claude-sdk"
+    assert accounts.get("a").config.llm_provider_model == "claude-sdk"
     assert accounts.get("b").config.llm_api_key == "sk-bare"
-    assert accounts.get("b").config.llm_provider == "claude-sdk"
+    assert accounts.get("b").config.llm_provider_model == "claude-sdk"
 
 
 def test_from_env_multi_account_bare_langfuse_vars() -> None:
@@ -856,7 +856,7 @@ def test_from_env_multi_account_global_fields_default_when_not_set() -> None:
         accounts = MailAccountsConfig.from_env()
     cfg = accounts.get("a").config
     assert cfg.llm_api_key == ""
-    assert cfg.llm_provider == "openrouter-deepseek"
+    assert cfg.llm_provider_model == "openrouter-deepseek"
     assert cfg.langfuse_public_key == ""
     assert cfg.langfuse_secret_key == ""
     assert cfg.langfuse_base_url == ""

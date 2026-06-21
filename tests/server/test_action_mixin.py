@@ -756,7 +756,9 @@ class TestHandleMove:
         call_args = mock_propose.call_args
         assert call_args[0][1].message_id == "arch-llm"  # record (pos 1)
         assert call_args[0][2] == "sk-test"  # api_key (pos 2)
-        assert call_args[1] == {"provider": "openrouter-deepseek"}  # provider kwarg
+        assert call_args[1] == {
+            "provider_model": "openrouter-deepseek"
+        }  # provider_model kwarg
 
     def test_to_archive_llm_exception_is_swallowed(self, single_db: str) -> None:
         _populate_db(

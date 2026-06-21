@@ -1277,9 +1277,9 @@ requires-dist = [
     { name = "robotsix-agent-comm", marker = "extra == 'calendar'", git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=main" },
     { name = "robotsix-board", git = "https://github.com/damien-robotsix/robotsix-board.git?rev=main" },
     { name = "robotsix-board-agent", marker = "extra == 'board-agent'", git = "https://github.com/damien-robotsix/robotsix-board-agent.git?rev=main" },
-    { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=main" },
-    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=main" },
-    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=main" },
+    { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" },
+    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" },
+    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" },
     { name = "robotsix-modules", marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-modules.git?rev=main" },
     { name = "robotsix-yaml-config", git = "https://github.com/damien-robotsix/robotsix-yaml-config.git?rev=main" },
     { name = "ruff", marker = "extra == 'dev'" },
@@ -1309,7 +1309,7 @@ dependencies = [
 [[package]]
 name = "robotsix-llmio"
 version = "0.1.0"
-source = { git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=main#596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" }
+source = { git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e#596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic-ai-slim" },

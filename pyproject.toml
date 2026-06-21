@@ -192,6 +192,6 @@ ignore_names = ["format", "method_name", "on_notification"]
 robotsix-agent-comm = { git = "https://github.com/damien-robotsix/robotsix-agent-comm.git", rev = "main" }
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
 robotsix-board-agent = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git", rev = "main" }
-robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "main" }
+robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" }
 robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "main" }

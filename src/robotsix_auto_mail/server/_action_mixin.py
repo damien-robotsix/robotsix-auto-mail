@@ -312,8 +312,8 @@ class _BoardActionMixin:
                             conn,
                             record,
                             self.mail_config.llm_api_key,
-                            provider=(
-                                self.mail_config.llm_provider
+                            provider_model=(
+                                self.mail_config.llm_provider_model
                                 if self.mail_config
                                 else None
                             ),

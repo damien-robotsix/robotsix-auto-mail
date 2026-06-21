@@ -320,7 +320,7 @@ def ingest_mail(
                 archive_root=config.archive_root,
                 archive_namespace=config.archive_namespace,
                 api_key=config.llm_api_key,
-                provider=config.llm_provider,
+                provider_model=config.llm_provider_model,
             )
             _logger.info("archive_setup_done")
         except Exception:
@@ -356,7 +356,7 @@ def ingest_mail(
             decisions = run_triage_agent(
                 db_conn,
                 api_key=config.llm_api_key,
-                provider=config.llm_provider,
+                provider_model=config.llm_provider_model,
                 only_undecided=True,
                 user_email=config.username,
             )
