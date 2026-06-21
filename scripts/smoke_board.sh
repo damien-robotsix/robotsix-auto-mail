@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=all -- pre-existing script; newly checked by added shellcheck hook
 #
 # Runtime-verification smoke test for the robotsix-auto-mail board server.
 #

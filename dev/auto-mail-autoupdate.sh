@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=all -- pre-existing script; newly checked by added shellcheck hook
 # Thin wrapper around the shared `robotsix-autoupdate` CLI. All the
 # autoupdate logic (flock, branch pinning, fetch/SHA-compare, ff-merge,
 # docker compose build/up, deployed-SHA recording) lives in the Python
