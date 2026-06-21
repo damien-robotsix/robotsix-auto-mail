@@ -182,6 +182,42 @@ def test_repr_redacts_password(cfg: MailConfig) -> None:
     assert "imap.example.com" in r
 
 
+def test_server_greeting_property(cfg: MailConfig) -> None:
+    """server_greeting returns the server welcome when connected, None otherwise."""
+    client = ImapClient(cfg)
+    assert client.server_greeting is None
+
+    mock_ssl = _make_mock_imap_ssl()
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as connected:
+            assert connected.server_greeting == mock_ssl.welcome
+
+
+def test_capabilities_property(cfg: MailConfig) -> None:
+    """capabilities returns the server capabilities when connected, () otherwise."""
+    client = ImapClient(cfg)
+    assert client.capabilities == ()
+
+    mock_ssl = _make_mock_imap_ssl()
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as connected:
+            assert connected.capabilities == mock_ssl.capabilities
+
+
+def test_imap_client_invalid_tls_mode(cfg: MailConfig) -> None:
+    """Passing an unknown tls_mode raises ValueError on context entry."""
+    cfg_bad = MailConfig(
+        imap_host=cfg.imap_host,
+        smtp_host=cfg.smtp_host,
+        username=cfg.username,
+        password=cfg.password,
+        imap_tls_mode="invalid",
+    )
+    with pytest.raises(ValueError, match="Unknown TLS mode"):
+        with ImapClient(cfg_bad):
+            pass
+
+
 # ---------------------------------------------------------------------------
 # Happy path: direct-TLS
 # ---------------------------------------------------------------------------
@@ -401,6 +437,24 @@ def test_list_folders_nil_delimiter(cfg: MailConfig) -> None:
     assert folders[0].name == "INBOX"
 
 
+def test_list_folders_not_connected(cfg: MailConfig) -> None:
+    """list_folders raises ImapError when the client is not connected."""
+    client = ImapClient(cfg)
+    with pytest.raises(ImapError, match="Not connected"):
+        client.list_folders()
+
+
+def test_list_folders_non_ok_status(cfg: MailConfig) -> None:
+    """list_folders raises ImapError on non-OK LIST response."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.list.return_value = ("NO", [])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapError, match="LIST command failed: NO"):
+                client.list_folders()
+
+
 # ---------------------------------------------------------------------------
 # select_folder
 # ---------------------------------------------------------------------------
@@ -435,6 +489,36 @@ def test_select_folder_empty_data(cfg: MailConfig) -> None:
     """select_folder returns 0 when data list is empty."""
     mock_ssl = _make_mock_imap_ssl()
     mock_ssl.select.return_value = ("OK", [])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            count = client.select_folder("INBOX")
+
+    assert count == 0
+
+
+def test_select_folder_not_connected(cfg: MailConfig) -> None:
+    """select_folder raises ImapError when the client is not connected."""
+    client = ImapClient(cfg)
+    with pytest.raises(ImapError, match="Not connected"):
+        client.select_folder("INBOX")
+
+
+def test_select_folder_non_ok_status(cfg: MailConfig) -> None:
+    """select_folder raises ImapError on non-OK SELECT response."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.select.return_value = ("NO", [])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapError, match="SELECT 'INBOX' failed: NO"):
+                client.select_folder("INBOX")
+
+
+def test_select_folder_non_numeric_count(cfg: MailConfig) -> None:
+    """select_folder returns 0 when the SELECT count is non-numeric."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.select.return_value = ("OK", [b"foo"])
 
     with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
         with ImapClient(cfg) as client:
@@ -1657,3 +1741,14 @@ def test_cross_folder_resolve_source_folder_none_backward_compat() -> None:
     assert result == ("Projects", 3)
     # Both folders searched (no early source_folder check).
     assert client.select_folder.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# _copyuid_indicates_empty_source
+# ---------------------------------------------------------------------------
+
+
+def test_copyuid_indicates_empty_source_true() -> None:
+    """_copyuid_indicates_empty_source returns True when COPYUID source-set is empty."""
+    data = [b"1 OK [COPYUID 12345 "]
+    assert ImapClient._copyuid_indicates_empty_source(data) is True
