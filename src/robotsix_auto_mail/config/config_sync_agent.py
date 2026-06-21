@@ -26,7 +26,6 @@ from pathlib import Path
 import pydantic
 from robotsix_llmio.core import Tier, get_provider_for_identifier, run_agent
 
-from robotsix_auto_mail._shared.pydantic_utils import validate_confidence
 from robotsix_auto_mail.config import (
     _FIELD_SPECS,
     _REQUIRED,
@@ -34,6 +33,7 @@ from robotsix_auto_mail.config import (
     resolve_llm_api_key,
     resolve_llm_provider,
 )
+from robotsix_auto_mail.config.pydantic_utils import validate_confidence
 from robotsix_auto_mail.db import get_watermark, set_watermark
 
 # ---------------------------------------------------------------------------
