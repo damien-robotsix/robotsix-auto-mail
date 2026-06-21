@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from tests.server.conftest import (
     _populate_db,
+    _post_form,
     _post_to_path,
     _seed_triage_decision,
     _start_test_server,
@@ -179,6 +180,126 @@ def test_run_triage_background_clears_watermark(single_db: str) -> None:
                 break
             time.sleep(0.05)
         assert state == "idle", f"Watermark didn't clear: {state!r}"
+    finally:
+        server.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# POST /force-triage-column tests
+# ---------------------------------------------------------------------------
+
+
+def test_force_triage_column_valid_action_deletes_and_redirects(
+    single_db: str,
+) -> None:
+    """POST /force-triage-column with a valid action deletes matching
+    triage decisions and redirects to /board."""
+    from robotsix_auto_mail.db import init_db as _init_db
+
+    _populate_db(
+        single_db,
+        [
+            {
+                "message_id": "msg-1",
+                "sender": "x@x.com",
+                "subject": "One",
+                "date": "2025-01-01T00:00:00",
+                "body_plain": "body",
+                "status": "to_read",
+            },
+        ],
+    )
+    _seed_triage_decision(single_db, "msg-1", action="TO_ARCHIVE")
+
+    server, port = _start_test_server(single_db)
+    try:
+        resp = _post_to_path(
+            port, "/force-triage-column", {"action": "TO_ARCHIVE"}
+        )
+        assert resp.status == 302
+        assert resp.headers.get("Location") == "/board"
+
+        # Verify the triage decision was deleted.
+        conn = _init_db(single_db, skip_migrations=True)
+        try:
+            cur = conn.execute(
+                "SELECT COUNT(*) FROM triage_decisions WHERE action = ?",
+                ("TO_ARCHIVE",),
+            )
+            assert cur.fetchone()[0] == 0
+        finally:
+            conn.close()
+    finally:
+        server.shutdown()
+
+
+def test_force_triage_column_invalid_action_returns_400(
+    single_db: str,
+) -> None:
+    """POST /force-triage-column with an invalid action returns 400."""
+    server, port = _start_test_server(single_db)
+    try:
+        status, body = _post_form(
+            port, {"action": "NONEXISTENT"}, path="/force-triage-column"
+        )
+        assert status == 400
+        assert "Invalid triage action" in body
+        assert "NONEXISTENT" in body
+    finally:
+        server.shutdown()
+
+
+def test_force_triage_column_inbox_action_returns_400(
+    single_db: str,
+) -> None:
+    """POST /force-triage-column with action='INBOX' raises TriageError,
+    caught by the handler and returned as 400."""
+    server, port = _start_test_server(single_db)
+    try:
+        status, body = _post_form(
+            port, {"action": "INBOX"}, path="/force-triage-column"
+        )
+        assert status == 400
+        assert "Cannot delete triage decisions for action='INBOX'" in body
+    finally:
+        server.shutdown()
+
+
+def test_force_triage_column_generic_exception_returns_503(
+    single_db: str,
+) -> None:
+    """POST /force-triage-column returns 503 JSON when an unexpected
+    exception occurs during triage-decision deletion."""
+    from unittest.mock import patch
+
+    import robotsix_auto_mail.triage as triage_pkg
+
+    _populate_db(
+        single_db,
+        [
+            {
+                "message_id": "msg-1",
+                "sender": "x@x.com",
+                "subject": "One",
+                "date": "2025-01-01T00:00:00",
+                "body_plain": "body",
+                "status": "to_read",
+            },
+        ],
+    )
+
+    server, port = _start_test_server(single_db)
+    try:
+        with patch.object(
+            triage_pkg,
+            "delete_triage_decisions_by_action",
+            side_effect=RuntimeError("simulated DB failure"),
+        ):
+            status, body = _post_form(
+                port, {"action": "TO_DELETE"}, path="/force-triage-column"
+            )
+        assert status == 503
+        assert "simulated DB failure" in body
     finally:
         server.shutdown()
 
