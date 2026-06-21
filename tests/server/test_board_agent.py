@@ -159,8 +159,12 @@ def test_serve_board_gate_respects_board_agent_enabled() -> None:
     from robotsix_auto_mail.cli.commands_serve import _cmd_serve
 
     with (
-        mock.patch("robotsix_auto_mail.server.board_agent.start_board_agent") as mock_start,
-        mock.patch("robotsix_auto_mail.server.board_agent.stop_board_agent") as mock_stop,
+        mock.patch(
+            "robotsix_auto_mail.server.board_agent.start_board_agent"
+        ) as mock_start,
+        mock.patch(
+            "robotsix_auto_mail.server.board_agent.stop_board_agent"
+        ) as mock_stop,
         mock.patch("robotsix_auto_mail.server.make_board_handler") as mock_make_handler,
         mock.patch("robotsix_auto_mail.cli.commands_serve._clear_stale_triage_state"),
         mock.patch("robotsix_auto_mail.cli.commands_serve._reconcile_loop"),
