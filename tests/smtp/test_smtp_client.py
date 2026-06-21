@@ -689,7 +689,10 @@ def test_smtp_client_imports_protocol_base_from_imap() -> None:
     content = open(source).read()
     # The shared _ProtocolClient and build_xoauth2_response now live in the
     # imap package (formerly the standalone protocol module).
-    assert "from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response" in content
+    assert (
+        "from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response"
+        in content
+    )
 
 
 def test_smtp_client_only_uses_smtp_fields(cfg: MailConfig) -> None:
