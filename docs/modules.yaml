@@ -9,15 +9,6 @@
 # is "stale"; any new module proposal must start by adding an entry here.
 
 modules:
-  - id: shared
-    description: >-
-      Shared utilities and pydantic validators used across
-      subpackages (confidence-level validation, etc.).
-    paths:
-      - src/robotsix_auto_mail/_shared/__init__.py
-      - src/robotsix_auto_mail/_shared/pydantic_utils.py
-      - tests/_shared/test_pydantic_utils.py
-
   - id: core
     description: >-
       Project root, package identity, build configuration, and roadmap.
@@ -126,8 +117,10 @@ modules:
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
       - tests/config/test_config_sync_agent.py
+      - src/robotsix_auto_mail/config/pydantic_utils.py
       - tests/config/test_accounts_config.py
       - tests/config/test_account_isolation.py
+      - tests/config/test_pydantic_utils.py
 
   - id: triage
     description: >-

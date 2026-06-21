@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from robotsix_auto_mail._shared.pydantic_utils import (
+from robotsix_auto_mail.config.pydantic_utils import (
     VALID_CONFIDENCE_LEVELS,
     validate_confidence,
 )
