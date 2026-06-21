@@ -14,7 +14,6 @@ import time
 
 import structlog
 
-from robotsix_auto_mail.db.archive import setup_archive
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
     get_watermark,
@@ -22,6 +21,7 @@ from robotsix_auto_mail.db import (
     record_exists,
     set_watermark,
 )
+from robotsix_auto_mail.db.archive import setup_archive
 from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.parser import parse_message
 from robotsix_auto_mail.triage import run_triage_agent

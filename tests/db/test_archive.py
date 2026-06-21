@@ -10,6 +10,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
+from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
 from robotsix_auto_mail.db.archive import (
     _ARCHIVE_WATERMARK_KEY,
     ARCHIVE_ROOT,
@@ -19,7 +20,6 @@ from robotsix_auto_mail.db.archive import (
     determine_archive_structure,
     setup_archive,
 )
-from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
 from robotsix_auto_mail.imap import ImapClient, ImapError, MailboxInfo
 
 
