@@ -60,7 +60,7 @@ repos:
         args: [-shellcheck=]
 
   - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: 2f8d22a8eda713543888a02fa03b9e1e0f8cbd59  # frozen: v0.11.0
+    rev: v0.10.0
     hooks:
       - id: shellcheck
 
