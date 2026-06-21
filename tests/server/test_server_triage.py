@@ -213,9 +213,7 @@ def test_force_triage_column_valid_action_deletes_and_redirects(
 
     server, port = _start_test_server(single_db)
     try:
-        resp = _post_to_path(
-            port, "/force-triage-column", {"action": "TO_ARCHIVE"}
-        )
+        resp = _post_to_path(port, "/force-triage-column", {"action": "TO_ARCHIVE"})
         assert resp.status == 302
         assert resp.headers.get("Location") == "/board"
 
