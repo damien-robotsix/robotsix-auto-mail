@@ -59,8 +59,11 @@ def _cmd_serve(
     """
     from http.server import HTTPServer
 
-    from robotsix_auto_mail.board_agent import start_board_agent, stop_board_agent
     from robotsix_auto_mail.server import make_board_handler
+    from robotsix_auto_mail.server.board_agent import (
+        start_board_agent,
+        stop_board_agent,
+    )
 
     default = accounts.get(default_account_id)
     handler_class = make_board_handler(
