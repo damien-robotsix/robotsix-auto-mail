@@ -119,6 +119,11 @@ class UnsubscribeDetection(pydantic.BaseModel):
     #: Confidence level — ``low`` / ``medium`` / ``high``.
     confidence: str = "medium"
 
+    @pydantic.field_validator("confidence")
+    @classmethod
+    def _validate_confidence(cls, v: str) -> str:
+        return validate_confidence(v)
+
 
 class SenderMemory(pydantic.BaseModel):
     """One sender's remembered human-triage preference.
