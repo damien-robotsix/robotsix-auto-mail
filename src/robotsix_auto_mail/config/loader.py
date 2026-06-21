@@ -76,17 +76,17 @@ def load_llm() -> str:
     return api_key
 
 
-def load_llm_provider() -> str:
-    """Resolve the LLM provider through the same cascade as :func:`load_llm`.
+def load_llm_provider_model() -> str:
+    """Resolve the LLM provider-model through the same cascade as :func:`load_llm`.
 
-    Order: ``LLM_PROVIDER`` environment variable wins; otherwise the
-    ``llm.provider`` field of the YAML config file at ``MAIL_CONFIG_PATH``
+    Order: ``LLM_PROVIDER_MODEL`` environment variable wins; otherwise the
+    ``llm.provider_model`` field of the YAML config file at ``MAIL_CONFIG_PATH``
     (default ``config/mail.local.yaml``) is consulted; falls back to
     ``"openrouter-deepseek"``.
     """
-    provider = os.environ.get("LLM_PROVIDER", "")
+    provider_model = os.environ.get("LLM_PROVIDER_MODEL", "")
 
-    if not provider:
+    if not provider_model:
         config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
         if config_path.exists():
             try:
@@ -95,9 +95,9 @@ def load_llm_provider() -> str:
             except ConfigurationError, FileNotFoundError, OSError:
                 file_cfg = None
             if file_cfg is not None:
-                provider = provider or file_cfg.llm_provider
+                provider_model = provider_model or file_cfg.llm_provider_model
 
-    return provider or "openrouter-deepseek"
+    return provider_model or "openrouter-deepseek"
 
 
 def resolve_llm_api_key(
@@ -129,22 +129,24 @@ def resolve_llm_api_key(
     return resolved
 
 
-def resolve_llm_provider(provider: str | None = None, default: str = "") -> str:
-    """Resolve LLM provider: arg → ``LLM_PROVIDER`` env → config file.
+def resolve_llm_provider_model(
+    provider_model: str | None = None, default: str = ""
+) -> str:
+    """Resolve LLM provider-model: arg → ``LLM_PROVIDER_MODEL`` env → config file.
 
     Args:
-        provider: An explicit provider name, usually from a CLI
+        provider_model: An explicit provider-model identifier, usually from a CLI
             parameter.
-        default: Fallback value when no provider is configured anywhere
+        default: Fallback value when no provider-model is configured anywhere
             (default ``""`` — the caller, not this function, decides
             the ultimate default).
 
     Returns:
-        The resolved provider name, or *default*.
+        The resolved provider-model identifier, or *default*.
     """
-    resolved = provider or os.environ.get("LLM_PROVIDER", "")
+    resolved = provider_model or os.environ.get("LLM_PROVIDER_MODEL", "")
     if not resolved:
-        resolved = load_llm_provider()
+        resolved = load_llm_provider_model()
     return resolved or default
 
 

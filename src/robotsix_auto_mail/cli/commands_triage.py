@@ -33,7 +33,7 @@ def _cmd_triage(args: argparse.Namespace) -> int:
         decisions = run_triage_agent(
             conn,
             api_key=args.api_key,
-            provider=config.llm_provider,
+            provider_model=config.llm_provider_model,
             user_email=config.username,
         )
     except TriageError as exc:

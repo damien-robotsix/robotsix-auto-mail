@@ -25,7 +25,7 @@ from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.config import (
     ConfigurationError,
     resolve_llm_api_key,
-    resolve_llm_provider,
+    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.imap import ImapClient, is_special_use
@@ -105,7 +105,7 @@ def determine_archive_structure(
     *,
     archive_root: str = ARCHIVE_ROOT,
     api_key: str | None = None,
-    provider: str | None = None,
+    provider_model: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> list[str]:
     """Ask an LLM to propose an archive folder layout under the root.
@@ -115,8 +115,9 @@ def determine_archive_structure(
             mailbox, used to inform the proposed layout.
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
-        provider: LLM backend name (e.g. ``openrouter-deepseek``).  Defaults
-            to ``LLM_PROVIDER`` env var, then ``llm.provider`` in the config
+        provider_model: LLM provider-model identifier
+            (e.g. ``openrouter-deepseek``).  Defaults
+            to ``LLM_PROVIDER_MODEL`` env var, then ``llm.provider_model`` in the config
             file, then ``"openrouter-deepseek"``.
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
 
@@ -133,8 +134,8 @@ def determine_archive_structure(
     except ConfigurationError as exc:
         raise ArchiveError(str(exc)) from exc
 
-    # -- resolve provider --
-    resolved_provider = resolve_llm_provider(provider)
+    # -- resolve provider-model --
+    resolved_provider_model = resolve_llm_provider_model(provider_model)
 
     # -- lazy import so the rest of the CLI works without the
     #    LLM provider extra --
@@ -143,7 +144,7 @@ def determine_archive_structure(
 
     # -- build agent --
     llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider, api_key=resolved_key
+        identifier=resolved_provider_model, api_key=resolved_key
     )
     agent_handle = llm_provider.build_agent(
         level=1 if tier == Tier.CHEAP else 2,
@@ -182,7 +183,7 @@ def setup_archive(
     archive_root: str = ARCHIVE_ROOT,
     archive_namespace: str = "",
     api_key: str | None = None,
-    provider: str | None = None,
+    provider_model: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> list[str]:
     """Ensure the managed archive folder structure exists and is remembered.
@@ -241,7 +242,7 @@ def setup_archive(
             informational_folders,
             archive_root=archive_root,
             api_key=resolved_key,
-            provider=provider,
+            provider_model=provider_model,
             tier=tier,
         )
     else:

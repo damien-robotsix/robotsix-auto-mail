@@ -304,7 +304,10 @@ def test_detect_llm_api_key_env(
 
     assert rc == 0
     mock_dp.assert_called_once_with(
-        "user@x.com", api_key="sk-test", provider="openrouter-deepseek", mx_hosts=[]
+        "user@x.com",
+        api_key="sk-test",
+        provider_model="openrouter-deepseek",
+        mx_hosts=[],
     )
 
 
@@ -820,7 +823,7 @@ def test_detect_settings_autoconfig_hit(capsys: pytest.CaptureFixture[str]) -> N
     provider, _mx_hosts = _detect_settings(
         email="user@example.com",
         api_key=None,
-        llm_provider=None,
+        llm_provider_model=None,
         autoconfig_lookup=_mock_autoconfig,
         mx_lookup=_mock_mx,
         provider_from_mx=_mock_provider_from_mx,
@@ -839,7 +842,7 @@ def test_detect_settings_mx_hit(capsys: pytest.CaptureFixture[str]) -> None:
     provider, mx_hosts = _detect_settings(
         email="user@example.com",
         api_key=None,
-        llm_provider=None,
+        llm_provider_model=None,
         autoconfig_lookup=_mock_autoconfig_none,
         mx_lookup=_mock_mx,
         provider_from_mx=_mock_provider_from_mx,
@@ -861,7 +864,7 @@ def test_detect_settings_mx_empty_no_provider(
     provider, _mx_hosts = _detect_settings(
         email="user@example.com",
         api_key="sk-test",  # pragma: allowlist secret
-        llm_provider=None,
+        llm_provider_model=None,
         autoconfig_lookup=_mock_autoconfig_none,
         mx_lookup=_mock_mx_empty,
         provider_from_mx=_mock_provider_from_mx,
@@ -886,7 +889,7 @@ def test_detect_settings_llm_hit(capsys: pytest.CaptureFixture[str]) -> None:
     provider, _mx_hosts = _detect_settings(
         email="user@example.com",
         api_key="sk-test",  # pragma: allowlist secret
-        llm_provider=None,
+        llm_provider_model=None,
         autoconfig_lookup=_mock_autoconfig_none,
         mx_lookup=_mx_lookup,
         provider_from_mx=_provider_from_mx,
@@ -905,7 +908,7 @@ def test_detect_settings_all_miss(capsys: pytest.CaptureFixture[str]) -> None:
     provider, _mx_hosts = _detect_settings(
         email="user@example.com",
         api_key="sk-test",  # pragma: allowlist secret
-        llm_provider=None,
+        llm_provider_model=None,
         autoconfig_lookup=_mock_autoconfig_none,
         mx_lookup=_mock_mx_empty,
         provider_from_mx=_mock_provider_from_mx,

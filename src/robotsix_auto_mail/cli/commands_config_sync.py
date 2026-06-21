@@ -38,7 +38,7 @@ def _cmd_config_sync(args: argparse.Namespace) -> int:
 
     try:
         result = run_config_sync_agent(
-            api_key=args.api_key, provider=args.provider, conn=conn
+            api_key=args.api_key, provider_model=args.provider_model, conn=conn
         )
     except ConfigSyncError as exc:
         sys.stderr.write(f"Error: {exc}\n")

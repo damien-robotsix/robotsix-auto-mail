@@ -164,7 +164,7 @@ def test_refine_with_llm_success(capsys: pytest.CaptureFixture[str]) -> None:
         result,
         email="user@example.com",
         api_key="sk-test",  # pragma: allowlist secret
-        llm_provider=None,
+        llm_provider_model=None,
         mx_hosts=["mx1.example.com"],
         detect_provider=_detect,
         _detection_error=DetectionError,
@@ -200,7 +200,7 @@ def test_refine_with_llm_error(capsys: pytest.CaptureFixture[str]) -> None:
         result,
         email="user@example.com",
         api_key="sk-test",  # pragma: allowlist secret
-        llm_provider=None,
+        llm_provider_model=None,
         mx_hosts=[],
         detect_provider=_detect_error,
         _detection_error=DetectionError,
@@ -232,7 +232,7 @@ def test_refine_with_llm_returns_none(capsys: pytest.CaptureFixture[str]) -> Non
         result,
         email="user@example.com",
         api_key="sk-test",  # pragma: allowlist secret
-        llm_provider=None,
+        llm_provider_model=None,
         mx_hosts=[],
         detect_provider=_detect_none,
         _detection_error=DetectionError,
@@ -320,7 +320,7 @@ def test_verify_and_refine_success_first_try(
             provider,
             email="user@example.com",
             api_key=None,
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password="pw",  # pragma: allowlist secret
@@ -370,7 +370,7 @@ def test_verify_and_refine_auth_failure_with_retry_budget(
             provider,
             email="user@example.com",
             api_key=None,
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password="wrong-pw",  # pragma: allowlist secret
@@ -410,7 +410,7 @@ def test_verify_and_refine_auth_failure_no_retry_with_args_password(
             provider,
             email="user@example.com",
             api_key=None,
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password="cli-pass",  # pragma: allowlist secret
@@ -465,7 +465,7 @@ def test_verify_and_refine_host_failure_llm_refine(
             provider,
             email="user@example.com",
             api_key="sk-test",  # pragma: allowlist secret
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=["mx.example.com"],
             output_path=output,
             password="pw",  # pragma: allowlist secret
@@ -518,7 +518,7 @@ def test_verify_and_refine_host_failure_llm_then_manual(
             provider,
             email="user@example.com",
             api_key="sk-test",  # pragma: allowlist secret
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password="pw",  # pragma: allowlist secret
@@ -563,7 +563,7 @@ def test_verify_and_refine_microsoft_no_password_retry(
             provider,
             email="user@contoso.com",
             api_key=None,
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password=None,
@@ -602,7 +602,7 @@ def test_verify_and_refine_microsoft_success(
             provider,
             email="user@contoso.com",
             api_key=None,
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password=None,
@@ -632,7 +632,7 @@ def test_verify_and_refine_no_password_no_verify(
         provider,
         email="user@example.com",
         api_key=None,
-        llm_provider=None,
+        llm_provider_model=None,
         mx_hosts=[],
         output_path=output,
         password=None,
@@ -683,7 +683,7 @@ def test_verify_and_refine_budget_exhausted(
             provider,
             email="user@example.com",
             api_key="sk-test",  # pragma: allowlist secret
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password="pw",  # pragma: allowlist secret
@@ -727,7 +727,7 @@ def test_verify_and_refine_multi_account_append(
             provider,
             email="new@example.com",
             api_key=None,
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password="pw",  # pragma: allowlist secret
@@ -840,7 +840,7 @@ def test_verify_and_refine_microsoft_no_verify(
         provider,
         email="user@contoso.com",
         api_key=None,
-        llm_provider=None,
+        llm_provider_model=None,
         mx_hosts=[],
         output_path=output,
         password=None,
@@ -875,7 +875,7 @@ def test_verify_and_refine_microsoft_device_code_config_error(
             provider,
             email="user@contoso.com",
             api_key=None,
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password=None,
@@ -911,7 +911,7 @@ def test_verify_and_refine_microsoft_device_code_exception(
             provider,
             email="user@contoso.com",
             api_key=None,
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password=None,
@@ -941,7 +941,7 @@ def test_verify_and_refine_no_password_early_return(
         provider,
         email="user@example.com",
         api_key=None,
-        llm_provider=None,
+        llm_provider_model=None,
         mx_hosts=[],
         output_path=output,
         password=None,
@@ -985,7 +985,7 @@ def test_verify_and_refine_auth_retry_returns_none(
             provider,
             email="user@example.com",
             api_key=None,
-            llm_provider=None,
+            llm_provider_model=None,
             mx_hosts=[],
             output_path=output,
             password="wrong-pw",  # pragma: allowlist secret
@@ -1014,7 +1014,7 @@ def test_verify_and_refine_password_with_no_verify(
         provider,
         email="user@example.com",
         api_key=None,
-        llm_provider=None,
+        llm_provider_model=None,
         mx_hosts=[],
         output_path=output,
         password="pw",  # pragma: allowlist secret

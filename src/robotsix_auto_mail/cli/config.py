@@ -264,7 +264,7 @@ def _get_password(args: argparse.Namespace) -> str | None:
 def _detect_settings(
     email: str,
     api_key: str | None,
-    llm_provider: str | None,
+    llm_provider_model: str | None,
     autoconfig_lookup: Callable[[str], "MailProvider | None"],
     mx_lookup: Callable[[str], list[str]],
     provider_from_mx: Callable[[list[str]], "MailProvider | None"],
@@ -311,7 +311,7 @@ def _detect_settings(
                 provider = detect_provider(
                     email,
                     api_key=api_key,
-                    provider=llm_provider,
+                    provider_model=llm_provider_model,
                     mx_hosts=mx_hosts,
                 )
             except _detection_error as exc:
@@ -359,7 +359,7 @@ def _refine_with_llm(
     *,
     email: str,
     api_key: str | None,
-    llm_provider: str | None,
+    llm_provider_model: str | None,
     mx_hosts: list[str],
     detect_provider: Callable[..., "MailProvider"],
     _detection_error: type[Exception],
@@ -370,7 +370,7 @@ def _refine_with_llm(
         refined = detect_provider(
             email,
             api_key=api_key,
-            provider=llm_provider,
+            provider_model=llm_provider_model,
             feedback=_verify_feedback(config, result),
             mx_hosts=mx_hosts,
         )
@@ -409,7 +409,7 @@ def _verify_and_refine(
     *,
     email: str,
     api_key: str | None,
-    llm_provider: str | None,
+    llm_provider_model: str | None,
     mx_hosts: list[str],
     output_path: Path,
     password: str | None,
@@ -543,7 +543,7 @@ def _verify_and_refine(
                 result,
                 email=email,
                 api_key=api_key,
-                llm_provider=llm_provider,
+                llm_provider_model=llm_provider_model,
                 mx_hosts=mx_hosts,
                 detect_provider=detect_provider,
                 _detection_error=_detection_error,

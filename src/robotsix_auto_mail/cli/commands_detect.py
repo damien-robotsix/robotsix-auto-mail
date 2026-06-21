@@ -43,17 +43,17 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         return 1
 
-    from robotsix_auto_mail.config import load_llm, load_llm_provider
+    from robotsix_auto_mail.config import load_llm, load_llm_provider_model
 
     account_id = args.id or _account_id_from_email(args.email)
     label = args.email
 
     api_key = load_llm()
-    llm_provider_str = load_llm_provider()
+    llm_provider_model_str = load_llm_provider_model()
     provider, mx_hosts = _detect_settings(
         args.email,
         api_key,
-        llm_provider_str,
+        llm_provider_model_str,
         autoconfig_lookup,
         mx_lookup,
         provider_from_mx,
@@ -114,7 +114,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         provider,
         email=args.email,
         api_key=api_key,
-        llm_provider=llm_provider_str,
+        llm_provider_model=llm_provider_model_str,
         mx_hosts=mx_hosts,
         output_path=output_path,
         password=password,

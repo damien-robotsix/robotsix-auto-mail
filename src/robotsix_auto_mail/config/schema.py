@@ -182,9 +182,9 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         global_field=True,
     ),
     _FieldSpec(
-        "llm_provider",
-        "LLM_PROVIDER",
-        "llm.provider",
+        "llm_provider_model",
+        "LLM_PROVIDER_MODEL",
+        "llm.provider_model",
         "str",
         "openrouter-deepseek",
         False,

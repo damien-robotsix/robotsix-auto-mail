@@ -17,7 +17,7 @@ from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.config import (
     ConfigurationError,
     resolve_llm_api_key,
-    resolve_llm_provider,
+    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -224,7 +224,7 @@ def _detect_unsubscribe_for_sender(
         return None
 
     # Resolve provider.
-    resolved_provider = resolve_llm_provider()
+    resolved_provider_model = resolve_llm_provider_model()
 
     from pydantic_ai import PromptedOutput
     from robotsix_llmio.core import get_provider_for_identifier
@@ -252,7 +252,7 @@ def _detect_unsubscribe_for_sender(
     )
 
     llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider, api_key=resolved_key
+        identifier=resolved_provider_model, api_key=resolved_key
     )
     agent_handle = llm_provider.build_agent(
         level=1,
@@ -464,7 +464,7 @@ def _fill_missing_archive_hints(
     remaining: list[MailRecord],
     by_index: dict[int, TriageItem],
     api_key: str,
-    provider: str | None,
+    provider_model: str | None,
 ) -> None:
     """Propose a subfolder for TO_ARCHIVE records the classifier left blank.
 
@@ -486,14 +486,14 @@ def _fill_missing_archive_hints(
         if record.message_id in hinted:
             continue
         # Persists the hint itself; swallows its own errors.
-        propose_archive_subfolder_llm(conn, record, api_key, provider)
+        propose_archive_subfolder_llm(conn, record, api_key, provider_model)
 
 
 def run_triage_agent(
     conn: sqlite3.Connection,
     *,
     api_key: str | None = None,
-    provider: str | None = None,
+    provider_model: str | None = None,
     tier: Tier = Tier.CHEAP,
     only_undecided: bool = False,
     user_email: str | None = None,
@@ -513,10 +513,11 @@ def run_triage_agent(
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``LLM_API_KEY`` env var →
             ``config.llm_api_key`` (via :func:`load_llm`).
-        provider: LLM backend name (e.g. ``openrouter-deepseek``).
-            Resolves with the precedence ``provider`` argument →
-            ``LLM_PROVIDER`` env var → ``config.llm_provider`` (via
-            :func:`load_llm_provider`).
+        provider_model: LLM provider-model identifier
+            (e.g. ``openrouter-deepseek``).
+            Resolves with the precedence ``provider_model`` argument →
+            ``LLM_PROVIDER_MODEL`` env var → ``config.llm_provider_model`` (via
+            :func:`load_llm_provider_model`).
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
         only_undecided: When ``True``, inbox records that already have a
             ``triage_decisions`` row (per :func:`get_triage_decision`) are
@@ -552,8 +553,9 @@ def run_triage_agent(
     except ConfigurationError as exc:
         raise TriageError(str(exc)) from exc
 
-    # -- resolve provider (arg -> LLM_PROVIDER env -> config.llm_provider) --
-    resolved_provider = resolve_llm_provider(provider)
+    # -- resolve provider-model (arg → LLM_PROVIDER_MODEL env →
+    #    config.llm_provider_model) --
+    resolved_provider_model = resolve_llm_provider_model(provider_model)
 
     # -- read archive structure + per-sender/domain history for the prompt --
     archive_folders, archive_folder_history, archive_folder_usage = (
@@ -566,7 +568,7 @@ def run_triage_agent(
 
     # -- build agent --
     llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider, api_key=resolved_key
+        identifier=resolved_provider_model, api_key=resolved_key
     )
     agent_handle = llm_provider.build_agent(
         level=1 if tier == Tier.CHEAP else 2,
@@ -613,7 +615,7 @@ def run_triage_agent(
     # Fill subfolders the classifier omitted, so the board renders each
     # TO_ARCHIVE destination from a cached hint (no LLM call per render).
     _fill_missing_archive_hints(
-        conn, remaining, by_index, resolved_key, resolved_provider
+        conn, remaining, by_index, resolved_key, resolved_provider_model
     )
 
     # -- check TO_DELETE senders for unsubscribe options ------------------

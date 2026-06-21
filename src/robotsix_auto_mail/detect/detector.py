@@ -19,7 +19,7 @@ from robotsix_auto_mail.config import (
     ConfigurationError,
     MailConfig,
     resolve_llm_api_key,
-    resolve_llm_provider,
+    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.detect.models import (
     DetectedProvider,
@@ -376,7 +376,7 @@ def detect_provider(
     *,
     tier: Tier = Tier.CHEAP,
     api_key: str | None = None,
-    provider: str | None = None,
+    provider_model: str | None = None,
     feedback: str | None = None,
     mx_hosts: list[str] | None = None,
 ) -> MailProvider:
@@ -386,11 +386,11 @@ def detect_provider(
         email_address: The email address to detect provider settings for.
         tier: LLM tier to use.  The concrete model for each tier is
             resolved by the configured provider backend (see
-            :func:`robotsix_llmio.core.get_provider`).
+            :func:`robotsix_llmio.core.get_provider_for_identifier`).
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
         provider: LLM backend name (e.g. ``openrouter-deepseek``).  Defaults
-            to ``LLM_PROVIDER`` env var, then ``load_llm_provider()``.
+            to ``LLM_PROVIDER_MODEL`` env var, then ``load_llm_provider_model()``.
         feedback: Optional description of a previous failed attempt (which
             host was tried and how it failed).  When provided, it is added
             to the prompt so the model can propose a different, non-obvious
@@ -412,7 +412,7 @@ def detect_provider(
     except ConfigurationError as e:
         raise DetectionError(str(e)) from e
 
-    resolved_provider = resolve_llm_provider(provider)
+    resolved_provider_model = resolve_llm_provider_model(provider_model)
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
@@ -421,7 +421,9 @@ def detect_provider(
     # -- lazy lookup so tests can mock the package-level name --
     from robotsix_auto_mail.detect import get_provider_for_identifier as _get_provider
 
-    llm_provider = _get_provider(identifier=resolved_provider, api_key=resolved_key)
+    llm_provider = _get_provider(
+        identifier=resolved_provider_model, api_key=resolved_key
+    )
     agent_handle = llm_provider.build_agent(
         level=1 if tier == Tier.CHEAP else 2,
         system_prompt=_DETECT_SYSTEM_PROMPT,

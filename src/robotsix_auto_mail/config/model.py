@@ -102,7 +102,7 @@ class MailConfig:
     # LLM provider settings — optional; only needed for the `detect`
     # subcommand and future LLM-assisted mail processing.
     llm_api_key: str = ""
-    llm_provider: str = "openrouter-deepseek"
+    llm_provider_model: str = "openrouter-deepseek"
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
     ingest_interval_minutes: int = DEFAULT_INGEST_INTERVAL_MINUTES
@@ -608,7 +608,7 @@ class MailAccountsConfig:
         # -- top-level llm / langfuse sections (application-wide) -----------
 
         global_llm_api_key: str = ""
-        global_llm_provider: str = ""
+        global_llm_provider_model: str = ""
         global_langfuse_public_key: str = ""
         global_langfuse_secret_key: str = ""
         global_langfuse_base_url: str = ""
@@ -625,7 +625,7 @@ class MailAccountsConfig:
             llm_section = _get_table(data, "llm")
             if llm_section is not None:
                 global_llm_api_key = _get_str(llm_section, "api_key", "")
-                global_llm_provider = _get_str(llm_section, "provider", "")
+                global_llm_provider_model = _get_str(llm_section, "provider_model", "")
 
             langfuse_section = _get_table(data, "langfuse")
             if langfuse_section is not None:
@@ -690,7 +690,7 @@ class MailAccountsConfig:
             cfg = dataclasses.replace(
                 cfg,
                 llm_api_key=global_llm_api_key or cfg.llm_api_key,
-                llm_provider=global_llm_provider or cfg.llm_provider,
+                llm_provider_model=global_llm_provider_model or cfg.llm_provider_model,
                 langfuse_public_key=global_langfuse_public_key
                 or cfg.langfuse_public_key,
                 langfuse_secret_key=global_langfuse_secret_key
@@ -728,7 +728,7 @@ class MailAccountsConfig:
           present.  For each contiguous index ``n`` starting at 0, one
           account is built from the namespaced vars.  A field whose
           single-account env var is ``MAIL_<X>`` becomes
-          ``MAIL_ACCOUNTS_<n>_<X>``.  ``LLM_API_KEY``, ``LLM_PROVIDER``,
+          ``MAIL_ACCOUNTS_<n>_<X>``.  ``LLM_API_KEY``, ``LLM_PROVIDER_MODEL``,
           and ``LANGFUSE_*`` are application-wide (global) and read from
           the bare env vars, not namespaced.  Two extra
           vars: ``MAIL_ACCOUNTS_<n>_ID`` (required) and
@@ -801,7 +801,7 @@ def _build_account_from_env(index: int) -> MailAccount:
     cfg = dataclasses.replace(
         cfg,
         llm_api_key=os.environ.get("LLM_API_KEY", cfg.llm_api_key),
-        llm_provider=os.environ.get("LLM_PROVIDER", cfg.llm_provider),
+        llm_provider_model=os.environ.get("LLM_PROVIDER_MODEL", cfg.llm_provider_model),
         langfuse_public_key=os.environ.get(
             "LANGFUSE_PUBLIC_KEY", cfg.langfuse_public_key
         ),

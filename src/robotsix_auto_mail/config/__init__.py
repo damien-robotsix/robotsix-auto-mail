@@ -15,7 +15,7 @@ The implementation is split across internal submodules:
   dict-extraction helpers.
 - ``model`` — the ``MailConfig`` / ``MailAccount`` / ``MailAccountsConfig``
   dataclasses, their loaders, and the per-field environment build helpers.
-- ``loader`` — the public ``load`` / ``load_llm`` / ``load_llm_provider`` /
+- ``loader`` — the public ``load`` / ``load_llm`` / ``load_llm_provider_model`` /
   ``load_accounts`` cascade entry points.
 - ``render`` — the multi-account YAML rendering helpers.
 
@@ -38,7 +38,7 @@ from robotsix_auto_mail.config.loader import (
     load_llm as load_llm,
 )
 from robotsix_auto_mail.config.loader import (
-    load_llm_provider as load_llm_provider,
+    load_llm_provider_model as load_llm_provider_model,
 )
 from robotsix_auto_mail.config.loader import (
     logger as logger,
@@ -47,7 +47,7 @@ from robotsix_auto_mail.config.loader import (
     resolve_llm_api_key as resolve_llm_api_key,
 )
 from robotsix_auto_mail.config.loader import (
-    resolve_llm_provider as resolve_llm_provider,
+    resolve_llm_provider_model as resolve_llm_provider_model,
 )
 from robotsix_auto_mail.config.model import (
     _ACCOUNT_ID_RE as _ACCOUNT_ID_RE,
@@ -182,9 +182,9 @@ __all__ = [
     "load",
     "load_accounts",
     "load_llm",
-    "load_llm_provider",
+    "load_llm_provider_model",
     "logger",
     "render_accounts_yaml",
     "resolve_llm_api_key",
-    "resolve_llm_provider",
+    "resolve_llm_provider_model",
 ]

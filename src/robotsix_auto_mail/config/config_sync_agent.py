@@ -31,7 +31,7 @@ from robotsix_auto_mail.config import (
     _REQUIRED,
     ConfigurationError,
     resolve_llm_api_key,
-    resolve_llm_provider,
+    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.config.pydantic_utils import validate_confidence
 from robotsix_auto_mail.db import get_watermark, set_watermark
@@ -337,7 +337,7 @@ def run_config_sync_agent(
     *,
     repo_root: Path | None = None,
     api_key: str | None = None,
-    provider: str | None = None,
+    provider_model: str | None = None,
     tier: Tier = Tier.CHEAP,
     conn: sqlite3.Connection | None = None,
 ) -> ConfigSyncResult:
@@ -351,8 +351,8 @@ def run_config_sync_agent(
             ``config.llm_api_key`` (via the config loader).
         provider: LLM backend name (e.g. ``openrouter-deepseek``).
             Resolves with the precedence ``provider`` argument →
-            ``LLM_PROVIDER`` env var → ``config.llm_provider`` (via
-            :func:`load_llm_provider`).
+            ``LLM_PROVIDER_MODEL`` env var → ``config.llm_provider_model`` (via
+            :func:`load_llm_provider_model`).
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
         conn: Optional open SQLite connection.  When provided, the result
             is passed through the dedup memory ledger
@@ -378,8 +378,9 @@ def run_config_sync_agent(
     except ConfigurationError as e:
         raise ConfigSyncError(str(e)) from e
 
-    # -- resolve provider (arg -> LLM_PROVIDER env -> config.llm_provider) --
-    resolved_provider = resolve_llm_provider(provider)
+    # -- resolve provider-model (arg → LLM_PROVIDER_MODEL env →
+    #    config.llm_provider_model) --
+    resolved_provider_model = resolve_llm_provider_model(provider_model)
 
     # -- gather the four surfaces + the ground-truth mappings --
     surfaces = _read_config_surfaces(resolved_root)
@@ -390,7 +391,7 @@ def run_config_sync_agent(
 
     # -- build agent --
     llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider, api_key=resolved_key
+        identifier=resolved_provider_model, api_key=resolved_key
     )
     agent_handle = llm_provider.build_agent(
         level=1 if tier == Tier.CHEAP else 2,

@@ -130,7 +130,7 @@ def render_accounts_yaml(
     representative = accounts[0].config
     if (
         representative.llm_api_key
-        or representative.llm_provider != "openrouter-deepseek"
+        or representative.llm_provider_model != "openrouter-deepseek"
     ):
         lines.append("llm:")
         if representative.llm_api_key:
@@ -138,8 +138,10 @@ def render_accounts_yaml(
             # the file is stored with restrictive permissions (0600).
             # lgtm[py/clear-text-storage-sensitive-data]
             lines.append(f"  api_key: {_yaml_scalar(representative.llm_api_key)}")
-        if representative.llm_provider != "openrouter-deepseek":
-            lines.append(f"  provider: {_yaml_scalar(representative.llm_provider)}")
+        if representative.llm_provider_model != "openrouter-deepseek":
+            lines.append(
+                f"  provider_model: {_yaml_scalar(representative.llm_provider_model)}"
+            )
         lines.append("")
     if (
         representative.langfuse_public_key

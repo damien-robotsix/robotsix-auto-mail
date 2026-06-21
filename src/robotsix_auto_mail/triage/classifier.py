@@ -20,7 +20,7 @@ from robotsix_llmio.core import run_agent
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.config import (
     resolve_llm_api_key,
-    resolve_llm_provider,
+    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS,
@@ -285,7 +285,7 @@ def propose_archive_subfolder_llm(
     conn: sqlite3.Connection,
     record: MailRecord,
     api_key: str,
-    provider: str | None = None,
+    provider_model: str | None = None,
 ) -> None:
     """Run a cheap LLM to propose an archive subfolder for *record*
     and persist the hint.  Best-effort — failures are silently
@@ -297,7 +297,7 @@ def propose_archive_subfolder_llm(
         return  # No API key → silently return
 
     # -- resolve provider --
-    resolved_provider = resolve_llm_provider(provider)
+    resolved_provider_model = resolve_llm_provider_model(provider_model)
 
     # -- load existing archive folders from watermark --
     archive_raw = get_watermark(conn, "archive_structure")
@@ -379,7 +379,7 @@ def propose_archive_subfolder_llm(
 
     try:
         llm_provider = get_provider_for_identifier(
-            identifier=resolved_provider, api_key=resolved_key
+            identifier=resolved_provider_model, api_key=resolved_key
         )
         agent_handle = llm_provider.build_agent(
             level=1,
