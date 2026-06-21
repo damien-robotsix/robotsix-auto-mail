@@ -378,7 +378,8 @@ def run_config_sync_agent(
     except ConfigurationError as e:
         raise ConfigSyncError(str(e)) from e
 
-    # -- resolve provider-model (arg -> LLM_PROVIDER_MODEL env -> config.llm_provider_model) --
+    # -- resolve provider-model (arg → LLM_PROVIDER_MODEL env →
+    #    config.llm_provider_model) --
     resolved_provider_model = resolve_llm_provider_model(provider_model)
 
     # -- gather the four surfaces + the ground-truth mappings --

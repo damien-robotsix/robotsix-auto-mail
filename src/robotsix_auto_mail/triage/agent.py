@@ -553,7 +553,8 @@ def run_triage_agent(
     except ConfigurationError as exc:
         raise TriageError(str(exc)) from exc
 
-    # -- resolve provider-model (arg -> LLM_PROVIDER_MODEL env -> config.llm_provider_model) --
+    # -- resolve provider-model (arg → LLM_PROVIDER_MODEL env →
+    #    config.llm_provider_model) --
     resolved_provider_model = resolve_llm_provider_model(provider_model)
 
     # -- read archive structure + per-sender/domain history for the prompt --

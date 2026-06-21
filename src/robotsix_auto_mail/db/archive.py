@@ -115,7 +115,8 @@ def determine_archive_structure(
             mailbox, used to inform the proposed layout.
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
-        provider_model: LLM provider-model identifier (e.g. ``openrouter-deepseek``).  Defaults
+        provider_model: LLM provider-model identifier
+            (e.g. ``openrouter-deepseek``).  Defaults
             to ``LLM_PROVIDER_MODEL`` env var, then ``llm.provider_model`` in the config
             file, then ``"openrouter-deepseek"``.
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
