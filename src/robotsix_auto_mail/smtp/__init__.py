@@ -16,8 +16,8 @@ from email.utils import formatdate
 from typing import Any
 
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response
 from robotsix_auto_mail.oauth2 import build_token_provider
-from robotsix_auto_mail.protocol import _ProtocolClient, build_xoauth2_response
 
 # Store a reference to SMTPException *before* any mocking can replace
 # smtplib.SMTP and turn ``SMTPException`` into a MagicMock attribute.

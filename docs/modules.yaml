@@ -197,23 +197,17 @@ modules:
       - tests/calendar/test_calendar.py
       - tests/calendar/test_transport.py
 
-  - id: protocol
-    description: >-
-      Shared protocol-client base class: common TLS-mode dispatch
-      and config fields for the IMAP and SMTP clients.
-    paths:
-      - src/robotsix_auto_mail/protocol/__init__.py
-      - tests/protocol/test_base_client.py
-
   - id: imap
     description: >-
       Low-level IMAP client (stdlib imaplib wrapper).
     paths:
       - src/robotsix_auto_mail/imap/__init__.py
+      - src/robotsix_auto_mail/imap/_protocol.py
       - src/robotsix_auto_mail/imap/client.py
       - src/robotsix_auto_mail/imap/errors.py
       - src/robotsix_auto_mail/imap/mailbox.py
       - src/robotsix_auto_mail/imap/utils.py
+      - tests/imap/test_protocol.py
       - tests/imap/conftest.py
       - tests/imap/test_imap.py
       - tests/imap/test_imap_integration.py

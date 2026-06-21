@@ -17,7 +17,7 @@ import ssl
 from typing import Any, Iterator
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.protocol import _ProtocolClient, build_xoauth2_response
+from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response
 
 from .errors import (
     ImapAuthError,

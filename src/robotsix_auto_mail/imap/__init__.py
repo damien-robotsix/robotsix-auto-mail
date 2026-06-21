@@ -21,6 +21,8 @@ from __future__ import annotations
 # this package attribute (``robotsix_auto_mail.imap.build_token_provider``).
 from robotsix_auto_mail.oauth2 import build_token_provider as build_token_provider
 
+from ._protocol import _ProtocolClient as _ProtocolClient
+from ._protocol import build_xoauth2_response as build_xoauth2_response
 from .client import _BATCH_UID_CHUNK as _BATCH_UID_CHUNK
 from .client import ImapClient as ImapClient
 from .errors import ImapAuthError as ImapAuthError
