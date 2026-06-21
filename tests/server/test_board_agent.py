@@ -1,4 +1,4 @@
-"""Unit tests for ``robotsix_auto_mail.board_agent`` — the
+"""Unit tests for ``robotsix_auto_mail.server.board_agent`` — the
 board-agent lifecycle (start/stop background daemon thread).
 
 Covers:
@@ -19,8 +19,8 @@ import threading
 from typing import cast
 from unittest import mock
 
-from robotsix_auto_mail.board_agent import start_board_agent, stop_board_agent
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.server.board_agent import start_board_agent, stop_board_agent
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -159,8 +159,8 @@ def test_serve_board_gate_respects_board_agent_enabled() -> None:
     from robotsix_auto_mail.cli.commands_serve import _cmd_serve
 
     with (
-        mock.patch("robotsix_auto_mail.board_agent.start_board_agent") as mock_start,
-        mock.patch("robotsix_auto_mail.board_agent.stop_board_agent") as mock_stop,
+        mock.patch("robotsix_auto_mail.server.board_agent.start_board_agent") as mock_start,
+        mock.patch("robotsix_auto_mail.server.board_agent.stop_board_agent") as mock_stop,
         mock.patch("robotsix_auto_mail.server.make_board_handler") as mock_make_handler,
         mock.patch("robotsix_auto_mail.cli.commands_serve._clear_stale_triage_state"),
         mock.patch("robotsix_auto_mail.cli.commands_serve._reconcile_loop"),
