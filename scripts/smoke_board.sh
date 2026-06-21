@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=all -- pre-existing script; newly checked by added shellcheck hook
 #
 # Runtime-verification smoke test for the robotsix-auto-mail board server.
 #
@@ -22,6 +21,9 @@ TMP_DIR="$(mktemp -d)"
 LOG_FILE="${TMP_DIR}/server.log"
 SERVER_PID=""
 
+# Invoked indirectly via `trap cleanup EXIT`, so shellcheck's reachability
+# analysis cannot see the call site (SC2317 on the whole body).
+# shellcheck disable=SC2317
 cleanup() {
     if [[ -n "${SERVER_PID}" ]] && kill -0 "${SERVER_PID}" 2>/dev/null; then
         kill "${SERVER_PID}" 2>/dev/null || true

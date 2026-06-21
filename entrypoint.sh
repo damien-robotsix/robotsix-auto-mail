@@ -1,5 +1,4 @@
 #!/bin/sh
-# shellcheck disable=all -- pre-existing script; newly checked by added shellcheck hook
 set -eu
 
 # ---------------------------------------------------------------------------
