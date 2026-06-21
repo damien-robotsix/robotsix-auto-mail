@@ -14,7 +14,7 @@ import time
 
 import structlog
 
-from robotsix_auto_mail.archive import setup_archive
+from robotsix_auto_mail.db.archive import setup_archive
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
     get_watermark,

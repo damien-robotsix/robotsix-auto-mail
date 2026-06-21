@@ -10,7 +10,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
-from robotsix_auto_mail.archive import (
+from robotsix_auto_mail.db.archive import (
     _ARCHIVE_WATERMARK_KEY,
     ARCHIVE_ROOT,
     ArchiveError,
@@ -102,7 +102,7 @@ def test_provider_not_bound_at_module_level() -> None:
     The provider is resolved lazily inside ``determine_archive_structure``,
     so it must not be a module-level attribute of ``archive``.
     """
-    import robotsix_auto_mail.archive as archive_mod
+    import robotsix_auto_mail.db.archive as archive_mod
 
     assert not hasattr(archive_mod, "get_provider_for_identifier")
 

@@ -154,12 +154,15 @@ modules:
 
   - id: db
     description: >-
-      SQLite datastore: schema, MailRecord, insert, watermark.
+      SQLite datastore: schema, MailRecord, insert, watermark, and
+      self-managed archive folder structure.
     paths:
       - src/robotsix_auto_mail/db/__init__.py
       - src/robotsix_auto_mail/db/_migrate.py
+      - src/robotsix_auto_mail/db/archive.py
       - src/robotsix_auto_mail/db/models.py
       - src/robotsix_auto_mail/db/queries.py
+      - tests/db/test_archive.py
       - tests/db/test_db.py
       - tests/db/test_migrate.py
 
@@ -172,15 +175,6 @@ modules:
       - src/robotsix_auto_mail/detect/detector.py
       - src/robotsix_auto_mail/detect/models.py
       - tests/detect/test_detect.py
-
-  - id: archive
-    description: >-
-      Self-managed archive folder structure: first-run LLM layout
-      proposal rooted at robotsix-mail-archive, remembered via the
-      watermark table.
-    paths:
-      - src/robotsix_auto_mail/archive/__init__.py
-      - tests/archive/test_archive.py
 
   - id: calendar
     description: >-
