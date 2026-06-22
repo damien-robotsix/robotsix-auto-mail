@@ -4,7 +4,7 @@ on:
   push:
     branches: ["**"]
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -70,6 +70,17 @@ jobs:
 
       - name: Check module registration completeness
         run: uv run --frozen robotsix-modules check-registration docs/modules.yaml --root .
+
+      - name: Enforce changelog updates
+        if: github.event_name == 'pull_request'
+        uses: dangoslen/changelog-enforcer@v3
+        with:
+          changeLogPath: CHANGELOG.md
+          skipLabel: Skip-Changelog
+          expectedLatestVersion: unreleased
+          missingUpdateErrorMessage: |
+            Please add a changelog entry under `## 0.0.0 (unreleased)` in CHANGELOG.md.
+            If this PR does not need a changelog entry, add the `Skip-Changelog` label.
 
       - name: Dead code detection (vulture)
         run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
