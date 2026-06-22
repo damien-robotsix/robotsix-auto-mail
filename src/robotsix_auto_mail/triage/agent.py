@@ -11,9 +11,10 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from robotsix_llmio.core import Tier, run_agent
+from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
+from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     ConfigurationError,
     resolve_llm_api_key,
@@ -226,9 +227,6 @@ def _detect_unsubscribe_for_sender(
     # Resolve provider.
     resolved_provider_model = resolve_llm_provider_model()
 
-    from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider_for_identifier
-
     system_prompt = (
         "You are an unsubscribe-detection assistant. "
         "Analyze the email body and determine if there is an unsubscribe "
@@ -251,27 +249,20 @@ def _detect_unsubscribe_for_sender(
         f"Body:\n{recent.body_plain}"
     )
 
-    llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider_model, api_key=resolved_key
-    )
-    agent_handle = llm_provider.build_agent(
-        level=1,
-        system_prompt=system_prompt,
-        output_type=PromptedOutput(UnsubscribeDetection),
-    )
-
     try:
-        result = run_agent(
-            agent_handle,
-            lambda: agent_handle.run_sync(user_message),
+        return _run_llm_agent(
+            api_key=resolved_key,
+            provider_model=resolved_provider_model,
+            tier=Tier.CHEAP,
+            system_prompt=system_prompt,
+            output_model=UnsubscribeDetection,
+            user_message=user_message,
             label="unsubscribe detection",
             what="unsubscribe detection",
-            trace_input=user_message,
+            exc_type=TriageError,
         )
-    except Exception:
+    except TriageError:
         return None
-
-    return result.output  # type: ignore[no-any-return]
 
 
 def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
@@ -562,23 +553,11 @@ def run_triage_agent(
         _load_archive_guidance(conn, remaining)
     )
 
-    # -- lazy imports so the rest of the CLI works without pydantic_ai --
-    from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider_for_identifier
-
-    # -- build agent --
-    llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider_model, api_key=resolved_key
-    )
-    agent_handle = llm_provider.build_agent(
-        level=1 if tier == Tier.CHEAP else 2,
-        system_prompt=_build_triage_system_prompt(
-            archive_folders,
-            archive_folder_history or None,
-            archive_folder_usage or None,
-            user_email,
-        ),
-        output_type=PromptedOutput(TriageResult),
+    system_prompt = _build_triage_system_prompt(
+        archive_folders,
+        archive_folder_history or None,
+        archive_folder_usage or None,
+        user_email,
     )
 
     user_message = _build_user_message(remaining)
@@ -588,19 +567,17 @@ def run_triage_agent(
     if guidance:
         user_message = f"{guidance}\n\n{user_message}"
 
-    # -- call LLM --
-    try:
-        result = run_agent(
-            agent_handle,
-            lambda: agent_handle.run_sync(user_message),
-            label="mail triage",
-            what="mail triage",
-            trace_input=user_message,
-        )
-    except Exception as exc:
-        raise TriageError(str(exc)) from exc
-
-    output: TriageResult = result.output
+    output: TriageResult = _run_llm_agent(
+        api_key=resolved_key,
+        provider_model=resolved_provider_model,
+        tier=tier,
+        system_prompt=system_prompt,
+        output_model=TriageResult,
+        user_message=user_message,
+        label="mail triage",
+        what="mail triage",
+        exc_type=TriageError,
+    )
 
     # -- map 1-based indices back to records; default omissions to HUMAN_TRIAGE --
     by_index: dict[int, TriageItem] = {}

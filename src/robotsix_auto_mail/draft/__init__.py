@@ -18,10 +18,7 @@ import sqlite3
 from pydantic import BaseModel
 from robotsix_llmio.core import Tier
 
-from robotsix_auto_mail.config import (
-    resolve_llm_api_key,
-    resolve_llm_provider_model,
-)
+from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
@@ -127,40 +124,20 @@ def generate_draft_reply(
     if record is None:
         raise DraftGenerationError(f"no record for message_id {message_id}")
 
-    # -- lazy imports so the module loads without pydantic_ai installed --
-    from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider_for_identifier, run_agent
-
     user_message = _build_draft_user_message(record)
 
-    try:
-        # -- resolve API key (arg -> LLM_API_KEY env -> config) --
-        resolved_key = resolve_llm_api_key(api_key)
+    output = _run_llm_agent(
+        api_key=api_key,
+        provider_model=provider_model,
+        tier=tier,
+        system_prompt=_build_draft_system_prompt(),
+        output_model=DraftResult,
+        user_message=user_message,
+        label="mail draft",
+        what="mail draft",
+        exc_type=DraftGenerationError,
+    )
 
-        # -- resolve provider (arg -> LLM_PROVIDER_MODEL env -> config) --
-        resolved_provider_model = resolve_llm_provider_model(provider_model)
-
-        llm_provider = get_provider_for_identifier(
-            identifier=resolved_provider_model, api_key=resolved_key
-        )
-        agent_handle = llm_provider.build_agent(
-            level=1 if tier == Tier.CHEAP else 2,
-            system_prompt=_build_draft_system_prompt(),
-            output_type=PromptedOutput(DraftResult),
-        )
-        result = run_agent(
-            agent_handle,
-            lambda: agent_handle.run_sync(user_message),
-            label="mail draft",
-            what="mail draft",
-            trace_input=user_message,
-        )
-    except DraftGenerationError:
-        raise
-    except Exception as exc:
-        raise DraftGenerationError(str(exc)) from exc
-
-    output: DraftResult = result.output
     draft = output.draft_text
     update_draft_text(conn, message_id, draft)
     return draft

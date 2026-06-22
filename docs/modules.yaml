@@ -18,6 +18,7 @@ modules:
       - src/robotsix_auto_mail/__init__.py
       - src/robotsix_auto_mail/py.typed
       - src/robotsix_auto_mail/_constants.py
+      - src/robotsix_auto_mail/_llm_agent.py
       - src/robotsix_auto_mail/format.py
       - tests/core/test_format.py
       - pyproject.toml
