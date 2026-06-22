@@ -135,7 +135,16 @@ modules:
       - src/robotsix_auto_mail/triage/agent.py
       - src/robotsix_auto_mail/triage/classifier.py
       - src/robotsix_auto_mail/triage/persistence.py
-      - tests/triage/test_triage.py
+      - tests/triage/test_triage_agent.py
+      - tests/triage/test_triage_archive_hints.py
+      - tests/triage/test_triage_archive_llm.py
+      - tests/triage/test_triage_archive_subfolder.py
+      - tests/triage/test_triage_crud.py
+      - tests/triage/test_triage_memory.py
+      - tests/triage/test_triage_models.py
+      - tests/triage/test_triage_prompt.py
+      - tests/triage/test_triage_propose_name.py
+      - tests/triage/test_triage_unsubscribe.py
 
   - id: draft
     description: >-
