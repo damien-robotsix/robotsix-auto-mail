@@ -135,7 +135,7 @@ def _clear_stale_triage_state(accounts: MailAccountsConfig) -> None:
                     set_watermark(conn, "batch_op:state", "idle")
             finally:
                 conn.close()
-        except Exception:  # nosec B112
+        except Exception:  # noqa: S112  # nosec B112
             # Best-effort: a bad/unopenable account DB must never abort the
             # boot loop or crash the server.
             continue

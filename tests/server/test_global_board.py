@@ -283,7 +283,7 @@ def test_global_board_move_routes_to_correct_account(
             data=data,
             method="POST",
         )
-        resp = urlopen(req)
+        resp = urlopen(req)  # noqa: S310
         resp.close()
     finally:
         server.shutdown()

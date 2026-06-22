@@ -53,7 +53,7 @@ def test_config_sync_success_returns_200_json(single_db: str) -> None:
                 data=b"",
                 method="POST",
             )
-            resp = urlopen(req)
+            resp = urlopen(req)  # noqa: S310
             assert resp.status == 200
             assert resp.headers.get("Content-Type", "").startswith("application/json")
             payload = _json.loads(resp.read().decode("utf-8"))
@@ -107,7 +107,7 @@ def test_config_sync_unknown_post_path_returns_404() -> None:
             method="POST",
         )
         with pytest.raises(urllib.error.HTTPError) as exc_info:
-            urlopen(req)
+            urlopen(req)  # noqa: S310
         assert exc_info.value.code == 404
     finally:
         server.shutdown()

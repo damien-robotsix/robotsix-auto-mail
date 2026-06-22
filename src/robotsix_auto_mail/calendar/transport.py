@@ -122,8 +122,10 @@ def build_calendar_transport(
 
     transport_mod = importlib.import_module("robotsix_agent_comm.transport")
 
-    BrokeredRegistry = getattr(transport_mod, "BrokeredRegistry")
-    NetworkedBrokerTransport = getattr(transport_mod, "NetworkedBrokerTransport")
+    BrokeredRegistry = getattr(transport_mod, "BrokeredRegistry")  # noqa: B009, N806
+    NetworkedBrokerTransport = getattr(  # noqa: B009, N806
+        transport_mod, "NetworkedBrokerTransport"
+    )
 
     # Custom CA only when provided; otherwise default system trust.
     if ca_path:

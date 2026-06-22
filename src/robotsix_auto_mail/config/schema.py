@@ -471,7 +471,7 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
 # on the single dot.  Validated once at import time so a typo here fails
 # immediately rather than at first use.
 for _s in _FIELD_SPECS:
-    assert _s.yaml_path.count(".") == 1, (  # nosec B101
+    assert _s.yaml_path.count(".") == 1, (  # noqa: S101  # nosec B101
         f"_FieldSpec.yaml_path must have exactly one dot, got {_s.yaml_path!r}"
     )
 

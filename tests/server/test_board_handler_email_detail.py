@@ -120,7 +120,7 @@ def test_query_string_tolerant_routing(
             data=data,
             method="POST",
         )
-        resp = urlopen(req)
+        resp = urlopen(req)  # noqa: S310
         try:
             # 301 redirect on success, not 404.
             assert resp.status in (200, 301)
@@ -177,7 +177,7 @@ def test_post_move_isolates_accounts(
             data=data,
             method="POST",
         )
-        resp = urlopen(req)
+        resp = urlopen(req)  # noqa: S310
         resp.close()
 
         assert _triage_action(db_b, "msg-b") == "TO_ANSWER"
@@ -206,7 +206,7 @@ def test_unknown_explicit_account_is_404(
             method="POST",
         )
         with pytest.raises(HTTPError) as exc_info:
-            urlopen(req).close()
+            urlopen(req).close()  # noqa: S310
         assert exc_info.value.code == 404
     finally:
         server.shutdown()

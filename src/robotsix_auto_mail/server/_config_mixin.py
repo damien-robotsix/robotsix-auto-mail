@@ -87,7 +87,7 @@ class _ConfigMixin:
             if subfolder:
                 try:
                     record_archive_folder_choice(conn, record, subfolder)
-                except Exception:  # nosec B110
+                except Exception:  # noqa: S110  # nosec B110
                     pass  # Non-fatal: memory is advisory only
             return True
 

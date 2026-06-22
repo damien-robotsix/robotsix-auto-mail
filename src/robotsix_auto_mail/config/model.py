@@ -342,7 +342,7 @@ class MailConfig:
 
 _spec_names = {s.field_name for s in _FIELD_SPECS}
 _dc_names = {f.name for f in dataclasses.fields(MailConfig)}
-assert _spec_names == _dc_names, (  # nosec B101
+assert _spec_names == _dc_names, (  # noqa: S101  # nosec B101
     f"_FIELD_SPECS / MailConfig drift: "
     f"missing from specs={_dc_names - _spec_names}, "
     f"missing from dataclass={_spec_names - _dc_names}"
