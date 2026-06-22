@@ -19,13 +19,12 @@ import sqlite3
 import typing
 
 import pydantic
-from robotsix_llmio.core import Tier, run_agent
+from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
+from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
-    ConfigurationError,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.imap import ImapClient, is_special_use
@@ -128,46 +127,20 @@ def determine_archive_structure(
         ArchiveError: If the API key is missing, the LLM returns an invalid
             response, or any other error occurs.
     """
-    # -- resolve API key --
-    try:
-        resolved_key = resolve_llm_api_key(api_key)
-    except ConfigurationError as exc:
-        raise ArchiveError(str(exc)) from exc
-
-    # -- resolve provider-model --
-    resolved_provider_model = resolve_llm_provider_model(provider_model)
-
-    # -- lazy import so the rest of the CLI works without the
-    #    LLM provider extra --
-    from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider_for_identifier
-
-    # -- build agent --
-    llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider_model, api_key=resolved_key
-    )
-    agent_handle = llm_provider.build_agent(
-        level=1 if tier == Tier.CHEAP else 2,
-        system_prompt=_build_archive_system_prompt(archive_root),
-        output_type=PromptedOutput(ArchiveStructure),
-    )
-
     # -- build the user message --
     user_message = "Existing mailbox folders:\n" + "\n".join(existing_folders)
 
-    # -- call LLM --
-    try:
-        result = run_agent(
-            agent_handle,
-            lambda: agent_handle.run_sync(user_message),
-            label="archive structure",
-            what="archive structure",
-            trace_input=user_message,
-        )
-    except Exception as exc:
-        raise ArchiveError(str(exc)) from exc
-
-    structure: ArchiveStructure = result.output
+    structure = _run_llm_agent(
+        api_key=api_key,
+        provider_model=provider_model,
+        tier=tier,
+        system_prompt=_build_archive_system_prompt(archive_root),
+        output_model=ArchiveStructure,
+        user_message=user_message,
+        label="archive structure",
+        what="archive structure",
+        exc_type=ArchiveError,
+    )
     return structure.folders
 
 
