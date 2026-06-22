@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import imaplib
+import logging
 import os
 import smtplib
 import socket
@@ -26,6 +27,27 @@ if _has_hypothesis:
     _hypothesis_settings.register_profile("ci", max_examples=200, deadline=None)
     _hypothesis_settings.register_profile("dev", max_examples=50, deadline=None)
     _hypothesis_settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
+
+
+@pytest.fixture(autouse=True)
+def _reset_logging_state() -> None:
+    """Reset ``robotsix_auto_mail`` / ``robotsix_llmio`` logger state so
+    ``caplog`` (and other handlers) work reliably across test modules.
+
+    The logging tests in ``tests/logging/test_logging_config.py`` call
+    :func:`robotsix_auto_mail.logging.setup_logging`, which may set
+    ``propagate = False`` and install custom handlers.  Without this reset,
+    subsequent tests that rely on ``caplog`` (stdlib log capture) may see
+    empty ``caplog.records`` even though log lines appear on stdout.
+    """
+    for logger_name in ("robotsix_auto_mail", "robotsix_llmio"):
+        logger = logging.getLogger(logger_name)
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+            if hasattr(handler, "close"):
+                handler.close()
+        logger.setLevel(logging.NOTSET)
+        logger.propagate = True
 
 
 @pytest.fixture(autouse=True)

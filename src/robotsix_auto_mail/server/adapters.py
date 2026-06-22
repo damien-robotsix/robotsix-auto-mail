@@ -79,9 +79,9 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
     a connection with the HTTP request-serve thread.  The ``reconcile:state``
     watermark is always set back to ``"idle"`` in a ``finally`` block.
     """
-    import structlog
+    import logging
 
-    logger = structlog.get_logger(__name__)
+    logger = logging.getLogger(__name__)
 
     from robotsix_auto_mail.db import init_db, set_watermark
     from robotsix_auto_mail.imap import ImapClient, ImapError
@@ -96,9 +96,9 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
                 healed, removed = reconcile_records(
                     conn, client, monitored_folder=mail_config.imap_folder
                 )
-                logger.info("reconcile_done", healed=healed, removed=removed)
+                logger.info("reconcile_done healed=%s removed=%s", healed, removed)
         except ImapError as exc:
-            logger.warning("reconcile_imap_error", error=str(exc))
+            logger.warning("reconcile_imap_error error=%s", str(exc))
     except Exception:  # noqa: S110  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass
