@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added AGENT.md with repository conventions for CI-fix and other automated agents.
 - Added structured access logging to the HTTP server via ``log_message``.
 - Migrated logging to delegate core pipeline to ``robotsix_llmio.logging.setup_logging``
   (stream handler, formatter, OTel trace-id injection), retaining only the
