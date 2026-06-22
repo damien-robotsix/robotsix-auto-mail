@@ -9,10 +9,9 @@ and advances the watermark only after the full batch.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import sqlite3
 import time
-
-import structlog
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
@@ -26,7 +25,7 @@ from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.parser import parse_message
 from robotsix_auto_mail.triage import run_triage_agent
 
-_logger = structlog.get_logger(__name__)
+_logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Watermark-aware IMAP fetch helpers (inlined from former fetch.py)
@@ -189,11 +188,9 @@ def _process_messages(
                 )
             )
             _logger.debug(
-                "message_processing",
-                uid=uid,
-                message_id="",
-                action="error",
-                error=str(exc) if str(exc) else repr(exc),
+                "message_processing uid=%s message_id= action=error error=%s",
+                uid,
+                str(exc) if str(exc) else repr(exc),
             )
             continue
 
@@ -212,10 +209,9 @@ def _process_messages(
             )
             skipped += 1
             _logger.debug(
-                "message_processing",
-                uid=uid,
-                message_id=record.message_id,
-                action="skipped",
+                "message_processing uid=%s message_id=%s action=skipped",
+                uid,
+                record.message_id,
             )
             continue
 
@@ -223,10 +219,9 @@ def _process_messages(
         if dry_run:
             stored += 1
             _logger.debug(
-                "message_processing",
-                uid=uid,
-                message_id=record.message_id,
-                action="stored",
+                "message_processing uid=%s message_id=%s action=stored",
+                uid,
+                record.message_id,
             )
             continue
 
@@ -241,21 +236,19 @@ def _process_messages(
                 )
             )
             _logger.debug(
-                "message_processing",
-                uid=uid,
-                message_id=record.message_id,
-                action="error",
-                error=str(exc) if str(exc) else repr(exc),
+                "message_processing uid=%s message_id=%s action=error error=%s",
+                uid,
+                record.message_id,
+                str(exc) if str(exc) else repr(exc),
             )
             continue
 
         if rowid is not None:
             stored += 1
             _logger.debug(
-                "message_processing",
-                uid=uid,
-                message_id=record.message_id,
-                action="stored",
+                "message_processing uid=%s message_id=%s action=stored",
+                uid,
+                record.message_id,
             )
         else:
             # Belts-and-suspenders: record_exists said False but insert
@@ -263,10 +256,9 @@ def _process_messages(
             # skipped.
             skipped += 1
             _logger.debug(
-                "message_processing",
-                uid=uid,
-                message_id=record.message_id,
-                action="skipped",
+                "message_processing uid=%s message_id=%s action=skipped",
+                uid,
+                record.message_id,
             )
 
     return stored, skipped, errors
@@ -306,10 +298,10 @@ def ingest_mail(
     #    abort ingestion — setup_archive only persists its watermark on
     #    success, so a failed run naturally retries next time.
     _logger.info(
-        "ingest_begin",
-        dry_run=dry_run,
-        archive_enabled=config.archive_enabled,
-        triage_on_ingest=config.triage_on_ingest,
+        "ingest_begin dry_run=%s archive_enabled=%s triage_on_ingest=%s",
+        dry_run,
+        config.archive_enabled,
+        config.triage_on_ingest,
     )
     _t0 = time.perf_counter()
     if not dry_run and config.archive_enabled:
@@ -329,7 +321,7 @@ def ingest_mail(
     # 1. Fetch raw messages (read-only on DB).
     messages = fetch_new_messages(db_conn, imap_client, config)
     total_fetched = len(messages)
-    _logger.debug("fetch_done", count=total_fetched)
+    _logger.debug("fetch_done count=%s", total_fetched)
 
     if total_fetched == 0:
         return IngestResult(total_fetched=0, stored=0, skipped=0, errors=[])
@@ -361,19 +353,20 @@ def ingest_mail(
                 user_email=config.username,
             )
             triaged = len(decisions)
-            _logger.info("triage_done", decisions=triaged)
+            _logger.info("triage_done decisions=%s", triaged)
         except Exception:
             _logger.exception("triage_failed")
 
     duration_ms = round((time.perf_counter() - _t0) * 1000, 1)
     _logger.info(
-        "batch_summary",
-        total_fetched=total_fetched,
-        stored=stored,
-        skipped=skipped,
-        error_count=len(errors),
-        triaged=triaged,
-        duration_ms=duration_ms,
+        "batch_summary total_fetched=%s stored=%s skipped=%s "
+        "error_count=%s triaged=%s duration_ms=%s",
+        total_fetched,
+        stored,
+        skipped,
+        len(errors),
+        triaged,
+        duration_ms,
     )
 
     return IngestResult(
@@ -447,7 +440,7 @@ def reconcile_records(
             try:
                 imap_client.select_folder(folder)
             except ImapError:
-                _logger.warning("reconcile_select_error", folder=folder)
+                _logger.warning("reconcile_select_error folder=%s", folder)
                 continue
 
             tracked_uids = set(uid_map.keys())
@@ -462,7 +455,7 @@ def reconcile_records(
                 try:
                     found_uids.update(imap_client.search_uids(criteria))
                 except ImapError:
-                    _logger.warning("reconcile_search_error", folder=folder)
+                    _logger.warning("reconcile_search_error folder=%s", folder)
                     folder_failed = True
                     break
 
@@ -479,7 +472,7 @@ def reconcile_records(
                         imap_client, message_id, source_folder=folder
                     )
                 except ImapError:
-                    _logger.warning("reconcile_resolve_error", message_id=message_id)
+                    _logger.warning("reconcile_resolve_error message_id=%s", message_id)
                     continue
 
                 if resolved is not None:
@@ -508,5 +501,5 @@ def reconcile_records(
         return (healed, removed)
 
     except ImapError as exc:
-        _logger.warning("reconcile_imap_error", error=str(exc))
+        _logger.warning("reconcile_imap_error error=%s", str(exc))
         return (0, 0)

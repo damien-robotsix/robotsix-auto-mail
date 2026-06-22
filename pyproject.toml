@@ -21,7 +21,6 @@ dependencies = [
     "pydantic>=2.0",
     "robotsix-board",
     "robotsix-llmio",
-    "structlog>=24.1",
     "robotsix-yaml-config",
 ]
 

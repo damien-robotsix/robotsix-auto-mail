@@ -9,15 +9,14 @@ runtime import graph acyclic (``utils`` ← ``mailbox`` ← ``client``).
 from __future__ import annotations
 
 import dataclasses
+import logging
 import shlex
 from typing import TYPE_CHECKING
-
-import structlog
 
 from .errors import ImapMessageNotFoundError
 from .utils import imap_utf7_decode
 
-_logger = structlog.get_logger(__name__)
+_logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     # Type-only import, guarded by TYPE_CHECKING — never executed at runtime,
@@ -235,9 +234,10 @@ def cross_folder_resolve(
             # source-folder SELECT / SEARCH — fall through to the
             # full-folder search below.
             _logger.debug(
-                "Source-folder search failed, falling back to full-folder search",
-                source_folder=source_folder,
-                message_id=message_id,
+                "Source-folder search failed, falling back to"
+                " full-folder search source_folder=%s message_id=%s",
+                source_folder,
+                message_id,
                 exc_info=True,
             )
 

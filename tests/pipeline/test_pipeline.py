@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 import sqlite3
 from dataclasses import FrozenInstanceError
 from unittest import mock
 
 import pytest
-from structlog.testing import capture_logs
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
@@ -139,21 +139,21 @@ def test_ingest_batch_summary_has_duration_ms(
     mock_fetch: mock.MagicMock,
     conn: sqlite3.Connection,
     cfg: MailConfig,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """batch_summary event and IngestResult both expose a non-negative duration."""
+    """batch_summary log record and IngestResult both expose a non-negative duration."""
     mock_fetch.return_value = [
         (1, _make_raw_message(message_id="<a@x>", subject="One")),
     ]
     imap = _mock_imap_client()
 
-    with capture_logs() as cap_logs:
+    with caplog.at_level(logging.INFO, logger="robotsix_auto_mail.pipeline"):
         result = ingest_mail(conn, imap, cfg)
 
-    summaries = [e for e in cap_logs if e.get("event") == "batch_summary"]
+    summaries = [r for r in caplog.records if r.message.startswith("batch_summary")]
     assert len(summaries) == 1
-    duration = summaries[0]["duration_ms"]
-    assert isinstance(duration, (int, float))
-    assert duration >= 0
+    assert "duration_ms=" in summaries[0].message
+    assert "total_fetched=" in summaries[0].message
 
     assert isinstance(result.duration_ms, (int, float))
     assert result.duration_ms >= 0
