@@ -77,8 +77,9 @@ jobs:
         uses: dangoslen/changelog-enforcer@v3
         with:
           changeLogPath: CHANGELOG.md
-          skipLabel: Skip-Changelog
-          expectedLatestVersion: unreleased
+          skipLabels: Skip-Changelog
+          expectedLatestVersion: 0.0.0
+          versionPattern: '^## (\d+\.\d+\.\d+)'
           missingUpdateErrorMessage: |
             Please add a changelog entry under `## 0.0.0 (unreleased)` in CHANGELOG.md.
             If this PR does not need a changelog entry, add the `Skip-Changelog` label.
