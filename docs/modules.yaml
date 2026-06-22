@@ -299,6 +299,7 @@ modules:
       - tests/server/test_board_handler_email_embed.py
       - tests/server/test_board_handler_config_sync.py
       - tests/server/test_board_handler_triage_display.py
+      - tests/server/test_board_handler_access_log.py
       - tests/server/test_board_handler_board.py
       - tests/server/test_board_handler_static.py
       - tests/server/test_board_handler_email_detail.py

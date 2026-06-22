@@ -304,8 +304,14 @@ class BoardHandler(
             self._serve_json({"status": "healthy"}, status=200)
 
     def log_message(self, format: str, *args: object) -> None:
-        """Suppress logging to stderr (keep server quiet)."""
-        pass
+        """Log HTTP access via the structlog-enabled logger."""
+        import logging
+
+        logging.getLogger("robotsix_auto_mail.http.access").info(
+            "%s - %s",
+            self.client_address[0],
+            format % args,
+        )
 
 
 def make_board_handler(
