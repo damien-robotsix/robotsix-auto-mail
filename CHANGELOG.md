@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added structured access logging to the HTTP server via ``log_message``.
 - Migrated logging to delegate core pipeline to ``robotsix_llmio.logging.setup_logging``
   (stream handler, formatter, OTel trace-id injection), retaining only the
   date-stamped file handler in the local ``setup_logging`` wrapper.
