@@ -41,7 +41,7 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
                         ).start()
                 finally:
                     conn.close()
-            except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
+            except Exception:  # nosec B110  # lgtm[py/empty-except]
                 # A bad DB must not kill the loop.
                 pass
         time.sleep(interval_minutes * 60)
@@ -89,7 +89,7 @@ def _cmd_serve(
         # Binding to 0.0.0.0 is intentional: ``serve_board`` is a local dev
         # convenience tool, not a production server.
         # lgtm[py/clear-text-transmission-sensitive-data]
-        server = HTTPServer(("0.0.0.0", port), handler_class)  # noqa: S104  # nosec B104
+        server = HTTPServer(("0.0.0.0", port), handler_class)  # nosec B104
         server.serve_forever()
     except KeyboardInterrupt:
         print("Shutting down.")

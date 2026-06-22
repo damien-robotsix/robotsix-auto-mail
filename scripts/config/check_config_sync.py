@@ -37,7 +37,7 @@ import yaml
 _SRC = Path(__file__).resolve().parent.parent.parent / "src"
 sys.path.insert(0, str(_SRC))
 
-from robotsix_auto_mail.config import (  # noqa: E402
+from robotsix_auto_mail.config import (
     DEFAULT_DB_PATH,
     ConfigurationError,
     MailAccountsConfig,
@@ -630,7 +630,7 @@ def _normalise_doc_default(raw: str) -> Any:
     Returns ``dataclasses.MISSING`` when the doc says "-" (none).
     """
     stripped = _strip_backticks(raw.strip())
-    if stripped in ("–", "—", "-", "N/A", ""):  # noqa: RUF001
+    if stripped in ("–", "—", "-", "N/A", ""):
         return dataclasses.MISSING
     # YAML-parse: bare numbers, quoted strings, etc.
     try:

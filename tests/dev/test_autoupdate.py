@@ -302,7 +302,7 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Any, None,
 
     def fake_path(*parts: Any) -> Path:
         built = Path(*parts)
-        if str(built) == "/tmp":  # noqa: S108  # match the module's lock dir
+        if str(built) == "/tmp":  # match the module's lock dir
             return lock_dir
         return built
 

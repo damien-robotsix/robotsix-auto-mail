@@ -82,6 +82,6 @@ def stop_board_agent(handle: object | None) -> None:
         thread, stop_event = cast(_BoardAgentHandle, handle)
         stop_event.set()
         thread.join(timeout=5.0)
-    except Exception:  # noqa: S110
+    except Exception:
         # Best-effort shutdown; never let a cleanup error crash the server.
         pass

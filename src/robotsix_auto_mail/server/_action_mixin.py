@@ -302,7 +302,7 @@ class _BoardActionMixin:
                         update_calendar_event_ref(
                             conn, message_id, "error: Internal error"
                         )
-                    except Exception:  # noqa: S110  # nosec B110
+                    except Exception:  # nosec B110
                         pass
 
             if triage_action == "TO_ARCHIVE":
@@ -318,7 +318,7 @@ class _BoardActionMixin:
                                 else None
                             ),
                         )
-                except Exception:  # noqa: S110  # nosec B110
+                except Exception:  # nosec B110
                     pass  # Non-fatal: board falls back to deterministic proposal
             return True
 
@@ -562,7 +562,7 @@ class _BoardActionMixin:
         if subfolder:
             try:
                 record_archive_folder_choice(conn, record, subfolder)
-            except Exception:  # noqa: S110  # nosec B110
+            except Exception:  # nosec B110
                 pass  # Non-fatal: memory is advisory only
 
         # -- local DB cleanup --

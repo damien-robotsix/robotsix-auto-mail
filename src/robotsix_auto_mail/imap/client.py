@@ -129,7 +129,7 @@ class ImapClient(_ProtocolClient):
         if self._imap is not None:
             try:
                 self._imap.logout()
-            except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
+            except Exception:  # nosec B110  # lgtm[py/empty-except]
                 # Connection may already be dead - best-effort close.
                 pass
         # In case logout() left the socket dangling, close it ourselves.
@@ -239,7 +239,7 @@ class ImapClient(_ProtocolClient):
             sock = getattr(self._imap, "sock", None)
             if sock is not None:
                 sock.close()
-        except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
+        except Exception:  # nosec B110  # lgtm[py/empty-except]
             pass
 
     # -- public methods ----------------------------------------------------
@@ -340,7 +340,7 @@ class ImapClient(_ProtocolClient):
             return
         try:
             self._imap.subscribe(_encode_mailbox(name))
-        except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
+        except Exception:  # nosec B110  # lgtm[py/empty-except]
             pass
 
     def search_uids(self, criteria: str = "ALL") -> list[int]:

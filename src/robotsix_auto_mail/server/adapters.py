@@ -64,7 +64,7 @@ def _run_triage_background(db_path: str, user_email: str | None = None) -> None:
         except ImportError:
             return
         run_triage_agent(conn, user_email=user_email)
-    except Exception:  # noqa: S110  # nosec B110
+    except Exception:  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass
     finally:
@@ -99,7 +99,7 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
                 logger.info("reconcile_done", healed=healed, removed=removed)
         except ImapError as exc:
             logger.warning("reconcile_imap_error", error=str(exc))
-    except Exception:  # noqa: S110  # nosec B110
+    except Exception:  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass
     finally:
@@ -272,7 +272,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                     "batch_op:state",
                     _batch_progress("delete", done, total),
                 )
-    except Exception:  # noqa: S110  # nosec B110
+    except Exception:  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass
     finally:
@@ -434,7 +434,7 @@ def _run_batch_archive_background(
                     "batch_op:state",
                     _batch_progress("archive", done, total),
                 )
-    except Exception:  # noqa: S110  # nosec B110
+    except Exception:  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass
     finally:

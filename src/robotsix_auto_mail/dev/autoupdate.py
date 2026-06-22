@@ -36,7 +36,7 @@ def _capture(
     cmd: list[str], *, cwd: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
     """Run ``cmd`` capturing output, without touching the log file."""
-    return subprocess.run(  # noqa: S603
+    return subprocess.run(
         cmd,
         cwd=cwd,
         capture_output=True,
@@ -53,7 +53,7 @@ def _run_logged(
     env: dict[str, str] | None = None,
 ) -> int:
     """Run ``cmd``, append its combined output to ``log_path``, return rc."""
-    proc = subprocess.run(  # noqa: S603
+    proc = subprocess.run(
         cmd,
         cwd=cwd,
         env=env,
@@ -135,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
 
     log_path = state_dir / f"{prefix}.log"
     deployed_file = _deployed_marker(state_dir, prefix)
-    lock_path = Path("/tmp") / f"{prefix}.lock"  # noqa: S108  # nosec B108  # intentional: cross-process flock in a well-known location
+    lock_path = Path("/tmp") / f"{prefix}.lock"  # nosec B108  # intentional: cross-process flock in a well-known location
 
     handler = logging.FileHandler(log_path)
     handler.setFormatter(

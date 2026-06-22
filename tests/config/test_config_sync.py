@@ -9,7 +9,7 @@ from pathlib import Path
 _SCRIPTS = Path(__file__).resolve().parent.parent.parent / "scripts" / "config"
 sys.path.insert(0, str(_SCRIPTS))
 
-from check_config_sync import (  # noqa: E402
+from check_config_sync import (
     check_accounts_example,
     check_docs_connecting,
     check_env_example,
@@ -17,7 +17,7 @@ from check_config_sync import (  # noqa: E402
     run_checks,
 )
 
-from robotsix_auto_mail.config import MailAccountsConfig  # noqa: E402
+from robotsix_auto_mail.config import MailAccountsConfig
 
 # ---------------------------------------------------------------------------
 # Shared test data

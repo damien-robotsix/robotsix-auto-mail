@@ -12,7 +12,7 @@ from robotsix_auto_mail.server.adapters import (
 )
 
 if TYPE_CHECKING:
-    from robotsix_auto_mail.config import MailAccountsConfig  # noqa: F401
+    from robotsix_auto_mail.config import MailAccountsConfig
 
 
 class _ReconcileMixin:
