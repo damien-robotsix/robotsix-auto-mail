@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added changelog-enforcer CI job to gate pull requests.
 - Initial package scaffold.
 - IMAP/SMTP mail automation with triage and kanban workflows.
 - Continuous deployment for `server.robotsix.net`: `release.yml` now publishes
