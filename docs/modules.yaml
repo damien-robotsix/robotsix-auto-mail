@@ -28,6 +28,7 @@ modules:
       - .python-version
       - CHANGELOG.md
       - LICENSE
+      - AGENT.md
       - CLAUDE.md
       - README.md
       - SECURITY.md
