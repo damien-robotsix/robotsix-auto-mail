@@ -172,6 +172,12 @@ extend_exclude = ["scripts"]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter-deepseek]
 # (declared in the [llm] extra); the lazy import in detect.py is intentional.
 DEP003 = ["pydantic_ai"]
+# structlog is no longer imported directly by this package (logging has been
+# migrated to robotsix_llmio.logging.setup_logging), but it must remain a
+# direct dependency to preserve the uv dependency resolution order so that
+# robotsix-board-agent (which depends on robotsix-llmio@main) does not
+# conflict with this project's pinned robotsix-llmio commit.
+DEP002 = ["structlog"]
 # robotsix_agent_comm is declared in the optional [calendar] extra (and pulled
 # transitively by [board-agent]). Imports in calendar/*.py and board_agent.py
 # are guarded by try/except ImportError so the server gracefully degrades when
