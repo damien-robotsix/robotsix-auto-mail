@@ -19,6 +19,7 @@ from tests.server.conftest import (
     _seed_triage_decision,
 )
 
+from robotsix_auto_mail.calendar import CalendarEventResponse
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 from robotsix_auto_mail.imap import ImapError
@@ -559,7 +560,14 @@ class TestHandleMove:
 
         with (
             mock.patch("threading.Thread", _SyncThread),
-            mock.patch("robotsix_auto_mail.calendar.dispatch_calendar_request"),
+            mock.patch(
+                "robotsix_auto_mail.calendar.dispatch_calendar_request",
+                return_value=CalendarEventResponse(
+                    correlation_id="mock-cid",
+                    status="success",
+                    event_ref="Created event",
+                ),
+            ),
         ):
             handler._handle_move()
 
@@ -609,7 +617,14 @@ class TestHandleMove:
 
         with (
             mock.patch("threading.Thread", _SyncThread),
-            mock.patch("robotsix_auto_mail.calendar.dispatch_calendar_request"),
+            mock.patch(
+                "robotsix_auto_mail.calendar.dispatch_calendar_request",
+                return_value=CalendarEventResponse(
+                    correlation_id="mock-cid",
+                    status="success",
+                    event_ref="Created event",
+                ),
+            ),
         ):
             handler._handle_move()
 

@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
     from .schema import CalendarEventRequest
 
+from .schema import CalendarEventResponse
+
 logger = logging.getLogger(__name__)
 
 # Agent ids on the broker. auto-mail sends as ``robotsix-auto-mail`` (its
@@ -52,7 +54,7 @@ def dispatch_calendar_request(
     event: CalendarEventRequest,
     *,
     config: MailConfig | None = None,
-) -> str:
+) -> CalendarEventResponse:
     """Send *event* to the ``"robotsix-calendar"`` agent and return its result.
 
     Issues an agent-comm **request** carrying ``{"add_to_calendar": ...}`` and
@@ -65,8 +67,8 @@ def dispatch_calendar_request(
         config: Optional ``MailConfig`` for transport selection.
 
     Returns:
-        A human-readable reference for the created event (e.g. a confirmation
-        line or the event UID).
+        A ``CalendarEventResponse`` with the event reference, status, and
+        correlation id for end-to-end tracking.
 
     Raises:
         CalendarDispatchError: When the agent-comm stack is unavailable, the
@@ -136,7 +138,12 @@ def dispatch_calendar_request(
             with contextlib.suppress(Exception):
                 agent.stop()
 
-    return _interpret_reply(reply, Error)
+    ref = _interpret_reply(reply, Error)
+    return CalendarEventResponse(
+        correlation_id=event.correlation_id,
+        status="success",
+        event_ref=ref,
+    )
 
 
 def _interpret_reply(reply: Any, error_cls: type) -> str:
