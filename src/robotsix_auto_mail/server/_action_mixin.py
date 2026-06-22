@@ -249,7 +249,7 @@ class _BoardActionMixin:
                             return
                         try:
                             try:
-                                event_ref = dispatch_calendar_request(
+                                response = dispatch_calendar_request(
                                     event, config=self.mail_config
                                 )
                             except CalendarDispatchError as exc:
@@ -266,7 +266,7 @@ class _BoardActionMixin:
                                 update_calendar_event_ref(
                                     bg_conn,
                                     message_id,
-                                    str(event_ref) if event_ref else "Event created",
+                                    response.event_ref or "Event created",
                                 )
                                 # Reroute: if the prior triage decision
                                 # was TO_ANSWER the mail still needs a

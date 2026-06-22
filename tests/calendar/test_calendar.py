@@ -16,6 +16,7 @@ from tests.server.conftest import (
 from robotsix_auto_mail.calendar import (
     CalendarDispatchError,
     CalendarEventRequest,
+    CalendarEventResponse,
     extract_calendar_summary,
     extract_dates_from_body,
 )
@@ -131,7 +132,10 @@ def test_dispatch_calendar_request_success() -> None:
     finally:
         _remove_fake_agent_comm_modules()
 
-    assert result == "Created event 'Test'"
+    assert isinstance(result, CalendarEventResponse)
+    assert result.event_ref == "Created event 'Test'"
+    assert result.status == "success"
+    assert result.correlation_id == event.correlation_id
     mocks["agent_instance"].send_request.assert_called_once()
     args, _kwargs = mocks["agent_instance"].send_request.call_args
     assert args[0] == "robotsix-calendar"
@@ -150,7 +154,9 @@ def test_dispatch_calendar_request_falls_back_to_event_uid() -> None:
     finally:
         _remove_fake_agent_comm_modules()
 
-    assert result == "evt-42"
+    assert isinstance(result, CalendarEventResponse)
+    assert result.event_ref == "evt-42"
+    assert result.status == "success"
     assert "reply" in mocks
 
 
@@ -349,6 +355,11 @@ def test_move_to_calendar_dispatches_and_reroutes_to_archive(single_db: str) -> 
     _setup_db_with_record(single_db)
 
     with mock.patch(_MOCK_DISPATCH_PATH) as mock_dispatch:
+        mock_dispatch.return_value = CalendarEventResponse(
+            correlation_id="mock-cid",
+            status="success",
+            event_ref="Created event 'Test'",
+        )
         server, port = _start_test_server(single_db)
         try:
             status, body = _post_form(
@@ -404,6 +415,11 @@ def test_move_to_calendar_reroutes_to_answer_when_prior_was_to_answer(
         conn.close()
 
     with mock.patch(_MOCK_DISPATCH_PATH) as mock_dispatch:
+        mock_dispatch.return_value = CalendarEventResponse(
+            correlation_id="mock-cid",
+            status="success",
+            event_ref="Created event 'Test'",
+        )
         server, port = _start_test_server(single_db)
         try:
             status, _ = _post_form(
@@ -548,6 +564,11 @@ def test_move_to_calendar_realistic_message_id(single_db: str) -> None:
     _setup_db_with_record(single_db, message_id=message_id)
 
     with mock.patch(_MOCK_DISPATCH_PATH) as mock_dispatch:
+        mock_dispatch.return_value = CalendarEventResponse(
+            correlation_id="mock-cid",
+            status="success",
+            event_ref="Created event 'Test'",
+        )
         server, port = _start_test_server(single_db)
         try:
             status, body = _post_form(
@@ -574,6 +595,11 @@ def test_move_to_calendar_angle_bracket_fallback(single_db: str) -> None:
     _setup_db_with_record(single_db, message_id=message_id_stored)
 
     with mock.patch(_MOCK_DISPATCH_PATH) as mock_dispatch:
+        mock_dispatch.return_value = CalendarEventResponse(
+            correlation_id="mock-cid",
+            status="success",
+            event_ref="Created event 'Test'",
+        )
         server, port = _start_test_server(single_db)
         try:
             status, body = _post_form(
