@@ -207,8 +207,14 @@ modules:
       - src/robotsix_auto_mail/imap/utils.py
       - tests/imap/test_protocol.py
       - tests/imap/conftest.py
-      - tests/imap/test_imap.py
+      - tests/imap/test_imap_auth.py
+      - tests/imap/test_imap_connection.py
+      - tests/imap/test_imap_cross_folder.py
+      - tests/imap/test_imap_encoding.py
+      - tests/imap/test_imap_errors.py
+      - tests/imap/test_imap_folders.py
       - tests/imap/test_imap_integration.py
+      - tests/imap/test_imap_messages.py
       - tests/imap/test_imap_utils.py
 
   - id: oauth2
