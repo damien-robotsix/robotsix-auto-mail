@@ -495,10 +495,7 @@ class _BoardActionMixin:
                 self._bad_request(str(exc))
                 return False
             except ImapMessageNotFoundError:
-                from robotsix_auto_mail.db import (
-                    delete_record_by_message_id,
-                    update_record_source,
-                )
+                from robotsix_auto_mail.db import update_record_source
                 from robotsix_auto_mail.imap import (
                     ImapClient,
                     cross_folder_resolve,
