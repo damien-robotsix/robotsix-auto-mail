@@ -19,7 +19,7 @@ At startup, fields are resolved in this order:
    `src/robotsix_auto_mail/config/`).
 2. **YAML config file** — `config/mail.local.yaml` (when
    `MAIL_CONFIG_PATH` points at it) overrides defaults. See
-   `config/mail.local.example.yaml` for the template.
+   `docs/config/mail.local.example.yaml` for the template.
 3. **Environment variables** — `MAIL_*` vars (and global `LLM_*`,
    `LANGFUSE_*`, etc.) override both defaults and the YAML file.
 

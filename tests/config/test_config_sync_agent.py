@@ -184,7 +184,7 @@ def test_run_config_sync_agent_all_surfaces_reach_prompt(
     user_message = handle.run_sync.call_args.args[0]
 
     # The three on-disk surfaces are embedded verbatim.
-    yaml_text = (_REPO_ROOT / "config" / "mail.local.example.yaml").read_text()
+    yaml_text = (_REPO_ROOT / "docs/config" / "mail.local.example.yaml").read_text()
     env_text = (_REPO_ROOT / ".env.example").read_text()
     docs_text = (_REPO_ROOT / "docs" / "connecting.md").read_text()
     assert yaml_text in user_message

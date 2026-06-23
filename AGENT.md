@@ -72,7 +72,7 @@ Every configuration field lives on the `MailConfig` frozen dataclass
 configuration field you MUST update **all three** artifacts:
 
 1. **`MailConfig`** — add the dataclass field with its default.
-2. **`config/mail.local.example.yaml`** — add the commented-out entry so
+2. **`docs/config/mail.local.example.yaml`** — add the commented-out entry so
    users know it exists.
 3. **`.env.example`** — add the corresponding `MAIL_*` env var.
 

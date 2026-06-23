@@ -161,7 +161,7 @@ def test_from_env_single_account_loads_silently() -> None:
 
 
 def test_from_yaml_multi_account_example() -> None:
-    accounts = MailAccountsConfig.from_yaml("config/mail.local.example.yaml")
+    accounts = MailAccountsConfig.from_yaml("docs/config/mail.local.example.yaml")
     assert accounts.ids() == ("personal", "work")
     assert accounts.default_account_id == "personal"
 
@@ -483,7 +483,7 @@ auth:
 
 
 def test_load_accounts_falls_back_to_multi_yaml() -> None:
-    env = {"MAIL_CONFIG_PATH": "config/mail.local.example.yaml"}
+    env = {"MAIL_CONFIG_PATH": "docs/config/mail.local.example.yaml"}
     with mock.patch.dict(os.environ, env, clear=True):
         accounts = load_accounts()
     assert accounts.ids() == ("personal", "work")

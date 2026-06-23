@@ -342,10 +342,9 @@ def test_docs_happy() -> None:
 def test_run_checks_happy(tmp_path: Path) -> None:
     """Exit 0 when all artifacts are in sync."""
     repo = tmp_path
-    (repo / "config").mkdir(parents=True)
-    (repo / "config" / "mail.local.example.yaml").write_text(_YAML_EXAMPLE)
+    (repo / "docs/config").mkdir(parents=True)
+    (repo / "docs/config" / "mail.local.example.yaml").write_text(_YAML_EXAMPLE)
     (repo / ".env.example").write_text(_ENV_EXAMPLE)
-    (repo / "docs").mkdir()
     (repo / "docs" / "connecting.md").write_text(
         _full_docs(_DOCS_YAML_TABLE, _DOCS_ENV_TABLE)
     )
@@ -575,10 +574,9 @@ def test_run_checks_missing_file(tmp_path: Path) -> None:
     """Exit 2 when an artifact file is missing entirely."""
     # Create only some files, but not the YAML example.
     repo = tmp_path
-    (repo / "config").mkdir(parents=True)
+    (repo / "docs/config").mkdir(parents=True)
     # intentionally skip mail.local.example.yaml
     (repo / ".env.example").write_text(_ENV_EXAMPLE)
-    (repo / "docs").mkdir()
     (repo / "docs" / "connecting.md").write_text(
         _full_docs(_DOCS_YAML_TABLE, _DOCS_ENV_TABLE)
     )
@@ -597,8 +595,8 @@ def test_accounts_example_happy() -> None:
 
 
 def test_accounts_example_shipped_file_clean() -> None:
-    """The shipped config/mail.local.example.yaml produces no findings."""
-    findings = check_accounts_example("config/mail.local.example.yaml")
+    """The shipped docs/config/mail.local.example.yaml produces no findings."""
+    findings = check_accounts_example("docs/config/mail.local.example.yaml")
     assert findings == []
 
 
@@ -664,7 +662,7 @@ def test_run_checks_real_repo() -> None:
 
 def test_shipped_accounts_example_loads() -> None:
     """The shipped multi-account example loads as a valid container."""
-    config = MailAccountsConfig.from_yaml("config/mail.local.example.yaml")
+    config = MailAccountsConfig.from_yaml("docs/config/mail.local.example.yaml")
     assert len(config.accounts) >= 2
     ids = config.ids()
     assert len(set(ids)) == len(ids)

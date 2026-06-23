@@ -41,7 +41,7 @@ from robotsix_auto_mail.db import get_watermark, set_watermark
 #: Config surfaces (repo-relative) the agent compares, besides the
 #: ``MailConfig`` dataclass which is rendered from ``_FIELD_SPECS``.
 _SURFACE_FILES: tuple[str, ...] = (
-    "config/mail.local.example.yaml",
+    "docs/config/mail.local.example.yaml",
     ".env.example",
     "docs/connecting.md",
 )

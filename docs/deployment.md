@@ -40,7 +40,7 @@ cd robotsix-auto-mail
 The recommended path is a single YAML config file:
 
 ```sh
-cp config/mail.local.example.yaml config/mail.local.yaml
+cp docs/config/mail.local.example.yaml config/mail.local.yaml
 ```
 
 Then edit `config/mail.local.yaml` with your real IMAP and SMTP credentials:
@@ -182,7 +182,7 @@ environment variables (which win field-by-field).
 
 | Path | Mechanism | How to use |
 |---|---|---|
-| **YAML file** | A single `config/mail.local.yaml` | Recommended. Copy `config/mail.local.example.yaml` → `config/mail.local.yaml` and edit. |
+| **YAML file** | A single `config/mail.local.yaml` | Recommended. Copy `docs/config/mail.local.example.yaml` → `config/mail.local.yaml` and edit. |
 | **Env vars** | `MAIL_IMAP_HOST`, `MAIL_SMTP_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` (and optional `MAIL_IMAP_PORT`, …) | Set in shell or via `docker compose run -e …`. Either set all four required vars or supply a config file, or the entrypoint will refuse to start. |
 
 Full precedence rules and every config key are documented in
@@ -449,7 +449,7 @@ ls -l config/mail.local.yaml
 docker compose run robotsix-auto-mail ls -la /home/mailbot/config/
 ```
 
-**Fix:**  create the file (`cp config/mail.local.example.yaml config/mail.local.yaml`)
+**Fix:**  create the file (`cp docs/config/mail.local.example.yaml config/mail.local.yaml`)
 or verify the bind-mount isn't being shadowed by another volume definition.
 
 ---
