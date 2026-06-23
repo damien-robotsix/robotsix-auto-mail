@@ -5,6 +5,8 @@
 - Removed dead re-export of `get_provider_for_identifier` from
   `robotsix_auto_mail.detect` (no consumers exist; all callers import directly
   from `robotsix_llmio.core`).
+- Removed 21 dead private re-exports from `server/__init__.py`; only `BoardHandler`
+  and `make_board_handler` remain as public exports.
 - Added `docs/configuration.md` — a comprehensive environment-variable reference
   covering all 41 configuration variables across seven categories (IMAP, SMTP,
   auth, storage, ingest, archive, triage, calendar, LLM, Langfuse, logging,
