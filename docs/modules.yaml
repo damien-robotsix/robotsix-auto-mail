@@ -349,6 +349,7 @@ modules:
       - mkdocs.yml
       - docs/architecture.md
       - docs/codeql-verification.md
+      - docs/configuration.md
       - docs/connecting.md
       - docs/deployment.md
       - docs/ingestion.md

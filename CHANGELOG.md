@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Added `docs/configuration.md` — a comprehensive environment-variable reference
+  covering all 41 configuration variables across seven categories (IMAP, SMTP,
+  auth, storage, ingest, archive, triage, calendar, LLM, Langfuse, logging,
+  board agent, and multi-account).
 - Fixed stale key ``provider`` → ``provider_model`` in the YAML configuration example
   in ``docs/connecting.md``.
 - Added AGENT.md with repository conventions for CI-fix and other automated agents.
