@@ -385,7 +385,7 @@ def detect_provider(
         email_address: The email address to detect provider settings for.
         tier: LLM tier to use.  The concrete model for each tier is
             resolved by the configured provider backend (see
-            :func:`robotsix_llmio.core.build_agent_for_level`).
+            :func:`robotsix_llmio.core.get_provider_for_identifier`).
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
         provider: LLM backend name (e.g. ``openrouter-deepseek``).  Defaults
@@ -413,12 +413,25 @@ def detect_provider(
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import build_agent_for_level
+    from robotsix_llmio.config.tier import (
+        LEVEL1_DEFAULT,
+        LEVEL2_DEFAULT,
+        LEVEL3_DEFAULT,
+        TierConfig,
+    )
+    from robotsix_llmio.core import get_provider_for_identifier as _get_provider
 
     # -- build agent --
-    agent_handle = build_agent_for_level(
-        1 if tier == Tier.CHEAP else 2,
-        provider_kwargs={"api_key": resolved_key},
+    _tier_config = TierConfig(
+        level1=LEVEL1_DEFAULT, level2=LEVEL2_DEFAULT, level3=LEVEL3_DEFAULT
+    )
+    _level = 1 if tier == Tier.CHEAP else 2
+    _tlc = _tier_config.for_level(_level)
+    model_provider = _get_provider(
+        _tlc.model, **{**_tlc.provider_kwargs, "api_key": resolved_key}
+    )
+    agent_handle = model_provider.build_agent(
+        level=_level,
         system_prompt=_DETECT_SYSTEM_PROMPT,
         output_type=PromptedOutput(DetectedProvider),
     )

@@ -17,7 +17,10 @@
   (`test_imap_auth.py`, `test_imap_connection.py`, `test_imap_cross_folder.py`,
   `test_imap_encoding.py`, `test_imap_errors.py`, `test_imap_folders.py`,
   `test_imap_messages.py`).
-- Split monolithic config test suite into focused per-concern test modules.
+- Migrated LLM agent call sites from ``get_provider_for_identifier`` +
+  ``provider.build_agent(level=...)`` to ``robotsix_llmio.core.create_model`` +
+  ``provider.build_agent(level=...)``, removing the dependency on
+  ``resolve_llm_provider_model`` from the config module.
 - Initial package scaffold.
 - IMAP/SMTP mail automation with triage and kanban workflows.
 - Continuous deployment for `server.robotsix.net`: `release.yml` now publishes

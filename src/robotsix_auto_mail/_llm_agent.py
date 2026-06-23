@@ -6,7 +6,7 @@ the codebase so every call site delegates to a single implementation.
 The ``pydantic_ai`` and ``robotsix_llmio`` imports are **lazy** (inside
 the function body) to keep module-load time low and to preserve the
 test-patch surface at ``robotsix_llmio.core.get_provider_for_identifier``
-(called internally by ``build_agent_for_level``) and
+(called internally by ``get_provider_for_identifier``) and
 ``robotsix_llmio.core.run_agent``.
 """
 
@@ -74,12 +74,30 @@ def _run_llm_agent(
     # -- lazy imports so the rest of the CLI works without the
     #    LLM provider extra and so test patches can intercept --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import build_agent_for_level, run_agent
+    from robotsix_llmio.config.tier import (
+        LEVEL1_DEFAULT,
+        LEVEL2_DEFAULT,
+        LEVEL3_DEFAULT,
+        TierConfig,
+    )
+    from robotsix_llmio.core import (
+        get_provider_for_identifier as _get_provider,
+    )
+    from robotsix_llmio.core import (
+        run_agent,
+    )
 
     # -- build agent --
-    agent_handle = build_agent_for_level(
-        1 if tier == Tier.CHEAP else 2,
-        provider_kwargs={"api_key": resolved_key},
+    _tier_config = TierConfig(
+        level1=LEVEL1_DEFAULT, level2=LEVEL2_DEFAULT, level3=LEVEL3_DEFAULT
+    )
+    _level = 1 if tier == Tier.CHEAP else 2
+    _tlc = _tier_config.for_level(_level)
+    model_provider = _get_provider(
+        _tlc.model, **{**_tlc.provider_kwargs, "api_key": resolved_key}
+    )
+    agent_handle = model_provider.build_agent(
+        level=_level,
         system_prompt=system_prompt,
         output_type=PromptedOutput(output_model),
     )
