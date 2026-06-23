@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Moved `dev/auto-mail-autoupdate.sh` to `scripts/dev/auto-mail-autoupdate.sh`;
+  updated self-locating logic for the new path.
 - Merged `tracing` and `logging` modules into a single `observability` module with
   a unified `setup_observability(config)` entry point; moved tests to
   `tests/observability/`.

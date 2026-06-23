@@ -9,13 +9,13 @@
 # repo's PARENT directory so they never dirty the working tree.
 #
 # Install (cron, every 30 min):
-#   15,45 * * * * /path/to/robotsix-auto-mail/dev/auto-mail-autoupdate.sh
+#   15,45 * * * * /path/to/robotsix-auto-mail/scripts/dev/auto-mail-autoupdate.sh
 set -uo pipefail
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Self-locating: REPO is the parent of this script's dev/ folder.
+# Self-locating: this script lives in scripts/dev/, so REPO is two levels up.
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)" || exit 1
-REPO="$(dirname "$SCRIPT_DIR")"
+REPO="$(dirname "$(dirname "$SCRIPT_DIR")")"
 STATE_DIR="$(dirname "$REPO")"          # runtime files live outside the repo
 
 exec "$REPO/.venv/bin/robotsix-autoupdate" \

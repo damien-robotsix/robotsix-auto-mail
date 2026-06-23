@@ -64,7 +64,7 @@ modules:
     description: >-
       Developer and deployment helper scripts.
     paths:
-      - dev/auto-mail-autoupdate.sh
+      - scripts/dev/auto-mail-autoupdate.sh
       - src/robotsix_auto_mail/dev/__init__.py
       - src/robotsix_auto_mail/dev/autoupdate.py
       - tests/dev/test_autoupdate.py
