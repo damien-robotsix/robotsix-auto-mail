@@ -61,7 +61,7 @@ def _patch_llm_for_proposal(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     patcher = mock.patch(
-        "robotsix_llmio.core.get_provider_for_identifier",
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
         return_value=mock_provider,
     )
     return mock_handle, patcher
@@ -125,7 +125,9 @@ def test_propose_archive_subfolder_llm_no_api_key(
             date="2025-06-01T12:00:00",
         )
 
-        with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as cls:
             propose_archive_subfolder_llm(conn, record, api_key="")
 
         # LLM never called
@@ -162,7 +164,7 @@ def test_propose_archive_subfolder_llm_llm_error(
         mock_provider.build_agent.return_value = mock.MagicMock()
 
         with mock.patch(
-            "robotsix_llmio.core.get_provider_for_identifier",
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test")
@@ -209,7 +211,7 @@ def test_propose_archive_subfolder_llm_existing_folders_in_prompt(
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_llmio.core.get_provider_for_identifier",
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test")
@@ -255,7 +257,7 @@ def test_propose_archive_subfolder_llm_sender_memory_in_prompt(
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_llmio.core.get_provider_for_identifier",
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test")

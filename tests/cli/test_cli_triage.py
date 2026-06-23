@@ -47,7 +47,7 @@ def _patch_triage_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     return mock.patch(
-        "robotsix_llmio.core.get_provider_for_identifier",
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
         return_value=mock_provider,
     )
 
@@ -156,7 +156,7 @@ def test_triage_empty_inbox(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
         db_path=str(tmp_path / "empty.db"),
     )
     with (
-        mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls,
+        mock.patch("robotsix_llmio.core.factory.get_provider_for_identifier") as cls,
         mock.patch(
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),

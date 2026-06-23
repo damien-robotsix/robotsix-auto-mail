@@ -45,7 +45,7 @@ def _patch_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     patcher = mock.patch(
-        "robotsix_llmio.core.get_provider_for_identifier",
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
         return_value=mock_provider,
     )
     return mock_handle, patcher
@@ -146,7 +146,7 @@ def test_run_config_sync_agent_missing_api_key(
     monkeypatch.delenv("LLM_API_KEY", raising=False)
     # Point the config loader at a non-existent file so no key is resolved.
     monkeypatch.setenv("MAIL_CONFIG_PATH", str(tmp_path / "missing.yaml"))
-    with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
+    with mock.patch("robotsix_llmio.core.factory.get_provider_for_identifier") as cls:
         with pytest.raises(ConfigSyncError) as exc:
             run_config_sync_agent(api_key=None)
     assert "LLM_API_KEY" in str(exc.value)
@@ -163,7 +163,7 @@ def test_run_config_sync_agent_llm_failure_wrapped(
     mock_provider.build_agent.return_value = mock_handle
     mock_handle.run_sync.side_effect = RuntimeError("timeout")
     with mock.patch(
-        "robotsix_llmio.core.get_provider_for_identifier",
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
         return_value=mock_provider,
     ):
         with pytest.raises(ConfigSyncError) as exc:

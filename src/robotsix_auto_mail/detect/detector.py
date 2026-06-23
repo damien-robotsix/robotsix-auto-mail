@@ -19,7 +19,6 @@ from robotsix_auto_mail.config import (
     ConfigurationError,
     MailConfig,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.detect.models import (
     DetectedProvider,
@@ -386,7 +385,7 @@ def detect_provider(
         email_address: The email address to detect provider settings for.
         tier: LLM tier to use.  The concrete model for each tier is
             resolved by the configured provider backend (see
-            :func:`robotsix_llmio.core.get_provider_for_identifier`).
+            :func:`robotsix_llmio.core.build_agent_for_level`).
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
         provider: LLM backend name (e.g. ``openrouter-deepseek``).  Defaults
@@ -412,20 +411,14 @@ def detect_provider(
     except ConfigurationError as e:
         raise DetectionError(str(e)) from e
 
-    resolved_provider_model = resolve_llm_provider_model(provider_model)
-
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
+    from robotsix_llmio.core import build_agent_for_level
 
     # -- build agent --
-    # -- lazy lookup so tests can mock the package-level name --
-    from robotsix_auto_mail.detect import get_provider_for_identifier as _get_provider
-
-    llm_provider = _get_provider(
-        identifier=resolved_provider_model, api_key=resolved_key
-    )
-    agent_handle = llm_provider.build_agent(
-        level=1 if tier == Tier.CHEAP else 2,
+    agent_handle = build_agent_for_level(
+        1 if tier == Tier.CHEAP else 2,
+        provider_kwargs={"api_key": resolved_key},
         system_prompt=_DETECT_SYSTEM_PROMPT,
         output_type=PromptedOutput(DetectedProvider),
     )

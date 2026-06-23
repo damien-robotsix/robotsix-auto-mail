@@ -6,7 +6,8 @@ the codebase so every call site delegates to a single implementation.
 The ``pydantic_ai`` and ``robotsix_llmio`` imports are **lazy** (inside
 the function body) to keep module-load time low and to preserve the
 test-patch surface at ``robotsix_llmio.core.get_provider_for_identifier``
-and ``robotsix_llmio.core.run_agent``.
+(called internally by ``build_agent_for_level``) and
+``robotsix_llmio.core.run_agent``.
 """
 
 from __future__ import annotations
@@ -19,7 +20,6 @@ from robotsix_llmio.core import Tier
 from robotsix_auto_mail.config import (
     ConfigurationError,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
 )
 
 T = typing.TypeVar("T", bound=pydantic.BaseModel)
@@ -71,20 +71,15 @@ def _run_llm_agent(
     except ConfigurationError as exc:
         raise exc_type(str(exc)) from exc
 
-    # -- resolve provider-model --
-    resolved_provider_model = resolve_llm_provider_model(provider_model)
-
     # -- lazy imports so the rest of the CLI works without the
     #    LLM provider extra and so test patches can intercept --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider_for_identifier, run_agent
+    from robotsix_llmio.core import build_agent_for_level, run_agent
 
     # -- build agent --
-    llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider_model, api_key=resolved_key
-    )
-    agent_handle = llm_provider.build_agent(
-        level=1 if tier == Tier.CHEAP else 2,
+    agent_handle = build_agent_for_level(
+        1 if tier == Tier.CHEAP else 2,
+        provider_kwargs={"api_key": resolved_key},
         system_prompt=system_prompt,
         output_type=PromptedOutput(output_model),
     )

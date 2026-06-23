@@ -20,7 +20,6 @@ from robotsix_llmio.core import run_agent
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.config import (
     resolve_llm_api_key,
-    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS,
@@ -296,9 +295,6 @@ def propose_archive_subfolder_llm(
     if not resolved_key:
         return  # No API key → silently return
 
-    # -- resolve provider --
-    resolved_provider_model = resolve_llm_provider_model(provider_model)
-
     # -- load existing archive folders from watermark --
     archive_raw = get_watermark(conn, "archive_structure")
     existing_folders: list[str] = []
@@ -375,14 +371,12 @@ def propose_archive_subfolder_llm(
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider_for_identifier
+    from robotsix_llmio.core import build_agent_for_level
 
     try:
-        llm_provider = get_provider_for_identifier(
-            identifier=resolved_provider_model, api_key=resolved_key
-        )
-        agent_handle = llm_provider.build_agent(
-            level=1,
+        agent_handle = build_agent_for_level(
+            1,
+            provider_kwargs={"api_key": resolved_key},
             system_prompt=system_prompt,
             output_type=PromptedOutput(ArchiveSubfolderProposal),
         )

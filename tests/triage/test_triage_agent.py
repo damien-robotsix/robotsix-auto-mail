@@ -43,7 +43,7 @@ def _patch_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     patcher = mock.patch(
-        "robotsix_llmio.core.get_provider_for_identifier",
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
         return_value=mock_provider,
     )
     return mock_handle, patcher
@@ -74,7 +74,9 @@ def test_run_triage_agent_empty_inbox_no_llm(
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
-        with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as cls:
             out = run_triage_agent(conn)
         assert out == []
         cls.assert_not_called()
@@ -240,7 +242,9 @@ def test_run_triage_agent_only_undecided_all_decided_no_llm() -> None:
         _insert_inbox(conn, "<b@x.com>")
         set_triage_decision(conn, "<a@x.com>", "TO_ARCHIVE", source="user")
         set_triage_decision(conn, "<b@x.com>", "TO_DELETE", source="user")
-        with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as cls:
             # No api_key needed: filtering empties the set before any LLM.
             out = run_triage_agent(conn, only_undecided=True)
         assert out == []
@@ -258,7 +262,9 @@ def test_run_triage_agent_missing_api_key(
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
-        with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as cls:
             with pytest.raises(TriageError) as exc:
                 run_triage_agent(conn, api_key=None)
         assert "LLM_API_KEY" in str(exc.value)
@@ -280,7 +286,7 @@ def test_run_triage_agent_llm_failure_wrapped(
         mock_provider.build_agent.return_value = mock_handle
         mock_handle.run_sync.side_effect = RuntimeError("timeout")
         with mock.patch(
-            "robotsix_llmio.core.get_provider_for_identifier",
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             with pytest.raises(TriageError) as exc:
