@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.tracing import init_langfuse_tracing
+from robotsix_auto_mail.observability import init_langfuse_tracing
 
 
 def _make_config(
@@ -29,7 +29,7 @@ def _make_config(
 def test_init_no_credentials() -> None:
     """Returns False when no Langfuse env vars are set (no-op)."""
     with mock.patch(
-        "robotsix_auto_mail.tracing.setup_langfuse_tracing",
+        "robotsix_auto_mail.observability.setup_langfuse_tracing",
         return_value=False,
     ) as mock_setup:
         result = init_langfuse_tracing()
@@ -46,11 +46,11 @@ def test_init_with_credentials() -> None:
     """Returns True and installs signal handlers when setup succeeds."""
     with (
         mock.patch(
-            "robotsix_auto_mail.tracing.setup_langfuse_tracing",
+            "robotsix_auto_mail.observability.setup_langfuse_tracing",
             return_value=True,
         ) as mock_setup,
         mock.patch(
-            "robotsix_auto_mail.tracing.install_signal_handlers"
+            "robotsix_auto_mail.observability.install_signal_handlers"
         ) as mock_install,
     ):
         result = init_langfuse_tracing()
@@ -68,11 +68,11 @@ def test_init_setup_fails_no_handlers() -> None:
     """Does not install signal handlers when setup returns False."""
     with (
         mock.patch(
-            "robotsix_auto_mail.tracing.setup_langfuse_tracing",
+            "robotsix_auto_mail.observability.setup_langfuse_tracing",
             return_value=False,
         ),
         mock.patch(
-            "robotsix_auto_mail.tracing.install_signal_handlers"
+            "robotsix_auto_mail.observability.install_signal_handlers"
         ) as mock_install,
     ):
         init_langfuse_tracing()
@@ -87,7 +87,7 @@ def test_init_passes_config_credentials() -> None:
         langfuse_base_url="https://langfuse.example.net",
     )
     with mock.patch(
-        "robotsix_auto_mail.tracing.setup_langfuse_tracing",
+        "robotsix_auto_mail.observability.setup_langfuse_tracing",
         return_value=True,
     ) as mock_setup:
         init_langfuse_tracing(config)
@@ -103,7 +103,7 @@ def test_init_empty_config_fields_become_none() -> None:
     """Empty-string Langfuse fields convert to None (env-fallback no-op)."""
     config = _make_config()  # langfuse_* default to ""
     with mock.patch(
-        "robotsix_auto_mail.tracing.setup_langfuse_tracing",
+        "robotsix_auto_mail.observability.setup_langfuse_tracing",
         return_value=False,
     ) as mock_setup:
         init_langfuse_tracing(config)

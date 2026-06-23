@@ -67,7 +67,7 @@ from robotsix_auto_mail.cli.config import (
 from robotsix_auto_mail.config import load_accounts as load_accounts
 from robotsix_auto_mail.db import init_db as init_db
 from robotsix_auto_mail.imap import ImapClient as ImapClient
-from robotsix_auto_mail.logging import setup_logging
+from robotsix_auto_mail.observability import setup_observability
 from robotsix_auto_mail.pipeline import ingest_mail as ingest_mail
 
 __all__ = [
@@ -337,25 +337,14 @@ def main(argv: list[str] | None = None) -> int:
 
     # -- load configuration (env → YAML cascade) --
     from robotsix_auto_mail import config as _config
-    from robotsix_auto_mail.tracing import init_langfuse_tracing
 
     try:
         _loaded_cfg = _config.load()
     except Exception:
         _loaded_cfg = None
 
-    # -- configure logging from config (or defaults) --
-    if _loaded_cfg is not None:
-        setup_logging(
-            level=_loaded_cfg.log_level,
-            log_format=_loaded_cfg.log_format,
-            log_file_dir=_loaded_cfg.log_file_dir,
-        )
-    else:
-        setup_logging()
-
-    # -- enable Langfuse tracing when credentials are configured --
-    init_langfuse_tracing(_loaded_cfg)
+    # -- configure logging + Langfuse tracing from config (or defaults) --
+    setup_observability(_loaded_cfg)
 
     if args.command == "probe":
         return _cmd_probe(_load_config_or_exit(args.account))

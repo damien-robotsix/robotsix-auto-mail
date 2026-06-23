@@ -257,24 +257,16 @@ modules:
       - src/robotsix_auto_mail/smtp/__init__.py
       - tests/smtp/test_smtp_client.py
 
-  - id: tracing
+  - id: observability
     description: >-
-      Langfuse observability via robotsix_llmio's OTel layer: initialises
-      the tracer provider and wraps each LLM call site (detect, archive,
-      triage, config_sync_agent) with named root spans carrying input and
-      output attribution.
+      Logging and Langfuse distributed-tracing setup: delegates
+      console/file logging to robotsix_llmio.logging and OTel
+      trace-provider initialisation to robotsix_llmio.core, with
+      a unified setup_observability() entry point.
     paths:
-      - src/robotsix_auto_mail/tracing/__init__.py
-      - tests/tracing/test_tracing.py
-
-  - id: logging
-    description: >-
-      Central structlog-based logging configuration: env-driven
-      setup_logging() entry point bridging stdlib logging into a
-      shared JSON/console renderer.
-    paths:
-      - src/robotsix_auto_mail/logging/__init__.py
-      - tests/logging/test_logging_config.py
+      - src/robotsix_auto_mail/observability/__init__.py
+      - tests/observability/test_logging.py
+      - tests/observability/test_tracing.py
 
   - id: server
     description: >-
