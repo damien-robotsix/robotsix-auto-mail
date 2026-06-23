@@ -237,7 +237,7 @@ auth:
 
 # llm:
 #   api_key: sk-or-v1-…   # or via the LLM_API_KEY env var
-#   provider: openrouter-deepseek
+#   provider_model: openrouter-deepseek
 
 # langfuse:
 #   public_key: ""
