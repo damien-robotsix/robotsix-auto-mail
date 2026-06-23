@@ -67,7 +67,7 @@ from robotsix_auto_mail.cli.config import (
 from robotsix_auto_mail.config import load_accounts as load_accounts
 from robotsix_auto_mail.db import init_db as init_db
 from robotsix_auto_mail.imap import ImapClient as ImapClient
-from robotsix_auto_mail.logging import setup_logging
+from robotsix_auto_mail.observability import setup_logging
 from robotsix_auto_mail.pipeline import ingest_mail as ingest_mail
 
 __all__ = [
@@ -337,7 +337,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # -- load configuration (env → YAML cascade) --
     from robotsix_auto_mail import config as _config
-    from robotsix_auto_mail.tracing import init_langfuse_tracing
+    from robotsix_auto_mail.observability import init_langfuse_tracing
 
     try:
         _loaded_cfg = _config.load()
