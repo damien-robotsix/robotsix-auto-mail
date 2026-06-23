@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed redundant lazy re-import of `delete_record_by_message_id` inside
+  `_BoardActionMixin._archive_and_delete`.
 - Moved `dev/auto-mail-autoupdate.sh` to `scripts/dev/auto-mail-autoupdate.sh`;
   updated self-locating logic for the new path.
 - Merged `tracing` and `logging` modules into a single `observability` module with
