@@ -10,6 +10,8 @@
   (stream handler, formatter, OTel trace-id injection), retaining only the
   date-stamped file handler in the local ``setup_logging`` wrapper.
 - Added changelog-enforcer CI job to gate pull requests.
+- Refactored `config_sync_agent.py`'s `run_config_sync_agent` to accept an
+  explicit `api_key` parameter, simplifying the call site and test surface.
 - Split monolithic `tests/imap/test_imap.py` into domain-focused test modules
   (`test_imap_auth.py`, `test_imap_connection.py`, `test_imap_cross_folder.py`,
   `test_imap_encoding.py`, `test_imap_errors.py`, `test_imap_folders.py`,
