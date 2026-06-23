@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed dead re-export of `get_provider_for_identifier` from
+  `robotsix_auto_mail.detect` (no consumers exist; all callers import directly
+  from `robotsix_llmio.core`).
 - Added `docs/configuration.md` — a comprehensive environment-variable reference
   covering all 41 configuration variables across seven categories (IMAP, SMTP,
   auth, storage, ingest, archive, triage, calendar, LLM, Langfuse, logging,
