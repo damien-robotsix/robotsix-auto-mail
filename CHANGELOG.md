@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Added `.github/PULL_REQUEST_TEMPLATE.md` with a structured contributor
+  checklist (changelog, tests, type-checking, docs, pre-commit, module
+  registration).
 - Removed dead re-export of `get_provider_for_identifier` from
   `robotsix_auto_mail.detect` (no consumers exist; all callers import directly
   from `robotsix_llmio.core`).

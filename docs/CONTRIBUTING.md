@@ -86,7 +86,9 @@ A few conventions worth knowing up front:
 2. Make focused commits; keep unrelated changes out of the same PR.
 3. Run the quality gate above and make sure it passes locally.
 4. Open a pull request describing what changed and why. Reference any
-   related issue.
+   related issue. When you open a PR, GitHub will pre-fill the
+   description with a checklist from `.github/PULL_REQUEST_TEMPLATE.md`.
+   Tick off each item before requesting review.
 5. A maintainer will review your PR. Address review feedback by pushing
    follow-up commits to the same branch.
 
