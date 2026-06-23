@@ -14,6 +14,7 @@
   (`test_imap_auth.py`, `test_imap_connection.py`, `test_imap_cross_folder.py`,
   `test_imap_encoding.py`, `test_imap_errors.py`, `test_imap_folders.py`,
   `test_imap_messages.py`).
+- Split monolithic config test suite into focused per-concern test modules.
 - Initial package scaffold.
 - IMAP/SMTP mail automation with triage and kanban workflows.
 - Continuous deployment for `server.robotsix.net`: `release.yml` now publishes
