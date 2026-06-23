@@ -189,6 +189,14 @@ The `pre-commit.yml` workflow runs `ruff`, `mypy`, `vulture`, and
 MUST be registered in `docs/modules.yaml` under the appropriate module,
 or the pre-commit gate will fail.
 
+### Changelog enforcer
+
+Every PR that adds or modifies source, test, or configuration files
+MUST either (a) add a `CHANGELOG.md` entry under the
+`## 0.0.0 (unreleased)` heading describing the change, or (b) carry the
+`Skip-Changelog` label.  The `changelog-enforcer` CI gate in `ci.yml`
+will reject the PR otherwise.
+
 ---
 
 ## Documentation conventions
