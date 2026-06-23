@@ -24,6 +24,7 @@
 - Fixed stale key ``provider`` → ``provider_model`` in the YAML configuration example
   in ``docs/connecting.md``.
 - Added AGENT.md with repository conventions for CI-fix and other automated agents.
+- Fixed stale path in AGENT.md: `logging/__init__.py` → `observability/__init__.py`.
 - Added changelog-enforcer convention to AGENT.md.
 - Added structured access logging to the HTTP server via ``log_message``.
 - Migrated logging to delegate core pipeline to ``robotsix_llmio.logging.setup_logging``
