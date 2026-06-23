@@ -10,6 +10,10 @@
   (stream handler, formatter, OTel trace-id injection), retaining only the
   date-stamped file handler in the local ``setup_logging`` wrapper.
 - Added changelog-enforcer CI job to gate pull requests.
+- Split monolithic `tests/imap/test_imap.py` into domain-focused test modules
+  (`test_imap_auth.py`, `test_imap_connection.py`, `test_imap_cross_folder.py`,
+  `test_imap_encoding.py`, `test_imap_errors.py`, `test_imap_folders.py`,
+  `test_imap_messages.py`).
 - Initial package scaffold.
 - IMAP/SMTP mail automation with triage and kanban workflows.
 - Continuous deployment for `server.robotsix.net`: `release.yml` now publishes
