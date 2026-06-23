@@ -44,7 +44,7 @@ def _patch_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     patcher = mock.patch(
-        "robotsix_llmio.core.get_provider_for_identifier",
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
         return_value=mock_provider,
     )
     return mock_handle, patcher
@@ -244,7 +244,7 @@ def test_propose_archive_subfolder_llm_folder_memory_in_prompt(
         mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
         with mock.patch(
-            "robotsix_llmio.core.get_provider_for_identifier",
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test")

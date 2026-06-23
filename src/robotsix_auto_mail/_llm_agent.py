@@ -6,7 +6,8 @@ the codebase so every call site delegates to a single implementation.
 The ``pydantic_ai`` and ``robotsix_llmio`` imports are **lazy** (inside
 the function body) to keep module-load time low and to preserve the
 test-patch surface at ``robotsix_llmio.core.get_provider_for_identifier``
-and ``robotsix_llmio.core.run_agent``.
+(called internally by ``get_provider_for_identifier``) and
+``robotsix_llmio.core.run_agent``.
 """
 
 from __future__ import annotations
@@ -19,7 +20,6 @@ from robotsix_llmio.core import Tier
 from robotsix_auto_mail.config import (
     ConfigurationError,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
 )
 
 T = typing.TypeVar("T", bound=pydantic.BaseModel)
@@ -71,20 +71,33 @@ def _run_llm_agent(
     except ConfigurationError as exc:
         raise exc_type(str(exc)) from exc
 
-    # -- resolve provider-model --
-    resolved_provider_model = resolve_llm_provider_model(provider_model)
-
     # -- lazy imports so the rest of the CLI works without the
     #    LLM provider extra and so test patches can intercept --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import get_provider_for_identifier, run_agent
+    from robotsix_llmio.config.tier import (
+        LEVEL1_DEFAULT,
+        LEVEL2_DEFAULT,
+        LEVEL3_DEFAULT,
+        TierConfig,
+    )
+    from robotsix_llmio.core import (
+        get_provider_for_identifier as _get_provider,
+    )
+    from robotsix_llmio.core import (
+        run_agent,
+    )
 
     # -- build agent --
-    llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider_model, api_key=resolved_key
+    _tier_config = TierConfig(
+        level1=LEVEL1_DEFAULT, level2=LEVEL2_DEFAULT, level3=LEVEL3_DEFAULT
     )
-    agent_handle = llm_provider.build_agent(
-        level=1 if tier == Tier.CHEAP else 2,
+    _level = 1 if tier == Tier.CHEAP else 2
+    _tlc = _tier_config.for_level(_level)
+    model_provider = _get_provider(
+        _tlc.model, **{**_tlc.provider_kwargs, "api_key": resolved_key}
+    )
+    agent_handle = model_provider.build_agent(
+        level=_level,
         system_prompt=system_prompt,
         output_type=PromptedOutput(output_model),
     )

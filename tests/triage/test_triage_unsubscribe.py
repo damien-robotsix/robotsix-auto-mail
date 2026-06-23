@@ -75,7 +75,7 @@ def test_detect_unsubscribe_fast_path_header(
             unsubscribe_header="<https://example.com/unsub>",
         ),
     ]
-    with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
+    with mock.patch("robotsix_llmio.core.factory.get_provider_for_identifier") as cls:
         result = _detect_unsubscribe_for_sender(
             None,  # conn not used in fast path
             "sender@example.com",
@@ -105,7 +105,7 @@ def test_detect_unsubscribe_fast_path_mailto(
             unsubscribe_header="<mailto:unsub@example.com>",
         ),
     ]
-    with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
+    with mock.patch("robotsix_llmio.core.factory.get_provider_for_identifier") as cls:
         result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
     assert result is not None
     assert result.has_unsubscribe is True
@@ -153,7 +153,7 @@ def test_detect_unsubscribe_llm_path(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     with mock.patch(
-        "robotsix_llmio.core.get_provider_for_identifier",
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
         return_value=mock_provider,
     ):
         result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
@@ -200,7 +200,7 @@ def test_detect_unsubscribe_llm_failure_returns_none(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     with mock.patch(
-        "robotsix_llmio.core.get_provider_for_identifier",
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
         return_value=mock_provider,
     ):
         result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
@@ -269,7 +269,9 @@ def test_check_unsubscribe_threshold_not_met(
             insert_record(conn, record)
             set_triage_decision(conn, mid, "TO_DELETE", source="agent", reason="spam")
 
-        with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as cls:
             _check_unsubscribe_for_to_delete(conn)
         cls.assert_not_called()
 
@@ -318,7 +320,9 @@ def test_check_unsubscribe_caching_skips_llm(
             insert_record(conn, record)
             set_triage_decision(conn, mid, "TO_DELETE", source="agent", reason="spam")
 
-        with mock.patch("robotsix_llmio.core.get_provider_for_identifier") as cls:
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as cls:
             _check_unsubscribe_for_to_delete(conn)
         # LLM provider should NOT be called — caching fast path.
         cls.assert_not_called()
