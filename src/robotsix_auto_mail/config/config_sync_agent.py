@@ -24,14 +24,12 @@ import sys
 from pathlib import Path
 
 import pydantic
-from robotsix_llmio.core import Tier, get_provider_for_identifier, run_agent
+from robotsix_llmio.core import Tier
 
+from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     _FIELD_SPECS,
     _REQUIRED,
-    ConfigurationError,
-    resolve_llm_api_key,
-    resolve_llm_provider_model,
 )
 from robotsix_auto_mail.config.pydantic_utils import validate_confidence
 from robotsix_auto_mail.db import get_watermark, set_watermark
@@ -371,50 +369,22 @@ def run_config_sync_agent(
             error occurs.
     """
     resolved_root = repo_root if repo_root is not None else _default_repo_root()
-
-    # -- resolve API key (arg -> LLM_API_KEY env -> config.llm_api_key) --
-    try:
-        resolved_key = resolve_llm_api_key(api_key)
-    except ConfigurationError as e:
-        raise ConfigSyncError(str(e)) from e
-
-    # -- resolve provider-model (arg → LLM_PROVIDER_MODEL env →
-    #    config.llm_provider_model) --
-    resolved_provider_model = resolve_llm_provider_model(provider_model)
-
-    # -- gather the four surfaces + the ground-truth mappings --
     surfaces = _read_config_surfaces(resolved_root)
     field_to_yaml, field_to_env = _load_field_mappings(resolved_root)
-
-    # -- lazy import so the rest of the CLI works without pydantic_ai --
-    from pydantic_ai import PromptedOutput
-
-    # -- build agent --
-    llm_provider = get_provider_for_identifier(
-        identifier=resolved_provider_model, api_key=resolved_key
-    )
-    agent_handle = llm_provider.build_agent(
-        level=1 if tier == Tier.CHEAP else 2,
-        system_prompt=_build_config_sync_system_prompt(),
-        output_type=PromptedOutput(ConfigSyncResult),
-    )
-
-    # -- build the user message --
     user_message = _build_user_message(surfaces, field_to_yaml, field_to_env)
 
-    # -- call LLM --
-    try:
-        result = run_agent(
-            agent_handle,
-            lambda: agent_handle.run_sync(user_message),
-            label="config drift detection",
-            what="config drift detection",
-            trace_input=user_message,
-        )
-    except Exception as exc:
-        raise ConfigSyncError(str(exc)) from exc
+    output = _run_llm_agent(
+        api_key=api_key,
+        provider_model=provider_model,
+        tier=tier,
+        system_prompt=_build_config_sync_system_prompt(),
+        output_model=ConfigSyncResult,
+        user_message=user_message,
+        label="config drift detection",
+        what="config drift detection",
+        exc_type=ConfigSyncError,
+    )
 
-    output: ConfigSyncResult = result.output
     if conn is not None:
         output = ConfigSyncResult(
             proposals=record_and_filter_proposals(conn, output.proposals)

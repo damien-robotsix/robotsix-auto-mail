@@ -45,7 +45,7 @@ def _patch_config_sync_llm(
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
     return mock.patch(
-        "robotsix_auto_mail.config.config_sync_agent.get_provider_for_identifier",
+        "robotsix_llmio.core.get_provider_for_identifier",
         return_value=mock_provider,
     )
 
