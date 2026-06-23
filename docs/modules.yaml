@@ -366,6 +366,7 @@ modules:
       detect-secrets baseline).
     paths:
       - .github/CODEOWNERS
+      - .github/PULL_REQUEST_TEMPLATE.md
       - .github/codeql/codeql-config.yml
       - .github/workflows/ci.yml
       - .github/workflows/codeql.yml
