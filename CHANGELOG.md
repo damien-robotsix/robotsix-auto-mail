@@ -5,6 +5,8 @@
 - Merged `tracing` and `logging` modules into a single `observability` module with
   a unified `setup_observability(config)` entry point; moved tests to
   `tests/observability/`.
+- Moved config example files (`config/.gitkeep`, `config/mail.local.example.yaml`)
+  to `docs/config/` for per-module documentation alignment.
 - Added `.github/PULL_REQUEST_TEMPLATE.md` with a structured contributor
   checklist (changelog, tests, type-checking, docs, pre-commit, module
   registration).

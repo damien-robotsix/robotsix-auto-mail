@@ -61,7 +61,7 @@ run). Provide a config file with your IMAP/SMTP credentials:
 ```sh
 mkdir -p config
 # Option A — copy the example from the repo and edit:
-cp /tmp/ram/config/mail.local.example.yaml config/mail.local.yaml
+cp /tmp/ram/docs/config/mail.local.example.yaml config/mail.local.yaml
 $EDITOR config/mail.local.yaml
 
 # Option B — auto-detect from your address (needs LLM_API_KEY in .env):

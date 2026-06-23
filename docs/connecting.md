@@ -20,7 +20,7 @@ mounts configuration without rebuilding the image.
 
 ```sh
 # 1. Create your local config from the template
-cp config/mail.local.example.yaml config/mail.local.yaml
+cp docs/config/mail.local.example.yaml config/mail.local.yaml
 
 # 2. Edit it with your real credentials
 $EDITOR config/mail.local.yaml
@@ -202,7 +202,7 @@ Behaviour:
 
 ### YAML config file (`config/mail.local.yaml`)
 
-Copy `config/mail.local.example.yaml` and fill in your values. Any field you
+Copy `docs/config/mail.local.example.yaml` and fill in your values. Any field you
 omit falls back to its built-in default.
 
 ```yaml
@@ -316,7 +316,7 @@ and the server starts normally without the agent.
 > **Multi-account note:** In the multi-account shape (``accounts:`` list),
 > ``llm:``, ``langfuse:``, and ``board_agent:`` are **top-level** sections
 > (alongside ``default_account:``), not per-account.  See
-> ``config/mail.local.example.yaml`` for the correct placement.
+> ``docs/config/mail.local.example.yaml`` for the correct placement.
 
 The `auth.password` and `llm.api_key` values are **redacted** in logs and
 debug output regardless of how they are supplied.
@@ -612,7 +612,7 @@ nested `imap` / `smtp` / `auth` / `store` (and optional `llm` / `ingest` /
 `archive` / `triage`) sections — parsed exactly as in the single-account
 file. An optional top-level `default_account:` names the default account;
 when omitted, the first entry is the default. The canonical example ships in
-`config/mail.local.example.yaml`:
+`docs/config/mail.local.example.yaml`:
 
 ```yaml
 default_account: personal
@@ -1459,7 +1459,7 @@ text or JSON output, look at its `title`, `body`, `affected_field`, and
   `python scripts/config/check_config_sync.py` goes green again. Those surfaces
   are:
   - the `MailConfig` dataclass (`src/robotsix_auto_mail/config/__init__.py`),
-  - the YAML template (`config/mail.local.example.yaml`),
+  - the YAML template (`docs/config/mail.local.example.yaml`),
   - `.env.example`, and
   - the two config tables in this file — "YAML config file" and "Environment
     variables".

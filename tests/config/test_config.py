@@ -343,7 +343,7 @@ def test_from_env_invalid_calendar_transport() -> None:
 
 def test_from_yaml_example_file() -> None:
     """The bundled multi-account example is valid and parses correctly."""
-    accounts = MailAccountsConfig.from_yaml("config/mail.local.example.yaml")
+    accounts = MailAccountsConfig.from_yaml("docs/config/mail.local.example.yaml")
     cfg = accounts.default.config
     assert cfg.imap_host == "imap.gmail.com"
     assert cfg.imap_port == 993

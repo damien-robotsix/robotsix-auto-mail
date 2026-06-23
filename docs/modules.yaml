@@ -122,8 +122,8 @@ modules:
       - tests/config/test_config_archive.py
       - tests/config/test_config_triage.py
       - .env.example
-      - config/.gitkeep
-      - config/mail.local.example.yaml
+      - docs/config/.gitkeep
+      - docs/config/mail.local.example.yaml
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
       - tests/config/test_config_sync_agent.py

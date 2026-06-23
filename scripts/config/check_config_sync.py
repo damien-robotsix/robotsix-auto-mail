@@ -4,12 +4,12 @@
 Cross-references the canonical ``MailConfig`` field list (obtained via
 ``dataclasses.fields()``) against three user-facing artifacts:
 
-1. ``config/mail.local.example.yaml`` (the single, canonical multi-account
+1. ``docs/config/mail.local.example.yaml`` (the single, canonical multi-account
    example)
 2. ``.env.example``
 3. ``docs/connecting.md``
 
-The merged ``config/mail.local.example.yaml`` is checked two ways: its
+The merged ``docs/config/mail.local.example.yaml`` is checked two ways: its
 representative (first) account's nested sections plus the commented optional
 sections are cross-referenced against every ``MailConfig`` field (field
 drift), and the whole file is validated structurally against
@@ -348,7 +348,7 @@ _SKIP_DEFAULT_CHECK: frozenset[str] = frozenset({"store.path"})
 
 def check_yaml_example(
     text: str,
-    path: str = "config/mail.local.example.yaml",
+    path: str = "docs/config/mail.local.example.yaml",
 ) -> list[dict[str, Any]]:
     """Check the merged multi-account example *text* against ``MailConfig``.
 
@@ -910,7 +910,7 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
 
 def check_accounts_example(
     text_or_path: str | Path,
-    path: str = "config/mail.local.example.yaml",
+    path: str = "docs/config/mail.local.example.yaml",
 ) -> list[dict[str, Any]]:
     """Check the multi-account example against ``MailAccountsConfig``.
 
@@ -960,7 +960,7 @@ def run_checks(
         return exc.code if isinstance(exc.code, int) else 2
 
     # -- load artifact files ------------------------------------------------
-    yaml_path = repo_root / "config" / "mail.local.example.yaml"
+    yaml_path = repo_root / "docs/config" / "mail.local.example.yaml"
     env_path = repo_root / ".env.example"
     docs_path = repo_root / "docs" / "connecting.md"
 
