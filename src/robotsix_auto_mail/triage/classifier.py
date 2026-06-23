@@ -371,12 +371,24 @@ def propose_archive_subfolder_llm(
 
     # -- lazy imports so the rest of the CLI works without pydantic_ai --
     from pydantic_ai import PromptedOutput
-    from robotsix_llmio.core import build_agent_for_level
+    from robotsix_llmio.config.tier import (
+        LEVEL1_DEFAULT,
+        LEVEL2_DEFAULT,
+        LEVEL3_DEFAULT,
+        TierConfig,
+    )
+    from robotsix_llmio.core import get_provider_for_identifier as _get_provider
 
     try:
-        agent_handle = build_agent_for_level(
-            1,
-            provider_kwargs={"api_key": resolved_key},
+        _tier_config = TierConfig(
+            level1=LEVEL1_DEFAULT, level2=LEVEL2_DEFAULT, level3=LEVEL3_DEFAULT
+        )
+        _tlc = _tier_config.for_level(1)
+        model_provider = _get_provider(
+            _tlc.model, **{**_tlc.provider_kwargs, "api_key": resolved_key}
+        )
+        agent_handle = model_provider.build_agent(
+            level=1,
             system_prompt=system_prompt,
             output_type=PromptedOutput(ArchiveSubfolderProposal),
         )
