@@ -4,6 +4,8 @@
 
 - Removed dead `ProviderEntry` re-export from
   `src/robotsix_auto_mail/detect/__init__.py`.
+- Removed 12 dead private-symbol re-exports from
+  `src/robotsix_auto_mail/triage/__init__.py`.
 - Embedded an agent-comm component responder (`board-manager-robotsix-auto-mail`)
   with dedicated configuration contract, settings module, and test coverage.
 - Added a `broker` optional-dependency extra (alias for the `calendar` extra's
