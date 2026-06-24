@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed 9 dead `_render_*` backward-compat re-exports from
+  `src/robotsix_auto_mail/server/views/__init__.py`.
 - Removed dead `ProviderEntry` re-export from
   `src/robotsix_auto_mail/detect/__init__.py`.
 - Embedded an agent-comm component responder (`board-manager-robotsix-auto-mail`)
