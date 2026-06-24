@@ -18,15 +18,18 @@ from robotsix_auto_mail.config import ConfigurationError, MailConfig
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 # Fake Response/Error classes for testing on_request dispatch without
 # requiring the robotsix-agent-comm package to be installed.
 class _FakeResponse:
     def __init__(self, body: object = None) -> None:
         self.body = body
 
+
 class _FakeError:
     def __init__(self, body: object = None) -> None:
         self.body = body
+
 
 _FAKE_RESPONSE_CLS = _FakeResponse
 _FAKE_ERROR_CLS = _FakeError
@@ -41,7 +44,9 @@ def _fake_response_to(cls, request: object, body: object = None) -> _FakeRespons
     return cls(body=body)
 
 
-def _fake_error_to(cls, request: object, code: str = "", message: str = "", **kwargs: object) -> _FakeError:  # type: ignore[no-untyped-def]
+def _fake_error_to(
+    cls, request: object, code: str = "", message: str = "", **kwargs: object
+) -> _FakeError:  # type: ignore[no-untyped-def]
     body: dict[str, object] = {"code": code, "message": message}
     body.update(kwargs)
     return cls(body=body)
@@ -49,7 +54,6 @@ def _fake_error_to(cls, request: object, code: str = "", message: str = "", **kw
 
 _FAKE_RESPONSE_CLS.to = classmethod(_fake_response_to)  # type: ignore[assignment]
 _FAKE_ERROR_CLS.to = classmethod(_fake_error_to)  # type: ignore[assignment]
-
 
 
 def _make_config(**overrides: object) -> MailConfig:
