@@ -14,10 +14,6 @@ This module re-exports the public and previously-importable symbols so
 
 from __future__ import annotations
 
-from ._migrate import run_additive_migrations as run_additive_migrations
-from .models import (
-    _ADDITIVE_COLUMNS as _ADDITIVE_COLUMNS,
-)
 from .models import (
     _SCHEMA as _SCHEMA,
 )
@@ -99,7 +95,6 @@ __all__ = [
     "list_untriaged_records",
     "record_exists",
     "row_to_mailrecord",
-    "run_additive_migrations",
     "set_watermark",
     "update_calendar_correlation_id",
     "update_calendar_event_ref",
