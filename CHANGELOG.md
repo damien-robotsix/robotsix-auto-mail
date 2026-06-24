@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Added unit tests for `_run_llm_agent` (`tests/core/test_llm_agent.py`)
+  covering happy path, missing API key, `run_agent` failure, and tier mapping.
 - Enabled the `uv` manager in `renovate.json` so Renovate bumps `uv.lock`
   alongside `pyproject.toml` dependency updates.
 - Removed stale monolithic `tests/config/test_config.py`; all 66 tests are
