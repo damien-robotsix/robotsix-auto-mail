@@ -5,11 +5,11 @@ the ``robotsix_agent_comm`` broker and returns the agent's correlated reply.
 All agent-comm imports are lazy so the server remains functional when the
 optional dependency is not installed.
 
-When the ``calendar_transport`` config field is ``"brokered"``, the transport
-factory builds a ``BrokeredRegistry`` + ``NetworkedBrokerTransport`` that connect
-to the secured broker (TLS + token auth) and the agent runs in mailbox/pull mode.
-Broker connection, authentication, delivery, and calendar-side errors are all
-mapped to ``CalendarDispatchError`` with actionable messages.
+When the ``calendar_transport`` config field is ``"brokered"``, a one-shot
+``BrokeredRequester`` issues the request and tears down — no manual agent
+lifecycle is needed.  Broker connection, authentication, delivery, and
+calendar-side errors are all mapped to ``CalendarDispatchError`` with
+actionable messages.
 """
 
 from __future__ import annotations
@@ -59,8 +59,9 @@ def dispatch_calendar_request(
 
     Issues an agent-comm **request** carrying ``{"add_to_calendar": ...}`` and
     waits for the correlated reply. When *config* selects the ``"brokered"``
-    transport the agent connects to the secured broker in mailbox/pull mode;
-    otherwise the in-process registry is used.
+    transport a one-shot ``BrokeredRequester`` handles transport-pair creation,
+    request send, reply unwrap, and teardown; otherwise the in-process registry
+    is used.
 
     Args:
         event: The calendar event request to dispatch.
@@ -87,58 +88,72 @@ def dispatch_calendar_request(
     except ImportError as exc:
         raise CalendarDispatchError("Agent communication is not available") from exc
 
-    # Build the transport pair from config when available, else in-process.
-    try:
-        if config is not None:
-            from .transport import build_calendar_transport_from_config
+    use_broker = (
+        config is not None
+        and getattr(config, "calendar_transport", "in-process") == "brokered"
+    )
 
-            registry, transport_obj = build_calendar_transport_from_config(config)
-        else:
-            from .transport import _get_in_process_registry
-
-            registry = _get_in_process_registry()
-            transport_obj = None
-    except (ImportError, ValueError) as exc:
-        raise CalendarDispatchError(
-            f"Calendar broker configuration incomplete: {exc}"
-        ) from exc
-    except ssl.SSLError as exc:
-        raise CalendarDispatchError(
-            f"Calendar broker TLS handshake failed: {exc}"
-        ) from exc
-    except OSError as exc:
-        raise CalendarDispatchError(f"Calendar broker unreachable: {exc}") from exc
-
-    agent_kwargs: dict[str, Any] = {"registry": registry}
-    if transport_obj is not None:
-        agent_kwargs["transport"] = transport_obj
-        agent_kwargs["pull"] = True
-    agent = Agent(_SELF_AGENT_ID, **agent_kwargs)
-
-    with _dispatch_lock:
-        agent.start()
+    if use_broker:
+        assert config is not None  # noqa: S101 — use_broker ensures this
+        ref = _dispatch_via_brokered_requester(event, config)
+    else:
+        # Build the transport pair from config when available, else in-process.
         try:
-            reply = agent.send_request(
-                _CALENDAR_AGENT_ID,
-                {"add_to_calendar": event.model_dump()},
-                timeout=_REQUEST_TIMEOUT,
-            )
-        except AgentNotFoundError as exc:
-            raise CalendarDispatchError("Calendar agent is not available") from exc
-        except (DeliveryError, TransportTimeoutError, TransportError) as exc:
-            raise CalendarDispatchError(
-                f"Failed to deliver calendar request: {exc}"
-            ) from exc
-        except Exception as exc:
-            logger.exception("Unexpected error dispatching calendar request")
-            raise CalendarDispatchError(
-                f"Failed to deliver calendar request: {exc}"
-            ) from exc
-        finally:
-            with contextlib.suppress(Exception):
-                agent.stop()
+            if config is not None:
+                from .transport import build_calendar_transport_from_config
 
-    ref = _interpret_reply(reply, Error)
+                registry, transport_obj = build_calendar_transport_from_config(config)
+            else:
+                from .transport import _get_in_process_registry
+
+                registry = _get_in_process_registry()
+                transport_obj = None
+        except (ImportError, ValueError) as exc:
+            raise CalendarDispatchError(
+                f"Calendar broker configuration incomplete: {exc}"
+            ) from exc
+        except ssl.SSLError as exc:
+            raise CalendarDispatchError(
+                f"Calendar broker TLS handshake failed: {exc}"
+            ) from exc
+        except OSError as exc:
+            raise CalendarDispatchError(f"Calendar broker unreachable: {exc}") from exc
+
+        agent_kwargs: dict[str, Any] = {"registry": registry}
+        if transport_obj is not None:
+            agent_kwargs["transport"] = transport_obj
+            agent_kwargs["pull"] = True
+        agent = Agent(_SELF_AGENT_ID, **agent_kwargs)
+
+        with _dispatch_lock:
+            agent.start()
+            try:
+                reply = agent.send_request(
+                    _CALENDAR_AGENT_ID,
+                    {"add_to_calendar": event.model_dump()},
+                    timeout=_REQUEST_TIMEOUT,
+                )
+            except AgentNotFoundError as exc:
+                raise CalendarDispatchError("Calendar agent is not available") from exc
+            except (
+                DeliveryError,
+                TransportTimeoutError,
+                TransportError,
+            ) as exc:
+                raise CalendarDispatchError(
+                    f"Failed to deliver calendar request: {exc}"
+                ) from exc
+            except Exception as exc:
+                logger.exception("Unexpected error dispatching calendar request")
+                raise CalendarDispatchError(
+                    f"Failed to deliver calendar request: {exc}"
+                ) from exc
+            finally:
+                with contextlib.suppress(Exception):
+                    agent.stop()
+
+        ref = _interpret_reply(reply, Error)
+
     return CalendarEventResponse(
         correlation_id=event.correlation_id,
         status="success",
@@ -146,14 +161,114 @@ def dispatch_calendar_request(
     )
 
 
-def _interpret_reply(reply: Any, error_cls: type) -> str:
+def _build_broker_ssl_context(config: MailConfig) -> ssl.SSLContext | None:
+    """Build an :class:`ssl.SSLContext` from *config* for the broker transport.
+
+    Returns ``None`` when no custom CA or client cert is configured (the
+    system trust store is sufficient for the deployed, publicly-trusted
+    broker endpoint).
+    """
+    if config.calendar_broker_tls_ca:
+        from .transport import build_ssl_context
+
+        return build_ssl_context(
+            config.calendar_broker_tls_ca,
+            config.calendar_broker_client_cert,
+            config.calendar_broker_client_key,
+        )
+    if config.calendar_broker_client_cert:
+        ctx = ssl.create_default_context()
+        if config.calendar_broker_client_key:
+            ctx.load_cert_chain(
+                certfile=config.calendar_broker_client_cert,
+                keyfile=config.calendar_broker_client_key,
+            )
+        else:
+            ctx.load_cert_chain(certfile=config.calendar_broker_client_cert)
+        return ctx
+    return None
+
+
+def _dispatch_via_brokered_requester(
+    event: CalendarEventRequest,
+    config: MailConfig,
+) -> str:
+    """Issue the calendar request through a one-shot ``BrokeredRequester``.
+
+    Returns the reply string extracted by the requester.
+    """
+    try:
+        from robotsix_agent_comm.sdk.brokered_request import BrokeredRequester
+    except ImportError as exc:
+        raise CalendarDispatchError("Agent communication is not available") from exc
+
+    from robotsix_agent_comm.transport import (
+        AgentNotFoundError,
+        DeliveryError,
+        TransportError,
+        TransportTimeoutError,
+    )
+
+    ssl_context = _build_broker_ssl_context(config)
+
+    requester = BrokeredRequester(
+        agent_id=_SELF_AGENT_ID,
+        target_agent_id=_CALENDAR_AGENT_ID,
+        broker_host=config.calendar_broker_host,
+        broker_token=config.calendar_broker_token,
+        broker_port=config.calendar_broker_port,
+        broker_ssl_context=ssl_context,
+        timeout=_REQUEST_TIMEOUT,
+        default_reply="Event created",
+    )
+
+    with _dispatch_lock:
+        try:
+            reply_str = requester.request(
+                {"add_to_calendar": event.model_dump()},
+            )
+        except RuntimeError as exc:
+            raise CalendarDispatchError(f"Calendar agent error: {exc}") from exc
+        except AgentNotFoundError as exc:
+            raise CalendarDispatchError("Calendar agent is not available") from exc
+        except (
+            DeliveryError,
+            TransportTimeoutError,
+            TransportError,
+        ) as exc:
+            raise CalendarDispatchError(
+                f"Failed to deliver calendar request: {exc}"
+            ) from exc
+        except ssl.SSLError as exc:
+            raise CalendarDispatchError(
+                f"Calendar broker TLS handshake failed: {exc}"
+            ) from exc
+        except OSError as exc:
+            raise CalendarDispatchError(f"Calendar broker unreachable: {exc}") from exc
+        except Exception as exc:
+            logger.exception("Unexpected error dispatching calendar request")
+            raise CalendarDispatchError(
+                f"Failed to deliver calendar request: {exc}"
+            ) from exc
+
+    return _interpret_reply(reply_str)
+
+
+def _interpret_reply(reply: Any, error_cls: type | None = None) -> str:
     """Map the calendar agent's reply to a success reference, or raise.
 
     The calendar agent replies with ``{"result": {...}}`` on success or
     ``{"error": {...}}`` on a calendar-side failure; an agent-comm-level
     failure arrives as an ``Error`` message.
+
+    When *reply* is already a string (e.g. extracted by a
+    ``BrokeredRequester``), it is returned unchanged — the caller has
+    already handled transport errors and the value is the reply text.
     """
-    if isinstance(reply, error_cls):
+    if isinstance(reply, str):
+        return reply
+
+    if error_cls is not None and isinstance(reply, error_cls):
         message = _reply_error_message(getattr(reply, "body", None))
         raise CalendarDispatchError(f"Calendar agent error: {message}")
 
