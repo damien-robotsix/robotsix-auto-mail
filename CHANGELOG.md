@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed dead `ProviderEntry` re-export from
+  `src/robotsix_auto_mail/detect/__init__.py`.
 - Removed 21 dead backward-compat re-exports from
   `src/robotsix_auto_mail/config/__init__.py`.
 - Extracted shared checkout + setup-uv steps into a composite action
