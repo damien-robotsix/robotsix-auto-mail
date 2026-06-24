@@ -30,13 +30,13 @@ from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS as VALID_TRIAGE_ACTIONS,
 )
 from robotsix_auto_mail.triage._constants import (
+    _UNSUBSCRIBE_SUGGESTIONS_KEY as _UNSUBSCRIBE_SUGGESTIONS_KEY,
+)
+from robotsix_auto_mail.triage._constants import (
     TRIAGE_ACTION_LABELS as TRIAGE_ACTION_LABELS,
 )
 from robotsix_auto_mail.triage._constants import (
     TRIAGE_ACTION_ORDER as TRIAGE_ACTION_ORDER,
-)
-from robotsix_auto_mail.triage._constants import (
-    _UNSUBSCRIBE_SUGGESTIONS_KEY as _UNSUBSCRIBE_SUGGESTIONS_KEY,
 )
 from robotsix_auto_mail.triage.agent import (
     _build_triage_system_prompt as _build_triage_system_prompt,
@@ -154,6 +154,7 @@ __all__ = [
     "TRIAGE_ACTION_LABELS",
     "TRIAGE_ACTION_ORDER",
     "VALID_TRIAGE_ACTIONS",
+    "_UNSUBSCRIBE_SUGGESTIONS_KEY",
     "ArchiveFolderMemory",
     "ArchiveSubfolderProposal",
     "SenderMemory",
@@ -178,7 +179,6 @@ __all__ = [
     "_save_llm_archive_hints",
     "_save_memory",
     "_sender_key",
-    "_UNSUBSCRIBE_SUGGESTIONS_KEY",
     "delete_triage_decision",
     "delete_triage_decisions_by_action",
     "get_archive_subfolder",
