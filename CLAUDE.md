@@ -21,7 +21,7 @@ an appropriate layout based on the mailbox's existing folders; the chosen
 structure is then remembered so subsequent runs reuse it without re-asking
 the LLM. The implementation lives in `src/robotsix_auto_mail/db/archive.py`
 (module `db.archive`) and is wired into ingestion from
-`src/robotsix_auto_mail/pipeline.py`.
+`src/robotsix_auto_mail/pipeline/__init__.py` (the `pipeline` package).
 
 ### How the LLM determines the structure
 
@@ -82,7 +82,7 @@ Both fields live on `MailConfig` (`src/robotsix_auto_mail/config/__init__.py`):
 
 ### Pipeline integration
 
-`setup_archive` is invoked from `ingest_mail` in `pipeline.py` as a
+`setup_archive` is invoked from `ingest_mail` in `pipeline/__init__.py` (the `pipeline` package) as a
 first-run step, guarded by `not dry_run` and `config.archive_enabled`. The
 call is wrapped in a best-effort `try`/`except` that logs the failure (via
 `_logger.exception`) but does not propagate it — an archive failure
@@ -175,19 +175,24 @@ dependency is needed.
 Static assets (CSS, JS, images) for the web board template live in
 `src/robotsix_auto_mail/static/` and are loaded at module level via
 `Path(__file__).parent / "static" / "<filename>").read_text()`.  Do
-**not** embed CSS or JS as Python string literals in `server.py` —
+**not** embed CSS or JS as Python string literals in the `server/` package —
 the separation keeps the server module navigable and allows CSS/JS
 tooling (linting, syntax highlighting, validation) to apply.
 
-The canonical example is the board stylesheet (line 53 of `server.py`):
+The canonical example is the board stylesheet (lines 21–28 of `server/_constants.py`):
 ```python
-_CSS = (Path(__file__).parent / "static" / "board.css").read_text()
+_STATIC_BOARD_CSS = (
+    importlib.resources.files("robotsix_board") / "static" / "board.css"
+).read_text()
+_STATIC_AUTOMAIL_BOARD_CSS = (
+    importlib.resources.files("robotsix_auto_mail.server") / "static" / "board.css"
+).read_text()
 ```
 
 ## Documentation conventions
 
 When you add or change a user-facing CLI subcommand in
-`src/robotsix_auto_mail/cli.py`, document it in `docs/connecting.md` in the
+`src/robotsix_auto_mail/cli/__init__.py` (the `cli` package), document it in `docs/connecting.md` in the
 same PR, following the `config-sync` command section pattern (purpose,
 optional-extra requirements, flags, example invocation, and output).
 
