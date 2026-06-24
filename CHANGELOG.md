@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed stale monolithic `tests/config/test_config.py`; all 66 tests are
+  already covered by the split domain modules.
 - Removed redundant lazy re-import of `delete_record_by_message_id` inside
   `_BoardActionMixin._archive_and_delete`.
 - Moved `dev/auto-mail-autoupdate.sh` to `scripts/dev/auto-mail-autoupdate.sh`;

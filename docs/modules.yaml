@@ -112,7 +112,6 @@ modules:
       - src/robotsix_auto_mail/config/render.py
       - src/robotsix_auto_mail/config/schema.py
       - src/robotsix_auto_mail/config/config_sync_agent.py
-      - tests/config/test_config.py
       - tests/config/test_mailconfig_basics.py
       - tests/config/test_config_from_env.py
       - tests/config/test_config_from_yaml.py
