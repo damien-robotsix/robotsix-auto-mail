@@ -468,9 +468,7 @@ def test_dispatch_brokered_os_error() -> None:
     requester_instance.request.side_effect = OSError("no route to host")
 
     try:
-        with pytest.raises(
-            CalendarDispatchError, match="Calendar broker unreachable"
-        ):
+        with pytest.raises(CalendarDispatchError, match="Calendar broker unreachable"):
             dispatch_calendar_request(_sample_event(), config=_broker_config())
     finally:
         _remove_fake_agent_comm_modules()
@@ -522,9 +520,9 @@ def test_dispatch_brokered_import_error() -> None:
         finally:
             # Restore the fake module so _remove_fake_agent_comm_modules
             # can clean up cleanly.
-            sys.modules["robotsix_agent_comm.sdk.brokered_request"] = (
-                mocks["brokered_request_mod"]
-            )
+            sys.modules["robotsix_agent_comm.sdk.brokered_request"] = mocks[
+                "brokered_request_mod"
+            ]
 
     _remove_fake_agent_comm_modules()
 
@@ -620,9 +618,7 @@ def _write_self_signed_cert_pem(path: "pathlib.Path") -> None:
 
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
-    subject = issuer = x509.Name(
-        [x509.NameAttribute(NameOID.COMMON_NAME, "test-cert")]
-    )
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test-cert")])
     now = datetime.datetime.now(datetime.timezone.utc)
     cert = (
         x509.CertificateBuilder()
@@ -663,9 +659,7 @@ def _write_self_signed_cert_pem_with_key(
     from cryptography.x509.oid import NameOID
 
     ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    ca_subject = x509.Name(
-        [x509.NameAttribute(NameOID.COMMON_NAME, "test-ca")]
-    )
+    ca_subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test-ca")])
     now = datetime.datetime.now(datetime.timezone.utc)
     ca_cert = (
         x509.CertificateBuilder()
@@ -684,9 +678,7 @@ def _write_self_signed_cert_pem_with_key(
     ca_path.write_bytes(ca_cert.public_bytes(serialization.Encoding.PEM))
 
     client_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    client_subject = x509.Name(
-        [x509.NameAttribute(NameOID.COMMON_NAME, "test-client")]
-    )
+    client_subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test-client")])
     client_cert = (
         x509.CertificateBuilder()
         .subject_name(client_subject)

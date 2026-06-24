@@ -200,9 +200,7 @@ def _dispatch_via_brokered_requester(
     try:
         from robotsix_agent_comm.sdk.brokered_request import BrokeredRequester
     except ImportError as exc:
-        raise CalendarDispatchError(
-            "Agent communication is not available"
-        ) from exc
+        raise CalendarDispatchError("Agent communication is not available") from exc
 
     from robotsix_agent_comm.transport import (
         AgentNotFoundError,
@@ -256,9 +254,7 @@ def _dispatch_via_brokered_requester(
     return _interpret_reply(reply_str)
 
 
-def _interpret_reply(
-    reply: Any, error_cls: type | None = None
-) -> str:
+def _interpret_reply(reply: Any, error_cls: type | None = None) -> str:
     """Map the calendar agent's reply to a success reference, or raise.
 
     The calendar agent replies with ``{"result": {...}}`` on success or
