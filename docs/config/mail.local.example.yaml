@@ -42,6 +42,17 @@
 #   repo_id: ""
 #   write_ops: true
 
+# Component agent — optional agent-comm responder that registers on the
+# shared broker and serves monitor / config-get / config-set requests.
+# Disabled by default; requires robotsix_agent_comm and a valid broker token.
+# component_agent:
+#   enabled: false
+#   agent_id: board-manager-robotsix-auto-mail
+#   broker_host: ""
+#   broker_port: 443
+#   broker_token: ""
+#   broker_tls_ca: ""
+
 # Optional: name the default account. Absent → the first entry below.
 default_account: personal
 

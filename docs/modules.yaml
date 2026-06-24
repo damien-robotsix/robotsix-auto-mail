@@ -340,6 +340,22 @@ modules:
       - tests/server/test_board_agent.py
       - scripts/server/smoke_board.sh
 
+  - id: component-agent
+    description: >-
+      Optional agent-comm responder that registers on the shared
+      broker under agent-id board-manager-robotsix-auto-mail and
+      serves monitor, config-get, and config-set requests.
+    paths:
+      - src/robotsix_auto_mail/component_agent/__init__.py
+      - src/robotsix_auto_mail/component_agent/settings.py
+      - src/robotsix_auto_mail/component_agent/config_contract.py
+      - src/robotsix_auto_mail/component_agent/responder.py
+      - docs/server/component-agent.md
+      - tests/component_agent/__init__.py
+      - tests/component_agent/test_settings.py
+      - tests/component_agent/test_config_contract.py
+      - tests/component_agent/test_responder.py
+
   - id: docs
     description: >-
       User-facing documentation and architecture decisions.
