@@ -30,6 +30,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           persist-credentials: false
+      - uses: ./.github/actions/setup-project
 
       # NOTE: GitHub Actions `needs:` only links jobs WITHIN the same
       # workflow file, so this standalone codeql.yml cannot `needs: verify`
@@ -38,11 +39,6 @@ jobs:
       # imports — is achieved by installing dependencies in-job below
       # (uv sync) before CodeQL init. Do NOT "fix" this into a cross-workflow
       # `needs: verify`; that is not a thing GitHub Actions supports.
-
-      # setup-uv installs uv and a Python matching .python-version, mirroring
-      # the convention in ci.yml.
-      - name: Set up uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       # Install the full dependency graph the same way ci.yml does so the
       # CodeQL Python extractor can resolve third-party imports.

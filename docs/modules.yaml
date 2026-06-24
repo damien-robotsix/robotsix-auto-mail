@@ -367,6 +367,7 @@ modules:
       updates, and local pre-commit hooks (including the
       detect-secrets baseline).
     paths:
+      - .github/actions/setup-project/action.yml
       - .github/CODEOWNERS
       - .github/PULL_REQUEST_TEMPLATE.md
       - .github/codeql/codeql-config.yml
