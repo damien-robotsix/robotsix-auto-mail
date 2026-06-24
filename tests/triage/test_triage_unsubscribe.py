@@ -16,11 +16,13 @@ from robotsix_auto_mail.db import (
     set_watermark,
 )
 from robotsix_auto_mail.triage import (
-    _UNSUBSCRIBE_SUGGESTIONS_KEY,
     UnsubscribeDetection,
     _check_unsubscribe_for_to_delete,
     _detect_unsubscribe_for_sender,
     set_triage_decision,
+)
+from robotsix_auto_mail.triage._constants import (
+    _UNSUBSCRIBE_SUGGESTIONS_KEY,
 )
 
 # ---------------------------------------------------------------------------

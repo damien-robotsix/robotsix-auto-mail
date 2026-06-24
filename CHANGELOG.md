@@ -8,6 +8,10 @@
   `src/robotsix_auto_mail/detect/__init__.py`.
 - Removed 12 dead private-symbol re-exports from
   `src/robotsix_auto_mail/triage/__init__.py`.
+- Removed the remaining `_UNSUBSCRIBE_SUGGESTIONS_KEY` re-export from
+  `src/robotsix_auto_mail/triage/__init__.py` that was missed in the
+  prior 12-symbol cleanup, and updated its test import to use the
+  direct `triage._constants` path.
 - Updated stale subpackage path references in `CLAUDE.md` (`pipeline.py` →
   `pipeline/__init__.py`, `server.py` → `server/` package, `cli.py` →
   `cli/__init__.py`).
