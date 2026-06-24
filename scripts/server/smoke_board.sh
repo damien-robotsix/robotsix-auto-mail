@@ -9,7 +9,7 @@
 # diagnosis (failing route + status + a tail of the server log) on any failure.
 #
 # Run from the repo root:
-#   bash scripts/smoke_board.sh
+#   bash scripts/server/smoke_board.sh
 #
 set -euo pipefail
 
