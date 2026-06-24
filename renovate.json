@@ -4,6 +4,7 @@
   "schedule": ["before 6am on monday"],
   "prConcurrentLimit": 10,
   "pep621": { "enabled": true },
+  "uv": { "enabled": true },
   "github-actions": { "enabled": true },
   "packageRules": [
     {
