@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed 21 dead backward-compat re-exports from
+  `src/robotsix_auto_mail/config/__init__.py`.
 - Extracted shared checkout + setup-uv steps into a composite action
   (`.github/actions/setup-project/action.yml`) and refactored
   `ci.yml`, `codeql.yml`, and `lockfile.yml` to use it.
