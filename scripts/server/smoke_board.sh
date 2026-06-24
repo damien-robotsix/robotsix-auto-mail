@@ -50,7 +50,7 @@ diagnose() {
 export MAIL_IMAP_HOST="localhost"
 export MAIL_SMTP_HOST="localhost"
 export MAIL_USERNAME="smoke"
-export MAIL_PASSWORD="smoke"
+export MAIL_PASSWORD="smoke"  # pragma: allowlist secret
 export MAIL_DB_PATH="${TMP_DIR}/smoke.db"
 
 # Launch the server in the background, capturing stdout/stderr for diagnosis.
