@@ -28,51 +28,53 @@ The runtime modules group into logical layers.
 
 ### Protocol clients
 
-`protocol/__init__.py` defines the shared `_ProtocolClient` abstract base, which
+`imap/_protocol.py` defines the shared `_ProtocolClient` abstract base, which
 holds the five common config fields (host, port, tls_mode, username,
 password) and the `_dispatch_tls()` dispatch loop.  Two concrete subclasses
 implement the protocol-specific steps:
 
-- `imap.py` — a stdlib `imaplib` wrapper.
-- `smtp/__init__.py` — a stdlib `smtplib` sending client.
+- `imap/` — a stdlib `imaplib` wrapper (`imap/client.py`).
+- `smtp/` — a stdlib `smtplib` sending client.
 
 ### Ingestion
 
-- `fetch.py` — watermark-aware IMAP fetch logic.
-- `parser.py` — MIME to `MailRecord` parsing.
-- `pipeline.py` — orchestrates fetch → parse → store → watermark.
+- `pipeline/` — orchestrates fetch → parse → store → watermark; includes
+  watermark-aware IMAP fetch logic.
+- `parser/` — MIME to `MailRecord` parsing.
 
 ### Datastore
 
-- `db.py` — SQLite schema, the `MailRecord` type, insert, and watermark
+- `db/` — SQLite schema, the `MailRecord` type, insert, and watermark
   read/write.
-- `status.py` — the mail-processing status read/write layer for the kanban
-  board.
+- `server/views/board.py` and `triage/persistence.py` — the mail-processing
+  status read/write layer for the kanban board.
 
 ### Configuration
 
 - `config/__init__.py` — loads `MailConfig` from YAML and environment.
-- `config_sync.py` — the optional LLM-driven config-drift advisory agent.
+- `config/config_sync_agent.py` — the optional LLM-driven config-drift advisory
+  agent.
 
 ### Provider detection
 
-- `detect.py` — MX-record / autoconfig / LLM provider detection and
+- `detect/` — MX-record / autoconfig / LLM provider detection and
   auto-configuration lookup.
 
 ### Archive layout
 
-- `archive.py` — the self-managed archive folder structure, with a first-run
+- `db/archive.py` — the self-managed archive folder structure, with a first-run
   LLM layout proposal remembered via the `watermark` table.
 
 ### LLM-driven agents
 
-- `triage.py` — the inbox triage classifier.
-- `config_sync.py` — the config-drift advisory agent (also listed above).
+- `triage/` — the inbox triage classifier.
+- `config/config_sync_agent.py` — the config-drift advisory agent (also listed
+  above).
 
 ### Surfaces
 
-- `cli.py` — the CLI entry point exposing the subcommands.
-- `server.py` — the HTTP kanban board server.
+- `cli/` — the CLI entry point exposing the subcommands.
+- `server/` — the HTTP kanban board server.
 
 ## Ingestion data flow
 

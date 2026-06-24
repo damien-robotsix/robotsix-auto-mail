@@ -17,6 +17,8 @@
   `src/robotsix_auto_mail/triage/__init__.py` that was missed in the
   prior 12-symbol cleanup, and updated its test import to use the
   direct `triage._constants` path.
+- Updated module-path references in `docs/architecture.md` to reflect
+  the flat-file → subpackage refactoring (13 stale references).
 - Updated stale subpackage path references in `CLAUDE.md` (`pipeline.py` →
   `pipeline/__init__.py`, `server.py` → `server/` package, `cli.py` →
   `cli/__init__.py`).
