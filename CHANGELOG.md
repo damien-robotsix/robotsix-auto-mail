@@ -11,6 +11,8 @@
 - Updated stale subpackage path references in `CLAUDE.md` (`pipeline.py` →
   `pipeline/__init__.py`, `server.py` → `server/` package, `cli.py` →
   `cli/__init__.py`).
+- Removed dead backward-compat re-exports (`run_additive_migrations`, `_ADDITIVE_COLUMNS`)
+  from `db/__init__.py`; no callers import them from the package namespace.
 - Embedded an agent-comm component responder (`board-manager-robotsix-auto-mail`)
   with dedicated configuration contract, settings module, and test coverage.
 - Added a `broker` optional-dependency extra (alias for the `calendar` extra's
