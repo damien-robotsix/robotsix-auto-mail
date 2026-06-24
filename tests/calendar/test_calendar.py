@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import pathlib
+import ssl
 import sys
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
@@ -20,6 +23,9 @@ from robotsix_auto_mail.calendar import (
     extract_calendar_summary,
     extract_dates_from_body,
 )
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config.model import MailConfig
 
 # ---------------------------------------------------------------------------
 # Helpers — inject/remove fake agent-comm modules
@@ -95,6 +101,7 @@ def _install_fake_agent_comm_modules(
     mocks["agent_cls"] = mock_agent_cls
     mocks["transport"] = transport_mod
     mocks["sdk"] = sdk_mod
+    mocks["brokered_request_mod"] = brokered_request_mod
     mocks["AgentNotFoundError"] = agent_not_found_error
     mocks["DeliveryError"] = delivery_error
     mocks["TransportError"] = transport_error
@@ -107,6 +114,23 @@ def _remove_fake_agent_comm_modules() -> None:
     for key in list(sys.modules):
         if key.startswith("robotsix_agent_comm"):
             del sys.modules[key]
+
+
+def _broker_config(**overrides: object) -> "MailConfig":
+    """Build a ``MailConfig`` suitable for brokered calendar dispatch."""
+    from robotsix_auto_mail.config.model import MailConfig
+
+    return MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        calendar_transport="brokered",
+        calendar_broker_host="broker.example.com",
+        calendar_broker_port=8443,
+        calendar_broker_token="test-token",
+        **overrides,
+    )
 
 
 def _sample_event() -> CalendarEventRequest:
@@ -280,6 +304,407 @@ def test_dispatch_unexpected_error() -> None:
             dispatch_calendar_request(_sample_event())
     finally:
         _remove_fake_agent_comm_modules()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — dispatch_calendar_request (brokered path)
+# ---------------------------------------------------------------------------
+
+
+def test_dispatch_brokered_success() -> None:
+    """Brokered dispatch returns the reply string from BrokeredRequester."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    event = _sample_event()
+    config = _broker_config()
+    mocks = _install_fake_agent_comm_modules()
+
+    # BrokeredRequester.request() returns a string by contract.
+    requester_instance = mocks["brokered_request_mod"].BrokeredRequester.return_value
+    requester_instance.request.return_value = "Created event 'Brokered Test'"
+
+    try:
+        result = dispatch_calendar_request(event, config=config)
+    finally:
+        _remove_fake_agent_comm_modules()
+
+    assert isinstance(result, CalendarEventResponse)
+    assert result.event_ref == "Created event 'Brokered Test'"
+    assert result.status == "success"
+    assert result.correlation_id == event.correlation_id
+
+    # Verify BrokeredRequester was constructed with expected args.
+    brokered_cls = mocks["brokered_request_mod"].BrokeredRequester
+    brokered_cls.assert_called_once()
+    _, kwargs = brokered_cls.call_args
+    assert kwargs["agent_id"] == "robotsix-auto-mail"
+    assert kwargs["target_agent_id"] == "robotsix-calendar"
+    assert kwargs["broker_host"] == "broker.example.com"
+    assert kwargs["broker_port"] == 8443
+    assert kwargs["broker_token"] == "test-token"
+    assert kwargs["timeout"] == 60.0
+    assert kwargs["default_reply"] == "Event created"
+
+    # Verify request was called with the correct payload.
+    requester_instance.request.assert_called_once_with(
+        {"add_to_calendar": event.model_dump()},
+    )
+
+
+def test_dispatch_brokered_runtime_error() -> None:
+    """Brokered dispatch maps RuntimeError to CalendarDispatchError."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    mocks = _install_fake_agent_comm_modules()
+    requester_instance = mocks["brokered_request_mod"].BrokeredRequester.return_value
+    requester_instance.request.side_effect = RuntimeError("calendar engine error")
+
+    try:
+        with pytest.raises(
+            CalendarDispatchError, match=r"Calendar agent error.*calendar engine error"
+        ):
+            dispatch_calendar_request(_sample_event(), config=_broker_config())
+    finally:
+        _remove_fake_agent_comm_modules()
+
+
+def test_dispatch_brokered_agent_not_found() -> None:
+    """Brokered dispatch maps AgentNotFoundError to CalendarDispatchError."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    mocks = _install_fake_agent_comm_modules()
+    agent_not_found_error = mocks["AgentNotFoundError"]
+    requester_instance = mocks["brokered_request_mod"].BrokeredRequester.return_value
+    requester_instance.request.side_effect = agent_not_found_error("robotsix-calendar")
+
+    try:
+        with pytest.raises(
+            CalendarDispatchError, match="Calendar agent is not available"
+        ):
+            dispatch_calendar_request(_sample_event(), config=_broker_config())
+    finally:
+        _remove_fake_agent_comm_modules()
+
+
+def test_dispatch_brokered_delivery_error() -> None:
+    """Brokered dispatch maps DeliveryError to CalendarDispatchError."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    mocks = _install_fake_agent_comm_modules()
+    delivery_error = mocks["DeliveryError"]
+    requester_instance = mocks["brokered_request_mod"].BrokeredRequester.return_value
+    requester_instance.request.side_effect = delivery_error("message timeout")
+
+    try:
+        with pytest.raises(
+            CalendarDispatchError, match="Failed to deliver calendar request"
+        ):
+            dispatch_calendar_request(_sample_event(), config=_broker_config())
+    finally:
+        _remove_fake_agent_comm_modules()
+
+
+def test_dispatch_brokered_transport_error() -> None:
+    """Brokered dispatch maps TransportError to CalendarDispatchError."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    mocks = _install_fake_agent_comm_modules()
+    transport_error = mocks["TransportError"]
+    requester_instance = mocks["brokered_request_mod"].BrokeredRequester.return_value
+    requester_instance.request.side_effect = transport_error("connection refused")
+
+    try:
+        with pytest.raises(
+            CalendarDispatchError, match="Failed to deliver calendar request"
+        ):
+            dispatch_calendar_request(_sample_event(), config=_broker_config())
+    finally:
+        _remove_fake_agent_comm_modules()
+
+
+def test_dispatch_brokered_transport_timeout_error() -> None:
+    """Brokered dispatch maps TransportTimeoutError to CalendarDispatchError."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    mocks = _install_fake_agent_comm_modules()
+    transport_timeout_error = mocks["TransportTimeoutError"]
+    requester_instance = mocks["brokered_request_mod"].BrokeredRequester.return_value
+    requester_instance.request.side_effect = transport_timeout_error("timed out")
+
+    try:
+        with pytest.raises(
+            CalendarDispatchError, match="Failed to deliver calendar request"
+        ):
+            dispatch_calendar_request(_sample_event(), config=_broker_config())
+    finally:
+        _remove_fake_agent_comm_modules()
+
+
+def test_dispatch_brokered_ssl_error() -> None:
+    """Brokered dispatch maps ssl.SSLError to CalendarDispatchError."""
+    import ssl
+
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    mocks = _install_fake_agent_comm_modules()
+    requester_instance = mocks["brokered_request_mod"].BrokeredRequester.return_value
+    requester_instance.request.side_effect = ssl.SSLError("certificate verify failed")
+
+    try:
+        with pytest.raises(
+            CalendarDispatchError, match="Calendar broker TLS handshake failed"
+        ):
+            dispatch_calendar_request(_sample_event(), config=_broker_config())
+    finally:
+        _remove_fake_agent_comm_modules()
+
+
+def test_dispatch_brokered_os_error() -> None:
+    """Brokered dispatch maps OSError to CalendarDispatchError."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    mocks = _install_fake_agent_comm_modules()
+    requester_instance = mocks["brokered_request_mod"].BrokeredRequester.return_value
+    requester_instance.request.side_effect = OSError("no route to host")
+
+    try:
+        with pytest.raises(
+            CalendarDispatchError, match="Calendar broker unreachable"
+        ):
+            dispatch_calendar_request(_sample_event(), config=_broker_config())
+    finally:
+        _remove_fake_agent_comm_modules()
+
+
+def test_dispatch_brokered_unexpected_error() -> None:
+    """Brokered dispatch maps unexpected exceptions to CalendarDispatchError."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    mocks = _install_fake_agent_comm_modules()
+    requester_instance = mocks["brokered_request_mod"].BrokeredRequester.return_value
+    requester_instance.request.side_effect = ValueError("unexpected failure")
+
+    try:
+        with pytest.raises(
+            CalendarDispatchError, match="Failed to deliver calendar request"
+        ):
+            dispatch_calendar_request(_sample_event(), config=_broker_config())
+    finally:
+        _remove_fake_agent_comm_modules()
+
+
+def test_dispatch_brokered_import_error() -> None:
+    """Brokered dispatch raises CalendarDispatchError on ImportError for
+    the brokered_request module."""
+    from robotsix_auto_mail.calendar.dispatch import dispatch_calendar_request
+
+    # Install fake modules but then delete the brokered_request module so
+    # the import inside _dispatch_via_brokered_requester fails.
+    mocks = _install_fake_agent_comm_modules()
+    del sys.modules["robotsix_agent_comm.sdk.brokered_request"]
+
+    # Also block re-import.
+    import builtins
+
+    _orig_import = builtins.__import__
+
+    def _block_brokered(name: str, *args: object, **kwargs: object) -> object:
+        if name == "robotsix_agent_comm.sdk.brokered_request":
+            raise ImportError(f"No module named {name!r}")
+        return _orig_import(name, *args, **kwargs)
+
+    with mock.patch("builtins.__import__", new=_block_brokered):
+        try:
+            with pytest.raises(
+                CalendarDispatchError, match="Agent communication is not available"
+            ):
+                dispatch_calendar_request(_sample_event(), config=_broker_config())
+        finally:
+            # Restore the fake module so _remove_fake_agent_comm_modules
+            # can clean up cleanly.
+            sys.modules["robotsix_agent_comm.sdk.brokered_request"] = (
+                mocks["brokered_request_mod"]
+            )
+
+    _remove_fake_agent_comm_modules()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — _build_broker_ssl_context
+# ---------------------------------------------------------------------------
+
+
+def test_build_broker_ssl_context_no_ca_and_no_client_cert() -> None:
+    """Returns None when no CA or client cert is configured."""
+    from robotsix_auto_mail.calendar.dispatch import _build_broker_ssl_context
+
+    config = _broker_config()
+    result = _build_broker_ssl_context(config)
+    assert result is None
+
+
+def test_build_broker_ssl_context_with_ca(tmp_path: "pathlib.Path") -> None:
+    """Returns an SSLContext when a CA cert path is configured."""
+    from robotsix_auto_mail.calendar.dispatch import _build_broker_ssl_context
+
+    # Write a minimal PEM CA file (the function doesn't validate the
+    # certificate — it just attempts to load it into an SSLContext).
+    ca_path = tmp_path / "ca.pem"
+    _write_self_signed_cert_pem(ca_path)
+
+    config = _broker_config(
+        calendar_broker_tls_ca=str(ca_path),
+    )
+    result = _build_broker_ssl_context(config)
+    assert isinstance(result, ssl.SSLContext)
+    # The context should be a client-side TLS context.
+    assert result.protocol == ssl.PROTOCOL_TLS_CLIENT
+
+
+def test_build_broker_ssl_context_with_ca_and_client_cert(
+    tmp_path: "pathlib.Path",
+) -> None:
+    """Returns an SSLContext with client cert chain when both CA and
+    client cert are configured."""
+    from robotsix_auto_mail.calendar.dispatch import _build_broker_ssl_context
+
+    ca_path = tmp_path / "ca.pem"
+    cert_path = tmp_path / "client.pem"
+    key_path = tmp_path / "client.key"
+    _write_self_signed_cert_pem_with_key(ca_path, cert_path, key_path)
+
+    config = _broker_config(
+        calendar_broker_tls_ca=str(ca_path),
+        calendar_broker_client_cert=str(cert_path),
+        calendar_broker_client_key=str(key_path),
+    )
+    result = _build_broker_ssl_context(config)
+    assert isinstance(result, ssl.SSLContext)
+    assert result.protocol == ssl.PROTOCOL_TLS_CLIENT
+
+
+def test_build_broker_ssl_context_client_cert_only(tmp_path: "pathlib.Path") -> None:
+    """Returns an SSLContext with system trust + client cert when only
+    client cert is configured (no custom CA)."""
+    from robotsix_auto_mail.calendar.dispatch import _build_broker_ssl_context
+
+    cert_path = tmp_path / "client.pem"
+    _write_self_signed_cert_pem(cert_path)
+
+    config = _broker_config(
+        calendar_broker_client_cert=str(cert_path),
+    )
+    result = _build_broker_ssl_context(config)
+    assert isinstance(result, ssl.SSLContext)
+    # When no CA is provided, the base context comes from
+    # ssl.create_default_context().
+    assert result.protocol == ssl.PROTOCOL_TLS_CLIENT
+
+
+# -- SSL helpers ----------------------------------------------------------
+
+
+def _write_self_signed_cert_pem(path: "pathlib.Path") -> None:
+    """Write a minimal self-signed certificate + private key in PEM format
+    to *path* (combined file suitable for ``load_cert_chain(certfile=…)``).
+
+    Uses ``cryptography`` to produce a valid certificate + key so that
+    ``build_ssl_context`` and ``_build_broker_ssl_context`` can load it.
+    """
+    import datetime
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+    subject = issuer = x509.Name(
+        [x509.NameAttribute(NameOID.COMMON_NAME, "test-cert")]
+    )
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - datetime.timedelta(days=1))
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName("localhost")]),
+            critical=False,
+        )
+        .sign(key, hashes.SHA256())
+    )
+    cert_pem = cert.public_bytes(serialization.Encoding.PEM)
+    key_pem = key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    path.write_bytes(cert_pem + b"\n" + key_pem)
+
+
+def _write_self_signed_cert_pem_with_key(
+    ca_path: "pathlib.Path",
+    cert_path: "pathlib.Path",
+    key_path: "pathlib.Path",
+) -> None:
+    """Write a self-signed certificate chain: CA PEM at *ca_path*,
+    client certificate PEM at *cert_path*, and client private key
+    PEM at *key_path*."""
+    import datetime
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+
+    ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    ca_subject = x509.Name(
+        [x509.NameAttribute(NameOID.COMMON_NAME, "test-ca")]
+    )
+    now = datetime.datetime.now(datetime.timezone.utc)
+    ca_cert = (
+        x509.CertificateBuilder()
+        .subject_name(ca_subject)
+        .issuer_name(ca_subject)
+        .public_key(ca_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - datetime.timedelta(days=1))
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .add_extension(
+            x509.BasicConstraints(ca=True, path_length=None),
+            critical=True,
+        )
+        .sign(ca_key, hashes.SHA256())
+    )
+    ca_path.write_bytes(ca_cert.public_bytes(serialization.Encoding.PEM))
+
+    client_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    client_subject = x509.Name(
+        [x509.NameAttribute(NameOID.COMMON_NAME, "test-client")]
+    )
+    client_cert = (
+        x509.CertificateBuilder()
+        .subject_name(client_subject)
+        .issuer_name(ca_subject)
+        .public_key(client_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - datetime.timedelta(days=1))
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .sign(ca_key, hashes.SHA256())
+    )
+    cert_path.write_bytes(client_cert.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(
+        client_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+    )
 
 
 # ---------------------------------------------------------------------------

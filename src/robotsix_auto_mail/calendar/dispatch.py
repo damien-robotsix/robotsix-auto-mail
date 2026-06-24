@@ -79,9 +79,6 @@ def dispatch_calendar_request(
     try:
         from robotsix_agent_comm.protocol import Error
         from robotsix_agent_comm.sdk import Agent
-        from robotsix_agent_comm.sdk.brokered_request import (
-            BrokeredRequester,  # noqa: F401
-        )
         from robotsix_agent_comm.transport import (
             AgentNotFoundError,
             DeliveryError,
@@ -200,7 +197,13 @@ def _dispatch_via_brokered_requester(
 
     Returns the reply string extracted by the requester.
     """
-    from robotsix_agent_comm.sdk.brokered_request import BrokeredRequester
+    try:
+        from robotsix_agent_comm.sdk.brokered_request import BrokeredRequester
+    except ImportError as exc:
+        raise CalendarDispatchError(
+            "Agent communication is not available"
+        ) from exc
+
     from robotsix_agent_comm.transport import (
         AgentNotFoundError,
         DeliveryError,
@@ -225,7 +228,6 @@ def _dispatch_via_brokered_requester(
         try:
             reply_str = requester.request(
                 {"add_to_calendar": event.model_dump()},
-                timeout=_REQUEST_TIMEOUT,
             )
         except RuntimeError as exc:
             raise CalendarDispatchError(f"Calendar agent error: {exc}") from exc
@@ -251,10 +253,12 @@ def _dispatch_via_brokered_requester(
                 f"Failed to deliver calendar request: {exc}"
             ) from exc
 
-    return _interpret_reply(reply_str, type(None))  # error_cls unused for str
+    return _interpret_reply(reply_str)
 
 
-def _interpret_reply(reply: Any, error_cls: type) -> str:
+def _interpret_reply(
+    reply: Any, error_cls: type | None = None
+) -> str:
     """Map the calendar agent's reply to a success reference, or raise.
 
     The calendar agent replies with ``{"result": {...}}`` on success or
@@ -268,7 +272,7 @@ def _interpret_reply(reply: Any, error_cls: type) -> str:
     if isinstance(reply, str):
         return reply
 
-    if isinstance(reply, error_cls):
+    if error_cls is not None and isinstance(reply, error_cls):
         message = _reply_error_message(getattr(reply, "body", None))
         raise CalendarDispatchError(f"Calendar agent error: {message}")
 
