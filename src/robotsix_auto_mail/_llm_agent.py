@@ -93,8 +93,9 @@ def _run_llm_agent(
     )
     _level = 1 if tier == Tier.CHEAP else 2
     _tlc = _tier_config.for_level(_level)
+    model_id = provider_model if provider_model else _tlc.model
     model_provider = _get_provider(
-        _tlc.model, **{**_tlc.provider_kwargs, "api_key": resolved_key}
+        model_id, **{**_tlc.provider_kwargs, "api_key": resolved_key}
     )
     agent_handle = model_provider.build_agent(
         level=_level,
