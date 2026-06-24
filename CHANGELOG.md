@@ -2,6 +2,12 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed `provider_model` parameter in `_run_llm_agent`, `detect_provider`, and
+  `propose_archive_subfolder_llm` so that a non-None value is actually passed
+  through to `get_provider_for_identifier` instead of being silently ignored
+  in favor of the tier-level default model. Setting `LLM_PROVIDER_MODEL` now
+  takes effect for all LLM agent calls.
+
 - Replaced manual `Agent` construction and lifecycle in
   `dispatch_calendar_request()` with `BrokeredRequester` for brokered
   calendar transport, eliminating transport-pair creation, request send,

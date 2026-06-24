@@ -384,8 +384,9 @@ def propose_archive_subfolder_llm(
             level1=LEVEL1_DEFAULT, level2=LEVEL2_DEFAULT, level3=LEVEL3_DEFAULT
         )
         _tlc = _tier_config.for_level(1)
+        model_id = provider_model if provider_model else _tlc.model
         model_provider = _get_provider(
-            _tlc.model, **{**_tlc.provider_kwargs, "api_key": resolved_key}
+            model_id, **{**_tlc.provider_kwargs, "api_key": resolved_key}
         )
         agent_handle = model_provider.build_agent(
             level=1,
