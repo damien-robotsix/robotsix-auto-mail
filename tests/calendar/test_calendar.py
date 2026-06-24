@@ -76,6 +76,9 @@ def _install_fake_agent_comm_modules(
     sdk_mod = mock.MagicMock()
     sdk_mod.Agent = mock_agent_cls
 
+    brokered_request_mod = mock.MagicMock()
+    brokered_request_mod.BrokeredRequester = mock.MagicMock()
+
     protocol_mod = mock.MagicMock()
     protocol_mod.Error = error_cls
 
@@ -84,6 +87,7 @@ def _install_fake_agent_comm_modules(
 
     sys.modules["robotsix_agent_comm"] = top_mod
     sys.modules["robotsix_agent_comm.sdk"] = sdk_mod
+    sys.modules["robotsix_agent_comm.sdk.brokered_request"] = brokered_request_mod
     sys.modules["robotsix_agent_comm.protocol"] = protocol_mod
     sys.modules["robotsix_agent_comm.transport"] = transport_mod
 

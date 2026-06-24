@@ -1209,7 +1209,7 @@ wheels = [
 [[package]]
 name = "robotsix-agent-comm"
 version = "0.1.0"
-source = { git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=main#e65da0eafc49ec6dcfb895e5de431ce8f1b171bc" }
+source = { git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=main#c57e9d7483f3e283d3e421cd24b60f0a442971c9" }
 
 [[package]]
 name = "robotsix-auto-mail"

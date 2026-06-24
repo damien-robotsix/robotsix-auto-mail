@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Replaced manual `Agent` construction and lifecycle in
+  `dispatch_calendar_request()` with `BrokeredRequester` for brokered
+  calendar transport, eliminating transport-pair creation, request send,
+  reply unwrap, and teardown boilerplate.
+
 - Removed 9 dead `_render_*` backward-compat re-exports from
   `src/robotsix_auto_mail/server/views/__init__.py`.
 - Removed dead `ProviderEntry` re-export from
