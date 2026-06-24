@@ -58,6 +58,7 @@ from robotsix_auto_mail.detect.models import (
 from robotsix_auto_mail.detect.models import (
     MailProvider as MailProvider,
 )
+
 __all__ = [
     "_DETECT_SYSTEM_PROMPT",
     "_MX_PROVIDERS",
