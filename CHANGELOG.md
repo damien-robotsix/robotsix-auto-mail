@@ -6,6 +6,10 @@
   alongside `pyproject.toml` dependency updates.
 - Removed stale monolithic `tests/config/test_config.py`; all 66 tests are
   already covered by the split domain modules.
+- Split `tests/server/test_action_mixin.py` (1727 lines, 51 tests) into 9
+  per-action-handler test files plus a shared `_test_helpers.py` module
+  (`_FakeHandler`, `_SyncThread`), following the same class-per-file pattern
+  used for `test_server.py` and `test_board_handler.py`.
 - Removed redundant lazy re-import of `delete_record_by_message_id` inside
   `_BoardActionMixin._archive_and_delete`.
 - Moved `dev/auto-mail-autoupdate.sh` to `scripts/dev/auto-mail-autoupdate.sh`;
