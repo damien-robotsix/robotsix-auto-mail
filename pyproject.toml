@@ -60,10 +60,6 @@ dev = [
     "vulture>=2.16",
     # zizmor: GitHub Actions security scanning (CI + pre-commit gate).
     "zizmor",
-    # robotsix-agent-comm is transitively depended on by the board-agent and
-    # calendar extras; including it in dev ensures component_agent tests can
-    # import from it without sys.modules mocking.
-    "robotsix-agent-comm",
 ]
 llm = [
     "robotsix-llmio[openrouter-deepseek,tracing]",

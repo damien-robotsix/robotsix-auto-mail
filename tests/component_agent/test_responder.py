@@ -18,6 +18,39 @@ from robotsix_auto_mail.config import ConfigurationError, MailConfig
 # Helpers
 # ---------------------------------------------------------------------------
 
+# Fake Response/Error classes for testing on_request dispatch without
+# requiring the robotsix-agent-comm package to be installed.
+class _FakeResponse:
+    def __init__(self, body: object = None) -> None:
+        self.body = body
+
+class _FakeError:
+    def __init__(self, body: object = None) -> None:
+        self.body = body
+
+_FAKE_RESPONSE_CLS = _FakeResponse
+_FAKE_ERROR_CLS = _FakeError
+_FAKE_PROTOCOL = mock.MagicMock()
+_FAKE_PROTOCOL.Response = _FAKE_RESPONSE_CLS
+_FAKE_PROTOCOL.Error = _FAKE_ERROR_CLS
+# ``to`` is a classmethod on both Response and Error that creates
+# instances — mock it per-class so isinstance checks pass.
+
+
+def _fake_response_to(cls, request: object, body: object = None) -> _FakeResponse:  # type: ignore[no-untyped-def]
+    return cls(body=body)
+
+
+def _fake_error_to(cls, request: object, code: str = "", message: str = "", **kwargs: object) -> _FakeError:  # type: ignore[no-untyped-def]
+    body: dict[str, object] = {"code": code, "message": message}
+    body.update(kwargs)
+    return cls(body=body)
+
+
+_FAKE_RESPONSE_CLS.to = classmethod(_fake_response_to)  # type: ignore[assignment]
+_FAKE_ERROR_CLS.to = classmethod(_fake_error_to)  # type: ignore[assignment]
+
+
 
 def _make_config(**overrides: object) -> MailConfig:
     kwargs: dict[str, object] = dict(
@@ -53,6 +86,11 @@ def _make_fake_request(body: dict) -> mock.MagicMock:
 class TestOnRequestDispatch:
     """on_request dispatches on request.body["kind"]."""
 
+    _PROTOCOL_PATCH = mock.patch.dict(
+        "sys.modules",
+        {"robotsix_agent_comm.protocol": _FAKE_PROTOCOL},
+    )
+
     def test_monitor_returns_response(self) -> None:
         cfg = _make_config(
             db_path=":memory:",
@@ -63,10 +101,11 @@ class TestOnRequestDispatch:
         responder = ComponentAgentResponder(cfg)
         req = _make_fake_request({"kind": "monitor"})
 
-        from robotsix_agent_comm.protocol import Response
+        with self._PROTOCOL_PATCH:
+            result = responder.on_request(req)
 
-        result = responder.on_request(req)
-        assert isinstance(result, Response)
+        response_cls = _FAKE_RESPONSE_CLS
+        assert isinstance(result, response_cls)
         assert "db" in result.body
         assert "capabilities" in result.body
         assert result.body["capabilities"] == [
@@ -80,10 +119,10 @@ class TestOnRequestDispatch:
         responder = ComponentAgentResponder(cfg)
         req = _make_fake_request({"kind": "config-get"})
 
-        from robotsix_agent_comm.protocol import Response
+        with self._PROTOCOL_PATCH:
+            result = responder.on_request(req)
 
-        result = responder.on_request(req)
-        assert isinstance(result, Response)
+        assert isinstance(result, _FAKE_RESPONSE_CLS)
         assert "config" in result.body
         assert "describe" in result.body
         assert result.body["config"]["auth.password"] == "<redacted>"
@@ -98,10 +137,10 @@ class TestOnRequestDispatch:
             }
         )
 
-        from robotsix_agent_comm.protocol import Response
+        with self._PROTOCOL_PATCH:
+            result = responder.on_request(req)
 
-        result = responder.on_request(req)
-        assert isinstance(result, Response)
+        assert isinstance(result, _FAKE_RESPONSE_CLS)
         assert "applied" in result.body
         assert result.body["applied"]["triage.on_ingest"] == [True, False]
         assert responder._holder.config.triage_on_ingest is False
@@ -116,10 +155,10 @@ class TestOnRequestDispatch:
             }
         )
 
-        from robotsix_agent_comm.protocol import Error
+        with self._PROTOCOL_PATCH:
+            result = responder.on_request(req)
 
-        result = responder.on_request(req)
-        assert isinstance(result, Error)
+        assert isinstance(result, _FAKE_ERROR_CLS)
         assert result.body["code"] == "invalid_key"
 
     def test_config_set_missing_updates_dict(self) -> None:
@@ -127,10 +166,10 @@ class TestOnRequestDispatch:
         responder = ComponentAgentResponder(cfg)
         req = _make_fake_request({"kind": "config-set"})
 
-        from robotsix_agent_comm.protocol import Error
+        with self._PROTOCOL_PATCH:
+            result = responder.on_request(req)
 
-        result = responder.on_request(req)
-        assert isinstance(result, Error)
+        assert isinstance(result, _FAKE_ERROR_CLS)
         assert result.body["code"] == "invalid_request"
 
     def test_unknown_kind_returns_error(self) -> None:
@@ -138,10 +177,10 @@ class TestOnRequestDispatch:
         responder = ComponentAgentResponder(cfg)
         req = _make_fake_request({"kind": "bogus"})
 
-        from robotsix_agent_comm.protocol import Error
+        with self._PROTOCOL_PATCH:
+            result = responder.on_request(req)
 
-        result = responder.on_request(req)
-        assert isinstance(result, Error)
+        assert isinstance(result, _FAKE_ERROR_CLS)
         assert result.body["code"] == "unknown_kind"
 
     def test_non_dict_body_returns_error(self) -> None:
@@ -150,10 +189,10 @@ class TestOnRequestDispatch:
         req = mock.MagicMock()
         req.body = "not-a-dict"
 
-        from robotsix_agent_comm.protocol import Error
+        with self._PROTOCOL_PATCH:
+            result = responder.on_request(req)
 
-        result = responder.on_request(req)
-        assert isinstance(result, Error)
+        assert isinstance(result, _FAKE_ERROR_CLS)
         assert result.body["code"] == "invalid_request"
 
 
