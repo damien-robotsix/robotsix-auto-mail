@@ -9,6 +9,7 @@
   covering happy path, missing API key, `run_agent` failure, and tier mapping.
 - Moved `scripts/smoke_board.sh` to `scripts/server/smoke_board.sh` for
   per-module script layout alignment.
+- Enabled the `uv` manager in `renovate.json` so Renovate bumps `uv.lock`
   alongside `pyproject.toml` dependency updates.
 - Removed stale monolithic `tests/config/test_config.py`; all 66 tests are
   already covered by the split domain modules.
