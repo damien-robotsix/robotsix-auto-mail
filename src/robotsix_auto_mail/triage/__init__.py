@@ -30,9 +30,6 @@ from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS as VALID_TRIAGE_ACTIONS,
 )
 from robotsix_auto_mail.triage._constants import (
-    _UNSUBSCRIBE_SUGGESTIONS_KEY as _UNSUBSCRIBE_SUGGESTIONS_KEY,
-)
-from robotsix_auto_mail.triage._constants import (
     TRIAGE_ACTION_LABELS as TRIAGE_ACTION_LABELS,
 )
 from robotsix_auto_mail.triage._constants import (
@@ -154,7 +151,6 @@ __all__ = [
     "TRIAGE_ACTION_LABELS",
     "TRIAGE_ACTION_ORDER",
     "VALID_TRIAGE_ACTIONS",
-    "_UNSUBSCRIBE_SUGGESTIONS_KEY",
     "ArchiveFolderMemory",
     "ArchiveSubfolderProposal",
     "SenderMemory",
