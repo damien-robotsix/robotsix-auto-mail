@@ -285,6 +285,12 @@ auth:
 | `board_agent.api_token` | no | – | Board agent API authentication token (redacted in logs/repr) |
 | `board_agent.repo_id` | no | – | Board repository identifier (required when enabled) |
 | `board_agent.write_ops` | no | `true` | Whether write operations (file, comment, transition, approve, merge, resume, migrate) are allowed via the board agent; set to `false` for a read-only agent |
+| `component_agent.enabled` | no | `false` | Enable the component-agent responder on the shared broker |
+| `component_agent.agent_id` | no | `"board-manager-robotsix-auto-mail"` | Agent identifier on the broker |
+| `component_agent.broker_host` | no | – | Broker server hostname (required when enabled) |
+| `component_agent.broker_port` | no | `443` | Broker server port |
+| `component_agent.broker_token` | no | – | Agent authentication token for the broker (required when enabled; redacted in logs/repr) |
+| `component_agent.broker_tls_ca` | no | – | Path to a custom CA certificate PEM for verifying the broker's TLS certificate (optional) |
 | `logging.level` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `logging.format` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
 | `logging.file_dir` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |
@@ -416,6 +422,12 @@ with the following fields:
 | `BOARD_AGENT_API_TOKEN` | no | – | Board agent API authentication token (redacted) |
 | `BOARD_AGENT_REPO_ID` | no | – | Board repository identifier |
 | `BOARD_AGENT_WRITE_OPS` | no | `true` | Allow write operations via the board agent |
+| `COMPONENT_AGENT_ENABLED` | no | `false` | Enable the component-agent responder on the shared broker |
+| `COMPONENT_AGENT_ID` | no | `board-manager-robotsix-auto-mail` | Agent identifier on the broker |
+| `COMPONENT_AGENT_BROKER_HOST` | no | – | Broker server hostname |
+| `COMPONENT_AGENT_BROKER_PORT` | no | `443` | Broker server port |
+| `COMPONENT_AGENT_BROKER_TOKEN` | no | – | Agent authentication token for the broker (redacted) |
+| `COMPONENT_AGENT_BROKER_TLS_CA` | no | – | Path to CA certificate PEM for broker TLS |
 | `LOG_LEVEL` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `LOG_FORMAT` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
 | `LOG_FILE_DIR` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |

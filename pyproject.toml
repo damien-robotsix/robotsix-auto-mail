@@ -76,6 +76,10 @@ board-agent = [
 calendar = [
     "robotsix-agent-comm",
 ]
+# Alias for documentation clarity — same package as the calendar extra.
+broker = [
+    "robotsix-agent-comm",
+]
 docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",

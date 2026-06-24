@@ -57,6 +57,16 @@ _YAML_EXAMPLE = """\
 #   repo_id: ""
 #   write_ops: true
 
+# Component agent — optional agent-comm responder on the shared broker.
+# Disabled by default; requires robotsix_agent_comm and a valid broker token.
+# component_agent:
+#   enabled: false
+#   agent_id: board-manager-robotsix-auto-mail
+#   broker_host: ""
+#   broker_port: 443
+#   broker_token: ""
+#   broker_tls_ca: ""
+
 default_account: personal
 
 accounts:
@@ -181,6 +191,12 @@ BOARD_AGENT_API_URL=
 BOARD_AGENT_API_TOKEN=
 BOARD_AGENT_REPO_ID=
 BOARD_AGENT_WRITE_OPS=true
+COMPONENT_AGENT_ENABLED=false
+COMPONENT_AGENT_ID=board-manager-robotsix-auto-mail
+COMPONENT_AGENT_BROKER_HOST=
+COMPONENT_AGENT_BROKER_PORT=443
+COMPONENT_AGENT_BROKER_TOKEN=
+COMPONENT_AGENT_BROKER_TLS_CA=
 """
 
 _ACCOUNTS_EXAMPLE = """\
@@ -252,6 +268,12 @@ _DOCS_YAML_TABLE = """\
 | `board_agent.api_token` | no | - | Board agent API authentication token |
 | `board_agent.repo_id` | no | - | Board repository identifier |
 | `board_agent.write_ops` | no | `true` | Allow write operations via the board agent |
+| `component_agent.enabled` | no | `false` | Enable the component-agent responder |
+| `component_agent.agent_id` | no | `"board-manager-robotsix-auto-mail"` | Agent identifier on the broker |
+| `component_agent.broker_host` | no | - | Broker server hostname |
+| `component_agent.broker_port` | no | `443` | Broker server port |
+| `component_agent.broker_token` | no | - | Agent authentication token for the broker |
+| `component_agent.broker_tls_ca` | no | - | Path to CA certificate PEM for broker TLS |
 | `logging.level` | no | `INFO` | Log level |
 | `logging.format` | no | `console` | Log format |
 | `logging.file_dir` | no | `.mail_log` | Log file directory |
@@ -301,6 +323,12 @@ _DOCS_ENV_TABLE = """\
 | `BOARD_AGENT_API_TOKEN` | no | - | Board agent API authentication token |
 | `BOARD_AGENT_REPO_ID` | no | - | Board repository identifier |
 | `BOARD_AGENT_WRITE_OPS` | no | `true` | Allow write operations via the board agent |
+| `COMPONENT_AGENT_ENABLED` | no | `false` | Enable the component-agent responder |
+| `COMPONENT_AGENT_ID` | no | `board-manager-robotsix-auto-mail` | Agent identifier on the broker |
+| `COMPONENT_AGENT_BROKER_HOST` | no | - | Broker server hostname |
+| `COMPONENT_AGENT_BROKER_PORT` | no | `443` | Broker server port |
+| `COMPONENT_AGENT_BROKER_TOKEN` | no | - | Agent authentication token for the broker |
+| `COMPONENT_AGENT_BROKER_TLS_CA` | no | - | Path to CA certificate PEM for broker TLS |
 | `LOG_LEVEL` | no | `INFO` | Log level |
 | `LOG_FORMAT` | no | `console` | Log format |
 | `LOG_FILE_DIR` | no | `.mail_log` | Log file directory |
