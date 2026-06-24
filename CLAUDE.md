@@ -19,8 +19,8 @@ robotsix-auto-mail manages its own archive folder hierarchy, independent of
 any pre-existing mailbox layout. On the first run a quick LLM call proposes
 an appropriate layout based on the mailbox's existing folders; the chosen
 structure is then remembered so subsequent runs reuse it without re-asking
-the LLM. The implementation lives in `src/robotsix_auto_mail/archive.py`
-(module `archive`) and is wired into ingestion from
+the LLM. The implementation lives in `src/robotsix_auto_mail/db/archive.py`
+(module `db.archive`) and is wired into ingestion from
 `src/robotsix_auto_mail/pipeline.py`.
 
 ### How the LLM determines the structure
