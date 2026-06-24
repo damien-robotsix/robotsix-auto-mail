@@ -287,10 +287,10 @@ def start_component_responder(config: MailConfig) -> object | None:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                loop.run_until_complete(agent.start())  # type: ignore[arg-type,func-returns-value]
+                loop.run_until_complete(agent.start())
                 while not stop_event.is_set():
                     stop_event.wait(timeout=1.0)
-                loop.run_until_complete(agent.stop())  # type: ignore[arg-type,func-returns-value]
+                loop.run_until_complete(agent.stop())
             finally:
                 loop.close()
         else:
