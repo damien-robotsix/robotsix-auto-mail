@@ -60,6 +60,10 @@ dev = [
     "vulture>=2.16",
     # zizmor: GitHub Actions security scanning (CI + pre-commit gate).
     "zizmor",
+    # robotsix-agent-comm is transitively depended on by the board-agent and
+    # calendar extras; including it in dev ensures component_agent tests can
+    # import from it without sys.modules mocking.
+    "robotsix-agent-comm",
 ]
 llm = [
     "robotsix-llmio[openrouter-deepseek,tracing]",
@@ -202,6 +206,6 @@ ignore_names = ["format", "method_name", "on_notification"]
 robotsix-agent-comm = { git = "https://github.com/damien-robotsix/robotsix-agent-comm.git", rev = "main" }
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
 robotsix-board-agent = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git", rev = "main" }
-robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" }  # pragma: allowlist secret
+robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "28b23a848003" }  # pragma: allowlist secret
 robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "main" }

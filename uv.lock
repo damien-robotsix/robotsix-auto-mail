@@ -1228,6 +1228,9 @@ dependencies = [
 board-agent = [
     { name = "robotsix-board-agent" },
 ]
+broker = [
+    { name = "robotsix-agent-comm" },
+]
 calendar = [
     { name = "robotsix-agent-comm" },
 ]
@@ -1241,6 +1244,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
     { name = "pyyaml" },
+    { name = "robotsix-agent-comm" },
     { name = "robotsix-llmio", extra = ["openrouter-deepseek", "tracing"] },
     { name = "robotsix-modules" },
     { name = "ruff" },
@@ -1274,12 +1278,14 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'" },
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
+    { name = "robotsix-agent-comm", marker = "extra == 'broker'", git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=main" },
     { name = "robotsix-agent-comm", marker = "extra == 'calendar'", git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=main" },
+    { name = "robotsix-agent-comm", marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=main" },
     { name = "robotsix-board", git = "https://github.com/damien-robotsix/robotsix-board.git?rev=main" },
     { name = "robotsix-board-agent", marker = "extra == 'board-agent'", git = "https://github.com/damien-robotsix/robotsix-board-agent.git?rev=main" },
-    { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" },
-    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" },
-    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" },
+    { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=28b23a848003" },
+    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=28b23a848003" },
+    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=28b23a848003" },
     { name = "robotsix-modules", marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-modules.git?rev=main" },
     { name = "robotsix-yaml-config", git = "https://github.com/damien-robotsix/robotsix-yaml-config.git?rev=main" },
     { name = "ruff", marker = "extra == 'dev'" },
@@ -1289,7 +1295,7 @@ requires-dist = [
     { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.16" },
     { name = "zizmor", marker = "extra == 'dev'" },
 ]
-provides-extras = ["dev", "llm", "microsoft", "board-agent", "calendar", "docs"]
+provides-extras = ["dev", "llm", "microsoft", "board-agent", "calendar", "broker", "docs"]
 
 [[package]]
 name = "robotsix-board"
@@ -1299,7 +1305,7 @@ source = { git = "https://github.com/damien-robotsix/robotsix-board.git?rev=main
 [[package]]
 name = "robotsix-board-agent"
 version = "0.1.0"
-source = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git?rev=main#a270ea7e2985c86b9a9edeaf405e37b90ed8d3ac" }
+source = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git?rev=main#b7635619570aa7e6d20d16caceeda11fe1e9681e" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
@@ -1309,7 +1315,7 @@ dependencies = [
 [[package]]
 name = "robotsix-llmio"
 version = "0.1.0"
-source = { git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e#596f52f7c9a1b151608b8cd1a04f5000d1a6fa8e" }
+source = { git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=28b23a848003#28b23a84800366d8a6dfe97f04354100c248298f" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic-ai-slim" },

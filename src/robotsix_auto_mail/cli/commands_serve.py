@@ -57,8 +57,8 @@ def _cmd_serve(
     ``?account=``.  Returns 0 on clean shutdown, 1 if the port is already
     in use.
     """
-    from importlib.util import find_spec
     from http.server import HTTPServer
+    from importlib.util import find_spec
 
     from robotsix_auto_mail.server import make_board_handler
     from robotsix_auto_mail.server.board_agent import (

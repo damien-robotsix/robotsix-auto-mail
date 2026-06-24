@@ -692,8 +692,9 @@ class MailAccountsConfig:
                     component_agent_section, "enabled", False
                 )
                 global_component_agent_id = _get_str(
-                    component_agent_section, "agent_id",
-                    "board-manager-robotsix-auto-mail"
+                    component_agent_section,
+                    "agent_id",
+                    "board-manager-robotsix-auto-mail",
                 )
                 global_component_agent_broker_host = _get_str(
                     component_agent_section, "broker_host", ""
@@ -759,10 +760,22 @@ class MailAccountsConfig:
                 board_agent_write_ops=global_board_agent_write_ops,
                 component_agent_enabled=global_component_agent_enabled,
                 component_agent_id=global_component_agent_id or cfg.component_agent_id,
-                component_agent_broker_host=global_component_agent_broker_host or cfg.component_agent_broker_host,
-                component_agent_broker_port=global_component_agent_broker_port or cfg.component_agent_broker_port,
-                component_agent_broker_token=global_component_agent_broker_token or cfg.component_agent_broker_token,
-                component_agent_broker_tls_ca=global_component_agent_broker_tls_ca or cfg.component_agent_broker_tls_ca,
+                component_agent_broker_host=(
+                    global_component_agent_broker_host
+                    or cfg.component_agent_broker_host
+                ),
+                component_agent_broker_port=(
+                    global_component_agent_broker_port
+                    or cfg.component_agent_broker_port
+                ),
+                component_agent_broker_token=(
+                    global_component_agent_broker_token
+                    or cfg.component_agent_broker_token
+                ),
+                component_agent_broker_tls_ca=(
+                    global_component_agent_broker_tls_ca
+                    or cfg.component_agent_broker_tls_ca
+                ),
             )
 
             accounts.append(MailAccount(account_id=raw_id, config=cfg, label=raw_label))
@@ -892,14 +905,15 @@ def _build_account_from_env(index: int) -> MailAccount:
             "COMPONENT_AGENT_ENABLED",
             os.environ.get("COMPONENT_AGENT_ENABLED", str(cfg.component_agent_enabled)),
         ),
-        component_agent_id=os.environ.get(
-            "COMPONENT_AGENT_ID", cfg.component_agent_id
-        ),
+        component_agent_id=os.environ.get("COMPONENT_AGENT_ID", cfg.component_agent_id),
         component_agent_broker_host=os.environ.get(
             "COMPONENT_AGENT_BROKER_HOST", cfg.component_agent_broker_host
         ),
         component_agent_broker_port=int(
-            os.environ.get("COMPONENT_AGENT_BROKER_PORT", str(cfg.component_agent_broker_port))
+            os.environ.get(
+                "COMPONENT_AGENT_BROKER_PORT",
+                str(cfg.component_agent_broker_port),
+            )
         ),
         component_agent_broker_token=os.environ.get(
             "COMPONENT_AGENT_BROKER_TOKEN", cfg.component_agent_broker_token
