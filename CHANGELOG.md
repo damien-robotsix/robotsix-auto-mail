@@ -3,6 +3,7 @@
 ## 0.0.0 (unreleased)
 
 - Added `pytest-args: --hypothesis-profile=ci -m "not docker"` to the CI
+- Moved `docs/server/component-agent.md` to `docs/component_agent/component-agent.md` (per-module docs layout)
   workflow's `python-ci.yml` reusable workflow call, passing the Hypothesis
   profile and marker filter through to the shared test runner.
 
