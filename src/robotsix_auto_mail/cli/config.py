@@ -265,12 +265,12 @@ def _detect_settings(
     email: str,
     api_key: str | None,
     llm_provider_model: str | None,
-    autoconfig_lookup: Callable[[str], "MailProvider | None"],
+    autoconfig_lookup: Callable[[str], MailProvider | None],
     mx_lookup: Callable[[str], list[str]],
-    provider_from_mx: Callable[[list[str]], "MailProvider | None"],
-    detect_provider: Callable[..., "MailProvider"],
+    provider_from_mx: Callable[[list[str]], MailProvider | None],
+    detect_provider: Callable[..., MailProvider],
     _detection_error: type[Exception],
-) -> tuple["MailProvider | None", list[str]]:
+) -> tuple[MailProvider | None, list[str]]:
     """Run the provider-detection ladder for *email*.
 
     Tries, in order:
@@ -333,12 +333,12 @@ class _RefineOutcome:
     """
 
     config: MailConfig | None = None
-    provider: "MailProvider | None" = None
+    provider: MailProvider | None = None
 
 
 def _refine_password(
-    build: Callable[["MailProvider", str | None], MailConfig],
-    provider: "MailProvider",
+    build: Callable[[MailProvider, str | None], MailConfig],
+    provider: MailProvider,
 ) -> _RefineOutcome:
     """Re-prompt the password after a reachable-but-rejected auth failure."""
     sys.stderr.write("The server is reachable but the password was rejected.\n")
@@ -352,8 +352,8 @@ def _refine_password(
 
 
 def _refine_with_llm(
-    build: Callable[["MailProvider", str | None], MailConfig],
-    provider: "MailProvider",
+    build: Callable[[MailProvider, str | None], MailConfig],
+    provider: MailProvider,
     config: MailConfig,
     result: _VerifyResult,
     *,
@@ -361,7 +361,7 @@ def _refine_with_llm(
     api_key: str | None,
     llm_provider_model: str | None,
     mx_hosts: list[str],
-    detect_provider: Callable[..., "MailProvider"],
+    detect_provider: Callable[..., MailProvider],
     _detection_error: type[Exception],
 ) -> _RefineOutcome:
     """Ask the LLM for a refined provider after a host/connection failure."""
@@ -405,7 +405,7 @@ def _report_failure(output_path: Path) -> None:
 
 
 def _verify_and_refine(
-    provider: "MailProvider",
+    provider: MailProvider,
     *,
     email: str,
     api_key: str | None,
@@ -418,7 +418,7 @@ def _verify_and_refine(
     account_id: str,
     label: str | None,
     provider_to_config: Callable[..., MailConfig],
-    detect_provider: Callable[..., "MailProvider"],
+    detect_provider: Callable[..., MailProvider],
     _detection_error: type[Exception],
     microsoft: bool = False,
 ) -> int:
@@ -448,7 +448,7 @@ def _verify_and_refine(
         output_path, account_id
     )
 
-    def _build(prov: "MailProvider", pw: str | None) -> MailConfig:
+    def _build(prov: MailProvider, pw: str | None) -> MailConfig:
         cfg = provider_to_config(prov, email, password=pw or "")
         return dataclasses.replace(cfg, db_path=f".data/{account_id}/mail.db")
 

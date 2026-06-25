@@ -94,7 +94,7 @@ src = ["src"]
 extend-exclude = ["vulture_whitelist.py"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "S", "B", "N", "RUF", "ANN", "PT"]
+select = ["E", "F", "I", "S", "B", "N", "RUF", "ANN", "PT", "UP", "SIM"]
 ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
@@ -102,7 +102,8 @@ ignore = ["ANN401"]
 # Tests are exempt from line-length (long fixture strings, docstrings, and
 # inline `# pragma: allowlist secret` comments) and from N802 (fake IMAP
 # server handlers are named after protocol verbs: _cmd_LOGIN, _cmd_LIST...).
-"tests/**/*.py" = ["S101", "S105", "S106", "E501", "N802", "ANN001", "ANN003", "ANN201", "ANN202"]
+"tests/**/*.py" = ["S101", "S105", "S106", "E501", "N802", "ANN001", "ANN003", "ANN201", "ANN202", "UP", "SIM"]
+"scripts/**/*.py" = ["UP", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .models import VALID_TRIAGE_ACTIONS
 
@@ -117,7 +117,7 @@ _STATUS_TO_TRIAGE_ACTION: dict[str, str] = {
 
 def _utc_now_iso() -> str:
     """Return the current UTC time as an ISO-8601 string."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _migrate_status_to_triage(conn: sqlite3.Connection) -> None:

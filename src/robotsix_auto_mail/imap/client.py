@@ -14,7 +14,8 @@ from __future__ import annotations
 import imaplib
 import re
 import ssl
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response

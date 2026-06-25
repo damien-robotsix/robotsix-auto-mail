@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import sqlite3
 import threading
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
