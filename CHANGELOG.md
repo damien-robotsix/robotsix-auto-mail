@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Refactored `detect_provider` in `detect/detector.py` to delegate to the
+  shared `_run_llm_agent` helper instead of inlining the LLM agent
+  resolve→build→run boilerplate.  Removes the last remaining duplicate of
+  this pattern in the source tree.
+
 - Fixed `provider_model` parameter in `_run_llm_agent`, `detect_provider`, and
   `propose_archive_subfolder_llm` so that a non-None value is actually passed
   through to `get_provider_for_identifier` instead of being silently ignored

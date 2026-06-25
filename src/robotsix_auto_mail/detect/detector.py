@@ -12,13 +12,12 @@ from xml.etree import ElementTree  # nosec B405
 
 import urllib3
 import urllib3.exceptions
-from robotsix_llmio.core import Tier, run_agent
+from robotsix_llmio.core import Tier
 
+from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     DEFAULT_DB_PATH,
-    ConfigurationError,
     MailConfig,
-    resolve_llm_api_key,
 )
 from robotsix_auto_mail.detect.models import (
     DetectedProvider,
@@ -405,38 +404,6 @@ def detect_provider(
         DetectionError: If the API key is missing, the LLM returns an
             invalid response, or any other error occurs.
     """
-    # -- resolve API key + provider via the shared config helpers --
-    try:
-        resolved_key = resolve_llm_api_key(api_key)
-    except ConfigurationError as e:
-        raise DetectionError(str(e)) from e
-
-    # -- lazy imports so the rest of the CLI works without pydantic_ai --
-    from pydantic_ai import PromptedOutput
-    from robotsix_llmio.config.tier import (
-        LEVEL1_DEFAULT,
-        LEVEL2_DEFAULT,
-        LEVEL3_DEFAULT,
-        TierConfig,
-    )
-    from robotsix_llmio.core import get_provider_for_identifier as _get_provider
-
-    # -- build agent --
-    _tier_config = TierConfig(
-        level1=LEVEL1_DEFAULT, level2=LEVEL2_DEFAULT, level3=LEVEL3_DEFAULT
-    )
-    _level = 1 if tier == Tier.CHEAP else 2
-    _tlc = _tier_config.for_level(_level)
-    model_id = provider_model if provider_model else _tlc.model
-    model_provider = _get_provider(
-        model_id, **{**_tlc.provider_kwargs, "api_key": resolved_key}
-    )
-    agent_handle = model_provider.build_agent(
-        level=_level,
-        system_prompt=_DETECT_SYSTEM_PROMPT,
-        output_type=PromptedOutput(DetectedProvider),
-    )
-
     # -- build the user message (+ optional MX hint / refinement feedback) --
     user_message = email_address
     if mx_hosts:
@@ -455,20 +422,19 @@ def detect_provider(
             "do not repeat the failed guess."
         )
 
-    # -- call LLM --
-    try:
-        result = run_agent(
-            agent_handle,
-            lambda: agent_handle.run_sync(user_message),
-            label="email provider detection",
-            what="email provider detection",
-            trace_input=user_message,
-        )
-    except Exception as exc:
-        raise DetectionError(str(exc)) from exc
+    # -- delegate to shared LLM agent helper --
+    detected: DetectedProvider = _run_llm_agent(
+        api_key=api_key,
+        provider_model=provider_model,
+        tier=tier,
+        system_prompt=_DETECT_SYSTEM_PROMPT,
+        output_model=DetectedProvider,
+        user_message=user_message,
+        label="email provider detection",
+        what="email provider detection",
+        exc_type=DetectionError,
+    )
 
-    # -- extract and convert --
-    detected: DetectedProvider = result.output
     return MailProvider(
         imap_host=detected.imap_host,
         imap_port=detected.imap_port,
