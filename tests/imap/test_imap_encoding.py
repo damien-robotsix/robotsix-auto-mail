@@ -11,11 +11,11 @@ from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import (
     ImapClient,
     MailboxInfo,
-    _parse_list_line,
     imap_utf7_decode,
     imap_utf7_encode,
     is_special_use,
 )
+from robotsix_auto_mail.imap.mailbox import _parse_list_line
 
 # ---------------------------------------------------------------------------
 # Special-use detection (Gmail labels / RFC 6154)

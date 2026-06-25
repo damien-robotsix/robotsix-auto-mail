@@ -12,8 +12,8 @@ from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import (
     ImapClient,
     ImapError,
-    _is_waste_folder,
 )
+from robotsix_auto_mail.imap.mailbox import _is_waste_folder
 
 # ---------------------------------------------------------------------------
 # list_folders parsing

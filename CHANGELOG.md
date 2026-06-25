@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed dead backward-compat re-exports `_is_waste_folder` and
+  `_parse_list_line` from `robotsix_auto_mail.imap` (they had zero callers
+  importing via the package namespace).
+
 - Added `pytest-args: --hypothesis-profile=ci -m "not docker"` to the CI
   workflow's `python-ci.yml` reusable workflow call, passing the Hypothesis
   profile and marker filter through to the shared test runner.
