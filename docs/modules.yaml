@@ -400,6 +400,7 @@ modules:
       - .secrets.baseline
       - .trivyignore
       - renovate.json
+      - scripts/check_kind_literals.py
 
   - id: mill
     description: >-
