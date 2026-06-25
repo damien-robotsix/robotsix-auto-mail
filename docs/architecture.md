@@ -19,8 +19,8 @@ The project follows the `src` layout prescribed by
 | `docs/` | Documentation, the module taxonomy, and architecture decisions. |
 
 The canonical inventory of every module and the files it owns lives in
-[docs/modules.yaml](modules.yaml) (validated against
-[docs/modules.schema.yaml](modules.schema.yaml)).
+[docs/modules.yaml](modules.yaml).  The file is validated at CI time by the
+`robotsix-modules check-registration` command.
 
 ## Module map
 
@@ -125,7 +125,7 @@ this document does not restate them.
 
 ## CLI and board surfaces
 
-`cli.py` exposes the subcommands (`probe`, `ingest`, `board`, `serve`,
-`detect`, `triage`, `config-sync`, and their `-set` companions).  `server.py`
+`cli/` exposes the subcommands (`probe`, `ingest`, `board`, `serve`,
+`detect`, `triage`, `config-sync`, and their `-set` companions).  `server/`
 serves the read/write kanban board over HTTP, backed by the same SQLite
 datastore.
