@@ -28,6 +28,10 @@
   `src/robotsix_auto_mail/server/views/__init__.py`.
 - Removed dead `ProviderEntry` re-export from
   `src/robotsix_auto_mail/detect/__init__.py`.
+
+- Added `.robotsix-mill/periodic/env_doc_sync.yaml` to enable the
+  `env_doc_sync` periodic workflow that cross-references env-var
+  declarations against `docs/configuration.md`.
 - Removed 12 dead private-symbol re-exports from
   `src/robotsix_auto_mail/triage/__init__.py`.
 - Removed the remaining `_UNSUBSCRIBE_SUGGESTIONS_KEY` re-export from
