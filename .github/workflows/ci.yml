@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: damien-robotsix/robotsix-mill/.github/workflows/python-ci.yml@main
+    uses: damien-robotsix/robotsix-mill/.github/workflows/python-ci.yml@600de4b7f6dc87ce9d0733d2ebf1f752d1c3e680  # main
     with:
       python-version: "3.14"
       install-extras: "dev"
@@ -30,6 +30,7 @@ jobs:
       mypy-advisory: false        # auto-mail runs `mypy --strict` as a BLOCKING gate; it must NOT become advisory
       run-deptry: true
       run-bandit: true
+      pytest-args: --hypothesis-profile=ci -m "not docker"
 
   # auto-mail-specific checks with no equivalent in the reusable spine. They
   # keep their own steps and stay blocking on every push + PR.
@@ -89,7 +90,7 @@ jobs:
         run: uv run --frozen zizmor --format=sarif .github/workflows/ > zizmor-results.sarif
 
       - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357  # v3
         with:
           sarif_file: zizmor-results.sarif
 
@@ -97,7 +98,7 @@ jobs:
   # call replaces the inline TruffleHog secret-scan / pip-audit / CycloneDX
   # SBOM steps that used to be hand-rolled here.
   security:
-    uses: damien-robotsix/robotsix-mill/.github/workflows/python-security.yml@main
+    uses: damien-robotsix/robotsix-mill/.github/workflows/python-security.yml@600de4b7f6dc87ce9d0733d2ebf1f752d1c3e680  # main
     with:
       python-version: "3.14"
       install-extras: "dev"
@@ -128,7 +129,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           persist-credentials: false
-      - uses: actions/dependency-review-action@v5
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5
         with:
           fail-on-severity: moderate
           deny-licenses: >-
