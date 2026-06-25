@@ -31,8 +31,6 @@ from .errors import ImapError as ImapError
 from .errors import ImapMessageNotFoundError as ImapMessageNotFoundError
 from .errors import ImapTlsError as ImapTlsError
 from .mailbox import MailboxInfo as MailboxInfo
-from .mailbox import _is_waste_folder as _is_waste_folder
-from .mailbox import _parse_list_line as _parse_list_line
 from .mailbox import cross_folder_resolve as cross_folder_resolve
 from .mailbox import is_special_use as is_special_use
 from .mailbox import resolve_uid_with_fallback as resolve_uid_with_fallback
