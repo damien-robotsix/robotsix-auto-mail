@@ -24,6 +24,17 @@ from robotsix_auto_mail.config import (
 
 T = typing.TypeVar("T", bound=pydantic.BaseModel)
 
+#: Shared docstring snippet for the ``api_key``, ``provider_model``,
+#: and ``tier`` parameters forwarded through to :func:`_run_llm_agent`.
+#: Used by callers that expose these parameters in their own signatures
+#: so the resolution-cascade documentation stays in one place.
+_LLM_PARAM_DOCS = """\
+        api_key: OpenRouter API key.  ``None`` falls back to the
+            standard resolution cascade (env → config file).
+        provider_model: LLM provider-model identifier.  ``None``
+            falls back to the standard resolution cascade.
+        tier: LLM tier to use.  ``Tier.CHEAP`` (default)."""
+
 
 def _run_llm_agent(
     *,

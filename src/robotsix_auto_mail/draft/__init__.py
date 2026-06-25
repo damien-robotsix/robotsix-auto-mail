@@ -18,7 +18,7 @@ import sqlite3
 from pydantic import BaseModel
 from robotsix_llmio.core import Tier
 
-from robotsix_auto_mail._llm_agent import _run_llm_agent
+from robotsix_auto_mail._llm_agent import _LLM_PARAM_DOCS, _run_llm_agent
 from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
@@ -98,28 +98,6 @@ def generate_draft_reply(
     provider_model: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> str:
-    """Generate, persist, and return an LLM draft reply for *message_id*.
-
-    Fetches the ``MailRecord`` for *message_id*, asks the LLM to draft a
-    reply, stores the result with
-    :func:`robotsix_auto_mail.db.update_draft_text`, and returns the draft
-    string.  The triage decision is intentionally NOT changed here — column
-    movement is left to the server handler so the DB layer stays UI-agnostic.
-
-    Args:
-        conn: Open SQLite connection.
-        message_id: The ``mail_records`` message id to draft a reply for.
-        api_key: OpenRouter API key.  Resolves with the precedence
-            ``api_key`` argument → ``config.load_llm()``.
-        provider_model: LLM provider-model identifier (e.g. ``openrouter-deepseek``).
-            Resolves with the precedence ``provider_model`` argument →
-            ``LLM_PROVIDER_MODEL`` env var → ``config.load_llm_provider_model()``.
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default).
-
-    Raises:
-        DraftGenerationError: If no record exists for *message_id* or the
-            LLM call fails.
-    """
     record = get_record_by_message_id(conn, message_id)
     if record is None:
         raise DraftGenerationError(f"no record for message_id {message_id}")
@@ -141,3 +119,28 @@ def generate_draft_reply(
     draft = output.draft_text
     update_draft_text(conn, message_id, draft)
     return draft
+
+
+#: See :data:`_LLM_PARAM_DOCS` for the ``api_key``, ``provider_model``,
+#: and ``tier`` parameter documentation.
+generate_draft_reply.__doc__ = (
+    "Generate, persist, and return an LLM draft reply for *message_id*.\n"
+    "\n"
+    "Fetches the ``MailRecord`` for *message_id*, asks the LLM to draft a\n"
+    "reply, stores the result with\n"
+    ":func:`robotsix_auto_mail.db.update_draft_text`, and returns the draft\n"
+    "string.  The triage decision is intentionally NOT changed here —"
+    " column\n"
+    "movement is left to the server handler so the DB layer stays"
+    " UI-agnostic.\n"
+    "\n"
+    "Args:\n"
+    "    conn: Open SQLite connection.\n"
+    '    message_id: The ``mail_records`` message id to draft a reply'
+    " for.\n"
+    + _LLM_PARAM_DOCS
+    + "\n\n"
+    "Raises:\n"
+    "    DraftGenerationError: If no record exists for *message_id* or the\n"
+    "        LLM call fails."
+)

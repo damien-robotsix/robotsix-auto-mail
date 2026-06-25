@@ -22,7 +22,7 @@ import pydantic
 from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
-from robotsix_auto_mail._llm_agent import _run_llm_agent
+from robotsix_auto_mail._llm_agent import _LLM_PARAM_DOCS, _run_llm_agent
 from robotsix_auto_mail.config import (
     resolve_llm_api_key,
 )
@@ -107,26 +107,6 @@ def determine_archive_structure(
     provider_model: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> list[str]:
-    """Ask an LLM to propose an archive folder layout under the root.
-
-    Args:
-        existing_folders: Names of the folders already present in the
-            mailbox, used to inform the proposed layout.
-        api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
-            var.  Required unless the env var is set.
-        provider_model: LLM provider-model identifier
-            (e.g. ``openrouter-deepseek``).  Defaults
-            to ``LLM_PROVIDER_MODEL`` env var, then ``llm.provider_model`` in the config
-            file, then ``"openrouter-deepseek"``.
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default).
-
-    Returns:
-        A list of sub-paths relative to the archive root (``/``-separated).
-
-    Raises:
-        ArchiveError: If the API key is missing, the LLM returns an invalid
-            response, or any other error occurs.
-    """
     # -- build the user message --
     user_message = "Existing mailbox folders:\n" + "\n".join(existing_folders)
 
@@ -144,6 +124,27 @@ def determine_archive_structure(
     return structure.folders
 
 
+#: See :data:`_LLM_PARAM_DOCS` for the ``api_key``, ``provider_model``,
+#: and ``tier`` parameter documentation.
+determine_archive_structure.__doc__ = (
+    "Ask an LLM to propose an archive folder layout under the root.\n"
+    "\n"
+    "Args:\n"
+    "    existing_folders: Names of the folders already present in the\n"
+    "        mailbox, used to inform the proposed layout.\n"
+    + _LLM_PARAM_DOCS
+    + "\n\n"
+    "Returns:\n"
+    "    A list of sub-paths relative to the archive root"
+    " (``/``-separated).\n"
+    "\n"
+    "Raises:\n"
+    "    ArchiveError: If the API key is missing, the LLM returns an"
+    " invalid\n"
+    "        response, or any other error occurs."
+)
+
+
 # ---------------------------------------------------------------------------
 # Setup / persistence
 # ---------------------------------------------------------------------------
@@ -159,34 +160,6 @@ def setup_archive(
     provider_model: str | None = None,
     tier: Tier = Tier.CHEAP,
 ) -> list[str]:
-    """Ensure the managed archive folder structure exists and is remembered.
-
-    On the first run (no persisted structure) this lists the mailbox's
-    folders, asks the LLM for an appropriate layout under the effective
-    root, creates the missing folders, and persists the resulting
-    full-name list in the ``watermark`` table.  On subsequent runs
-    the persisted list is returned directly without listing folders, calling
-    the LLM, or creating anything.
-
-    When no LLM API key is resolvable the LLM is never called — the archive
-    falls back to just the effective root folder so ingestion is never
-    blocked.
-
-    Args:
-        conn: Open SQLite connection.
-        client: Connected IMAP client.
-        archive_root: Logical root folder name (e.g.
-            ``"robotsix-mail-archive"``).
-        archive_namespace: Optional IMAP namespace prefix to prepend to
-            *archive_root* (e.g. ``"INBOX."``).  The effective root
-            becomes ``namespace + archive_root``.
-        api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env var.
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default).
-
-    Returns:
-        The list of full (namespaced) archive folder names that exist
-        after setup.
-    """
     # Effective root includes the namespace prefix when configured.
     effective_root = archive_namespace + archive_root
 
@@ -240,3 +213,37 @@ def setup_archive(
         json.dumps({"delimiter": delimiter, "folders": structure}),
     )
     return structure
+
+
+#: See :data:`_LLM_PARAM_DOCS` for the ``api_key``, ``provider_model``,
+#: and ``tier`` parameter documentation.
+setup_archive.__doc__ = (
+    "Ensure the managed archive folder structure exists and is remembered.\n"
+    "\n"
+    "On the first run (no persisted structure) this lists the mailbox's\n"
+    "folders, asks the LLM for an appropriate layout under the effective\n"
+    "root, creates the missing folders, and persists the resulting\n"
+    "full-name list in the ``watermark`` table.  On subsequent runs\n"
+    "the persisted list is returned directly without listing folders,"
+    " calling\n"
+    "the LLM, or creating anything.\n"
+    "\n"
+    "When no LLM API key is resolvable the LLM is never called — the"
+    " archive\n"
+    "falls back to just the effective root folder so ingestion is never\n"
+    "blocked.\n"
+    "\n"
+    "Args:\n"
+    "    conn: Open SQLite connection.\n"
+    "    client: Connected IMAP client.\n"
+    "    archive_root: Logical root folder name (e.g.\n"
+    '        ``"robotsix-mail-archive"``).\n'
+    "    archive_namespace: Optional IMAP namespace prefix to prepend to\n"
+    '        *archive_root* (e.g. ``"INBOX."``).  The effective root\n'
+    "        becomes ``namespace + archive_root``.\n"
+    + _LLM_PARAM_DOCS
+    + "\n\n"
+    "Returns:\n"
+    "    The list of full (namespaced) archive folder names that exist\n"
+    "    after setup."
+)

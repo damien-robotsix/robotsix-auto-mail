@@ -2,6 +2,12 @@
 
 ## 0.0.0 (unreleased)
 
+- Extracted duplicated LLM parameter docstrings (`api_key`, `provider_model`,
+  `tier`) into a shared `_LLM_PARAM_DOCS` constant in `_llm_agent.py`,
+  referenced from `determine_archive_structure`, `setup_archive`, and
+  `generate_draft_reply` via `__doc__` assignment so the resolution-cascade
+  documentation is defined once.
+
 - Fixed `provider_model` parameter in `_run_llm_agent`, `detect_provider`, and
   `propose_archive_subfolder_llm` so that a non-None value is actually passed
   through to `get_provider_for_identifier` instead of being silently ignored
