@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Added "Component agent (global)" section to `docs/configuration.md`
+  documenting all six `COMPONENT_AGENT_*` environment variables
+  (enabled, ID, broker host/port/token/TLS CA).
 - Enabled `UP` (pyupgrade) and `SIM` (flake8-simplify) ruff rule sets in
   `pyproject.toml`. Applied auto-fixes for 19 `UP` violations (quoted type
   annotations → unquoted, `datetime.timezone.utc` → `datetime.UTC`,
