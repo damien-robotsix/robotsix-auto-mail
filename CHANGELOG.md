@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Added `pytest-args: --hypothesis-profile=ci -m "not docker"` to the CI
+  workflow's `python-ci.yml` reusable workflow call, passing the Hypothesis
+  profile and marker filter through to the shared test runner.
+
 - Added "Component agent (global)" section to `docs/configuration.md`
   documenting all six `COMPONENT_AGENT_*` environment variables
   (enabled, ID, broker host/port/token/TLS CA).
