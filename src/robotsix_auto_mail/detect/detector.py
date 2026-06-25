@@ -388,8 +388,12 @@ def detect_provider(
             :func:`robotsix_llmio.core.get_provider_for_identifier`).
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
-        provider: LLM backend name (e.g. ``openrouter-deepseek``).  Defaults
-            to ``LLM_PROVIDER_MODEL`` env var, then ``load_llm_provider_model()``.
+        provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
+            When ``None`` or empty, the tier-level default model is used
+            (resolved from :class:`~robotsix_llmio.config.tier.TierConfig`).
+            Callers that want env-var or config-file resolution should
+            pre-resolve via
+            :func:`~robotsix_auto_mail.config.resolve_llm_provider_model`.
         feedback: Optional description of a previous failed attempt (which
             host was tried and how it failed).  When provided, it is added
             to the prompt so the model can propose a different, non-obvious
