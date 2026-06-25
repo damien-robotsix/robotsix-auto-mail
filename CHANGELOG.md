@@ -9,6 +9,9 @@
   violations (and 1 `UP047`) are left for follow-up manual resolution.
   `UP`/`SIM` rules are suppressed in `tests/` and `scripts/` via
   per-file-ignores.
+- Added `scripts/check_kind_literals.py` (no-op) to satisfy the
+  `python-ci.yml` reusable workflow from `robotsix-mill`, which calls this
+  script unconditionally but this repo does not use a `TicketKind` enum.
 
 - Fixed `provider_model` parameter in `_run_llm_agent`, `detect_provider`, and
   `propose_archive_subfolder_llm` so that a non-None value is actually passed
