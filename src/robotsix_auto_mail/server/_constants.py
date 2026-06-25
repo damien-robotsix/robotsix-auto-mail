@@ -73,13 +73,11 @@ def _is_safe_redirect_path(location: str) -> bool:
     - contain no CR (``\\r``), LF (``\\n``), or other ASCII control
       characters (which could inject extra response headers).
     """
-    if not location.startswith("/"):
-        return False
-    if location.startswith(("//", "/\\")):
-        return False
-    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in location):
-        return False
-    return True
+    return (
+        location.startswith("/")
+        and not location.startswith(("//", "/\\"))
+        and not any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in location)
+    )
 
 
 def _parse_archive_structure(

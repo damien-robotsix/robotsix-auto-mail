@@ -71,10 +71,7 @@ def _build_detail_html(
         attachments = []
 
     # Status options — drive from triage decision, not mail_records.status.
-    if triage_decision is not None:
-        current_action = triage_decision.action
-    else:
-        current_action = "INBOX"
+    current_action = triage_decision.action if triage_decision is not None else "INBOX"
 
     quoted_mid = quote(record.message_id, safe="")
     redirect_input = ""

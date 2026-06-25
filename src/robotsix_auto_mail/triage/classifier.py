@@ -301,10 +301,7 @@ def propose_archive_subfolder_llm(
     if archive_raw is not None:
         try:
             data = json.loads(archive_raw)
-            if isinstance(data, list):
-                existing_folders = data
-            else:
-                existing_folders = data["folders"]
+            existing_folders = data if isinstance(data, list) else data["folders"]
         except json.JSONDecodeError, TypeError, KeyError:
             existing_folders = []
 

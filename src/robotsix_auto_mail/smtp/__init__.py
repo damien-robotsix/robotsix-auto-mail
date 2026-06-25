@@ -9,6 +9,7 @@ Python standard library (``smtplib``, ``ssl``, ``email``).
 
 from __future__ import annotations
 
+import contextlib
 import smtplib
 import ssl
 from email.mime.text import MIMEText
@@ -195,10 +196,8 @@ class SmtpClient(_ProtocolClient):
         """Disconnect gracefully (best-effort).  Safe to call multiple times."""
         if self._smtp is None:
             return
-        try:
+        with contextlib.suppress(_SMTP_EXCEPTION):
             self._smtp.quit()
-        except _SMTP_EXCEPTION:
-            pass
         self._smtp = None
 
     # -- context manager ---------------------------------------------------

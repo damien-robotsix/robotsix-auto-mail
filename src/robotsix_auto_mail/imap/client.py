@@ -11,6 +11,7 @@ Python standard library (``imaplib``, ``ssl``).
 
 from __future__ import annotations
 
+import contextlib
 import imaplib
 import re
 import ssl
@@ -128,11 +129,9 @@ class ImapClient(_ProtocolClient):
     def __exit__(self, *args: Any) -> None:
         """Log out and close the socket, even if an exception occurred."""
         if self._imap is not None:
-            try:
-                self._imap.logout()
-            except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
+            with contextlib.suppress(Exception):
                 # Connection may already be dead - best-effort close.
-                pass
+                self._imap.logout()
         # In case logout() left the socket dangling, close it ourselves.
         self._close_socket()
 
@@ -339,10 +338,8 @@ class ImapClient(_ProtocolClient):
         """Subscribe to *name*; ignore failure silently."""
         if self._imap is None:
             return
-        try:
+        with contextlib.suppress(Exception):
             self._imap.subscribe(_encode_mailbox(name))
-        except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
-            pass
 
     def search_uids(self, criteria: str = "ALL") -> list[int]:
         """Issue ``UID SEARCH`` and return matching UIDs.
