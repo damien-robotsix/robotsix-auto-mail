@@ -36,7 +36,6 @@ modules:
       - ROADMAP.md
       - tests/__init__.py
       - tests/conftest.py
-      - tests/test_stub.py
 
   - id: docker
     description: >-

@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed `tests/test_stub.py` — a trivial 3-line test whose purpose
+  (verifying the test harness) is already exercised by every test run.
+
 - Fixed `provider_model` parameter in `_run_llm_agent`, `detect_provider`, and
   `propose_archive_subfolder_llm` so that a non-None value is actually passed
   through to `get_provider_for_identifier` instead of being silently ignored

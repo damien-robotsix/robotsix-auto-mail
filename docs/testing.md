@@ -54,8 +54,7 @@ Tests live under `tests/` with per-module subdirectories that mirror `src/`
 (`tests/imap/`, `tests/smtp/`, `tests/cli/`, `tests/db/`, `tests/fetch/`,
 `tests/parser/`, `tests/pipeline/`, `tests/detect/`, `tests/archive/`,
 `tests/status/`, `tests/triage/`, `tests/config/`, `tests/server/`, …).  These
-per-module subdirectories have **no** `__init__.py`.  Top-level files such as
-`tests/test_stub.py` and the shared `tests/conftest.py` are also valid.
+per-module subdirectories have **no** `__init__.py`.  The shared `tests/conftest.py` at the top level is also valid.
 
 Conventions every test file follows:
 
