@@ -131,9 +131,7 @@ determine_archive_structure.__doc__ = (
     "\n"
     "Args:\n"
     "    existing_folders: Names of the folders already present in the\n"
-    "        mailbox, used to inform the proposed layout.\n"
-    + _LLM_PARAM_DOCS
-    + "\n\n"
+    "        mailbox, used to inform the proposed layout.\n" + _LLM_PARAM_DOCS + "\n\n"
     "Returns:\n"
     "    A list of sub-paths relative to the archive root"
     " (``/``-separated).\n"
@@ -240,9 +238,7 @@ setup_archive.__doc__ = (
     '        ``"robotsix-mail-archive"``).\n'
     "    archive_namespace: Optional IMAP namespace prefix to prepend to\n"
     '        *archive_root* (e.g. ``"INBOX."``).  The effective root\n'
-    "        becomes ``namespace + archive_root``.\n"
-    + _LLM_PARAM_DOCS
-    + "\n\n"
+    "        becomes ``namespace + archive_root``.\n" + _LLM_PARAM_DOCS + "\n\n"
     "Returns:\n"
     "    The list of full (namespaced) archive folder names that exist\n"
     "    after setup."

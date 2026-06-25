@@ -47,6 +47,23 @@ from robotsix_auto_mail.triage.persistence import ArchiveFolderMemory
 ArchiveFolderMemory.updated_at
 
 # ===========================================================================
+# LLM agent functions — called via robotsix_auto_mail._llm_agent._run_llm_agent
+# which vulture cannot trace through.
+# ===========================================================================
+
+from robotsix_auto_mail.db.archive import determine_archive_structure
+
+determine_archive_structure.__doc__
+
+from robotsix_auto_mail.db.archive import setup_archive
+
+setup_archive.__doc__
+
+from robotsix_auto_mail.draft import generate_draft_reply
+
+generate_draft_reply.__doc__
+
+# ===========================================================================
 # Framework overrides — called by the parent class / stdlib framework.
 # ===========================================================================
 

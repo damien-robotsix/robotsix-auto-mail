@@ -136,10 +136,8 @@ generate_draft_reply.__doc__ = (
     "\n"
     "Args:\n"
     "    conn: Open SQLite connection.\n"
-    '    message_id: The ``mail_records`` message id to draft a reply'
-    " for.\n"
-    + _LLM_PARAM_DOCS
-    + "\n\n"
+    "    message_id: The ``mail_records`` message id to draft a reply"
+    " for.\n" + _LLM_PARAM_DOCS + "\n\n"
     "Raises:\n"
     "    DraftGenerationError: If no record exists for *message_id* or the\n"
     "        LLM call fails."
