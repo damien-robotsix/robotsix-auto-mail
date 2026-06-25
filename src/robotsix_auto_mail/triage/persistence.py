@@ -9,7 +9,7 @@ constants — it is the leaf the classifier and agent submodules build on.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pydantic
 
@@ -187,7 +187,7 @@ class ArchiveSubfolderProposal(pydantic.BaseModel):
 
 def _utc_now_iso() -> str:
     """Return the current UTC time as an ISO-8601 string."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def set_triage_decision(

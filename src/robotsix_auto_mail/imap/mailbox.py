@@ -136,7 +136,7 @@ def _parse_list_line(line: bytes) -> MailboxInfo:
 
 
 def resolve_uid_with_fallback(
-    client: "ImapClient",
+    client: ImapClient,
     source_folder: str,
     uid: int,
     message_id: str,
@@ -194,7 +194,7 @@ def _is_waste_folder(name: str) -> bool:
 
 
 def cross_folder_resolve(
-    client: "ImapClient",
+    client: ImapClient,
     message_id: str,
     source_folder: str | None = None,
 ) -> tuple[str, int] | None:

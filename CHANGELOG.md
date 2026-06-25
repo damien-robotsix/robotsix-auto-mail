@@ -2,6 +2,14 @@
 
 ## 0.0.0 (unreleased)
 
+- Enabled `UP` (pyupgrade) and `SIM` (flake8-simplify) ruff rule sets in
+  `pyproject.toml`. Applied auto-fixes for 19 `UP` violations (quoted type
+  annotations → unquoted, `datetime.timezone.utc` → `datetime.UTC`,
+  `typing.Iterator`/`Callable` → `collections.abc`). The 15 remaining `SIM`
+  violations (and 1 `UP047`) are left for follow-up manual resolution.
+  `UP`/`SIM` rules are suppressed in `tests/` and `scripts/` via
+  per-file-ignores.
+
 - Fixed `provider_model` parameter in `_run_llm_agent`, `detect_provider`, and
   `propose_archive_subfolder_llm` so that a non-None value is actually passed
   through to `get_provider_for_identifier` instead of being silently ignored

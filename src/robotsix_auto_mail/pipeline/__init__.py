@@ -67,10 +67,7 @@ def fetch_new_messages(
     client.select_folder(config.imap_folder)
 
     # 3. Build search criteria.
-    if watermark_raw is not None:
-        criteria = f"UID {watermark_raw}:*"
-    else:
-        criteria = "ALL"
+    criteria = f"UID {watermark_raw}:*" if watermark_raw is not None else "ALL"
 
     # 4. Search.
     uids = client.search_uids(criteria)

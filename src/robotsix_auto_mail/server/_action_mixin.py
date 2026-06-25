@@ -4,9 +4,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import sqlite3
 import threading
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
@@ -169,13 +171,13 @@ class _BoardActionMixin:
 
             message_id = record.message_id
 
-            if triage_action == "TO_CALENDAR":
-                if (
-                    self.mail_config is not None
-                    and not self.mail_config.calendar_enabled
-                ):
-                    self._bad_request("Calendar integration is disabled")
-                    return False
+            if (
+                triage_action == "TO_CALENDAR"
+                and self.mail_config is not None
+                and not self.mail_config.calendar_enabled
+            ):
+                self._bad_request("Calendar integration is disabled")
+                return False
 
             # Capture prior triage decision for TO_CALENDAR reroute logic
             # before we overwrite it with the move target.
@@ -557,10 +559,9 @@ class _BoardActionMixin:
         # -- record the human-confirmed archive-folder choice (best-effort),
         #    BEFORE the local row is deleted so the memory survives --
         if subfolder:
-            try:
+            with contextlib.suppress(Exception):
+                # Non-fatal: memory is advisory only
                 record_archive_folder_choice(conn, record, subfolder)
-            except Exception:  # noqa: S110  # nosec B110
-                pass  # Non-fatal: memory is advisory only
 
         # -- local DB cleanup --
         delete_record_by_message_id(conn, record.message_id)

@@ -8,6 +8,7 @@ keep module-load time low.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sqlite3
 
@@ -292,11 +293,9 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
     raw = get_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY)
     suggestions: dict[str, object] = {}
     if raw is not None:
-        try:
-            suggestions = json.loads(raw)
-        except json.JSONDecodeError, TypeError:
+        with contextlib.suppress(json.JSONDecodeError, TypeError):
             # Malformed suggestions-cache JSON — keep the empty dict above.
-            pass
+            suggestions = json.loads(raw)
 
     updated = False
     for sender_key, sender_records in by_sender.items():
@@ -305,11 +304,10 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
         if sender_key in suggestions:
             continue  # already cached
         detection = _detect_unsubscribe_for_sender(conn, sender_key, sender_records)
-        if detection is not None:
-            # Only cache if an unsubscribe mechanism was actually found.
-            if detection.has_unsubscribe:
-                suggestions[sender_key] = detection.model_dump()
-                updated = True
+        # Only cache if an unsubscribe mechanism was actually found.
+        if detection is not None and detection.has_unsubscribe:
+            suggestions[sender_key] = detection.model_dump()
+            updated = True
 
     if updated:
         set_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY, json.dumps(suggestions))
@@ -338,10 +336,7 @@ def _load_archive_guidance(
     if archive_raw is not None:
         try:
             data = json.loads(archive_raw)
-            if isinstance(data, list):
-                archive_folders = data
-            else:
-                archive_folders = data["folders"]
+            archive_folders = data if isinstance(data, list) else data["folders"]
         except json.JSONDecodeError, TypeError, KeyError:
             archive_folders = None
 

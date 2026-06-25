@@ -22,10 +22,8 @@ from robotsix_auto_mail.config import (
     resolve_llm_api_key,
 )
 
-T = typing.TypeVar("T", bound=pydantic.BaseModel)
 
-
-def _run_llm_agent(
+def _run_llm_agent[T: pydantic.BaseModel](
     *,
     api_key: str | None,
     provider_model: str | None,

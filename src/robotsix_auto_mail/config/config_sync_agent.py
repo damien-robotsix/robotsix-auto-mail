@@ -224,10 +224,7 @@ def _render_mailconfig_surface() -> str:
     """Render the ``MailConfig`` dataclass surface from ``_FIELD_SPECS``."""
     lines = ["MailConfig fields (field | yaml_path | env_key | kind | default):"]
     for spec in _FIELD_SPECS:
-        if spec.default is _REQUIRED:
-            default = "<required>"
-        else:
-            default = repr(spec.default)
+        default = "<required>" if spec.default is _REQUIRED else repr(spec.default)
         lines.append(
             f"- {spec.field_name} | {spec.yaml_path} | {spec.env_key} | "
             f"{spec.kind} | {default}"

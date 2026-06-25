@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from robotsix_auto_mail.triage import (
@@ -85,10 +86,9 @@ class _ConfigMixin:
             # -- record the human-confirmed folder choice (best-effort);
             #    an empty subfolder (clearing the override) records nothing --
             if subfolder:
-                try:
+                with contextlib.suppress(Exception):
+                    # Non-fatal: memory is advisory only
                     record_archive_folder_choice(conn, record, subfolder)
-                except Exception:  # noqa: S110  # nosec B110
-                    pass  # Non-fatal: memory is advisory only
             return True
 
         self._handle_post_action(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import html
 import json
 from collections.abc import Mapping
@@ -188,12 +189,10 @@ def _gather_account_board_data(
         suggestions_raw = get_watermark(conn, "unsubscribe_suggestions")
         unsubscribe_suggestions: dict[str, dict[str, Any]] = {}
         if suggestions_raw is not None:
-            try:
-                unsubscribe_suggestions = json.loads(suggestions_raw)
-            except json.JSONDecodeError, TypeError:
+            with contextlib.suppress(json.JSONDecodeError, TypeError):
                 # Malformed unsubscribe_suggestions watermark — leave the
                 # empty suggestions dict initialised above.
-                pass
+                unsubscribe_suggestions = json.loads(suggestions_raw)
 
         # Build record_notes map for notes indicators.
         record_notes: dict[str, str] = {
