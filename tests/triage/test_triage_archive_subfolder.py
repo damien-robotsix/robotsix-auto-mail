@@ -21,8 +21,8 @@ from robotsix_auto_mail.triage import (
     get_archive_subfolder,
     set_archive_subfolder_override,
 )
-from robotsix_auto_mail.triage.classifier import normalize_archive_subfolder
 from robotsix_auto_mail.triage.agent import _fill_missing_archive_hints
+from robotsix_auto_mail.triage.classifier import normalize_archive_subfolder
 
 
 def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
