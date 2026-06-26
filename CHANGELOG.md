@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Consolidated the duplicated archive root constant `"robotsix-mail-archive"`
+  into a single canonical definition `_ARCHIVE_ROOT` in `_constants.py`,
+  imported by both `db/archive.py` and `config/schema.py`.
+
 - Refactored `detect_provider` in `detect/detector.py` to delegate LLM
   agent construction and execution to the shared `_run_llm_agent` helper,
   removing ~35 lines of duplicated boilerplate (API key resolution,
