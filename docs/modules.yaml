@@ -88,6 +88,7 @@ modules:
       - src/robotsix_auto_mail/cli/commands_triage.py
       - src/robotsix_auto_mail/cli/config.py
       - tests/cli/test_cli.py
+      - tests/cli/test_commands_auth.py
       - tests/cli/test_cli_board.py
       - tests/cli/test_cli_config.py
       - tests/cli/test_cli_config_sync.py
