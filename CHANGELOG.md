@@ -15,6 +15,10 @@
   ``robotsix_auto_mail.server.views.__init__``.  Tests now import these
   symbols directly from ``robotsix_auto_mail.server.views.board``.
 
+- Removed 4 dead re-exports (``_FIELD_SPECS``, ``_REQUIRED``,
+  ``DEFAULT_CONFIG_PATH``, ``DEFAULT_DB_PATH``) from
+  ``robotsix_auto_mail.config.__init__`` — zero callers via the
+  package namespace.
 - Fixed three stale path references in ``CLAUDE.md``: the static
   directory path, ``_calendar_mixin.py``→``_action_mixin.py``, and
   ``board-auto-mail.js`` location.
