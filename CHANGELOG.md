@@ -5,6 +5,10 @@
 - Fixed the ``provider_model`` parameter docstring in ``_run_llm_agent``
   to accurately describe the ``None`` fallback: it uses the tier-level
   default model, not a "standard resolution cascade".
+- Fixed docstring gaps in `db/archive.py`: added missing `provider_model`
+  parameter to `setup_archive`, added missing `archive_root` parameter to
+  `determine_archive_structure`, and corrected the `provider_model` fallback
+  description to reflect the actual tier-default behaviour.
 
 - Fixed stale multi-account DB path defaults in `.env.example` to match
   the actual `.data/<id>/mail.db` form (was incorrectly documented as

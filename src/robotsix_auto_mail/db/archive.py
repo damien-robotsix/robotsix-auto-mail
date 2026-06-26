@@ -115,12 +115,14 @@ def determine_archive_structure(
     Args:
         existing_folders: Names of the folders already present in the
             mailbox, used to inform the proposed layout.
+        archive_root: Logical root folder name (e.g.
+            ``"robotsix-mail-archive"``).  Used in the system prompt
+            to anchor the proposed layout.
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
             var.  Required unless the env var is set.
         provider_model: LLM provider-model identifier
-            (e.g. ``openrouter-deepseek``).  Defaults
-            to ``LLM_PROVIDER_MODEL`` env var, then ``llm.provider_model`` in the config
-            file, then ``"openrouter-deepseek"``.
+            (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
+            back to the tier-level default model.
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
 
     Returns:
@@ -184,6 +186,9 @@ def setup_archive(
             *archive_root* (e.g. ``"INBOX."``).  The effective root
             becomes ``namespace + archive_root``.
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env var.
+        provider_model: LLM provider-model identifier
+            (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
+            back to the tier-level default model.
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
 
     Returns:
