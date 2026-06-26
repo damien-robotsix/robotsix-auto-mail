@@ -14,6 +14,10 @@
   into a single canonical definition `_ARCHIVE_ROOT` in `_constants.py`,
   imported by both `db/archive.py` and `config/schema.py`.
 
+- Fixed the ``run_config_sync_agent`` docstring: the ``provider:``
+  parameter was renamed to ``provider_model:`` to match the actual
+  function signature.
+
 - Refactored `detect_provider` in `detect/detector.py` to delegate LLM
   agent construction and execution to the shared `_run_llm_agent` helper,
   removing ~35 lines of duplicated boilerplate (API key resolution,
