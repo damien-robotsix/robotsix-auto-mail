@@ -344,8 +344,8 @@ def run_config_sync_agent(
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``LLM_API_KEY`` env var →
             ``config.llm_api_key`` (via the config loader).
-        provider: LLM backend name (e.g. ``openrouter-deepseek``).
-            Resolves with the precedence ``provider`` argument →
+        provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
+            Resolves with the precedence ``provider_model`` argument →
             ``LLM_PROVIDER_MODEL`` env var → ``config.llm_provider_model`` (via
             :func:`load_llm_provider_model`).
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
