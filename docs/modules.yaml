@@ -118,6 +118,7 @@ modules:
       - tests/config/test_config_from_yaml.py
       - tests/config/test_config_load.py
       - tests/config/test_config_llm.py
+      - tests/config/test_config_loader.py
       - tests/config/test_config_ingest.py
       - tests/config/test_config_archive.py
       - tests/config/test_config_triage.py
