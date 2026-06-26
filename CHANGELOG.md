@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Refactored `detect_provider` in `detect/detector.py` to delegate LLM
+  agent construction and execution to the shared `_run_llm_agent` helper,
+  removing ~35 lines of duplicated boilerplate (API key resolution,
+  TierConfig, provider lookup, agent build, run_agent).
+
 - Removed dead backward-compat re-exports `_is_waste_folder` and
   `_parse_list_line` from `robotsix_auto_mail.imap` (they had zero callers
   importing via the package namespace).
