@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed stale multi-account DB path defaults in `.env.example` to match
+  the actual `.data/<id>/mail.db` form (was incorrectly documented as
+  `.data/mail-<id>.db`).
+
 - Consolidated the duplicated archive root constant `"robotsix-mail-archive"`
   into a single canonical definition `_ARCHIVE_ROOT` in `_constants.py`,
   imported by both `db/archive.py` and `config/schema.py`.
