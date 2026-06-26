@@ -10,6 +10,9 @@
   ``build_calendar_transport_from_config``, ``build_ssl_context``,
   and ``DATE_TIME_RE`` — none had callers via the package namespace.
 
+- Fixed three stale path references in ``CLAUDE.md``: the static
+  directory path, ``_calendar_mixin.py``→``_action_mixin.py``, and
+  ``board-auto-mail.js`` location.
 - Added unit tests for ``src/robotsix_auto_mail/config/render.py``
   covering ``_yaml_scalar``, ``_render_account_block``, and
   ``render_accounts_yaml``.

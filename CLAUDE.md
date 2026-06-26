@@ -105,7 +105,7 @@ from the mail detail view in the web board.
 3. On confirmation, `window.addToCalendar(payload)` in
    `board-auto-mail.js` sends a `POST /add-to-calendar` with JSON body.
 4. The server-side handler (`_CalendarMixin._handle_add_to_calendar` in
-   `server/_calendar_mixin.py`) calls `dispatch_calendar_request` from
+   `server/_action_mixin.py`) calls `dispatch_calendar_request` from
    `calendar.py`.
 5. `dispatch_calendar_request` builds a `CalendarEventRequest` Pydantic
    model, then calls `Agent.send_notification(recipient="robotsix-calendar",
@@ -144,7 +144,7 @@ detail view.
 - A `calendar-feedback` span renders success/error indicators below the
   button.
 
-The JS dispatch lives in `static/board-auto-mail.js` (`addToCalendar`
+The JS dispatch lives in `server/static/board-auto-mail.js` (`addToCalendar`
 function) — unchanged by this ticket.
 
 ### Configuration
@@ -173,7 +173,7 @@ dependency is needed.
 ## Project layout
 
 Static assets (CSS, JS, images) for the web board template live in
-`src/robotsix_auto_mail/static/` and are loaded at module level via
+`src/robotsix_auto_mail/server/static/` and are loaded at module level via
 `Path(__file__).parent / "static" / "<filename>").read_text()`.  Do
 **not** embed CSS or JS as Python string literals in the `server/` package —
 the separation keeps the server module navigable and allows CSS/JS
