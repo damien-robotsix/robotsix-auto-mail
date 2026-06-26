@@ -133,6 +133,7 @@ modules:
       - tests/config/test_accounts_config.py
       - tests/config/test_account_isolation.py
       - tests/config/test_pydantic_utils.py
+      - tests/config/test_render.py
 
   - id: triage
     description: >-
