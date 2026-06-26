@@ -5,6 +5,10 @@
 - Removed dead re-exports and ``__all__`` from
   ``robotsix_auto_mail.component_agent.__init__`` (all consumers import
   from submodules directly).
+- Removed 4 dead backward-compat re-exports from
+  ``robotsix_auto_mail.calendar``: ``build_calendar_transport``,
+  ``build_calendar_transport_from_config``, ``build_ssl_context``,
+  and ``DATE_TIME_RE`` — none had callers via the package namespace.
 
 - Added unit tests for ``src/robotsix_auto_mail/config/render.py``
   covering ``_yaml_scalar``, ``_render_account_block``, and
