@@ -21,7 +21,10 @@ import typing
 import pydantic
 from robotsix_llmio.core import Tier
 
-from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
+from robotsix_auto_mail._constants import (
+    _ARCHIVE_ROOT,
+    _ARCHIVE_TAXONOMY_GUIDANCE,
+)
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     resolve_llm_api_key,
@@ -34,7 +37,7 @@ from robotsix_auto_mail.imap import ImapClient, is_special_use
 # ---------------------------------------------------------------------------
 
 #: Root folder under which all managed archive folders live.
-ARCHIVE_ROOT = "robotsix-mail-archive"
+ARCHIVE_ROOT: str = _ARCHIVE_ROOT
 
 #: Watermark key owned by this module (the same way ``fetch.py`` owns
 #: ``"imap_uid"``).

@@ -13,6 +13,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Final, NamedTuple
 
+from robotsix_auto_mail._constants import _ARCHIVE_ROOT
+
 # ---------------------------------------------------------------------------
 # Removal of the single-account ("mono") YAML file config shape
 # ---------------------------------------------------------------------------
@@ -80,7 +82,7 @@ DEFAULT_DB_PATH = ".data/mail.db"
 DEFAULT_INGEST_INTERVAL_MINUTES = 15
 
 # Default root folder under which the self-managed archive structure lives.
-DEFAULT_ARCHIVE_ROOT = "robotsix-mail-archive"
+DEFAULT_ARCHIVE_ROOT: Final = _ARCHIVE_ROOT
 
 
 _BOOL_TRUE = frozenset({"1", "true", "yes", "on"})

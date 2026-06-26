@@ -1,5 +1,8 @@
 """Package-wide constants shared across submodules."""
 
+#: Root folder under which all managed archive folders live.
+_ARCHIVE_ROOT = "robotsix-mail-archive"
+
 _ARCHIVE_TAXONOMY_GUIDANCE = (
     "Categorize by purpose or topic: choose a top-level semantic "
     "bucket adapted to the existing folders. Example buckets "
