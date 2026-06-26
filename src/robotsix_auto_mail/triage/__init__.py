@@ -39,9 +39,6 @@ from robotsix_auto_mail.triage.agent import (
     _build_triage_system_prompt as _build_triage_system_prompt,
 )
 from robotsix_auto_mail.triage.agent import (
-    _build_user_message as _build_user_message,
-)
-from robotsix_auto_mail.triage.agent import (
     _check_unsubscribe_for_to_delete as _check_unsubscribe_for_to_delete,
 )
 from robotsix_auto_mail.triage.agent import (
@@ -81,16 +78,10 @@ from robotsix_auto_mail.triage.classifier import (
     _save_llm_archive_hints as _save_llm_archive_hints,
 )
 from robotsix_auto_mail.triage.classifier import (
-    _save_memory as _save_memory,
-)
-from robotsix_auto_mail.triage.classifier import (
     _sender_key as _sender_key,
 )
 from robotsix_auto_mail.triage.classifier import (
     get_archive_subfolder as get_archive_subfolder,
-)
-from robotsix_auto_mail.triage.classifier import (
-    normalize_archive_subfolder as normalize_archive_subfolder,
 )
 from robotsix_auto_mail.triage.classifier import (
     propose_archive_subfolder as propose_archive_subfolder,
@@ -161,7 +152,6 @@ __all__ = [
     "UnsubscribeDetection",
     "_build_memory_guidance",
     "_build_triage_system_prompt",
-    "_build_user_message",
     "_check_unsubscribe_for_to_delete",
     "_detect_unsubscribe_for_sender",
     "_is_non_semantic_subfolder",
@@ -173,14 +163,13 @@ __all__ = [
     "_save_archive_folder_memory",
     "_save_archive_overrides",
     "_save_llm_archive_hints",
-    "_save_memory",
+
     "_sender_key",
     "delete_triage_decision",
     "delete_triage_decisions_by_action",
     "get_archive_subfolder",
     "get_triage_decision",
     "list_triage_decisions",
-    "normalize_archive_subfolder",
     "propose_archive_subfolder",
     "propose_archive_subfolder_llm",
     "record_archive_folder_choice",

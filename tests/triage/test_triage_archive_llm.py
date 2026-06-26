@@ -19,11 +19,11 @@ from robotsix_auto_mail.triage import (
     SenderMemory,
     _load_llm_archive_hints,
     _load_memory,
-    _save_memory,
     _sender_key,
     get_archive_subfolder,
     propose_archive_subfolder_llm,
 )
+from robotsix_auto_mail.triage.classifier import _save_memory
 
 
 def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:

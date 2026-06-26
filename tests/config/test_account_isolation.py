@@ -34,10 +34,10 @@ from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.triage import (
     SenderMemory,
     _load_memory,
-    _save_memory,
     list_triage_decisions,
     set_triage_decision,
 )
+from robotsix_auto_mail.triage.classifier import _save_memory
 
 # ---------------------------------------------------------------------------
 # Helpers

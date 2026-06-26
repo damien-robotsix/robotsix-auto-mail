@@ -14,6 +14,11 @@
   ``_render_board_page_shell``) from
   ``robotsix_auto_mail.server.views.__init__``.  Tests now import these
   symbols directly from ``robotsix_auto_mail.server.views.board``.
+- Removed three unused backward-compat re-exports from
+  ``robotsix_auto_mail.triage``: ``_build_user_message``,
+  ``_save_memory``, and ``normalize_archive_subfolder``.
+  These are still available via their native submodules
+  (``triage.agent``, ``triage.classifier``).
 
 - Fixed three stale path references in ``CLAUDE.md``: the static
   directory path, ``_calendar_mixin.py``→``_action_mixin.py``, and
