@@ -9,11 +9,14 @@
   ``robotsix_auto_mail.calendar``: ``build_calendar_transport``,
   ``build_calendar_transport_from_config``, ``build_ssl_context``,
   and ``DATE_TIME_RE`` — none had callers via the package namespace.
+- Removed four dead backward-compat re-exports from
+  ``robotsix_auto_mail.detect``: ``_DETECT_SYSTEM_PROMPT``,
+  ``_MX_PROVIDERS``, ``_PROVIDER_DB``, and ``DetectedProvider``.
 - Removed dead backward-compat re-exports (``_batch_banner_html``,
   ``_gather_account_board_data``, ``_render_board_columns``,
   ``_render_board_page_shell``) from
-  ``robotsix_auto_mail.server.views.__init__``.  Tests now import these
-  symbols directly from ``robotsix_auto_mail.server.views.board``.
+  ``robotsix_auto_mail.server.views.__init__``.  Tests now import these symbols
+  directly from ``robotsix_auto_mail.server.views.board``.
 
 - Fixed three stale path references in ``CLAUDE.md``: the static
   directory path, ``_calendar_mixin.py``→``_action_mixin.py``, and
