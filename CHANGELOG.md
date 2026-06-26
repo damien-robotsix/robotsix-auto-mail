@@ -5,6 +5,7 @@
 - Added unit tests for ``src/robotsix_auto_mail/config/render.py``
   covering ``_yaml_scalar``, ``_render_account_block``, and
   ``render_accounts_yaml``.
+- Removed dead backward-compat re-exports of ``ImapConnectionError``, ``ImapTlsError``, ``imap_utf7_decode``, and ``imap_utf7_encode`` from ``robotsix_auto_mail.imap`` package init.
 
 - Fixed the ``provider_model`` parameter docstring in ``_run_llm_agent``
   to accurately describe the ``None`` fallback: it uses the tier-level
