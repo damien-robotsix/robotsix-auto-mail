@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Added unit tests for ``src/robotsix_auto_mail/config/render.py``
+  covering ``_yaml_scalar``, ``_render_account_block``, and
+  ``render_accounts_yaml``.
+
 - Fixed the ``provider_model`` parameter docstring in ``_run_llm_agent``
   to accurately describe the ``None`` fallback: it uses the tier-level
   default model, not a "standard resolution cascade".
