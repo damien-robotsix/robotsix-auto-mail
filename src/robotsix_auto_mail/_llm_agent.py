@@ -41,7 +41,7 @@ def _run_llm_agent[T: pydantic.BaseModel](
         api_key: OpenRouter API key.  ``None`` falls back to the
             standard resolution cascade (env → config file).
         provider_model: LLM provider-model identifier.  ``None`` falls
-            back to the standard resolution cascade.
+            back to the tier-level default model from the configured tier.
         tier: LLM tier — ``Tier.CHEAP`` maps to ``level=1``; any other
             tier maps to ``level=2``.
         system_prompt: The system prompt for ``build_agent``.

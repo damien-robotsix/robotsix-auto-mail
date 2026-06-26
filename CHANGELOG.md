@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed the ``provider_model`` parameter docstring in ``_run_llm_agent``
+  to accurately describe the ``None`` fallback: it uses the tier-level
+  default model, not a "standard resolution cascade".
+
 - Fixed stale multi-account DB path defaults in `.env.example` to match
   the actual `.data/<id>/mail.db` form (was incorrectly documented as
   `.data/mail-<id>.db`).
