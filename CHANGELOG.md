@@ -6,6 +6,9 @@
   agent construction and execution to the shared `_run_llm_agent` helper,
   removing ~35 lines of duplicated boilerplate (API key resolution,
   TierConfig, provider lookup, agent build, run_agent).
+- Derived `_MICROSOFT_HOSTS` from the canonical `_PROVIDER_DB` Microsoft
+  entry rather than maintaining a duplicate hardcoded frozenset, so the
+  two sources of truth can no longer drift apart.
 
 - Removed dead backward-compat re-exports `_is_waste_folder` and
   `_parse_list_line` from `robotsix_auto_mail.imap` (they had zero callers

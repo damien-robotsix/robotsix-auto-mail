@@ -619,17 +619,24 @@ def provider_from_mx(mx_hosts: list[str]) -> MailProvider | None:
 # ---------------------------------------------------------------------------
 
 
+def _build_microsoft_hosts() -> frozenset[str]:
+    """Return known Microsoft IMAP/SMTP hosts, derived from ``_PROVIDER_DB``.
+
+    The canonical provider entry supplies ``imap_host`` and ``smtp_host``;
+    ``outlook.com`` is included as an alias that autoconfig / LLM backends
+    may return for consumer Outlook.com mailboxes.
+    """
+    for entry in _PROVIDER_DB:
+        if entry.label == "Outlook / Hotmail / Live / MS365":
+            return frozenset({entry.imap_host, entry.smtp_host, "outlook.com"})
+    raise AssertionError("Microsoft provider entry not found in _PROVIDER_DB")
+
+
 #: Microsoft 365 / Outlook.com IMAP & SMTP hosts.  Used to classify a
 #: detected provider as Microsoft regardless of which detection backend
 #: (autoconfig / MX / LLM) produced it, so ``detect`` can write an OAuth2
 #: (XOAUTH2) auth block instead of prompting for a (rejected) password.
-_MICROSOFT_HOSTS = frozenset(
-    {
-        "outlook.office365.com",
-        "smtp.office365.com",
-        "outlook.com",
-    }
-)
+_MICROSOFT_HOSTS = _build_microsoft_hosts()
 
 
 def is_microsoft_provider(provider: MailProvider) -> bool:
