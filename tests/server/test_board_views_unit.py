@@ -37,7 +37,7 @@ from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 
 def test_render_board_columns_empty_cards() -> None:
     """Returns the empty-board placeholder when *cards* is empty."""
-    from robotsix_auto_mail.server.views import _render_board_columns
+    from robotsix_auto_mail.server.views.board import _render_board_columns
 
     adapter = _make_minimal_adapter()
     result = _render_board_columns(adapter, {})
@@ -46,7 +46,7 @@ def test_render_board_columns_empty_cards() -> None:
 
 def test_render_board_columns_strips_wrapper_and_drawer() -> None:
     """Strips the outer #board wrapper and #drawer from the library output."""
-    from robotsix_auto_mail.server.views import _render_board_columns
+    from robotsix_auto_mail.server.views.board import _render_board_columns
 
     adapter = _make_minimal_adapter()
     card = _make_record(message_id="<mid@test>", subject="S1")
@@ -78,7 +78,7 @@ def test_render_board_columns_strips_wrapper_and_drawer() -> None:
 def test_render_board_columns_no_wrapper_in_output() -> None:
     """When render_board output lacks the expected wrapper prefix, the
     stripping logic still degrades gracefully (inner rfind strip)."""
-    from robotsix_auto_mail.server.views import _render_board_columns
+    from robotsix_auto_mail.server.views.board import _render_board_columns
 
     adapter = _make_minimal_adapter()
     card = _make_record(message_id="<mid@test>", subject="S2")
@@ -108,14 +108,14 @@ def test_render_board_columns_no_wrapper_in_output() -> None:
 
 def test_batch_banner_html_none() -> None:
     """Returns empty string when batch_op is None."""
-    from robotsix_auto_mail.server.views import _batch_banner_html
+    from robotsix_auto_mail.server.views.board import _batch_banner_html
 
     assert _batch_banner_html(None) == ""
 
 
 def test_batch_banner_html_known_verb_with_progress() -> None:
     """Renders the verb label and done/total when both are integers."""
-    from robotsix_auto_mail.server.views import _batch_banner_html
+    from robotsix_auto_mail.server.views.board import _batch_banner_html
 
     result = _batch_banner_html({"op": "delete", "done": 120, "total": 518})
     assert 'class="batch-banner"' in result
@@ -125,7 +125,7 @@ def test_batch_banner_html_known_verb_with_progress() -> None:
 
 def test_batch_banner_html_archive_verb() -> None:
     """Renders 'Archiving' for the archive verb."""
-    from robotsix_auto_mail.server.views import _batch_banner_html
+    from robotsix_auto_mail.server.views.board import _batch_banner_html
 
     result = _batch_banner_html({"op": "archive", "done": 3, "total": 10})
     assert "Archiving mail: 3/10" in result
@@ -133,7 +133,7 @@ def test_batch_banner_html_archive_verb() -> None:
 
 def test_batch_banner_html_no_progress_when_done_none() -> None:
     """Omits the done/total part when *done* is None."""
-    from robotsix_auto_mail.server.views import _batch_banner_html
+    from robotsix_auto_mail.server.views.board import _batch_banner_html
 
     result = _batch_banner_html({"op": "delete", "done": None, "total": 10})
     assert "Deleting mail" in result
@@ -143,7 +143,7 @@ def test_batch_banner_html_no_progress_when_done_none() -> None:
 
 def test_batch_banner_html_no_progress_when_total_none() -> None:
     """Omits the done/total part when *total* is None."""
-    from robotsix_auto_mail.server.views import _batch_banner_html
+    from robotsix_auto_mail.server.views.board import _batch_banner_html
 
     result = _batch_banner_html({"op": "delete", "done": 5, "total": None})
     assert "Deleting mail" in result
@@ -152,7 +152,7 @@ def test_batch_banner_html_no_progress_when_total_none() -> None:
 
 def test_batch_banner_html_unknown_verb_fallback() -> None:
     """Falls back to 'Processing' when the op verb is not in BATCH_OP_VERB_LABELS."""
-    from robotsix_auto_mail.server.views import _batch_banner_html
+    from robotsix_auto_mail.server.views.board import _batch_banner_html
 
     result = _batch_banner_html({"op": "nuke", "done": 1, "total": 2})
     assert "Processing mail: 1/2" in result
@@ -160,7 +160,7 @@ def test_batch_banner_html_unknown_verb_fallback() -> None:
 
 def test_batch_banner_html_bare_running_sentinel() -> None:
     """Handles the bare running sentinel shape: op=None, done=None, total=None."""
-    from robotsix_auto_mail.server.views import _batch_banner_html
+    from robotsix_auto_mail.server.views.board import _batch_banner_html
 
     result = _batch_banner_html({"op": None, "done": None, "total": None})
     assert 'class="batch-banner"' in result
@@ -243,7 +243,7 @@ def _make_gather_db(db_path: str) -> None:
 
 def test_gather_batch_op_idle(single_db: str) -> None:
     """batch_op is None when the watermark is unset."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     result = _gather_account_board_data(single_db)
@@ -252,7 +252,7 @@ def test_gather_batch_op_idle(single_db: str) -> None:
 
 def test_gather_batch_op_idle_explicit(single_db: str) -> None:
     """batch_op is None when the watermark is 'idle'."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     conn = init_db(single_db)
@@ -267,7 +267,7 @@ def test_gather_batch_op_idle_explicit(single_db: str) -> None:
 
 def test_gather_batch_op_json_payload(single_db: str) -> None:
     """batch_op parses a valid JSON progress payload."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     conn = init_db(single_db)
@@ -286,7 +286,7 @@ def test_gather_batch_op_json_payload(single_db: str) -> None:
 
 def test_gather_batch_op_running_sentinel(single_db: str) -> None:
     """batch_op is the bare sentinel dict when watermark is just 'running'."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     conn = init_db(single_db)
@@ -301,7 +301,7 @@ def test_gather_batch_op_running_sentinel(single_db: str) -> None:
 
 def test_gather_column_bucketing_no_decision(single_db: str) -> None:
     """A record with no triage decision lands in INBOX."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     result = _gather_account_board_data(single_db)
@@ -311,7 +311,7 @@ def test_gather_column_bucketing_no_decision(single_db: str) -> None:
 
 def test_gather_column_bucketing_known_action(single_db: str) -> None:
     """A record whose decision action is a known board column lands there."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     _seed_triage_decision(single_db, "mid-delete", action="TO_DELETE")
@@ -332,7 +332,7 @@ def test_gather_column_bucketing_unknown_action_fallback(single_db: str) -> None
     actions to the known set, so we monkeypatch ``list_triage_decisions``
     to return a mock decision with an unrecognised action.
     """
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     # Build a mock TriageDecision with an action NOT in _BOARD_COLUMNS.
@@ -352,7 +352,7 @@ def test_gather_column_bucketing_unknown_action_fallback(single_db: str) -> None
 
 def test_gather_to_archive_sort_by_destination(single_db: str) -> None:
     """TO_ARCHIVE records are stable-sorted by archive subfolder."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     _seed_triage_decision(single_db, "mid-archive-1", action="TO_ARCHIVE")
@@ -381,7 +381,7 @@ def test_gather_to_archive_sort_by_destination(single_db: str) -> None:
 
 def test_gather_archive_subfolders_computed(single_db: str) -> None:
     """archive_subfolders map is populated for TO_ARCHIVE records."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     _seed_triage_decision(single_db, "mid-archive-1", action="TO_ARCHIVE")
@@ -395,7 +395,7 @@ def test_gather_archive_subfolders_computed(single_db: str) -> None:
 
 def test_gather_folder_exists(single_db: str) -> None:
     """folder_exists is True when the subfolder path exists in archive_structure."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     _seed_triage_decision(single_db, "mid-archive-1", action="TO_ARCHIVE")
@@ -417,7 +417,7 @@ def test_gather_folder_exists(single_db: str) -> None:
 
 def test_gather_unsubscribe_suggestions(single_db: str) -> None:
     """unsubscribe_suggestions is parsed from the watermark."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     suggestions = {
@@ -439,7 +439,7 @@ def test_gather_unsubscribe_suggestions(single_db: str) -> None:
 
 def test_gather_unsubscribe_suggestions_malformed(single_db: str) -> None:
     """Malformed JSON in unsubscribe_suggestions yields an empty dict."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     conn = init_db(single_db)
@@ -454,7 +454,7 @@ def test_gather_unsubscribe_suggestions_malformed(single_db: str) -> None:
 
 def test_gather_record_notes(single_db: str) -> None:
     """record_notes maps message_id to notes for records that have them."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     result = _gather_account_board_data(single_db)
@@ -465,7 +465,7 @@ def test_gather_record_notes(single_db: str) -> None:
 
 def test_gather_triage_running_false(single_db: str) -> None:
     """triage_running is False when watermark is unset."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     result = _gather_account_board_data(single_db)
@@ -474,7 +474,7 @@ def test_gather_triage_running_false(single_db: str) -> None:
 
 def test_gather_triage_running_true(single_db: str) -> None:
     """triage_running is True when watermark is 'running'."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     conn = init_db(single_db)
@@ -489,7 +489,7 @@ def test_gather_triage_running_true(single_db: str) -> None:
 
 def test_gather_returns_all_expected_keys(single_db: str) -> None:
     """The returned dict contains all expected keys."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     result = _gather_account_board_data(single_db)
@@ -508,7 +508,7 @@ def test_gather_returns_all_expected_keys(single_db: str) -> None:
 
 def test_gather_archive_folders_stripped(single_db: str) -> None:
     """archive_folders strips the root prefix from each folder name."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     root = DEFAULT_ARCHIVE_ROOT
@@ -527,7 +527,7 @@ def test_gather_archive_folders_stripped(single_db: str) -> None:
 
 def test_gather_unsubscribe_empty_when_unset(single_db: str) -> None:
     """unsubscribe_suggestions is empty dict when watermark is unset."""
-    from robotsix_auto_mail.server.views import _gather_account_board_data
+    from robotsix_auto_mail.server.views.board import _gather_account_board_data
 
     _make_gather_db(single_db)
     result = _gather_account_board_data(single_db)
@@ -542,7 +542,7 @@ def test_gather_unsubscribe_empty_when_unset(single_db: str) -> None:
 def _page_shell_sentinels(**overrides: Any) -> str:
     """Call ``_render_board_page_shell`` with sentinel defaults for each
     keyword argument, overridden by *overrides*."""
-    from robotsix_auto_mail.server.views import _render_board_page_shell
+    from robotsix_auto_mail.server.views.board import _render_board_page_shell
 
     defaults: dict[str, Any] = {
         "columns_html": "<div>COLUMNS</div>",
