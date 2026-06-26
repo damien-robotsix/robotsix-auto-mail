@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed dead re-exports and ``__all__`` from
+  ``robotsix_auto_mail.component_agent.__init__`` (all consumers import
+  from submodules directly).
+
 - Added unit tests for ``src/robotsix_auto_mail/config/render.py``
   covering ``_yaml_scalar``, ``_render_account_block``, and
   ``render_accounts_yaml``.
