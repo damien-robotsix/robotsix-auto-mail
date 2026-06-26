@@ -111,6 +111,7 @@ jobs:
       # project robotsix-auto-mail itself: its editable `-e .` form has no
       # hashable single file under pip's --require-hashes mode, which aborts
       # pip-audit.
+      run-cyclonedx-sbom: true
       run-pip-audit: true
       pip-audit-requirements-file: requirements-locked.txt
       pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board robotsix-auto-mail robotsix-llmio robotsix-modules"
