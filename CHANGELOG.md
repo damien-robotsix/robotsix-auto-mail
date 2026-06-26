@@ -15,6 +15,9 @@
   ``robotsix_auto_mail.server.views.__init__``.  Tests now import these
   symbols directly from ``robotsix_auto_mail.server.views.board``.
 
+- Fixed three stale path references in ``CLAUDE.md``: the static
+  directory path, ``_calendar_mixin.py``→``_action_mixin.py``, and
+  ``board-auto-mail.js`` location.
 - Added unit tests for ``src/robotsix_auto_mail/config/render.py``
   covering ``_yaml_scalar``, ``_render_account_block``, and
   ``render_accounts_yaml``.
