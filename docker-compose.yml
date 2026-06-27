@@ -1,3 +1,4 @@
+# central-deploy-contract-version: 1
 # -------------------------------------------------------------------------
 # robotsix-auto-mail — Docker Compose file with ingester + board services.
 #
@@ -61,6 +62,8 @@ services:
     # Always serve on 8080 inside the container so the image healthcheck
     # (GET :8080/healthz) passes; BOARD_PORT only remaps the host side.
     command: serve --port 8080
+    labels:
+      robotsix.deploy.primary: "true"
     restart: unless-stopped
 
     environment:
