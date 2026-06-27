@@ -290,7 +290,8 @@ button:hover { background: #1a4d7a; }
 .ft-branch-leaf {
   cursor: pointer;
 }
-.ft-branch-leaf:hover {
+.ft-branch-leaf:hover,
+.ft-leaf:hover {
   color: #ffffff;
   background: #2a3a5a;
   border-radius: 2px;
@@ -302,13 +303,6 @@ button:hover { background: #1a4d7a; }
 .ft-leaf {
   color: #c0d0f0;
   cursor: pointer;
-}
-.ft-leaf:hover {
-  color: #ffffff;
-  background: #2a3a5a;
-  border-radius: 2px;
-  padding: 0.05rem 0.2rem;
-  margin: 0 -0.2rem;
 }
 
 /* -- children container (hidden by default when collapsed) --------------- */
