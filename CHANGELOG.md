@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed orphan ``get_record_by_correlation_id`` query function
+  (never called — no production or test callers).
+
 - Consolidated duplicate ``.ft-branch-leaf:hover`` and ``.ft-leaf:hover``
   CSS rules in ``board.css`` into a single comma-separated selector.
 

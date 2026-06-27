@@ -384,21 +384,3 @@ def update_calendar_correlation_id(
     conn.commit()
     return cur.rowcount > 0
 
-
-def get_record_by_correlation_id(
-    conn: sqlite3.Connection,
-    correlation_id: str,
-) -> MailRecord | None:
-    """Return the ``MailRecord`` for *correlation_id*, or ``None`` if not found.
-
-    Read-only — does **not** call ``conn.commit()``.
-    """
-    cur = conn.execute(
-        "SELECT * FROM mail_records WHERE calendar_correlation_id = ?",
-        (correlation_id,),
-    )
-    row = cur.fetchone()
-    if row is None:
-        return None
-    col_names = [desc[0] for desc in cur.description]
-    return row_to_mailrecord(row, col_names)
