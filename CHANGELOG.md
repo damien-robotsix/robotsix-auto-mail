@@ -13,6 +13,10 @@
 - Consolidated duplicate ``.ft-branch-leaf:hover`` and ``.ft-leaf:hover``
   CSS rules in ``board.css`` into a single comma-separated selector.
 
+- Removed dead backward-compat re-exports ``DEFAULT_STATUS`` and
+  ``row_to_mailrecord`` from ``db/__init__.py`` (zero callers via the
+  package namespace).
+
 - Extracted shared ``fetchJson`` helper in ``board-auto-mail.js``,
   replacing two duplicate fetch-then-json promise chains.
 - Added ``validate-pyproject`` to pre-commit hooks and CI for semantic

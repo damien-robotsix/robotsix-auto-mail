@@ -21,9 +21,6 @@ from .models import (
     _TRIAGE_ACTION_CHECK_VALUES as _TRIAGE_ACTION_CHECK_VALUES,
 )
 from .models import (
-    DEFAULT_STATUS as DEFAULT_STATUS,
-)
-from .models import (
     VALID_TRIAGE_ACTIONS as VALID_TRIAGE_ACTIONS,
 )
 from .models import (
@@ -54,9 +51,6 @@ from .queries import (
     record_exists as record_exists,
 )
 from .queries import (
-    row_to_mailrecord as row_to_mailrecord,
-)
-from .queries import (
     set_watermark as set_watermark,
 )
 from .queries import (
@@ -79,7 +73,6 @@ from .queries import (
 )
 
 __all__ = [
-    "DEFAULT_STATUS",
     "VALID_TRIAGE_ACTIONS",
     "MailRecord",
     "delete_record_by_message_id",
@@ -90,7 +83,6 @@ __all__ = [
     "list_records",
     "list_untriaged_records",
     "record_exists",
-    "row_to_mailrecord",
     "set_watermark",
     "update_calendar_correlation_id",
     "update_calendar_event_ref",
