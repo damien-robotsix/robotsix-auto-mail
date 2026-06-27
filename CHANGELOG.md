@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed inaccurate ``provider_model`` and ``api_key`` docstrings in
+  ``run_config_sync_agent`` and ``generate_draft_reply`` — both now
+  document the actual tier-level-default fallback (via
+  ``_run_llm_agent``) rather than a non-existent env-var cascade.
+
 - Removed orphan ``get_record_by_correlation_id`` query function
   (never called — no production or test callers).
 
