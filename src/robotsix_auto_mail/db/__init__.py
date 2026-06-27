@@ -33,9 +33,6 @@ from .queries import (
     delete_record_by_message_id as delete_record_by_message_id,
 )
 from .queries import (
-    get_record_by_correlation_id as get_record_by_correlation_id,
-)
-from .queries import (
     get_record_by_message_id as get_record_by_message_id,
 )
 from .queries import (
@@ -86,7 +83,6 @@ __all__ = [
     "VALID_TRIAGE_ACTIONS",
     "MailRecord",
     "delete_record_by_message_id",
-    "get_record_by_correlation_id",
     "get_record_by_message_id",
     "get_watermark",
     "init_db",
