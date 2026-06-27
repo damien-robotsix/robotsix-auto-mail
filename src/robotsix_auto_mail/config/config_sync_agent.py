@@ -345,9 +345,8 @@ def run_config_sync_agent(
             ``api_key`` argument → ``LLM_API_KEY`` env var →
             ``config.llm_api_key`` (via the config loader).
         provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
-            Resolves with the precedence ``provider_model`` argument →
-            ``LLM_PROVIDER_MODEL`` env var → ``config.llm_provider_model`` (via
-            :func:`load_llm_provider_model`).
+            ``None`` falls back to the tier-level default model (via
+            :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
         conn: Optional open SQLite connection.  When provided, the result
             is passed through the dedup memory ledger
