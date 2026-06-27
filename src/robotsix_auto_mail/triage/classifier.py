@@ -15,9 +15,10 @@ import sqlite3
 from email.utils import parseaddr
 from typing import cast
 
-from robotsix_llmio.core import run_agent
+from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
+from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     resolve_llm_api_key,
 )
@@ -366,43 +367,19 @@ def propose_archive_subfolder_llm(
         f"Body (first 1000 chars):\n{body_snippet}"
     )
 
-    # -- lazy imports so the rest of the CLI works without pydantic_ai --
-    from pydantic_ai import PromptedOutput
-    from robotsix_llmio.config.tier import (
-        LEVEL1_DEFAULT,
-        LEVEL2_DEFAULT,
-        LEVEL3_DEFAULT,
-        TierConfig,
-    )
-    from robotsix_llmio.core import get_provider_for_identifier as _get_provider
-
+    # -- call shared LLM helper (best-effort) --
     try:
-        _tier_config = TierConfig(
-            level1=LEVEL1_DEFAULT, level2=LEVEL2_DEFAULT, level3=LEVEL3_DEFAULT
-        )
-        _tlc = _tier_config.for_level(1)
-        model_id = provider_model if provider_model else _tlc.model
-        model_provider = _get_provider(
-            model_id, **{**_tlc.provider_kwargs, "api_key": resolved_key}
-        )
-        agent_handle = model_provider.build_agent(
-            level=1,
+        proposed: ArchiveSubfolderProposal = _run_llm_agent(
+            api_key=resolved_key,
+            provider_model=provider_model,
+            tier=Tier.CHEAP,
             system_prompt=system_prompt,
-            output_type=PromptedOutput(ArchiveSubfolderProposal),
+            output_model=ArchiveSubfolderProposal,
+            user_message=user_message,
+            label="archive subfolder proposal",
+            what="archive subfolder proposal",
+            exc_type=RuntimeError,
         )
-
-        try:
-            result = run_agent(
-                agent_handle,
-                lambda: agent_handle.run_sync(user_message),
-                label="archive subfolder proposal",
-                what="archive subfolder proposal",
-                trace_input=user_message,
-            )
-        except Exception:
-            return  # LLM call failed → silently return
-
-        proposed: ArchiveSubfolderProposal = result.output
         subfolder = normalize_archive_subfolder(proposed.subfolder)
         if not subfolder:
             return  # Empty / root-only / action-only proposal → don't persist
@@ -412,7 +389,8 @@ def propose_archive_subfolder_llm(
         hints[record.message_id] = subfolder
         _save_llm_archive_hints(conn, hints)
     except Exception:
-        # Any failure (import error, pydantic validation, etc.) → silently return
+        # Any failure (import error, LLM error, pydantic validation, etc.)
+        # → silently return so the board falls back to the deterministic proposal.
         return
 
 
