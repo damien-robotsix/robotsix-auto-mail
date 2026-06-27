@@ -4,6 +4,9 @@
 
 - Extracted shared ``fetchJson`` helper in ``board-auto-mail.js``,
   replacing two duplicate fetch-then-json promise chains.
+- Added ``validate-pyproject`` to pre-commit hooks and CI for semantic
+  validation of ``pyproject.toml`` (PEP 621 fields and tool-specific
+  subtables).
 - Removed dead re-exports and ``__all__`` from
   ``robotsix_auto_mail.component_agent.__init__`` (all consumers import
   from submodules directly).

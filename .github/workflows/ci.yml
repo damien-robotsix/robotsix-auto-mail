@@ -86,6 +86,9 @@ jobs:
       - name: Dead code detection (vulture)
         run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
 
+      - name: Validate pyproject.toml (validate-pyproject)
+        run: uvx 'validate-pyproject[all,store]'
+
       - name: Scan GitHub Actions workflows (zizmor)
         run: uv run --frozen zizmor --format=sarif .github/workflows/ > zizmor-results.sarif
 
