@@ -20,6 +20,13 @@ repos:
           - urllib3>=2.0
           - types-PyYAML
 
+  - repo: https://github.com/abravalheri/validate-pyproject
+    rev: v0.25
+    hooks:
+      - id: validate-pyproject
+        additional_dependencies:
+          - validate-pyproject-schema-store[all]
+
   # robotsix-modules ships a CLI but no .pre-commit-hooks.yaml manifest, so it
   # cannot be consumed as a remote hook repo (pre-commit fails env init with
   # InvalidManifestError). Run its validator as a local hook against the
