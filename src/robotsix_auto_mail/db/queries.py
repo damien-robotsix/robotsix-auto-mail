@@ -383,4 +383,3 @@ def update_calendar_correlation_id(
     )
     conn.commit()
     return cur.rowcount > 0
-
