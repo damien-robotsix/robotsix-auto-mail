@@ -18,6 +18,11 @@
 - Fixed three stale path references in ``CLAUDE.md``: the static
   directory path, ``_calendar_mixin.py``→``_action_mixin.py``, and
   ``board-auto-mail.js`` location.
+- Replaced inline LLM agent build boilerplate in
+  ``robotsix_auto_mail.triage.classifier.propose_archive_subfolder_llm``
+  with a call to the shared ``_run_llm_agent`` helper, eliminating ~35
+  lines of duplicated lazy-import / TierConfig / build_agent / run_agent
+  code.
 - Added unit tests for ``src/robotsix_auto_mail/config/render.py``
   covering ``_yaml_scalar``, ``_render_account_block``, and
   ``render_accounts_yaml``.
