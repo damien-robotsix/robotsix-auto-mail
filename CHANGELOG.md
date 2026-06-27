@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Extracted shared ``fetchJson`` helper in ``board-auto-mail.js``,
+  replacing two duplicate fetch-then-json promise chains.
 - Removed dead re-exports and ``__all__`` from
   ``robotsix_auto_mail.component_agent.__init__`` (all consumers import
   from submodules directly).

@@ -42,6 +42,15 @@
   var fetchQs = CFG.fetch_qs || "";
   var dataAccountJs = CFG.data_account_js === true;
 
+  /* ----- shared fetch helper -------------------------------------- */
+
+  function fetchJson(url) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error("bad status");
+      return r.json();
+    });
+  }
+
   /* ==================================================================
    * 1.  Side-panel (iframe-based, replaces board.js's #drawer)
    * ================================================================ */
@@ -205,11 +214,7 @@
       hideBrowseButtons();
       return;
     }
-    fetch("/archive-folders" + fetchQs)
-      .then(function (r) {
-        if (!r.ok) throw new Error("bad status");
-        return r.json();
-      })
+    fetchJson("/archive-folders" + fetchQs)
       .then(function (data) {
         folderCache = data.folders || [];
         if (folderCache.length === 0) {
@@ -512,11 +517,7 @@
     var savedBoardLeft = prevBoard ? prevBoard.scrollLeft : 0;
     var savedBoardTop = prevBoard ? prevBoard.scrollTop : 0;
 
-    fetch("/board-content" + fetchQs)
-      .then(function (r) {
-        if (!r.ok) throw new Error("bad status");
-        return r.json();
-      })
+    fetchJson("/board-content" + fetchQs)
       .then(function (data) {
         var board = document.querySelector(".board");
         if (board) board.innerHTML = data.columns_html;
