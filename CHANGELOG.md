@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Consolidated duplicate ``.ft-branch-leaf:hover`` and ``.ft-leaf:hover``
+  CSS rules in ``board.css`` into a single comma-separated selector.
+
 - Extracted shared ``fetchJson`` helper in ``board-auto-mail.js``,
   replacing two duplicate fetch-then-json promise chains.
 - Removed dead re-exports and ``__all__`` from
