@@ -31,6 +31,8 @@ services:
     labels:
       robotsix.deploy.primary: "true"
       robotsix.deploy.config-target: "/home/mailbot/config/config.yaml"
+      robotsix.deploy.config-assist: "detect"
+      robotsix.deploy.config-assist-seeds: "accounts.0.auth.username"
 
 volumes:
   auto-mail-config:
