@@ -6,7 +6,11 @@ import json
 from typing import Any
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
-from robotsix_auto_mail.db import MailRecord
+from robotsix_auto_mail.db import (
+    MailRecord,
+    delete_record_by_message_id,
+    set_watermark,
+)
 from robotsix_auto_mail.server._constants import BATCH_OP_VERBS
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 
@@ -156,6 +160,25 @@ def _collect_records_for_action(conn: Any, action: str) -> list[MailRecord]:
     return records
 
 
+def _run_db_only_batch_op(
+    conn: Any, records: list[MailRecord], op_str: str, done: int, total: int
+) -> int:
+    """Run a DB-only batch operation, deleting each record and updating progress.
+
+    Returns the updated *done* count.
+    """
+    for record in records:
+        delete_record_by_message_id(conn, record.message_id)
+        conn.commit()
+        done += 1
+        set_watermark(
+            conn,
+            "batch_op:state",
+            _batch_progress(op_str, done, total),
+        )
+    return done
+
+
 def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -> None:
     """Delete every ``TO_DELETE`` mail from IMAP + local DB in the background.
 
@@ -263,15 +286,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                         )
         else:
             # DB-only delete (no IMAP configured or no tracked UIDs).
-            for record in records:
-                delete_record_by_message_id(conn, record.message_id)
-                conn.commit()
-                done += 1
-                set_watermark(
-                    conn,
-                    "batch_op:state",
-                    _batch_progress("delete", done, total),
-                )
+            done = _run_db_only_batch_op(conn, records, "delete", done, total)
     except Exception:  # noqa: S110  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass
@@ -425,15 +440,7 @@ def _run_batch_archive_background(
                     )
         else:
             # DB-only archive (no IMAP configured or no tracked UIDs).
-            for record in records:
-                delete_record_by_message_id(conn, record.message_id)
-                conn.commit()
-                done += 1
-                set_watermark(
-                    conn,
-                    "batch_op:state",
-                    _batch_progress("archive", done, total),
-                )
+            done = _run_db_only_batch_op(conn, records, "archive", done, total)
     except Exception:  # noqa: S110  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass

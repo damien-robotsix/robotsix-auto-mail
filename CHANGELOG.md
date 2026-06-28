@@ -12,6 +12,8 @@
 - Extracted duplicated config-file fallback cascade in ``load_llm`` and
   ``load_llm_provider_model`` into shared private helper
   ``_load_file_config_optional``.
+- Extracted duplicated DB-only batch-operation loop into shared
+  ``_run_db_only_batch_op`` helper in ``server/adapters.py``.
   (never called — no production or test callers).
 
 - Consolidated duplicate ``.ft-branch-leaf:hover`` and ``.ft-leaf:hover``
