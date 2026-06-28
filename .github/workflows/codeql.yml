@@ -51,7 +51,7 @@ jobs:
         run: echo "CODEQL_PYTHON=$(uv run python -c 'import sys;print(sys.executable)')" >> "$GITHUB_ENV"
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@dd903d2e4f5405488e5ef1422510ee31c8b32357  # v3
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
@@ -71,7 +71,7 @@ jobs:
       # CI on the upload rejection. Once an operator enables code scanning
       # in repo settings, the upload succeeds and this can be removed.
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@dd903d2e4f5405488e5ef1422510ee31c8b32357  # v3
         continue-on-error: true
         with:
           category: "/language:${{ matrix.language }}"
