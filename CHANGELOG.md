@@ -117,6 +117,9 @@
 
 - Fixed `provider_model` parameter in `_run_llm_agent`, `detect_provider`, and
   `propose_archive_subfolder_llm` so that a non-None value is actually passed
+- Fixed docstring of `detect_provider` to reference the correct parameter
+  name (`provider_model` instead of `provider`) and describe the actual
+  fallback (tier-level default model) instead of the stale env-var cascade.
   through to `get_provider_for_identifier` instead of being silently ignored
   in favor of the tier-level default model. Setting `LLM_PROVIDER_MODEL` now
   takes effect for all LLM agent calls.
