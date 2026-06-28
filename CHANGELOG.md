@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Registered ``config/config.yaml`` in the ``deploy`` module manifest
+  (``docs/modules.yaml``).
+
 - Extracted duplicate field-validation chains in ``MailConfig`` loaders into a
   shared ``_coerce_field`` helper, and unified repeated top-level
   section-extraction blocks in ``MailAccountsConfig.from_yaml`` via a new
