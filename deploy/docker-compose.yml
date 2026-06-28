@@ -30,6 +30,7 @@ services:
       - auto-mail-logs:/home/mailbot/.mail_log
     labels:
       robotsix.deploy.primary: "true"
+      robotsix.deploy.config-target: "/home/mailbot/config/config.yaml"
 
 volumes:
   auto-mail-config:
