@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Extracted duplicate field-validation chains in ``MailConfig`` loaders into a
+  shared ``_coerce_field`` helper, and unified repeated top-level
+  section-extraction blocks in ``MailAccountsConfig.from_yaml`` via a new
+  ``_extract_section_fields`` helper.
+
 - Added ``image:`` fields to both services in ``docker-compose.yml`` so
   central-deploy can pull pre-built images rather than building from source.
   The ``build:`` blocks remain for local development; ``docker compose up``

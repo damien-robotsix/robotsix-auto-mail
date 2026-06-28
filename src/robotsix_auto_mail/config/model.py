@@ -50,6 +50,59 @@ _ENV_ACCOUNT_INDEX_RE: Final[re.Pattern[str]] = re.compile(r"^MAIL_ACCOUNTS_(\d+
 
 
 # ---------------------------------------------------------------------------
+# Shared field-coercion helper
+# ---------------------------------------------------------------------------
+
+
+def _coerce_field(spec: _FieldSpec, raw: str, label: str) -> tuple[Any, str | None]:
+    """Coerce and validate a raw string value according to *spec.kind*.
+
+    Returns ``(value, error_message)``.  When *error_message* is not
+    ``None``, *value* is the default to fall back to.
+    """
+    kind = spec.kind
+    if kind == "str":
+        return raw, None
+    elif kind == "int":
+        try:
+            return int(raw), None
+        except ValueError:
+            return spec.default, f"{label} must be an integer, got {raw!r}"
+    elif kind == "bool":
+        try:
+            return _parse_bool(label, raw), None
+        except ConfigurationError as exc:
+            return spec.default, exc.message
+    elif kind == "tls_mode":
+        if raw not in _VALID_TLS_MODES:
+            return raw, (
+                f"{label} must be one of {sorted(_VALID_TLS_MODES)!r}, got {raw!r}"
+            )
+        return raw, None
+    elif kind == "log_level":
+        if raw.upper() not in _VALID_LOG_LEVELS:
+            return raw, (
+                f"{label} must be one of {sorted(_VALID_LOG_LEVELS)!r}, got {raw!r}"
+            )
+        return raw, None
+    elif kind == "log_format":
+        if raw.lower() not in _VALID_LOG_FORMATS:
+            return raw, (
+                f"{label} must be one of {sorted(_VALID_LOG_FORMATS)!r}, got {raw!r}"
+            )
+        return raw, None
+    elif kind == "calendar_transport":
+        if raw not in _VALID_CALENDAR_TRANSPORTS:
+            return raw, (
+                f"{label} must be one of "
+                f"{sorted(_VALID_CALENDAR_TRANSPORTS)!r}, got {raw!r}"
+            )
+        return raw, None
+    else:
+        return raw, None
+
+
+# ---------------------------------------------------------------------------
 # Shared YAML-reader helper
 # ---------------------------------------------------------------------------
 
@@ -255,47 +308,26 @@ class MailConfig:
                 sections[section_name] = _get_table(data, section_name) or {}
             section = sections[section_name]
 
-            if spec.kind == "int":
-                kwargs[spec.field_name] = _get_int(
-                    section, key_name, spec.default, path
+            raw = section.get(key_name)
+            if raw is None:
+                kwargs[spec.field_name] = (
+                    "" if spec.default is _REQUIRED else spec.default
                 )
-            elif spec.kind == "bool":
-                kwargs[spec.field_name] = _get_bool(section, key_name, spec.default)
-            elif spec.kind == "tls_mode":
-                value = _get_str(section, key_name, spec.default)
-                if value not in _VALID_TLS_MODES:
-                    errors.append(
-                        f"{spec.yaml_path} must be one of "
-                        f"{sorted(_VALID_TLS_MODES)!r}, got {value!r}"
-                    )
-                kwargs[spec.field_name] = value
-            elif spec.kind == "log_level":
-                value = _get_str(section, key_name, spec.default)
-                if value.upper() not in _VALID_LOG_LEVELS:
-                    errors.append(
-                        f"{spec.yaml_path} must be one of "
-                        f"{sorted(_VALID_LOG_LEVELS)!r}, got {value!r}"
-                    )
-                kwargs[spec.field_name] = value
-            elif spec.kind == "log_format":
-                value = _get_str(section, key_name, spec.default)
-                if value.lower() not in _VALID_LOG_FORMATS:
-                    errors.append(
-                        f"{spec.yaml_path} must be one of "
-                        f"{sorted(_VALID_LOG_FORMATS)!r}, got {value!r}"
-                    )
-                kwargs[spec.field_name] = value
-            elif spec.kind == "calendar_transport":
-                value = _get_str(section, key_name, spec.default)
-                if value not in _VALID_CALENDAR_TRANSPORTS:
-                    errors.append(
-                        f"{spec.yaml_path} must be one of "
-                        f"{sorted(_VALID_CALENDAR_TRANSPORTS)!r}, got {value!r}"
-                    )
-                kwargs[spec.field_name] = value
-            else:  # "str"
-                default_str = "" if spec.default is _REQUIRED else spec.default
-                kwargs[spec.field_name] = _get_str(section, key_name, default_str)
+                continue
+
+            # Reject non-scalar YAML values for config fields.
+            if isinstance(raw, (dict, list)):
+                errors.append(
+                    f"{spec.yaml_path} must be a scalar value, got {type(raw).__name__}"
+                )
+                kwargs[spec.field_name] = spec.default
+                continue
+
+            raw_str = str(raw) if not isinstance(raw, str) else raw
+            value, err = _coerce_field(spec, raw_str, spec.yaml_path)
+            kwargs[spec.field_name] = value
+            if err:
+                errors.append(err)
 
         # -- required fields (skipped when validate=False) -----------------
 
@@ -414,46 +446,10 @@ def _build_config_from_env(
             else:
                 kwargs[spec.field_name] = spec.default
             continue
-        if spec.kind == "str":
-            kwargs[spec.field_name] = raw
-        elif spec.kind == "int":
-            try:
-                kwargs[spec.field_name] = int(raw)
-            except ValueError:
-                errors.append(f"{label} must be an integer, got {raw!r}")
-                kwargs[spec.field_name] = spec.default
-        elif spec.kind == "bool":
-            try:
-                kwargs[spec.field_name] = _parse_bool(label, raw)
-            except ConfigurationError as exc:
-                errors.append(exc.message)
-                kwargs[spec.field_name] = spec.default
-        elif spec.kind == "log_level":
-            if raw.upper() not in _VALID_LOG_LEVELS:
-                errors.append(
-                    f"{label} must be one of {sorted(_VALID_LOG_LEVELS)!r}, got {raw!r}"
-                )
-            kwargs[spec.field_name] = raw
-        elif spec.kind == "log_format":
-            if raw.lower() not in _VALID_LOG_FORMATS:
-                errors.append(
-                    f"{label} must be one of "
-                    f"{sorted(_VALID_LOG_FORMATS)!r}, got {raw!r}"
-                )
-            kwargs[spec.field_name] = raw
-        elif spec.kind == "calendar_transport":
-            if raw not in _VALID_CALENDAR_TRANSPORTS:
-                errors.append(
-                    f"{label} must be one of "
-                    f"{sorted(_VALID_CALENDAR_TRANSPORTS)!r}, got {raw!r}"
-                )
-            kwargs[spec.field_name] = raw
-        else:  # "tls_mode"
-            if raw not in _VALID_TLS_MODES:
-                errors.append(
-                    f"{label} must be one of {sorted(_VALID_TLS_MODES)!r}, got {raw!r}"
-                )
-            kwargs[spec.field_name] = raw
+        value, err = _coerce_field(spec, raw, label)
+        kwargs[spec.field_name] = value
+        if err:
+            errors.append(err)
 
     # -- final validation --------------------------------------------------
 
@@ -474,6 +470,48 @@ def _build_config_from_env(
         )
 
     return MailConfig(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Shared section-extraction helper
+# ---------------------------------------------------------------------------
+
+
+def _extract_section_fields(
+    data: dict[str, Any],
+    section_name: str,
+    field_map: list[tuple[str, Callable[..., Any], str, Any]],
+    path: Path | None = None,
+) -> dict[str, Any]:
+    """Extract fields from an optional top-level YAML section.
+
+    Args:
+        data: The parsed YAML dict.
+        section_name: Top-level key (e.g. ``"llm"``).
+        field_map: List of ``(result_key, extractor, yaml_key, default)``
+            tuples.  The *extractor* is one of :func:`_get_str`,
+            :func:`_get_bool`, or :func:`_get_int`.
+        path: Config file path for error messages (required when
+            *field_map* includes :func:`_get_int` entries).
+
+    Returns:
+        Dict mapping each *result_key* to the extracted value
+        (or its *default* when the section or key is absent).
+    """
+    section = _get_table(data, section_name)
+    result: dict[str, Any] = {}
+    for result_key, extractor, yaml_key, default in field_map:
+        if section is not None:
+            if extractor is _get_int:
+                assert path is not None, (  # noqa: S101  # nosec B101
+                    "_extract_section_fields: path required for _get_int"
+                )
+                result[result_key] = extractor(section, yaml_key, default, path)
+            else:
+                result[result_key] = extractor(section, yaml_key, default)
+        else:
+            result[result_key] = default
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -629,22 +667,18 @@ class MailAccountsConfig:
         if not accounts_raw:
             raise ConfigurationError("'accounts' must contain at least one account")
 
-        # -- top-level llm / langfuse sections (application-wide) -----------
+        # -- top-level application-wide sections ---------------------------
 
         global_llm_api_key: str = ""
         global_llm_provider_model: str = ""
         global_langfuse_public_key: str = ""
         global_langfuse_secret_key: str = ""
         global_langfuse_base_url: str = ""
-
-        # -- top-level board_agent section (application-wide) --------------
-
         global_board_agent_enabled: bool = False
         global_board_agent_api_url: str = ""
         global_board_agent_api_token: str = ""
         global_board_agent_repo_id: str = ""
         global_board_agent_write_ops: bool = True
-
         global_component_agent_enabled: bool = False
         global_component_agent_id: str = "board-manager-robotsix-auto-mail"
         global_component_agent_broker_host: str = ""
@@ -653,61 +687,71 @@ class MailAccountsConfig:
         global_component_agent_broker_tls_ca: str = ""
 
         if isinstance(data, dict):
-            llm_section = _get_table(data, "llm")
-            if llm_section is not None:
-                global_llm_api_key = _get_str(llm_section, "api_key", "")
-                global_llm_provider_model = _get_str(llm_section, "provider_model", "")
+            llm = _extract_section_fields(
+                data,
+                "llm",
+                [
+                    ("api_key", _get_str, "api_key", ""),
+                    ("provider_model", _get_str, "provider_model", ""),
+                ],
+            )
+            global_llm_api_key = llm["api_key"]
+            global_llm_provider_model = llm["provider_model"]
 
-            langfuse_section = _get_table(data, "langfuse")
-            if langfuse_section is not None:
-                global_langfuse_public_key = _get_str(
-                    langfuse_section, "public_key", ""
-                )
-                global_langfuse_secret_key = _get_str(
-                    langfuse_section, "secret_key", ""
-                )
-                global_langfuse_base_url = _get_str(langfuse_section, "base_url", "")
+            langfuse = _extract_section_fields(
+                data,
+                "langfuse",
+                [
+                    ("public_key", _get_str, "public_key", ""),
+                    ("secret_key", _get_str, "secret_key", ""),
+                    ("base_url", _get_str, "base_url", ""),
+                ],
+            )
+            global_langfuse_public_key = langfuse["public_key"]
+            global_langfuse_secret_key = langfuse["secret_key"]
+            global_langfuse_base_url = langfuse["base_url"]
 
-            board_agent_section = _get_table(data, "board_agent")
-            if board_agent_section is not None:
-                global_board_agent_enabled = _get_bool(
-                    board_agent_section, "enabled", False
-                )
-                global_board_agent_api_url = _get_str(
-                    board_agent_section, "api_url", ""
-                )
-                global_board_agent_api_token = _get_str(
-                    board_agent_section, "api_token", ""
-                )
-                global_board_agent_repo_id = _get_str(
-                    board_agent_section, "repo_id", ""
-                )
-                global_board_agent_write_ops = _get_bool(
-                    board_agent_section, "write_ops", True
-                )
+            board_agent = _extract_section_fields(
+                data,
+                "board_agent",
+                [
+                    ("enabled", _get_bool, "enabled", False),
+                    ("api_url", _get_str, "api_url", ""),
+                    ("api_token", _get_str, "api_token", ""),
+                    ("repo_id", _get_str, "repo_id", ""),
+                    ("write_ops", _get_bool, "write_ops", True),
+                ],
+            )
+            global_board_agent_enabled = board_agent["enabled"]
+            global_board_agent_api_url = board_agent["api_url"]
+            global_board_agent_api_token = board_agent["api_token"]
+            global_board_agent_repo_id = board_agent["repo_id"]
+            global_board_agent_write_ops = board_agent["write_ops"]
 
-            component_agent_section = _get_table(data, "component_agent")
-            if component_agent_section is not None:
-                global_component_agent_enabled = _get_bool(
-                    component_agent_section, "enabled", False
-                )
-                global_component_agent_id = _get_str(
-                    component_agent_section,
-                    "agent_id",
-                    "board-manager-robotsix-auto-mail",
-                )
-                global_component_agent_broker_host = _get_str(
-                    component_agent_section, "broker_host", ""
-                )
-                global_component_agent_broker_port = _get_int(
-                    component_agent_section, "broker_port", 443, path
-                )
-                global_component_agent_broker_token = _get_str(
-                    component_agent_section, "broker_token", ""
-                )
-                global_component_agent_broker_tls_ca = _get_str(
-                    component_agent_section, "broker_tls_ca", ""
-                )
+            component_agent = _extract_section_fields(
+                data,
+                "component_agent",
+                [
+                    ("enabled", _get_bool, "enabled", False),
+                    (
+                        "agent_id",
+                        _get_str,
+                        "agent_id",
+                        "board-manager-robotsix-auto-mail",
+                    ),
+                    ("broker_host", _get_str, "broker_host", ""),
+                    ("broker_port", _get_int, "broker_port", 443),
+                    ("broker_token", _get_str, "broker_token", ""),
+                    ("broker_tls_ca", _get_str, "broker_tls_ca", ""),
+                ],
+                path=path,
+            )
+            global_component_agent_enabled = component_agent["enabled"]
+            global_component_agent_id = component_agent["agent_id"]
+            global_component_agent_broker_host = component_agent["broker_host"]
+            global_component_agent_broker_port = component_agent["broker_port"]
+            global_component_agent_broker_token = component_agent["broker_token"]
+            global_component_agent_broker_tls_ca = component_agent["broker_tls_ca"]
 
         accounts: list[MailAccount] = []
         for entry in accounts_raw:
