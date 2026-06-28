@@ -40,7 +40,7 @@ def _is_skip_line(line: bytes) -> bool:
 
 
 def main() -> int:
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parent.parent.parent
     test_dir = repo_root / "tests"
     violations: list[tuple[str, int, bytes]] = []
 
