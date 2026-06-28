@@ -8,6 +8,10 @@
   ``_run_llm_agent``) rather than a non-existent env-var cascade.
 
 - Removed orphan ``get_record_by_correlation_id`` query function
+
+- Extracted duplicated config-file fallback cascade in ``load_llm`` and
+  ``load_llm_provider_model`` into shared private helper
+  ``_load_file_config_optional``.
   (never called — no production or test callers).
 
 - Consolidated duplicate ``.ft-branch-leaf:hover`` and ``.ft-leaf:hover``
