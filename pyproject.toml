@@ -51,7 +51,7 @@ dev = [
     # scripts/config/check_config_sync.py, which imports `yaml` directly.
     "pyyaml>=6.0",
     "types-PyYAML",
-    "robotsix-llmio[openrouter-deepseek,tracing]",
+    "robotsix-llmio[openrouter,tracing]",
     # robotsix-modules provides the CLI used by CI / pre-commit to validate and
     # check registration of docs/modules.yaml. It is tooling only (never imported
     # by the package), so it lives in the dev extra (exempt from deptry DEP002).
@@ -62,7 +62,7 @@ dev = [
     "zizmor",
 ]
 llm = [
-    "robotsix-llmio[openrouter-deepseek,tracing]",
+    "robotsix-llmio[openrouter,tracing]",
 ]
 microsoft = [
     "msal>=1.28",
@@ -174,7 +174,7 @@ known_first_party = ["robotsix_auto_mail"]
 extend_exclude = ["scripts"]
 
 [tool.deptry.per_rule_ignores]
-# pydantic_ai is pulled in transitively via robotsix-llmio[openrouter-deepseek]
+# pydantic_ai is pulled in transitively via robotsix-llmio[openrouter]
 # (declared in the [llm] extra); the lazy import in detect.py is intentional.
 DEP003 = ["pydantic_ai"]
 # structlog is no longer imported directly by this package (logging has been
