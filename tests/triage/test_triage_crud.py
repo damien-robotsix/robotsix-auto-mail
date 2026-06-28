@@ -17,13 +17,13 @@ from robotsix_auto_mail.db import (
 )
 from robotsix_auto_mail.triage import (
     TriageError,
-    _build_user_message,
     delete_triage_decision,
     delete_triage_decisions_by_action,
     get_triage_decision,
     list_triage_decisions,
     set_triage_decision,
 )
+from robotsix_auto_mail.triage.agent import _build_user_message
 
 
 def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
