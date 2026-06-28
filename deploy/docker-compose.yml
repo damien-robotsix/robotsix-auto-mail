@@ -14,7 +14,7 @@ services:
       - auto-mail-data:/home/mailbot/.data
       - auto-mail-logs:/home/mailbot/.mail_log
     healthcheck:
-      disable: true
+      test: ["NONE"]
 
   board:
     image: ghcr.io/damien-robotsix/robotsix-auto-mail:main
