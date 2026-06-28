@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Extracted shared row-materialization logic from ``list_records`` and
+  ``list_untriaged_records`` into a private ``_rows_to_mailrecords`` helper.
+
 - Fixed inaccurate ``provider_model`` and ``api_key`` docstrings in
   ``run_config_sync_agent`` and ``generate_draft_reply`` — both now
   document the actual tier-level-default fallback (via

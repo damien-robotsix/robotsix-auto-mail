@@ -288,6 +288,17 @@ def row_to_mailrecord(
     )
 
 
+def _rows_to_mailrecords(
+    cur: sqlite3.Cursor, rows: list[tuple]  # type: ignore[type-arg]
+) -> list[MailRecord]:
+    """Convert fetched rows to ``MailRecord`` instances using column metadata."""
+    col_names = [desc[0] for desc in cur.description]
+    results: list[MailRecord] = []
+    for row in rows:
+        results.append(row_to_mailrecord(row, col_names))
+    return results
+
+
 def list_records(conn: sqlite3.Connection) -> list[MailRecord]:
     """Return every ``MailRecord`` in the ``mail_records`` table.
 
@@ -297,11 +308,7 @@ def list_records(conn: sqlite3.Connection) -> list[MailRecord]:
     """
     cur = conn.execute("SELECT * FROM mail_records ORDER BY id ASC")
     rows = cur.fetchall()
-    col_names = [desc[0] for desc in cur.description]
-    results: list[MailRecord] = []
-    for row in rows:
-        results.append(row_to_mailrecord(row, col_names))
-    return results
+    return _rows_to_mailrecords(cur, rows)
 
 
 def list_untriaged_records(conn: sqlite3.Connection) -> list[MailRecord]:
@@ -321,11 +328,7 @@ ORDER BY mr.id ASC
 """
     )
     rows = cur.fetchall()
-    col_names = [desc[0] for desc in cur.description]
-    results: list[MailRecord] = []
-    for row in rows:
-        results.append(row_to_mailrecord(row, col_names))
-    return results
+    return _rows_to_mailrecords(cur, rows)
 
 
 def set_watermark(conn: sqlite3.Connection, key: str, value: str) -> None:
