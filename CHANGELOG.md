@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Added ``image:`` fields to both services in ``docker-compose.yml`` so
+  central-deploy can pull pre-built images rather than building from source.
+  The ``build:`` blocks remain for local development; ``docker compose up``
+  continues to build locally when no image is cached.
+
 - Removed ``extract_calendar_summary`` from the public ``robotsix_auto_mail.calendar``
   package exports (``__init__.py`` and ``__all__``). The helper remains available
   internally at ``robotsix_auto_mail.calendar.schema.extract_calendar_summary``.
