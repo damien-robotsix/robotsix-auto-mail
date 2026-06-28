@@ -27,6 +27,21 @@ logger = logging.getLogger(__name__)
 DEFAULT_CONFIG_PATH = "config/mail.local.yaml"
 
 
+def _load_file_config_optional(config_path: Path) -> MailConfig | None:
+    """Return the default account's :class:`MailConfig` from *config_path*, or ``None``.
+
+    Returns ``None`` when the path does not exist or the YAML cannot be
+    parsed as a multi-account config.
+    """
+    if not config_path.exists():
+        return None
+    try:
+        accounts = MailAccountsConfig.from_yaml(config_path, validate=False)
+        return accounts.default.config
+    except ConfigurationError, FileNotFoundError, OSError:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Convenience loader
 # ---------------------------------------------------------------------------
@@ -61,17 +76,9 @@ def load_llm() -> str:
 
     if not api_key:
         config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
-        if config_path.exists():
-            try:
-                # Read the default (or first) account's ``llm:`` section. A
-                # single-account ("mono") file raises ``ConfigurationError``
-                # (caught below) — the LLM key then degrades to env-only.
-                accounts = MailAccountsConfig.from_yaml(config_path, validate=False)
-                file_cfg: MailConfig | None = accounts.default.config
-            except ConfigurationError, FileNotFoundError, OSError:
-                file_cfg = None
-            if file_cfg is not None:
-                api_key = api_key or file_cfg.llm_api_key
+        file_cfg = _load_file_config_optional(config_path)
+        if file_cfg is not None:
+            api_key = api_key or file_cfg.llm_api_key
 
     return api_key
 
@@ -88,14 +95,9 @@ def load_llm_provider_model() -> str:
 
     if not provider_model:
         config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
-        if config_path.exists():
-            try:
-                accounts = MailAccountsConfig.from_yaml(config_path, validate=False)
-                file_cfg: MailConfig | None = accounts.default.config
-            except ConfigurationError, FileNotFoundError, OSError:
-                file_cfg = None
-            if file_cfg is not None:
-                provider_model = provider_model or file_cfg.llm_provider_model
+        file_cfg = _load_file_config_optional(config_path)
+        if file_cfg is not None:
+            provider_model = provider_model or file_cfg.llm_provider_model
 
     return provider_model or "openrouter-deepseek"
 
