@@ -25,6 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: ghcr.io/damien-robotsix/robotsix-auto-mail:${IMAGE_TAG:-main}
     stdin_open: true
     tty: false
     restart: unless-stopped
@@ -59,6 +60,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: ghcr.io/damien-robotsix/robotsix-auto-mail:${IMAGE_TAG:-main}
     # Always serve on 8080 inside the container so the image healthcheck
     # (GET :8080/healthz) passes; BOARD_PORT only remaps the host side.
     command: serve --port 8080
