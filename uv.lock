@@ -1244,7 +1244,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
     { name = "pyyaml" },
-    { name = "robotsix-llmio", extra = ["openrouter-deepseek", "tracing"] },
+    { name = "robotsix-llmio", extra = ["openrouter", "tracing"] },
     { name = "robotsix-modules" },
     { name = "ruff" },
     { name = "types-pyyaml" },
@@ -1256,7 +1256,7 @@ docs = [
     { name = "mkdocs-material" },
 ]
 llm = [
-    { name = "robotsix-llmio", extra = ["openrouter-deepseek", "tracing"] },
+    { name = "robotsix-llmio", extra = ["openrouter", "tracing"] },
 ]
 microsoft = [
     { name = "msal" },
@@ -1282,8 +1282,8 @@ requires-dist = [
     { name = "robotsix-board", git = "https://github.com/damien-robotsix/robotsix-board.git?rev=main" },
     { name = "robotsix-board-agent", marker = "extra == 'board-agent'", git = "https://github.com/damien-robotsix/robotsix-board-agent.git?rev=main" },
     { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=28b23a848003" },
-    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=28b23a848003" },
-    { name = "robotsix-llmio", extras = ["openrouter-deepseek", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=28b23a848003" },
+    { name = "robotsix-llmio", extras = ["openrouter", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=28b23a848003" },
+    { name = "robotsix-llmio", extras = ["openrouter", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=28b23a848003" },
     { name = "robotsix-modules", marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-modules.git?rev=main" },
     { name = "robotsix-yaml-config", git = "https://github.com/damien-robotsix/robotsix-yaml-config.git?rev=main" },
     { name = "ruff", marker = "extra == 'dev'" },
@@ -1321,7 +1321,7 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-openrouter-deepseek = [
+openrouter = [
     { name = "pydantic-ai-slim", extra = ["openrouter"] },
 ]
 tracing = [
