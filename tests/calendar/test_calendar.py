@@ -1248,3 +1248,244 @@ def test_summary_no_dates_in_body_omits_date_references() -> None:
     record = _make_record(body_plain="Hello world")
     result = extract_calendar_summary(record)
     assert "Date/time references" not in result
+
+
+# ============================================================================
+# Unit tests — CalendarEventRequest model
+# ============================================================================
+
+
+def test_calendar_event_request_required_fields() -> None:
+    """All fields except correlation_id and extracted_dates are required."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        CalendarEventRequest()  # type: ignore[call-arg]
+
+
+def test_calendar_event_request_default_correlation_id() -> None:
+    """correlation_id is auto-generated when omitted."""
+    event = CalendarEventRequest(
+        message_id="<test@example.com>",
+        subject="Test",
+        sender="sender@example.com",
+        body_text="Body",
+        email_date="2025-01-01T00:00:00",
+    )
+    assert isinstance(event.correlation_id, str)
+    assert len(event.correlation_id) == 32  # uuid4().hex
+
+
+def test_calendar_event_request_correlation_id_unique() -> None:
+    """Each instance gets a unique correlation_id by default."""
+    event1 = CalendarEventRequest(
+        message_id="<a@example.com>",
+        subject="A",
+        sender="a@example.com",
+        body_text="Body",
+        email_date="2025-01-01T00:00:00",
+    )
+    event2 = CalendarEventRequest(
+        message_id="<b@example.com>",
+        subject="B",
+        sender="b@example.com",
+        body_text="Body",
+        email_date="2025-01-01T00:00:00",
+    )
+    assert event1.correlation_id != event2.correlation_id
+
+
+def test_calendar_event_request_explicit_correlation_id() -> None:
+    """correlation_id can be overridden explicitly."""
+    event = CalendarEventRequest(
+        correlation_id="my-custom-id",
+        message_id="<test@example.com>",
+        subject="Test",
+        sender="sender@example.com",
+        body_text="Body",
+        email_date="2025-01-01T00:00:00",
+    )
+    assert event.correlation_id == "my-custom-id"
+
+
+def test_calendar_event_request_default_extracted_dates() -> None:
+    """extracted_dates defaults to an empty list."""
+    event = CalendarEventRequest(
+        message_id="<test@example.com>",
+        subject="Test",
+        sender="sender@example.com",
+        body_text="Body",
+        email_date="2025-01-01T00:00:00",
+    )
+    assert event.extracted_dates == []
+
+
+def test_calendar_event_request_serialization() -> None:
+    """model_dump() produces a plain dict."""
+    event = CalendarEventRequest(
+        correlation_id="cid-1",
+        message_id="<test@example.com>",
+        subject="Test",
+        sender="sender@example.com",
+        body_text="Body",
+        email_date="2025-01-01T00:00:00",
+        extracted_dates=["2025-06-15"],
+    )
+    dumped = event.model_dump()
+    assert dumped["correlation_id"] == "cid-1"
+    assert dumped["message_id"] == "<test@example.com>"
+    assert dumped["subject"] == "Test"
+    assert dumped["sender"] == "sender@example.com"
+    assert dumped["body_text"] == "Body"
+    assert dumped["email_date"] == "2025-01-01T00:00:00"
+    assert dumped["extracted_dates"] == ["2025-06-15"]
+
+
+def test_calendar_event_request_deserialization() -> None:
+    """model_validate() reconstructs from a dict."""
+    data = {
+        "correlation_id": "cid-2",
+        "message_id": "<test@example.com>",
+        "subject": "Test",
+        "sender": "sender@example.com",
+        "body_text": "Body",
+        "email_date": "2025-01-01T00:00:00",
+        "extracted_dates": ["2025-06-20"],
+    }
+    event = CalendarEventRequest.model_validate(data)
+    assert event.correlation_id == "cid-2"
+    assert event.message_id == "<test@example.com>"
+    assert event.subject == "Test"
+    assert event.sender == "sender@example.com"
+    assert event.body_text == "Body"
+    assert event.email_date == "2025-01-01T00:00:00"
+    assert event.extracted_dates == ["2025-06-20"]
+
+
+def test_calendar_event_request_roundtrip() -> None:
+    """model_validate(model_dump()) round-trips."""
+    event = CalendarEventRequest(
+        message_id="<test@example.com>",
+        subject="Test",
+        sender="sender@example.com",
+        body_text="Body text",
+        email_date="2025-06-15T12:00:00",
+        extracted_dates=["2025-06-15", "3:00 PM"],
+    )
+    reloaded = CalendarEventRequest.model_validate(event.model_dump())
+    assert reloaded == event
+
+
+# ============================================================================
+# Unit tests — CalendarEventResponse model
+# ============================================================================
+
+
+def test_calendar_event_response_required_fields() -> None:
+    """correlation_id and status are required."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        CalendarEventResponse()  # type: ignore[call-arg]
+
+
+def test_calendar_event_response_defaults() -> None:
+    """event_ref and message default to empty string."""
+    resp = CalendarEventResponse(correlation_id="cid", status="success")
+    assert resp.event_ref == ""
+    assert resp.message == ""
+
+
+def test_calendar_event_response_serialization() -> None:
+    """model_dump() includes all fields."""
+    resp = CalendarEventResponse(
+        correlation_id="cid-1",
+        status="success",
+        event_ref="Created event 'Test'",
+        message="OK",
+    )
+    dumped = resp.model_dump()
+    assert dumped["correlation_id"] == "cid-1"
+    assert dumped["status"] == "success"
+    assert dumped["event_ref"] == "Created event 'Test'"
+    assert dumped["message"] == "OK"
+
+
+def test_calendar_event_response_deserialization() -> None:
+    """model_validate() reconstructs from a dict."""
+    data = {
+        "correlation_id": "cid-2",
+        "status": "error",
+        "event_ref": "",
+        "message": "no dates found",
+    }
+    resp = CalendarEventResponse.model_validate(data)
+    assert resp.correlation_id == "cid-2"
+    assert resp.status == "error"
+    assert resp.event_ref == ""
+    assert resp.message == "no dates found"
+
+
+def test_calendar_event_response_roundtrip() -> None:
+    """model_validate(model_dump()) round-trips."""
+    resp = CalendarEventResponse(
+        correlation_id="cid",
+        status="error",
+        event_ref="",
+        message="Calendar agent error: no dates",
+    )
+    reloaded = CalendarEventResponse.model_validate(resp.model_dump())
+    assert reloaded == resp
+
+
+# ============================================================================
+# Additional unit tests — extract_dates_from_body edge cases
+# ============================================================================
+
+
+def test_extract_dates_time_with_seconds() -> None:
+    """Times with seconds (3:00:00 PM) are recognised."""
+    result = extract_dates_from_body("3:00:00 PM")
+    assert result == ["3:00:00 PM"]
+
+
+def test_extract_dates_lowercase_am_pm() -> None:
+    """Lowercase am/pm is matched (IGNORECASE)."""
+    result = extract_dates_from_body("3:00 pm")
+    assert result == ["3:00 pm"]
+
+
+def test_extract_dates_month_abbrev_trailing_letters() -> None:
+    """Month abbreviations with trailing letters (Sept, Sept.) are matched."""
+    result = extract_dates_from_body("Sept 15")
+    assert result == ["Sept 15"]
+
+
+def test_extract_dates_two_digit_year_dotted() -> None:
+    """Dotted dates with a two-digit year are recognised."""
+    result = extract_dates_from_body("15.06.25")
+    assert result == ["15.06.25"]
+
+
+def test_extract_dates_at_end_of_sentence() -> None:
+    """Dates at the end of a sentence (before punctuation) are recognised."""
+    result = extract_dates_from_body("Meet on 2025-06-15.")
+    assert result == ["2025-06-15"]
+
+
+def test_extract_dates_mixed_edge_case_text() -> None:
+    """Mixed but realistic body text with multiple formats."""
+    body = (
+        "Let's meet on 2025-07-04 at 2:30 PM. "
+        "Backup date: 7/5/2025. "
+        "European style: 05.07.2025. "
+        "Reminder sent Jul 4. "
+        "Call at 14:30:00."
+    )
+    result = extract_dates_from_body(body)
+    assert "2025-07-04" in result
+    assert "2:30 PM" in result
+    assert "7/5/2025" in result
+    assert "05.07.2025" in result
+    assert "Jul 4" in result
+    assert "14:30:00" in result
