@@ -16,7 +16,7 @@ jobs:
   # caller (which installs a `docs` group), auto-mail's docs deps live in the
   # `docs` extra, so the install args pull `--extra docs`.
   deploy:
-    uses: damien-robotsix/robotsix-mill/.github/workflows/python-docs.yml@main
+    uses: damien-robotsix/robotsix-mill/.github/workflows/python-docs.yml@fe60b8676ceefca482ed4a62b401e800206c78a4  # main
     permissions:
       contents: write
     with:

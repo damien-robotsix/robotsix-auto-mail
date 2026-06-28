@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   publish:
-    uses: damien-robotsix/robotsix-mill/.github/workflows/docker-release.yml@main
+    uses: damien-robotsix/robotsix-mill/.github/workflows/docker-release.yml@fe60b8676ceefca482ed4a62b401e800206c78a4  # main
     permissions:
       contents: read
       packages: write
@@ -66,7 +66,7 @@ jobs:
           vuln-type: os,library
 
       - name: Upload Trivy SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357  # v3
         if: always()
         with:
           sarif_file: trivy-results.sarif
