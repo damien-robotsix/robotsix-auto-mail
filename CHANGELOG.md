@@ -126,7 +126,7 @@
   violations (and 1 `UP047`) are left for follow-up manual resolution.
   `UP`/`SIM` rules are suppressed in `tests/` and `scripts/` via
   per-file-ignores.
-- Added `scripts/check_kind_literals.py` (no-op) to satisfy the
+- Added `scripts/ci/check_kind_literals.py` (no-op) to satisfy the
   `python-ci.yml` reusable workflow from `robotsix-mill`, which calls this
   script unconditionally but this repo does not use a `TicketKind` enum.
 
