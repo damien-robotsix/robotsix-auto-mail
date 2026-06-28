@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed ``extract_calendar_summary`` from the public ``robotsix_auto_mail.calendar``
+  package exports (``__init__.py`` and ``__all__``). The helper remains available
+  internally at ``robotsix_auto_mail.calendar.schema.extract_calendar_summary``.
+
 - Extracted shared row-materialization logic from ``list_records`` and
   ``list_untriaged_records`` into a private ``_rows_to_mailrecords`` helper.
 

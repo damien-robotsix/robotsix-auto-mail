@@ -20,9 +20,9 @@ from robotsix_auto_mail.calendar import (
     CalendarDispatchError,
     CalendarEventRequest,
     CalendarEventResponse,
-    extract_calendar_summary,
     extract_dates_from_body,
 )
+from robotsix_auto_mail.calendar.schema import extract_calendar_summary
 
 if TYPE_CHECKING:
     from robotsix_auto_mail.config.model import MailConfig
