@@ -60,6 +60,7 @@ modules:
       - deploy/README.md
       - deploy/docker-compose.yml
       - deploy/nginx/mail.robotsix.net.conf
+      - config/config.yaml
 
   - id: dev
     description: >-
