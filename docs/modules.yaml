@@ -53,13 +53,10 @@ modules:
       Continuous-deployment stack for server.robotsix.net: a Compose
       file that pulls the published GHCR image and runs the ingester,
       the loopback-bound board, and Watchtower (auto-update on a new
-      `main` image), an nginx TLS + basic-auth reverse-proxy vhost for
-      mail.robotsix.net, plus the env example and operator runbook.
+      `main` image), plus the operator runbook.
     paths:
-      - deploy/.env.example
       - deploy/README.md
       - deploy/docker-compose.yml
-      - deploy/nginx/mail.robotsix.net.conf
       - config/config.yaml
 
   - id: dev
