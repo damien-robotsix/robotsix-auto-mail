@@ -31,7 +31,7 @@ services:
     labels:
       robotsix.deploy.primary: "true"
       robotsix.deploy.config-target: "/home/mailbot/config/config.yaml"
-      robotsix.deploy.config-assist: "detect {accounts.0.auth.username} --password {accounts.0.auth.password} --no-verify --output /home/mailbot/config/config.yaml"
+      robotsix.deploy.config-assist: "detect {accounts.0.auth.username} --id {accounts.0.id} --password {accounts.0.auth.password} --no-verify --output /home/mailbot/config/config.yaml"
       robotsix.deploy.config-assist-seeds: "accounts.0.auth.username,accounts.0.auth.password"
 
 volumes:
