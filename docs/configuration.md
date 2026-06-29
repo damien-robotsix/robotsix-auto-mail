@@ -108,7 +108,6 @@ See [Multi-account variables](#multi-account-variables) for details.
 |---|---|---|---|---|
 | `MAIL_ARCHIVE_ROOT` | `robotsix-mail-archive` | string | no | Root folder under which the self-managed archive structure lives. |
 | `MAIL_ARCHIVE_ENABLED` | `true` | boolean | no | Whether to create and manage the archive folder structure. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
-| `MAIL_ARCHIVE_NAMESPACE` | `""` | string | no | IMAP namespace prefix for archive folders (e.g. `"INBOX."` for Dovecot servers with `namespace/inbox=yes`). |
 
 ---
 

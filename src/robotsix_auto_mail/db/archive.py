@@ -159,7 +159,6 @@ def setup_archive(
     client: ImapClient,
     *,
     archive_root: str = ARCHIVE_ROOT,
-    archive_namespace: str = "",
     api_key: str | None = None,
     provider_model: str | None = None,
     tier: Tier = Tier.CHEAP,
@@ -182,9 +181,6 @@ def setup_archive(
         client: Connected IMAP client.
         archive_root: Logical root folder name (e.g.
             ``"robotsix-mail-archive"``).
-        archive_namespace: Optional IMAP namespace prefix to prepend to
-            *archive_root* (e.g. ``"INBOX."``).  The effective root
-            becomes ``namespace + archive_root``.
         api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env var.
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
@@ -192,11 +188,9 @@ def setup_archive(
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
 
     Returns:
-        The list of full (namespaced) archive folder names that exist
-        after setup.
+        The list of full archive folder names that exist after setup.
     """
-    # Effective root includes the namespace prefix when configured.
-    effective_root = archive_namespace + archive_root
+    effective_root = archive_root
 
     # -- already-remembered short-circuit --
     remembered = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)

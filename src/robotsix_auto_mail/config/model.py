@@ -161,7 +161,6 @@ class MailConfig:
 
     # Self-managed archive folder structure.
     archive_root: str = DEFAULT_ARCHIVE_ROOT
-    archive_namespace: str = ""
     archive_enabled: bool = True
 
     # Run the inbox triage agent automatically at the end of each ingest.

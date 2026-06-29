@@ -80,7 +80,6 @@ accounts:
     # Self-managed archive folder structure.
     # archive:
     #   root: robotsix-mail-archive
-    #   namespace: ""
     #   enabled: true
     # Inbox triage agent — runs automatically after each ingest cycle.
     # triage:
@@ -143,7 +142,6 @@ MAIL_OAUTH2_TENANT=organizations
 MAIL_DB_PATH=.data/mail.db
 MAIL_INGEST_INTERVAL=15
 MAIL_ARCHIVE_ROOT=robotsix-mail-archive
-MAIL_ARCHIVE_NAMESPACE=
 MAIL_ARCHIVE_ENABLED=true
 MAIL_TRIAGE_ON_INGEST=true
 MAIL_CALENDAR_ENABLED=true
@@ -213,7 +211,6 @@ _DOCS_YAML_TABLE = """\
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles |
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
-| `archive.namespace` | no | `""` | IMAP namespace prefix for archive folders |
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
 | `calendar.enabled` | no | `true` | Enable 'Add to Calendar' in detail view |
@@ -257,7 +254,6 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_DB_PATH` | no | `.data/mail.db` | Filesystem path for the SQLite database |
 | `MAIL_INGEST_INTERVAL` | no | `15` | Minutes between automatic ingest cycles |
 | `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Archive root folder |
-| `MAIL_ARCHIVE_NAMESPACE` | no |  | IMAP namespace prefix for archive folders |
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to manage the archive structure |
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Run inbox triage automatically after ingest |
 | `MAIL_CALENDAR_ENABLED` | no | `true` | Enable 'Add to Calendar' in detail view |
