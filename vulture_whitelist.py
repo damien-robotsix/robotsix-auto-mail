@@ -81,7 +81,7 @@ logger  # noqa
 
 from robotsix_auto_mail.detect import ProviderEntry
 
-ProviderEntry.in_managed_hosting
+_ = ProviderEntry.in_managed_hosting
 
 from robotsix_auto_mail.protocol import _ProtocolClient
 
