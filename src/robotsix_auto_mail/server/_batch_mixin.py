@@ -13,6 +13,7 @@ from robotsix_auto_mail.server.adapters import (
     _run_batch_archive_background,
     _run_batch_delete_background,
 )
+from robotsix_auto_mail.triage import TO_ARCHIVE, TO_DELETE
 
 
 class _BatchActionMixin:
@@ -49,7 +50,7 @@ class _BatchActionMixin:
             _run_batch_delete_background,
             (self.db_path, self.mail_config),
             running_check=_batch_op_running,
-            precheck=lambda conn: bool(_collect_records_for_action(conn, "TO_DELETE")),
+            precheck=lambda conn: bool(_collect_records_for_action(conn, TO_DELETE)),
         )
 
     def _handle_batch_delete_aggregate(self) -> None:
@@ -76,7 +77,7 @@ class _BatchActionMixin:
                 (db_path, account.config),
                 running_check=_batch_op_running,
                 precheck=lambda conn: bool(
-                    _collect_records_for_action(conn, "TO_DELETE")
+                    _collect_records_for_action(conn, TO_DELETE)
                 ),
                 db_path=db_path,
                 redirect=False,
@@ -121,5 +122,5 @@ class _BatchActionMixin:
             _run_batch_archive_background,
             (self.db_path, self.mail_config, archive_root, subfolder),
             running_check=_batch_op_running,
-            precheck=lambda conn: bool(_collect_records_for_action(conn, "TO_ARCHIVE")),
+            precheck=lambda conn: bool(_collect_records_for_action(conn, TO_ARCHIVE)),
         )

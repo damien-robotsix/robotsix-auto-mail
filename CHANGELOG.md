@@ -2,6 +2,14 @@
 
 ## 0.0.0 (unreleased)
 
+- Added individual triage action string constants (``INBOX``,
+  ``HUMAN_TRIAGE``, ``PENDING_ACTION``, ``TO_ARCHIVE``, ``TO_DELETE``,
+  ``TO_CALENDAR``, ``TO_ANSWER``, ``DRAFT_READY``) in
+  ``robotsix_auto_mail.triage._constants`` and re-exported them from
+  ``robotsix_auto_mail.triage``.  All server-side call sites now import
+  these constants instead of hardcoding the action strings, centralizing
+  the vocabulary and eliminating ~44 duplicated string literals across 9
+  files.
 - **Breaking (default change):** ``MailConfig.llm_provider_model`` now
   defaults to ``""`` (was ``"openrouter-deepseek"``).  When unset, every
   LLM call resolves its model from the llmio tier/level defaults.  The

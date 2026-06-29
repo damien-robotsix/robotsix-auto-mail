@@ -13,6 +13,7 @@ from robotsix_auto_mail.db import (
 )
 from robotsix_auto_mail.server._constants import BATCH_OP_VERBS
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
+from robotsix_auto_mail.triage import TO_ARCHIVE, TO_DELETE
 
 
 def _batch_progress(op: str, done: int, total: int) -> str:
@@ -209,7 +210,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
 
     conn = init_db(db_path, skip_migrations=True)
     try:
-        records = _collect_records_for_action(conn, "TO_DELETE")
+        records = _collect_records_for_action(conn, TO_DELETE)
         total = len(records)
         set_watermark(
             conn,
@@ -335,7 +336,7 @@ def _run_batch_archive_background(
 
     conn = init_db(db_path, skip_migrations=True)
     try:
-        records = _collect_records_for_action(conn, "TO_ARCHIVE")
+        records = _collect_records_for_action(conn, TO_ARCHIVE)
         if subfolder_filter is not None:
             fkey = mail_config.llm_api_key if mail_config else ""
             records = [

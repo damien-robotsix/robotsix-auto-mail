@@ -15,6 +15,9 @@ from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
 from robotsix_auto_mail.db import MailRecord, get_watermark, init_db, set_watermark
 from robotsix_auto_mail.server._constants import _is_safe_redirect_path
 from robotsix_auto_mail.triage import (
+    TO_ANSWER,
+    TO_ARCHIVE,
+    TO_CALENDAR,
     VALID_TRIAGE_ACTIONS,
     get_archive_subfolder,
     get_triage_decision,
@@ -172,7 +175,7 @@ class _BoardActionMixin:
             message_id = record.message_id
 
             if (
-                triage_action == "TO_CALENDAR"
+                triage_action == TO_CALENDAR
                 and self.mail_config is not None
                 and not self.mail_config.calendar_enabled
             ):
@@ -182,7 +185,7 @@ class _BoardActionMixin:
             # Capture prior triage decision for TO_CALENDAR reroute logic
             # before we overwrite it with the move target.
             prior_action: str | None = None
-            if triage_action == "TO_CALENDAR":
+            if triage_action == TO_CALENDAR:
                 prior = get_triage_decision(conn, message_id)
                 prior_action = prior.action if prior is not None else None
 
@@ -204,7 +207,7 @@ class _BoardActionMixin:
                 self._bad_request(f"Could not move to {triage_action}")
                 return False
 
-            if triage_action == "TO_CALENDAR":
+            if triage_action == TO_CALENDAR:
                 # -- Dispatch calendar request on column move ----------
                 try:
                     from robotsix_auto_mail.calendar import (
@@ -275,9 +278,9 @@ class _BoardActionMixin:
                                 # reply; otherwise it goes to the
                                 # archive column.
                                 next_action = (
-                                    "TO_ANSWER"
-                                    if prior_action == "TO_ANSWER"
-                                    else "TO_ARCHIVE"
+                                    TO_ANSWER
+                                    if prior_action == TO_ANSWER
+                                    else TO_ARCHIVE
                                 )
                                 set_triage_decision(
                                     bg_conn,
@@ -307,7 +310,7 @@ class _BoardActionMixin:
                     except Exception:  # noqa: S110  # nosec B110
                         pass
 
-            if triage_action == "TO_ARCHIVE":
+            if triage_action == TO_ARCHIVE:
                 try:
                     if self.mail_config is not None:
                         propose_archive_subfolder_llm(
