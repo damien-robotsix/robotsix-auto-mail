@@ -14,6 +14,9 @@
   adapted for HTTP error responses.  `COMPONENT_AGENT_ENABLED` env var
   and `component_agent.enabled` YAML key are documented in the examples.
 
+- Removed stale `BOARD_AGENT_*` environment variable documentation from
+  `docs/configuration.md` (these vars were already removed from code in a
+  prior cleanup but the docs section was missed).
 - Removed `board_agent` (in-repo mill board bridge) and `component_agent`
   (in-repo agent-comm responder); their equivalents now live outside this
   repo. All associated config fields, tests, docs, and dependencies
