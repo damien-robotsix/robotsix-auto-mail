@@ -167,6 +167,9 @@ modules:
       - src/robotsix_auto_mail/component_agent/__init__.py
       - src/robotsix_auto_mail/component_agent/config_contract.py
       - src/robotsix_auto_mail/component_agent/responder.py
+      - tests/component_agent/__init__.py
+      - tests/component_agent/test_config_contract.py
+      - tests/component_agent/test_responder.py
 
   - id: draft
     description: >-
