@@ -44,7 +44,7 @@ The variables listed below describe a **single account**. To drive
 several mailboxes from one process, use the namespaced scheme:
 prefix every per-account variable with `MAIL_ACCOUNTS_<n>_` where `<n>`
 is a zero-based, contiguous integer index. Global variables (LLM,
-Langfuse, logging, board agent) are read from the bare names below —
+Langfuse, logging) are read from the bare names below —
 they are never namespaced.
 
 See [Multi-account variables](#multi-account-variables) for details.
@@ -172,19 +172,21 @@ application-wide — they are **not** namespaced in multi-account mode.
 
 ---
 
-## Board agent (global)
+## Component agent (global)
 
-Optional agent-comm bridge to the mill board. When enabled, other agents
-can drive the board programmatically via agent-comm messages. These are
-application-wide — they are **not** namespaced in multi-account mode.
+Optional agent running on the shared agent-comm broker that responds to
+component-inventory requests from other parts of the fleet (e.g. the
+mill board). These are application-wide — they are **not** namespaced in
+multi-account mode. For the full setup guide, see [Connecting](connecting.md).
 
 | Variable | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `BOARD_AGENT_ENABLED` | `false` | boolean | no | Enable the board agent bridge. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
-| `BOARD_AGENT_API_URL` | `""` | string | no | Base URL of the board agent API. Required when enabled. |
-| `BOARD_AGENT_API_TOKEN` | `""` | string | no | Authentication token for the board agent API. Required when enabled. Masked in logs and `repr`. |
-| `BOARD_AGENT_REPO_ID` | `""` | string | no | Board repository identifier. Required when enabled. |
-| `BOARD_AGENT_WRITE_OPS` | `true` | boolean | no | Whether write operations are allowed. Set to `false` for a read-only agent. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
+| `COMPONENT_AGENT_ENABLED` | `false` | boolean | no | Enable the component agent on the broker. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
+| `COMPONENT_AGENT_ID` | `board-manager-robotsix-auto-mail` | string | no | Agent identifier registered on the broker. |
+| `COMPONENT_AGENT_BROKER_HOST` | `""` | string | no | Broker server hostname. Required when enabled. |
+| `COMPONENT_AGENT_BROKER_PORT` | `443` | integer | no | Broker server port. |
+| `COMPONENT_AGENT_BROKER_TOKEN` | `""` | string | no | Agent authentication token for the broker. Required when enabled. Masked in logs and `repr`. |
+| `COMPONENT_AGENT_BROKER_TLS_CA` | `""` | string | no | Path to the CA certificate PEM for verifying the broker's TLS certificate. Required when enabled.
 
 ---
 
@@ -196,7 +198,8 @@ sections above is namespaced: `MAIL_<FIELD>` becomes
 `MAIL_ACCOUNTS_<n>_<FIELD>` where `<n>` is a zero-based integer.
 
 Global variables (`LLM_API_KEY`, `LLM_PROVIDER_MODEL`, `LANGFUSE_*`,
-`LOG_LEVEL`, `LOG_FORMAT`, `LOG_FILE_DIR`, `BOARD_AGENT_*`) are **not**
+`LOG_LEVEL`, `LOG_FORMAT`, `LOG_FILE_DIR`,
+`COMPONENT_AGENT_*`) are **not**
 namespaced — they remain at their bare names above and apply to every
 account.
 
