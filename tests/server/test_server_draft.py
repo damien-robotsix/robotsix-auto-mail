@@ -294,6 +294,68 @@ def test_send_draft_reply_sends_and_requeues_for_triage(single_db: str) -> None:
         server.shutdown()
 
 
+def test_send_draft_forward_sends_and_requeues(single_db: str) -> None:
+    """POST /send-draft forward → sends mail to forward_to, retains record,
+    stores sent reply, and clears triage decision."""
+
+    from robotsix_auto_mail.db import (
+        get_record_by_message_id,
+        list_untriaged_records,
+    )
+
+    _seed_draft_record(
+        single_db,
+        "send-fwd-mid",
+        sender="alice@other.com",
+        subject="FYI thread",
+        draft_text="Forwarding this.",
+        imap_uid=7,
+    )
+    _seed_archive_override(single_db, "send-fwd-mid", "")
+
+    server, port = _start_test_server_with_mail_config(
+        single_db, _dummy_send_mail_config()
+    )
+    try:
+        with _patch_smtp_and_imap() as (smtp_cls, imap_cls):
+            resp = _post_to_path(
+                port,
+                "/send-draft",
+                {
+                    "message_id": "send-fwd-mid",
+                    "reply_mode": "forward",
+                    "forward_to": "fwd@example.com",
+                },
+            )
+
+            assert resp.status == 302
+            assert resp.headers.get("Location") == "/board"
+
+            send_mock = smtp_cls.return_value.__enter__.return_value.send
+            send_mock.assert_called_once()
+            kwargs = send_mock.call_args.kwargs
+            assert kwargs["to_addr"] == "fwd@example.com"
+            assert kwargs["subject"].startswith("Fwd: ")
+            assert kwargs["in_reply_to"] is None
+            assert kwargs["references"] is None
+
+            # No IMAP archive move was performed.
+            imap_cls.return_value.__enter__.return_value.move_message.assert_not_called()
+
+        # Record retained, sent reply body stored, triage decision cleared.
+        conn = init_db(single_db)
+        try:
+            record = get_record_by_message_id(conn, "send-fwd-mid")
+            assert record is not None
+            assert record.sent_reply_text == "Forwarding this."
+            untriaged_ids = {r.message_id for r in list_untriaged_records(conn)}
+            assert "send-fwd-mid" in untriaged_ids
+        finally:
+            conn.close()
+    finally:
+        server.shutdown()
+
+
 def test_send_draft_refuses_self_reply(single_db: str) -> None:
     """POST /send-draft where the recipient equals the user's own address →
     400 and no SMTP send occurs."""
@@ -514,6 +576,7 @@ def test_send_draft_buttons_rendered_only_when_draft_ready(single_db: str) -> No
         assert 'action="/send-draft"' in ready
         assert 'name="reply_mode" value="reply"' in ready
         assert 'name="reply_mode" value="reply_all"' in ready
+        assert 'name="reply_mode" value="forward"' in ready
 
         answer = (
             urlopen(f"http://127.0.0.1:{port}/email/ui-answer-mid")

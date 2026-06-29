@@ -539,6 +539,146 @@ class TestHandleSendDraft:
         send_kwargs = mock_client.send.call_args[1]
         assert send_kwargs["cc"] == ["colleague@x.com", "boss@x.com"]
 
+    def test_forward_sends_to_forward_to_address(self, single_db: str) -> None:
+        _seed_draft_record(
+            single_db,
+            "forward-ok",
+            sender="sender@x.com",
+            subject="Interesting thread",
+            draft_text="FYI.",
+        )
+        handler = _FakeHandler(
+            single_db,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="me@example.com",
+                password="s3cret",
+            ),
+        )
+        handler.headers.get.return_value = 200
+        handler.rfile.read.return_value = (
+            b"message_id=forward-ok&reply_mode=forward"
+            b"&forward_to=third@external.com&redirect_to=/board"
+        )
+
+        with (
+            mock.patch("robotsix_auto_mail.smtp.SmtpClient") as mock_smtp_cls,
+            mock.patch("robotsix_auto_mail.db.update_sent_reply_text"),
+            mock.patch("robotsix_auto_mail.triage.delete_triage_decision"),
+        ):
+            mock_client = mock_smtp_cls.return_value.__enter__.return_value
+            handler._handle_send_draft()
+
+        send_kwargs = mock_client.send.call_args[1]
+        assert send_kwargs["to_addr"] == "third@external.com"
+        assert send_kwargs["subject"].startswith("Fwd: ")
+        assert send_kwargs["in_reply_to"] is None
+        assert send_kwargs["references"] is None
+
+    def test_forward_missing_forward_to_returns_400(self, single_db: str) -> None:
+        _seed_draft_record(
+            single_db,
+            "forward-missing",
+            sender="sender@x.com",
+            subject="Test",
+            draft_text="Some draft",
+        )
+        handler = _FakeHandler(
+            single_db,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="me@example.com",
+                password="s3cret",
+            ),
+        )
+        handler.headers.get.return_value = 200
+        handler.rfile.read.return_value = (
+            b"message_id=forward-missing&reply_mode=forward"
+            b"&forward_to=&redirect_to=/board"
+        )
+
+        with (
+            mock.patch("robotsix_auto_mail.db.update_sent_reply_text"),
+            mock.patch("robotsix_auto_mail.triage.delete_triage_decision"),
+            mock.patch("robotsix_auto_mail.smtp.SmtpClient"),
+        ):
+            handler._handle_send_draft()
+
+        handler._bad_request.assert_called_once()
+        assert "forward_to is required" in str(handler._bad_request.call_args[0][0])
+
+    def test_forward_subject_already_fwd_not_double_prefixed(
+        self, single_db: str
+    ) -> None:
+        _seed_draft_record(
+            single_db,
+            "fwd-subj",
+            sender="sender@x.com",
+            subject="Fwd: Earlier thread",
+            draft_text="FYI.",
+        )
+        handler = _FakeHandler(
+            single_db,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="me@example.com",
+                password="s3cret",
+            ),
+        )
+        handler.headers.get.return_value = 200
+        handler.rfile.read.return_value = (
+            b"message_id=fwd-subj&reply_mode=forward"
+            b"&forward_to=other@example.com&redirect_to=/board"
+        )
+
+        with (
+            mock.patch("robotsix_auto_mail.smtp.SmtpClient") as mock_smtp_cls,
+            mock.patch("robotsix_auto_mail.db.update_sent_reply_text"),
+            mock.patch("robotsix_auto_mail.triage.delete_triage_decision"),
+        ):
+            mock_client = mock_smtp_cls.return_value.__enter__.return_value
+            handler._handle_send_draft()
+
+        assert mock_client.send.call_args[1]["subject"] == "Fwd: Earlier thread"
+
+    def test_forward_self_forward_guard_returns_400(self, single_db: str) -> None:
+        _seed_draft_record(
+            single_db,
+            "forward-self",
+            sender="sender@x.com",
+            subject="Test",
+            draft_text="Some draft",
+        )
+        handler = _FakeHandler(
+            single_db,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="me@example.com",
+                password="s3cret",
+            ),
+        )
+        handler.headers.get.return_value = 200
+        handler.rfile.read.return_value = (
+            b"message_id=forward-self&reply_mode=forward"
+            b"&forward_to=me@example.com&redirect_to=/board"
+        )
+
+        with (
+            mock.patch("robotsix_auto_mail.db.update_sent_reply_text"),
+            mock.patch("robotsix_auto_mail.triage.delete_triage_decision"),
+            mock.patch("robotsix_auto_mail.smtp.SmtpClient"),
+        ):
+            handler._handle_send_draft()
+
+        handler._bad_request.assert_called_once()
+        assert "Refusing to forward to your own address" in str(
+            handler._bad_request.call_args[0][0]
+        )
+
 
 # ===================================================================
 # _handle_generate_draft

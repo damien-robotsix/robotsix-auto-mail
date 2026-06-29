@@ -295,6 +295,19 @@ def _render_draft_section(
             '<input type="hidden" name="reply_mode" value="reply_all">'
             '<button type="submit">Reply to all &amp; archive</button>'
             "</form>"
+            '<form class="detail-form" method="post" action="/send-draft">'
+            f'<input type="hidden" name="message_id"'
+            f' value="{html.escape(record.message_id)}">'
+            f"{redirect_input}"
+            '<input type="hidden" name="reply_mode" value="forward">'
+            '<div style="margin-bottom:4px;">'
+            "<label>Forward to:</label>"
+            '<input type="email" name="forward_to" required'
+            ' placeholder="recipient@example.com"'
+            ' style="width:100%;box-sizing:border-box;">'
+            "</div>"
+            '<button type="submit">Forward &amp; archive</button>'
+            "</form>"
         )
     return (
         '<div class="detail-field">'
