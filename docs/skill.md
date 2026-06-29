@@ -37,7 +37,7 @@ Append `?account=<account_id>` (e.g. `?account=main`) to any request.
 | `GET /` | 301 → `/board` | |
 | `GET /board` | HTML | Full board UI |
 | `GET /board-content` | JSON `{"columns_html":"…","triage_running":bool,"batch_op":"…"\|null,"unsubscribe_suggestions":{…}}` | Board payload (rendered columns + metadata); preferred for machine reads |
-| `GET /healthz` | JSON `{"status":"healthy"}` 200 / `{"status":"unhealthy","checks":{"database":"unreachable"}}` 503 | Liveness; pings SQLite |
+| `GET /healthz` | JSON `{"status":"healthy"}` 200 / `{"status":"unhealthy","checks":{"database":"unreachable"}}` 503 | Liveness; pings SQLite; `checks` object present on 503 |
 | `GET /archive-folders` | JSON `{"delimiter":"/","folders":[…]}` | Available IMAP archive subfolders. Returns `{"delimiter":"/","folders":[]}` in aggregate mode |
 | `GET /email/{message_id}/status` | plain text — triage action name | 404 if unknown |
 | `GET /email/{message_id}` | HTML | Detail page; optional `?embed=1` strips chrome, `?draft=1` shows draft panel |

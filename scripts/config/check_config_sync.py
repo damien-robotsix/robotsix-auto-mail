@@ -270,11 +270,9 @@ def _values_match(
         if parsed == mailconfig_default:
             return True
         # Handle "993" → "993" (str) vs 993 (int) — already caught
-        # by safe_load giving int 993.  But also handle quoted strings
-        # like '"direct-tls"' → direct-tls.
-        if isinstance(parsed, str) and isinstance(mailconfig_default, str):
-            if parsed == mailconfig_default:
-                return True
+        # by safe_load giving int 993.  Quoted-string values (e.g.
+        # '"direct-tls"') are already handled by the parsed == default
+        # check above.
 
     return False
 
