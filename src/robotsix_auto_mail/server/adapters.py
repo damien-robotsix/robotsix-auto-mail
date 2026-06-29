@@ -447,7 +447,7 @@ def _run_batch_archive_background(
                     )
         else:
             # DB-only archive (no IMAP configured or no tracked UIDs).
-            done = _run_db_only_batch_op(conn, records, "archive", done, total)
+            _run_db_only_batch_op(conn, records, "archive", done, total)
     except Exception:  # noqa: S110  # nosec B110
         # Swallow all exceptions — the watermark is always cleared.
         pass
