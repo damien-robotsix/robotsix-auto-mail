@@ -10,6 +10,8 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
 )
+from robotsix_auto_mail.db.queries import write_account_health
+from robotsix_auto_mail.health import probe_account, utcnow
 from robotsix_auto_mail.pipeline import IngestResult, reconcile_records
 
 
@@ -21,6 +23,7 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
     """
     result: IngestResult | None = None
     conn = _cli.init_db(config.db_path)
+    success = False
     try:
         with _cli.ImapClient(config) as imap_client:
             result = _cli.ingest_mail(conn, imap_client, config, dry_run=dry_run)
@@ -35,10 +38,28 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
                         )
                 except Exception:
                     sys.stderr.write("Reconciliation failed (will retry next cycle)\n")
-    except Exception:
+    except Exception as exc:
         # Fatal connection failure — ImapClient(config) raised.
+        sys.stderr.write(f"Connection FAILED: {exc}\n")
+        try:
+            write_account_health(
+                conn, status="failed", error=str(exc), checked_at=utcnow()
+            )
+        except Exception:
+            pass
         result = None
+    else:
+        # Successful ingest cycle (result may still be None on dry run
+        # but the connection itself succeeded).
+        success = not dry_run and result is not None
     finally:
+        if success:
+            try:
+                write_account_health(
+                    conn, status="ok", error=None, checked_at=utcnow()
+                )
+            except Exception:
+                pass
         conn.close()
 
     # If ImapClient(config) raised before ingest_mail ran, result is None.
@@ -104,6 +125,29 @@ def _cmd_ingest(
             if _cli._ingest_cycle(account.config, dry_run=dry_run) != 0:
                 rc = 1
         return rc
+
+    # -- startup probe: check each account before the first cycle ----------
+    for account in selected:
+        try:
+            status, error = probe_account(account.config)
+        except Exception as exc:
+            status, error = "failed", str(exc)
+        conn = _cli.init_db(account.config.db_path)
+        try:
+            write_account_health(
+                conn, status=status, error=error, checked_at=utcnow()
+            )
+        finally:
+            conn.close()
+        if status == "failed":
+            sys.stderr.write(
+                f"STARTUP: account '{account.account_id}' connection FAILED: "
+                f"{error}\n"
+            )
+        else:
+            sys.stdout.write(
+                f"STARTUP: account '{account.account_id}' connection OK\n"
+            )
 
     interval_minutes = max(1, selected[0].config.ingest_interval_minutes)
     sys.stdout.write(

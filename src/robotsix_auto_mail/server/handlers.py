@@ -108,6 +108,10 @@ class BoardHandler(
             (lambda p: p == "/board-content", self._serve_board_content),
             (lambda p: p == "/healthz", self._serve_healthz),
             (
+                lambda p: p == "/probe-health",
+                self._serve_probe_health,
+            ),
+            (
                 lambda p: p == "/archive-folders",
                 self._serve_archive_folders,
             ),
@@ -324,6 +328,39 @@ class BoardHandler(
             )
         else:
             self._serve_json({"status": "healthy"}, status=200)
+
+    def _serve_probe_health(self) -> None:
+        """Serve GET /probe-health — on-demand IMAP + SMTP connectivity probe.
+
+        Iterates all configured accounts, probes each one, persists the result
+        in each account's ``account_health`` watermark, and returns a JSON
+        summary.
+        """
+        from robotsix_auto_mail.db import init_db
+        from robotsix_auto_mail.db.queries import write_account_health
+        from robotsix_auto_mail.health import probe_account, utcnow
+
+        accounts = self.accounts
+        if accounts is None:
+            self._serve_json({"accounts": {}}, status=200)
+            return
+
+        result: dict[str, dict[str, str | None]] = {}
+        for account in accounts.accounts:
+            status, error = probe_account(account.config)
+            conn = init_db(account.config.db_path)
+            try:
+                write_account_health(
+                    conn,
+                    status=status,
+                    error=error,
+                    checked_at=utcnow(),
+                )
+            finally:
+                conn.close()
+            result[account.account_id] = {"status": status, "error": error}
+
+        self._serve_json({"accounts": result}, status=200)
 
     def log_message(self, format: str, *args: object) -> None:
         """Log HTTP access via the structlog-enabled logger."""

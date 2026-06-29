@@ -86,9 +86,12 @@ def _gather_account_board_data(
     so the global board can call it per-account.
     """
     from robotsix_auto_mail.db import get_watermark, init_db
+    from robotsix_auto_mail.db.queries import get_account_health
 
     conn = init_db(db_path, skip_migrations=True)
     try:
+        # Read account health so the board can display a red banner on failures.
+        health = get_account_health(conn)
         # Check whether the triage agent is currently running so the
         # board can show a visual indicator and disable the button.
         triage_running = get_watermark(conn, _TRIAGE_RUN_STATE_KEY) == "running"
@@ -213,6 +216,7 @@ def _gather_account_board_data(
     return {
         "triage_running": triage_running,
         "batch_op": batch_op,
+        "health": health,
         "triage_by_mid": triage_by_mid,
         "column_buckets": column_buckets,
         "archive_subfolders": archive_subfolders,
@@ -226,6 +230,8 @@ def _gather_account_board_data(
 def _build_board_content(
     db_path: str,
     archive_root: str = DEFAULT_ARCHIVE_ROOT,
+    *,
+    account_id: str = "main",
 ) -> dict[str, Any]:
     """Return ``{"columns_html": …, "triage_running": …}``.
 
@@ -242,6 +248,7 @@ def _build_board_content(
 
     triage_running = gathered["triage_running"]
     batch_op = gathered["batch_op"]
+    health = gathered["health"]
     triage_by_mid: dict[str, TriageDecision] = gathered["triage_by_mid"]
     column_buckets: dict[str, list[MailRecord]] = gathered["column_buckets"]
     archive_subfolders: dict[str, str] = gathered["archive_subfolders"]
@@ -277,10 +284,17 @@ def _build_board_content(
     }
     columns_html = _render_board_columns(adapter, cards)
 
+    # Health alerts for the red banner + JS polling.
+    health_alerts_html = _health_alerts_html(
+        {account_id: health} if health else {}, account_labels=None
+    )
+
     return {
         "columns_html": columns_html,
         "triage_running": triage_running,
         "batch_op": batch_op,
+        "health": health,
+        "health_alerts_html": health_alerts_html,
         "unsubscribe_suggestions": unsubscribe_suggestions,
     }
 
@@ -314,6 +328,7 @@ def _build_global_board_content(
     merged_record_notes: dict[str, str] = {}
     record_accounts: dict[str, str] = {}
     account_labels: dict[str, str] = {}
+    account_health: dict[str, dict | None] = {}
     triage_running: bool = False
     # Aggregate batch-op progress across accounts.  Each account runs its
     # own worker against its own DB; we sum their done/total so the banner
@@ -334,6 +349,7 @@ def _build_global_board_content(
         )
 
         triage_running = triage_running or gathered["triage_running"]
+        account_health[aid] = gathered["health"]
 
         account_batch = gathered["batch_op"]
         if account_batch is not None:
@@ -391,11 +407,15 @@ def _build_global_board_content(
     if batch_running:
         batch_op = {"op": batch_verb, "done": batch_done, "total": batch_total}
 
+    health_alerts_html = _health_alerts_html(account_health, account_labels)
+
     return {
         "columns_html": columns_html,
         "triage_running": triage_running,
         "unsubscribe_suggestions": merged_unsubscribe,
         "batch_op": batch_op,
+        "health_alerts_html": health_alerts_html,
+        "account_health": account_health,
     }
 
 
@@ -426,6 +446,36 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
     )
 
 
+def _health_alerts_html(
+    account_health: dict[str, dict | None],
+    account_labels: dict[str, str] | None = None,
+) -> str:
+    """Return a red banner listing every failing account, or ``""`` if all OK."""
+    failures: list[tuple[str, str]] = []
+    for account_id, h in account_health.items():
+        if h is not None and h.get("status") == "failed":
+            label = (account_labels or {}).get(account_id, account_id)
+            error = h.get("error", "Unknown error")
+            failures.append((label, error))
+
+    if not failures:
+        return ""
+
+    items = "\n".join(
+        f"    <li><strong>{html.escape(label)}</strong>: "
+        f"{html.escape(error)}</li>"
+        for label, error in failures
+    )
+    return (
+        '<div class="health-alert-banner" role="alert" id="health-alerts">\n'
+        "  &#9888; <strong>Account connection failure</strong>\n"
+        "  <ul>\n"
+        f"{items}\n"
+        "  </ul>\n"
+        "</div>"
+    )
+
+
 def _render_board_page_shell(
     *,
     columns_html: str,
@@ -435,6 +485,7 @@ def _render_board_page_shell(
     fetch_qs: str,
     batch_control_html: str,
     data_account_js: bool,
+    health_alerts_html: str = "",
 ) -> str:
     """Shared HTML page shell + JS for both single-account and global boards.
 
@@ -479,7 +530,13 @@ def _render_board_page_shell(
         '<link rel="stylesheet" href="/static/automail/board.css">\n'
         "</head>\n"
         "<body>\n"
-        "<h1>Mail Board</h1>\n"
+        + (health_alerts_html or '<div id="health-alerts"></div>\n')
+        + (
+            '<button id="probe-health-btn"'
+            ' onclick="probeHealth()">'
+            "Recheck connections</button>\n"
+        )
+        + "<h1>Mail Board</h1>\n"
         f'<span id="triage-control">{triage_control_html}</span>\n'
         f'<span id="batch-control">{batch_control_html}</span>\n'
         f"{picker_html}\n"
@@ -501,6 +558,15 @@ def _render_board_page_shell(
         # harmless internal handlers (no #board element → all no-ops).
         '<script id="board-config" type="application/json">'
         f"{json.dumps(board_config)}"
+        "</script>\n"
+        # probeHealth() on-demand connection recheck (referenced by the
+        # inline onclick on #probe-health-btn).
+        "<script>\n"
+        "function probeHealth() {\n"
+        "  fetch('/probe-health').then(function() {\n"
+        "    window.location.reload();\n"
+        "  });\n"
+        "}\n"
         "</script>\n"
         '<script src="/static/board.js"></script>\n'
         # App-specific overlay — must load after board.js so the
@@ -534,7 +600,30 @@ def _build_board_html(
     accounts) the served HTML is byte-for-byte unchanged apart from an
     empty picker slot.
     """
-    content = _build_board_content(db_path, archive_root=archive_root)
+    content = _build_board_content(
+        db_path,
+        archive_root=archive_root,
+        account_id=current_account_id or "main",
+    )
+
+    # -- per-account health for picker badges ---------------------------
+    # Lightweight read of each account's health watermark so the picker
+    # can show [FAILED] badges on failing accounts.  Only done when
+    # multiple accounts are configured.
+    picker_health: dict[str, dict | None] = {}
+    if accounts is not None and len(accounts.ids()) >= 2:
+        from robotsix_auto_mail.db import init_db as _init_db
+        from robotsix_auto_mail.db.queries import get_account_health as _get_h
+
+        for a in accounts.accounts:
+            try:
+                c = _init_db(a.config.db_path, skip_migrations=True)
+                try:
+                    picker_health[a.account_id] = _get_h(c)
+                finally:
+                    c.close()
+            except Exception:
+                picker_health[a.account_id] = None
 
     # -- account picker + URL threading -----------------------------------
     # The picker only appears when more than one account is configured.
@@ -554,6 +643,10 @@ def _build_board_html(
         for account_id in accounts.ids():
             account = accounts.get(account_id)
             display = account.label if account.label else account.account_id
+            # Per-account FAILED badge when the health watermark shows a failure.
+            h = picker_health.get(account_id) if picker_health else None
+            if h is not None and h.get("status") == "failed":
+                display += " [FAILED]"
             sel = " selected" if account_id == current_account_id else ""
             options_parts.append(
                 f'<option value="{html.escape(account_id)}"{sel}>'
@@ -581,6 +674,7 @@ def _build_board_html(
         fetch_qs=fetch_qs,
         batch_control_html=batch_control_html,
         data_account_js=False,
+        health_alerts_html=content.get("health_alerts_html", ""),
     )
 
 
@@ -602,6 +696,8 @@ def _build_global_board_html(
     """
     content = _build_global_board_content(accounts)
 
+    # Per-account FAILED badge for the picker.
+    acct_health = content.get("account_health", {})
     # Account picker — first option is the global view.
     options_parts: list[str] = [
         '<option value="__all__" selected>All mailboxes</option>'
@@ -609,6 +705,9 @@ def _build_global_board_html(
     for account_id in accounts.ids():
         account = accounts.get(account_id)
         display = account.label if account.label else account.account_id
+        h = acct_health.get(account_id)
+        if h is not None and h.get("status") == "failed":
+            display += " [FAILED]"
         options_parts.append(
             f'<option value="{html.escape(account_id)}">{html.escape(display)}</option>'
         )
@@ -635,4 +734,5 @@ def _build_global_board_html(
         # Combined progress of the fanned-out per-account batch workers.
         batch_control_html=_batch_banner_html(content.get("batch_op")),
         data_account_js=True,
+        health_alerts_html=content.get("health_alerts_html", ""),
     )

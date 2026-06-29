@@ -353,6 +353,43 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Account health (watermark key ``"account_health"``)
+# ---------------------------------------------------------------------------
+
+
+def get_account_health(conn: sqlite3.Connection) -> dict[str, Any] | None:
+    """Read ``"account_health"`` watermark; parse JSON; return ``None`` if absent."""
+    raw = get_watermark(conn, "account_health")
+    if raw is None:
+        return None
+    import json as _json
+
+    try:
+        data = _json.loads(raw)
+    except (_json.JSONDecodeError, TypeError):
+        return None
+    if isinstance(data, dict):
+        return data
+    return None
+
+
+def write_account_health(
+    conn: sqlite3.Connection,
+    *,
+    status: str,  # "ok" | "failed"
+    error: str | None,
+    checked_at: str,  # ISO 8601 UTC
+) -> None:
+    """Upsert ``"account_health"`` watermark with a JSON payload."""
+    import json as _json
+
+    payload = _json.dumps(
+        {"status": status, "error": error, "checked_at": checked_at}
+    )
+    set_watermark(conn, "account_health", payload)
+
+
 def update_calendar_event_ref(
     conn: sqlite3.Connection,
     message_id: str,

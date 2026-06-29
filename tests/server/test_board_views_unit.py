@@ -496,6 +496,7 @@ def test_gather_returns_all_expected_keys(single_db: str) -> None:
     assert set(result.keys()) == {
         "triage_running",
         "batch_op",
+        "health",
         "triage_by_mid",
         "column_buckets",
         "archive_subfolders",

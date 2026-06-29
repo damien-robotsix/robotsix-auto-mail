@@ -90,6 +90,7 @@ class _BoardViewMixin:
             payload = _build_board_content(
                 self.db_path,
                 archive_root=archive_root,
+                account_id=self._current_account_id or "main",
             )
         except Exception:
             self._serve_json({"error": "Database unavailable"}, status=503)
