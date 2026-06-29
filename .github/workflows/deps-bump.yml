@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   bump:
-    uses: damien-robotsix/robotsix-mill/.github/workflows/deps-bump.yml@fe60b8676ceefca482ed4a62b401e800206c78a4  # main
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/deps-bump.yml@5cd8c1facb02299da618979e7a55f1953f9c075a  # main
     with:
       pr-title: "chore(deps): weekly uv lock --upgrade"
       pr-body: |
