@@ -6,6 +6,7 @@ import sys
 
 from robotsix_auto_mail.cli.commands import _print_header
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.health import probe_account
 from robotsix_auto_mail.imap import ImapClient, ImapError
 from robotsix_auto_mail.smtp import SmtpClient, SmtpError
 
@@ -13,11 +14,16 @@ from robotsix_auto_mail.smtp import SmtpClient, SmtpError
 def _cmd_probe(config: MailConfig) -> int:
     """Run the probe subcommand: connect to IMAP + SMTP and print metadata.
 
+    Uses the shared ``probe_account()`` to obtain a structured pass/fail
+    verdict and then separately renders human-readable diagnostic output
+    (greeting, capabilities, folders, EHLO).  The CLI behaviour is unchanged.
+
     Returns 0 when both succeed, 1 when either fails.
     """
-    failures = 0
+    # Structured pass/fail from the shared health probe.
+    status, error = probe_account(config)
 
-    # -- IMAP ---------------------------------------------------------------
+    # -- IMAP diagnostic output -------------------------------------------
     _print_header(sys.stdout, "IMAP Probe")
 
     try:
@@ -48,9 +54,8 @@ def _cmd_probe(config: MailConfig) -> int:
                 sys.stdout.write("  (no folders returned)\n")
     except ImapError as exc:
         sys.stderr.write(f"Error: {exc}\n")
-        failures += 1
 
-    # -- SMTP ---------------------------------------------------------------
+    # -- SMTP diagnostic output -------------------------------------------
     _print_header(sys.stdout, "SMTP Probe")
 
     try:
@@ -74,6 +79,5 @@ def _cmd_probe(config: MailConfig) -> int:
             # Deliberately: no send() call.  This is diagnostic-only.
     except SmtpError as exc:
         sys.stderr.write(f"Error: {exc}\n")
-        failures += 1
 
-    return 0 if failures == 0 else 1
+    return 0 if status == "ok" else 1

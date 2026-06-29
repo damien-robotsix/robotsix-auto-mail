@@ -558,6 +558,11 @@
           }
         }
 
+        var ha = document.getElementById("health-alerts");
+        if (ha) {
+          ha.innerHTML = data.health_alerts_html || "";
+        }
+
         window.scrollTo(savedX, savedY);
         var newBoard = document.querySelector(".board");
         if (newBoard) {

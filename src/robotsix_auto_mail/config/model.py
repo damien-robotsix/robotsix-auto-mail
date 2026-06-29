@@ -40,6 +40,38 @@ from robotsix_auto_mail.config.schema import (
     _parse_bool,
 )
 
+# ---------------------------------------------------------------------------
+# Template-literal guard — catches unsubstituted values like
+# ``"{accounts.4.auth.username}"`` before they hit the network.
+# ---------------------------------------------------------------------------
+
+_TEMPLATE_LITERAL_RE: Final[re.Pattern[str]] = re.compile(r"\{[^}]+\}")
+_TEMPLATE_CHECKED_FIELDS: Final[tuple[str, ...]] = (
+    "imap_host",
+    "smtp_host",
+    "username",
+    "password",
+    "imap_folder",
+)
+
+
+def _validate_template_literals(cfg: MailConfig) -> None:
+    """Raise ``ConfigurationError`` if any required connection field on *cfg*
+    contains an unsubstituted ``{...}`` template pattern."""
+    for field_name in _TEMPLATE_CHECKED_FIELDS:
+        value = getattr(cfg, field_name, "")
+        if value and _TEMPLATE_LITERAL_RE.search(value):
+            if field_name == "password":
+                display = "<redacted>"
+            else:
+                display = repr(value)
+            raise ConfigurationError(
+                f"Config field '{field_name}' contains an unsubstituted "
+                f"template literal: {display}. "
+                f"Check your config rendering pipeline."
+            )
+
+
 # Prefix for the namespaced multi-account environment scheme.
 _ENV_ACCOUNTS_PREFIX = "MAIL_ACCOUNTS_"
 
@@ -233,10 +265,12 @@ class MailConfig:
             ConfigurationError: If any required variable is missing or
                 any value is invalid.
         """
-        return _build_config_from_env(
+        cfg = _build_config_from_env(
             lambda spec: os.environ.get(spec.env_key, ""),
             lambda spec: spec.env_key,
         )
+        _validate_template_literals(cfg)
+        return cfg
 
     @classmethod
     def _parse_config_dict(
@@ -333,7 +367,9 @@ class MailConfig:
         """
         path = Path(path)
         data = _read_config_yaml(path)
-        return cls._parse_config_dict(data, path, validate=validate)
+        cfg = cls._parse_config_dict(data, path, validate=validate)
+        _validate_template_literals(cfg)
+        return cfg
 
 
 # ---------------------------------------------------------------------------
@@ -673,6 +709,7 @@ class MailAccountsConfig:
             store_section = entry.get("store")
             has_store_path = isinstance(store_section, dict) and "path" in store_section
             cfg = MailConfig._parse_config_dict(entry, path, validate=validate)
+            _validate_template_literals(cfg)
             if not has_store_path:
                 cfg = dataclasses.replace(cfg, db_path=f".data/{raw_id}/mail.db")
 
@@ -778,6 +815,7 @@ def _build_account_from_env(index: int) -> MailAccount:
         lambda spec: namespaced(spec.env_key),
         skip_global=True,
     )
+    _validate_template_literals(cfg)
 
     # Global fields are application-wide; read them from bare (non-namespaced)
     # env vars.  They were skipped in _build_config_from_env above.
