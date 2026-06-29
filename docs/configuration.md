@@ -136,7 +136,7 @@ mode.
 | Variable | Default | Kind | Required | Description |
 |---|---|---|---|---|
 | `LLM_API_KEY` | `""` | string | no | OpenRouter API key (or provider-specific key). Get one at https://openrouter.ai/keys. Masked in logs and `repr`. |
-| `LLM_PROVIDER_MODEL` | `openrouter-deepseek` | string | no | LLM backend name. See `robotsix-llmio`'s README for available backends. |
+| `LLM_PROVIDER_MODEL` | `""` | string | no | LLM backend name. When empty, the `robotsix-llmio` library's tier default is used. See its README for available backends. |
 
 ---
 
