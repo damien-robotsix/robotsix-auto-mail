@@ -92,9 +92,13 @@ class _DraftMixin:
         from robotsix_auto_mail.triage import delete_triage_decision
 
         def send_draft_action(
-            conn: Any, record: MailRecord, redirect_to: str, reply_mode: str
+            conn: Any,
+            record: MailRecord,
+            redirect_to: str,
+            reply_mode: str,
+            forward_to: str = "",
         ) -> bool:
-            if reply_mode not in ("reply", "reply_all"):
+            if reply_mode not in ("reply", "reply_all", "forward"):
                 self._bad_request(f"Invalid reply_mode: {reply_mode!r}")
                 return False
 
@@ -110,24 +114,39 @@ class _DraftMixin:
 
             # -- compute recipients ------------------------------------
             from_addr = mail_config.username
-            to_addr = record.sender
 
-            # Defensive guard: never reply to the user's own address
-            # (a self-sent message that slipped through triage).
-            if to_addr.strip().lower() == from_addr.strip().lower():
-                self._bad_request("Refusing to send a reply to your own address")
-                return False
+            if reply_mode == "forward":
+                if not forward_to.strip():
+                    self._bad_request("forward_to is required for forward mode")
+                    return False
+                if forward_to.strip().lower() == from_addr.strip().lower():
+                    self._bad_request("Refusing to forward to your own address")
+                    return False
+                to_addr = forward_to.strip()
+                cc = None
+            else:
+                to_addr = record.sender
 
-            cc = (
-                _compute_reply_all_cc(record, from_addr)
-                if reply_mode == "reply_all"
-                else None
-            )
+                # Defensive guard: never reply to the user's own address
+                # (a self-sent message that slipped through triage).
+                if to_addr.strip().lower() == from_addr.strip().lower():
+                    self._bad_request("Refusing to send a reply to your own address")
+                    return False
 
-            # -- subject (prepend "Re: " unless already present) -------
+                cc = (
+                    _compute_reply_all_cc(record, from_addr)
+                    if reply_mode == "reply_all"
+                    else None
+                )
+
+            # -- subject -----------------------------------------------
             subject = record.subject
-            if not subject.lower().startswith("re:"):
-                subject = f"Re: {subject}"
+            if reply_mode == "forward":
+                if not subject.lower().startswith("fwd:"):
+                    subject = f"Fwd: {subject}"
+            else:
+                if not subject.lower().startswith("re:"):
+                    subject = f"Re: {subject}"
 
             # -- send via SMTP -----------------------------------------
             from robotsix_auto_mail.smtp import SmtpClient
@@ -139,8 +158,10 @@ class _DraftMixin:
                     subject=subject,
                     body=record.draft_text,
                     cc=cc,
-                    in_reply_to=record.message_id,
-                    references=record.message_id,
+                    in_reply_to=(
+                        None if reply_mode == "forward" else record.message_id
+                    ),
+                    references=(None if reply_mode == "forward" else record.message_id),
                 )
 
             # -- re-queue for triage: persist the sent reply and drop the
@@ -153,6 +174,7 @@ class _DraftMixin:
         self._handle_post_action(
             "message_id",
             "reply_mode",
+            "forward_to",
             "redirect_to",
             action=send_draft_action,
         )
