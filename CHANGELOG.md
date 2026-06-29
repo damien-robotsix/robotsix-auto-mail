@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed orphaned ``.robotsix-mill/periodic/langfuse_cleanup.yaml`` —
+  Langfuse trace cleanup is now centralized in robotsix-mill (global_only).
+
 - Registered ``config/config.yaml`` in the ``deploy`` module manifest
   (``docs/modules.yaml``).
 

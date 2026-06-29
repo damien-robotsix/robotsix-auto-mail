@@ -421,7 +421,6 @@ modules:
       - .robotsix-mill/periodic/completeness_check.yaml
       - .robotsix-mill/periodic/copy_paste.yaml
       - .robotsix-mill/periodic/health.yaml
-      - .robotsix-mill/periodic/langfuse_cleanup.yaml
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/survey.yaml
       - .robotsix-mill/periodic/cost_reconciliation.yaml
