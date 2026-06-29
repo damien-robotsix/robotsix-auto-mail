@@ -295,8 +295,6 @@ modules:
       - src/robotsix_auto_mail/server/static/board.css
       - src/robotsix_auto_mail/server/static/board-auto-mail.js
       - src/robotsix_auto_mail/server/board_adapter.py
-      - src/robotsix_auto_mail/server/board_agent.py
-      - docs/server/board-agent.md
       - tests/server/conftest.py
       - tests/server/test_action_mixin.py
       - tests/server/_test_helpers.py
@@ -339,24 +337,7 @@ modules:
       - tests/server/test_view_mixin.py
       - tests/server/test_views_detail.py
       - tests/server/test_views_forms.py
-      - tests/server/test_board_agent.py
       - scripts/server/smoke_board.sh
-
-  - id: component-agent
-    description: >-
-      Optional agent-comm responder that registers on the shared
-      broker under agent-id board-manager-robotsix-auto-mail and
-      serves monitor, config-get, and config-set requests.
-    paths:
-      - src/robotsix_auto_mail/component_agent/__init__.py
-      - src/robotsix_auto_mail/component_agent/settings.py
-      - src/robotsix_auto_mail/component_agent/config_contract.py
-      - src/robotsix_auto_mail/component_agent/responder.py
-      - docs/component_agent/component-agent.md
-      - tests/component_agent/__init__.py
-      - tests/component_agent/test_settings.py
-      - tests/component_agent/test_config_contract.py
-      - tests/component_agent/test_responder.py
 
   - id: docs
     description: >-
@@ -377,6 +358,7 @@ modules:
       - docs/troubleshooting.md
       - docs/modules.yaml
       - docs/decisions/0001-programming-language.md
+      - docs/skill.md
 
   - id: ci
     description: >-

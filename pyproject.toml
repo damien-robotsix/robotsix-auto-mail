@@ -67,9 +67,6 @@ llm = [
 microsoft = [
     "msal>=1.28",
 ]
-board-agent = [
-    "robotsix-board-agent",
-]
 # Calendar (Add to Calendar) integration — talks to the robotsix-calendar
 # agent over the agent-comm broker. Optional so the core mail server has no
 # hard dependency; install with `.[calendar]` (the deployed image does).
@@ -139,10 +136,6 @@ module = "robotsix_board"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "robotsix_board_agent"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
 module = "robotsix_agent_comm"
 ignore_missing_imports = true
 
@@ -179,14 +172,11 @@ extend_exclude = ["scripts"]
 DEP003 = ["pydantic_ai"]
 # structlog is no longer imported directly by this package (logging has been
 # migrated to robotsix_llmio.logging.setup_logging), but it must remain a
-# direct dependency to preserve the uv dependency resolution order so that
-# robotsix-board-agent (which depends on robotsix-llmio@main) does not
-# conflict with this project's pinned robotsix-llmio commit.
+# direct dependency to preserve the uv dependency resolution order.
 DEP002 = ["structlog"]
-# robotsix_agent_comm is declared in the optional [calendar] extra (and pulled
-# transitively by [board-agent]). Imports in calendar/*.py and board_agent.py
-# are guarded by try/except ImportError so the server gracefully degrades when
-# the extra is not installed.
+# robotsix_agent_comm is declared in the optional [calendar] extra.
+# Imports in calendar/*.py are guarded by try/except ImportError so the
+# server gracefully degrades when the extra is not installed.
 DEP001 = ["robotsix_agent_comm"]
 
 [tool.vulture]
@@ -202,7 +192,6 @@ ignore_names = ["format", "method_name", "on_notification"]
 [tool.uv.sources]
 robotsix-agent-comm = { git = "https://github.com/damien-robotsix/robotsix-agent-comm.git", rev = "main" }
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "main" }
-robotsix-board-agent = { git = "https://github.com/damien-robotsix/robotsix-board-agent.git", rev = "main" }
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "28b23a848003" }  # pragma: allowlist secret
 robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "main" }
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "main" }

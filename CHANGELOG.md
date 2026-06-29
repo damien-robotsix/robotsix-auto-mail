@@ -2,6 +2,15 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed `board_agent` (in-repo mill board bridge) and `component_agent`
+  (in-repo agent-comm responder); their equivalents now live outside this
+  repo. All associated config fields, tests, docs, and dependencies
+  (`robotsix-board-agent`) were removed. The board HTTP API is now
+  documented in `docs/skill.md` for external agents that wish to drive the
+  board directly over HTTP without a bridge.
+
+## 0.0.0 (unreleased)
+
 - Fixed ``docs/configuration.md``: the documented default for
   ``LLM_PROVIDER_MODEL`` was ``openrouter-deepseek`` but the code
   default is ``""`` (empty string). Corrected the Default column

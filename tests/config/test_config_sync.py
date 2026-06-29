@@ -48,25 +48,6 @@ _YAML_EXAMPLE = """\
 #   secret_key: ""
 #   base_url: ""
 
-# Board agent — optional agent-comm bridge to the mill board.
-# When enabled, other agents can drive the board programmatically.
-# board_agent:
-#   enabled: false
-#   api_url: ""
-#   api_token: ""
-#   repo_id: ""
-#   write_ops: true
-
-# Component agent — optional agent-comm responder on the shared broker.
-# Disabled by default; requires robotsix_agent_comm and a valid broker token.
-# component_agent:
-#   enabled: false
-#   agent_id: board-manager-robotsix-auto-mail
-#   broker_host: ""
-#   broker_port: 443
-#   broker_token: ""
-#   broker_tls_ca: ""
-
 default_account: personal
 
 accounts:
@@ -125,15 +106,6 @@ accounts:
     #   format: console
     #   file_dir: .mail_log
 
-    # Board agent — optional agent-comm bridge to the mill board.
-    # When enabled, other agents can drive the board programmatically.
-    # board_agent:
-    #   enabled: false
-    #   api_url: ""
-    #   api_token: ""
-    #   repo_id: ""
-    #   write_ops: true
-
   - id: work
     label: Work
     imap:
@@ -186,17 +158,6 @@ LANGFUSE_BASE_URL=
 LOG_LEVEL=INFO
 LOG_FORMAT=console
 LOG_FILE_DIR=.mail_log
-BOARD_AGENT_ENABLED=false
-BOARD_AGENT_API_URL=
-BOARD_AGENT_API_TOKEN=
-BOARD_AGENT_REPO_ID=
-BOARD_AGENT_WRITE_OPS=true
-COMPONENT_AGENT_ENABLED=false
-COMPONENT_AGENT_ID=board-manager-robotsix-auto-mail
-COMPONENT_AGENT_BROKER_HOST=
-COMPONENT_AGENT_BROKER_PORT=443
-COMPONENT_AGENT_BROKER_TOKEN=
-COMPONENT_AGENT_BROKER_TLS_CA=
 """
 
 _ACCOUNTS_EXAMPLE = """\
@@ -263,17 +224,6 @@ _DOCS_YAML_TABLE = """\
 | `langfuse.public_key` | no | - | Langfuse public key for LLM tracing |
 | `langfuse.secret_key` | no | - | Langfuse secret key for LLM tracing |
 | `langfuse.base_url` | no | - | Langfuse base URL for LLM tracing |
-| `board_agent.enabled` | no | `false` | Enable the board agent (agent-comm bridge) |
-| `board_agent.api_url` | no | - | Board agent API base URL |
-| `board_agent.api_token` | no | - | Board agent API authentication token |
-| `board_agent.repo_id` | no | - | Board repository identifier |
-| `board_agent.write_ops` | no | `true` | Allow write operations via the board agent |
-| `component_agent.enabled` | no | `false` | Enable the component-agent responder |
-| `component_agent.agent_id` | no | `"board-manager-robotsix-auto-mail"` | Agent identifier on the broker |
-| `component_agent.broker_host` | no | - | Broker server hostname |
-| `component_agent.broker_port` | no | `443` | Broker server port |
-| `component_agent.broker_token` | no | - | Agent authentication token for the broker |
-| `component_agent.broker_tls_ca` | no | - | Path to CA certificate PEM for broker TLS |
 | `logging.level` | no | `INFO` | Log level |
 | `logging.format` | no | `console` | Log format |
 | `logging.file_dir` | no | `.mail_log` | Log file directory |
@@ -318,17 +268,6 @@ _DOCS_ENV_TABLE = """\
 | `LANGFUSE_PUBLIC_KEY` | no | - | Langfuse public key for LLM tracing |
 | `LANGFUSE_SECRET_KEY` | no | - | Langfuse secret key for LLM tracing |
 | `LANGFUSE_BASE_URL` | no | - | Langfuse base URL for LLM tracing |
-| `BOARD_AGENT_ENABLED` | no | `false` | Enable the board agent (agent-comm bridge) |
-| `BOARD_AGENT_API_URL` | no | - | Board agent API base URL |
-| `BOARD_AGENT_API_TOKEN` | no | - | Board agent API authentication token |
-| `BOARD_AGENT_REPO_ID` | no | - | Board repository identifier |
-| `BOARD_AGENT_WRITE_OPS` | no | `true` | Allow write operations via the board agent |
-| `COMPONENT_AGENT_ENABLED` | no | `false` | Enable the component-agent responder |
-| `COMPONENT_AGENT_ID` | no | `board-manager-robotsix-auto-mail` | Agent identifier on the broker |
-| `COMPONENT_AGENT_BROKER_HOST` | no | - | Broker server hostname |
-| `COMPONENT_AGENT_BROKER_PORT` | no | `443` | Broker server port |
-| `COMPONENT_AGENT_BROKER_TOKEN` | no | - | Agent authentication token for the broker |
-| `COMPONENT_AGENT_BROKER_TLS_CA` | no | - | Path to CA certificate PEM for broker TLS |
 | `LOG_LEVEL` | no | `INFO` | Log level |
 | `LOG_FORMAT` | no | `console` | Log format |
 | `LOG_FILE_DIR` | no | `.mail_log` | Log file directory |

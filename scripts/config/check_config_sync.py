@@ -85,17 +85,6 @@ FIELD_TO_YAML: dict[str, str] = {
     "log_level": "logging.level",
     "log_format": "logging.format",
     "log_file_dir": "logging.file_dir",
-    "board_agent_enabled": "board_agent.enabled",
-    "board_agent_api_url": "board_agent.api_url",
-    "board_agent_api_token": "board_agent.api_token",
-    "board_agent_repo_id": "board_agent.repo_id",
-    "board_agent_write_ops": "board_agent.write_ops",
-    "component_agent_enabled": "component_agent.enabled",
-    "component_agent_id": "component_agent.agent_id",
-    "component_agent_broker_host": "component_agent.broker_host",
-    "component_agent_broker_port": "component_agent.broker_port",
-    "component_agent_broker_token": "component_agent.broker_token",
-    "component_agent_broker_tls_ca": "component_agent.broker_tls_ca",
 }
 
 FIELD_TO_ENV: dict[str, str] = {
@@ -135,17 +124,6 @@ FIELD_TO_ENV: dict[str, str] = {
     "log_level": "LOG_LEVEL",
     "log_format": "LOG_FORMAT",
     "log_file_dir": "LOG_FILE_DIR",
-    "board_agent_enabled": "BOARD_AGENT_ENABLED",
-    "board_agent_api_url": "BOARD_AGENT_API_URL",
-    "board_agent_api_token": "BOARD_AGENT_API_TOKEN",
-    "board_agent_repo_id": "BOARD_AGENT_REPO_ID",
-    "board_agent_write_ops": "BOARD_AGENT_WRITE_OPS",
-    "component_agent_enabled": "COMPONENT_AGENT_ENABLED",
-    "component_agent_id": "COMPONENT_AGENT_ID",
-    "component_agent_broker_host": "COMPONENT_AGENT_BROKER_HOST",
-    "component_agent_broker_port": "COMPONENT_AGENT_BROKER_PORT",
-    "component_agent_broker_token": "COMPONENT_AGENT_BROKER_TOKEN",
-    "component_agent_broker_tls_ca": "COMPONENT_AGENT_BROKER_TLS_CA",
 }
 
 # ---------------------------------------------------------------------------

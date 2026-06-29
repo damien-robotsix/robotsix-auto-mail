@@ -59,13 +59,8 @@ def _cmd_serve(
     in use.
     """
     from http.server import HTTPServer
-    from importlib.util import find_spec
 
     from robotsix_auto_mail.server import make_board_handler
-    from robotsix_auto_mail.server.board_agent import (
-        start_board_agent,
-        stop_board_agent,
-    )
 
     default = accounts.get(default_account_id)
     handler_class = make_board_handler(
@@ -82,23 +77,6 @@ def _cmd_serve(
 
     threading.Thread(target=_reconcile_loop, args=(accounts,), daemon=True).start()
 
-    board_agent_handle = None
-    if default.config.board_agent_enabled:
-        board_agent_handle = start_board_agent(default.config)
-
-    # Component-agent responder: optional agent-comm bridge that serves
-    # monitor / config-get / config-set requests on the shared broker.
-    component_agent_handle = None
-    if (
-        find_spec("robotsix_agent_comm") is not None
-        and default.config.component_agent_enabled
-    ):
-        from robotsix_auto_mail.component_agent.responder import (
-            start_component_responder,
-        )
-
-        component_agent_handle = start_component_responder(default.config)
-
     print(f"Serving board on http://0.0.0.0:{port}/board")
     try:
         # Binding to 0.0.0.0 is intentional: ``serve_board`` is a local dev
@@ -114,11 +92,5 @@ def _cmd_serve(
             return 1
         raise
     finally:
-        stop_board_agent(board_agent_handle)
-        if component_agent_handle is not None:
-            from robotsix_auto_mail.component_agent.responder import (
-                stop_component_responder,
-            )
-
-            stop_component_responder(component_agent_handle)
+        pass
     return 0
