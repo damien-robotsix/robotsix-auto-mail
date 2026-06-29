@@ -42,6 +42,11 @@ from robotsix_auto_mail.format import (
     _format_date,
 )
 from robotsix_auto_mail.triage import (
+    DRAFT_READY,
+    INBOX,
+    TO_ANSWER,
+    TO_ARCHIVE,
+    TO_DELETE,
     TRIAGE_ACTION_LABELS,
     TRIAGE_ACTION_ORDER,
     _sender_key,
@@ -135,7 +140,7 @@ class MailBoardAdapter:
 
     def card_badges(self, card: MailRecord) -> list[str]:
         """Return the current triage action label as a single badge, or empty."""
-        action = self._triage_by_mid.get(card.message_id, "INBOX")
+        action = self._triage_by_mid.get(card.message_id, INBOX)
         label = TRIAGE_ACTION_LABELS.get(action, action)
         return [label]
 
@@ -182,7 +187,7 @@ class MailBoardAdapter:
         every per-card form ``action`` appends ``?account=<owning id>`` so
         POSTs route to the correct account's DB.
         """
-        current_action = self._triage_by_mid.get(card.message_id, "INBOX")
+        current_action = self._triage_by_mid.get(card.message_id, INBOX)
         subject_str = card.subject.strip() or "(no subject)"
         subject_attr = html.escape(subject_str)
         escaped_mid = html.escape(card.message_id)
@@ -242,7 +247,7 @@ class MailBoardAdapter:
 
         # Draft indicator.
         draft_indicator = ""
-        if current_action == "DRAFT_READY" and card.draft_text:
+        if current_action == DRAFT_READY and card.draft_text:
             escaped_draft = html.escape(card.draft_text)
             truncated = escaped_draft[:40] + ("…" if len(escaped_draft) > 40 else "")
             draft_indicator = (
@@ -275,7 +280,7 @@ class MailBoardAdapter:
         # ``/board#{message_id}`` redirect that re-opens the panel showing
         # the generated draft.
         draft_button = ""
-        if current_action == "TO_ANSWER":
+        if current_action == TO_ANSWER:
             draft_button = (
                 '<form class="draft-reply-form" method="post"'
                 f' action="/generate-draft{account_qs}">'
@@ -287,7 +292,7 @@ class MailBoardAdapter:
 
         # Delete form (TO_DELETE only).
         delete_form = ""
-        if current_action == "TO_DELETE":
+        if current_action == TO_DELETE:
             delete_form = (
                 '<form class="delete-form" method="post"'
                 f' action="/delete{account_qs}"'
@@ -305,7 +310,7 @@ class MailBoardAdapter:
         # destination and offer a per-folder "Archive these" button.  Empty
         # value means the archive root.
         data_archive_dest_attr = ""
-        if current_action == "TO_ARCHIVE":
+        if current_action == TO_ARCHIVE:
             arc_subfolder = self.archive_subfolders.get(card.message_id)
             if arc_subfolder is not None:
                 data_archive_dest_attr = (
@@ -418,7 +423,7 @@ class MailBoardAdapter:
         # In aggregate mode the form targets ``/batch-delete?account=__all__``,
         # which the handler fans out to every account's own DB + IMAP worker.
         batch_delete_form = ""
-        if status_key == "TO_DELETE" and not self._batch_running:
+        if status_key == TO_DELETE and not self._batch_running:
             if aggregate:
                 delete_action = "/batch-delete?account=__all__"
                 delete_scope = "across ALL mailboxes "
@@ -438,7 +443,7 @@ class MailBoardAdapter:
         # op is running, mirroring the Delete-All button.
         # Also suppressed in aggregate mode.
         batch_archive_form = ""
-        if status_key == "TO_ARCHIVE" and not self._batch_running and not aggregate:
+        if status_key == TO_ARCHIVE and not self._batch_running and not aggregate:
             batch_archive_form = (
                 '<form class="archive-form" method="post" action="/batch-archive"'
                 ' onsubmit="return confirm('
@@ -454,7 +459,7 @@ class MailBoardAdapter:
         # column, so any in-play folder is selectable while the field stays
         # free-text (the user can still type a brand-new folder).
         archive_datalist = ""
-        if status_key == "TO_ARCHIVE":
+        if status_key == TO_ARCHIVE:
             options = {f for f in self.archive_folders if f}
             options.update(v for v in self.archive_subfolders.values() if v)
             opts = "".join(
@@ -466,7 +471,7 @@ class MailBoardAdapter:
         # Force-triage button (every column except INBOX).
         # Suppressed in aggregate mode.
         force_triage_form = ""
-        if status_key != "INBOX" and not aggregate:
+        if status_key != INBOX and not aggregate:
             force_triage_form = (
                 '<form class="force-triage-form" method="post"'
                 ' action="/force-triage-column"'
@@ -479,7 +484,7 @@ class MailBoardAdapter:
 
         # Unsubscribe banner (TO_DELETE only).
         unsubscribe_banner_html = ""
-        if status_key == "TO_DELETE" and self.unsubscribe_suggestions:
+        if status_key == TO_DELETE and self.unsubscribe_suggestions:
             banner_parts: list[str] = []
             seen_senders: set[str] = set()
             for record in records:

@@ -21,6 +21,9 @@ from robotsix_auto_mail.server._constants import (
 from robotsix_auto_mail.server.adapters import _NonEmptyColumnsAdapter
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from robotsix_auto_mail.triage import (
+    HUMAN_TRIAGE,
+    INBOX,
+    TO_ARCHIVE,
     TRIAGE_ACTION_LABELS,
     TRIAGE_ACTION_ORDER,
     TriageDecision,
@@ -124,9 +127,9 @@ def _gather_account_board_data(
                 column = decision.action
                 # Guard: an unrecognised action lands in HUMAN_TRIAGE.
                 if column not in column_buckets:
-                    column = "HUMAN_TRIAGE"
+                    column = HUMAN_TRIAGE
             else:
-                column = "INBOX"
+                column = INBOX
             column_buckets[column].append(record)
 
         # -- archive proposal context -------------------------------------
@@ -158,7 +161,7 @@ def _gather_account_board_data(
         # Compute effective subfolder for each TO_ARCHIVE record.
         archive_subfolders: dict[str, str] = {}
         folder_exists: dict[str, bool] = {}
-        for record in column_buckets.get("TO_ARCHIVE", []):
+        for record in column_buckets.get(TO_ARCHIVE, []):
             subfolder = get_archive_subfolder(conn, record.message_id, record)
             archive_subfolders[record.message_id] = subfolder
             if subfolder:
@@ -171,7 +174,7 @@ def _gather_account_board_data(
         # Order TO_ARCHIVE cards by destination so the board JS renders
         # contiguous per-folder groups (each with an "Archive these" button).
         # ``list.sort`` is stable, so the prior within-folder order is kept.
-        to_archive_bucket = column_buckets.get("TO_ARCHIVE")
+        to_archive_bucket = column_buckets.get(TO_ARCHIVE)
         if to_archive_bucket:
             to_archive_bucket.sort(
                 key=lambda r: archive_subfolders.get(r.message_id, "")
@@ -180,8 +183,8 @@ def _gather_account_board_data(
         # Order TO_ARCHIVE cards by destination so the board JS can render
         # contiguous per-folder groups (stable sort preserves the existing
         # date order within each destination).
-        if column_buckets.get("TO_ARCHIVE"):
-            column_buckets["TO_ARCHIVE"].sort(
+        if column_buckets.get(TO_ARCHIVE):
+            column_buckets[TO_ARCHIVE].sort(
                 key=lambda r: archive_subfolders.get(r.message_id, "")
             )
 

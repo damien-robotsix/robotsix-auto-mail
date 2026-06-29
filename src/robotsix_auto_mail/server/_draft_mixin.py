@@ -11,6 +11,7 @@ from urllib.parse import quote
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._constants import _is_safe_redirect_path
 from robotsix_auto_mail.triage import (
+    DRAFT_READY,
     get_triage_decision,
     record_human_decision,
     set_triage_decision,
@@ -58,15 +59,15 @@ class _DraftMixin:
             update_draft_text(conn, record.message_id, draft_text)
 
             current = get_triage_decision(conn, record.message_id)
-            if current is None or current.action != "DRAFT_READY":
+            if current is None or current.action != DRAFT_READY:
                 set_triage_decision(
                     conn,
                     record.message_id,
-                    "DRAFT_READY",
+                    DRAFT_READY,
                     source="user",
                     reason="draft saved",
                 )
-                record_human_decision(conn, record.message_id, "DRAFT_READY")
+                record_human_decision(conn, record.message_id, DRAFT_READY)
             return True
 
         self._handle_post_action(
@@ -211,7 +212,7 @@ class _DraftMixin:
                 set_triage_decision(
                     conn,
                     message_id,
-                    "DRAFT_READY",
+                    DRAFT_READY,
                     source="user",
                     reason="draft generated",
                 )

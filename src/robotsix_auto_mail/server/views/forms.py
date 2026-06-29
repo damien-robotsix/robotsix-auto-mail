@@ -6,7 +6,11 @@ import html
 from urllib.parse import quote
 
 from robotsix_auto_mail.db import MailRecord
-from robotsix_auto_mail.triage import TRIAGE_ACTION_LABELS, TRIAGE_ACTION_ORDER
+from robotsix_auto_mail.triage import (
+    TO_CALENDAR,
+    TRIAGE_ACTION_LABELS,
+    TRIAGE_ACTION_ORDER,
+)
 
 
 def _render_move_form(
@@ -28,7 +32,7 @@ def _render_move_form(
     """
     options_parts: list[str] = []
     for action in TRIAGE_ACTION_ORDER:
-        if action == "TO_CALENDAR" and not calendar_enabled:
+        if action == TO_CALENDAR and not calendar_enabled:
             continue
         sel = " selected" if action == current_action else ""
         options_parts.append(

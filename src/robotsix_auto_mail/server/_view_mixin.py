@@ -23,6 +23,7 @@ from robotsix_auto_mail.server.views import (
     _build_global_board_html,
 )
 from robotsix_auto_mail.triage import (
+    INBOX,
     get_archive_subfolder,
     get_triage_decision,
 )
@@ -265,7 +266,7 @@ class _BoardViewMixin:
             conn.close()
 
         if decision is None:
-            self._send_response("INBOX")
+            self._send_response(INBOX)
             return
 
         self._send_response(decision.action)

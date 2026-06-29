@@ -16,30 +16,47 @@ from robotsix_auto_mail.db import VALID_TRIAGE_ACTIONS
 # Constants
 # ---------------------------------------------------------------------------
 
+#: Triage action: mail not yet triaged (entry column on the board).
+INBOX: str = "INBOX"
+#: Triage action: needs human review.
+HUMAN_TRIAGE: str = "HUMAN_TRIAGE"
+#: Triage action: pending user action.
+PENDING_ACTION: str = "PENDING_ACTION"
+#: Triage action: ready to archive.
+TO_ARCHIVE: str = "TO_ARCHIVE"
+#: Triage action: ready to delete.
+TO_DELETE: str = "TO_DELETE"
+#: Triage action: ready for calendar.
+TO_CALENDAR: str = "TO_CALENDAR"
+#: Triage action: ready to answer.
+TO_ANSWER: str = "TO_ANSWER"
+#: Triage action: draft is ready for sending.
+DRAFT_READY: str = "DRAFT_READY"
+
 #: Canonical triage action order for the kanban board, left-to-right.
 #: Starts with ``INBOX`` (not triaged / entry column) and ends with
 #: ``TO_ANSWER`` (action needed).
 TRIAGE_ACTION_ORDER: tuple[str, ...] = (
-    "INBOX",
-    "HUMAN_TRIAGE",
-    "PENDING_ACTION",
-    "TO_ARCHIVE",
-    "TO_DELETE",
-    "TO_CALENDAR",
-    "TO_ANSWER",
-    "DRAFT_READY",
+    INBOX,
+    HUMAN_TRIAGE,
+    PENDING_ACTION,
+    TO_ARCHIVE,
+    TO_DELETE,
+    TO_CALENDAR,
+    TO_ANSWER,
+    DRAFT_READY,
 )
 
 #: Human-readable column header labels, keyed by triage action.
 TRIAGE_ACTION_LABELS: dict[str, str] = {
-    "INBOX": "Inbox",
-    "HUMAN_TRIAGE": "Human triage",
-    "PENDING_ACTION": "Pending action",
-    "TO_ARCHIVE": "To archive",
-    "TO_DELETE": "To delete",
-    "TO_CALENDAR": "To calendar",
-    "TO_ANSWER": "To answer",
-    "DRAFT_READY": "Draft ready",
+    INBOX: "Inbox",
+    HUMAN_TRIAGE: "Human triage",
+    PENDING_ACTION: "Pending action",
+    TO_ARCHIVE: "To archive",
+    TO_DELETE: "To delete",
+    TO_CALENDAR: "To calendar",
+    TO_ANSWER: "To answer",
+    DRAFT_READY: "Draft ready",
 }
 
 #: Actions the LLM triage agent may assign.  ``INBOX`` is intentionally
@@ -50,10 +67,10 @@ TRIAGE_ACTION_LABELS: dict[str, str] = {
 #: may still move a card to Inbox manually; this constraint applies only to
 #: agent-generated decisions.
 _AGENT_SELECTABLE_ACTIONS: frozenset[str] = VALID_TRIAGE_ACTIONS - {
-    "INBOX",
-    "DRAFT_READY",
-    "PENDING_ACTION",
-    "TO_CALENDAR",
+    INBOX,
+    DRAFT_READY,
+    PENDING_ACTION,
+    TO_CALENDAR,
 }
 
 #: Accepted decision sources.
@@ -86,6 +103,14 @@ _UNSUBSCRIBE_SUGGESTIONS_KEY = "unsubscribe_suggestions"
 # Explicit re-exports (required by mypy --strict / --no-implicit-reexport)
 # ---------------------------------------------------------------------------
 __all__ = [
+    "DRAFT_READY",
+    "HUMAN_TRIAGE",
+    "INBOX",
+    "PENDING_ACTION",
+    "TO_ANSWER",
+    "TO_ARCHIVE",
+    "TO_CALENDAR",
+    "TO_DELETE",
     "TRIAGE_ACTION_LABELS",
     "TRIAGE_ACTION_ORDER",
     "_AGENT_SELECTABLE_ACTIONS",

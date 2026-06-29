@@ -11,6 +11,9 @@ from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.format import _effective_body_plain, _format_date
 from robotsix_auto_mail.server.views.forms import _render_move_form
 from robotsix_auto_mail.triage import (
+    DRAFT_READY,
+    INBOX,
+    TO_ANSWER,
     TRIAGE_ACTION_LABELS,
     TriageDecision,
     get_triage_decision,
@@ -71,7 +74,7 @@ def _build_detail_html(
         attachments = []
 
     # Status options — drive from triage decision, not mail_records.status.
-    current_action = triage_decision.action if triage_decision is not None else "INBOX"
+    current_action = triage_decision.action if triage_decision is not None else INBOX
 
     quoted_mid = quote(record.message_id, safe="")
     redirect_input = ""
@@ -253,16 +256,16 @@ def _render_draft_section(
     Visible when *current_action* is TO_ANSWER or DRAFT_READY, or when
     *focus_draft* is True (forced via ?draft=1).
     """
-    if not (current_action in ("TO_ANSWER", "DRAFT_READY") or focus_draft):
+    if not (current_action in (TO_ANSWER, DRAFT_READY) or focus_draft):
         return ""
     escaped_draft = html.escape(record.draft_text)
     button_label = (
         "Update draft"
-        if current_action == "DRAFT_READY"
+        if current_action == DRAFT_READY
         else "Save draft &amp; move to draft ready"
     )
     generate_label = (
-        "Regenerate with AI" if current_action == "DRAFT_READY" else "Generate with AI"
+        "Regenerate with AI" if current_action == DRAFT_READY else "Generate with AI"
     )
     generate_form = (
         '<form class="detail-form" method="post" action="/generate-draft">'
@@ -276,7 +279,7 @@ def _render_draft_section(
     # (DRAFT_READY).  Each form sends the saved draft via SMTP and then
     # archives the original message.
     send_forms = ""
-    if current_action == "DRAFT_READY":
+    if current_action == DRAFT_READY:
         send_forms = (
             '<form class="detail-form" method="post" action="/send-draft">'
             f'<input type="hidden" name="message_id"'
