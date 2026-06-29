@@ -180,24 +180,6 @@ application-wide — they are **not** namespaced in multi-account mode.
 
 ---
 
-## Component agent (global)
-
-Optional agent running on the shared agent-comm broker that responds to
-component-inventory requests from other parts of the fleet (e.g. the
-mill board). These are application-wide — they are **not** namespaced in
-multi-account mode. For the full setup guide, see [Connecting](connecting.md).
-
-| Variable | Default | Kind | Required | Description |
-|---|---|---|---|---|
-| `COMPONENT_AGENT_ENABLED` | `false` | boolean | no | Enable the component agent on the broker. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
-| `COMPONENT_AGENT_ID` | `board-manager-robotsix-auto-mail` | string | no | Agent identifier registered on the broker. |
-| `COMPONENT_AGENT_BROKER_HOST` | `""` | string | no | Broker server hostname. Required when enabled. |
-| `COMPONENT_AGENT_BROKER_PORT` | `443` | integer | no | Broker server port. |
-| `COMPONENT_AGENT_BROKER_TOKEN` | `""` | string | no | Agent authentication token for the broker. Required when enabled. Masked in logs and `repr`. |
-| `COMPONENT_AGENT_BROKER_TLS_CA` | `""` | string | no | Path to the CA certificate PEM for verifying the broker's TLS certificate. Required when enabled. |
-
----
-
 ## Multi-account variables
 
 When any `MAIL_ACCOUNTS_*` environment variable is present, the loader
@@ -206,8 +188,7 @@ sections above is namespaced: `MAIL_<FIELD>` becomes
 `MAIL_ACCOUNTS_<n>_<FIELD>` where `<n>` is a zero-based integer.
 
 Global variables (`LLM_API_KEY`, `LLM_PROVIDER_MODEL`, `LANGFUSE_*`,
-`LOG_LEVEL`, `LOG_FORMAT`, `LOG_FILE_DIR`, `BOARD_AGENT_*`,
-`COMPONENT_AGENT_*`) are **not**
+`LOG_LEVEL`, `LOG_FORMAT`, `LOG_FILE_DIR`, `BOARD_AGENT_*`) are **not**
 namespaced — they remain at their bare names above and apply to every
 account.
 
