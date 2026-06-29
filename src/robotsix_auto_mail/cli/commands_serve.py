@@ -54,9 +54,13 @@ def _cmd_serve(
     """Run the serve subcommand: start the web board HTTP server.
 
     The full *accounts* container drives per-request account resolution;
-    *default_account_id* names the account served when a request omits
-    ``?account=``.  Returns 0 on clean shutdown, 1 if the port is already
-    in use.
+    *default_account_id* names the account whose config is used for
+    server startup (component-agent responder, initial ``db_path``); it
+    is also the per-request fallback for single-account setups.  For
+    multi-account setups the board always defaults to the aggregate
+    (``__all__``) view — ``default_account_id`` is not consulted for the
+    initial board view.  Returns 0 on clean shutdown, 1 if the port is
+    already in use.
     """
     from http.server import HTTPServer
 

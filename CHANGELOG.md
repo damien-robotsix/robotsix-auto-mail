@@ -2,6 +2,14 @@
 
 ## 0.0.0 (unreleased)
 
+- Board now sets `account=__all__` cookie on fresh multi-account visits (no
+  query param, no cookie) so the aggregate view persists across
+  navigation — previously the cookie was only set on explicit
+  `?account=__all__` requests.  The account picker in both board views
+  now has a visible "Mailbox:" label.  `default_account` config comment
+  and `MailAccountsConfig`/`_cmd_serve` docstrings clarified to note
+  this field is for CLI/startup, not the board view default.
+
 - Removed duplicate `TO_ARCHIVE` sort in `_gather_account_board_data` — the
   same in-place sort was applied twice to `column_buckets[TO_ARCHIVE]`, a
   copy-paste bug.  Only the first sort remains.

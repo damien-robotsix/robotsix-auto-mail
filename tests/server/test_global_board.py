@@ -187,11 +187,13 @@ def test_global_board_default_landing_multi_account(
     db_accounts: tuple[str, str, MailAccountsConfig],
 ) -> None:
     """GET /board with ≥2 accounts and no ?account=/cookie defaults
-    to aggregate view (cards from all accounts present)."""
+    to aggregate view (cards from all accounts present) and sets
+    the ``account=__all__`` cookie so the aggregate preference
+    persists across subsequent requests."""
     _db_a, _db_b, accounts = db_accounts
     server, port = _start_test_server_with_accounts(accounts, "A")
     try:
-        status, body, _h = _get(f"http://127.0.0.1:{port}/board")
+        status, body, hdrs = _get(f"http://127.0.0.1:{port}/board")
         assert status == 200
         # Aggregate view (both accounts present).
         assert "msg-a-inbox" in body
@@ -200,6 +202,8 @@ def test_global_board_default_landing_multi_account(
         assert 'class="card-account"' in body
         assert 'data-account="A"' in body
         assert 'data-account="B"' in body
+        # Fresh visit sets the aggregate cookie.
+        assert hdrs.get("Set-Cookie") == "account=__all__; Path=/"
     finally:
         server.shutdown()
 
