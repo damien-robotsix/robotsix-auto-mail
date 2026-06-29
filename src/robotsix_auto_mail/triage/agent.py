@@ -498,12 +498,13 @@ def run_triage_agent(
         conn: Open SQLite connection.
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``LLM_API_KEY`` env var →
-            ``config.llm_api_key`` (via :func:`load_llm`).
+            ``config.llm_api_key`` (via
+            :func:`~robotsix_auto_mail.config.resolve_llm_api_key`).
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).
             Resolves with the precedence ``provider_model`` argument →
             ``LLM_PROVIDER_MODEL`` env var → ``config.llm_provider_model`` (via
-            :func:`load_llm_provider_model`).
+            :func:`~robotsix_auto_mail.config.resolve_llm_provider_model`).
         tier: LLM tier to use.  ``Tier.CHEAP`` (default).
         only_undecided: When ``True``, inbox records that already have a
             ``triage_decisions`` row (per :func:`get_triage_decision`) are
