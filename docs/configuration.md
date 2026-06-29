@@ -28,6 +28,14 @@ to the next source below it.
 
 ---
 
+## Config file path
+
+| Variable | Default | Kind | Required | Description |
+|---|---|---|---|---|
+| `MAIL_CONFIG_PATH` | `config/mail.local.yaml` | string | no | Path to the YAML config file loaded as the second layer of the configuration cascade. |
+
+---
+
 ## Variable categories
 
 ### Single-account vs multi-account
