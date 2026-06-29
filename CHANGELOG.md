@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed ``docs/configuration.md``: the documented default for
+  ``LLM_PROVIDER_MODEL`` was ``openrouter-deepseek`` but the code
+  default is ``""`` (empty string). Corrected the Default column
+  and clarified that an empty value delegates to the
+  ``robotsix-llmio`` library's tier default.
 - Centralized three operational watermark keys (``triage_run:state``,
   ``batch_op:state``, ``reconcile:state``) into module-level constants
   in ``_constants.py``, replacing ~28 hardcoded string literals across
