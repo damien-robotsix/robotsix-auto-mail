@@ -74,21 +74,6 @@ accounts:
     # Inbox triage agent — runs automatically after each ingest cycle.
     # triage:
     #   on_ingest: true
-    # Calendar (Add to Calendar) — agent-comm dispatch to the
-    # robotsix-calendar agent.  When enabled, the detail view shows
-    # an 'Add to Calendar' button that sends a CalendarEventRequest
-    # message via the robotsix_agent_comm message bus.
-    # calendar:
-    #   enabled: true
-    #   # Transport mode: "in-process" (default) or "brokered".
-    #   transport: in-process
-    #   # Broker settings (required when transport: brokered).
-    #   broker_host: ""
-    #   broker_port: 443
-    #   broker_tls_ca: ""
-    #   broker_client_cert: ""
-    #   broker_client_key: ""
-    #   broker_token: ""
     # Component agent — HTTP API for external agents to monitor status
     # and read/apply configuration over HTTP (without the agent-comm broker).
     # component_agent:
@@ -110,21 +95,6 @@ accounts:
       password: ""  # set here, or via MAIL_ACCOUNTS_1_PASSWORD
     store:
       path: .data/work/mail.db
-    # Calendar (Add to Calendar) — agent-comm dispatch to the
-    # robotsix-calendar agent.  When enabled, the detail view shows
-    # an 'Add to Calendar' button that sends a CalendarEventRequest
-    # message via the robotsix_agent_comm message bus.
-    # calendar:
-    #   enabled: true
-    #   # Transport mode: "in-process" (default) or "brokered".
-    #   transport: in-process
-    #   # Broker settings (required when transport: brokered).
-    #   broker_host: ""
-    #   broker_port: 443
-    #   broker_tls_ca: ""
-    #   broker_client_cert: ""
-    #   broker_client_key: ""
-    #   broker_token: ""
     # Component agent — HTTP API for external agents to monitor status
     # and read/apply configuration over HTTP (without the agent-comm broker).
     # component_agent:

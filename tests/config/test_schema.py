@@ -144,7 +144,6 @@ def test_field_specs_valid_kind_values() -> None:
         "tls_mode",
         "log_level",
         "log_format",
-        "calendar_transport",
     }
     for spec in _FIELD_SPECS:
         assert spec.kind in valid_kinds, (

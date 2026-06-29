@@ -266,14 +266,6 @@ auth:
 | `archive.root` | no | `"robotsix-mail-archive"` | Root folder for the self-managed archive structure |
 | `archive.enabled` | no | `true` | Whether to create/manage the archive folder structure |
 | `triage.on_ingest` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
-| `calendar.enabled` | no | `true` | Whether the 'Add to Calendar' button appears in the detail view and dispatches to the `robotsix-calendar` agent |
-| `calendar.transport` | no | `"in-process"` | Transport mode for calendar dispatch — `in-process` (local `Registry`) or `brokered` (secured broker server) |
-| `calendar.broker_host` | no | – | Broker server hostname (required when `transport: brokered`) |
-| `calendar.broker_port` | no | `443` | Broker server port |
-| `calendar.broker_tls_ca` | no | – | Path to a custom CA PEM for broker TLS verification (optional — defaults to system trust) |
-| `calendar.broker_client_cert` | no | – | Path to client certificate PEM for mutual TLS (optional) |
-| `calendar.broker_client_key` | no | – | Path to client key PEM for mutual TLS (optional) |
-| `calendar.broker_token` | no | – | Agent authentication token for the broker (redacted in logs/repr) |
 | `component_agent.enabled` | no | `false` | Whether the HTTP component-agent API is served (allows external agents to monitor status / read or apply configuration over HTTP) |
 | `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing (may instead be supplied via `LLM_API_KEY`) |
 | `llm.provider_model` | no | `""` | LLM provider-model identifier (e.g. `openrouter-deepseek`, `claude-sdk`); see robotsix-llmio README for available backends |
@@ -285,53 +277,6 @@ auth:
 | `logging.file_dir` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |
 
 **Trace ID injection.** Every log event automatically includes a `trace_id` field that correlates logs with OpenTelemetry / Langfuse recordings. When a Langfuse trace is active (see `langfuse.public_key` / `langfuse.secret_key` above), the `trace_id` is stamped as a 32-character lowercase hexadecimal string; when no trace is active (or OpenTelemetry is absent), it is set to `"-"`. This is transparent — no configuration is needed — and applies to both `json` and `console` log formats.
-
-### Calendar (Add to Calendar)
-
-The detail view of each mail record shows an **Add to Calendar** button.
-Clicking it dispatches a `CalendarEventRequest` message to the
-`robotsix-calendar` agent over the `robotsix_agent_comm` message bus (a
-fire-and-forget send — the button does not wait for a response).
-
-**Enabling / disabling.**  The feature is enabled by default.  Set
-`calendar.enabled` to `false` in your YAML config (or
-`MAIL_CALENDAR_ENABLED=false` in the environment) to hide the button and
-suppress dispatch entirely:
-
-```yaml
-# Per-account (under each accounts: entry)
-calendar:
-  enabled: false
-```
-
-```sh
-# Environment
-MAIL_CALENDAR_ENABLED=false
-```
-
-> **Per-account field.** `calendar.enabled` is per-account (like
-> `archive.enabled` and `triage.on_ingest`), not a top-level section like
-> `llm`. Each configured mailbox can independently enable or disable
-> the calendar action.
-
-**Dependency.** The calendar feature requires the optional
-`robotsix_agent_comm` package. When the dependency is missing and the feature
-is enabled, the button still renders but clicking it shows an error alert
-from the server's 503 response. When disabled (`calendar.enabled: false`),
-the button is not rendered at all — no dependency is needed.
-
-**Message format.** The dispatched `CalendarEventRequest` is a JSON message
-with the following fields:
-
-| Field | Type | Purpose |
-|---|---|---|
-| `correlation_id` | string | Unique identifier for the request/response lifecycle |
-| `message_id` | string | The original email's Message-ID |
-| `subject` | string | Email subject line |
-| `sender` | string | Email sender address |
-| `body_text` | string | Plain-text body of the email |
-| `email_date` | string | ISO-8601 timestamp of the email |
-| `extracted_dates` | string[] | Date/time references extracted from the body via `DATE_TIME_RE` |
 
 ### Environment variables
 
@@ -356,14 +301,6 @@ with the following fields:
 | `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Root folder for the self-managed archive structure |
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to create/manage the archive folder structure |
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
-| `MAIL_CALENDAR_ENABLED` | no | `true` | Whether the 'Add to Calendar' button appears (and dispatch is attempted) |
-| `CALENDAR_TRANSPORT` | no | `in-process` | Transport mode for calendar dispatch — `in-process` or `brokered` |
-| `CALENDAR_BROKER_HOST` | no | – | Broker server hostname (required when `CALENDAR_TRANSPORT=brokered`) |
-| `CALENDAR_BROKER_PORT` | no | `443` | Broker server port |
-| `CALENDAR_BROKER_TLS_CA` | no | – | Path to a custom CA PEM for broker TLS verification (optional — defaults to system trust) |
-| `CALENDAR_BROKER_CLIENT_CERT` | no | – | Path to client certificate PEM for mutual TLS (optional) |
-| `CALENDAR_BROKER_CLIENT_KEY` | no | – | Path to client key PEM for mutual TLS (optional) |
-| `CALENDAR_BROKER_TOKEN` | no | – | Agent authentication token for the broker (redacted in logs/repr) |
 | `COMPONENT_AGENT_ENABLED` | no | `false` | Whether the HTTP component-agent API is served (overrides `component_agent.enabled`) |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
 | `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |

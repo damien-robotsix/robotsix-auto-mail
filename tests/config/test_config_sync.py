@@ -84,21 +84,6 @@ accounts:
     # Inbox triage agent — runs automatically after each ingest cycle.
     # triage:
     #   on_ingest: true
-    # Calendar (Add to Calendar) — agent-comm dispatch to the
-    # robotsix-calendar agent.  When enabled, the detail view shows
-    # an 'Add to Calendar' button that sends a CalendarEventRequest
-    # message via the robotsix_agent_comm message bus.
-    # calendar:
-    #   enabled: true
-    #   # Transport mode: "in-process" (default) or "brokered".
-    #   transport: in-process
-    #   # Broker settings (required when transport: brokered).
-    #   broker_host: ""
-    #   broker_port: 443
-    #   broker_tls_ca: ""
-    #   broker_client_cert: ""
-    #   broker_client_key: ""
-    #   broker_token: ""
     # Component agent — HTTP API for external agents to monitor status
     # and read/apply configuration over HTTP (without the agent-comm broker).
     # component_agent:
@@ -144,14 +129,6 @@ MAIL_INGEST_INTERVAL=15
 MAIL_ARCHIVE_ROOT=robotsix-mail-archive
 MAIL_ARCHIVE_ENABLED=true
 MAIL_TRIAGE_ON_INGEST=true
-MAIL_CALENDAR_ENABLED=true
-CALENDAR_TRANSPORT=in-process
-CALENDAR_BROKER_HOST=
-CALENDAR_BROKER_PORT=443
-CALENDAR_BROKER_TLS_CA=
-CALENDAR_BROKER_CLIENT_CERT=
-CALENDAR_BROKER_CLIENT_KEY=
-CALENDAR_BROKER_TOKEN=
 COMPONENT_AGENT_ENABLED=false
 LLM_API_KEY=sk-or-v1-…
 LLM_PROVIDER_MODEL=
@@ -213,14 +190,6 @@ _DOCS_YAML_TABLE = """\
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
-| `calendar.enabled` | no | `true` | Enable 'Add to Calendar' in detail view |
-| `calendar.transport` | no | `in-process` | Transport mode for calendar dispatch |
-| `calendar.broker_host` | no | - | Broker server hostname |
-| `calendar.broker_port` | no | `443` | Broker server port |
-| `calendar.broker_tls_ca` | no | - | Path to CA certificate PEM for broker TLS |
-| `calendar.broker_client_cert` | no | - | Path to client certificate PEM for mutual TLS |
-| `calendar.broker_client_key` | no | - | Path to client key PEM for mutual TLS |
-| `calendar.broker_token` | no | - | Agent authentication token for the broker |
 | `component_agent.enabled` | no | `false` | Whether the component-agent HTTP API is served |
 | `llm.api_key` | no | - | LLM provider API key |
 | `llm.provider_model` | no | `""` | LLM provider-model identifier |
@@ -256,14 +225,6 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Archive root folder |
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to manage the archive structure |
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Run inbox triage automatically after ingest |
-| `MAIL_CALENDAR_ENABLED` | no | `true` | Enable 'Add to Calendar' in detail view |
-| `CALENDAR_TRANSPORT` | no | `in-process` | Transport mode for calendar dispatch |
-| `CALENDAR_BROKER_HOST` | no | - | Broker server hostname |
-| `CALENDAR_BROKER_PORT` | no | `443` | Broker server port |
-| `CALENDAR_BROKER_TLS_CA` | no | - | Path to CA certificate PEM for broker TLS |
-| `CALENDAR_BROKER_CLIENT_CERT` | no | - | Path to client certificate PEM for mutual TLS |
-| `CALENDAR_BROKER_CLIENT_KEY` | no | - | Path to client key PEM for mutual TLS |
-| `CALENDAR_BROKER_TOKEN` | no | - | Agent authentication token for the broker |
 | `COMPONENT_AGENT_ENABLED` | no | `false` | Whether the component-agent HTTP API is served |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
 | `LLM_API_KEY` | no | - | LLM provider API key |

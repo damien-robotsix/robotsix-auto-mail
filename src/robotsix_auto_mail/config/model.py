@@ -23,7 +23,6 @@ from robotsix_yaml_config import (
 from robotsix_auto_mail.config.schema import (
     _FIELD_SPECS,
     _REQUIRED,
-    _VALID_CALENDAR_TRANSPORTS,
     _VALID_LOG_FORMATS,
     _VALID_LOG_LEVELS,
     _VALID_TLS_MODES,
@@ -88,13 +87,6 @@ def _coerce_field(spec: _FieldSpec, raw: str, label: str) -> tuple[Any, str | No
         if raw.lower() not in _VALID_LOG_FORMATS:
             return raw, (
                 f"{label} must be one of {sorted(_VALID_LOG_FORMATS)!r}, got {raw!r}"
-            )
-        return raw, None
-    elif kind == "calendar_transport":
-        if raw not in _VALID_CALENDAR_TRANSPORTS:
-            return raw, (
-                f"{label} must be one of "
-                f"{sorted(_VALID_CALENDAR_TRANSPORTS)!r}, got {raw!r}"
             )
         return raw, None
     else:
@@ -166,9 +158,9 @@ class MailConfig:
     # Run the inbox triage agent automatically at the end of each ingest.
     triage_on_ingest: bool = True
 
-    # Whether the 'Add to Calendar' button is rendered in the detail view
-    # and dispatch to the robotsix-calendar agent is attempted.
-    calendar_enabled: bool = True
+    # Whether the component-agent HTTP API (monitor / config-get / config-set)
+    # is served on the board server.
+    component_agent_enabled: bool = False
 
     # OAuth2 / XOAUTH2 credentials (Gmail, Microsoft 365, etc.).
     # Optional; when ``oauth2_token`` is set, SASL XOAUTH2 is used
@@ -195,19 +187,6 @@ class MailConfig:
     log_format: str = "console"
     log_file_dir: str = ".mail_log"
 
-    # Calendar (Add to Calendar) — agent-comm dispatch transport.
-    calendar_transport: str = "in-process"
-    calendar_broker_host: str = ""
-    calendar_broker_port: int = 443
-    calendar_broker_tls_ca: str = ""
-    calendar_broker_client_cert: str = ""
-    calendar_broker_client_key: str = ""
-    calendar_broker_token: str = ""
-
-    # Whether the component-agent HTTP API (monitor / config-get / config-set)
-    # is served on the board server.
-    component_agent_enabled: bool = False
-
     # -- masking -----------------------------------------------------------
 
     _SECRET_FIELDS = (
@@ -216,7 +195,6 @@ class MailConfig:
         "oauth2_token",
         "oauth2_client_secret",
         "langfuse_secret_key",
-        "calendar_broker_token",
     )
 
     def __repr__(self) -> str:

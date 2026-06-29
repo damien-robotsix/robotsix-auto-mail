@@ -101,7 +101,6 @@ class ComponentAgentResponder:
         telemetry["config_summary"] = {
             "archive_enabled": cfg.archive_enabled,
             "triage_on_ingest": cfg.triage_on_ingest,
-            "calendar_enabled": cfg.calendar_enabled,
             "component_agent_enabled": cfg.component_agent_enabled,
         }
 
