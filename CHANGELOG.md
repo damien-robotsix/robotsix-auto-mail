@@ -3,6 +3,7 @@
 ## 0.0.0 (unreleased)
 
 - Documented `MAIL_CONFIG_PATH` environment variable in `docs/configuration.md`.
+- Fixed docstring cross-references in `run_triage_agent` from stale `load_llm`/`load_llm_provider_model` to `resolve_llm_api_key`/`resolve_llm_provider_model`.
 
 - Re-established `component_agent` package with HTTP API routes (monitor,
   config-get, config-set) served directly by the board server without the
