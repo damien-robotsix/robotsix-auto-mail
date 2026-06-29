@@ -289,7 +289,8 @@ def row_to_mailrecord(
 
 
 def _rows_to_mailrecords(
-    cur: sqlite3.Cursor, rows: list[tuple]  # type: ignore[type-arg]
+    cur: sqlite3.Cursor,
+    rows: list[tuple],  # type: ignore[type-arg]
 ) -> list[MailRecord]:
     """Convert fetched rows to ``MailRecord`` instances using column metadata."""
     col_names = [desc[0] for desc in cur.description]

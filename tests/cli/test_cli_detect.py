@@ -306,7 +306,7 @@ def test_detect_llm_api_key_env(
     mock_dp.assert_called_once_with(
         "user@x.com",
         api_key="sk-test",
-        provider_model="openrouter-deepseek",
+        provider_model="",
         mx_hosts=[],
     )
 

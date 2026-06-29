@@ -99,7 +99,7 @@ def load_llm_provider_model() -> str:
         if file_cfg is not None:
             provider_model = provider_model or file_cfg.llm_provider_model
 
-    return provider_model or "openrouter-deepseek"
+    return provider_model
 
 
 def resolve_llm_api_key(

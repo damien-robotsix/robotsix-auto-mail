@@ -528,7 +528,6 @@ def test_from_yaml_top_level_llm_applied_to_all_accounts(tmp_path: Path) -> None
         """\
 llm:
   api_key: sk-global
-  provider_model: openrouter-deepseek
 accounts:
   - id: a
     imap:
@@ -550,9 +549,9 @@ accounts:
     )
     accounts = MailAccountsConfig.from_yaml(yaml_file)
     assert accounts.get("a").config.llm_api_key == "sk-global"
-    assert accounts.get("a").config.llm_provider_model == "openrouter-deepseek"
+    assert accounts.get("a").config.llm_provider_model == ""
     assert accounts.get("b").config.llm_api_key == "sk-global"
-    assert accounts.get("b").config.llm_provider_model == "openrouter-deepseek"
+    assert accounts.get("b").config.llm_provider_model == ""
 
 
 def test_from_yaml_top_level_langfuse_applied_to_all_accounts(
@@ -683,7 +682,7 @@ def test_render_accounts_yaml_emits_top_level_llm() -> None:
         "alpha",
         _cfg(
             llm_api_key="sk-test",
-            llm_provider_model="openrouter-deepseek",
+            llm_provider_model="",
             db_path=".data/alpha/mail.db",
         ),
     )
@@ -856,7 +855,7 @@ def test_from_env_multi_account_global_fields_default_when_not_set() -> None:
         accounts = MailAccountsConfig.from_env()
     cfg = accounts.get("a").config
     assert cfg.llm_api_key == ""
-    assert cfg.llm_provider_model == "openrouter-deepseek"
+    assert cfg.llm_provider_model == ""
     assert cfg.langfuse_public_key == ""
     assert cfg.langfuse_secret_key == ""
     assert cfg.langfuse_base_url == ""

@@ -155,7 +155,7 @@ class MailConfig:
     # LLM provider settings — optional; only needed for the `detect`
     # subcommand and future LLM-assisted mail processing.
     llm_api_key: str = ""
-    llm_provider_model: str = "openrouter-deepseek"
+    llm_provider_model: str = ""
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
     ingest_interval_minutes: int = DEFAULT_INGEST_INTERVAL_MINUTES

@@ -128,17 +128,14 @@ def render_accounts_yaml(
     # Emit top-level llm: / langfuse: sections using the first account's
     # config values (they are identical across all accounts by construction).
     representative = accounts[0].config
-    if (
-        representative.llm_api_key
-        or representative.llm_provider_model != "openrouter-deepseek"
-    ):
+    if representative.llm_api_key or representative.llm_provider_model:
         lines.append("llm:")
         if representative.llm_api_key:
             # Writing the API key to a YAML config file is intentional;
             # the file is stored with restrictive permissions (0600).
             # lgtm[py/clear-text-storage-sensitive-data]
             lines.append(f"  api_key: {_yaml_scalar(representative.llm_api_key)}")
-        if representative.llm_provider_model != "openrouter-deepseek":
+        if representative.llm_provider_model:
             lines.append(
                 f"  provider_model: {_yaml_scalar(representative.llm_provider_model)}"
             )
