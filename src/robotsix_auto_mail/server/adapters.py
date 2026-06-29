@@ -357,8 +357,9 @@ def _run_batch_archive_background(
             _batch_progress("archive", 0, total),
         )
 
-        namespace = mail_config.archive_namespace if mail_config is not None else ""
-        effective_root = namespace + archive_root
+        effective_root = (
+            mail_config.archive_root if mail_config is not None else archive_root
+        )
         done = 0
 
         need_imap = mail_config is not None and any(

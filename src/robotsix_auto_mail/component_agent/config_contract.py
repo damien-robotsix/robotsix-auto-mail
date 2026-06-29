@@ -51,7 +51,6 @@ _SETTABLE_YAML_PATHS: frozenset[str] = frozenset(
         "calendar.enabled",
         "archive.enabled",
         "archive.root",
-        "archive.namespace",
         "logging.level",
         "logging.format",
         "logging.file_dir",

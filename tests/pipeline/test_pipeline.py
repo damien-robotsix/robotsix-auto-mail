@@ -928,7 +928,6 @@ def test_ingest_calls_setup_archive_before_fetch(
         conn,
         imap,
         archive_root=cfg.archive_root,
-        archive_namespace=cfg.archive_namespace,
         api_key=cfg.llm_api_key,
         provider_model=cfg.llm_provider_model,
     )
@@ -991,7 +990,6 @@ def test_ingest_passes_configured_archive_root(
         conn,
         imap,
         archive_root="custom-archive",
-        archive_namespace=cfg.archive_namespace,
         api_key=cfg.llm_api_key,
         provider_model=cfg.llm_provider_model,
     )

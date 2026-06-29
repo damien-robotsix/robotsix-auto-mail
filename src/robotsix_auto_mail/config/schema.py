@@ -222,15 +222,6 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
     ),
     _FieldSpec(
-        "archive_namespace",
-        "MAIL_ARCHIVE_NAMESPACE",
-        "archive.namespace",
-        "str",
-        "",
-        False,
-        False,
-    ),
-    _FieldSpec(
         "archive_enabled",
         "MAIL_ARCHIVE_ENABLED",
         "archive.enabled",

@@ -70,7 +70,6 @@ accounts:
     # Self-managed archive folder structure.
     # archive:
     #   root: robotsix-mail-archive
-    #   namespace: ""
     #   enabled: true
     # Inbox triage agent — runs automatically after each ingest cycle.
     # triage:

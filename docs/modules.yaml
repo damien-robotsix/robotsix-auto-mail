@@ -341,7 +341,7 @@ modules:
       - tests/server/test_redirect_safety.py
       - tests/server/test_server_archive_batch.py
       - tests/server/test_server_archive_delete.py
-      - tests/server/test_server_archive_namespace.py
+      - tests/server/test_server_archive.py
       - tests/server/test_server_archive_proposal.py
       - tests/server/test_server_archive_security.py
       - tests/server/test_server_draft.py

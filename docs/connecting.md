@@ -264,7 +264,6 @@ auth:
 | `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles (`ingest --watch`) |
 | `archive.root` | no | `"robotsix-mail-archive"` | Root folder for the self-managed archive structure |
-| `archive.namespace` | no | `""` | IMAP namespace prefix for archive folders (e.g. `"INBOX."`) |
 | `archive.enabled` | no | `true` | Whether to create/manage the archive folder structure |
 | `triage.on_ingest` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
 | `calendar.enabled` | no | `true` | Whether the 'Add to Calendar' button appears in the detail view and dispatches to the `robotsix-calendar` agent |
@@ -355,7 +354,6 @@ with the following fields:
 | `MAIL_DB_PATH` | no | `.data/mail.db` | Filesystem path for the SQLite database |
 | `MAIL_INGEST_INTERVAL` | no | `15` | Minutes between automatic ingest cycles (`ingest --watch`) |
 | `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Root folder for the self-managed archive structure |
-| `MAIL_ARCHIVE_NAMESPACE` | no |  | IMAP namespace prefix for archive folders (e.g. `INBOX.`) |
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to create/manage the archive folder structure |
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
 | `MAIL_CALENDAR_ENABLED` | no | `true` | Whether the 'Add to Calendar' button appears (and dispatch is attempted) |

@@ -85,12 +85,10 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
         lines.append(f"{item}  interval_minutes: {cfg.ingest_interval_minutes}")
     if (
         cfg.archive_root != defaults.archive_root
-        or cfg.archive_namespace != defaults.archive_namespace
         or cfg.archive_enabled != defaults.archive_enabled
     ):
         lines.append(f"{item}archive:")
         lines.append(f"{item}  root: {_yaml_scalar(cfg.archive_root)}")
-        lines.append(f"{item}  namespace: {_yaml_scalar(cfg.archive_namespace)}")
         lines.append(f"{item}  enabled: {_yaml_scalar(cfg.archive_enabled)}")
     if cfg.triage_on_ingest != defaults.triage_on_ingest:
         lines.append(f"{item}triage:")
