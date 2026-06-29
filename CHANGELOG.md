@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Documented `MAIL_CONFIG_PATH` environment variable in `docs/configuration.md`.
+
 - Re-established `component_agent` package with HTTP API routes (monitor,
   config-get, config-set) served directly by the board server without the
   agent-comm broker.  A new `component_agent_enabled` flag on
