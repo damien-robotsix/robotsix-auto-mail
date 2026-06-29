@@ -13,23 +13,6 @@ langfuse:
   secret_key: ""                    # secret
   base_url: ""
 
-# ── Global: Board agent (optional) ────────────────────────────────────────
-board_agent:
-  enabled: false
-  api_url: ""
-  api_token: ""                     # secret
-  repo_id: ""
-  write_ops: true
-
-# ── Global: Component agent (optional) ────────────────────────────────────
-component_agent:
-  enabled: false
-  agent_id: board-manager-robotsix-auto-mail
-  broker_host: ""
-  broker_port: 443
-  broker_token: ""                  # secret
-  broker_tls_ca: ""
-
 # ── Global: Logging ───────────────────────────────────────────────────────
 logging:
   level: INFO

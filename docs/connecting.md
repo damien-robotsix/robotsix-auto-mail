@@ -280,57 +280,11 @@ auth:
 | `langfuse.public_key` | no | – | Langfuse public key; when set with the secret key, every LLM agent run is traced |
 | `langfuse.secret_key` | no | – | Langfuse secret key (redacted in logs/repr) |
 | `langfuse.base_url` | no | – | Langfuse host URL (falls back to llmio's own default when unset) |
-| `board_agent.enabled` | no | `false` | Enable the board agent — an optional agent-comm bridge that exposes the mill board's ticket lifecycle to other agents |
-| `board_agent.api_url` | no | – | Board agent API base URL (required when enabled) |
-| `board_agent.api_token` | no | – | Board agent API authentication token (redacted in logs/repr) |
-| `board_agent.repo_id` | no | – | Board repository identifier (required when enabled) |
-| `board_agent.write_ops` | no | `true` | Whether write operations (file, comment, transition, approve, merge, resume, migrate) are allowed via the board agent; set to `false` for a read-only agent |
-| `component_agent.enabled` | no | `false` | Enable the component-agent responder on the shared broker |
-| `component_agent.agent_id` | no | `"board-manager-robotsix-auto-mail"` | Agent identifier on the broker |
-| `component_agent.broker_host` | no | – | Broker server hostname (required when enabled) |
-| `component_agent.broker_port` | no | `443` | Broker server port |
-| `component_agent.broker_token` | no | – | Agent authentication token for the broker (required when enabled; redacted in logs/repr) |
-| `component_agent.broker_tls_ca` | no | – | Path to a custom CA certificate PEM for verifying the broker's TLS certificate (optional) |
 | `logging.level` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `logging.format` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
 | `logging.file_dir` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |
 
 **Trace ID injection.** Every log event automatically includes a `trace_id` field that correlates logs with OpenTelemetry / Langfuse recordings. When a Langfuse trace is active (see `langfuse.public_key` / `langfuse.secret_key` above), the `trace_id` is stamped as a 32-character lowercase hexadecimal string; when no trace is active (or OpenTelemetry is absent), it is set to `"-"`. This is transparent — no configuration is needed — and applies to both `json` and `console` log formats.
-
-### Board agent (agent-comm bridge)
-
-The board agent is an **optional, opt-in** agent-comm service that exposes
-the mill board's full ticket lifecycle over agent-comm messages. When
-enabled, other agents can drive the board programmatically — querying,
-filing, commenting, transitioning, approving, merging, resuming, and
-migrating tickets — instead of via the HTTP API or a human.
-
-It is **disabled by default**.  To enable it, set `board_agent.enabled: true`
-in your YAML config (or `BOARD_AGENT_ENABLED=true` in the environment), and
-provide the required `api_url`, `api_token`, and `repo_id` values.
-
-The `write_ops` gate (default `true`) lets you run the agent in read-only
-mode: set `board_agent.write_ops: false` (or `BOARD_AGENT_WRITE_OPS=false`)
-and write operations (file, comment, transition, approve, merge, resume,
-migrate) are blocked — the agent only services read requests (query).
-
-The board agent requires the `robotsix-board-agent` Python package, which
-is declared as a git dependency in `pyproject.toml`.  When the dependency
-is not installed and the agent is enabled, a warning is logged to stderr
-and the server starts normally without the agent.
-
-> **Multi-account note:** In the multi-account shape (``accounts:`` list),
-> ``llm:``, ``langfuse:``, and ``board_agent:`` are **top-level** sections
-> (alongside ``default_account:``), not per-account.  See
-> ``docs/config/mail.local.example.yaml`` for the correct placement.
-
-The `auth.password` and `llm.api_key` values are **redacted** in logs and
-debug output regardless of how they are supplied.
-
-Setting `langfuse.public_key` / `langfuse.secret_key` (or the matching
-`LANGFUSE_*` env vars) enables Langfuse tracing for every LLM-running
-subcommand. Since `config/mail.local.yaml` is git-ignored, the deployment
-supplies the real keys there without committing them.
 
 ### Calendar (Add to Calendar)
 
@@ -357,7 +311,7 @@ MAIL_CALENDAR_ENABLED=false
 
 > **Per-account field.** `calendar.enabled` is per-account (like
 > `archive.enabled` and `triage.on_ingest`), not a top-level section like
-> `board_agent`. Each configured mailbox can independently enable or disable
+> `llm`. Each configured mailbox can independently enable or disable
 > the calendar action.
 
 **Dependency.** The calendar feature requires the optional
@@ -417,17 +371,6 @@ with the following fields:
 | `LANGFUSE_PUBLIC_KEY` | no | – | Langfuse public key (overrides `langfuse.public_key`); enables LLM tracing |
 | `LANGFUSE_SECRET_KEY` | no | – | Langfuse secret key (overrides `langfuse.secret_key`; redacted) |
 | `LANGFUSE_BASE_URL` | no | – | Langfuse host URL (overrides `langfuse.base_url`) |
-| `BOARD_AGENT_ENABLED` | no | `false` | Enable the board agent (agent-comm bridge to the mill board) |
-| `BOARD_AGENT_API_URL` | no | – | Board agent API base URL |
-| `BOARD_AGENT_API_TOKEN` | no | – | Board agent API authentication token (redacted) |
-| `BOARD_AGENT_REPO_ID` | no | – | Board repository identifier |
-| `BOARD_AGENT_WRITE_OPS` | no | `true` | Allow write operations via the board agent |
-| `COMPONENT_AGENT_ENABLED` | no | `false` | Enable the component-agent responder on the shared broker |
-| `COMPONENT_AGENT_ID` | no | `board-manager-robotsix-auto-mail` | Agent identifier on the broker |
-| `COMPONENT_AGENT_BROKER_HOST` | no | – | Broker server hostname |
-| `COMPONENT_AGENT_BROKER_PORT` | no | `443` | Broker server port |
-| `COMPONENT_AGENT_BROKER_TOKEN` | no | – | Agent authentication token for the broker (redacted) |
-| `COMPONENT_AGENT_BROKER_TLS_CA` | no | – | Path to CA certificate PEM for broker TLS |
 | `LOG_LEVEL` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `LOG_FORMAT` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
 | `LOG_FILE_DIR` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |

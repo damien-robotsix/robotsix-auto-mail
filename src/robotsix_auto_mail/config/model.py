@@ -34,7 +34,6 @@ from robotsix_auto_mail.config.schema import (
     DEFAULT_SMTP_TLS_MODE,
     ConfigurationError,
     _FieldSpec,
-    _get_bool,
     _get_int,
     _get_str,
     _get_table,
@@ -197,15 +196,6 @@ class MailConfig:
     log_format: str = "console"
     log_file_dir: str = ".mail_log"
 
-    # Board agent — optional agent-comm bridge to the mill board.
-    # Disabled by default; enable to let other agents drive the board
-    # programmatically via agent-comm messages.
-    board_agent_enabled: bool = False
-    board_agent_api_url: str = ""
-    board_agent_api_token: str = ""
-    board_agent_repo_id: str = ""
-    board_agent_write_ops: bool = True
-
     # Calendar (Add to Calendar) — agent-comm dispatch transport.
     calendar_transport: str = "in-process"
     calendar_broker_host: str = ""
@@ -215,16 +205,6 @@ class MailConfig:
     calendar_broker_client_key: str = ""
     calendar_broker_token: str = ""
 
-    # Component agent — optional agent-comm responder that registers on the
-    # shared broker under agent-id ``board-manager-robotsix-auto-mail`` and
-    # serves monitor / config-get / config-set requests.
-    component_agent_enabled: bool = False
-    component_agent_id: str = "board-manager-robotsix-auto-mail"
-    component_agent_broker_host: str = ""
-    component_agent_broker_port: int = 443
-    component_agent_broker_token: str = ""
-    component_agent_broker_tls_ca: str = ""
-
     # -- masking -----------------------------------------------------------
 
     _SECRET_FIELDS = (
@@ -233,9 +213,7 @@ class MailConfig:
         "oauth2_token",
         "oauth2_client_secret",
         "langfuse_secret_key",
-        "board_agent_api_token",
         "calendar_broker_token",
-        "component_agent_broker_token",
     )
 
     def __repr__(self) -> str:
@@ -252,19 +230,6 @@ class MailConfig:
 
     def __str__(self) -> str:
         return self.__repr__()
-
-    def __post_init__(self) -> None:
-        if self.component_agent_enabled:
-            if not self.component_agent_broker_token:
-                raise ConfigurationError(
-                    "component_agent_broker_token is required when "
-                    "component_agent_enabled is true"
-                )
-            if not self.component_agent_broker_host:
-                raise ConfigurationError(
-                    "component_agent_broker_host is required when "
-                    "component_agent_enabled is true"
-                )
 
     # -- loaders -----------------------------------------------------------
 
@@ -490,7 +455,7 @@ def _extract_section_fields(
         section_name: Top-level key (e.g. ``"llm"``).
         field_map: List of ``(result_key, extractor, yaml_key, default)``
             tuples.  The *extractor* is one of :func:`_get_str`,
-            :func:`_get_bool`, or :func:`_get_int`.
+            :func:`_get_str` or :func:`_get_int`.
         path: Config file path for error messages (required when
             *field_map* includes :func:`_get_int` entries).
 
@@ -674,17 +639,6 @@ class MailAccountsConfig:
         global_langfuse_public_key: str = ""
         global_langfuse_secret_key: str = ""
         global_langfuse_base_url: str = ""
-        global_board_agent_enabled: bool = False
-        global_board_agent_api_url: str = ""
-        global_board_agent_api_token: str = ""
-        global_board_agent_repo_id: str = ""
-        global_board_agent_write_ops: bool = True
-        global_component_agent_enabled: bool = False
-        global_component_agent_id: str = "board-manager-robotsix-auto-mail"
-        global_component_agent_broker_host: str = ""
-        global_component_agent_broker_port: int = 443
-        global_component_agent_broker_token: str = ""
-        global_component_agent_broker_tls_ca: str = ""
 
         if isinstance(data, dict):
             llm = _extract_section_fields(
@@ -711,48 +665,6 @@ class MailAccountsConfig:
             global_langfuse_secret_key = langfuse["secret_key"]
             global_langfuse_base_url = langfuse["base_url"]
 
-            board_agent = _extract_section_fields(
-                data,
-                "board_agent",
-                [
-                    ("enabled", _get_bool, "enabled", False),
-                    ("api_url", _get_str, "api_url", ""),
-                    ("api_token", _get_str, "api_token", ""),
-                    ("repo_id", _get_str, "repo_id", ""),
-                    ("write_ops", _get_bool, "write_ops", True),
-                ],
-            )
-            global_board_agent_enabled = board_agent["enabled"]
-            global_board_agent_api_url = board_agent["api_url"]
-            global_board_agent_api_token = board_agent["api_token"]
-            global_board_agent_repo_id = board_agent["repo_id"]
-            global_board_agent_write_ops = board_agent["write_ops"]
-
-            component_agent = _extract_section_fields(
-                data,
-                "component_agent",
-                [
-                    ("enabled", _get_bool, "enabled", False),
-                    (
-                        "agent_id",
-                        _get_str,
-                        "agent_id",
-                        "board-manager-robotsix-auto-mail",
-                    ),
-                    ("broker_host", _get_str, "broker_host", ""),
-                    ("broker_port", _get_int, "broker_port", 443),
-                    ("broker_token", _get_str, "broker_token", ""),
-                    ("broker_tls_ca", _get_str, "broker_tls_ca", ""),
-                ],
-                path=path,
-            )
-            global_component_agent_enabled = component_agent["enabled"]
-            global_component_agent_id = component_agent["agent_id"]
-            global_component_agent_broker_host = component_agent["broker_host"]
-            global_component_agent_broker_port = component_agent["broker_port"]
-            global_component_agent_broker_token = component_agent["broker_token"]
-            global_component_agent_broker_tls_ca = component_agent["broker_tls_ca"]
-
         accounts: list[MailAccount] = []
         for entry in accounts_raw:
             if not isinstance(entry, dict):
@@ -768,7 +680,7 @@ class MailAccountsConfig:
 
             # llm: and langfuse: are now top-level (application-wide);
             # per-account blocks are rejected with an actionable error.
-            for section_name in ("llm", "langfuse", "board_agent", "component_agent"):
+            for section_name in ("llm", "langfuse"):
                 if section_name in entry:
                     raise ConfigurationError(
                         f"account {raw_id!r} has a per-account "
@@ -783,7 +695,7 @@ class MailAccountsConfig:
             if not has_store_path:
                 cfg = dataclasses.replace(cfg, db_path=f".data/{raw_id}/mail.db")
 
-            # Apply top-level llm / langfuse / board_agent values
+            # Apply top-level llm / langfuse values
             # (global wins over defaults).
             cfg = dataclasses.replace(
                 cfg,
@@ -794,32 +706,6 @@ class MailAccountsConfig:
                 langfuse_secret_key=global_langfuse_secret_key
                 or cfg.langfuse_secret_key,
                 langfuse_base_url=global_langfuse_base_url or cfg.langfuse_base_url,
-                board_agent_enabled=global_board_agent_enabled,
-                board_agent_api_url=global_board_agent_api_url
-                or cfg.board_agent_api_url,
-                board_agent_api_token=global_board_agent_api_token
-                or cfg.board_agent_api_token,
-                board_agent_repo_id=global_board_agent_repo_id
-                or cfg.board_agent_repo_id,
-                board_agent_write_ops=global_board_agent_write_ops,
-                component_agent_enabled=global_component_agent_enabled,
-                component_agent_id=global_component_agent_id or cfg.component_agent_id,
-                component_agent_broker_host=(
-                    global_component_agent_broker_host
-                    or cfg.component_agent_broker_host
-                ),
-                component_agent_broker_port=(
-                    global_component_agent_broker_port
-                    or cfg.component_agent_broker_port
-                ),
-                component_agent_broker_token=(
-                    global_component_agent_broker_token
-                    or cfg.component_agent_broker_token
-                ),
-                component_agent_broker_tls_ca=(
-                    global_component_agent_broker_tls_ca
-                    or cfg.component_agent_broker_tls_ca
-                ),
             )
 
             accounts.append(MailAccount(account_id=raw_id, config=cfg, label=raw_label))
@@ -928,43 +814,6 @@ def _build_account_from_env(index: int) -> MailAccount:
         log_level=os.environ.get("LOG_LEVEL", cfg.log_level),
         log_format=os.environ.get("LOG_FORMAT", cfg.log_format),
         log_file_dir=os.environ.get("LOG_FILE_DIR", cfg.log_file_dir),
-        board_agent_enabled=_parse_bool(
-            "BOARD_AGENT_ENABLED",
-            os.environ.get("BOARD_AGENT_ENABLED", str(cfg.board_agent_enabled)),
-        ),
-        board_agent_api_url=os.environ.get(
-            "BOARD_AGENT_API_URL", cfg.board_agent_api_url
-        ),
-        board_agent_api_token=os.environ.get(
-            "BOARD_AGENT_API_TOKEN", cfg.board_agent_api_token
-        ),
-        board_agent_repo_id=os.environ.get(
-            "BOARD_AGENT_REPO_ID", cfg.board_agent_repo_id
-        ),
-        board_agent_write_ops=_parse_bool(
-            "BOARD_AGENT_WRITE_OPS",
-            os.environ.get("BOARD_AGENT_WRITE_OPS", str(cfg.board_agent_write_ops)),
-        ),
-        component_agent_enabled=_parse_bool(
-            "COMPONENT_AGENT_ENABLED",
-            os.environ.get("COMPONENT_AGENT_ENABLED", str(cfg.component_agent_enabled)),
-        ),
-        component_agent_id=os.environ.get("COMPONENT_AGENT_ID", cfg.component_agent_id),
-        component_agent_broker_host=os.environ.get(
-            "COMPONENT_AGENT_BROKER_HOST", cfg.component_agent_broker_host
-        ),
-        component_agent_broker_port=int(
-            os.environ.get(
-                "COMPONENT_AGENT_BROKER_PORT",
-                str(cfg.component_agent_broker_port),
-            )
-        ),
-        component_agent_broker_token=os.environ.get(
-            "COMPONENT_AGENT_BROKER_TOKEN", cfg.component_agent_broker_token
-        ),
-        component_agent_broker_tls_ca=os.environ.get(
-            "COMPONENT_AGENT_BROKER_TLS_CA", cfg.component_agent_broker_tls_ca
-        ),
     )
 
     # Validate global logging fields (skipped by _build_config_from_env).

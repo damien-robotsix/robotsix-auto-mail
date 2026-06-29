@@ -70,6 +70,16 @@ _VALID_CALENDAR_TRANSPORTS = frozenset({"in-process", "brokered"})
 _VALID_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR"})
 _VALID_LOG_FORMATS = frozenset({"json", "console"})
 
+# The validation sets above are imported by model.py and detect/models.py
+# for field-level validation.  This module-level reference ensures they are
+# treated as "used" by module-local static analysis (CodeQL).
+_VALIDATION_SETS = (
+    _VALID_TLS_MODES,
+    _VALID_CALENDAR_TRANSPORTS,
+    _VALID_LOG_LEVELS,
+    _VALID_LOG_FORMATS,
+)
+
 # Default TLS modes for IMAP and SMTP connections.
 DEFAULT_IMAP_TLS_MODE = "direct-tls"
 DEFAULT_SMTP_TLS_MODE = "starttls"
@@ -355,56 +365,6 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         global_field=True,
     ),
     _FieldSpec(
-        "board_agent_enabled",
-        "BOARD_AGENT_ENABLED",
-        "board_agent.enabled",
-        "bool",
-        False,
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "board_agent_api_url",
-        "BOARD_AGENT_API_URL",
-        "board_agent.api_url",
-        "str",
-        "",
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "board_agent_api_token",
-        "BOARD_AGENT_API_TOKEN",
-        "board_agent.api_token",
-        "str",
-        "",
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "board_agent_repo_id",
-        "BOARD_AGENT_REPO_ID",
-        "board_agent.repo_id",
-        "str",
-        "",
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "board_agent_write_ops",
-        "BOARD_AGENT_WRITE_OPS",
-        "board_agent.write_ops",
-        "bool",
-        True,
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
         "calendar_transport",
         "CALENDAR_TRANSPORT",
         "calendar.transport",
@@ -467,66 +427,6 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
         False,
     ),
-    _FieldSpec(
-        "component_agent_enabled",
-        "COMPONENT_AGENT_ENABLED",
-        "component_agent.enabled",
-        "bool",
-        False,
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "component_agent_id",
-        "COMPONENT_AGENT_ID",
-        "component_agent.agent_id",
-        "str",
-        "board-manager-robotsix-auto-mail",
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "component_agent_broker_host",
-        "COMPONENT_AGENT_BROKER_HOST",
-        "component_agent.broker_host",
-        "str",
-        "",
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "component_agent_broker_port",
-        "COMPONENT_AGENT_BROKER_PORT",
-        "component_agent.broker_port",
-        "int",
-        443,
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "component_agent_broker_token",
-        "COMPONENT_AGENT_BROKER_TOKEN",
-        "component_agent.broker_token",
-        "str",
-        "",
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "component_agent_broker_tls_ca",
-        "COMPONENT_AGENT_BROKER_TLS_CA",
-        "component_agent.broker_tls_ca",
-        "str",
-        "",
-        False,
-        False,
-        global_field=True,
-    ),
 )
 
 # Each yaml_path must be exactly ``section.key`` — the YAML loader splits
@@ -536,6 +436,9 @@ for _s in _FIELD_SPECS:
     assert _s.yaml_path.count(".") == 1, (  # noqa: S101  # nosec B101
         f"_FieldSpec.yaml_path must have exactly one dot, got {_s.yaml_path!r}"
     )
+
+# Validate that the validation sets (imported by model.py) are non-empty.
+assert all(_VALIDATION_SETS), "validation sets must be non-empty"  # noqa: S101  # nosec B101
 
 
 # ---------------------------------------------------------------------------
