@@ -70,3 +70,41 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
+
+  release-notes:
+    needs: publish
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          # Extract the section for this version; if none found, use the
+          # "unreleased" section as fallback.
+          awk -v ver="${VERSION}" '
+            /^## / { if (found) exit; if ($0 ~ ver) found=1; next }
+            found { print }
+          ' CHANGELOG.md > /tmp/release_body.md
+          if [ ! -s /tmp/release_body.md ]; then
+            echo "No changelog section for ${VERSION} — using unreleased section"
+            awk '
+              /^## 0\.0\.0 \(unreleased\)/ { found=1; next }
+              found && /^## [0-9]/ { exit }
+              found
+            ' CHANGELOG.md > /tmp/release_body.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
+        with:
+          body_path: /tmp/release_body.md
+          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
+          name: "${{ github.ref_name }}"
