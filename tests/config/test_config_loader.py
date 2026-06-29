@@ -190,14 +190,14 @@ def test_load_llm_provider_model_default_when_nothing_set() -> None:
     with mock.patch.dict(
         os.environ, {"MAIL_CONFIG_PATH": "/nonexistent/mail.yaml"}, clear=True
     ):
-        assert load_llm_provider_model() == "openrouter-deepseek"
+        assert load_llm_provider_model() == ""
 
 
 def test_load_llm_provider_model_yaml_without_llm_section(tmp_path: Path) -> None:
     """A YAML file without llm section → default 'openrouter-deepseek'."""
     yaml_file = _multi_account_yaml(tmp_path)
     with mock.patch.dict(os.environ, _env_with_path(yaml_file), clear=True):
-        assert load_llm_provider_model() == "openrouter-deepseek"
+        assert load_llm_provider_model() == ""
 
 
 def test_load_llm_provider_model_yaml_without_provider_model_key(
@@ -206,7 +206,7 @@ def test_load_llm_provider_model_yaml_without_provider_model_key(
     """llm: section present but without provider_model → default."""
     yaml_file = _multi_account_yaml(tmp_path, llm_api_key="k")
     with mock.patch.dict(os.environ, _env_with_path(yaml_file), clear=True):
-        assert load_llm_provider_model() == "openrouter-deepseek"
+        assert load_llm_provider_model() == ""
 
 
 # ---------------------------------------------------------------------------

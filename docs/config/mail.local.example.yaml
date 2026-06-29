@@ -24,7 +24,7 @@
 # these values.
 # llm:
 #   api_key: sk-or-v1-…
-#   provider_model: openrouter-deepseek
+#   provider_model: ""  # escape-hatch: override llmio tier default (leave blank to use tier default)
 
 # Langfuse observability — optional.  When public_key/secret_key are set,
 # every LLM agent run is traced to the configured Langfuse project.

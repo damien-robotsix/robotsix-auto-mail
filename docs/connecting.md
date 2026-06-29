@@ -237,7 +237,7 @@ auth:
 
 # llm:
 #   api_key: sk-or-v1-…   # or via the LLM_API_KEY env var
-#   provider_model: openrouter-deepseek
+#   provider_model: ""  # escape-hatch: override llmio tier default (leave blank to use tier default)
 
 # langfuse:
 #   public_key: ""
@@ -276,7 +276,7 @@ auth:
 | `calendar.broker_client_key` | no | – | Path to client key PEM for mutual TLS (optional) |
 | `calendar.broker_token` | no | – | Agent authentication token for the broker (redacted in logs/repr) |
 | `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing (may instead be supplied via `LLM_API_KEY`) |
-| `llm.provider_model` | no | `"openrouter-deepseek"` | LLM provider-model identifier (e.g. `openrouter-deepseek`, `claude-sdk`); see robotsix-llmio README for available backends |
+| `llm.provider_model` | no | `""` | LLM provider-model identifier (e.g. `openrouter-deepseek`, `claude-sdk`); see robotsix-llmio README for available backends |
 | `langfuse.public_key` | no | – | Langfuse public key; when set with the secret key, every LLM agent run is traced |
 | `langfuse.secret_key` | no | – | Langfuse secret key (redacted in logs/repr) |
 | `langfuse.base_url` | no | – | Langfuse host URL (falls back to llmio's own default when unset) |
@@ -413,7 +413,7 @@ with the following fields:
 | `CALENDAR_BROKER_TOKEN` | no | – | Agent authentication token for the broker (redacted in logs/repr) |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
 | `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |
-| `LLM_PROVIDER_MODEL` | no | `openrouter-deepseek` | LLM provider-model identifier (overrides `llm.provider_model`); see robotsix-llmio README for available backends |
+| `LLM_PROVIDER_MODEL` | no |  | LLM provider-model identifier (overrides `llm.provider_model`); see robotsix-llmio README for available backends |
 | `LANGFUSE_PUBLIC_KEY` | no | – | Langfuse public key (overrides `langfuse.public_key`); enables LLM tracing |
 | `LANGFUSE_SECRET_KEY` | no | – | Langfuse secret key (overrides `langfuse.secret_key`; redacted) |
 | `LANGFUSE_BASE_URL` | no | – | Langfuse host URL (overrides `langfuse.base_url`) |

@@ -2,6 +2,15 @@
 
 ## 0.0.0 (unreleased)
 
+- **Breaking (default change):** ``MailConfig.llm_provider_model`` now
+  defaults to ``""`` (was ``"openrouter-deepseek"``).  When unset, every
+  LLM call resolves its model from the llmio tier/level defaults.  The
+  field remains as an escape-hatch — set ``LLM_PROVIDER_MODEL`` in the
+  environment or ``llm.provider_model`` in YAML to override.
+- Removed ``provider_model`` from the central-deploy config template
+  (``config/config.yaml``) and from the component-agent settings UI
+  (``component_agent/config_contract.py``).
+
 - Removed orphaned ``.robotsix-mill/periodic/langfuse_cleanup.yaml`` —
   Langfuse trace cleanup is now centralized in robotsix-mill (global_only).
 

@@ -407,6 +407,7 @@ class TestHandleMove:
             username="test",
             password="test",
             llm_api_key="sk-test",
+            llm_provider_model="openrouter-deepseek",
         )
         handler = _FakeHandler(single_db, mail_config=mail_config)
         handler.headers.get.return_value = 90

@@ -40,7 +40,7 @@ _YAML_EXAMPLE = """\
 # value.
 # llm:
 #   api_key: sk-or-v1-…
-#   provider_model: openrouter-deepseek
+#   provider_model: ""  # escape-hatch: override llmio tier default (leave blank to use tier default)
 
 # Langfuse observability — optional; enables LLM agent tracing.
 # langfuse:
@@ -179,7 +179,7 @@ CALENDAR_BROKER_CLIENT_CERT=
 CALENDAR_BROKER_CLIENT_KEY=
 CALENDAR_BROKER_TOKEN=
 LLM_API_KEY=sk-or-v1-…
-LLM_PROVIDER_MODEL=openrouter-deepseek
+LLM_PROVIDER_MODEL=
 LANGFUSE_PUBLIC_KEY=
 LANGFUSE_SECRET_KEY=
 LANGFUSE_BASE_URL=
@@ -259,7 +259,7 @@ _DOCS_YAML_TABLE = """\
 | `calendar.broker_client_key` | no | - | Path to client key PEM for mutual TLS |
 | `calendar.broker_token` | no | - | Agent authentication token for the broker |
 | `llm.api_key` | no | - | LLM provider API key |
-| `llm.provider_model` | no | `"openrouter-deepseek"` | LLM provider-model identifier |
+| `llm.provider_model` | no | `""` | LLM provider-model identifier |
 | `langfuse.public_key` | no | - | Langfuse public key for LLM tracing |
 | `langfuse.secret_key` | no | - | Langfuse secret key for LLM tracing |
 | `langfuse.base_url` | no | - | Langfuse base URL for LLM tracing |
@@ -314,7 +314,7 @@ _DOCS_ENV_TABLE = """\
 | `CALENDAR_BROKER_TOKEN` | no | - | Agent authentication token for the broker |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
 | `LLM_API_KEY` | no | - | LLM provider API key |
-| `LLM_PROVIDER_MODEL` | no | `openrouter-deepseek` | LLM provider-model identifier |
+| `LLM_PROVIDER_MODEL` | no |  | LLM provider-model identifier |
 | `LANGFUSE_PUBLIC_KEY` | no | - | Langfuse public key for LLM tracing |
 | `LANGFUSE_SECRET_KEY` | no | - | Langfuse secret key for LLM tracing |
 | `LANGFUSE_BASE_URL` | no | - | Langfuse base URL for LLM tracing |
