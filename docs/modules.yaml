@@ -201,21 +201,6 @@ modules:
       - src/robotsix_auto_mail/detect/models.py
       - tests/detect/test_detect.py
 
-  - id: calendar
-    description: >-
-      Calendar event dispatch to the robotsix-calendar agent over the
-      robotsix_agent_comm broker, triggered by moving a mail into the
-      TO_CALENDAR board column. Sends a structured add_to_calendar request
-      and persists the correlated event reference (or error) onto the card.
-    paths:
-      - src/robotsix_auto_mail/calendar/__init__.py
-      - src/robotsix_auto_mail/calendar/dispatch.py
-      - src/robotsix_auto_mail/calendar/schema.py
-      - src/robotsix_auto_mail/calendar/transport.py
-      - tests/calendar/conftest.py
-      - tests/calendar/test_calendar.py
-      - tests/calendar/test_transport.py
-
   - id: imap
     description: >-
       Low-level IMAP client (stdlib imaplib wrapper).
@@ -386,7 +371,6 @@ modules:
       - .github/codeql/codeql-config.yml
       - .github/workflows/ci.yml
       - .github/workflows/codeql.yml
-      - .github/workflows/deps-bump.yml
       - .github/workflows/docs.yml
       - .github/workflows/lockfile.yml
       - .github/workflows/pre-commit.yml
