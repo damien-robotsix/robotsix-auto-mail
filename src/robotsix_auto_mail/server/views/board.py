@@ -184,14 +184,6 @@ def _gather_account_board_data(
                 key=lambda r: archive_subfolders.get(r.message_id, "")
             )
 
-        # Order TO_ARCHIVE cards by destination so the board JS can render
-        # contiguous per-folder groups (stable sort preserves the existing
-        # date order within each destination).
-        if column_buckets.get(TO_ARCHIVE):
-            column_buckets[TO_ARCHIVE].sort(
-                key=lambda r: archive_subfolders.get(r.message_id, "")
-            )
-
         # -- unsubscribe suggestions for TO_DELETE column -----------------
         suggestions_raw = get_watermark(conn, "unsubscribe_suggestions")
         unsubscribe_suggestions: dict[str, dict[str, Any]] = {}
