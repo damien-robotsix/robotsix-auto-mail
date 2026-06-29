@@ -7,6 +7,8 @@
   default is ``""`` (empty string). Corrected the Default column
   and clarified that an empty value delegates to the
   ``robotsix-llmio`` library's tier default.
+- Fixed misleading comment in ``.env.example`` for ``LLM_PROVIDER_MODEL``:
+  the default is ``""`` (empty string), not ``openrouter-deepseek``.
 - Centralized three operational watermark keys (``triage_run:state``,
   ``batch_op:state``, ``reconcile:state``) into module-level constants
   in ``_constants.py``, replacing ~28 hardcoded string literals across
