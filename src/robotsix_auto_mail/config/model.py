@@ -514,7 +514,13 @@ class MailAccountsConfig:
 
     Validation (all raise :class:`ConfigurationError`): at least one
     account; all ``account_id``s unique; all ``MailConfig.db_path``s unique
-    across accounts; ``default_account_id`` resolves to a known account.
+    across accounts; ``default_account_id`` resolves to a known account
+    and is the account used for CLI commands that accept an optional
+    ``--account`` flag (e.g. ``triage``, ``ingest``) when that flag is
+    omitted, and for initialising the HTTP server's startup configuration
+    (component-agent, initial DB path).  The board view itself always
+    defaults to the aggregate (``__all__``) view for multi-account setups
+    and does not consult this field.
     """
 
     accounts: tuple[MailAccount, ...]

@@ -33,7 +33,10 @@
 #   secret_key: ""
 #   base_url: ""
 
-# Optional: name the default account. Absent → the first entry below.
+# Optional: the default account for CLI operations (e.g. `robotsix-auto-mail triage`
+# uses this account when --account is omitted). Absent → the first account below.
+# NOTE: this does NOT control the board view default — the board always shows all
+# mailboxes (aggregate view) by default for multi-account setups.
 default_account: personal
 
 accounts:

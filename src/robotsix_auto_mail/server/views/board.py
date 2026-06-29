@@ -560,11 +560,12 @@ def _build_board_html(
                 f"{html.escape(display)}</option>"
             )
         picker_html = (
+            '<label class="account-picker-label">Mailbox:&nbsp;'
             '<select id="account-picker"'
             " onchange=\"window.location.href='/board?account='"
             '+encodeURIComponent(this.value)">'
             f"{''.join(options_parts)}"
-            "</select>"
+            "</select></label>"
         )
     if multi_account and current_account_id:
         account_qs = "&account=" + quote(current_account_id, safe="")
@@ -612,11 +613,12 @@ def _build_global_board_html(
             f'<option value="{html.escape(account_id)}">{html.escape(display)}</option>'
         )
     picker_html = (
+        '<label class="account-picker-label">Mailbox:&nbsp;'
         '<select id="account-picker"'
         " onchange=\"window.location.href='/board?account='"
         '+encodeURIComponent(this.value)">'
         f"{''.join(options_parts)}"
-        "</select>"
+        "</select></label>"
     )
 
     # Aggregate view always polls /board-content?account=__all__ and

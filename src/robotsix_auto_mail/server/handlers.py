@@ -183,12 +183,16 @@ class BoardHandler(
 
         Only invoked when ``self.accounts is not None``.  Resolution
         precedence: ``?account=`` query param → ``account`` request
-        cookie → ``self.default_account_id``/the container default.
+        cookie → for multi-account setups with neither, defaults to
+        aggregate (``__all__``) and sets the cookie; for single-account
+        setups, falls back to ``self.default_account_id``.
 
         The reserved sentinel ``GLOBAL_VIEW_ACCOUNT_ID`` (``"__all__"``)
         selects the aggregate view instead of a single account.  When
         there is no ``?account=``, no cookie, and at least two accounts
-        are configured, the handler defaults to the aggregate view.
+        are configured, the handler defaults to the aggregate view and
+        sets the ``account`` cookie to ``__all__`` so the aggregate
+        preference persists across subsequent requests.
 
         An explicit ``?account=<id>`` that is unknown is a hard 404
         (returns ``False`` so the caller skips dispatch).  A stale id
@@ -227,6 +231,7 @@ class BoardHandler(
         # No query param, no cookie, ≥2 accounts → default to aggregate.
         if not query_id and not cookie_id and len(accounts.ids()) >= 2:
             self._aggregate = True
+            self._account_cookie = f"account={GLOBAL_VIEW_ACCOUNT_ID}; Path=/"
             self._current_account_id = GLOBAL_VIEW_ACCOUNT_ID
             return True
 
