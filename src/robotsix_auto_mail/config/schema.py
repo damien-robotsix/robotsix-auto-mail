@@ -406,14 +406,3 @@ def _get_int(section: dict[str, object], key: str, default: int, path: Path) -> 
             f"Config key {key!r} must be an integer, got {type(value).__name__}"
         )
     return value
-
-
-def _get_bool(section: dict[str, object], key: str, default: bool) -> bool:
-    value = section.get(key)
-    if value is None:
-        return default
-    if not isinstance(value, bool):
-        raise ConfigurationError(
-            f"Config key {key!r} must be a boolean, got {type(value).__name__}"
-        )
-    return value

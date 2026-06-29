@@ -9,6 +9,10 @@
 - Removed stale calendar and CI paths from `docs/modules.yaml` — the calendar
   package and `deps-bump.yml` workflow were already deleted.
 
+- Removed dead `_get_bool` helper from `config/schema.py` — it had zero
+  production callers after an earlier refactor.  Its four corresponding test
+  functions in `tests/config/test_schema.py` were also removed.
+
 - Enabled Renovate's `pre-commit` manager so `.pre-commit-config.yaml` hooks
   receive automatic version update PRs.
 
