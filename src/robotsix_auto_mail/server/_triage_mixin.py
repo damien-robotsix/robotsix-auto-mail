@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+from robotsix_auto_mail._constants import _TRIAGE_RUN_STATE_KEY
 from robotsix_auto_mail.server.adapters import (
     _run_triage_background,
 )
@@ -30,7 +31,7 @@ class _TriageMixin:
         always recovers.
         """
         self._launch_background_worker(
-            "triage_run:state",
+            _TRIAGE_RUN_STATE_KEY,
             _run_triage_background,
             (
                 self.db_path,
@@ -83,7 +84,7 @@ class _TriageMixin:
 
         # -- launch triage (same pattern as _handle_run_triage) -----------
         self._launch_background_worker(
-            "triage_run:state",
+            _TRIAGE_RUN_STATE_KEY,
             _run_triage_background,
             (
                 self.db_path,

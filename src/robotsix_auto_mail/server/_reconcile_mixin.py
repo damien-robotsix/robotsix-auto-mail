@@ -7,6 +7,7 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING
 
+from robotsix_auto_mail._constants import _RECONCILE_STATE_KEY
 from robotsix_auto_mail.server.adapters import (
     _run_reconcile_background,
 )
@@ -32,7 +33,7 @@ class _ReconcileMixin:
         the thread clears the watermark in a ``finally`` block so the board
         always recovers.
         """
-        if not self._launch_background_worker("reconcile:state"):
+        if not self._launch_background_worker(_RECONCILE_STATE_KEY):
             return
 
         if self._aggregate and self.accounts is not None:

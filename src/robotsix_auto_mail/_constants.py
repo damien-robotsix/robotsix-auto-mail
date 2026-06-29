@@ -3,6 +3,11 @@
 #: Root folder under which all managed archive folders live.
 _ARCHIVE_ROOT = "robotsix-mail-archive"
 
+#: Watermark keys used by background worker single-flight guards.
+_TRIAGE_RUN_STATE_KEY = "triage_run:state"
+_BATCH_OP_STATE_KEY = "batch_op:state"
+_RECONCILE_STATE_KEY = "reconcile:state"
+
 _ARCHIVE_TAXONOMY_GUIDANCE = (
     "Categorize by purpose or topic: choose a top-level semantic "
     "bucket adapted to the existing folders. Example buckets "

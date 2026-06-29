@@ -5,6 +5,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from robotsix_auto_mail._constants import (
+    _BATCH_OP_STATE_KEY,
+    _RECONCILE_STATE_KEY,
+    _TRIAGE_RUN_STATE_KEY,
+)
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -73,7 +78,7 @@ def _run_triage_background(db_path: str, user_email: str | None = None) -> None:
         # Swallow all exceptions — the watermark is always cleared.
         pass
     finally:
-        set_watermark(conn, "triage_run:state", "idle")
+        set_watermark(conn, _TRIAGE_RUN_STATE_KEY, "idle")
         conn.close()
 
 
@@ -108,7 +113,7 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
         # Swallow all exceptions — the watermark is always cleared.
         pass
     finally:
-        set_watermark(conn, "reconcile:state", "idle")
+        set_watermark(conn, _RECONCILE_STATE_KEY, "idle")
         conn.close()
 
 
@@ -174,7 +179,7 @@ def _run_db_only_batch_op(
         done += 1
         set_watermark(
             conn,
-            "batch_op:state",
+            _BATCH_OP_STATE_KEY,
             _batch_progress(op_str, done, total),
         )
     return done
@@ -214,7 +219,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
         total = len(records)
         set_watermark(
             conn,
-            "batch_op:state",
+            _BATCH_OP_STATE_KEY,
             _batch_progress("delete", 0, total),
         )
 
@@ -282,7 +287,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                         done += len(chunk)
                         set_watermark(
                             conn,
-                            "batch_op:state",
+                            _BATCH_OP_STATE_KEY,
                             _batch_progress("delete", done, total),
                         )
         else:
@@ -292,7 +297,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
         # Swallow all exceptions — the watermark is always cleared.
         pass
     finally:
-        set_watermark(conn, "batch_op:state", "idle")
+        set_watermark(conn, _BATCH_OP_STATE_KEY, "idle")
         conn.close()
 
 
@@ -348,7 +353,7 @@ def _run_batch_archive_background(
         total = len(records)
         set_watermark(
             conn,
-            "batch_op:state",
+            _BATCH_OP_STATE_KEY,
             _batch_progress("archive", 0, total),
         )
 
@@ -436,7 +441,7 @@ def _run_batch_archive_background(
                     done += len(group)
                     set_watermark(
                         conn,
-                        "batch_op:state",
+                        _BATCH_OP_STATE_KEY,
                         _batch_progress("archive", done, total),
                     )
         else:
@@ -446,5 +451,5 @@ def _run_batch_archive_background(
         # Swallow all exceptions — the watermark is always cleared.
         pass
     finally:
-        set_watermark(conn, "batch_op:state", "idle")
+        set_watermark(conn, _BATCH_OP_STATE_KEY, "idle")
         conn.close()

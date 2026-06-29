@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from robotsix_auto_mail._constants import _BATCH_OP_STATE_KEY
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
 from robotsix_auto_mail.server.adapters import (
     _batch_op_running,
@@ -46,7 +47,7 @@ class _BatchActionMixin:
             return
 
         self._launch_background_worker(
-            "batch_op:state",
+            _BATCH_OP_STATE_KEY,
             _run_batch_delete_background,
             (self.db_path, self.mail_config),
             running_check=_batch_op_running,
@@ -72,7 +73,7 @@ class _BatchActionMixin:
         for account in accounts.accounts:
             db_path = account.config.db_path
             self._launch_background_worker(
-                "batch_op:state",
+                _BATCH_OP_STATE_KEY,
                 _run_batch_delete_background,
                 (db_path, account.config),
                 running_check=_batch_op_running,
@@ -118,7 +119,7 @@ class _BatchActionMixin:
         )
 
         self._launch_background_worker(
-            "batch_op:state",
+            _BATCH_OP_STATE_KEY,
             _run_batch_archive_background,
             (self.db_path, self.mail_config, archive_root, subfolder),
             running_check=_batch_op_running,
