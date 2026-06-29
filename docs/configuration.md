@@ -44,7 +44,7 @@ The variables listed below describe a **single account**. To drive
 several mailboxes from one process, use the namespaced scheme:
 prefix every per-account variable with `MAIL_ACCOUNTS_<n>_` where `<n>`
 is a zero-based, contiguous integer index. Global variables (LLM,
-Langfuse, logging, board agent) are read from the bare names below —
+Langfuse, logging) are read from the bare names below —
 they are never namespaced.
 
 See [Multi-account variables](#multi-account-variables) for details.
