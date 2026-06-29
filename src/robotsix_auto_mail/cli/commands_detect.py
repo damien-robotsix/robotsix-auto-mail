@@ -103,11 +103,11 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         return 0
 
     output_path = Path(args.output)
-    if account_id in _existing_account_ids(output_path):
+    if account_id in _existing_account_ids(output_path) and not args.overwrite:
         sys.stderr.write(
             f"Error: account {account_id!r} already exists in {output_path}. "
-            "Pass --id <new-id> to add a different account, or edit the file "
-            "directly.\n"
+            "Pass --id <new-id> to add a different account, --overwrite to "
+            "update the existing entry, or edit the file directly.\n"
         )
         return 1
     return _verify_and_refine(
@@ -126,4 +126,5 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         detect_provider=detect_provider,
         _detection_error=DetectionError,
         microsoft=microsoft,
+        overwrite=args.overwrite,
     )
