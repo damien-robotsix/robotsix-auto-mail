@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed duplicate `TO_ARCHIVE` sort in `_gather_account_board_data` — the
+  same in-place sort was applied twice to `column_buckets[TO_ARCHIVE]`, a
+  copy-paste bug.  Only the first sort remains.
+
 - Removed stale calendar and CI paths from `docs/modules.yaml` — the calendar
   package and `deps-bump.yml` workflow were already deleted.
 
