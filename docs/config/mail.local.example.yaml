@@ -90,6 +90,10 @@ accounts:
     #   broker_client_cert: ""
     #   broker_client_key: ""
     #   broker_token: ""
+    # Component agent — HTTP API for external agents to monitor status
+    # and read/apply configuration over HTTP (without the agent-comm broker).
+    # component_agent:
+    #   enabled: false
     # Logging configuration — application-wide.
     # logging:
     #   level: INFO
@@ -122,3 +126,7 @@ accounts:
     #   broker_client_cert: ""
     #   broker_client_key: ""
     #   broker_token: ""
+    # Component agent — HTTP API for external agents to monitor status
+    # and read/apply configuration over HTTP (without the agent-comm broker).
+    # component_agent:
+    #   enabled: false

@@ -205,6 +205,10 @@ class MailConfig:
     calendar_broker_client_key: str = ""
     calendar_broker_token: str = ""
 
+    # Whether the component-agent HTTP API (monitor / config-get / config-set)
+    # is served on the board server.
+    component_agent_enabled: bool = False
+
     # -- masking -----------------------------------------------------------
 
     _SECRET_FIELDS = (

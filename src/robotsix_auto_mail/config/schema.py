@@ -427,6 +427,15 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
         False,
     ),
+    _FieldSpec(
+        "component_agent_enabled",
+        "COMPONENT_AGENT_ENABLED",
+        "component_agent.enabled",
+        "bool",
+        False,
+        False,
+        False,
+    ),
 )
 
 # Each yaml_path must be exactly ``section.key`` — the YAML loader splits
