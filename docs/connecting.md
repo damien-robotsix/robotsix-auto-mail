@@ -275,6 +275,7 @@ auth:
 | `calendar.broker_client_cert` | no | – | Path to client certificate PEM for mutual TLS (optional) |
 | `calendar.broker_client_key` | no | – | Path to client key PEM for mutual TLS (optional) |
 | `calendar.broker_token` | no | – | Agent authentication token for the broker (redacted in logs/repr) |
+| `component_agent.enabled` | no | `false` | Whether the HTTP component-agent API is served (allows external agents to monitor status / read or apply configuration over HTTP) |
 | `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing (may instead be supplied via `LLM_API_KEY`) |
 | `llm.provider_model` | no | `""` | LLM provider-model identifier (e.g. `openrouter-deepseek`, `claude-sdk`); see robotsix-llmio README for available backends |
 | `langfuse.public_key` | no | – | Langfuse public key; when set with the secret key, every LLM agent run is traced |
@@ -365,6 +366,7 @@ with the following fields:
 | `CALENDAR_BROKER_CLIENT_CERT` | no | – | Path to client certificate PEM for mutual TLS (optional) |
 | `CALENDAR_BROKER_CLIENT_KEY` | no | – | Path to client key PEM for mutual TLS (optional) |
 | `CALENDAR_BROKER_TOKEN` | no | – | Agent authentication token for the broker (redacted in logs/repr) |
+| `COMPONENT_AGENT_ENABLED` | no | `false` | Whether the HTTP component-agent API is served (overrides `component_agent.enabled`) |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
 | `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |
 | `LLM_PROVIDER_MODEL` | no |  | LLM provider-model identifier (overrides `llm.provider_model`); see robotsix-llmio README for available backends |

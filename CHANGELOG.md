@@ -2,6 +2,16 @@
 
 ## 0.0.0 (unreleased)
 
+- Re-established `component_agent` package with HTTP API routes (monitor,
+  config-get, config-set) served directly by the board server without the
+  agent-comm broker.  A new `component_agent_enabled` flag on
+  `MailConfig` gates the responder; the `_ComponentAgentApiMixin`
+  adds the three `/api/component-agent/*` endpoints to `BoardHandler`.
+  Config contract validation (`ConfigContractError`, `apply_config_update`,
+  `get_config_snapshot`) is preserved from the pre-removal code,
+  adapted for HTTP error responses.  `COMPONENT_AGENT_ENABLED` env var
+  and `component_agent.enabled` YAML key are documented in the examples.
+
 - Removed `board_agent` (in-repo mill board bridge) and `component_agent`
   (in-repo agent-comm responder); their equivalents now live outside this
   repo. All associated config fields, tests, docs, and dependencies

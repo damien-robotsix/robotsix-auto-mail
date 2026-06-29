@@ -100,6 +100,10 @@ accounts:
     #   broker_client_cert: ""
     #   broker_client_key: ""
     #   broker_token: ""
+    # Component agent — HTTP API for external agents to monitor status
+    # and read/apply configuration over HTTP (without the agent-comm broker).
+    # component_agent:
+    #   enabled: false
     # Logging configuration — application-wide.
     # logging:
     #   level: INFO
@@ -150,6 +154,7 @@ CALENDAR_BROKER_TLS_CA=
 CALENDAR_BROKER_CLIENT_CERT=
 CALENDAR_BROKER_CLIENT_KEY=
 CALENDAR_BROKER_TOKEN=
+COMPONENT_AGENT_ENABLED=false
 LLM_API_KEY=sk-or-v1-…
 LLM_PROVIDER_MODEL=
 LANGFUSE_PUBLIC_KEY=
@@ -219,6 +224,7 @@ _DOCS_YAML_TABLE = """\
 | `calendar.broker_client_cert` | no | - | Path to client certificate PEM for mutual TLS |
 | `calendar.broker_client_key` | no | - | Path to client key PEM for mutual TLS |
 | `calendar.broker_token` | no | - | Agent authentication token for the broker |
+| `component_agent.enabled` | no | `false` | Whether the component-agent HTTP API is served |
 | `llm.api_key` | no | - | LLM provider API key |
 | `llm.provider_model` | no | `""` | LLM provider-model identifier |
 | `langfuse.public_key` | no | - | Langfuse public key for LLM tracing |
@@ -262,6 +268,7 @@ _DOCS_ENV_TABLE = """\
 | `CALENDAR_BROKER_CLIENT_CERT` | no | - | Path to client certificate PEM for mutual TLS |
 | `CALENDAR_BROKER_CLIENT_KEY` | no | - | Path to client key PEM for mutual TLS |
 | `CALENDAR_BROKER_TOKEN` | no | - | Agent authentication token for the broker |
+| `COMPONENT_AGENT_ENABLED` | no | `false` | Whether the component-agent HTTP API is served |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
 | `LLM_API_KEY` | no | - | LLM provider API key |
 | `LLM_PROVIDER_MODEL` | no |  | LLM provider-model identifier |

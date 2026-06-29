@@ -27,7 +27,11 @@ def test_make_board_handler_binds_boardhandler_with_db_path() -> None:
 
     handler = make_board_handler(":memory:")
     assert handler.func is BoardHandler
-    assert handler.keywords == {"db_path": ":memory:", "mail_config": None}
+    assert handler.keywords == {
+        "db_path": ":memory:",
+        "mail_config": None,
+        "component_responder": None,
+    }
 
 
 def test_handler_root_redirects() -> None:

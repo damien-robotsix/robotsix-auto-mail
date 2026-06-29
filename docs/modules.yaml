@@ -157,6 +157,17 @@ modules:
       - tests/triage/test_triage_propose_name.py
       - tests/triage/test_triage_unsubscribe.py
 
+  - id: component-agent
+    description: >-
+      Component-agent HTTP API: monitor, config-get, and config-set
+      endpoints served directly by the board server without the
+      agent-comm broker. Backed by the ComponentAgentResponder and
+      config contract validation.
+    paths:
+      - src/robotsix_auto_mail/component_agent/__init__.py
+      - src/robotsix_auto_mail/component_agent/config_contract.py
+      - src/robotsix_auto_mail/component_agent/responder.py
+
   - id: draft
     description: >-
       LLM-driven draft-reply generation for a single ingested mail:
@@ -283,6 +294,7 @@ modules:
       - src/robotsix_auto_mail/server/_action_mixin.py
       - src/robotsix_auto_mail/server/_batch_mixin.py
       - src/robotsix_auto_mail/server/_board_handler_protocol.py
+      - src/robotsix_auto_mail/server/_component_agent_mixin.py
       - src/robotsix_auto_mail/server/_config_mixin.py
       - src/robotsix_auto_mail/server/_draft_mixin.py
       - src/robotsix_auto_mail/server/_reconcile_mixin.py
@@ -322,6 +334,7 @@ modules:
       - tests/server/test_board_handler_email_detail.py
       - tests/server/test_board_handler_healthz.py
       - tests/server/test_board_views_unit.py
+      - tests/server/test_component_agent_api.py
       - tests/server/test_draft_mixin.py
       - tests/server/test_format_date.py
       - tests/server/test_global_board.py

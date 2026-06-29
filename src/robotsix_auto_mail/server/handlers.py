@@ -23,6 +23,7 @@ import json
 from collections.abc import Callable, Mapping
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlsplit
 
 from robotsix_auto_mail.config import (
@@ -32,12 +33,16 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
+from robotsix_auto_mail.server._component_agent_mixin import _ComponentAgentApiMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
 from robotsix_auto_mail.server._constants import GLOBAL_VIEW_ACCOUNT_ID
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._triage_mixin import _TriageMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.component_agent.responder import ComponentAgentResponder
 
 
 class BoardHandler(
@@ -48,6 +53,7 @@ class BoardHandler(
     _TriageMixin,
     _DraftMixin,
     _ConfigMixin,
+    _ComponentAgentApiMixin,
     BaseHTTPRequestHandler,
 ):
     """Request handler for the robotsix-auto-mail board server.
@@ -64,6 +70,7 @@ class BoardHandler(
         mail_config: MailConfig | None = None,
         accounts: MailAccountsConfig | None = None,
         default_account_id: str | None = None,
+        component_responder: ComponentAgentResponder | None = None,
         **kwargs: object,
     ) -> None:
         # Set attributes BEFORE calling ``super().__init__`` because
@@ -73,6 +80,7 @@ class BoardHandler(
         self.mail_config = mail_config
         self.accounts = accounts
         self.default_account_id = default_account_id
+        self._component_responder = component_responder
         # ``Set-Cookie`` value emitted by the response sinks when a
         # request selected an account via ``?account=`` (set by
         # ``_select_account``); ``None`` means no cookie is written.
@@ -113,6 +121,14 @@ class BoardHandler(
                 lambda p: p.startswith("/archive-proposal/"),
                 self._serve_archive_proposal,
             ),
+            (
+                lambda p: p == "/api/component-agent/monitor",
+                self._handle_component_agent_monitor,
+            ),
+            (
+                lambda p: p == "/api/component-agent/config",
+                self._handle_component_agent_config_get,
+            ),
         ]
         for matches, handler in routes:
             if matches(path):
@@ -152,6 +168,7 @@ class BoardHandler(
             "/save-draft": self._handle_save_draft,
             "/send-draft": self._handle_send_draft,
             "/generate-draft": self._handle_generate_draft,
+            "/api/component-agent/config": self._handle_component_agent_config_set,
         }
         # Dispatch on the bare path so ``?account=<id>`` query strings do
         # not defeat exact-match routing.
@@ -320,6 +337,7 @@ def make_board_handler(
     *,
     accounts: MailAccountsConfig | None = None,
     default_account_id: str | None = None,
+    component_responder: ComponentAgentResponder | None = None,
 ) -> functools.partial[BoardHandler]:
     """Return a callable that builds a ``BoardHandler`` wired to *db_path*.
 
@@ -334,12 +352,17 @@ def make_board_handler(
     legacy single-account mode (*accounts* ``None``) the partial binds
     only ``db_path`` and ``mail_config`` so existing callers and tests
     observe an unchanged keyword set.
+
+    When *component_responder* is provided, the handler serves the
+    ``/api/component-agent/*`` HTTP routes (monitor, config-get,
+    config-set).
     """
     if accounts is None:
         return functools.partial(
             BoardHandler,
             db_path=db_path,
             mail_config=mail_config,
+            component_responder=component_responder,
         )
     return functools.partial(
         BoardHandler,
@@ -347,4 +370,5 @@ def make_board_handler(
         mail_config=mail_config,
         accounts=accounts,
         default_account_id=default_account_id,
+        component_responder=component_responder,
     )

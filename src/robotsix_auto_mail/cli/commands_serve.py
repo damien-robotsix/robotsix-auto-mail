@@ -63,11 +63,22 @@ def _cmd_serve(
     from robotsix_auto_mail.server import make_board_handler
 
     default = accounts.get(default_account_id)
+
+    # Create component-agent responder for HTTP API when enabled.
+    from robotsix_auto_mail.component_agent.responder import ComponentAgentResponder
+
+    component_responder = (
+        ComponentAgentResponder(default.config)
+        if default.config.component_agent_enabled
+        else None
+    )
+
     handler_class = make_board_handler(
         default.config.db_path,
         mail_config=default.config,
         accounts=accounts,
         default_account_id=default_account_id,
+        component_responder=component_responder,
     )
 
     # Self-heal any orphaned ``triage_run:state == "running"`` watermark left
