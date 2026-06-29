@@ -70,6 +70,16 @@ _VALID_CALENDAR_TRANSPORTS = frozenset({"in-process", "brokered"})
 _VALID_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR"})
 _VALID_LOG_FORMATS = frozenset({"json", "console"})
 
+# The validation sets above are imported by model.py and detect/models.py
+# for field-level validation.  This module-level reference ensures they are
+# treated as "used" by module-local static analysis (CodeQL).
+_VALIDATION_SETS = (
+    _VALID_TLS_MODES,
+    _VALID_CALENDAR_TRANSPORTS,
+    _VALID_LOG_LEVELS,
+    _VALID_LOG_FORMATS,
+)
+
 # Default TLS modes for IMAP and SMTP connections.
 DEFAULT_IMAP_TLS_MODE = "direct-tls"
 DEFAULT_SMTP_TLS_MODE = "starttls"
@@ -426,6 +436,9 @@ for _s in _FIELD_SPECS:
     assert _s.yaml_path.count(".") == 1, (  # noqa: S101  # nosec B101
         f"_FieldSpec.yaml_path must have exactly one dot, got {_s.yaml_path!r}"
     )
+
+# Validate that the validation sets (imported by model.py) are non-empty.
+assert all(_VALIDATION_SETS), "validation sets must be non-empty"  # noqa: S101  # nosec B101
 
 
 # ---------------------------------------------------------------------------
