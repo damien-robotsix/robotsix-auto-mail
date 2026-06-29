@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Centralized three operational watermark keys (``triage_run:state``,
+  ``batch_op:state``, ``reconcile:state``) into module-level constants
+  in ``_constants.py``, replacing ~28 hardcoded string literals across
+  8 modules.
 - Added individual triage action string constants (``INBOX``,
   ``HUMAN_TRIAGE``, ``PENDING_ACTION``, ``TO_ARCHIVE``, ``TO_DELETE``,
   ``TO_CALENDAR``, ``TO_ANSWER``, ``DRAFT_READY``) in

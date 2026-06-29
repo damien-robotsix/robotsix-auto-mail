@@ -11,6 +11,12 @@ import logging
 import threading
 from typing import TYPE_CHECKING, Any
 
+from robotsix_auto_mail._constants import (
+    _BATCH_OP_STATE_KEY,
+    _RECONCILE_STATE_KEY,
+    _TRIAGE_RUN_STATE_KEY,
+)
+
 if TYPE_CHECKING:
     from robotsix_auto_mail.config.model import MailConfig
 
@@ -113,9 +119,9 @@ class ComponentAgentResponder:
             # Watermark states
             for key in (
                 "imap_uid",
-                "reconcile:state",
-                "triage_run:state",
-                "batch_op:state",
+                _RECONCILE_STATE_KEY,
+                _TRIAGE_RUN_STATE_KEY,
+                _BATCH_OP_STATE_KEY,
             ):
                 wm = get_watermark(conn, key)
                 telemetry["watermarks"][key] = wm

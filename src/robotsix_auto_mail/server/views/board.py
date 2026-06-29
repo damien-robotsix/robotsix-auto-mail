@@ -11,6 +11,10 @@ from urllib.parse import quote
 
 from robotsix_board import render_board
 
+from robotsix_auto_mail._constants import (
+    _BATCH_OP_STATE_KEY,
+    _TRIAGE_RUN_STATE_KEY,
+)
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailAccountsConfig
 from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.server._constants import (
@@ -87,12 +91,12 @@ def _gather_account_board_data(
     try:
         # Check whether the triage agent is currently running so the
         # board can show a visual indicator and disable the button.
-        triage_running = get_watermark(conn, "triage_run:state") == "running"
+        triage_running = get_watermark(conn, _TRIAGE_RUN_STATE_KEY) == "running"
 
         # Parse the batch-op watermark (delete/archive progress).  The
         # value is ``"idle"``/``None`` when no batch op is running, else a
         # JSON ``{"op", "done", "total"}`` progress payload.
-        batch_raw = get_watermark(conn, "batch_op:state")
+        batch_raw = get_watermark(conn, _BATCH_OP_STATE_KEY)
         batch_op: dict[str, Any] | None = None
         if batch_raw is not None and batch_raw != "idle":
             try:
