@@ -119,21 +119,6 @@ See [Multi-account variables](#multi-account-variables) for details.
 
 ---
 
-## Calendar (Add to Calendar)
-
-| Variable | Default | Kind | Required | Description |
-|---|---|---|---|---|
-| `MAIL_CALENDAR_ENABLED` | `true` | boolean | no | Whether the "Add to Calendar" button appears in the mail detail view and dispatches event requests to the `robotsix-calendar` agent. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
-| `CALENDAR_TRANSPORT` | `in-process` | `in-process` / `brokered` | no | Transport mode for calendar dispatch. `in-process` uses a local agent registry; `brokered` connects to the secured broker server over TLS with token auth. |
-| `CALENDAR_BROKER_HOST` | `""` | string | no | Broker server hostname. Required when `CALENDAR_TRANSPORT=brokered`. |
-| `CALENDAR_BROKER_PORT` | `443` | integer | no | Broker server port. |
-| `CALENDAR_BROKER_TLS_CA` | `""` | string | no | Path to the CA certificate PEM for verifying the broker's TLS certificate. Required when `CALENDAR_TRANSPORT=brokered`. |
-| `CALENDAR_BROKER_CLIENT_CERT` | `""` | string | no | Path to the client certificate PEM for mutual TLS (optional). |
-| `CALENDAR_BROKER_CLIENT_KEY` | `""` | string | no | Path to the client key PEM for mutual TLS (optional). |
-| `CALENDAR_BROKER_TOKEN` | `""` | string | no | Agent authentication token for the broker. Required when `CALENDAR_TRANSPORT=brokered`. Masked in logs and `repr`. |
-
----
-
 ## LLM provider (global)
 
 Used by the `detect` subcommand and future LLM-assisted mail processing.

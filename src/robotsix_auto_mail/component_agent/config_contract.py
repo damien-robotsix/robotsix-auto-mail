@@ -48,7 +48,6 @@ _SETTABLE_YAML_PATHS: frozenset[str] = frozenset(
     {
         "ingest.interval_minutes",
         "triage.on_ingest",
-        "calendar.enabled",
         "archive.enabled",
         "archive.root",
         "logging.level",
@@ -84,7 +83,6 @@ _SECRET_FIELDS: frozenset[str] = frozenset(
         "oauth2_token",
         "oauth2_client_secret",
         "langfuse_secret_key",
-        "calendar_broker_token",
     }
 )
 
@@ -296,7 +294,7 @@ def _coerce_value(spec: _FieldSpec, raw: object) -> object:
             message=f"{spec.yaml_path} must be a boolean, got {type(raw).__name__}",
             key=spec.yaml_path,
         )
-    elif spec.kind in ("tls_mode", "log_level", "log_format", "calendar_transport"):
+    elif spec.kind in ("tls_mode", "log_level", "log_format"):
         # These kinds are not in SETTABLE_KEYS, but handle gracefully.
         if not isinstance(raw, str):
             raise ConfigContractError(

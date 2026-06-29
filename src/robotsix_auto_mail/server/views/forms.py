@@ -19,7 +19,6 @@ def _render_move_form(
     redirect_input: str,
     *,
     account_id: str | None = None,
-    calendar_enabled: bool = True,
 ) -> str:
     """Render the Status ``<option>`` list and the ``/move`` form.
 
@@ -27,12 +26,11 @@ def _render_move_form(
     aggregate sentinel), ``?account=<id>`` is appended to the form
     ``action`` so the POST routes to the correct account's database.
 
-    When *calendar_enabled* is ``False``, ``TO_CALENDAR`` is omitted
-    from the status options.
+    ``TO_CALENDAR`` is always hidden from the status options.
     """
     options_parts: list[str] = []
     for action in TRIAGE_ACTION_ORDER:
-        if action == TO_CALENDAR and not calendar_enabled:
+        if action == TO_CALENDAR:
             continue
         sel = " selected" if action == current_action else ""
         options_parts.append(

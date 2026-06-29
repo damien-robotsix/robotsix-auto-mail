@@ -65,8 +65,6 @@ class ConfigurationError(Exception):
 
 _VALID_TLS_MODES = frozenset({"starttls", "direct-tls", "none"})
 
-_VALID_CALENDAR_TRANSPORTS = frozenset({"in-process", "brokered"})
-
 _VALID_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR"})
 _VALID_LOG_FORMATS = frozenset({"json", "console"})
 
@@ -75,7 +73,6 @@ _VALID_LOG_FORMATS = frozenset({"json", "console"})
 # treated as "used" by module-local static analysis (CodeQL).
 _VALIDATION_SETS = (
     _VALID_TLS_MODES,
-    _VALID_CALENDAR_TRANSPORTS,
     _VALID_LOG_LEVELS,
     _VALID_LOG_FORMATS,
 )
@@ -239,15 +236,6 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
         False,
     ),
-    _FieldSpec(
-        "calendar_enabled",
-        "MAIL_CALENDAR_ENABLED",
-        "calendar.enabled",
-        "bool",
-        True,
-        False,
-        False,
-    ),
     # OAuth2 / XOAUTH2 — optional; when oauth2_token is set, SASL XOAUTH2
     # is used instead of password-based login().
     _FieldSpec(
@@ -354,69 +342,6 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
         False,
         global_field=True,
-    ),
-    _FieldSpec(
-        "calendar_transport",
-        "CALENDAR_TRANSPORT",
-        "calendar.transport",
-        "calendar_transport",
-        "in-process",
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "calendar_broker_host",
-        "CALENDAR_BROKER_HOST",
-        "calendar.broker_host",
-        "str",
-        "",
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "calendar_broker_port",
-        "CALENDAR_BROKER_PORT",
-        "calendar.broker_port",
-        "int",
-        443,
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "calendar_broker_tls_ca",
-        "CALENDAR_BROKER_TLS_CA",
-        "calendar.broker_tls_ca",
-        "str",
-        "",
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "calendar_broker_client_cert",
-        "CALENDAR_BROKER_CLIENT_CERT",
-        "calendar.broker_client_cert",
-        "str",
-        "",
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "calendar_broker_client_key",
-        "CALENDAR_BROKER_CLIENT_KEY",
-        "calendar.broker_client_key",
-        "str",
-        "",
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "calendar_broker_token",
-        "CALENDAR_BROKER_TOKEN",
-        "calendar.broker_token",
-        "str",
-        "",
-        False,
-        False,
     ),
     _FieldSpec(
         "component_agent_enabled",

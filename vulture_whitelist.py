@@ -81,7 +81,7 @@ logger  # noqa
 
 from robotsix_auto_mail.detect import ProviderEntry
 
-ProviderEntry.in_managed_hosting
+_ = ProviderEntry.in_managed_hosting
 
 from robotsix_auto_mail.protocol import _ProtocolClient
 
@@ -92,10 +92,3 @@ _ProtocolClient._oauth2_client_secret
 # Pydantic model fields — accessed via model_dump / model_validate / keyword
 # construction, never read as plain class attributes by application code.
 # ===========================================================================
-
-from robotsix_auto_mail.calendar.schema import CalendarEventRequest
-
-CalendarEventRequest.correlation_id
-CalendarEventRequest.body_text
-CalendarEventRequest.email_date
-CalendarEventRequest.extracted_dates

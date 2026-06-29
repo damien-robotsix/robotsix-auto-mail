@@ -27,7 +27,6 @@ def _build_detail_html(
     embed: bool = False,
     focus_draft: bool = False,
     current_account_id: str | None = None,
-    calendar_enabled: bool = True,
 ) -> str | None:
     """Build a full HTML detail page for a single ``MailRecord``.
 
@@ -38,9 +37,6 @@ def _build_detail_html(
     sentinel ``"__all__"``), the move form ``action`` and embed-mode
     ``redirect_to`` carry an ``account`` query parameter so the POST
     routes to the correct account's database.
-
-    When *calendar_enabled* is ``False``, the ``TO_CALENDAR`` option is
-    omitted from the move form.
     """
     from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
@@ -97,7 +93,6 @@ def _build_detail_html(
         current_action,
         redirect_input,
         account_id=move_account_id,
-        calendar_enabled=calendar_enabled,
     )
 
     # Subject for title (truncated to ~60 chars)

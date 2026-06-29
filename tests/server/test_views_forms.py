@@ -73,6 +73,10 @@ class TestRenderMoveForm:
         record = _make_record()
         result = _render_move_form(record, "INBOX", "")
         for action in TRIAGE_ACTION_ORDER:
+            if action == "TO_CALENDAR":
+                # TO_CALENDAR is always hidden from the move form.
+                assert f'value="{action}"' not in result
+                continue
             assert f'value="{action}"' in result
             assert TRIAGE_ACTION_LABELS[action] in result
 
@@ -147,6 +151,10 @@ class TestRenderMoveForm:
         # escaping is applied — verify it doesn't corrupt output.
         record = _make_record()
         result = _render_move_form(record, "INBOX", "")
-        # Every label should appear as-is (no double-escaping)
-        for label in TRIAGE_ACTION_LABELS.values():
+        # Every label should appear as-is (no double-escaping),
+        # except TO_CALENDAR which is always hidden.
+        for action, label in TRIAGE_ACTION_LABELS.items():
+            if action == "TO_CALENDAR":
+                assert label not in result
+                continue
             assert label in result

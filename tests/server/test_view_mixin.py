@@ -274,7 +274,6 @@ class TestServeEmailDetail:
             embed=False,
             focus_draft=True,
             current_account_id=handler._current_account_id,
-            calendar_enabled=False,
         )
         handler._send_response.assert_called_once_with(
             "<html>draft</html>", content_type="text/html; charset=utf-8"
