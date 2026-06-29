@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Enabled Renovate's `pre-commit` manager so `.pre-commit-config.yaml` hooks
+  receive automatic version update PRs.
+
 - Documented `MAIL_CONFIG_PATH` environment variable in `docs/configuration.md`.
 - Fixed docstring cross-references in `run_triage_agent` from stale `load_llm`/`load_llm_provider_model` to `resolve_llm_api_key`/`resolve_llm_provider_model`.
 
