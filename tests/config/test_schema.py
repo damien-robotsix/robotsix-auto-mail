@@ -11,7 +11,6 @@ from robotsix_auto_mail.config.schema import (
     _REQUIRED,
     ConfigurationError,
     _FieldSpec,
-    _get_bool,
     _get_int,
     _get_str,
     _get_table,
@@ -262,32 +261,6 @@ def test_get_int_wrong_type_str() -> None:
 def test_get_int_wrong_type_bool() -> None:
     with pytest.raises(ConfigurationError, match="must be an integer, got bool"):
         _get_int({"port": True}, "port", 0, Path("cfg.yaml"))
-
-
-# ---------------------------------------------------------------------------
-# _get_bool
-# ---------------------------------------------------------------------------
-
-
-def test_get_bool_present_true() -> None:
-    assert _get_bool({"enabled": True}, "enabled", False) is True
-
-
-def test_get_bool_present_false() -> None:
-    assert _get_bool({"enabled": False}, "enabled", True) is False
-
-
-def test_get_bool_missing_key() -> None:
-    assert _get_bool({}, "enabled", True) is True
-
-
-def test_get_bool_none_value() -> None:
-    assert _get_bool({"enabled": None}, "enabled", False) is False
-
-
-def test_get_bool_wrong_type() -> None:
-    with pytest.raises(ConfigurationError, match="must be a boolean"):
-        _get_bool({"enabled": "yes"}, "enabled", False)
 
 
 # ---------------------------------------------------------------------------
