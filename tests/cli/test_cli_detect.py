@@ -781,6 +781,104 @@ def test_detect_refuses_duplicate_id(
     assert accounts.ids() == ("personal",)
 
 
+def test_detect_overwrite_existing_account(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--overwrite updates transport fields in place; no duplicate is added."""
+    from robotsix_auto_mail.config import render_accounts_yaml
+
+    output = tmp_path / "cfg.yaml"
+    seed_cfg = MailConfig(
+        imap_host="",
+        smtp_host="",
+        username="test@gmail.com",
+        password="",
+        db_path=".data/mail.db",  # legacy single-account path — must be preserved
+    )
+    seed_account = MailAccount(account_id="main", config=seed_cfg, label="Main Account")
+    output.write_text(render_accounts_yaml([seed_account], "main"))
+
+    provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
+
+    with (
+        mock.patch("robotsix_auto_mail.detect.detect_provider", return_value=provider),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "test@gmail.com",
+                "--id",
+                "main",
+                "--overwrite",
+                "--password",
+                "secret",
+                "--no-verify",
+                "--output",
+                str(output),
+            ]
+        )
+
+    assert rc == 0
+    accounts = MailAccountsConfig.from_yaml(str(output))
+    # No duplicate account appended
+    assert accounts.ids() == ("main",)
+    main_account = next(a for a in accounts.accounts if a.account_id == "main")
+    cfg = main_account.config
+    # Transport fields updated
+    assert cfg.imap_host == "imap.gmail.com"
+    assert cfg.smtp_host == "smtp.gmail.com"
+    # Password written (supplied via --password)
+    assert cfg.password == "secret"
+    # Non-transport fields preserved from seed
+    assert cfg.username == "test@gmail.com"
+    assert cfg.db_path == ".data/mail.db"  # legacy path preserved, not replaced
+    # Label preserved from existing account
+    assert main_account.label == "Main Account"
+
+
+def test_detect_overwrite_not_set_still_errors_on_duplicate(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """Without --overwrite, a duplicate id still exits 1 and prints 'already exists'."""
+    from robotsix_auto_mail.config import render_accounts_yaml
+
+    output = tmp_path / "cfg.yaml"
+    seed_cfg = MailConfig(
+        imap_host="imap.gmail.com",
+        smtp_host="smtp.gmail.com",
+        username="test@gmail.com",
+        password="pw",
+    )
+    output.write_text(
+        render_accounts_yaml(
+            [MailAccount(account_id="main", config=seed_cfg, label=None)], "main"
+        )
+    )
+    provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
+
+    with (
+        mock.patch("robotsix_auto_mail.detect.detect_provider", return_value=provider),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "test@gmail.com",
+                "--id",
+                "main",
+                "--no-verify",
+                "--output",
+                str(output),
+                "--password",
+                "pw",
+            ]
+        )
+
+    assert rc == 1
+    assert "already exists" in capsys.readouterr().err
+
+
 # ---------------------------------------------------------------------------
 # _detect_settings
 # ---------------------------------------------------------------------------

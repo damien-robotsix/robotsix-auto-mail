@@ -205,6 +205,18 @@ def build_parser() -> argparse.ArgumentParser:
             "By default detect verifies the settings once a password is known."
         ),
     )
+    detect_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help=(
+            "When the account id already exists in the output file, update its "
+            "transport settings (imap/smtp host, port, tls_mode) in place instead "
+            "of erroring. Other account fields (label, username, password, "
+            "db_path, archive, triage, calendar, oauth2 settings) are preserved "
+            "from the existing entry unless explicitly supplied on the command line."
+        ),
+    )
 
     config_sync_parser = sub.add_parser(
         "config-sync",
