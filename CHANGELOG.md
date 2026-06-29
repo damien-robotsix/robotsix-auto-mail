@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed stale calendar and CI paths from `docs/modules.yaml` — the calendar
+  package and `deps-bump.yml` workflow were already deleted.
+
 - Enabled Renovate's `pre-commit` manager so `.pre-commit-config.yaml` hooks
   receive automatic version update PRs.
 
