@@ -32,6 +32,7 @@ from robotsix_auto_mail.config import (
     MailConfig,
 )
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
+from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._component_agent_mixin import _ComponentAgentApiMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
@@ -54,6 +55,7 @@ class BoardHandler(
     _DraftMixin,
     _ConfigMixin,
     _ComponentAgentApiMixin,
+    _BoardAuthMixin,
     BaseHTTPRequestHandler,
 ):
     """Request handler for the robotsix-auto-mail board server.
@@ -96,6 +98,11 @@ class BoardHandler(
 
     def do_GET(self) -> None:
         """Route GET requests via an ordered (predicate → handler) table."""
+        # /auth-status is cross-account by design — handle before
+        # _select_account() so it works regardless of the session account.
+        if self.path.split("?")[0] == "/auth-status":
+            self._handle_auth_status()
+            return
         if self.accounts is not None and not self._select_account():
             return
         # Dispatch on the bare path so ``?account=<id>`` query strings do
@@ -142,6 +149,11 @@ class BoardHandler(
 
     def do_POST(self) -> None:
         """Route POST requests via an exact-match table."""
+        # /auth-start is cross-account by design — handle before
+        # _select_account() so it works regardless of the session account.
+        if urlsplit(self.path).path == "/auth-start":
+            self._handle_auth_start()
+            return
         if self.accounts is not None and not self._select_account():
             return
         # Periodic-trigger decision — Option A (on-demand endpoint
