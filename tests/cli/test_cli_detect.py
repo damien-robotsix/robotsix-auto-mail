@@ -505,6 +505,33 @@ def test_detect_microsoft_stdout_instructs_auth_login(
     assert "auth login" in captured.err
 
 
+def test_detect_stdout_app_password_clears_oauth2_provider(
+    capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--stdout --app-password prints a config without oauth2_provider."""
+    mock_provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            ["detect", "user@contoso.com", "--stdout", "--app-password"]
+        )
+
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "Warning: --app-password" in captured.err
+    # The printed config must NOT contain oauth2_provider
+    assert "oauth2_provider:" not in captured.out
+    # The non-Microsoft banner is used (microsoft was flipped to False)
+    assert "MAIL_PASSWORD" in captured.err
+
+
 def test_detect_microsoft_auth_failure_points_at_auth_login(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
@@ -1106,6 +1133,65 @@ def test_detect_overwrite_with_oauth2_flags(
     accounts = MailAccountsConfig.from_yaml(str(output))
     cfg = accounts.get("tii").config
     assert cfg.username == "user@tii.ae"
+
+
+def test_detect_overwrite_app_password_clears_oauth2_provider(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--overwrite --app-password clears oauth2_provider from an existing
+    Microsoft account config that had it set."""
+    from robotsix_auto_mail.config import render_accounts_yaml
+
+    output = tmp_path / "cfg.yaml"
+    # Seed a Microsoft account with oauth2_provider set
+    seed_cfg = MailConfig(
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        username="user@contoso.com",
+        password="",
+        oauth2_provider="microsoft",
+        oauth2_client_id="9e5f94bc-e8a4-4e73-b8be-63364c29d753",
+        oauth2_tenant="organizations",
+    )
+    seed_account = MailAccount(account_id="ms", config=seed_cfg, label=None)
+    output.write_text(render_accounts_yaml([seed_account], "ms"))
+
+    mock_provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass", return_value="app-pw-789") as mock_getpass,
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
+        ) as mock_verify,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "user@contoso.com",
+                "--id", "ms",
+                "--overwrite",
+                "--app-password",
+                "--output", str(output),
+            ]
+        )
+
+    assert rc == 0
+    mock_getpass.assert_called_once()
+    mock_login.assert_not_called()
+    mock_verify.assert_called_once()
+    err = capsys.readouterr().err
+    assert "Warning: --app-password" in err
+    content = output.read_text()
+    assert "app-pw-789" in content
+    # oauth2_provider must be cleared
+    assert "oauth2_provider:" not in content
 
 
 # ---------------------------------------------------------------------------

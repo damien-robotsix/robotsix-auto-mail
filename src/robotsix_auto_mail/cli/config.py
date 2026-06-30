@@ -500,6 +500,12 @@ def _verify_and_refine(
             )
         else:
             result = detected
+        if app_password:
+            # Ensure oauth2_provider is cleared regardless of path:
+            # - non-overwrite: detected was already cleared, harmless re-set
+            # - overwrite: the overlay above preserves existing oauth2_provider
+            #   so this explicitly clears it on the final result
+            result = dataclasses.replace(result, oauth2_provider="")
         # Overlay explicit CLI-supplied oauth2 fields in both modes so
         # --oauth2-client-id / --oauth2-tenant are honoured in --overwrite.
         if oauth2_client_id or oauth2_tenant:
