@@ -79,7 +79,9 @@ BoardAdapter.column_extra_html
 # the src-only vulture scan.
 # ===========================================================================
 
-from robotsix_auto_mail.component_agent.responder import ComponentAgentResponder
+from robotsix_auto_mail.server._component_agent_responder import (
+    ComponentAgentResponder,
+)
 
 ComponentAgentResponder._config_set
 

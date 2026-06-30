@@ -6,6 +6,29 @@
   sole agent-facing root document. Updated the references in ``AGENT.md`` and
   ``README.md`` and dropped the path from ``docs/modules.yaml``.
 
+- Fixed the ``CI`` workflow, which had been ``startup_failure`` on every
+  commit: the ``security`` job passed ``run-cyclonedx-sbom``, an input the
+  pinned reusable ``python-security.yml`` does not declare, so GitHub rejected
+  the whole run before any job started. Removed the unsupported input and
+  cleared the lint/type findings the now-running gate surfaced (vulture,
+  deptry ``DEP002`` for the unused ``robotsix-agent-comm``, plus ruff and
+  ``mypy src/ --strict``).
+
+- Consolidated the `component-agent` module into `server`:
+  moved `config_contract.py` → `_component_agent_config_contract.py` and
+  `responder.py` → `_component_agent_responder.py`; updated all imports;
+  removed the standalone `component-agent` module entry from
+  `docs/modules.yaml`.
+
+- Registered `.github/ISSUE_TEMPLATE/bug_report.yml` and
+  `.github/ISSUE_TEMPLATE/config.yml` under the `ci` module in
+  `docs/modules.yaml`.
+
+- Added `.github/ISSUE_TEMPLATE/bug_report.yml` (YAML issue form with required
+  Description, Steps to Reproduce, and Environment fields) and
+  `.github/ISSUE_TEMPLATE/config.yml` (disables blank issues) so bug reports
+  arrive with structured, actionable information.
+
 - Documentation audit: corrected stale or inaccurate content across the
   ``docs/`` set against the current code — the triage action vocabulary and
   board column list in ``connecting.md``, the OAuth2/Microsoft 365,

@@ -11,7 +11,9 @@ from typing import Any
 
 import pytest
 
-from robotsix_auto_mail.component_agent.config_contract import (
+from robotsix_auto_mail.config.model import MailConfig
+from robotsix_auto_mail.config.schema import _FIELD_SPECS, _FieldSpec
+from robotsix_auto_mail.server._component_agent_config_contract import (
     SETTABLE_KEYS,
     ConfigContractError,
     _coerce_value,
@@ -20,8 +22,6 @@ from robotsix_auto_mail.component_agent.config_contract import (
     get_config_snapshot,
     validate_config_update,
 )
-from robotsix_auto_mail.config.model import MailConfig
-from robotsix_auto_mail.config.schema import _FIELD_SPECS, _FieldSpec
 
 # ---------------------------------------------------------------------------
 # helpers
