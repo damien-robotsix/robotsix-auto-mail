@@ -14,7 +14,9 @@ import json
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from robotsix_auto_mail.component_agent.responder import ComponentAgentResponder
+    from robotsix_auto_mail.server._component_agent_responder import (
+        ComponentAgentResponder,
+    )
 
 
 class _ComponentAgentApiMixin:

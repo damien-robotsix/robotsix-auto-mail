@@ -110,7 +110,7 @@ class ComponentAgentResponder:
 
     def _config_get(self) -> dict[str, Any]:
         """Return a redacted config snapshot + describe map."""
-        from robotsix_auto_mail.component_agent.config_contract import (
+        from robotsix_auto_mail.server._component_agent_config_contract import (
             describe_config,
             get_config_snapshot,
         )
@@ -132,7 +132,7 @@ class ComponentAgentResponder:
 
     def config_set_direct(self, updates: dict[str, Any]) -> dict[str, Any]:
         """Apply config updates; return {"applied": <audit>} or {"error": {...}}."""
-        from robotsix_auto_mail.component_agent.config_contract import (
+        from robotsix_auto_mail.server._component_agent_config_contract import (
             ConfigContractError,
             apply_config_update,
         )
@@ -166,7 +166,7 @@ class ComponentAgentResponder:
 
 def _redact_audit(audit: dict[str, tuple[object, object]]) -> dict[str, list[Any]]:
     """Redact secret values in an audit map for safe transmission."""
-    from robotsix_auto_mail.component_agent.config_contract import (
+    from robotsix_auto_mail.server._component_agent_config_contract import (
         _SECRET_FIELDS,
         _yaml_path_to_spec,
     )

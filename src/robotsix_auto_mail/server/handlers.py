@@ -43,7 +43,9 @@ from robotsix_auto_mail.server._triage_mixin import _TriageMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
 if TYPE_CHECKING:
-    from robotsix_auto_mail.component_agent.responder import ComponentAgentResponder
+    from robotsix_auto_mail.server._component_agent_responder import (
+        ComponentAgentResponder,
+    )
 
 
 class BoardHandler(

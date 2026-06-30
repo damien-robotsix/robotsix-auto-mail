@@ -2,6 +2,12 @@
 
 ## 0.0.0 (unreleased)
 
+- Consolidated the `component-agent` module into `server`:
+  moved `config_contract.py` → `_component_agent_config_contract.py` and
+  `responder.py` → `_component_agent_responder.py`; updated all imports;
+  removed the standalone `component-agent` module entry from
+  `docs/modules.yaml`.
+
 - Registered `.github/ISSUE_TEMPLATE/bug_report.yml` and
   `.github/ISSUE_TEMPLATE/config.yml` under the `ci` module in
   `docs/modules.yaml`.

@@ -10,11 +10,11 @@ from __future__ import annotations
 import sqlite3
 from unittest import mock
 
-from robotsix_auto_mail.component_agent.responder import (
+from robotsix_auto_mail.config.model import MailConfig
+from robotsix_auto_mail.server._component_agent_responder import (
     ComponentAgentResponder,
     _redact_audit,
 )
-from robotsix_auto_mail.config.model import MailConfig
 
 # ---------------------------------------------------------------------------
 # helpers
