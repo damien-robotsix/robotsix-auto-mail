@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed the root ``CLAUDE.md`` orientation file; ``AGENT.md`` is now the
+  sole agent-facing root document. Updated the references in ``AGENT.md`` and
+  ``README.md`` and dropped the path from ``docs/modules.yaml``.
+
 - Documentation audit: corrected stale or inaccurate content across the
   ``docs/`` set against the current code — the triage action vocabulary and
   board column list in ``connecting.md``, the OAuth2/Microsoft 365,
