@@ -442,7 +442,8 @@ button:hover { background: #1a4d7a; }
   max-width: 520px;
   width: 90%;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  color: #1e293b;
 }
 .auth-modal h3 { margin-top: 0; color: #1a1a4e; }
 .auth-modal-code { font-size: 1.4em; letter-spacing: 0.15em; font-family: monospace; }
-.auth-modal-status { font-style: italic; color: #444; }
+.auth-modal-status { font-style: italic; color: #1e293b; }
