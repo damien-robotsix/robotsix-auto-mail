@@ -93,14 +93,7 @@ from robotsix_auto_mail.config import logger
 
 logger  # noqa
 
-from robotsix_auto_mail.detect import ProviderEntry
 
-_ = ProviderEntry.in_managed_hosting
-
-from robotsix_auto_mail.protocol import _ProtocolClient
-
-_ProtocolClient._oauth2_client_id
-_ProtocolClient._oauth2_client_secret
 
 # ===========================================================================
 # Pydantic model fields — accessed via model_dump / model_validate / keyword

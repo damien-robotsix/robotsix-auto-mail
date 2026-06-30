@@ -101,8 +101,6 @@ class SmtpClient(_ProtocolClient):
             username=config.username,
             password=config.password,
             oauth2_token=config.oauth2_token,
-            oauth2_client_id=config.oauth2_client_id,
-            oauth2_client_secret=config.oauth2_client_secret,
         )
         self._token_provider = build_token_provider(config)
 
