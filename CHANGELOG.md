@@ -14,6 +14,11 @@
   the JSON response for config-load failures (previously the argument
   was omitted, leaving `health_alerts_html` always empty).
 
+- Added commented `component_agent:` section to `config/config.yaml`
+  (the managed deployment config skeleton), matching the field already
+  documented in `.env.example`, `docs/configuration.md`, and
+  `docs/config/mail.local.example.yaml`.
+
 - Board now sets `account=__all__` cookie on fresh multi-account visits (no
   query param, no cookie) so the aggregate view persists across
   navigation — previously the cookie was only set on explicit

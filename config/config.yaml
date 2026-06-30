@@ -60,6 +60,9 @@ accounts:
     triage:
       on_ingest: true
 
+    # component_agent:
+    #   enabled: false
+
     calendar:
       enabled: true
       transport: in-process
