@@ -170,10 +170,13 @@ def load_accounts() -> MailAccountsConfig:
     silently falling back to the file.
     """
     try:
-        return MailAccountsConfig.from_env()
+        result = MailAccountsConfig.from_env()
     except ConfigurationError as exc:
         if not exc.missing_only:
             raise
+    else:
+        _log_failed_accounts(result)
+        return result
 
     config_path = Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
     if config_path.exists():
@@ -185,11 +188,25 @@ def load_accounts() -> MailAccountsConfig:
         data = {}
 
     if isinstance(data, dict) and isinstance(data.get("accounts"), list):
-        return MailAccountsConfig.from_yaml(config_path)
+        result = MailAccountsConfig.from_yaml(config_path)
+        _log_failed_accounts(result)
+        return result
 
     if config_path.exists():
         # The single-account ("mono") YAML file shape is no longer supported.
         raise ConfigurationError(_mono_shape_error(config_path))
 
     # No usable env and no config file — surface the env's missing-field error.
-    return MailAccountsConfig.from_env()
+    result = MailAccountsConfig.from_env()
+    _log_failed_accounts(result)
+    return result
+
+
+def _log_failed_accounts(result: MailAccountsConfig) -> None:
+    """Log each failed account entry at ERROR level so it surfaces in logs."""
+    for entry in result.failed_accounts:
+        logger.error(
+            "Account %r skipped due to config error: %s",
+            entry.account_id,
+            entry.error,
+        )

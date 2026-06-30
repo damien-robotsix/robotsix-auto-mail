@@ -82,6 +82,9 @@ from robotsix_auto_mail.config.schema import (
 from robotsix_auto_mail.config.schema import (
     ConfigurationError as ConfigurationError,
 )
+from robotsix_auto_mail.config.model import (
+    FailedAccountEntry as FailedAccountEntry,
+)
 
 __all__ = [
     "DEFAULT_ARCHIVE_ROOT",
@@ -93,6 +96,7 @@ __all__ = [
     "_REQUIRED",
     "_VALID_TLS_MODES",
     "ConfigurationError",
+    "FailedAccountEntry",
     "MailAccount",
     "MailAccountsConfig",
     "MailConfig",

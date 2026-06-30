@@ -9,6 +9,7 @@ error type, validation constants and the field-spec table.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import os
 import re
 from collections.abc import Callable
@@ -39,6 +40,8 @@ from robotsix_auto_mail.config.schema import (
     _mono_shape_error,
     _parse_bool,
 )
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Template-literal guard — catches unsubstituted values like
@@ -77,6 +80,20 @@ _ENV_ACCOUNTS_PREFIX = "MAIL_ACCOUNTS_"
 
 # Matches ``MAIL_ACCOUNTS_<n>_<FIELD>`` and captures the integer index.
 _ENV_ACCOUNT_INDEX_RE: Final[re.Pattern[str]] = re.compile(r"^MAIL_ACCOUNTS_(\d+)_")
+
+
+# ---------------------------------------------------------------------------
+# Failed-account tracking — records an account that failed validation at
+# config-load time so the board can degrade gracefully.
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class FailedAccountEntry:
+    """Records an account that failed validation at config-load time."""
+
+    account_id: str  # raw ``id:`` field from YAML / env, or ``'<account-N>'`` fallback
+    error: str  # the ConfigurationError message
 
 
 # ---------------------------------------------------------------------------
@@ -561,10 +578,20 @@ class MailAccountsConfig:
 
     accounts: tuple[MailAccount, ...]
     default_account_id: str
+    failed_accounts: tuple[FailedAccountEntry, ...] = dataclasses.field(
+        default_factory=tuple
+    )
 
     def __post_init__(self) -> None:
+        if not self.accounts and not self.failed_accounts:
+            raise ConfigurationError("No accounts configured.")
         if not self.accounts:
-            raise ConfigurationError("at least one account is required")
+            raise ConfigurationError(
+                "All accounts failed to load:\n"
+                + "\n".join(
+                    f"  {e.account_id}: {e.error}" for e in self.failed_accounts
+                )
+            )
 
         ids = [account.account_id for account in self.accounts]
         duplicate_ids = sorted({i for i in ids if ids.count(i) > 1})
@@ -689,60 +716,86 @@ class MailAccountsConfig:
             global_langfuse_base_url = langfuse["base_url"]
 
         accounts: list[MailAccount] = []
-        for entry in accounts_raw:
+        failed: list[FailedAccountEntry] = []
+        for index, entry in enumerate(accounts_raw, start=1):
             if not isinstance(entry, dict):
                 raise ConfigurationError("each 'accounts' entry must be a mapping")
-            raw_id = entry.get("id")
-            if not isinstance(raw_id, str) or not raw_id:
-                raise ConfigurationError(
-                    "each account requires a non-empty string 'id'"
-                )
-            raw_label = entry.get("label")
-            if raw_label is not None and not isinstance(raw_label, str):
-                raise ConfigurationError(f"account {raw_id!r} 'label' must be a string")
-
-            # llm: and langfuse: are now top-level (application-wide);
-            # per-account blocks are rejected with an actionable error.
-            for section_name in ("llm", "langfuse"):
-                if section_name in entry:
+            raw_id: str = str(entry.get("id", f"<account-{index}>"))
+            try:
+                raw_label = entry.get("label")
+                if raw_label is not None and not isinstance(raw_label, str):
                     raise ConfigurationError(
-                        f"account {raw_id!r} has a per-account "
-                        f"{section_name!r} block — {section_name}: is now "
-                        f"a top-level section. Move it outside the "
-                        f"accounts: list."
+                        f"account {raw_id!r} 'label' must be a string"
                     )
 
-            store_section = entry.get("store")
-            has_store_path = isinstance(store_section, dict) and "path" in store_section
-            cfg = MailConfig._parse_config_dict(entry, path, validate=validate)
-            _validate_template_literals(cfg)
-            if not has_store_path:
-                cfg = dataclasses.replace(cfg, db_path=f".data/{raw_id}/mail.db")
+                # llm: and langfuse: are now top-level (application-wide);
+                # per-account blocks are rejected with an actionable error.
+                for section_name in ("llm", "langfuse"):
+                    if section_name in entry:
+                        raise ConfigurationError(
+                            f"account {raw_id!r} has a per-account "
+                            f"{section_name!r} block — {section_name}: is now "
+                            f"a top-level section. Move it outside the "
+                            f"accounts: list."
+                        )
 
-            # Apply top-level llm / langfuse values
-            # (global wins over defaults).
-            cfg = dataclasses.replace(
-                cfg,
-                llm_api_key=global_llm_api_key or cfg.llm_api_key,
-                llm_provider_model=global_llm_provider_model or cfg.llm_provider_model,
-                langfuse_public_key=global_langfuse_public_key
-                or cfg.langfuse_public_key,
-                langfuse_secret_key=global_langfuse_secret_key
-                or cfg.langfuse_secret_key,
-                langfuse_base_url=global_langfuse_base_url or cfg.langfuse_base_url,
-            )
+                store_section = entry.get("store")
+                has_store_path = (
+                    isinstance(store_section, dict) and "path" in store_section
+                )
+                cfg = MailConfig._parse_config_dict(
+                    entry, path, validate=validate
+                )
+                _validate_template_literals(cfg)
+                if not has_store_path:
+                    cfg = dataclasses.replace(
+                        cfg, db_path=f".data/{raw_id}/mail.db"
+                    )
 
-            accounts.append(MailAccount(account_id=raw_id, config=cfg, label=raw_label))
+                # Apply top-level llm / langfuse values
+                # (global wins over defaults).
+                cfg = dataclasses.replace(
+                    cfg,
+                    llm_api_key=global_llm_api_key or cfg.llm_api_key,
+                    llm_provider_model=global_llm_provider_model
+                    or cfg.llm_provider_model,
+                    langfuse_public_key=global_langfuse_public_key
+                    or cfg.langfuse_public_key,
+                    langfuse_secret_key=global_langfuse_secret_key
+                    or cfg.langfuse_secret_key,
+                    langfuse_base_url=global_langfuse_base_url
+                    or cfg.langfuse_base_url,
+                )
+
+                accounts.append(
+                    MailAccount(
+                        account_id=raw_id, config=cfg, label=raw_label
+                    )
+                )
+            except ConfigurationError as exc:
+                logger.error(
+                    "Skipping account %r — invalid config: %s",
+                    raw_id,
+                    exc,
+                )
+                failed.append(
+                    FailedAccountEntry(account_id=raw_id, error=str(exc))
+                )
+                continue
 
         raw_default = data.get("default_account")
         if raw_default is None:
-            default_id = accounts[0].account_id
+            default_id = accounts[0].account_id if accounts else ""
         elif isinstance(raw_default, str):
             default_id = raw_default
         else:
             raise ConfigurationError("'default_account' must be a string")
 
-        return cls(accounts=tuple(accounts), default_account_id=default_id)
+        return cls(
+            accounts=tuple(accounts),
+            default_account_id=default_id,
+            failed_accounts=tuple(failed),
+        )
 
     @classmethod
     def from_env(cls) -> MailAccountsConfig:
@@ -789,11 +842,25 @@ class MailAccountsConfig:
             )
 
         accounts: list[MailAccount] = []
+        failed: list[FailedAccountEntry] = []
         index = 0
         while any(
             key.startswith(f"{_ENV_ACCOUNTS_PREFIX}{index}_") for key in os.environ
         ):
-            accounts.append(_build_account_from_env(index))
+            raw_id = os.environ.get(
+                f"{_ENV_ACCOUNTS_PREFIX}{index}_ID", f"<account-{index}>"
+            )
+            try:
+                accounts.append(_build_account_from_env(index))
+            except ConfigurationError as exc:
+                logger.error(
+                    "Skipping account %r — invalid config: %s",
+                    raw_id,
+                    exc,
+                )
+                failed.append(
+                    FailedAccountEntry(account_id=raw_id, error=str(exc))
+                )
             index += 1
 
         # Contiguity: every present index must be < the count we consumed.
@@ -804,8 +871,14 @@ class MailAccountsConfig:
             )
 
         raw_default = os.environ.get("MAIL_ACCOUNTS_DEFAULT")
-        default_id = raw_default if raw_default else accounts[0].account_id
-        return cls(accounts=tuple(accounts), default_account_id=default_id)
+        default_id = (
+            raw_default if raw_default else (accounts[0].account_id if accounts else "")
+        )
+        return cls(
+            accounts=tuple(accounts),
+            default_account_id=default_id,
+            failed_accounts=tuple(failed),
+        )
 
 
 def _build_account_from_env(index: int) -> MailAccount:
