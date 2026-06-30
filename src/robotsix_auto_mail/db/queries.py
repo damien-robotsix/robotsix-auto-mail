@@ -367,7 +367,7 @@ def get_account_health(conn: sqlite3.Connection) -> dict[str, Any] | None:
 
     try:
         data = _json.loads(raw)
-    except _json.JSONDecodeError, TypeError:
+    except (_json.JSONDecodeError, TypeError):
         return None
     if isinstance(data, dict):
         return data
