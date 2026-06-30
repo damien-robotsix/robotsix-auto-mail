@@ -571,6 +571,12 @@ def test_detect_microsoft_custom_oauth2_client_id_and_tenant(
     assert rc == 0
     mock_getpass.assert_not_called()
     mock_login.assert_called_once()
+    # Verify the MailConfig passed to device_code_login carries the custom
+    # oauth2 settings (not just the YAML output).
+    login_config = mock_login.call_args[0][0]
+    assert isinstance(login_config, MailConfig)
+    assert login_config.oauth2_client_id == "12345678-1234-1234-1234-123456789abc"
+    assert login_config.oauth2_tenant == "tii.ae"
     content = output.read_text()
     assert 'oauth2_provider: "microsoft"' in content
     assert 'oauth2_client_id: "12345678-1234-1234-1234-123456789abc"' in content
@@ -919,6 +925,74 @@ def test_detect_overwrite_not_set_still_errors_on_duplicate(
 
     assert rc == 1
     assert "already exists" in capsys.readouterr().err
+
+
+def test_detect_overwrite_with_oauth2_flags(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--overwrite --oauth2-client-id overlays oauth2 fields onto an existing
+    account config instead of silently ignoring them."""
+    from robotsix_auto_mail.config import render_accounts_yaml
+
+    output = tmp_path / "cfg.yaml"
+    # Seed a Microsoft account with default oauth2 fields — the
+    # --oauth2-client-id and --oauth2-tenant flags should override them.
+    seed_cfg = MailConfig(
+        imap_host="old.example.com",
+        smtp_host="old.example.com",
+        username="user@tii.ae",
+        password="",
+        oauth2_provider="microsoft",
+        oauth2_client_id="9e5f94bc-e8a4-4e73-b8be-63364c29d753",
+        oauth2_tenant="organizations",
+    )
+    seed_account = MailAccount(account_id="tii", config=seed_cfg, label="TII")
+    output.write_text(render_accounts_yaml([seed_account], "tii"))
+
+    mock_provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass") as mock_getpass,
+        mock.patch(
+            "robotsix_auto_mail.oauth2.device_code_login"
+        ) as mock_login,
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "user@tii.ae",
+                "--id", "tii",
+                "--overwrite",
+                "--oauth2-client-id", "12345678-1234-1234-1234-123456789abc",
+                "--oauth2-tenant", "tii.ae",
+                "--output", str(output),
+            ]
+        )
+
+    assert rc == 0
+    mock_getpass.assert_not_called()
+    mock_login.assert_called_once()
+    # The config passed to device_code_login must carry the custom fields.
+    login_config = mock_login.call_args[0][0]
+    assert login_config.oauth2_client_id == "12345678-1234-1234-1234-123456789abc"
+    assert login_config.oauth2_tenant == "tii.ae"
+    # The written YAML must also include both fields.
+    content = output.read_text()
+    assert 'oauth2_client_id: "12345678-1234-1234-1234-123456789abc"' in content
+    assert 'oauth2_tenant: "tii.ae"' in content
+    # Existing non-transport fields are preserved.
+    accounts = MailAccountsConfig.from_yaml(str(output))
+    cfg = accounts.get("tii").config
+    assert cfg.username == "user@tii.ae"
 
 
 # ---------------------------------------------------------------------------
