@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Added `.github/ISSUE_TEMPLATE/bug_report.yml` (YAML issue form with required
+  Description, Steps to Reproduce, and Environment fields) and
+  `.github/ISSUE_TEMPLATE/config.yml` (disables blank issues) so bug reports
+  arrive with structured, actionable information.
+
 - Documentation audit: corrected stale or inaccurate content across the
   ``docs/`` set against the current code — the triage action vocabulary and
   board column list in ``connecting.md``, the OAuth2/Microsoft 365,
