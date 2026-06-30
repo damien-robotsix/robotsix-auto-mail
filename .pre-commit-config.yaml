@@ -1,6 +1,7 @@
 repos:
   - repo: https://github.com/biomejs/pre-commit
-    rev: 4eddc4cebc6ad67a1b11786e3e9082fe028fbc3c  # frozen: v1.9.4  pragma: allowlist secret
+    # pragma: allowlist secret
+    rev: 4eddc4cebc6ad67a1b11786e3e9082fe028fbc3c  # frozen: v1.9.4
     hooks:
       - id: biome-check
         args: [--apply]
