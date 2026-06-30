@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 from robotsix_auto_mail.db import MailRecord
-from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+from robotsix_auto_mail.server._constants import _is_safe_redirect_path, _with_db
 from robotsix_auto_mail.triage import (
     DRAFT_READY,
     get_triage_decision,
@@ -190,8 +190,6 @@ class _DraftMixin:
         a clean JSON error.  Generation failures are likewise swallowed so
         the existing draft/manual form remains available.
         """
-        from robotsix_auto_mail.db import init_db
-
         fields = self._parse_request_body("message_id", "redirect_to")
 
         message_id = fields["message_id"]
@@ -211,8 +209,7 @@ class _DraftMixin:
             self._redirect_generate_draft(message_id, redirect_to)
             return
 
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
+        with _with_db(self.db_path) as conn:
             try:
                 generate_draft_reply(
                     conn,
@@ -238,8 +235,6 @@ class _DraftMixin:
                     source="user",
                     reason="draft generated",
                 )
-        finally:
-            conn.close()
 
         self._redirect_generate_draft(message_id, redirect_to)
 

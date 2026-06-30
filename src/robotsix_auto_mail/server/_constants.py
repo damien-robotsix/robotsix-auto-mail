@@ -8,10 +8,31 @@ from __future__ import annotations
 
 import importlib.resources
 import json
+import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 
+from robotsix_auto_mail.db import init_db
 from robotsix_auto_mail.triage import (
     TRIAGE_ACTION_ORDER,
 )
+
+
+@contextmanager
+def _with_db(
+    db_path: str, *, skip_migrations: bool = True
+) -> Iterator[sqlite3.Connection]:
+    """Open a DB connection, yield it, and close it in a finally block.
+
+    All board-server mixins use this helper so the connection lifecycle
+    (``init_db`` / ``conn.close()``) is defined once.
+    """
+    conn = init_db(db_path, skip_migrations=skip_migrations)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
 
 # -- Static assets from robotsix_board -------------------------------------
 # Pre-loaded at module level so _serve_static never touches the filesystem.

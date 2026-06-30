@@ -14,6 +14,7 @@ from robotsix_auto_mail.server._constants import (
     _STATIC_BOARD_CSS,
     _STATIC_BOARD_JS,
     _parse_archive_structure,
+    _with_db,
 )
 from robotsix_auto_mail.server.views import (
     _build_board_content,
@@ -130,7 +131,6 @@ class _BoardViewMixin:
         from robotsix_auto_mail.db import (
             get_record_by_message_id,
             get_watermark,
-            init_db,
         )
         from robotsix_auto_mail.triage import (
             _load_archive_overrides,
@@ -147,8 +147,7 @@ class _BoardViewMixin:
             else DEFAULT_ARCHIVE_ROOT
         )
 
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
+        with _with_db(self.db_path) as conn:
             record = get_record_by_message_id(conn, message_id)
             if record is None:
                 self._not_found()
@@ -184,8 +183,6 @@ class _BoardViewMixin:
             else:
                 full_path = effective_root
             folder_exists = full_path in existing_folders
-        finally:
-            conn.close()
 
         self._serve_json(
             {
@@ -208,7 +205,7 @@ class _BoardViewMixin:
         already suppresses the fetch, but a direct ``curl`` must not leak
         data from whichever account's DB ``self.db_path`` happens to point at.
         """
-        from robotsix_auto_mail.db import get_watermark, init_db
+        from robotsix_auto_mail.db import get_watermark
 
         if self._aggregate:
             self._serve_json({"delimiter": "/", "folders": []})
@@ -220,14 +217,11 @@ class _BoardViewMixin:
             else DEFAULT_ARCHIVE_ROOT
         )
 
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
+        with _with_db(self.db_path) as conn:
             archive_raw = get_watermark(conn, "archive_structure")
             existing_folders, delimiter, effective_root = _parse_archive_structure(
                 archive_raw, archive_root
             )
-        finally:
-            conn.close()
 
         # Strip effective-root prefix and translate IMAP delimiter to "/".
         _root_prefix = f"{effective_root}{delimiter}"
@@ -247,7 +241,7 @@ class _BoardViewMixin:
         Returns ``"INBOX"`` when the record exists but has no triage
         decision.  Returns 404 when the message_id is unknown.
         """
-        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.db import get_record_by_message_id
 
         # Extract the URL-encoded message_id from the path:
         #   "/email/<encoded>/status" → extract and decode.
@@ -257,15 +251,12 @@ class _BoardViewMixin:
         encoded_mid = path[len(prefix) : -len(suffix)]
         message_id = unquote(encoded_mid)
 
-        conn = init_db(self.db_path)
-        try:
+        with _with_db(self.db_path, skip_migrations=False) as conn:
             record = get_record_by_message_id(conn, message_id)
             if record is None:
                 self._not_found()
                 return
             decision = get_triage_decision(conn, message_id)
-        finally:
-            conn.close()
 
         if decision is None:
             self._send_response(INBOX)

@@ -8,6 +8,7 @@ import json
 from typing import TYPE_CHECKING
 
 from robotsix_auto_mail._constants import _TRIAGE_RUN_STATE_KEY
+from robotsix_auto_mail.server._constants import _with_db
 from robotsix_auto_mail.server.adapters import (
     _run_triage_background,
 )
@@ -50,7 +51,6 @@ class _TriageMixin:
         """
         from robotsix_auto_mail.db import (
             VALID_TRIAGE_ACTIONS,
-            init_db,
         )
         from robotsix_auto_mail.triage import (
             TriageError,
@@ -66,11 +66,8 @@ class _TriageMixin:
 
         # -- clear decisions ----------------------------------------------
         try:
-            conn = init_db(self.db_path, skip_migrations=True)
-            try:
+            with _with_db(self.db_path) as conn:
                 delete_triage_decisions_by_action(conn, action)
-            finally:
-                conn.close()
         except TriageError as exc:
             self._bad_request(str(exc))
             return

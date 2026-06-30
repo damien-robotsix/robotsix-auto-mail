@@ -2,6 +2,13 @@
 
 ## 0.0.0 (unreleased)
 
+- Extracted the repeated ``init_db(...)`` / ``try:`` / ``finally: conn.close()``
+  pattern into a shared ``_with_db()`` context manager in
+  ``server/_constants.py``, replacing seven duplicate blocks across the
+  action, view, triage, and draft mixins.  The one endpoint that
+  intentionally ran without ``skip_migrations`` now passes
+  ``skip_migrations=False`` explicitly.
+
 - `_serve_board_content` now passes `config_failures` to
   `_build_board_content` so health-alert banners are rendered in
   the JSON response for config-load failures (previously the argument
