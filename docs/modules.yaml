@@ -50,12 +50,12 @@ modules:
 
   - id: deploy
     description: >-
-      Continuous-deployment stack for server.robotsix.net: a Compose
-      file that pulls the published GHCR image and runs the ingester,
-      the loopback-bound board, and Watchtower (auto-update on a new
-      `main` image), plus the operator runbook.
+      central-deploy contract (contract-version 1): the Compose file
+      that the external central-deploy system consumes to pull the
+      published GHCR image and run the ingester + board services, plus
+      the managed config template. Operator-facing deployment docs live
+      in docs/deployment.md.
     paths:
-      - deploy/README.md
       - deploy/docker-compose.yml
       - config/config.yaml
 
