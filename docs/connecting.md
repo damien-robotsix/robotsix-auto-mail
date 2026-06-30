@@ -130,6 +130,8 @@ robotsix-auto-mail detect user@gmail.com \
 | `--output PATH` | no | `config/mail.local.yaml` | Write mail config to this path |
 | `--stdout` | no | – | Print config to stdout instead of writing to file; password is intentionally omitted (must be filled in manually or via `MAIL_PASSWORD`); no verification is performed |
 | `--no-verify` | no | – | Skip the post-write IMAP/SMTP connection check |
+| `--oauth2-client-id` | no | Thunderbird public client | Azure app-registration client ID for Microsoft 365 OAuth2 |
+| `--oauth2-tenant` | no | `organizations` | Azure AD tenant (GUID, domain, or `organizations`/`common`) |
 | `--app-password` | no | – | Use password/basic auth even for Microsoft-hosted accounts. Mutually exclusive with `--oauth2-client-id` / `--oauth2-tenant`. Emits a warning that OAuth2 is strongly preferred |
 
 ### Docker invocation
@@ -164,6 +166,11 @@ interactive prompt appears (requires a TTY — use `docker compose run` without
   supply the password separately: save the printed config to a file and edit it
   to fill in `auth.password`, or supply the password via the `MAIL_PASSWORD`
   environment variable before running other commands.
+  For Microsoft 365 accounts, `--stdout` may be combined with
+  `--oauth2-client-id` and `--oauth2-tenant` — these are written into the
+  printed YAML as `auth.oauth2_client_id` and `auth.oauth2_tenant`. Save the
+  output to a file and then run `robotsix-auto-mail auth login --account <id>`
+  to complete the device-code consent flow and seed the token cache.
 - For users who prefer manual config, the traditional approach (editing
   `config/mail.local.yaml` by hand) is unaffected and fully supported.
 
@@ -457,10 +464,45 @@ directory id); the scopes used are
 
 > **Admin-consent caveat (corporate tenants).** Many Microsoft 365
 > organisations restrict which applications may use IMAP/SMTP OAuth. If
-> device-code login fails with a consent/permission error, an **Azure AD
-> administrator** may need to grant the ``IMAP.AccessAsUser.All`` and
-> ``SMTP.Send`` delegated permissions (and admin-consent) for the client id
-> before the flow succeeds.
+> device-code login fails with a consent/permission error, choose one of
+> the following resolution paths:
+>
+> **Option A — Allowlist the Thunderbird client in your tenant:** In the
+> Azure portal → Enterprise Applications → search for
+> `9e5f94bc-e8a4-4e73-b8be-63364c29d753` (or "Thunderbird") → Grant admin
+> consent for `IMAP.AccessAsUser.All` and `SMTP.Send`.
+>
+> **Option B — Register your own Azure app and pass it to `detect`:**
+>
+> ```sh
+> # In Azure Portal → App registrations → New registration:
+> # - Name: auto-mail (or any name)
+> # - Supported account types: Accounts in this organizational directory only
+> # - Redirect URI: Public client / native,
+> #   https://login.microsoftonline.com/common/oauth2/nativeclient
+> #
+> # Under API Permissions → Add a permission → APIs my organization uses →
+> #   Office 365 Exchange Online → Delegated permissions:
+> #   - IMAP.AccessAsUser.All
+> #   - SMTP.Send
+> #   - offline_access (may be added automatically)
+> # → Grant admin consent.
+> #
+> # Copy the Application (client) ID and Directory (tenant) ID.
+>
+> robotsix-auto-mail detect user@example.com \
+>   --oauth2-client-id <your-app-client-id> \
+>   --oauth2-tenant <your-tenant-id-or-domain>
+> ```
+>
+> **Option C — App password (legacy tenants only):**
+>
+> ```sh
+> robotsix-auto-mail detect user@example.com --app-password
+> ```
+>
+> > **Warning:** only works if your organisation has explicitly enabled basic
+> > auth app passwords. Microsoft is phasing this out.
 
 **Microsoft 365 / Outlook.com (static token, manual):**
 
