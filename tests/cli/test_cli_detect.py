@@ -519,9 +519,7 @@ def test_detect_stdout_app_password_clears_oauth2_provider(
         ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(
-            ["detect", "user@contoso.com", "--stdout", "--app-password"]
-        )
+        rc = main(["detect", "user@contoso.com", "--stdout", "--app-password"])
 
     assert rc == 0
     captured = capsys.readouterr()
@@ -721,6 +719,47 @@ def test_detect_app_password_noop_for_non_microsoft(
     assert "Warning: --app-password" not in err
     content = output.read_text()
     assert "gm-pw" in content
+    assert "oauth2_provider:" not in content
+
+
+def test_detect_app_password_noop_for_generic_imap_host(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--app-password has no effect for a generic non-Microsoft IMAP host
+    (no warning, normal password flow)."""
+    output = tmp_path / "cfg.yaml"
+    mock_provider = MailProvider(
+        imap_host="imap.example.com", smtp_host="smtp.example.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass", return_value="example-pw") as mock_getpass,
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
+        ) as mock_verify,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "user@example.com",
+                "--output",
+                str(output),
+                "--app-password",
+            ]
+        )
+
+    assert rc == 0
+    mock_getpass.assert_called_once()
+    mock_verify.assert_called_once()
+    err = capsys.readouterr().err
+    assert "Warning: --app-password" not in err
+    content = output.read_text()
+    assert "example-pw" in content
+    assert "oauth2_provider:" not in content
 
 
 def test_detect_refines_host_with_llm_on_connection_failure(
@@ -1175,10 +1214,12 @@ def test_detect_overwrite_app_password_clears_oauth2_provider(
             [
                 "detect",
                 "user@contoso.com",
-                "--id", "ms",
+                "--id",
+                "ms",
                 "--overwrite",
                 "--app-password",
-                "--output", str(output),
+                "--output",
+                str(output),
             ]
         )
 
