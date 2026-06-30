@@ -8,9 +8,9 @@ from http.server import HTTPServer
 from typing import Any
 from urllib.request import Request
 
-from robotsix_auto_mail.component_agent.responder import ComponentAgentResponder
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.server import make_board_handler
+from robotsix_auto_mail.server._component_agent_responder import ComponentAgentResponder
 
 
 def _make_config(**overrides: object) -> MailConfig:

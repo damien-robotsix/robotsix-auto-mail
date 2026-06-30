@@ -69,7 +69,9 @@ def _cmd_serve(
     default = accounts.get(default_account_id)
 
     # Create component-agent responder for HTTP API when enabled.
-    from robotsix_auto_mail.component_agent.responder import ComponentAgentResponder
+    from robotsix_auto_mail.server._component_agent_responder import (
+        ComponentAgentResponder,
+    )
 
     component_responder = (
         ComponentAgentResponder(default.config)
