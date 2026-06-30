@@ -91,6 +91,7 @@ class _BoardViewMixin:
                 self.db_path,
                 archive_root=archive_root,
                 account_id=self._current_account_id or "main",
+                config_failures=self.accounts.failed_accounts if self.accounts else (),
             )
         except Exception:
             self._serve_json({"error": "Database unavailable"}, status=503)

@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- `_serve_board_content` now passes `config_failures` to
+  `_build_board_content` so health-alert banners are rendered in
+  the JSON response for config-load failures (previously the argument
+  was omitted, leaving `health_alerts_html` always empty).
+
 - Board now sets `account=__all__` cookie on fresh multi-account visits (no
   query param, no cookie) so the aggregate view persists across
   navigation — previously the cookie was only set on explicit
