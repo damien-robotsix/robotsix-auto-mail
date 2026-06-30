@@ -169,6 +169,190 @@ def device_code_login(
         )
 
 
+# ---------------------------------------------------------------------------
+# XOAUTH2 error parsing + CAE claims extraction
+# ---------------------------------------------------------------------------
+
+
+def parse_xoauth2_error(challenge: bytes) -> dict[str, Any]:
+    """Parse the XOAUTH2 server challenge into a dict of error info.
+
+    The challenge is a JSON blob the server sends on authentication
+    failure.  Returns ``{}`` when the challenge cannot be decoded as
+    JSON (e.g. plain-text error, empty, or malformed).
+    """
+    import json
+
+    if not challenge:
+        return {}
+    try:
+        text = challenge.decode("utf-8", errors="replace").strip()
+        if not text:
+            return {}
+        result: Any = json.loads(text)
+        if not isinstance(result, dict):
+            return {}
+        return result
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return {}
+
+
+def extract_cae_claims(error_info: dict[str, Any]) -> str | None:
+    """Extract a CAE claims challenge from a parsed XOAUTH2 error.
+
+    Office365 embeds a ``claims="..."`` parameter inside the
+    ``schemes`` field when a token is valid but requires a
+    Claims Challenge (Continuous Access Evaluation).  Returns the
+    raw claims value, or ``None`` when none is present.
+    """
+    import re
+
+    schemes = error_info.get("schemes", "")
+    if not isinstance(schemes, str) or not schemes:
+        return None
+    match = re.search(r'claims="([^"]*)"', schemes)
+    if match is not None:
+        return match.group(1)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Force-refresh token acquisition
+# ---------------------------------------------------------------------------
+
+
+def acquire_fresh_token(
+    config: MailConfig,
+    *,
+    claims_challenge: str | None = None,
+) -> str:
+    """Force-refresh the MSAL access token, optionally with a CAE claim.
+
+    Only call this when the existing token is known to be invalid
+    (e.g. the server rejected it with an XOAUTH2 challenge).  Uses
+    ``acquire_token_silent(force_refresh=True)`` to bypass the
+    in-memory cache and request a fresh token from Azure AD.
+
+    Args:
+        config: The account's ``MailConfig``.
+        claims_challenge: Optional CAE claims string extracted from
+            the server's rejection payload (see :func:`extract_cae_claims`).
+
+    Returns:
+        A new OAuth2 access token.
+
+    Raises:
+        ConfigurationError: When no cached MSAL account exists, or the
+            refresh itself fails (cache missing, expired, or tenant
+            hard-block).
+    """
+    account_hint = config.username or "<id>"
+    app = build_msal_app(config)
+    accounts = app.get_accounts()
+    if not accounts:
+        raise ConfigurationError(
+            "Force-refresh failed: no cached Microsoft credentials "
+            f"for {account_hint!r}. Run "
+            "`robotsix-auto-mail auth login --account <id>` to consent."
+        )
+    kwargs: dict[str, Any] = dict(
+        force_refresh=True,
+    )
+    if claims_challenge is not None:
+        kwargs["claims_challenge"] = claims_challenge
+    result = app.acquire_token_silent(
+        MICROSOFT_SCOPES, account=accounts[0], **kwargs
+    )
+    _persist_cache(config, app.token_cache)
+    if not result or "access_token" not in result:
+        raise ConfigurationError(
+            "Microsoft token force-refresh failed "
+            "(cache missing, expired, or tenant hard-block). "
+            "Run `robotsix-auto-mail auth login --account <id>` to "
+            "re-consent."
+        )
+    return str(result["access_token"])
+
+
+# ---------------------------------------------------------------------------
+# Error classification for account_health
+# ---------------------------------------------------------------------------
+
+#: Known AADSTS error codes that indicate Conditional Access / CAE blocks
+#: (not a credential or setup problem).  These are tenant-policy rejections
+#: that cannot be fixed by re-consenting — they require an IT exception.
+_CONDITIONAL_ACCESS_AADSTS_CODES: frozenset[str] = frozenset(
+    [
+        "53000",  # Device not compliant
+        "53001",  # Domain not allowed
+        "53002",  # App not allowed
+        "53003",  # Blocked by Conditional Access
+        "53004",  # Proof of possession required
+        "530032",  # Device not domain-joined
+    ]
+)
+
+
+def classify_xoauth2_auth_error(
+    challenge: bytes,
+    *,
+    username: str,
+    host: str,
+    port: int,
+) -> str:
+    """Produce an enriched auth-error message for *account_health*.
+
+    When the server challenge contains a known AADSTS Conditional
+    Access code the message explicitly names "Conditional Access" so
+    operators can distinguish a tenant-policy block from a credential
+    / token-expiry problem.
+    """
+    error_info = parse_xoauth2_error(challenge)
+    # Search the entire challenge text for an AADSTS code, not just a
+    # specific JSON field, because Office365 embeds the code in
+    # different places (top-level ``error_description``, inside
+    # ``schemes``, or as part of a free-text ``error`` field).
+    challenge_text = (
+        challenge.decode("utf-8", errors="replace")
+        if challenge
+        else error_info.get("error_description", "")
+    )
+    found_ca = False
+    for code in _CONDITIONAL_ACCESS_AADSTS_CODES:
+        if f"AADSTS{code}" in challenge_text:
+            found_ca = True
+            break
+
+    if found_ca:
+        return (
+            f"Authentication failed for user {username!r} "
+            f"on {host}:{port}: "
+            "Conditional Access policy blocked access "
+            f"(AADSTS error in server challenge: {challenge_text!r}). "
+            "This is a tenant-level policy restriction — it cannot be "
+            "fixed by re-consenting.  Contact your Microsoft 365 "
+            "administrator to request an exception for this device / "
+            "application, or move to a different auth method."
+        )
+
+    # Fallback: generic classified message that includes the server
+    # challenge text for diagnosis.
+    return (
+        f"Authentication failed for user {username!r} "
+        f"on {host}:{port}. "
+        "Token refresh was attempted but the server rejected the "
+        f"new token (challenge: {challenge_text!r}). "
+        "Run `robotsix-auto-mail auth login --account <id>` to "
+        "re-consent, or check the Microsoft 365 tenant's "
+        "Conditional Access policies if this persists."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Token provider factory
+# ---------------------------------------------------------------------------
+
+
 def build_token_provider(config: MailConfig) -> TokenProvider | None:
     """Return a token provider for *config*, or ``None`` when not MSAL.
 

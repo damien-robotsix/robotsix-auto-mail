@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import imaplib
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -199,3 +200,204 @@ def test_xoauth2_provider_refreshes_on_reconnect() -> None:
 
     assert provider.call_count == 2
     mock_ssl.login.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# XOAUTH2 force-refresh retry (MSAL-managed tokens)
+# ---------------------------------------------------------------------------
+
+
+def test_msal_config_set_when_provider_present() -> None:
+    """_msal_config is set when build_token_provider returns a provider."""
+    cfg = MailConfig(
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        username="user@contoso.com",
+        password="",
+    )
+    provider = mock.Mock(return_value="token-1")
+    with mock.patch(
+        "robotsix_auto_mail.imap.build_token_provider", return_value=provider
+    ):
+        client = ImapClient(cfg)
+    assert client._msal_config is cfg
+    assert client._token_provider is provider
+
+
+def test_msal_config_none_when_no_provider() -> None:
+    """_msal_config is None when no MSAL provider (password-only)."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+    )
+    with mock.patch(
+        "robotsix_auto_mail.imap.build_token_provider", return_value=None
+    ):
+        client = ImapClient(cfg)
+    assert client._msal_config is None
+
+
+def test_xoauth2_force_refresh_succeeds_on_retry() -> None:
+    """First XOAUTH2 fails → force-refresh → reconnect → retry succeeds."""
+    cfg = MailConfig(
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        username="user@contoso.com",
+        password="",
+    )
+    provider = mock.Mock(return_value="token-1")
+    challenge = b'{"status":"400","schemes":"Bearer"}'
+    fresh_token = "token-after-refresh"
+
+    mock_ssl_1 = _make_mock_imap_ssl()
+
+    def fake_auth_fail(mechanism: Any, callback: Any) -> None:
+        callback(b"")  # initial response
+        callback(challenge)  # server rejection
+        raise imaplib.IMAP4.error("AUTHENTICATE failed")
+
+    mock_ssl_1.authenticate.side_effect = fake_auth_fail
+
+    mock_ssl_2 = _make_mock_imap_ssl()
+    mock_ssl_2.authenticate.return_value = ("OK", [b"Authenticated"])
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.build_token_provider", return_value=provider
+    ):
+        with mock.patch(
+            "imaplib.IMAP4_SSL", side_effect=[mock_ssl_1, mock_ssl_2]
+        ):
+            with mock.patch(
+                "robotsix_auto_mail.oauth2.acquire_fresh_token",
+                return_value=fresh_token,
+            ) as mock_acquire:
+                with ImapClient(cfg):
+                    pass
+
+    mock_acquire.assert_called_once()
+    provider.assert_called_once()
+    # First connection's authenticate was called (and failed)
+    assert mock_ssl_1.authenticate.called
+    # Second connection's authenticate succeeded
+    assert mock_ssl_2.authenticate.called
+    mock_ssl_2.login.assert_not_called()
+
+
+def test_xoauth2_force_refresh_fails_conditional_access() -> None:
+    """Both original and force-refreshed tokens rejected with AADSTS53003
+    → ImapAuthError mentions Conditional Access."""
+    cfg = MailConfig(
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        username="user@contoso.com",
+        password="",
+    )
+    provider = mock.Mock(return_value="token-1")
+    challenge = b'{"error_description":"AADSTS53003: Blocked by Conditional Access"}'
+    fresh_token = "token-after-refresh"
+
+    mock_ssl_1 = _make_mock_imap_ssl()
+
+    def fake_auth_fail_1(mechanism: Any, callback: Any) -> None:
+        callback(b"")
+        callback(challenge)
+        raise imaplib.IMAP4.error("AUTHENTICATE failed")
+
+    mock_ssl_1.authenticate.side_effect = fake_auth_fail_1
+
+    mock_ssl_2 = _make_mock_imap_ssl()
+
+    def fake_auth_fail_2(mechanism: Any, callback: Any) -> None:
+        callback(b"")
+        callback(challenge)
+        raise imaplib.IMAP4.error("AUTHENTICATE failed again")
+
+    mock_ssl_2.authenticate.side_effect = fake_auth_fail_2
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.build_token_provider", return_value=provider
+    ):
+        with mock.patch(
+            "imaplib.IMAP4_SSL", side_effect=[mock_ssl_1, mock_ssl_2]
+        ):
+            with mock.patch(
+                "robotsix_auto_mail.oauth2.acquire_fresh_token",
+                return_value=fresh_token,
+            ):
+                with pytest.raises(ImapAuthError) as exc:
+                    with ImapClient(cfg):
+                        pass
+
+    assert "Conditional Access" in str(exc.value)
+
+
+def test_xoauth2_no_retry_for_static_token() -> None:
+    """Static oauth2_token (no MSAL provider) → no force-refresh, immediate error."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="",
+        oauth2_token="ya29.static-token",
+    )
+
+    mock_ssl = _make_mock_imap_ssl()
+    auth_error = imaplib.IMAP4.error("AUTHENTICATE failed")
+    mock_ssl.authenticate.side_effect = auth_error
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.build_token_provider", return_value=None
+    ):
+        with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+            with mock.patch(
+                "robotsix_auto_mail.oauth2.acquire_fresh_token"
+            ) as mock_acquire:
+                with pytest.raises(ImapAuthError):
+                    with ImapClient(cfg):
+                        pass
+
+    mock_acquire.assert_not_called()
+
+
+def test_cae_claims_forwarded_to_acquire_fresh_token() -> None:
+    """Challenge with CAE claims → acquire_fresh_token receives claims_challenge."""
+    cfg = MailConfig(
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        username="user@contoso.com",
+        password="",
+    )
+    provider = mock.Mock(return_value="token-1")
+    challenge = b'{"status":"400","schemes":"Bearer claims=\\"XYZ123\\""}'
+    fresh_token = "token-after-refresh"
+
+    mock_ssl_1 = _make_mock_imap_ssl()
+
+    def fake_auth_fail(mechanism: Any, callback: Any) -> None:
+        callback(b"")
+        callback(challenge)
+        raise imaplib.IMAP4.error("AUTHENTICATE failed")
+
+    mock_ssl_1.authenticate.side_effect = fake_auth_fail
+
+    mock_ssl_2 = _make_mock_imap_ssl()
+    mock_ssl_2.authenticate.return_value = ("OK", [b"Authenticated"])
+
+    with mock.patch(
+        "robotsix_auto_mail.imap.build_token_provider", return_value=provider
+    ):
+        with mock.patch(
+            "imaplib.IMAP4_SSL", side_effect=[mock_ssl_1, mock_ssl_2]
+        ):
+            with mock.patch(
+                "robotsix_auto_mail.oauth2.acquire_fresh_token",
+                return_value=fresh_token,
+            ) as mock_acquire:
+                with ImapClient(cfg):
+                    pass
+
+    mock_acquire.assert_called_once()
+    _, kwargs = mock_acquire.call_args
+    assert kwargs.get("claims_challenge") == "XYZ123"
