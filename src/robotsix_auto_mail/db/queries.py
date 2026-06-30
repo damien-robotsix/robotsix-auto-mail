@@ -384,9 +384,7 @@ def write_account_health(
     """Upsert ``"account_health"`` watermark with a JSON payload."""
     import json as _json
 
-    payload = _json.dumps(
-        {"status": status, "error": error, "checked_at": checked_at}
-    )
+    payload = _json.dumps({"status": status, "error": error, "checked_at": checked_at})
     set_watermark(conn, "account_health", payload)
 
 

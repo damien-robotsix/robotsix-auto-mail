@@ -55,9 +55,7 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
     finally:
         if success:
             try:
-                write_account_health(
-                    conn, status="ok", error=None, checked_at=utcnow()
-                )
+                write_account_health(conn, status="ok", error=None, checked_at=utcnow())
             except Exception:
                 pass
         conn.close()
@@ -134,20 +132,15 @@ def _cmd_ingest(
             status, error = "failed", str(exc)
         conn = _cli.init_db(account.config.db_path)
         try:
-            write_account_health(
-                conn, status=status, error=error, checked_at=utcnow()
-            )
+            write_account_health(conn, status=status, error=error, checked_at=utcnow())
         finally:
             conn.close()
         if status == "failed":
             sys.stderr.write(
-                f"STARTUP: account '{account.account_id}' connection FAILED: "
-                f"{error}\n"
+                f"STARTUP: account '{account.account_id}' connection FAILED: {error}\n"
             )
         else:
-            sys.stdout.write(
-                f"STARTUP: account '{account.account_id}' connection OK\n"
-            )
+            sys.stdout.write(f"STARTUP: account '{account.account_id}' connection OK\n")
 
     interval_minutes = max(1, selected[0].config.ingest_interval_minutes)
     sys.stdout.write(

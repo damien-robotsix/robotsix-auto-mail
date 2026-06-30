@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Board: Microsoft OAuth2 accounts can now be authorized / reconnected
+  directly from the web board via an "Authorize / Reconnect" button in
+  health-alert banners, using the device-code flow with a modal prompt.
 - Removed five unwired ``COMPONENT_AGENT_*`` broker env var rows
   (``COMPONENT_AGENT_ID``, ``_BROKER_HOST``, ``_BROKER_PORT``,
   ``_BROKER_TOKEN``, ``_BROKER_TLS_CA``) from the "Component agent
