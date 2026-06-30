@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
-from robotsix_auto_mail.db import MailRecord, get_watermark, init_db, set_watermark
-from robotsix_auto_mail.server._constants import _is_safe_redirect_path
+from robotsix_auto_mail.db import MailRecord, get_watermark, set_watermark
+from robotsix_auto_mail.server._constants import _is_safe_redirect_path, _with_db
 from robotsix_auto_mail.triage import (
     TO_ARCHIVE,
     VALID_TRIAGE_ACTIONS,
@@ -57,8 +57,7 @@ class _BoardActionMixin:
         """
         _path = db_path if db_path is not None else self.db_path
 
-        conn = init_db(_path, skip_migrations=True)
-        try:
+        with _with_db(_path) as conn:
             if precheck is not None and not precheck(conn):
                 if redirect:
                     self._redirect("/board", code=302)
@@ -77,8 +76,6 @@ class _BoardActionMixin:
                 return False
 
             set_watermark(conn, watermark_key, "running")
-        finally:
-            conn.close()
 
         if target is not None:
             threading.Thread(target=target, args=args, daemon=True).start()
@@ -126,7 +123,7 @@ class _BoardActionMixin:
            (the callback already sent a response).
         5. Closes the connection and performs a safe redirect.
         """
-        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.db import get_record_by_message_id
 
         f = self._parse_request_body(*fields, no_strip=no_strip)
         message_id = f.get("message_id", "")
@@ -136,8 +133,7 @@ class _BoardActionMixin:
             self._bad_request("Missing message_id")
             return
 
-        conn = init_db(self.db_path, skip_migrations=True)
-        try:
+        with _with_db(self.db_path) as conn:
             record = get_record_by_message_id(conn, message_id)
             if record is None:
                 self._not_found()
@@ -148,8 +144,6 @@ class _BoardActionMixin:
             }
             if action(conn, record, redirect_to, **extra) is False:
                 return
-        finally:
-            conn.close()
 
         if redirect_to and _is_safe_redirect_path(redirect_to):
             self._redirect(redirect_to, code=302)
