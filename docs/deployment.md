@@ -94,9 +94,10 @@ The [`Dockerfile`](../Dockerfile) has two stages:
 | `builder` | Installs the Python package (wheel) from `pyproject.toml` |
 | `production` | Copies **only** the installed artifacts from `builder`, creates a non-root `mailbot` user (UID 1000), and sets the entrypoint |
 
-The final image runs as `mailbot` (UID 1000).  The base image exposes no ports
-and has no healthcheck — CLI operations are one-shot.  The `board` service in
-`docker-compose.yml` maps a port for the long-running web server.
+The final image runs as `mailbot` (UID 1000).  The image ships an HTTP
+healthcheck (`GET :8080/healthz`) that both Compose files rely on for the
+long-running web server — the `board` service maps a port for it, while the
+one-shot ingester disables the healthcheck since it runs no HTTP server.
 
 To build without the Compose cache:
 
@@ -215,7 +216,7 @@ The Compose file defines two services that share the same image and data:
 | `tty` | `false` | No pseudo-TTY allocation; output is plain streams. |
 | `restart` | `unless-stopped` | The default command is a long-running daemon, so it should stay up. |
 | `environment` | `MAIL_CONFIG_PATH`, `LLM_API_KEY` | Points the tool at the mounted config and passes LLM credentials through. |
-| `volumes` | Two entries (see below) | Config bind-mount + data bind-mount. |
+| `volumes` | Three entries (see below) | Config bind-mount + data bind-mount + log bind-mount. |
 
 `docker compose up -d` runs this service (the ingester) alongside `board`.
 A one-shot command overrides `command:` at runtime — e.g.
@@ -227,6 +228,7 @@ A one-shot command overrides `command:` at runtime — e.g.
 |---|---|---|
 | `./config:/home/mailbot/config` | Bind-mount | Makes host config files available inside the container without a build. |
 | `./.mail_data:/home/mailbot/.data` | Bind-mount | Persists the SQLite database in the project dir (git-ignored), at the container's default store location. |
+| `./.mail_log:/home/mailbot/.mail_log` | Bind-mount | Persists debug logs in the project dir so they survive container restarts. |
 
 ### `services.board`
 
@@ -251,15 +253,15 @@ interactive process.
 
 On every `v*` git tag, the [`release.yml`](../.github/workflows/release.yml)
 workflow delegates to the shared
-[`docker-release.yml`](https://github.com/damien-robotsix/robotsix-mill/blob/main/.github/workflows/docker-release.yml)
-reusable workflow from `robotsix-mill`, which builds the `Dockerfile` and
+[`docker-release.yml`](https://github.com/damien-robotsix/robotsix-github-workflows/blob/main/.github/workflows/docker-release.yml)
+reusable workflow from `robotsix-github-workflows`, which builds the `Dockerfile` and
 publishes a semver-tagged image to the GitHub Container Registry complete with
 SLSA build provenance and an SBOM attestation. A separate `trivy` job then
 scans the published image and uploads SARIF results to GitHub Code Scanning.
 Instead of building locally you can pull a versioned image directly:
 
 ```sh
-docker pull ghcr.io/damien-robotsix/robotsix-auto-mail:v1.0.0
+docker pull ghcr.io/damien-robotsix/robotsix-auto-mail:1.0.0
 ```
 
 Tags produced by the reusable workflow:
@@ -302,10 +304,15 @@ ingress are not configured here.
 - Pushing to `main` publishes a moving `ghcr.io/.../robotsix-auto-mail:main`
   image (the reusable `docker-release.yml` workflow tags both `main` pushes
   and `v*` tag pushes). central-deploy pulls `:main` to pick up new builds.
-- The contract runs two services — `robotsix-auto-mail` (the ingester, the
-  sole datastore writer) and `board` (the read-only web board, published on
-  `8080`) — both from the same image, sharing the named volumes
-  `auto-mail-config`, `auto-mail-data`, and `auto-mail-logs`.
+- The contract runs two services — `ingester` (the sole datastore writer)
+  and `board` (the read-only web board, published on `8080`) — both from the
+  same image, sharing the named volumes `auto-mail-config`, `auto-mail-data`,
+  and `auto-mail-logs`.
+- The `ingester` runs `ingest --watch --heartbeat-file
+  /home/mailbot/.data/ingest.heartbeat`. The `--heartbeat-file` CLI flag
+  makes each watch pass touch that file, and the service's healthcheck is a
+  small Python probe that fails if the heartbeat is missing or older than 30
+  minutes — so a wedged ingester is detected even though it serves no HTTP.
 - TLS termination and HTTP basic auth are handled by the **central-deploy
   gateway** in front of the board; the board itself has no authentication.
 - Configuration is managed through the Configuration page at
@@ -333,9 +340,9 @@ Run on the central-deploy host, against the contract compose project:
 | Task | Command |
 |---|---|
 | Tail board logs | `docker compose logs -f board` |
-| Tail ingester logs | `docker compose logs -f robotsix-auto-mail` |
+| Tail ingester logs | `docker compose logs -f ingester` |
 | Force an image update | `docker compose pull && docker compose up -d` |
-| One-shot CLI command | `docker compose run --rm robotsix-auto-mail <cmd>` (probe, triage, …) |
+| One-shot CLI command | `docker compose run --rm ingester <cmd>` (probe, triage, …) |
 | Restart the board only | `docker compose restart board` |
 | Stop everything | `docker compose down` |
 
@@ -581,8 +588,8 @@ docker compose run robotsix-auto-mail ingest
 
 - **[docs/connecting.md](connecting.md)** — full config key reference,
   precedence rules, and the `probe`/`board` commands.
-- **[docs/board-agent.md](board-agent.md)** — optional agent-comm bridge
-  to the mill board (disabled by default).
+- **[docs/configuration.md](configuration.md)** — full configuration
+  reference, including the optional per-account component-agent HTTP API.
 - **[docs/ingestion.md](ingestion.md)** — ingestion pipeline, schema,
   idempotency guarantees, and `ingest` CLI usage.
 - **[README.md](../README.md)** — project overview, layout, and status.

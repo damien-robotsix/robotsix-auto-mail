@@ -16,12 +16,12 @@ nav:
   - Architecture: architecture.md
   - Ingestion: ingestion.md
   - Connecting: connecting.md
+  - Configuration: configuration.md
   - Deployment: deployment.md
+  - Board HTTP API: skill.md
   - Dependencies: dependencies.md
   - Testing: testing.md
   - Troubleshooting: troubleshooting.md
   - CodeQL Verification: codeql-verification.md
   - Contributing: CONTRIBUTING.md
-  - Changelog: CHANGELOG.md
-  - Decisions:
-      - 0001 — Programming language: decisions/0001-programming-language.md
+  - Changelog: https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/CHANGELOG.md

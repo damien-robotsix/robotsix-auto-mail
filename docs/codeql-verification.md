@@ -64,15 +64,18 @@ explanatory comment on the line(s) above the flagged statement. This is
 the only sanctioned mechanism for handling individual findings.
 
 Live examples in
-[`src/robotsix_auto_mail/imap/__init__.py`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/src/robotsix_auto_mail/imap/__init__.py):
+[`src/robotsix_auto_mail/imap/client.py`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/src/robotsix_auto_mail/imap/client.py)
+(and [`src/robotsix_auto_mail/imap/_protocol.py`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/src/robotsix_auto_mail/imap/_protocol.py)):
 
-- `# lgtm[py/empty-except]` — on intentionally-empty `except` handlers
-  (alongside `# noqa: S110  # nosec B110`).
+- `# lgtm[py/empty-except]` — on the intentionally-empty `except` handler
+  in `_close_socket` (alongside `# noqa: S110  # nosec B110`).
 - `# lgtm[py/clear-text-transmission-sensitive-data]` — on the plaintext
   socket opened only to negotiate a STARTTLS upgrade (the
-  operator-selected `tls_mode == "starttls"` path).
+  operator-selected `tls_mode == "starttls"` path), and on the explicit
+  `tls_mode == "none"` plaintext path.
 - `# lgtm[py/clear-text-storage-sensitive-data]` — on credential-bearing
-  lines in the authentication path.
+  lines in the authentication path (in `client.py`, and in
+  `_protocol.py`'s `build_xoauth2_response`).
 
 The rule:
 

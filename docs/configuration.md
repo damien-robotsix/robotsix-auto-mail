@@ -77,7 +77,7 @@ See [Multi-account variables](#multi-account-variables) for details.
 | Variable | Default | Kind | Required | Description |
 |---|---|---|---|---|
 | `MAIL_USERNAME` | *(none)* | string | yes | Login username — typically the full email address. |
-| `MAIL_PASSWORD` | *(none)* | string | yes | Login password. Masked in logs and `repr`. |
+| `MAIL_PASSWORD` | *(none)* | string | yes | Login password. Masked in logs and `repr`. Not required when `MAIL_OAUTH2_PROVIDER=microsoft` (MSAL acquires tokens instead), and optional at the YAML layer. |
 | `MAIL_OAUTH2_TOKEN` | `""` | string | no | OAuth2 access token for SASL XOAUTH2. When set, password-based `login()` is skipped. |
 | `MAIL_OAUTH2_CLIENT_ID` | `""` | string | no | OAuth2 client identifier — required by some providers alongside the token. |
 | `MAIL_OAUTH2_CLIENT_SECRET` | `""` | string | no | OAuth2 client secret. Masked in logs and `repr`. |
@@ -156,16 +156,18 @@ application-wide — they are **not** namespaced in multi-account mode.
 
 ---
 
-## Component agent (global)
+## Component agent
 
-Optional agent running on the shared agent-comm broker that responds to
-component-inventory requests from other parts of the fleet (e.g. the
-mill board). These are application-wide — they are **not** namespaced in
-multi-account mode. For the full setup guide, see [Connecting](connecting.md).
+Optional HTTP API (monitor / config-get / config-set) served on the board
+server, letting external agents inspect status and read/apply configuration
+over HTTP — without the agent-comm broker. This is a **per-account** field:
+in multi-account mode it is namespaced as
+`MAIL_ACCOUNTS_<n>_COMPONENT_AGENT_ENABLED` (YAML `component_agent.enabled`
+under each account). For the full setup guide, see [Connecting](connecting.md).
 
 | Variable | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `COMPONENT_AGENT_ENABLED` | `false` | boolean | no | Enable the component agent on the broker. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
+| `COMPONENT_AGENT_ENABLED` | `false` | boolean | no | Whether the component-agent HTTP API is served on the board server. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
 
 ---
 
@@ -177,8 +179,7 @@ sections above is namespaced: `MAIL_<FIELD>` becomes
 `MAIL_ACCOUNTS_<n>_<FIELD>` where `<n>` is a zero-based integer.
 
 Global variables (`LLM_API_KEY`, `LLM_PROVIDER_MODEL`, `LANGFUSE_*`,
-`LOG_LEVEL`, `LOG_FORMAT`, `LOG_FILE_DIR`,
-`COMPONENT_AGENT_ENABLED`) are **not**
+`LOG_LEVEL`, `LOG_FORMAT`, `LOG_FILE_DIR`) are **not**
 namespaced — they remain at their bare names above and apply to every
 account.
 

@@ -7,8 +7,7 @@ code-style expectations, and open a pull request.
 ## Development environment
 
 This project uses a `src` layout and targets the Python version pinned in
-`.python-version` (see [ADR 0001](decisions/0001-programming-language.md)
-for the rationale). After cloning, install the package with its dev
+`.python-version`. After cloning, install the package with its dev
 extras:
 
 ```sh
@@ -61,7 +60,11 @@ This generates a `site/` directory with the built HTML (which is not committed t
 ## Code style and quality gate
 
 CI (`.github/workflows/ci.yml`) is the source of truth for the quality
-gate. Before pushing, mirror it locally:
+gate. Its `ci` job delegates lint/type/dependency/test checks to the shared
+`robotsix-github-workflows` reusable workflow, and the `repo-checks`,
+`security`, and `dependency-review` jobs add further checks on top. The
+commands below mirror the core of that gate locally — useful before pushing,
+though CI runs more:
 
 ```sh
 ruff check .          # lint
