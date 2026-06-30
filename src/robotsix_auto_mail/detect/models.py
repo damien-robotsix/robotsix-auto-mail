@@ -81,4 +81,3 @@ class ProviderEntry:
     mx_needles: tuple[str, ...] = ()
     domain_patterns: tuple[str, ...] = ()
     in_prompt_table: bool = True
-    in_managed_hosting: bool = False

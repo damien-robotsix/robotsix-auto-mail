@@ -39,8 +39,6 @@ class _ProtocolClient(abc.ABC):
         username: str,
         password: str,
         oauth2_token: str = "",
-        oauth2_client_id: str = "",
-        oauth2_client_secret: str = "",
     ) -> None:
         self._host = host
         self._port = port
@@ -48,8 +46,6 @@ class _ProtocolClient(abc.ABC):
         self._username = username
         self._password = password
         self._oauth2_token = oauth2_token
-        self._oauth2_client_id = oauth2_client_id
-        self._oauth2_client_secret = oauth2_client_secret
         # A dynamic token provider (e.g. MSAL) is wired in by subclasses
         # after ``super().__init__``; ``None`` for static-token / password
         # setups.

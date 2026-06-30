@@ -14,6 +14,11 @@
   deptry ``DEP002`` for the unused ``robotsix-agent-comm``, plus ruff and
   ``mypy src/ --strict``).
 
+- Removed dead code: ``ProviderEntry.in_managed_hosting`` (field and all 10
+  constructor arguments), ``_ProtocolClient._oauth2_client_id`` and
+  ``_oauth2_client_secret`` (parameters and instance attributes). Removed the
+  corresponding vulture whitelist entries.
+
 - Consolidated the `component-agent` module into `server`:
   moved `config_contract.py` → `_component_agent_config_contract.py` and
   `responder.py` → `_component_agent_responder.py`; updated all imports;
