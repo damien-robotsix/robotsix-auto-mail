@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pathlib
 import sys
 
 import robotsix_auto_mail.cli as _cli  # lgtm[py/unsafe-cyclic-import]
@@ -90,6 +91,7 @@ def _cmd_ingest(
     all_accounts: bool = False,
     dry_run: bool = False,
     watch: bool = False,
+    heartbeat_file: str | None = None,
 ) -> int:
     """Run the ingest subcommand for one or more accounts.
 
@@ -156,6 +158,13 @@ def _cmd_ingest(
                     _cli._ingest_cycle(account.config, dry_run=dry_run)
                 except Exception as exc:  # never let one bad cycle kill the loop
                     sys.stderr.write(f"Ingest cycle failed: {exc}\n")
+            # touch heartbeat so Docker healthcheck can verify liveness
+            if heartbeat_file is not None:
+                try:
+                    pathlib.Path(heartbeat_file).touch()
+                except Exception as exc:
+                    sys.stderr.write(f"Heartbeat write failed: {exc}\n")
+
             sys.stdout.write(f"Next ingest in {interval_minutes} min.\n")
             sys.stdout.flush()
             _cli.time.sleep(interval_minutes * 60)

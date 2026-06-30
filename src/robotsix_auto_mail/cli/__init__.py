@@ -143,6 +143,16 @@ def build_parser() -> argparse.ArgumentParser:
             "ingest.interval_minutes in the config (default 15)"
         ),
     )
+    ingest_parser.add_argument(
+        "--heartbeat-file",
+        default=None,
+        metavar="PATH",
+        help=(
+            "In --watch mode, touch this file at the end of each poll cycle "
+            "so a Docker HEALTHCHECK can verify the loop is alive. "
+            "No file is written when omitted."
+        ),
+    )
 
     board_parser = sub.add_parser(
         "board", help="Display ingested mail in a read-only board view"
@@ -399,6 +409,7 @@ def main(argv: list[str] | None = None) -> int:
             all_accounts=args.all_accounts,
             dry_run=args.dry_run,
             watch=args.watch,
+            heartbeat_file=args.heartbeat_file,
         )
 
     if args.command == "board":

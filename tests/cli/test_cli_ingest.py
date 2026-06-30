@@ -113,6 +113,49 @@ def test_ingest_single_pass_unaffected(
     mock_cycle.assert_called_once_with(cfg, dry_run=False)
 
 
+def test_ingest_watch_heartbeat_file_touched(
+    cfg: MailConfig, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """With --heartbeat-file in watch mode, the file is touched after a cycle."""
+    from robotsix_auto_mail.cli import _cmd_ingest
+
+    hb = tmp_path / "test.heartbeat"
+    assert not hb.exists()
+
+    with (
+        mock.patch("robotsix_auto_mail.cli._ingest_cycle", return_value=0),
+        mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
+    ):
+        rc = _cmd_ingest(_accounts(cfg), watch=True, heartbeat_file=str(hb))
+
+    assert rc == 0
+    assert hb.exists()
+    # mtime should be within the last few seconds
+    import time as _time
+
+    age_s = _time.time() - hb.stat().st_mtime
+    assert age_s >= 0
+    assert age_s < 10
+
+
+def test_ingest_watch_heartbeat_file_omitted_no_file_written(
+    cfg: MailConfig, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """When --heartbeat-file is omitted, no file is created."""
+    from robotsix_auto_mail.cli import _cmd_ingest
+
+    hb = tmp_path / "should_not_exist.heartbeat"
+
+    with (
+        mock.patch("robotsix_auto_mail.cli._ingest_cycle", return_value=0),
+        mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
+    ):
+        rc = _cmd_ingest(_accounts(cfg), watch=True, heartbeat_file=None)
+
+    assert rc == 0
+    assert not hb.exists()
+
+
 # ---------------------------------------------------------------------------
 # multi-account selection
 # ---------------------------------------------------------------------------
