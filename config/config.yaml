@@ -6,6 +6,7 @@
 # ── Global: LLM ──────────────────────────────────────────────────────────
 llm:
   api_key: ""                       # secret — LLM API key (e.g. OpenRouter sk-or-…)
+  # provider_model: ""              # optional — override llmio tier default
 
 # ── Global: Langfuse observability (optional) ─────────────────────────────
 langfuse:

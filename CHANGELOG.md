@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Added the missing ``provider_model`` field to the ``llm:`` section of
+  ``config/config.yaml``, restoring parity with the schema and the other
+  config artifacts (``.env.example``, ``docs/config/mail.local.example.yaml``).
+
 - Extracted the repeated ``init_db(...)`` / ``try:`` / ``finally: conn.close()``
   pattern into a shared ``_with_db()`` context manager in
   ``server/_constants.py``, replacing seven duplicate blocks across the
