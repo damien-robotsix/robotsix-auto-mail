@@ -47,6 +47,9 @@ from robotsix_auto_mail.config.loader import (
     resolve_llm_provider_model as resolve_llm_provider_model,
 )
 from robotsix_auto_mail.config.model import (
+    FailedAccountEntry as FailedAccountEntry,
+)
+from robotsix_auto_mail.config.model import (
     MailAccount as MailAccount,
 )
 from robotsix_auto_mail.config.model import (
@@ -81,9 +84,6 @@ from robotsix_auto_mail.config.schema import (
 )
 from robotsix_auto_mail.config.schema import (
     ConfigurationError as ConfigurationError,
-)
-from robotsix_auto_mail.config.model import (
-    FailedAccountEntry as FailedAccountEntry,
 )
 
 __all__ = [

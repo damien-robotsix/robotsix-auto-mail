@@ -193,7 +193,7 @@ def parse_xoauth2_error(challenge: bytes) -> dict[str, Any]:
         if not isinstance(result, dict):
             return {}
         return result
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except json.JSONDecodeError, UnicodeDecodeError:
         return {}
 
 
@@ -260,9 +260,7 @@ def acquire_fresh_token(
     )
     if claims_challenge is not None:
         kwargs["claims_challenge"] = claims_challenge
-    result = app.acquire_token_silent(
-        MICROSOFT_SCOPES, account=accounts[0], **kwargs
-    )
+    result = app.acquire_token_silent(MICROSOFT_SCOPES, account=accounts[0], **kwargs)
     _persist_cache(config, app.token_cache)
     if not result or "access_token" not in result:
         raise ConfigurationError(

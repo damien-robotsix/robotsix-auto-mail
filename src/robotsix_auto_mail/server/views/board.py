@@ -338,7 +338,7 @@ def _build_global_board_content(
     merged_record_notes: dict[str, str] = {}
     record_accounts: dict[str, str] = {}
     account_labels: dict[str, str] = {}
-    account_health: dict[str, dict | None] = {}
+    account_health: dict[str, dict[str, Any] | None] = {}
     triage_running: bool = False
     # Aggregate batch-op progress across accounts.  Each account runs its
     # own worker against its own DB; we sum their done/total so the banner
@@ -462,7 +462,7 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
 
 
 def _health_alerts_html(
-    account_health: dict[str, dict | None],
+    account_health: dict[str, dict[str, Any] | None],
     account_labels: dict[str, str] | None = None,
     *,
     config_failures: tuple[FailedAccountEntry, ...] = (),
@@ -656,7 +656,7 @@ def _build_board_html(
     # Lightweight read of each account's health watermark so the picker
     # can show [FAILED] badges on failing accounts.  Only done when
     # multiple accounts are configured.
-    picker_health: dict[str, dict | None] = {}
+    picker_health: dict[str, dict[str, Any] | None] = {}
     if accounts is not None and len(accounts.ids()) >= 2:
         from robotsix_auto_mail.db import init_db as _init_db
         from robotsix_auto_mail.db.queries import get_account_health as _get_h

@@ -445,7 +445,9 @@ def test_smtp_xoauth2_force_refresh_succeeds_on_retry() -> None:
 
     mock_smtp_1 = _make_mock_smtp()
 
-    def fake_auth_fail(mechanism: Any, callback: Any, initial_response_ok: bool = True) -> None:
+    def fake_auth_fail(
+        mechanism: Any, callback: Any, initial_response_ok: bool = True
+    ) -> None:
         callback(None)  # initial response
         callback(challenge)  # server rejection
         raise smtplib.SMTPAuthenticationError(535, b"Auth failed")
@@ -458,9 +460,7 @@ def test_smtp_xoauth2_force_refresh_succeeds_on_retry() -> None:
     with mock.patch(
         "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
     ):
-        with mock.patch(
-            "smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]
-        ):
+        with mock.patch("smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]):
             with mock.patch(
                 "robotsix_auto_mail.oauth2.acquire_fresh_token",
                 return_value=fresh_token,
@@ -489,7 +489,9 @@ def test_smtp_xoauth2_force_refresh_fails_conditional_access() -> None:
 
     mock_smtp_1 = _make_mock_smtp()
 
-    def fake_auth_fail_1(mechanism: Any, callback: Any, initial_response_ok: bool = True) -> None:
+    def fake_auth_fail_1(
+        mechanism: Any, callback: Any, initial_response_ok: bool = True
+    ) -> None:
         callback(None)
         callback(challenge)
         raise smtplib.SMTPAuthenticationError(535, b"Auth failed")
@@ -498,7 +500,9 @@ def test_smtp_xoauth2_force_refresh_fails_conditional_access() -> None:
 
     mock_smtp_2 = _make_mock_smtp()
 
-    def fake_auth_fail_2(mechanism: Any, callback: Any, initial_response_ok: bool = True) -> None:
+    def fake_auth_fail_2(
+        mechanism: Any, callback: Any, initial_response_ok: bool = True
+    ) -> None:
         callback(None)
         callback(challenge)
         raise smtplib.SMTPAuthenticationError(535, b"Auth failed again")
@@ -508,9 +512,7 @@ def test_smtp_xoauth2_force_refresh_fails_conditional_access() -> None:
     with mock.patch(
         "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
     ):
-        with mock.patch(
-            "smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]
-        ):
+        with mock.patch("smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]):
             with mock.patch(
                 "robotsix_auto_mail.oauth2.acquire_fresh_token",
                 return_value=fresh_token,
@@ -535,9 +537,7 @@ def test_smtp_xoauth2_no_retry_for_static_token() -> None:
     auth_error = smtplib.SMTPAuthenticationError(535, b"Auth failed")
     mock_smtp.auth.side_effect = auth_error
 
-    with mock.patch(
-        "robotsix_auto_mail.smtp.build_token_provider", return_value=None
-    ):
+    with mock.patch("robotsix_auto_mail.smtp.build_token_provider", return_value=None):
         with mock.patch("smtplib.SMTP", return_value=mock_smtp):
             with mock.patch(
                 "robotsix_auto_mail.oauth2.acquire_fresh_token"
@@ -562,7 +562,9 @@ def test_smtp_cae_claims_forwarded_to_acquire_fresh_token() -> None:
 
     mock_smtp_1 = _make_mock_smtp()
 
-    def fake_auth_fail(mechanism: Any, callback: Any, initial_response_ok: bool = True) -> None:
+    def fake_auth_fail(
+        mechanism: Any, callback: Any, initial_response_ok: bool = True
+    ) -> None:
         callback(None)
         callback(challenge)
         raise smtplib.SMTPAuthenticationError(535, b"Auth failed")
@@ -575,9 +577,7 @@ def test_smtp_cae_claims_forwarded_to_acquire_fresh_token() -> None:
     with mock.patch(
         "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
     ):
-        with mock.patch(
-            "smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]
-        ):
+        with mock.patch("smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]):
             with mock.patch(
                 "robotsix_auto_mail.oauth2.acquire_fresh_token",
                 return_value=fresh_token,
