@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import textwrap
 import warnings
 from pathlib import Path
 from unittest import mock
@@ -11,6 +12,7 @@ import pytest
 
 from robotsix_auto_mail.config import (
     ConfigurationError,
+    FailedAccountEntry,
     MailAccount,
     MailAccountsConfig,
     MailConfig,
@@ -859,3 +861,69 @@ def test_from_env_multi_account_global_fields_default_when_not_set() -> None:
     assert cfg.langfuse_public_key == ""
     assert cfg.langfuse_secret_key == ""
     assert cfg.langfuse_base_url == ""
+
+
+# ---------------------------------------------------------------------------
+# Failed-account resilience — one bad account must not take down the board
+# ---------------------------------------------------------------------------
+
+
+def test_from_yaml_skips_template_literal_account(tmp_path: Path) -> None:
+    """A config with 3 accounts where account-1 (index 1) has an unsubstituted
+    template literal must return 2 valid accounts and 1 failed entry."""
+    yaml_content = textwrap.dedent("""\
+        accounts:
+          - id: good-1
+            imap:
+              host: imap.example.com
+            smtp:
+              host: smtp.example.com
+            auth:
+              username: alice@example.com
+              password: secret
+          - id: bad-2
+            imap:
+              host: imap.example.com
+            smtp:
+              host: smtp.example.com
+            auth:
+              username: "{accounts.2.auth.username}"
+              password: secret
+          - id: good-3
+            imap:
+              host: imap.example.com
+            smtp:
+              host: smtp.example.com
+            auth:
+              username: carol@example.com
+              password: secret
+    """)
+    config_file = tmp_path / "mail.local.yaml"
+    config_file.write_text(yaml_content)
+
+    result = MailAccountsConfig.from_yaml(config_file)
+
+    assert [a.account_id for a in result.accounts] == ["good-1", "good-3"]
+    assert len(result.failed_accounts) == 1
+    assert result.failed_accounts[0].account_id == "bad-2"
+    assert "template literal" in result.failed_accounts[0].error
+
+
+def test_from_yaml_all_template_literal_raises(tmp_path: Path) -> None:
+    """When every account has a template literal, from_yaml() must raise."""
+    yaml_content = textwrap.dedent("""\
+        accounts:
+          - id: bad-1
+            imap:
+              host: imap.example.com
+            smtp:
+              host: smtp.example.com
+            auth:
+              username: "{accounts.1.auth.username}"
+              password: secret
+    """)
+    config_file = tmp_path / "mail.local.yaml"
+    config_file.write_text(yaml_content)
+
+    with pytest.raises(ConfigurationError, match="All accounts failed"):
+        MailAccountsConfig.from_yaml(config_file)

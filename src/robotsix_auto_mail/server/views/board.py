@@ -15,7 +15,7 @@ from robotsix_auto_mail._constants import (
     _BATCH_OP_STATE_KEY,
     _TRIAGE_RUN_STATE_KEY,
 )
-from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailAccountsConfig
+from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, FailedAccountEntry, MailAccountsConfig
 from robotsix_auto_mail.db import MailRecord, list_records
 from robotsix_auto_mail.server._constants import (
     _BOARD_COLUMNS,
@@ -232,6 +232,7 @@ def _build_board_content(
     archive_root: str = DEFAULT_ARCHIVE_ROOT,
     *,
     account_id: str = "main",
+    config_failures: tuple[FailedAccountEntry, ...] = (),
 ) -> dict[str, Any]:
     """Return ``{"columns_html": …, "triage_running": …}``.
 
@@ -286,7 +287,9 @@ def _build_board_content(
 
     # Health alerts for the red banner + JS polling.
     health_alerts_html = _health_alerts_html(
-        {account_id: health} if health else {}, account_labels=None
+        {account_id: health} if health else {},
+        account_labels=None,
+        config_failures=config_failures,
     )
 
     return {
@@ -407,7 +410,9 @@ def _build_global_board_content(
     if batch_running:
         batch_op = {"op": batch_verb, "done": batch_done, "total": batch_total}
 
-    health_alerts_html = _health_alerts_html(account_health, account_labels)
+    health_alerts_html = _health_alerts_html(
+        account_health, account_labels, config_failures=accounts.failed_accounts
+    )
 
     return {
         "columns_html": columns_html,
@@ -449,8 +454,23 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
 def _health_alerts_html(
     account_health: dict[str, dict | None],
     account_labels: dict[str, str] | None = None,
+    *,
+    config_failures: tuple[FailedAccountEntry, ...] = (),
 ) -> str:
     """Return a red banner listing every failing account, or ``""`` if all OK."""
+    parts: list[str] = []
+
+    # Config-load failures (no DB connection needed).
+    for entry in config_failures:
+        parts.append(
+            '<div class="health-alert-banner" role="alert">\n'
+            f"  &#9888; <strong>Account config error &mdash; account"
+            f" '{html.escape(entry.account_id)}' could not be loaded and"
+            f" is disabled:</strong> {html.escape(entry.error)}\n"
+            "</div>"
+        )
+
+    # DB-backed health failures.
     failures: list[tuple[str, str]] = []
     for account_id, h in account_health.items():
         if h is not None and h.get("status") == "failed":
@@ -458,22 +478,22 @@ def _health_alerts_html(
             error = h.get("error", "Unknown error")
             failures.append((label, error))
 
-    if not failures:
-        return ""
+    if failures:
+        items = "\n".join(
+            f"    <li><strong>{html.escape(label)}</strong>: "
+            f"{html.escape(error)}</li>"
+            for label, error in failures
+        )
+        parts.append(
+            '<div class="health-alert-banner" role="alert" id="health-alerts">\n'
+            "  &#9888; <strong>Account connection failure</strong>\n"
+            "  <ul>\n"
+            f"{items}\n"
+            "  </ul>\n"
+            "</div>"
+        )
 
-    items = "\n".join(
-        f"    <li><strong>{html.escape(label)}</strong>: "
-        f"{html.escape(error)}</li>"
-        for label, error in failures
-    )
-    return (
-        '<div class="health-alert-banner" role="alert" id="health-alerts">\n'
-        "  &#9888; <strong>Account connection failure</strong>\n"
-        "  <ul>\n"
-        f"{items}\n"
-        "  </ul>\n"
-        "</div>"
-    )
+    return "\n".join(parts)
 
 
 def _render_board_page_shell(
@@ -604,6 +624,7 @@ def _build_board_html(
         db_path,
         archive_root=archive_root,
         account_id=current_account_id or "main",
+        config_failures=accounts.failed_accounts if accounts else (),
     )
 
     # -- per-account health for picker badges ---------------------------
