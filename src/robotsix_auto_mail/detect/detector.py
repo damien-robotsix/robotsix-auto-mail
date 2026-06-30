@@ -385,8 +385,9 @@ def detect_provider(
         tier: LLM tier to use.  The concrete model for each tier is
             resolved by the configured provider backend (see
             :func:`robotsix_llmio.core.get_provider_for_identifier`).
-        api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
-            var.  Required unless the env var is set.
+        api_key: OpenRouter API key.  Resolves with the precedence
+            ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
+            :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
         provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
             When ``None`` or empty, the tier-level default model is used
             (resolved from :class:`~robotsix_llmio.config.tier.TierConfig`).

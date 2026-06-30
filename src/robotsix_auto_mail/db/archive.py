@@ -118,8 +118,9 @@ def determine_archive_structure(
         archive_root: Logical root folder name (e.g.
             ``"robotsix-mail-archive"``).  Used in the system prompt
             to anchor the proposed layout.
-        api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env
-            var.  Required unless the env var is set.
+        api_key: OpenRouter API key.  Resolves with the precedence
+            ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
+            :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
             back to the tier-level default model.
