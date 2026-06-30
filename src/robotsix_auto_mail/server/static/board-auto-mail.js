@@ -580,6 +580,100 @@
   }
 
   /* ==================================================================
+   * 4b. OAuth2 device-code authorization (board-initiated)
+   * ================================================================ */
+
+  function _createAuthModal() {
+    var overlay = document.createElement('div');
+    overlay.className = 'auth-modal-overlay';
+    overlay.innerHTML = [
+      '<div class="auth-modal">',
+      '  <h3>Microsoft Authorization Required</h3>',
+      '  <p class="auth-modal-message"></p>',
+      '  <p>Open <a class="auth-modal-link" href="" target="_blank" rel="noopener"></a></p>',
+      '  <p>Enter code: <strong class="auth-modal-code"></strong></p>',
+      '  <p class="auth-modal-status"></p>',
+      '</div>'
+    ].join('\n');
+    return overlay;
+  }
+
+  async function authorizeAccount(btn) {
+    var accountId = btn.dataset.accountId || '';
+    btn.disabled = true;
+    btn.textContent = 'Starting\u2026';
+
+    var modal = _createAuthModal();
+    document.body.appendChild(modal);
+    modal.querySelector('.auth-modal-status').textContent = 'Requesting authorization code\u2026';
+
+    var pollTimer = null;
+
+    function cleanup() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    try {
+      var resp = await fetch('/auth-start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({account_id: accountId}).toString(),
+      });
+      var data = await resp.json();
+      if (data.status === 'error') {
+        modal.querySelector('.auth-modal-status').textContent = '\u274c ' + (data.error || 'Unknown error');
+        cleanup();
+        btn.disabled = false;
+        btn.textContent = 'Authorize / Reconnect';
+        return;
+      }
+      if (data.message) {
+        modal.querySelector('.auth-modal-message').textContent = data.message;
+      }
+      if (data.verification_uri) {
+        var link = modal.querySelector('.auth-modal-link');
+        link.href = data.verification_uri;
+        link.textContent = data.verification_uri;
+      }
+      if (data.user_code) {
+        modal.querySelector('.auth-modal-code').textContent = data.user_code;
+      }
+      if (data.status === 'success') {
+        // Rare: flow completed before POST returned
+        modal.querySelector('.auth-modal-status').textContent = '\u2705 Connected! Reloading\u2026';
+        setTimeout(function () { modal.remove(); refreshBoard(); btn.disabled = false; btn.textContent = 'Authorize / Reconnect'; }, 1500);
+        return;
+      }
+      modal.querySelector('.auth-modal-status').textContent = 'Waiting for consent\u2026';
+    } catch (e) {
+      modal.querySelector('.auth-modal-status').textContent = '\u274c Network error: ' + e.message;
+      cleanup();
+      btn.disabled = false;
+      btn.textContent = 'Authorize / Reconnect';
+      return;
+    }
+
+    // Poll /auth-status every 3 s until success or error
+    pollTimer = setInterval(async function () {
+      try {
+        var r = await fetch('/auth-status?account_id=' + encodeURIComponent(accountId));
+        var s = await r.json();
+        if (s.status === 'success') {
+          cleanup();
+          modal.querySelector('.auth-modal-status').textContent = '\u2705 Connected! Reloading\u2026';
+          setTimeout(function () { modal.remove(); refreshBoard(); btn.disabled = false; btn.textContent = 'Authorize / Reconnect'; }, 1500);
+        } else if (s.status === 'error') {
+          cleanup();
+          modal.querySelector('.auth-modal-status').textContent = '\u274c ' + (s.error || 'Unknown error');
+          btn.disabled = false;
+          btn.textContent = 'Authorize / Reconnect';
+        }
+        // pending_prompt / pending_consent / idle: keep polling
+      } catch (_e) { /* network hiccup — keep polling */ }
+    }, 3000);
+  }
+
+  /* ==================================================================
    * 5.  Bootstrap
    * ================================================================ */
 
@@ -600,4 +694,5 @@
   // -- Expose public API on window ------------------------------------
   window.closeDetail = closeDetail;
   window.refreshBoard = refreshBoard;
+  window.authorizeAccount = authorizeAccount;
 })();

@@ -18,9 +18,7 @@ from robotsix_auto_mail.smtp import SmtpClient, SmtpError
 def utcnow() -> str:
     """Return the current UTC time as an ISO 8601 string (no microseconds)."""
     return (
-        datetime.datetime.now(datetime.timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
+        datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
     )
 
 

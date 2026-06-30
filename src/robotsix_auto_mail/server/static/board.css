@@ -410,3 +410,39 @@ button:hover { background: #1a4d7a; }
 #probe-health-btn {
     margin-bottom: 0.75em;
 }
+
+/* OAuth2 Authorize button (inline in health alert banners) */
+.auth-btn {
+  margin-left: 0.6em;
+  padding: 2px 10px;
+  background: #1a1a4e;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  vertical-align: middle;
+}
+.auth-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Device-code auth modal */
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.auth-modal {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.5em 2em;
+  max-width: 520px;
+  width: 90%;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+.auth-modal h3 { margin-top: 0; color: #1a1a4e; }
+.auth-modal-code { font-size: 1.4em; letter-spacing: 0.15em; font-family: monospace; }
+.auth-modal-status { font-style: italic; color: #444; }

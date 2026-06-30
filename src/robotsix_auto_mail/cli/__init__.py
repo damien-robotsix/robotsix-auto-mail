@@ -217,6 +217,37 @@ def build_parser() -> argparse.ArgumentParser:
             "from the existing entry unless explicitly supplied on the command line."
         ),
     )
+    detect_parser.add_argument(
+        "--app-password",
+        action="store_true",
+        default=False,
+        help=(
+            "Use password/basic auth even for Microsoft-hosted accounts. "
+            "Mutually exclusive with --oauth2-client-id / --oauth2-tenant. "
+            "WARNING: OAuth2 is strongly preferred; basic auth may be disabled "
+            "for your tenant."
+        ),
+    )
+    detect_parser.add_argument(
+        "--oauth2-client-id",
+        dest="oauth2_client_id",
+        default="",
+        metavar="UUID",
+        help=(
+            "Azure app-registration client ID for Microsoft 365 OAuth2. "
+            "Defaults to the Thunderbird public client when omitted."
+        ),
+    )
+    detect_parser.add_argument(
+        "--oauth2-tenant",
+        dest="oauth2_tenant",
+        default="",
+        metavar="TENANT",
+        help=(
+            "Azure AD tenant for Microsoft 365 OAuth2: 'organizations', "
+            "'common', or a tenant GUID/domain (default: 'organizations')."
+        ),
+    )
 
     config_sync_parser = sub.add_parser(
         "config-sync",

@@ -452,6 +452,15 @@ def _build_config_from_env(
 
     # -- final validation --------------------------------------------------
 
+    # Microsoft MSAL accounts never use a password — don't require MAIL_PASSWORD.
+    if kwargs.get("oauth2_provider") == "microsoft":
+        _pw_spec = next(
+            (s for s in _FIELD_SPECS if s.field_name == "password"), None
+        )
+        if _pw_spec:
+            _pw_label = label_for(_pw_spec)
+            missing = [m for m in missing if m != _pw_label]
+
     msgs: list[str] = []
     if missing:
         msgs.append(
@@ -743,14 +752,10 @@ class MailAccountsConfig:
                 has_store_path = (
                     isinstance(store_section, dict) and "path" in store_section
                 )
-                cfg = MailConfig._parse_config_dict(
-                    entry, path, validate=validate
-                )
+                cfg = MailConfig._parse_config_dict(entry, path, validate=validate)
                 _validate_template_literals(cfg)
                 if not has_store_path:
-                    cfg = dataclasses.replace(
-                        cfg, db_path=f".data/{raw_id}/mail.db"
-                    )
+                    cfg = dataclasses.replace(cfg, db_path=f".data/{raw_id}/mail.db")
 
                 # Apply top-level llm / langfuse values
                 # (global wins over defaults).
@@ -763,14 +768,11 @@ class MailAccountsConfig:
                     or cfg.langfuse_public_key,
                     langfuse_secret_key=global_langfuse_secret_key
                     or cfg.langfuse_secret_key,
-                    langfuse_base_url=global_langfuse_base_url
-                    or cfg.langfuse_base_url,
+                    langfuse_base_url=global_langfuse_base_url or cfg.langfuse_base_url,
                 )
 
                 accounts.append(
-                    MailAccount(
-                        account_id=raw_id, config=cfg, label=raw_label
-                    )
+                    MailAccount(account_id=raw_id, config=cfg, label=raw_label)
                 )
             except ConfigurationError as exc:
                 logger.error(
@@ -778,9 +780,7 @@ class MailAccountsConfig:
                     raw_id,
                     exc,
                 )
-                failed.append(
-                    FailedAccountEntry(account_id=raw_id, error=str(exc))
-                )
+                failed.append(FailedAccountEntry(account_id=raw_id, error=str(exc)))
                 continue
 
         raw_default = data.get("default_account")
@@ -858,9 +858,7 @@ class MailAccountsConfig:
                     raw_id,
                     exc,
                 )
-                failed.append(
-                    FailedAccountEntry(account_id=raw_id, error=str(exc))
-                )
+                failed.append(FailedAccountEntry(account_id=raw_id, error=str(exc)))
             index += 1
 
         # Contiguity: every present index must be < the count we consumed.

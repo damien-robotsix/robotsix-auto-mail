@@ -11,6 +11,34 @@
   ``deploy/nginx/mail.robotsix.net.conf`` never existed). Updated the
   ``deploy`` module entry in ``docs/modules.yaml`` to match.
 
+- Fixed ``determine_archive_structure`` and ``detect_provider`` docstrings to
+  document the full three-step API key resolution chain (argument → env var
+  → config file), matching ``generate_draft_reply``.
+
+- Docs: expanded the Microsoft 365 OAuth2 onboarding documentation with
+  three resolution paths for admin-consent errors (allowlist Thunderbird,
+  custom app registration, app password fallback), added ``--oauth2-client-id``
+  and ``--oauth2-tenant`` rows to the detect flag table, and documented
+  ``--stdout`` + OAuth2 flag combination for scripting workflows.
+
+- Board: Microsoft OAuth2 accounts can now be authorized / reconnected
+  directly from the web board via an "Authorize / Reconnect" button in
+  health-alert banners, using the device-code flow with a modal prompt.
+
+- Added ``--oauth2-client-id`` and ``--oauth2-tenant`` flags to ``detect``,
+  allowing operators to supply a custom Azure app registration for
+  Microsoft 365 OAuth2 at detect-time instead of manually editing the
+  written YAML.
+
+- Added ``--app-password`` flag to ``detect``, enabling password/basic
+  auth for Microsoft-hosted accounts where the tenant still allows
+  legacy authentication (app passwords). Mutually exclusive with
+  ``--oauth2-client-id`` / ``--oauth2-tenant``.
+
+- Fixed ``MailConfig.from_env()`` to no longer require ``MAIL_PASSWORD``
+  when ``MAIL_OAUTH2_PROVIDER=microsoft``, enabling env-var-only
+  Microsoft 365 deployments that use MSAL/XOAUTH2 without a password.
+
 - Removed five unwired ``COMPONENT_AGENT_*`` broker env var rows
   (``COMPONENT_AGENT_ID``, ``_BROKER_HOST``, ``_BROKER_PORT``,
   ``_BROKER_TOKEN``, ``_BROKER_TLS_CA``) from the "Component agent

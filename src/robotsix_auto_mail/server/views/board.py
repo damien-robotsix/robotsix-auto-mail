@@ -15,8 +15,13 @@ from robotsix_auto_mail._constants import (
     _BATCH_OP_STATE_KEY,
     _TRIAGE_RUN_STATE_KEY,
 )
-from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, FailedAccountEntry, MailAccountsConfig
+from robotsix_auto_mail.config import (
+    DEFAULT_ARCHIVE_ROOT,
+    FailedAccountEntry,
+    MailAccountsConfig,
+)
 from robotsix_auto_mail.db import MailRecord, list_records
+from robotsix_auto_mail.oauth2 import MICROSOFT_PROVIDER
 from robotsix_auto_mail.server._constants import (
     _BOARD_COLUMNS,
     BATCH_OP_VERB_LABELS,
@@ -233,6 +238,7 @@ def _build_board_content(
     *,
     account_id: str = "main",
     config_failures: tuple[FailedAccountEntry, ...] = (),
+    mail_config: object | None = None,
 ) -> dict[str, Any]:
     """Return ``{"columns_html": …, "triage_running": …}``.
 
@@ -290,6 +296,7 @@ def _build_board_content(
         {account_id: health} if health else {},
         account_labels=None,
         config_failures=config_failures,
+        account_configs={account_id: mail_config} if mail_config is not None else None,
     )
 
     return {
@@ -411,7 +418,10 @@ def _build_global_board_content(
         batch_op = {"op": batch_verb, "done": batch_done, "total": batch_total}
 
     health_alerts_html = _health_alerts_html(
-        account_health, account_labels, config_failures=accounts.failed_accounts
+        account_health,
+        account_labels,
+        config_failures=accounts.failed_accounts,
+        account_configs={a.account_id: a.config for a in accounts.accounts},
     )
 
     return {
@@ -456,6 +466,7 @@ def _health_alerts_html(
     account_labels: dict[str, str] | None = None,
     *,
     config_failures: tuple[FailedAccountEntry, ...] = (),
+    account_configs: dict[str, object] | None = None,
 ) -> str:
     """Return a red banner listing every failing account, or ``""`` if all OK."""
     parts: list[str] = []
@@ -471,19 +482,33 @@ def _health_alerts_html(
         )
 
     # DB-backed health failures.
-    failures: list[tuple[str, str]] = []
+    failures: list[tuple[str, str, str, bool]] = []
     for account_id, h in account_health.items():
         if h is not None and h.get("status") == "failed":
             label = (account_labels or {}).get(account_id, account_id)
             error = h.get("error", "Unknown error")
-            failures.append((label, error))
+            cfg = (account_configs or {}).get(account_id)
+            needs_auth = (
+                cfg is not None
+                and getattr(cfg, "oauth2_provider", "") == MICROSOFT_PROVIDER
+            )
+            failures.append((account_id, label, error, needs_auth))
 
     if failures:
-        items = "\n".join(
-            f"    <li><strong>{html.escape(label)}</strong>: "
-            f"{html.escape(error)}</li>"
-            for label, error in failures
-        )
+        items_lines: list[str] = []
+        for account_id_key, label, error, needs_auth in failures:
+            btn = (
+                f' <button class="auth-btn"'
+                f' data-account-id="{html.escape(account_id_key)}"'
+                ' onclick="authorizeAccount(this)">Authorize / Reconnect</button>'
+                if needs_auth
+                else ""
+            )
+            items_lines.append(
+                f"    <li><strong>{html.escape(label)}</strong>: "
+                f"{html.escape(error)}{btn}</li>"
+            )
+        items = "\n".join(items_lines)
         parts.append(
             '<div class="health-alert-banner" role="alert" id="health-alerts">\n'
             "  &#9888; <strong>Account connection failure</strong>\n"
