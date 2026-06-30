@@ -1,4 +1,10 @@
 repos:
+  - repo: https://github.com/biomejs/pre-commit
+    rev: 4eddc4cebc6ad67a1b11786e3e9082fe028fbc3c  # frozen: v1.9.4
+    hooks:
+      - id: biome-check
+        args: [--apply, --no-errors-on-unmatched]
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # keep in sync with pyproject.toml dev deps
     rev: v0.14.10

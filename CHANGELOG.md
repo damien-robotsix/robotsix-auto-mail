@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Added JavaScript linting and formatting via Biome (``biome.json``, pre-commit
+  hook, CI step) for ``board-auto-mail.js``.  The CI gate is initially
+  non-blocking (``continue-on-error``) to avoid blocking on pre-existing
+  style debt; a follow-up will apply safe auto-fixes and tighten the gate.
+
 - Aligned ``logging:`` section handling with ``llm:`` / ``langfuse:``:
   per-account ``logging:`` blocks are no longer emitted by the YAML
   renderer and are now rejected by the loader with an actionable error

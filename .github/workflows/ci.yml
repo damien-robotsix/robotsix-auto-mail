@@ -89,6 +89,15 @@ jobs:
       - name: Validate pyproject.toml (validate-pyproject)
         run: uvx 'validate-pyproject[all,store]'
 
+      - name: Setup Biome
+        uses: biomejs/setup-biome@4c91541eaada48f67d7dbd7833600ce162b68f51  # v2
+        with:
+          version: "1.9.4"
+
+      - name: Lint & format JavaScript (Biome)
+        continue-on-error: true  # non-blocking: pre-existing JS debt tracked in biome.json
+        run: biome check
+
       - name: Scan GitHub Actions workflows (zizmor)
         run: uv run --frozen zizmor --format=sarif .github/workflows/ > zizmor-results.sarif
 
