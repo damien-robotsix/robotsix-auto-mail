@@ -2,6 +2,13 @@
 
 ## 0.0.0 (unreleased)
 
+- Added ``parse_xoauth2_error``, ``extract_cae_claims``,
+  ``acquire_fresh_token``, and ``classify_xoauth2_auth_error`` to
+  ``robotsix_auto_mail.oauth2``, providing XOAUTH2 error parsing, CAE
+  claims-challenge extraction, token force-refresh, and human-readable
+  auth-failure classification for Microsoft 365 Conditional Access / CAE
+  scenarios.
+
 - Fixed the Microsoft OAuth2 device-code flow to auto-probe account health
   before reporting success, so the "Account connection failure" warning banner
   disappears on the next page load without requiring a manual "Recheck

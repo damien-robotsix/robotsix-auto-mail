@@ -17,6 +17,7 @@ imports and all existing tests run with ``msal`` NOT installed.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -107,6 +108,125 @@ def _persist_cache(config: MailConfig, cache: Any) -> None:
     path = cache_path_for(config)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(cache.serialize())
+
+
+# ---------------------------------------------------------------------------
+# XOAUTH2 error parsing & CAE support
+# ---------------------------------------------------------------------------
+
+_CAE_CLAIMS_RE = re.compile(r'claims="([A-Za-z0-9+/=_-]+)"')
+
+#: AADSTS error codes that indicate a tenant Conditional Access / CAE
+#: policy block rather than a plain credential or expiry issue.
+_CONDITIONAL_ACCESS_CODES: frozenset[int] = frozenset(
+    {
+        50097,  # Device compliance required by CA policy
+        50158,  # External security challenge not satisfied
+        53003,  # Access blocked by CA policy
+        50173,  # Token freshness requirement not met (CAE)
+        70011,  # Invalid scope requested
+        900432,  # Cross-cloud IMAP not supported
+    }
+)
+
+
+def parse_xoauth2_error(challenge_bytes: bytes) -> dict[str, Any]:
+    """JSON-parse a raw XOAUTH2 server rejection challenge.
+
+    imaplib / smtplib already base64-decode the challenge before passing it
+    to the SASL callback, so only JSON parsing is needed here.  Returns an
+    empty dict on any parse failure.
+    """
+    import json
+
+    try:
+        return dict(json.loads(challenge_bytes.strip(b"\x00").decode()))
+    except Exception:
+        return {}
+
+
+def extract_cae_claims(error_info: dict[str, Any]) -> str | None:
+    """Extract a CAE claims-challenge value from a parsed XOAUTH2 error dict.
+
+    Returns the raw base64 claims string if present, else ``None``.
+    """
+    schemes = error_info.get("schemes", "")
+    m = _CAE_CLAIMS_RE.search(schemes)
+    return m.group(1) if m else None
+
+
+def acquire_fresh_token(
+    config: MailConfig,
+    *,
+    claims_challenge: str | None = None,
+) -> str:
+    """Force-refresh the MSAL access token for *config*'s account.
+
+    Passes *claims_challenge* to ``acquire_token_silent`` when provided
+    (Continuous Access Evaluation flow).  Raises ``ConfigurationError``
+    when no cached account exists or the refresh fails.
+    """
+    app = build_msal_app(config)
+    accounts = app.get_accounts()
+    account_hint = config.username or "<id>"
+    if not accounts:
+        raise ConfigurationError(
+            "No cached Microsoft credentials for "
+            f"{account_hint!r}. Run "
+            "`robotsix-auto-mail auth login --account <id>` to consent."
+        )
+    result = app.acquire_token_silent(
+        MICROSOFT_SCOPES,
+        account=accounts[0],
+        force_refresh=True,
+        claims_challenge=claims_challenge,
+    )
+    _persist_cache(config, app.token_cache)
+    if not result or "access_token" not in result:
+        raise ConfigurationError(
+            "Microsoft token force-refresh failed (cache missing or expired). "
+            "Run `robotsix-auto-mail auth login --account <id>` to re-consent."
+        )
+    return str(result["access_token"])
+
+
+def classify_xoauth2_auth_error(
+    challenge_bytes: bytes,
+    *,
+    username: str,
+    host: str,
+    port: int,
+) -> str:
+    """Return a human-readable auth-failure message classified from
+    a raw XOAUTH2 rejection challenge.
+
+    Used by IMAP and SMTP clients to produce actionable ``account_health``
+    error text when a force-refresh retry also fails.
+    """
+    error_info = parse_xoauth2_error(challenge_bytes)
+    codes: list[int] = error_info.get("error_codes", [])
+    base = f"Authentication failed for user {username!r} on {host}:{port}"
+    if any(c in _CONDITIONAL_ACCESS_CODES for c in codes):
+        code_str = ", ".join(f"AADSTS{c}" for c in codes)
+        return (
+            f"{base}: Microsoft Conditional Access or tenant policy rejected "
+            f"the token even after force-refresh ({code_str}). "
+            "Contact your IT admin to allow IMAP/SMTP from this server, "
+            "or re-run `robotsix-auto-mail auth login --account <id>` to "
+            "re-consent."
+        )
+    if codes:
+        code_str = ", ".join(f"AADSTS{c}" for c in codes)
+        return (
+            f"{base}: Microsoft OAuth2 token rejected after force-refresh "
+            f"({code_str}). "
+            "Re-run `robotsix-auto-mail auth login --account <id>` to "
+            "re-consent."
+        )
+    return (
+        f"{base}: Microsoft OAuth2 token rejected after force-refresh. "
+        "Re-run `robotsix-auto-mail auth login --account <id>` to re-consent."
+    )
 
 
 # ---------------------------------------------------------------------------

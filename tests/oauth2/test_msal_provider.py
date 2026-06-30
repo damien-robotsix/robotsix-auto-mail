@@ -7,6 +7,7 @@ environment, so these tests inject a fake ``msal`` module into
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -17,8 +18,12 @@ from robotsix_auto_mail.config import ConfigurationError, MailConfig
 from robotsix_auto_mail.oauth2 import (
     MICROSOFT_IMAP_SCOPE,
     MICROSOFT_SMTP_SCOPE,
+    acquire_fresh_token,
     build_token_provider,
     cache_path_for,
+    classify_xoauth2_auth_error,
+    extract_cae_claims,
+    parse_xoauth2_error,
 )
 
 
@@ -70,9 +75,9 @@ class _FakeApp:
         return self._accounts
 
     def acquire_token_silent(
-        self, scopes: list[str], account: Any
+        self, scopes: list[str], account: Any, **kwargs: Any
     ) -> dict[str, Any] | None:
-        self.silent_calls.append((scopes, account))
+        self.silent_calls.append({"scopes": scopes, "account": account, **kwargs})
         if self._change_state:
             self.token_cache.has_state_changed = True
             self.token_cache._state = '{"cached": "refreshed"}'
@@ -174,8 +179,8 @@ def test_provider_returns_silent_access_token(
     token = provider()
     assert token == "fresh-token-123"
     # Only the two resource scopes are passed (MSAL adds offline_access).
-    scopes, _account = recorder["app"].silent_calls[0]
-    assert scopes == [MICROSOFT_IMAP_SCOPE, MICROSOFT_SMTP_SCOPE]
+    call = recorder["app"].silent_calls[0]
+    assert call["scopes"] == [MICROSOFT_IMAP_SCOPE, MICROSOFT_SMTP_SCOPE]
 
 
 # ---------------------------------------------------------------------------
@@ -265,3 +270,162 @@ def test_provider_raises_when_silent_acquisition_fails(
     with pytest.raises(ConfigurationError) as exc:
         provider()
     assert "auth login" in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# parse_xoauth2_error
+# ---------------------------------------------------------------------------
+
+
+def test_parse_xoauth2_error_valid() -> None:
+    """Valid JSON challenge parses correctly."""
+    result = parse_xoauth2_error(
+        json.dumps({"status": "400", "error_codes": [53003]}).encode()
+    )
+    assert result == {"status": "400", "error_codes": [53003]}
+
+
+def test_parse_xoauth2_error_nul_stripped() -> None:
+    """Trailing NUL byte is stripped before parsing."""
+    result = parse_xoauth2_error(
+        json.dumps({"status": "400", "error_codes": [53003]}).encode() + b"\x00"
+    )
+    assert result == {"status": "400", "error_codes": [53003]}
+
+
+def test_parse_xoauth2_error_garbage() -> None:
+    """Non-JSON input returns empty dict."""
+    result = parse_xoauth2_error(b"not-json")
+    assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# extract_cae_claims
+# ---------------------------------------------------------------------------
+
+
+def test_extract_cae_claims_present() -> None:
+    """Claims parameter is extracted from the schemes field."""
+    claims = extract_cae_claims(
+        {
+            "schemes": 'Bearer error="insufficient_claims", '
+            'claims="eyJhY2Nlc3NUb2tlbiI6IjEifQ=="'
+        }
+    )
+    assert claims == "eyJhY2Nlc3NUb2tlbiI6IjEifQ=="
+
+
+def test_extract_cae_claims_absent() -> None:
+    """No claims parameter → None."""
+    assert extract_cae_claims({"schemes": "Bearer"}) is None
+
+
+def test_extract_cae_claims_empty() -> None:
+    """Empty dict → None."""
+    assert extract_cae_claims({}) is None
+
+
+# ---------------------------------------------------------------------------
+# acquire_fresh_token
+# ---------------------------------------------------------------------------
+
+
+def test_acquire_fresh_token_passes_force_refresh(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """acquire_fresh_token calls acquire_token_silent with force_refresh=True."""
+    recorder = _install_fake_msal(
+        monkeypatch,
+        accounts=[{"username": "user@contoso.com"}],
+        silent_result={"access_token": "fresh"},
+    )
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    token = acquire_fresh_token(cfg)
+    assert token == "fresh"
+    assert recorder["app"].silent_calls[0]["force_refresh"] is True
+
+
+def test_acquire_fresh_token_passes_claims_challenge(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """acquire_fresh_token passes claims_challenge to acquire_token_silent."""
+    recorder = _install_fake_msal(
+        monkeypatch,
+        accounts=[{"username": "user@contoso.com"}],
+        silent_result={"access_token": "fresh"},
+    )
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    token = acquire_fresh_token(cfg, claims_challenge="CLAIM")
+    assert token == "fresh"
+    assert recorder["app"].silent_calls[0]["claims_challenge"] == "CLAIM"
+
+
+def test_acquire_fresh_token_no_accounts_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No cached accounts → ConfigurationError."""
+    _install_fake_msal(monkeypatch, accounts=[], silent_result=None)
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    with pytest.raises(ConfigurationError) as exc:
+        acquire_fresh_token(cfg)
+    assert "auth login" in str(exc.value)
+
+
+def test_acquire_fresh_token_no_token_in_result_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Result missing access_token → ConfigurationError."""
+    _install_fake_msal(
+        monkeypatch,
+        accounts=[{"username": "user@contoso.com"}],
+        silent_result={"error": "bad"},
+    )
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    with pytest.raises(ConfigurationError) as exc:
+        acquire_fresh_token(cfg)
+    assert "auth login" in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# classify_xoauth2_auth_error
+# ---------------------------------------------------------------------------
+
+
+def _challenge(error_codes: list[int]) -> bytes:
+    """Helper: produce a JSON challenge with the given error codes."""
+    return json.dumps({"error_codes": error_codes}).encode()
+
+
+def test_classify_conditional_access_code() -> None:
+    """AADSTS 53003 → message mentions Conditional Access and the code."""
+    msg = classify_xoauth2_auth_error(
+        _challenge([53003]),
+        username="u@c.com",
+        host="outlook.office365.com",
+        port=993,
+    )
+    assert "Conditional Access" in msg
+    assert "AADSTS53003" in msg
+
+
+def test_classify_unknown_code() -> None:
+    """Non-CA code → message says 'after force-refresh' but not 'Conditional Access'."""
+    msg = classify_xoauth2_auth_error(
+        _challenge([99999]),
+        username="u@c.com",
+        host="outlook.office365.com",
+        port=993,
+    )
+    assert "after force-refresh" in msg
+    assert "Conditional Access" not in msg
+
+
+def test_classify_no_codes() -> None:
+    """Empty challenge → message says 'after force-refresh'."""
+    msg = classify_xoauth2_auth_error(
+        b"{}",
+        username="u@c.com",
+        host="outlook.office365.com",
+        port=993,
+    )
+    assert "after force-refresh" in msg
