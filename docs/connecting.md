@@ -130,6 +130,7 @@ robotsix-auto-mail detect user@gmail.com \
 | `--output PATH` | no | `config/mail.local.yaml` | Write mail config to this path |
 | `--stdout` | no | – | Print config to stdout instead of writing to file; password is intentionally omitted (must be filled in manually or via `MAIL_PASSWORD`); no verification is performed |
 | `--no-verify` | no | – | Skip the post-write IMAP/SMTP connection check |
+| `--app-password` | no | – | Use password/basic auth even for Microsoft-hosted accounts. Mutually exclusive with `--oauth2-client-id` / `--oauth2-tenant`. Emits a warning that OAuth2 is strongly preferred |
 
 ### Docker invocation
 
@@ -430,6 +431,13 @@ acquire and silently refresh tokens for you:
    automatically runs the device-code login: it prints a URL and a short code;
    open the URL, enter the code, and sign in to consent. The post-write
    verification then authenticates over XOAUTH2 on both IMAP and SMTP.
+
+   If your tenant still allows legacy authentication (app passwords), you can
+   bypass OAuth2 entirely by passing ``--app-password`` (mutually exclusive
+   with ``--oauth2-client-id`` / ``--oauth2-tenant``). The detected config will
+   contain a plain ``password`` field with no ``oauth2_provider``, and the
+   verification loop uses password auth instead of device-code login. A warning
+   is printed that basic auth may be disabled for your tenant.
 3. To (re)run the consent flow later — e.g. after revoking access or moving to
    a new machine — run
    ``robotsix-auto-mail auth login --account <id>``.
