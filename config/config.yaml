@@ -55,7 +55,6 @@ accounts:
 
     archive:
       root: robotsix-mail-archive
-      namespace: ""
       enabled: true
 
     triage:
