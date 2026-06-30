@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed ``determine_archive_structure`` and ``detect_provider`` docstrings to
+  document the full three-step API key resolution chain (argument → env var
+  → config file), matching ``generate_draft_reply``.
+
 - Docs: expanded the Microsoft 365 OAuth2 onboarding documentation with
   three resolution paths for admin-consent errors (allowlist Thunderbird,
   custom app registration, app password fallback), added ``--oauth2-client-id``
