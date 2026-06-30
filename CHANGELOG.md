@@ -2,6 +2,13 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed five unwired ``COMPONENT_AGENT_*`` broker env var rows
+  (``COMPONENT_AGENT_ID``, ``_BROKER_HOST``, ``_BROKER_PORT``,
+  ``_BROKER_TOKEN``, ``_BROKER_TLS_CA``) from the "Component agent
+  (global)" table in ``docs/configuration.md`` — only
+  ``COMPONENT_AGENT_ENABLED`` is backed by code.  Also updated the
+  multi-account globals list to reflect the single wired variable.
+
 - Aligned ``logging:`` section handling with ``llm:`` / ``langfuse:``:
   per-account ``logging:`` blocks are no longer emitted by the YAML
   renderer and are now rejected by the loader with an actionable error
