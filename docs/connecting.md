@@ -504,6 +504,49 @@ directory id); the scopes used are
 > > **Warning:** only works if your organisation has explicitly enabled basic
 > > auth app passwords. Microsoft is phasing this out.
 
+#### Token refresh lifecycle (MSAL)
+
+After the device-code consent flow completes once, the MSAL integration
+handles token refresh automatically — no user interaction is needed for normal
+operation.
+
+**Where tokens live.** Access tokens are **not** stored in the YAML config
+(``auth.oauth2_token`` is unused when ``oauth2_provider: microsoft`` is set).
+Instead, a refresh token is persisted in the MSAL serializable token cache at
+``<dirname(db_path)>/msal_cache.json`` — one per account, next to its SQLite
+database. This cache file holds secrets and should never be committed to
+source control.
+
+**What happens on every connection.** Each time ``ingest`` or ``serve`` opens
+an IMAP or SMTP connection, the client invokes the token provider, which calls
+``acquire_token_silent`` against the cached account. MSAL returns the existing
+access token if it is still valid; if the access token has expired, MSAL
+transparently exchanges the cached refresh token for a new access token — all
+without re-prompting the user.
+
+**Cache persistence.** After a silent refresh that changes cache state (e.g.
+a new access token was obtained), the updated cache is written back to
+``msal_cache.json`` so that subsequent connections can reuse the refreshed
+state. If the cache has not changed (the existing access token was still
+valid), no write occurs.
+
+**Token longevity.** Microsoft access tokens are short-lived (typically on the
+order of one hour). Refresh tokens are long-lived and rolling — Microsoft's
+default policy keeps them valid for up to ~90 days of inactivity, but exact
+durations are controlled by the tenant's conditional-access policies and may
+vary. The library does not expose or guarantee specific TTLs.
+
+**When refresh fails.** If the refresh token is missing, expired, or has been
+revoked (e.g. the user removed the app's consent in the Azure portal),
+``acquire_token_silent`` returns no ``access_token`` and the provider raises a
+``ConfigurationError`` whose message directs the user to re-consent:
+
+    Microsoft token refresh failed (cache missing or expired).
+    Run `robotsix-auto-mail auth login --account <id>` to re-consent.
+
+Running ``detect`` for a Microsoft host also performs the device-code login
+inline.  See [The `auth login` command](#the-auth-login-command) for details.
+
 **Microsoft 365 / Outlook.com (static token, manual):**
 
 If you prefer to manage tokens yourself, register an application in the

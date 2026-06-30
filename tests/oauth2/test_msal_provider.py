@@ -58,10 +58,12 @@ class _FakeApp:
         accounts: list[Any],
         silent_result: dict[str, Any] | None,
         token_cache: _FakeCache,
+        change_state: bool = False,
     ) -> None:
         self._accounts = accounts
         self._silent_result = silent_result
         self.token_cache = token_cache
+        self._change_state = change_state
         self.silent_calls: list[Any] = []
 
     def get_accounts(self) -> list[Any]:
@@ -71,6 +73,9 @@ class _FakeApp:
         self, scopes: list[str], account: Any
     ) -> dict[str, Any] | None:
         self.silent_calls.append((scopes, account))
+        if self._change_state:
+            self.token_cache.has_state_changed = True
+            self.token_cache._state = '{"cached": "refreshed"}'
         return self._silent_result
 
 
@@ -79,6 +84,7 @@ def _install_fake_msal(
     *,
     accounts: list[Any],
     silent_result: dict[str, Any] | None,
+    change_state: bool = False,
 ) -> dict[str, Any]:
     """Install a fake ``msal`` module and return a recorder dict."""
     recorder: dict[str, Any] = {}
@@ -97,6 +103,7 @@ def _install_fake_msal(
                 accounts=accounts,
                 silent_result=silent_result,
                 token_cache=token_cache,
+                change_state=change_state,
             )
             recorder["app"] = app
             return app
@@ -169,6 +176,58 @@ def test_provider_returns_silent_access_token(
     # Only the two resource scopes are passed (MSAL adds offline_access).
     scopes, _account = recorder["app"].silent_calls[0]
     assert scopes == [MICROSOFT_IMAP_SCOPE, MICROSOFT_SMTP_SCOPE]
+
+
+# ---------------------------------------------------------------------------
+# Cache persistence after silent refresh
+# ---------------------------------------------------------------------------
+
+
+def test_provider_persists_cache_after_state_changing_refresh(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When acquire_token_silent changes cache state, the updated cache
+    is written to cache_path_for(cfg) on disk."""
+    _install_fake_msal(
+        monkeypatch,
+        accounts=[{"username": "user@contoso.com"}],
+        silent_result={"access_token": "refreshed-token-456"},
+        change_state=True,
+    )
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    provider = build_token_provider(cfg)
+    assert provider is not None
+
+    token = provider()
+    assert token == "refreshed-token-456"
+
+    # The cache file must exist and contain the refreshed serialized state.
+    cache_path = cache_path_for(cfg)
+    assert cache_path.exists()
+    assert cache_path.read_text() == '{"cached": "refreshed"}'
+
+
+def test_provider_does_not_persist_cache_when_state_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When the cache state is unchanged, _persist_cache is a no-op —
+    no file is written."""
+    _install_fake_msal(
+        monkeypatch,
+        accounts=[{"username": "user@contoso.com"}],
+        silent_result={"access_token": "fresh-token-123"},
+        change_state=False,
+    )
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    provider = build_token_provider(cfg)
+    assert provider is not None
+
+    token = provider()
+    assert token == "fresh-token-123"
+
+    # has_state_changed was False → cache file must NOT have been created.
+    cache_path = cache_path_for(cfg)
+    assert not cache_path.exists()
 
 
 # ---------------------------------------------------------------------------
