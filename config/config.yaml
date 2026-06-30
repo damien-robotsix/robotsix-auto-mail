@@ -1,17 +1,21 @@
 # robotsix-auto-mail configuration — managed by central-deploy.
 # Edit via the Configuration page at deploy.robotsix.net/mail.
 # All schema fields are present; leave optional fields at their defaults unless needed.
-# Secret fields are intentionally blank — fill them in the Configuration UI.
+# Secret fields carry the literal sentinel "SECRET" — central-deploy renders
+# those as masked password inputs (detection is by this explicit marker, NOT
+# by field name). Fill the real value in the Configuration UI; the deployed
+# config never contains the literal "SECRET". Non-"SECRET" leaves (e.g.
+# public_key below) are ordinary editable fields.
 
 # ── Global: LLM ──────────────────────────────────────────────────────────
 llm:
-  api_key: ""                       # secret — LLM API key (e.g. OpenRouter sk-or-…)
+  api_key: SECRET                   # secret — LLM API key (e.g. OpenRouter sk-or-…)  # pragma: allowlist secret
   # provider_model: ""              # optional — override llmio tier default
 
 # ── Global: Langfuse observability (optional) ─────────────────────────────
 langfuse:
-  public_key: ""
-  secret_key: ""                    # secret
+  public_key: ""                    # non-secret — Langfuse public key (now an ordinary editable field)
+  secret_key: SECRET                # secret  # pragma: allowlist secret
   base_url: ""
 
 # ── Global: Logging ───────────────────────────────────────────────────────
@@ -40,10 +44,10 @@ accounts:
 
     auth:
       username: ""                  # required — login / email address
-      password: ""                  # secret — email password or app password
-      oauth2_token: ""              # secret — leave blank if using password auth
+      password: SECRET              # secret — email password or app password  # pragma: allowlist secret
+      oauth2_token: SECRET          # secret — leave masked if using password auth  # pragma: allowlist secret
       oauth2_client_id: ""
-      oauth2_client_secret: ""      # secret
+      oauth2_client_secret: SECRET  # secret  # pragma: allowlist secret
       oauth2_provider: ""
       oauth2_tenant: organizations
 
@@ -71,4 +75,4 @@ accounts:
       broker_tls_ca: ""
       broker_client_cert: ""
       broker_client_key: ""
-      broker_token: ""              # secret
+      broker_token: SECRET          # secret  # pragma: allowlist secret
