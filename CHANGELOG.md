@@ -2,6 +2,13 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed the Microsoft OAuth2 device-code flow to auto-probe account health
+  before reporting success, so the "Account connection failure" warning banner
+  disappears on the next page load without requiring a manual "Recheck
+  connections" click.  The board JS now performs a full ``window.location.reload()``
+  instead of the card-only ``refreshBoard()``, matching the already-displayed
+  "✅ Connected! Reloading…" message.
+
 - Consolidated deployment documentation into ``docs/deployment.md`` as the
   single entry point and removed ``deploy/README.md``. The deployment doc now
   describes the current **central-deploy contract** (``deploy/docker-compose.yml``,
