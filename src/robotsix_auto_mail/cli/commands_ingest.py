@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import pathlib
 import sys
 
@@ -42,12 +43,10 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
     except Exception as exc:
         # Fatal connection failure — ImapClient(config) raised.
         sys.stderr.write(f"Connection FAILED: {exc}\n")
-        try:
+        with contextlib.suppress(Exception):
             write_account_health(
                 conn, status="failed", error=str(exc), checked_at=utcnow()
             )
-        except Exception:
-            pass
         result = None
     else:
         # Successful ingest cycle (result may still be None on dry run
@@ -55,10 +54,8 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
         success = not dry_run and result is not None
     finally:
         if success:
-            try:
+            with contextlib.suppress(Exception):
                 write_account_health(conn, status="ok", error=None, checked_at=utcnow())
-            except Exception:
-                pass
         conn.close()
 
     # If ImapClient(config) raised before ingest_mail ran, result is None.

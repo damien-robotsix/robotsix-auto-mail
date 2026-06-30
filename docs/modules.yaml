@@ -29,7 +29,6 @@ modules:
       - CHANGELOG.md
       - LICENSE
       - AGENT.md
-      - CLAUDE.md
       - README.md
       - SECURITY.md
       - ROADMAP.md

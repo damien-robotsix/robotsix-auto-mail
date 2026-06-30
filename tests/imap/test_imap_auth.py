@@ -232,9 +232,7 @@ def test_msal_config_none_when_no_provider() -> None:
         username="user@example.com",
         password="s3cret",
     )
-    with mock.patch(
-        "robotsix_auto_mail.imap.build_token_provider", return_value=None
-    ):
+    with mock.patch("robotsix_auto_mail.imap.build_token_provider", return_value=None):
         client = ImapClient(cfg)
     assert client._msal_config is None
 
@@ -266,9 +264,7 @@ def test_xoauth2_force_refresh_succeeds_on_retry() -> None:
     with mock.patch(
         "robotsix_auto_mail.imap.build_token_provider", return_value=provider
     ):
-        with mock.patch(
-            "imaplib.IMAP4_SSL", side_effect=[mock_ssl_1, mock_ssl_2]
-        ):
+        with mock.patch("imaplib.IMAP4_SSL", side_effect=[mock_ssl_1, mock_ssl_2]):
             with mock.patch(
                 "robotsix_auto_mail.oauth2.acquire_fresh_token",
                 return_value=fresh_token,
@@ -319,9 +315,7 @@ def test_xoauth2_force_refresh_fails_conditional_access() -> None:
     with mock.patch(
         "robotsix_auto_mail.imap.build_token_provider", return_value=provider
     ):
-        with mock.patch(
-            "imaplib.IMAP4_SSL", side_effect=[mock_ssl_1, mock_ssl_2]
-        ):
+        with mock.patch("imaplib.IMAP4_SSL", side_effect=[mock_ssl_1, mock_ssl_2]):
             with mock.patch(
                 "robotsix_auto_mail.oauth2.acquire_fresh_token",
                 return_value=fresh_token,
@@ -347,9 +341,7 @@ def test_xoauth2_no_retry_for_static_token() -> None:
     auth_error = imaplib.IMAP4.error("AUTHENTICATE failed")
     mock_ssl.authenticate.side_effect = auth_error
 
-    with mock.patch(
-        "robotsix_auto_mail.imap.build_token_provider", return_value=None
-    ):
+    with mock.patch("robotsix_auto_mail.imap.build_token_provider", return_value=None):
         with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
             with mock.patch(
                 "robotsix_auto_mail.oauth2.acquire_fresh_token"
@@ -388,9 +380,7 @@ def test_cae_claims_forwarded_to_acquire_fresh_token() -> None:
     with mock.patch(
         "robotsix_auto_mail.imap.build_token_provider", return_value=provider
     ):
-        with mock.patch(
-            "imaplib.IMAP4_SSL", side_effect=[mock_ssl_1, mock_ssl_2]
-        ):
+        with mock.patch("imaplib.IMAP4_SSL", side_effect=[mock_ssl_1, mock_ssl_2]):
             with mock.patch(
                 "robotsix_auto_mail.oauth2.acquire_fresh_token",
                 return_value=fresh_token,

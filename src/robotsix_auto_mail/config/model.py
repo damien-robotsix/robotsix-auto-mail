@@ -64,10 +64,7 @@ def _validate_template_literals(cfg: MailConfig) -> None:
     for field_name in _TEMPLATE_CHECKED_FIELDS:
         value = getattr(cfg, field_name, "")
         if value and _TEMPLATE_LITERAL_RE.search(value):
-            if field_name == "password":
-                display = "<redacted>"
-            else:
-                display = repr(value)
+            display = "<redacted>" if field_name == "password" else repr(value)
             raise ConfigurationError(
                 f"Config field '{field_name}' contains an unsubstituted "
                 f"template literal: {display}. "
@@ -454,9 +451,7 @@ def _build_config_from_env(
 
     # Microsoft MSAL accounts never use a password — don't require MAIL_PASSWORD.
     if kwargs.get("oauth2_provider") == "microsoft":
-        _pw_spec = next(
-            (s for s in _FIELD_SPECS if s.field_name == "password"), None
-        )
+        _pw_spec = next((s for s in _FIELD_SPECS if s.field_name == "password"), None)
         if _pw_spec:
             _pw_label = label_for(_pw_spec)
             missing = [m for m in missing if m != _pw_label]

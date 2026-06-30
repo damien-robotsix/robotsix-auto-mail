@@ -12,7 +12,6 @@ import pytest
 
 from robotsix_auto_mail.config import (
     ConfigurationError,
-    FailedAccountEntry,
     MailAccount,
     MailAccountsConfig,
     MailConfig,

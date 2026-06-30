@@ -24,7 +24,7 @@ The mail ingestion pipeline is implemented: `robotsix-auto-mail` can fetch messa
 
 > **Rule:** Every new repo file must be registered in `docs/modules.yaml`
 > under exactly one module's `paths` list; root-level docs (README.md,
-> SECURITY.md, ROADMAP.md, CLAUDE.md) belong to the `core` module.
+> SECURITY.md, ROADMAP.md, AGENT.md) belong to the `core` module.
 > Unlisted files are flagged by the module-classification drift check and
 > will fail CI.
 

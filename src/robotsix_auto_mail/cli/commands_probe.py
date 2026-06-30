@@ -20,8 +20,9 @@ def _cmd_probe(config: MailConfig) -> int:
 
     Returns 0 when both succeed, 1 when either fails.
     """
-    # Structured pass/fail from the shared health probe.
-    status, error = probe_account(config)
+    # Structured pass/fail from the shared health probe (the per-protocol
+    # diagnostics below re-probe and surface their own errors).
+    status, _ = probe_account(config)
 
     # -- IMAP diagnostic output -------------------------------------------
     _print_header(sys.stdout, "IMAP Probe")

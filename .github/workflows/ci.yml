@@ -98,8 +98,8 @@ jobs:
           sarif_file: zizmor-results.sarif
 
   # Reusable Python-security spine shared across robotsix repos. This single
-  # call replaces the inline TruffleHog secret-scan / pip-audit / CycloneDX
-  # SBOM steps that used to be hand-rolled here.
+  # call replaces the inline TruffleHog secret-scan / pip-audit steps that
+  # used to be hand-rolled here.
   security:
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-security.yml@5cd8c1facb02299da618979e7a55f1953f9c075a  # main
     with:
@@ -114,7 +114,6 @@ jobs:
       # project robotsix-auto-mail itself: its editable `-e .` form has no
       # hashable single file under pip's --require-hashes mode, which aborts
       # pip-audit.
-      run-cyclonedx-sbom: true
       run-pip-audit: true
       pip-audit-requirements-file: requirements-locked.txt
       pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board robotsix-auto-mail robotsix-llmio robotsix-modules"

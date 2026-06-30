@@ -2,8 +2,8 @@
 
 This file encodes conventions that, when violated, cause recurring breakage
 in CI, test gates, or the fleet's periodic workflows.  It is *not* a general
-orientation document (see [CLAUDE.md](CLAUDE.md) for that); it is a set of
-constraints the agent system must follow.
+orientation document; it is a set of constraints the agent system must
+follow.
 
 ---
 

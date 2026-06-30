@@ -173,11 +173,11 @@ DEP003 = ["pydantic_ai"]
 # structlog is no longer imported directly by this package (logging has been
 # migrated to robotsix_llmio.logging.setup_logging), but it must remain a
 # direct dependency to preserve the uv dependency resolution order.
-DEP002 = ["structlog"]
-# robotsix_agent_comm is declared in the optional [calendar] extra.
-# Imports in calendar/*.py are guarded by try/except ImportError so the
-# server gracefully degrades when the extra is not installed.
-DEP001 = ["robotsix_agent_comm"]
+# robotsix_agent_comm is declared in the optional [calendar]/[broker] extras
+# but is not imported anywhere in the package today, so it would otherwise be
+# flagged as an unused (DEP002) dependency. The extra is retained for the
+# optional agent-comm integration.
+DEP002 = ["structlog", "robotsix-agent-comm"]
 
 [tool.vulture]
 paths = ["src/robotsix_auto_mail"]
