@@ -2,6 +2,15 @@
 
 ## 0.0.0 (unreleased)
 
+- Consolidated deployment documentation into ``docs/deployment.md`` as the
+  single entry point and removed ``deploy/README.md``. The deployment doc now
+  describes the current **central-deploy contract** (``deploy/docker-compose.yml``,
+  ``central-deploy-contract-version: 1``) — the ``robotsix.deploy.*`` labels,
+  config provisioning via the gateway, and day-2 operations — replacing the
+  obsolete Watchtower + in-repo nginx runbook (the referenced
+  ``deploy/nginx/mail.robotsix.net.conf`` never existed). Updated the
+  ``deploy`` module entry in ``docs/modules.yaml`` to match.
+
 - Fixed ``determine_archive_structure`` and ``detect_provider`` docstrings to
   document the full three-step API key resolution chain (argument → env var
   → config file), matching ``generate_draft_reply``.
@@ -29,6 +38,7 @@
 - Fixed ``MailConfig.from_env()`` to no longer require ``MAIL_PASSWORD``
   when ``MAIL_OAUTH2_PROVIDER=microsoft``, enabling env-var-only
   Microsoft 365 deployments that use MSAL/XOAUTH2 without a password.
+
 - Removed five unwired ``COMPONENT_AGENT_*`` broker env var rows
   (``COMPONENT_AGENT_ID``, ``_BROKER_HOST``, ``_BROKER_PORT``,
   ``_BROKER_TOKEN``, ``_BROKER_TLS_CA``) from the "Component agent
@@ -375,7 +385,7 @@
 - Continuous deployment for `server.robotsix.net`: `release.yml` now publishes
   a moving `main` image on every push to `main`, and a new `deploy/` stack
   (Watchtower auto-update + nginx TLS/basic-auth reverse proxy) serves the
-  board at `mail.robotsix.net`. See `deploy/README.md`. Watchtower pins
+  board at `mail.robotsix.net`. See `docs/deployment.md`. Watchtower pins
   `DOCKER_API_VERSION=1.44` for Docker Engine 29+ compatibility; the nginx
   runbook uses the certbot `--nginx` installer and documents the UID-1000
   bind-mount ownership step.

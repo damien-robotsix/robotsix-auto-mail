@@ -288,26 +288,60 @@ docker tag robotsix-auto-mail:latest registry.example.com/robotsix-auto-mail:v1.
 docker push registry.example.com/robotsix-auto-mail:v1.0.0
 ```
 
-### Continuous deployment (server.robotsix.net)
+### Continuous deployment (deploy.robotsix.net)
 
-For the always-on `server.robotsix.net` deployment, the
-[`deploy/`](../deploy/) directory holds a self-contained stack that **pulls**
-the published image instead of building it, and keeps it up to date
-automatically:
+The always-on production deployment is operated by the external
+**central-deploy** system and reachable at `https://deploy.robotsix.net/mail`.
+The [`deploy/`](../deploy/) directory holds the central-deploy **contract** —
+[`deploy/docker-compose.yml`](../deploy/docker-compose.yml), marked
+`central-deploy-contract-version: 1`. central-deploy consumes it to **pull**
+the published image and run the stack, rather than building from source. The
+orchestrator itself lives outside this repo, so server provisioning, TLS, and
+ingress are not configured here.
 
 - Pushing to `main` publishes a moving `ghcr.io/.../robotsix-auto-mail:main`
   image (the reusable `docker-release.yml` workflow tags both `main` pushes
-  and `v*` tag pushes).
-- [`deploy/docker-compose.yml`](../deploy/docker-compose.yml) runs the
-  `ingester`, the `board` (bound to `127.0.0.1:8080`), and **Watchtower**,
-  which polls GHCR every 5 minutes and redeploys the labeled services on a
-  new image.
-- The host's shared **nginx** terminates TLS and enforces HTTP basic auth
-  for `mail.robotsix.net`, proxying to the loopback board
-  ([`deploy/nginx/mail.robotsix.net.conf`](../deploy/nginx/mail.robotsix.net.conf)).
+  and `v*` tag pushes). central-deploy pulls `:main` to pick up new builds.
+- The contract runs two services — `robotsix-auto-mail` (the ingester, the
+  sole datastore writer) and `board` (the read-only web board, published on
+  `8080`) — both from the same image, sharing the named volumes
+  `auto-mail-config`, `auto-mail-data`, and `auto-mail-logs`.
+- TLS termination and HTTP basic auth are handled by the **central-deploy
+  gateway** in front of the board; the board itself has no authentication.
+- Configuration is managed through the Configuration page at
+  `deploy.robotsix.net/mail`, not by editing files on the host. The committed
+  [`config/config.yaml`](../config/config.yaml) is the managed template
+  central-deploy starts from; secret fields are left blank and filled via the
+  UI.
 
-Full server bring-up steps (config, GHCR access, htpasswd, certbot, nginx)
-are in **[deploy/README.md](../deploy/README.md)**.
+#### `robotsix.deploy.*` labels
+
+The `board` service carries labels that tell central-deploy how to run and
+wire the stack:
+
+| Label | Meaning |
+|---|---|
+| `robotsix.deploy.primary: "true"` | Marks `board` as the primary/ingress service the gateway routes to. |
+| `robotsix.deploy.config-target` | In-container path where central-deploy writes the managed config (`/home/mailbot/config/config.yaml`). |
+| `robotsix.deploy.config-assist` | A CLI command template central-deploy runs to auto-detect IMAP/SMTP settings; `{…}` placeholders are filled from the seed values. |
+| `robotsix.deploy.config-assist-seeds` | The config fields the operator must supply (`accounts.0.auth.username`, `accounts.0.auth.password`); central-deploy prompts for these and injects them into the config-assist command. |
+
+#### Day-2 operations
+
+Run on the central-deploy host, against the contract compose project:
+
+| Task | Command |
+|---|---|
+| Tail board logs | `docker compose logs -f board` |
+| Tail ingester logs | `docker compose logs -f robotsix-auto-mail` |
+| Force an image update | `docker compose pull && docker compose up -d` |
+| One-shot CLI command | `docker compose run --rm robotsix-auto-mail <cmd>` (probe, triage, …) |
+| Restart the board only | `docker compose restart board` |
+| Stop everything | `docker compose down` |
+
+The database on the `auto-mail-data` volume is shared by both services; the
+ingester is the sole writer and the board only reads it, so there is no
+concurrent-writer contention.
 
 ### Run on a production host
 
