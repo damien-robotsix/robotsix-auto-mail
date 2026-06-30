@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Registered `.github/ISSUE_TEMPLATE/bug_report.yml` and
+  `.github/ISSUE_TEMPLATE/config.yml` under the `ci` module in
+  `docs/modules.yaml`.
+
 - Added `.github/ISSUE_TEMPLATE/bug_report.yml` (YAML issue form with required
   Description, Steps to Reproduce, and Environment fields) and
   `.github/ISSUE_TEMPLATE/config.yml` (disables blank issues) so bug reports
