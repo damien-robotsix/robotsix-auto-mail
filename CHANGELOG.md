@@ -2,6 +2,12 @@
 
 ## 0.0.0 (unreleased)
 
+- Docs: expanded the Microsoft 365 OAuth2 onboarding documentation with
+  three resolution paths for admin-consent errors (allowlist Thunderbird,
+  custom app registration, app password fallback), added ``--oauth2-client-id``
+  and ``--oauth2-tenant`` rows to the detect flag table, and documented
+  ``--stdout`` + OAuth2 flag combination for scripting workflows.
+
 - Board: Microsoft OAuth2 accounts can now be authorized / reconnected
   directly from the web board via an "Authorize / Reconnect" button in
   health-alert banners, using the device-code flow with a modal prompt.
