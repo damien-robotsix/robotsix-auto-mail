@@ -48,6 +48,15 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     account_id = args.id or _account_id_from_email(args.email)
     label = args.email
 
+    # Reject --app-password + --oauth2-* early (before the detection ladder)
+    # so the user gets an immediate error instead of paying for an LLM call.
+    if args.app_password and (args.oauth2_client_id or args.oauth2_tenant):
+        sys.stderr.write(
+            "Error: --app-password is mutually exclusive with "
+            "--oauth2-client-id / --oauth2-tenant.\n"
+        )
+        return 1
+
     api_key = load_llm()
     llm_provider_model_str = load_llm_provider_model()
     provider, mx_hosts = _detect_settings(
@@ -63,6 +72,12 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     if provider is None:
         return 1
     microsoft = is_microsoft_provider(provider)
+    if microsoft and args.app_password:
+        sys.stderr.write(
+            "Warning: --app-password bypasses OAuth2; basic auth may be"
+            " disabled for your tenant.\n"
+        )
+        microsoft = False
     # Microsoft 365 rejects password auth; it uses MSAL-managed XOAUTH2, so we
     # never prompt for or write a password for these accounts.
     if microsoft:
@@ -81,6 +96,11 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             ),
             db_path=f".data/{account_id}/mail.db",
         )
+        if args.app_password and config.oauth2_provider:
+            # provider_to_config sets oauth2_provider="microsoft" for
+            # Microsoft hosts unconditionally; --app-password must clear it
+            # in the stdout path because _build() is never reached here.
+            config = dataclasses.replace(config, oauth2_provider="")
         if microsoft:
             sys.stderr.write(
                 f"# Detected Microsoft 365 settings for {args.email} — "
@@ -129,4 +149,5 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         overwrite=args.overwrite,
         oauth2_client_id=args.oauth2_client_id,
         oauth2_tenant=args.oauth2_tenant,
+        app_password=args.app_password,
     )
