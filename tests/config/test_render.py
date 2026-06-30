@@ -153,12 +153,11 @@ class TestRenderAccountBlock:
 
     # -- logging -----------------------------------------------------------
 
-    def test_logging_non_default(self) -> None:
+    def test_logging_not_emitted_per_account(self) -> None:
+        """logging: is application-wide; never emitted per-account."""
         cfg = _make_cfg(log_level="DEBUG", log_format="json")
         text = _block_text(cfg)
-        assert "logging:" in text
-        assert 'level: "DEBUG"' in text
-        assert 'format: "json"' in text
+        assert "logging:" not in text
 
     def test_logging_default_omitted(self) -> None:
         cfg = _make_cfg()
