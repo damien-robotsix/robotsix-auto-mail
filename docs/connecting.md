@@ -107,7 +107,11 @@ is set to that id when the file is new.
 file **appends** the newly-detected account, preserving the other accounts
 already in the file. If the resolved `id` already exists, `detect` refuses
 (exit 1) rather than clobbering it — pass `--id <new-id>` to add a distinct
-account. If the output file is still in the single-account ("mono") shape —
+account, or `--overwrite` to update the existing entry's transport settings
+(imap/smtp host, port, tls_mode) in place. With `--overwrite`, the existing
+entry's other fields (label, username, password, db_path, archive, triage,
+calendar, oauth2 settings) are preserved unless you supply them explicitly on
+the command line. If the output file is still in the single-account ("mono") shape —
 which is no longer supported at runtime — the existing configuration is
 converted to a `default` account before the new one is appended (run
 `migrate-config` first if you prefer to convert it explicitly).
@@ -130,6 +134,7 @@ robotsix-auto-mail detect user@gmail.com \
 | `--output PATH` | no | `config/mail.local.yaml` | Write mail config to this path |
 | `--stdout` | no | – | Print config to stdout instead of writing to file; password is intentionally omitted (must be filled in manually or via `MAIL_PASSWORD`); no verification is performed |
 | `--no-verify` | no | – | Skip the post-write IMAP/SMTP connection check |
+| `--overwrite` | no | – | When the account id already exists in the output file, update its transport settings (imap/smtp host, port, tls_mode) in place instead of erroring. Other account fields (label, username, password, db_path, archive, triage, calendar, oauth2 settings) are preserved from the existing entry unless explicitly supplied on the command line |
 | `--oauth2-client-id` | no | Thunderbird public client | Azure app-registration client ID for Microsoft 365 OAuth2 |
 | `--oauth2-tenant` | no | `organizations` | Azure AD tenant (GUID, domain, or `organizations`/`common`) |
 | `--app-password` | no | – | Use password/basic auth even for Microsoft-hosted accounts. Mutually exclusive with `--oauth2-client-id` / `--oauth2-tenant`. Emits a warning that OAuth2 is strongly preferred |
@@ -910,12 +915,13 @@ $ robotsix-auto-mail serve
 ### The board page
 
 Open `http://localhost:<port>/board` in a browser.  The page shows ingested
-mail in **five columns** — Needs reply, Waiting on them, To read, No action, Done — each with a card
+mail in **eight columns** — Inbox, Human triage, Pending action, To archive,
+To delete, To calendar, To answer, Draft ready — each with a card
 count badge.  Every mail card has a **Move** dropdown that lets you change
 the card's status column via `POST /move`.
 
 **Account picker (multi-account mode).**  When two or more accounts are configured
-(via `config/mail.accounts.yaml` or environment variables), an account picker
+(via `config/mail.local.yaml` or environment variables), an account picker
 dropdown appears in the page header. The dropdown
 shows each configured account with its `label` (or `id` if no label is set), and
 you can click to switch accounts. Switching navigates to `/board?account=<id>` and
@@ -927,8 +933,9 @@ configured, the picker does not appear and the board behaves as a single-account
 view.
 
 **Triage badges.**  When a mail record has a triage decision, the card displays a
-small **triage badge** showing the action label (one of `answer`, `waiting`,
-`archive`, `delete`, `ignore`, or `user_triage`) with the decision reason visible in a
+small **triage badge** showing the action label (one of `INBOX`, `HUMAN_TRIAGE`,
+`PENDING_ACTION`, `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, `TO_ANSWER`, or
+`DRAFT_READY`) with the decision reason visible in a
 tooltip when you hover over the badge. Cards without a triage decision show no
 badge.
 
@@ -937,7 +944,7 @@ message, including the **Triage** field with the decision action, reason, source
 (agent or user), and confidence level. If no decision has been recorded, the
 Triage field shows "(no triage decision)".
 
-**Draft generation.**  For messages marked "Needs reply" (TO_ANSWER triage action),
+**Draft generation.**  For messages marked "To answer" (TO_ANSWER triage action),
 the detail drawer shows a **Draft reply** section with two interfaces:
 - A **Generate with AI** button (when no draft exists) or **Regenerate with AI**
   button (when a draft already exists) that uses an LLM to prepare a concise,
@@ -1050,7 +1057,7 @@ will, on re-trigger, process only the remaining 218 without re-deleting the firs
 
 ### Multi-account request routing
 
-When multiple accounts are configured (via `config/mail.accounts.yaml` or
+When multiple accounts are configured (via `config/mail.local.yaml` or
 environment variables), the `serve` command hosts all accounts at a single
 HTTP server address. Per-request account selection determines which account's
 database and mail config are used to handle each request.
@@ -1076,7 +1083,7 @@ default); multi-account selection is invisible to the user.
 
 ```sh
 # Config with two accounts
-cat config/mail.accounts.yaml
+cat config/mail.local.yaml
 # default_account: personal
 # accounts:
 #   - id: personal
@@ -1101,7 +1108,7 @@ robotsix-auto-mail serve --account work
 | | `board` | `serve` |
 |---|---|---|
 | **Output** | Plain text to stdout | HTML page in a browser |
-| **Layout** | Single "To read" column | Five columns (Needs reply, Waiting on them, To read, No action, Done) |
+| **Layout** | Single "Inbox" column | Eight columns (Inbox, Human triage, Pending action, To archive, To delete, To calendar, To answer, Draft ready) |
 | **Lifetime** | One-shot — prints and exits | Persistent HTTP daemon |
 | **Interaction** | Read-only | Move dropdowns (`POST /move`) |
 | **Refresh** | Manual (re-run the command) | Automatic (30-second meta refresh) |
@@ -1370,6 +1377,7 @@ deterministic checker doesn't encode. Because a successful advisory run exits
 | Option | Default | Purpose |
 |---|---|---|
 | `--api-key` | – | OpenRouter API key; overrides `LLM_API_KEY` env and config file |
+| `--provider-model` | – | LLM provider-model identifier (e.g. `openrouter-deepseek`); overrides `LLM_PROVIDER_MODEL` env and config file |
 | `--output-format` | `text` | Output format: `text` (human-readable) or `json` (machine-readable) |
 | `--dedup` | – | Consult/update the dedup memory ledger to suppress previously-seen findings; requires a loadable config (for db path) |
 
@@ -1559,25 +1567,28 @@ Each triage decision is stored in the SQLite `triage_decisions` table **and
 also moves the card's position on the local kanban board** by writing the
 `status` column. The board move is **local-only** — triage performs **zero
 IMAP / mailbox operations**. No mail is archived, deleted, moved, or modified
-in the original mailbox. The agent defaults uncertain cases to `user_triage`
+in the original mailbox. The agent defaults uncertain cases to `HUMAN_TRIAGE`
 (explicit deferral to a human) rather than guessing.
 
 ### Action statuses and kanban board mapping
 
 | Status | Meaning | Board column |
 |---|---|---|
-| `answer` | The message needs a personal reply | Needs reply |
-| `waiting` | You have already replied or acted; now awaiting a response/action from the other party | Waiting on them |
-| `archive` | Keep the message for reference but no reply needed | No action |
-| `delete` | The message is junk / worthless and can be discarded | No action |
-| `ignore` | No action needed and it need not be kept | Done |
-| `user_triage` | The system is not confident — defer to a human | To read |
+| `INBOX` | Not yet triaged (entry column); users may move a card here manually | Inbox |
+| `HUMAN_TRIAGE` | The system is not confident — defer to a human | Human triage |
+| `PENDING_ACTION` | Awaiting a response/action before it can be resolved | Pending action |
+| `TO_ARCHIVE` | Keep the message for reference but no reply needed | To archive |
+| `TO_DELETE` | The message is junk / worthless and can be discarded | To delete |
+| `TO_CALENDAR` | The message has date/time references for the calendar | To calendar |
+| `TO_ANSWER` | The message needs a personal reply | To answer |
+| `DRAFT_READY` | A reply draft has been prepared and is ready to send | Draft ready |
 
 Each action automatically moves the card to its mapped board column. The
-kanban board has five columns — Needs reply, Waiting on them, To read, No action, and Done — and a
-triage decision always places the card in one of these five columns. Note
-that `delete` moves the card to the No action column (a board move only, not an
-IMAP deletion).
+kanban board has eight columns — Inbox, Human triage, Pending action, To
+archive, To delete, To calendar, To answer, and Draft ready — and a
+triage decision always places the card in one of these columns. Note
+that `TO_DELETE` moves the card to the To delete column (a board move only, not
+an IMAP deletion).
 
 ### Human-decision memory
 
@@ -1617,12 +1628,12 @@ Inbox Triage
 ------------------------------------------------------------
 
 <a@x.com>
-  action: answer
+  action: TO_ANSWER
   confidence: high
   reason: Sender is asking a direct question that needs a response.
 
 <b@x.com>
-  action: archive
+  action: TO_ARCHIVE
   confidence: high
   reason: Promotional content; keep for reference but no reply needed.
 
@@ -1654,19 +1665,19 @@ occur.
 | Argument | Purpose |
 |---|---|
 | `<message_id>` | The Message-ID of the mail to triage (from `board` or `triage` output) |
-| `<action>` | The action status: `answer`, `waiting`, `archive`, `delete`, `ignore`, or `user_triage` |
+| `<action>` | The action status: `INBOX`, `HUMAN_TRIAGE`, `PENDING_ACTION`, `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, `TO_ANSWER`, or `DRAFT_READY` |
 
 ### Examples
 
 ```sh
 # Record that alice@x.com's message should be archived
-robotsix-auto-mail triage-set '<a@x.com>' archive
+robotsix-auto-mail triage-set '<a@x.com>' TO_ARCHIVE
 
 # Mark a message as needing a reply
-robotsix-auto-mail triage-set '<b@x.com>' answer
+robotsix-auto-mail triage-set '<b@x.com>' TO_ANSWER
 
 # Explicitly defer to a human (use this for ambiguous messages)
-robotsix-auto-mail triage-set '<c@x.com>' user_triage
+robotsix-auto-mail triage-set '<c@x.com>' HUMAN_TRIAGE
 ```
 
 ### Behavior
@@ -1681,9 +1692,16 @@ for future mail from the same address.
 
 ### Requirements
 
-The `triage-set` command requires a loadable configuration (for `db_path`),
-but does **not** require the `pydantic-ai` package or an LLM API key — it is
-purely a local decision-recording tool.
+The `triage-set` command requires:
+- A **loadable configuration** (for `db_path`).
+- The **`pydantic-ai` package** (install via
+  `pip install robotsix-auto-mail[dev]`); the command's import guard exits `1`
+  with an install hint if it is absent. This matches `triage`'s pydantic-ai
+  requirement, since `triage-set` imports the validation vocabulary and
+  decision-recording helpers from the `triage` package.
+
+It does **not** require an LLM API key — unlike `triage`, it performs no LLM
+call; it is purely a local decision-recording tool.
 
 ## The config-sync-set command
 

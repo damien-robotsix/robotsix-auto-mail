@@ -2,6 +2,21 @@
 
 ## 0.0.0 (unreleased)
 
+- Documentation audit: corrected stale or inaccurate content across the
+  ``docs/`` set against the current code — the triage action vocabulary and
+  board column list in ``connecting.md``, the OAuth2/Microsoft 365,
+  ``component_agent``, ``draft``, and calendar surfaces plus the ``pipeline``
+  data-flow in ``architecture.md``, the schema/dedup/dry-run/log-format
+  details in ``ingestion.md``, the renamed ``ingester`` service and heartbeat
+  healthcheck in ``deployment.md``, the board HTTP-API shapes in ``skill.md``,
+  the per-account ``component_agent`` config in ``configuration.md``, the CI
+  job structure in ``testing.md``, the ``lgtm`` suppression locations in
+  ``codeql-verification.md``, and the git-source/Docker-export/lockfile
+  details in ``dependencies.md``. Removed the obsolete programming-language
+  ADR (``docs/decisions/``) and the stale duplicate ``docs/CHANGELOG.md`` (the
+  MkDocs site now links the canonical root ``CHANGELOG.md``); updated
+  ``mkdocs.yml`` and ``docs/modules.yaml`` accordingly.
+
 - IMAP and SMTP XOAUTH2 authentication now retries once with a force-refreshed
   MSAL token when the first attempt is rejected (e.g. due to Conditional Access
   or Continuous Access Evaluation).  CAE claims challenges from the server are

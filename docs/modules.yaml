@@ -13,13 +13,12 @@ modules:
     description: >-
       Project root, package identity, build configuration, and roadmap.
     paths:
-      - .mail_data/.gitkeep
-      - .mail_log/.gitkeep
       - src/robotsix_auto_mail/__init__.py
       - src/robotsix_auto_mail/py.typed
       - src/robotsix_auto_mail/_constants.py
       - src/robotsix_auto_mail/_llm_agent.py
       - src/robotsix_auto_mail/format.py
+      - src/robotsix_auto_mail/health.py
       - tests/core/test_format.py
       - tests/core/test_llm_agent.py
       - pyproject.toml
@@ -344,9 +343,8 @@ modules:
 
   - id: docs
     description: >-
-      User-facing documentation and architecture decisions.
+      User-facing documentation.
     paths:
-      - docs/CHANGELOG.md
       - docs/CONTRIBUTING.md
       - docs/dependencies.md
       - docs/index.md
@@ -360,7 +358,6 @@ modules:
       - docs/testing.md
       - docs/troubleshooting.md
       - docs/modules.yaml
-      - docs/decisions/0001-programming-language.md
       - docs/skill.md
 
   - id: ci
@@ -371,7 +368,6 @@ modules:
       detect-secrets baseline).
     paths:
       - .github/actions/setup-project/action.yml
-      - .github/CODEOWNERS
       - .github/PULL_REQUEST_TEMPLATE.md
       - .github/codeql/codeql-config.yml
       - .github/workflows/ci.yml
@@ -398,7 +394,6 @@ modules:
       - .robotsix-mill/periodic/agent_check.yaml
       - .robotsix-mill/periodic/audit.yaml
       - .robotsix-mill/periodic/bc_check.yaml
-      - .robotsix-mill/periodic/board_cleanup.yaml
       - .robotsix-mill/periodic/config_sync.yaml
       - .robotsix-mill/periodic/data_dir_audit.yaml
       - .robotsix-mill/periodic/env_doc_sync.yaml
@@ -407,6 +402,5 @@ modules:
       - .robotsix-mill/periodic/health.yaml
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/survey.yaml
-      - .robotsix-mill/periodic/cost_reconciliation.yaml
       - .robotsix-mill/periodic/test_gap.yaml
       - .robotsix-mill/periodic/trace_review.yaml

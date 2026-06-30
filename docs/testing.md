@@ -33,8 +33,24 @@ the `src`-layout package importable without an editable install.
 
 ## Full local quality gate
 
-CI (`.github/workflows/ci.yml`) is the source of truth for the gate.  Its
-`verify` job runs, for every supported Python version:
+CI (`.github/workflows/ci.yml`) is the source of truth for the gate.  It is
+made of four jobs:
+
+- **`ci`** — delegates to the reusable
+  `robotsix-github-workflows/.github/workflows/python-ci.yml` workflow, which
+  is where ruff, mypy, deptry, and pytest+coverage actually run.  It is
+  pinned to Python 3.14 (`requires-python = ">=3.14,<3.15"` in
+  `pyproject.toml` — a single version, no matrix).
+- **`repo-checks`** — auto-mail-specific steps with no equivalent in the
+  reusable spine: the config-sync drift check
+  (`python scripts/config/check_config_sync.py`), Dockerfile lint, module
+  taxonomy/registration validation, changelog enforcement, vulture dead-code
+  detection, `validate-pyproject`, and the zizmor workflow scan.
+- **`security`** — delegates to the reusable
+  `python-security.yml` workflow (secret scan, pip-audit, CycloneDX SBOM).
+- **`dependency-review`** — diff-scoped dependency review on pull requests.
+
+To mirror the `ci` job locally before pushing, run:
 
 ```sh
 ruff check .          # lint
@@ -53,8 +69,9 @@ and `pytest` locally before pushing mirrors what CI enforces.
 Tests live under `tests/` with per-module subdirectories that mirror `src/`
 (`tests/imap/`, `tests/smtp/`, `tests/cli/`, `tests/db/`, `tests/fetch/`,
 `tests/parser/`, `tests/pipeline/`, `tests/detect/`, `tests/archive/`,
-`tests/status/`, `tests/triage/`, `tests/config/`, `tests/server/`, …).  These
-per-module subdirectories have **no** `__init__.py`.  Top-level files such as
+`tests/status/`, `tests/triage/`, `tests/config/`, `tests/server/`, …).  The
+`tests/` package itself has an `__init__.py`, and some subdirectories carry
+their own (e.g. `tests/component_agent/__init__.py`).  Top-level files such as
 `tests/test_stub.py` and the shared `tests/conftest.py` are also valid.
 
 Conventions every test file follows:
@@ -63,6 +80,10 @@ Conventions every test file follows:
 - It has a module docstring, and each test function has a one-line docstring.
 - Every test function (and every override/helper) is annotated `-> None`,
   because mypy strict is enforced over the whole repo — tests included.
+- When a test file exceeds ~500 lines and has clear thematic sections
+  (separated by `# -----` or `# =====` comment blocks), split it into
+  domain-focused modules under the same directory — one module per endpoint,
+  handler mixin, or logical concern.
 
 ## Mocking strategy
 

@@ -33,6 +33,13 @@
 #   secret_key: ""
 #   base_url: ""
 
+# Logging configuration — application-wide.  The LOG_LEVEL / LOG_FORMAT /
+# LOG_FILE_DIR environment variables override these values.
+# logging:
+#   level: INFO
+#   format: console
+#   file_dir: .mail_log
+
 # Optional: the default account for CLI operations (e.g. `robotsix-auto-mail triage`
 # uses this account when --account is omitted). Absent → the first account below.
 # NOTE: this does NOT control the board view default — the board always shows all
@@ -81,11 +88,6 @@ accounts:
     # and read/apply configuration over HTTP (without the agent-comm broker).
     # component_agent:
     #   enabled: false
-    # Logging configuration — application-wide.
-    # logging:
-    #   level: INFO
-    #   format: console
-    #   file_dir: .mail_log
 
   - id: work
     label: Work mailbox

@@ -8,8 +8,7 @@ and precedence see [docs/connecting.md](connecting.md).
 
 ## Package layout
 
-The project follows the `src` layout prescribed by
-[ADR 0001](decisions/0001-programming-language.md):
+The project follows the `src` layout:
 
 | Path | Role |
 |---|---|
@@ -29,12 +28,29 @@ The runtime modules group into logical layers.
 ### Protocol clients
 
 `imap/_protocol.py` defines the shared `_ProtocolClient` abstract base, which
-holds the five common config fields (host, port, tls_mode, username,
-password) and the `_dispatch_tls()` dispatch loop.  Two concrete subclasses
-implement the protocol-specific steps:
+holds the common config fields (host, port, tls_mode, username, password)
+plus the OAuth2 fields (oauth2_token, oauth2_client_id,
+oauth2_client_secret) and an optional dynamic token provider, alongside the
+`_dispatch_tls()` dispatch loop.  Two concrete subclasses implement the
+protocol-specific steps:
 
 - `imap/` — a stdlib `imaplib` wrapper (`imap/client.py`).
 - `smtp/` — a stdlib `smtplib` sending client.
+
+### OAuth2 / Microsoft 365 (XOAUTH2)
+
+Microsoft 365 rejects password-based IMAP/SMTP auth and instead requires an
+OAuth2 access token presented over SASL XOAUTH2:
+
+- `oauth2/` — the MSAL-backed token provider for Microsoft 365.  It runs
+  the device-code consent flow once, persists the MSAL token cache in the
+  per-account data folder, and hands out fresh access tokens via silent
+  refresh thereafter.  `msal` is an optional dependency (the
+  `robotsix-auto-mail[microsoft]` extra) imported lazily.
+- The `auth login` CLI subcommand drives that device-code login for an
+  account.
+- `build_xoauth2_response` in `imap/_protocol.py` formats the SASL XOAUTH2
+  wire string the IMAP and SMTP clients send when a token is present.
 
 ### Ingestion
 
@@ -46,12 +62,24 @@ implement the protocol-specific steps:
 
 - `db/` — SQLite schema, the `MailRecord` type, insert, and watermark
   read/write.
-- `server/views/board.py` and `triage/persistence.py` — the mail-processing
-  status read/write layer for the kanban board.
+- `db/queries.py` — the status-write helpers (`update_notes`,
+  `update_draft_text`, `update_record_source`, `update_sent_reply_text`,
+  and the calendar updaters) against the `mail_records` table.
+- `triage/persistence.py` — CRUD for the `triage_decisions` table (the
+  per-message triage action and its source).
+- `server/views/board.py` — a render/view layer that only READS records
+  (via `db.list_records`) to build the kanban-board HTML; it performs no
+  status writes.
 
 ### Configuration
 
-- `config/__init__.py` — loads `MailConfig` from YAML and environment.
+- `config/__init__.py` — re-exports the config API (loaders, dataclasses,
+  and schema) for callers.
+- `config/loader.py` — the actual load cascade (`load` / `load_accounts`)
+  that builds `MailConfig` from built-in defaults, the YAML file, and
+  environment variables.
+- `config/model.py` — the config dataclasses (`MailConfig` and friends).
+- `config/schema.py` — the field defaults and specs the cascade applies.
 - `config/config_sync_agent.py` — the optional LLM-driven config-drift advisory
   agent.
 
@@ -70,11 +98,30 @@ implement the protocol-specific steps:
 - `triage/` — the inbox triage classifier.
 - `config/config_sync_agent.py` — the config-drift advisory agent (also listed
   above).
+- `draft/` — `generate_draft_reply`, the draft-reply generator tied to the
+  `TO_ANSWER` triage action; it persists the draft via `db.update_draft_text`
+  (no mail is sent).
+- `component_agent/` — `ComponentAgentResponder` (in
+  `component_agent/responder.py`), the board server's component HTTP API
+  (`monitor` / `config-get` / `config-set`), wired in via
+  `server/_component_agent_mixin.py`.
 
 ### Surfaces
 
 - `cli/` — the CLI entry point exposing the subcommands.
 - `server/` — the HTTP kanban board server.
+
+### Calendar surface
+
+- `TO_CALENDAR` is one of the triage actions (`triage/_constants.py`),
+  rendered as the "To calendar" board column.
+- Each `mail_records` row carries two calendar columns,
+  `calendar_event_ref` and `calendar_correlation_id`, written by
+  `update_calendar_event_ref` and `update_calendar_correlation_id` in
+  `db/queries.py`.
+- `server/views/detail.py` reads `calendar_event_ref` in
+  `_render_calendar_feedback` to show, in the mail detail view, whether a
+  calendar event has been recorded for the message.
 
 ## Ingestion data flow
 
@@ -83,7 +130,7 @@ implement the protocol-specific steps:
 1. On the first run (and only when not in dry-run mode and
    `config.archive_enabled` is set), `archive.setup_archive()` proposes and
    persists the archive folder layout.
-2. `fetch.fetch_new_messages()` reads the `imap_uid` watermark via
+2. `pipeline.fetch_new_messages()` reads the `imap_uid` watermark via
    `db.get_watermark()` and issues `UID SEARCH` / `UID FETCH BODY.PEEK[]` for
    messages with UIDs greater than the watermark.
 3. For each fetched message, `parser.parse_message()` produces a `MailRecord`.
@@ -91,7 +138,7 @@ implement the protocol-specific steps:
    messages are counted as duplicates and skipped.
 5. New records are stored with `db.insert_record()` (skipped under
    `--dry-run`).
-6. After the batch, `fetch.update_watermark()` advances the watermark to the
+6. After the batch, `pipeline.update_watermark()` advances the watermark to the
    highest UID seen (skipped under `--dry-run`).
 
 See [docs/ingestion.md](ingestion.md) for the user-facing description,
@@ -111,7 +158,9 @@ dispatches on `tls_mode` to one of three abstract connection helpers:
 
 An unrecognised mode raises `ValueError`.  The IMAP and SMTP subclasses
 provide the concrete connection steps with their own protocol libraries and
-exception types, then authenticate via `_authenticate()`.  See
+exception types, then authenticate via `_authenticate()` — using the SASL
+XOAUTH2 response built by `build_xoauth2_response` when an OAuth2 token (or
+token provider) is configured, and password auth otherwise.  See
 [docs/troubleshooting.md](troubleshooting.md) for the resulting error
 hierarchy and how to diagnose each failure.
 
@@ -126,6 +175,8 @@ this document does not restate them.
 ## CLI and board surfaces
 
 `cli/` exposes the subcommands (`probe`, `ingest`, `board`, `serve`,
-`detect`, `triage`, `config-sync`, and their `-set` companions).  `server/`
-serves the read/write kanban board over HTTP, backed by the same SQLite
-datastore.
+`detect`, `config-sync`, `triage`, `triage-set`, `config-sync-set`,
+`migrate-config`, and `auth` — with its `auth login` sub-subcommand for the
+OAuth2 device-code flow).  Only `triage` and `config-sync` have `-set`
+companions.  `server/` serves the read/write kanban board over HTTP, backed
+by the same SQLite datastore.
