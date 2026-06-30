@@ -2,6 +2,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Aligned ``logging:`` section handling with ``llm:`` / ``langfuse:``:
+  per-account ``logging:`` blocks are no longer emitted by the YAML
+  renderer and are now rejected by the loader with an actionable error
+  (logging is application-wide, like llm and langfuse).
+
 - Added the missing ``provider_model`` field to the ``llm:`` section of
   ``config/config.yaml``, restoring parity with the schema and the other
   config artifacts (``.env.example``, ``docs/config/mail.local.example.yaml``).

@@ -673,6 +673,32 @@ accounts:
     assert "top-level" in message.lower() or "outside" in message.lower()
 
 
+def test_from_yaml_per_account_logging_rejected(tmp_path: Path) -> None:
+    """Per-account logging: block raises ConfigurationError with actionable message."""
+    yaml_file = tmp_path / "accts.yaml"
+    yaml_file.write_text(
+        """\
+accounts:
+  - id: personal
+    imap:
+      host: imap.a.com
+    smtp:
+      host: smtp.a.com
+    auth:
+      username: a
+      password: p
+    logging:
+      level: DEBUG
+"""
+    )
+    with pytest.raises(ConfigurationError) as excinfo:
+        MailAccountsConfig.from_yaml(yaml_file)
+    message = str(excinfo.value)
+    assert "personal" in message
+    assert "logging" in message.lower()
+    assert "top-level" in message.lower() or "outside" in message.lower()
+
+
 # ---------------------------------------------------------------------------
 # render_accounts_yaml top-level emission
 # ---------------------------------------------------------------------------

@@ -39,9 +39,9 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     they carry a non-default value, so freshly-detected configs stay terse
     while migrated configs preserve any customised value.
 
-    ``llm:`` and ``langfuse:`` are NOT emitted per-account — they are
-    application-wide and rendered as top-level sections by
-    :func:`render_accounts_yaml`.
+    ``llm:``, ``langfuse:``, and ``logging:`` are NOT emitted per-account —
+    they are application-wide.  ``llm:`` and ``langfuse:`` are rendered as
+    top-level sections by :func:`render_accounts_yaml`.
     """
     cfg = account.config
     defaults = MailConfig(imap_host="", smtp_host="", username="", password="")
@@ -93,15 +93,6 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     if cfg.triage_on_ingest != defaults.triage_on_ingest:
         lines.append(f"{item}triage:")
         lines.append(f"{item}  on_ingest: {_yaml_scalar(cfg.triage_on_ingest)}")
-    if (
-        cfg.log_level != defaults.log_level
-        or cfg.log_format != defaults.log_format
-        or cfg.log_file_dir != defaults.log_file_dir
-    ):
-        lines.append(f"{item}logging:")
-        lines.append(f"{item}  level: {_yaml_scalar(cfg.log_level)}")
-        lines.append(f"{item}  format: {_yaml_scalar(cfg.log_format)}")
-        lines.append(f"{item}  file_dir: {_yaml_scalar(cfg.log_file_dir)}")
     return lines
 
 

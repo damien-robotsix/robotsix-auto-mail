@@ -730,7 +730,7 @@ class MailAccountsConfig:
 
                 # llm: and langfuse: are now top-level (application-wide);
                 # per-account blocks are rejected with an actionable error.
-                for section_name in ("llm", "langfuse"):
+                for section_name in ("llm", "langfuse", "logging"):
                     if section_name in entry:
                         raise ConfigurationError(
                             f"account {raw_id!r} has a per-account "
