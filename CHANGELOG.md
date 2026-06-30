@@ -2,6 +2,15 @@
 
 ## 0.0.0 (unreleased)
 
+- IMAP and SMTP XOAUTH2 authentication now retries once with a force-refreshed
+  MSAL token when the first attempt is rejected (e.g. due to Conditional Access
+  or Continuous Access Evaluation).  CAE claims challenges from the server are
+  forwarded to MSAL's ``acquire_token_silent`` for compliant token renewal.
+  When a token remains rejected after force-refresh with a known AADSTS
+  Conditional Access code (53000–53004, 530032), the raised ``ImapAuthError`` /
+  ``SmtpAuthError`` message explicitly names "Conditional Access" so operators
+  can distinguish a tenant-policy block from a credential problem.
+
 - Fixed the Microsoft OAuth2 device-code flow to auto-probe account health
   before reporting success, so the "Account connection failure" warning banner
   disappears on the next page load without requiring a manual "Recheck

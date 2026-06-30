@@ -100,6 +100,14 @@ class ImapClient(_ProtocolClient):
 
         self._token_provider = build_token_provider(config)
 
+        # Store config for force-refresh retry when MSAL manages the token.
+        # Only set when build_token_provider returned a provider (i.e. the
+        # oauth2_provider is "microsoft" and MSAL is available).
+        self._msal_config: MailConfig | None = (
+            config if self._token_provider is not None else None
+        )
+        self._xoauth2_challenge: bytes = b""
+
         self._imap: imaplib.IMAP4 | None = None
 
     # -- read-only server metadata ---------------------------------------
@@ -194,6 +202,7 @@ class ImapClient(_ProtocolClient):
     def _authenticate(self) -> None:
         if self._imap is None:
             raise RuntimeError("_authenticate() called before _connect_*()")
+        self._xoauth2_challenge = b""  # reset on each attempt
         if self._token_provider is not None:
             self._oauth2_token = self._token_provider()
         used_oauth2 = self._token_provider is not None or bool(self._oauth2_token)
@@ -209,6 +218,32 @@ class ImapClient(_ProtocolClient):
                 # lgtm[py/clear-text-storage-sensitive-data]
                 self._imap.login(self._username, self._password)
         except _IMAP4_ERROR as exc:
+            # Force-refresh retry: only when MSAL manages the token
+            # (self._msal_config is set) — static oauth2_token has no
+            # refresh mechanism.
+            if self._msal_config is not None:
+                self._oauth2_token = self._imap_force_refresh()
+                # Reconnect for a clean NOT AUTHENTICATED state
+                self._close_socket()
+                self._dispatch_tls()
+                self._xoauth2_challenge = b""
+                try:
+                    self._imap.authenticate("XOAUTH2", self._imap_xoauth2_cb)
+                    return  # retry succeeded
+                except _IMAP4_ERROR as exc2:
+                    from robotsix_auto_mail.oauth2 import (
+                        classify_xoauth2_auth_error,
+                    )
+
+                    raise ImapAuthError(
+                        classify_xoauth2_auth_error(
+                            self._xoauth2_challenge,
+                            username=self._username,
+                            host=self._host,
+                            port=self._port,
+                        )
+                    ) from exc2
+            # Non-MSAL fallthrough — original error message
             message = (
                 f"Authentication failed for user {self._username!r} "
                 f"on {self._host}:{self._port}: {exc}"
@@ -219,14 +254,30 @@ class ImapClient(_ProtocolClient):
                 message += _GMAIL_AUTH_HINT
             raise ImapAuthError(message) from exc
 
+    def _imap_force_refresh(self) -> str:
+        """Force-refresh the MSAL token, passing any CAE claims extracted
+        from the server's XOAUTH2 challenge.  Only called when
+        ``self._msal_config`` is set.
+        """
+        from robotsix_auto_mail.oauth2 import (
+            acquire_fresh_token,
+            extract_cae_claims,
+            parse_xoauth2_error,
+        )
+
+        error_info = parse_xoauth2_error(self._xoauth2_challenge)
+        claims = extract_cae_claims(error_info)
+        return acquire_fresh_token(self._msal_config, claims_challenge=claims)  # type: ignore[arg-type]
+
     def _imap_xoauth2_cb(self, challenge: bytes) -> bytes | None:
         """SASL XOAUTH2 callback for ``imaplib.IMAP4.authenticate()``.
 
         On the initial (empty) challenge returns the XOAUTH2 response
-        string.  On any non-empty challenge (server-side error) cancels
-        with ``None``.
+        string.  On any non-empty challenge (server-side error) saves
+        it for retry analysis and cancels with ``None``.
         """
         if challenge:
+            self._xoauth2_challenge = challenge
             return None
         resp = build_xoauth2_response(self._username, self._oauth2_token)
         return resp.encode()

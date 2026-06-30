@@ -6,6 +6,7 @@ import smtplib
 import socket
 import ssl
 from email.mime.text import MIMEText
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -423,6 +424,169 @@ def test_xoauth2_provider_refreshes_on_reconnect() -> None:
 
     assert provider.call_count == 2
     mock_smtp.login.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# XOAUTH2 force-refresh retry (MSAL-managed tokens)
+# ---------------------------------------------------------------------------
+
+
+def test_smtp_xoauth2_force_refresh_succeeds_on_retry() -> None:
+    """First XOAUTH2 fails → force-refresh → reconnect → retry succeeds."""
+    cfg = MailConfig(
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        username="user@contoso.com",
+        password="",
+    )
+    provider = mock.Mock(return_value="token-1")
+    challenge = b'{"status":"400","schemes":"Bearer"}'
+    fresh_token = "token-after-refresh"
+
+    mock_smtp_1 = _make_mock_smtp()
+
+    def fake_auth_fail(mechanism: Any, callback: Any, initial_response_ok: bool = True) -> None:
+        callback(None)  # initial response
+        callback(challenge)  # server rejection
+        raise smtplib.SMTPAuthenticationError(535, b"Auth failed")
+
+    mock_smtp_1.auth.side_effect = fake_auth_fail
+
+    mock_smtp_2 = _make_mock_smtp()
+    mock_smtp_2.auth.return_value = (235, b"2.7.0 Accepted")
+
+    with mock.patch(
+        "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
+    ):
+        with mock.patch(
+            "smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]
+        ):
+            with mock.patch(
+                "robotsix_auto_mail.oauth2.acquire_fresh_token",
+                return_value=fresh_token,
+            ) as mock_acquire:
+                SmtpClient(cfg).connect()
+
+    mock_acquire.assert_called_once()
+    provider.assert_called_once()
+    assert mock_smtp_1.auth.called
+    assert mock_smtp_2.auth.called
+    mock_smtp_2.login.assert_not_called()
+
+
+def test_smtp_xoauth2_force_refresh_fails_conditional_access() -> None:
+    """Both original and force-refreshed tokens rejected with AADSTS53003
+    → SmtpAuthError mentions Conditional Access."""
+    cfg = MailConfig(
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        username="user@contoso.com",
+        password="",
+    )
+    provider = mock.Mock(return_value="token-1")
+    challenge = b'{"error_description":"AADSTS53003: Blocked by Conditional Access"}'
+    fresh_token = "token-after-refresh"
+
+    mock_smtp_1 = _make_mock_smtp()
+
+    def fake_auth_fail_1(mechanism: Any, callback: Any, initial_response_ok: bool = True) -> None:
+        callback(None)
+        callback(challenge)
+        raise smtplib.SMTPAuthenticationError(535, b"Auth failed")
+
+    mock_smtp_1.auth.side_effect = fake_auth_fail_1
+
+    mock_smtp_2 = _make_mock_smtp()
+
+    def fake_auth_fail_2(mechanism: Any, callback: Any, initial_response_ok: bool = True) -> None:
+        callback(None)
+        callback(challenge)
+        raise smtplib.SMTPAuthenticationError(535, b"Auth failed again")
+
+    mock_smtp_2.auth.side_effect = fake_auth_fail_2
+
+    with mock.patch(
+        "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
+    ):
+        with mock.patch(
+            "smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]
+        ):
+            with mock.patch(
+                "robotsix_auto_mail.oauth2.acquire_fresh_token",
+                return_value=fresh_token,
+            ):
+                with pytest.raises(SmtpAuthError) as exc:
+                    SmtpClient(cfg).connect()
+
+    assert "Conditional Access" in str(exc.value)
+
+
+def test_smtp_xoauth2_no_retry_for_static_token() -> None:
+    """Static oauth2_token (no MSAL provider) → no force-refresh, immediate error."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="",
+        oauth2_token="ya29.static-token",
+    )
+
+    mock_smtp = _make_mock_smtp()
+    auth_error = smtplib.SMTPAuthenticationError(535, b"Auth failed")
+    mock_smtp.auth.side_effect = auth_error
+
+    with mock.patch(
+        "robotsix_auto_mail.smtp.build_token_provider", return_value=None
+    ):
+        with mock.patch("smtplib.SMTP", return_value=mock_smtp):
+            with mock.patch(
+                "robotsix_auto_mail.oauth2.acquire_fresh_token"
+            ) as mock_acquire:
+                with pytest.raises(SmtpAuthError):
+                    SmtpClient(cfg).connect()
+
+    mock_acquire.assert_not_called()
+
+
+def test_smtp_cae_claims_forwarded_to_acquire_fresh_token() -> None:
+    """Challenge with CAE claims → acquire_fresh_token receives claims_challenge."""
+    cfg = MailConfig(
+        imap_host="outlook.office365.com",
+        smtp_host="smtp.office365.com",
+        username="user@contoso.com",
+        password="",
+    )
+    provider = mock.Mock(return_value="token-1")
+    challenge = b'{"status":"400","schemes":"Bearer claims=\\"XYZ123\\""}'
+    fresh_token = "token-after-refresh"
+
+    mock_smtp_1 = _make_mock_smtp()
+
+    def fake_auth_fail(mechanism: Any, callback: Any, initial_response_ok: bool = True) -> None:
+        callback(None)
+        callback(challenge)
+        raise smtplib.SMTPAuthenticationError(535, b"Auth failed")
+
+    mock_smtp_1.auth.side_effect = fake_auth_fail
+
+    mock_smtp_2 = _make_mock_smtp()
+    mock_smtp_2.auth.return_value = (235, b"2.7.0 Accepted")
+
+    with mock.patch(
+        "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
+    ):
+        with mock.patch(
+            "smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]
+        ):
+            with mock.patch(
+                "robotsix_auto_mail.oauth2.acquire_fresh_token",
+                return_value=fresh_token,
+            ) as mock_acquire:
+                SmtpClient(cfg).connect()
+
+    mock_acquire.assert_called_once()
+    _, kwargs = mock_acquire.call_args
+    assert kwargs.get("claims_challenge") == "XYZ123"
 
 
 # ===================================================================

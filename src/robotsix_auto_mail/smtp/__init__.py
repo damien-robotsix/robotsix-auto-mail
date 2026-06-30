@@ -106,6 +106,14 @@ class SmtpClient(_ProtocolClient):
         )
         self._token_provider = build_token_provider(config)
 
+        # Store config for force-refresh retry when MSAL manages the token.
+        # Only set when build_token_provider returned a provider (i.e. the
+        # oauth2_provider is "microsoft" and MSAL is available).
+        self._msal_config: MailConfig | None = (
+            config if self._token_provider is not None else None
+        )
+        self._xoauth2_challenge: bytes = b""
+
         self._smtp: smtplib.SMTP | None = None
 
     # -- read-only server metadata ---------------------------------------
@@ -265,6 +273,7 @@ class SmtpClient(_ProtocolClient):
     def _authenticate(self) -> None:
         if self._smtp is None:
             raise RuntimeError("_authenticate() called before _connect_*()")
+        self._xoauth2_challenge = b""
         if self._token_provider is not None:
             self._oauth2_token = self._token_provider()
         try:
@@ -275,18 +284,61 @@ class SmtpClient(_ProtocolClient):
             else:
                 self._smtp.login(self._username, self._password)
         except _SMTP_EXCEPTION as exc:
+            # Force-refresh retry: only when MSAL manages the token
+            # (self._msal_config is set) — static oauth2_token has no
+            # refresh mechanism.
+            if self._msal_config is not None:
+                self._oauth2_token = self._smtp_force_refresh()
+                # Reconnect for a clean post-auth state
+                self.close()
+                self._dispatch_tls()
+                self._xoauth2_challenge = b""
+                try:
+                    self._smtp.auth(
+                        "XOAUTH2", self._smtp_xoauth2_cb, initial_response_ok=True
+                    )
+                    return  # retry succeeded
+                except _SMTP_EXCEPTION as exc2:
+                    from robotsix_auto_mail.oauth2 import (
+                        classify_xoauth2_auth_error,
+                    )
+
+                    raise SmtpAuthError(
+                        classify_xoauth2_auth_error(
+                            self._xoauth2_challenge,
+                            username=self._username,
+                            host=self._host,
+                            port=self._port,
+                        )
+                    ) from exc2
             raise SmtpAuthError(
                 f"Authentication failed for user {self._username!r} "
                 f"on {self._host}:{self._port}: {exc}"
             ) from exc
+
+    def _smtp_force_refresh(self) -> str:
+        """Force-refresh the MSAL token, passing any CAE claims extracted
+        from the server's XOAUTH2 challenge.  Only called when
+        ``self._msal_config`` is set.
+        """
+        from robotsix_auto_mail.oauth2 import (
+            acquire_fresh_token,
+            extract_cae_claims,
+            parse_xoauth2_error,
+        )
+
+        error_info = parse_xoauth2_error(self._xoauth2_challenge)
+        claims = extract_cae_claims(error_info)
+        return acquire_fresh_token(self._msal_config, claims_challenge=claims)  # type: ignore[arg-type]
 
     def _smtp_xoauth2_cb(self, challenge: bytes | None = None) -> str:
         """SASL XOAUTH2 callback for ``smtplib.SMTP.auth()``.
 
         On the initial solicitation (``None``) returns the XOAUTH2
         response string.  On any subsequent challenge (server-side
-        error) cancels with ``\\x01``.
+        error) saves it for retry analysis and cancels with ``\\x01``.
         """
         if challenge is not None:
+            self._xoauth2_challenge = challenge
             return "\x01"
         return build_xoauth2_response(self._username, self._oauth2_token)
