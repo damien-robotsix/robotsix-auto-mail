@@ -92,6 +92,30 @@ class _BoardAuthMixin:
         def _run() -> None:
             try:
                 device_code_login(config, on_prompt=on_prompt)
+                # Auto-probe so the DB health row reflects the freshly-authorised
+                # account before the page reloads.  Failure is non-fatal.
+                try:
+                    import logging
+
+                    from robotsix_auto_mail.db import init_db
+                    from robotsix_auto_mail.db.queries import write_account_health
+                    from robotsix_auto_mail.health import probe_account, utcnow
+
+                    status_val, error_val = probe_account(config)
+                    conn = init_db(config.db_path)
+                    try:
+                        write_account_health(
+                            conn,
+                            status=status_val,
+                            error=error_val,
+                            checked_at=utcnow(),
+                        )
+                    finally:
+                        conn.close()
+                except Exception as _probe_exc:
+                    logging.getLogger("robotsix_auto_mail.server.auth").warning(
+                        "post-auth health probe failed: %s", _probe_exc
+                    )
                 _BoardAuthMixin._AUTH_FLOWS[flow_key]["status"] = "success"
             except ConfigurationError as exc:
                 event.set()  # unblock POST if on_prompt never fired

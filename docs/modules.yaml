@@ -325,6 +325,7 @@ modules:
       - tests/server/test_board_views_unit.py
       - tests/server/test_component_agent_api.py
       - tests/server/test_draft_mixin.py
+      - tests/server/test_auth_mixin.py
       - tests/server/test_format_date.py
       - tests/server/test_global_board.py
       - tests/server/test_redirect_safety.py

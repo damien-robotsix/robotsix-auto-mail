@@ -641,7 +641,7 @@
       if (data.status === 'success') {
         // Rare: flow completed before POST returned
         modal.querySelector('.auth-modal-status').textContent = '\u2705 Connected! Reloading\u2026';
-        setTimeout(function () { modal.remove(); refreshBoard(); btn.disabled = false; btn.textContent = 'Authorize / Reconnect'; }, 1500);
+        setTimeout(function () { window.location.reload(); }, 1500);
         return;
       }
       modal.querySelector('.auth-modal-status').textContent = 'Waiting for consent\u2026';
@@ -661,7 +661,7 @@
         if (s.status === 'success') {
           cleanup();
           modal.querySelector('.auth-modal-status').textContent = '\u2705 Connected! Reloading\u2026';
-          setTimeout(function () { modal.remove(); refreshBoard(); btn.disabled = false; btn.textContent = 'Authorize / Reconnect'; }, 1500);
+          setTimeout(function () { window.location.reload(); }, 1500);
         } else if (s.status === 'error') {
           cleanup();
           modal.querySelector('.auth-modal-status').textContent = '\u274c ' + (s.error || 'Unknown error');
