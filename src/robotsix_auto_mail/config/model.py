@@ -452,6 +452,15 @@ def _build_config_from_env(
 
     # -- final validation --------------------------------------------------
 
+    # Microsoft MSAL accounts never use a password — don't require MAIL_PASSWORD.
+    if kwargs.get("oauth2_provider") == "microsoft":
+        _pw_spec = next(
+            (s for s in _FIELD_SPECS if s.field_name == "password"), None
+        )
+        if _pw_spec:
+            _pw_label = label_for(_pw_spec)
+            missing = [m for m in missing if m != _pw_label]
+
     msgs: list[str] = []
     if missing:
         msgs.append(

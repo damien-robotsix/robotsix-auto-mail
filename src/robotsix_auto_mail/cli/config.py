@@ -440,6 +440,8 @@ def _verify_and_refine(
     _detection_error: type[Exception],
     microsoft: bool = False,
     overwrite: bool = False,
+    oauth2_client_id: str = "",
+    oauth2_tenant: str = "",
 ) -> int:
     """Verify *config* by connecting, refining on failure.
 
@@ -489,6 +491,12 @@ def _verify_and_refine(
                 smtp_port=detected.smtp_port,
                 smtp_tls_mode=detected.smtp_tls_mode,
                 password=detected.password,
+            )
+        if oauth2_client_id or oauth2_tenant:
+            detected = dataclasses.replace(
+                detected,
+                oauth2_client_id=oauth2_client_id or detected.oauth2_client_id,
+                oauth2_tenant=oauth2_tenant or detected.oauth2_tenant,
             )
         return detected
 

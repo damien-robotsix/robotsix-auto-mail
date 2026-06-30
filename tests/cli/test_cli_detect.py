@@ -535,6 +535,48 @@ def test_detect_microsoft_auth_failure_points_at_auth_login(
     assert "auth login" in err
 
 
+def test_detect_microsoft_custom_oauth2_client_id_and_tenant(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--oauth2-client-id and --oauth2-tenant are written to config and
+    passed to device_code_login."""
+    output = tmp_path / "cfg.yaml"
+    mock_provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass") as mock_getpass,
+        mock.patch(
+            "robotsix_auto_mail.oauth2.device_code_login"
+        ) as mock_login,
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "user@tii.ae",
+                "--output", str(output),
+                "--oauth2-client-id", "12345678-1234-1234-1234-123456789abc",
+                "--oauth2-tenant", "tii.ae",
+            ]
+        )
+
+    assert rc == 0
+    mock_getpass.assert_not_called()
+    mock_login.assert_called_once()
+    content = output.read_text()
+    assert 'oauth2_provider: "microsoft"' in content
+    assert 'oauth2_client_id: "12345678-1234-1234-1234-123456789abc"' in content
+    assert 'oauth2_tenant: "tii.ae"' in content
+
+
 def test_detect_refines_host_with_llm_on_connection_failure(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:

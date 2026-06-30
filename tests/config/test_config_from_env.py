@@ -212,3 +212,18 @@ def test_from_env_invalid_log_format() -> None:
             MailConfig.from_env()
         msg = str(exc.value)
         assert "LOG_FORMAT" in msg
+
+
+def test_from_env_microsoft_oauth2_skips_password_requirement() -> None:
+    """With MAIL_OAUTH2_PROVIDER=microsoft, MAIL_PASSWORD is not required."""
+    env: dict[str, str] = {
+        "MAIL_IMAP_HOST": "outlook.office365.com",
+        "MAIL_SMTP_HOST": "smtp.office365.com",
+        "MAIL_USERNAME": "user@contoso.com",
+        "MAIL_OAUTH2_PROVIDER": "microsoft",
+        # MAIL_PASSWORD intentionally omitted
+    }
+    with mock.patch.dict(os.environ, env, clear=True):
+        cfg = MailConfig.from_env()
+        assert cfg.oauth2_provider == "microsoft"
+        assert cfg.password == ""

@@ -5,6 +5,15 @@
 - Board: Microsoft OAuth2 accounts can now be authorized / reconnected
   directly from the web board via an "Authorize / Reconnect" button in
   health-alert banners, using the device-code flow with a modal prompt.
+
+- Added ``--oauth2-client-id`` and ``--oauth2-tenant`` flags to ``detect``,
+  allowing operators to supply a custom Azure app registration for
+  Microsoft 365 OAuth2 at detect-time instead of manually editing the
+  written YAML.
+
+- Fixed ``MailConfig.from_env()`` to no longer require ``MAIL_PASSWORD``
+  when ``MAIL_OAUTH2_PROVIDER=microsoft``, enabling env-var-only
+  Microsoft 365 deployments that use MSAL/XOAUTH2 without a password.
 - Removed five unwired ``COMPONENT_AGENT_*`` broker env var rows
   (``COMPONENT_AGENT_ID``, ``_BROKER_HOST``, ``_BROKER_PORT``,
   ``_BROKER_TOKEN``, ``_BROKER_TLS_CA``) from the "Component agent

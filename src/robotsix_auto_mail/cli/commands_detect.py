@@ -127,4 +127,6 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         _detection_error=DetectionError,
         microsoft=microsoft,
         overwrite=args.overwrite,
+        oauth2_client_id=args.oauth2_client_id,
+        oauth2_tenant=args.oauth2_tenant,
     )
