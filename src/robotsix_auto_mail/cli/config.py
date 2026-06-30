@@ -440,6 +440,8 @@ def _verify_and_refine(
     _detection_error: type[Exception],
     microsoft: bool = False,
     overwrite: bool = False,
+    oauth2_client_id: str = "",
+    oauth2_tenant: str = "",
 ) -> int:
     """Verify *config* by connecting, refining on failure.
 
@@ -480,7 +482,7 @@ def _verify_and_refine(
             # and the supplied password onto the existing config. Everything
             # else (db_path, imap_folder, archive_*, triage_*, calendar_*,
             # oauth2_*, langfuse_*, llm_*, ingest_*) is preserved as-is.
-            return dataclasses.replace(
+            result = dataclasses.replace(
                 existing_account.config,
                 imap_host=detected.imap_host,
                 imap_port=detected.imap_port,
@@ -490,7 +492,17 @@ def _verify_and_refine(
                 smtp_tls_mode=detected.smtp_tls_mode,
                 password=detected.password,
             )
-        return detected
+        else:
+            result = detected
+        # Overlay explicit CLI-supplied oauth2 fields in both modes so
+        # --oauth2-client-id / --oauth2-tenant are honoured in --overwrite.
+        if oauth2_client_id or oauth2_tenant:
+            result = dataclasses.replace(
+                result,
+                oauth2_client_id=oauth2_client_id or result.oauth2_client_id,
+                oauth2_tenant=oauth2_tenant or result.oauth2_tenant,
+            )
+        return result
 
     def _write(cfg: MailConfig) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
