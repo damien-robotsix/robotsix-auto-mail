@@ -377,6 +377,8 @@ modules:
       - .github/workflows/pre-commit.yml
       - .github/workflows/release.yml
       - .github/workflows/scan-container.yml
+      - .github/ISSUE_TEMPLATE/bug_report.yml
+      - .github/ISSUE_TEMPLATE/config.yml
       - .hadolint.yaml
       - .pre-commit-config.yaml
       - .secrets.baseline
