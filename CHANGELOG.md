@@ -11,6 +11,11 @@
   Microsoft 365 OAuth2 at detect-time instead of manually editing the
   written YAML.
 
+- Added ``--app-password`` flag to ``detect``, enabling password/basic
+  auth for Microsoft-hosted accounts where the tenant still allows
+  legacy authentication (app passwords). Mutually exclusive with
+  ``--oauth2-client-id`` / ``--oauth2-tenant``.
+
 - Fixed ``MailConfig.from_env()`` to no longer require ``MAIL_PASSWORD``
   when ``MAIL_OAUTH2_PROVIDER=microsoft``, enabling env-var-only
   Microsoft 365 deployments that use MSAL/XOAUTH2 without a password.

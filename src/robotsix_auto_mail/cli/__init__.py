@@ -218,6 +218,17 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     detect_parser.add_argument(
+        "--app-password",
+        action="store_true",
+        default=False,
+        help=(
+            "Use password/basic auth even for Microsoft-hosted accounts. "
+            "Mutually exclusive with --oauth2-client-id / --oauth2-tenant. "
+            "WARNING: OAuth2 is strongly preferred; basic auth may be disabled "
+            "for your tenant."
+        ),
+    )
+    detect_parser.add_argument(
         "--oauth2-client-id",
         dest="oauth2_client_id",
         default="",

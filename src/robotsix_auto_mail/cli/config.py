@@ -442,6 +442,7 @@ def _verify_and_refine(
     overwrite: bool = False,
     oauth2_client_id: str = "",
     oauth2_tenant: str = "",
+    app_password: bool = False,
 ) -> int:
     """Verify *config* by connecting, refining on failure.
 
@@ -477,6 +478,11 @@ def _verify_and_refine(
     def _build(prov: MailProvider, pw: str | None) -> MailConfig:
         detected = provider_to_config(prov, email, password=pw or "")
         detected = dataclasses.replace(detected, db_path=f".data/{account_id}/mail.db")
+        if app_password and detected.oauth2_provider:
+            # Clear MSAL provider so IMAP/SMTP use plain password auth.
+            detected = dataclasses.replace(
+                detected, oauth2_provider="", password=pw or ""
+            )
         if existing_account is not None:
             # Overwrite mode: overlay only the six detected transport fields
             # and the supplied password onto the existing config. Everything

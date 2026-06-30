@@ -550,21 +550,20 @@ def test_detect_microsoft_custom_oauth2_client_id_and_tenant(
             "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
         ),
         mock.patch("getpass.getpass") as mock_getpass,
-        mock.patch(
-            "robotsix_auto_mail.oauth2.device_code_login"
-        ) as mock_login,
-        mock.patch(
-            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
-        ),
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
+        mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
             [
                 "detect",
                 "user@tii.ae",
-                "--output", str(output),
-                "--oauth2-client-id", "12345678-1234-1234-1234-123456789abc",
-                "--oauth2-tenant", "tii.ae",
+                "--output",
+                str(output),
+                "--oauth2-client-id",
+                "12345678-1234-1234-1234-123456789abc",
+                "--oauth2-tenant",
+                "tii.ae",
             ]
         )
 
@@ -581,6 +580,120 @@ def test_detect_microsoft_custom_oauth2_client_id_and_tenant(
     assert 'oauth2_provider: "microsoft"' in content
     assert 'oauth2_client_id: "12345678-1234-1234-1234-123456789abc"' in content
     assert 'oauth2_tenant: "tii.ae"' in content
+
+
+def test_detect_microsoft_app_password_writes_password_config(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--app-password for a Microsoft host clears oauth2_provider, writes
+    a password, and uses password-based auth (no device_code_login)."""
+    output = tmp_path / "cfg.yaml"
+    mock_provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass", return_value="app-pw-123") as mock_getpass,
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
+        ) as mock_verify,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "user@tii.ae",
+                "--output",
+                str(output),
+                "--app-password",
+            ]
+        )
+
+    assert rc == 0
+    mock_getpass.assert_called_once()
+    mock_login.assert_not_called()
+    mock_verify.assert_called_once()
+    err = capsys.readouterr().err
+    assert "Warning: --app-password" in err
+    assert "Verification succeeded" in err
+    content = output.read_text()
+    assert "app-pw-123" in content
+    assert "oauth2_provider:" not in content
+
+
+def test_detect_app_password_mutually_exclusive_with_oauth2_flags(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--app-password + --oauth2-client-id is rejected."""
+    output = tmp_path / "cfg.yaml"
+    mock_provider = MailProvider(
+        imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
+    )
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass"),
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login"),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "user@tii.ae",
+                "--output",
+                str(output),
+                "--app-password",
+                "--oauth2-client-id",
+                "12345678-1234-1234-1234-123456789abc",
+            ]
+        )
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "mutually exclusive" in err
+
+
+def test_detect_app_password_noop_for_non_microsoft(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+) -> None:
+    """--app-password has no effect for non-Microsoft hosts (no warning,
+    normal password flow)."""
+    output = tmp_path / "cfg.yaml"
+    mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass", return_value="gm-pw") as mock_getpass,
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
+        ) as mock_verify,
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "user@gmail.com",
+                "--output",
+                str(output),
+                "--app-password",
+            ]
+        )
+
+    assert rc == 0
+    mock_getpass.assert_called_once()
+    mock_verify.assert_called_once()
+    err = capsys.readouterr().err
+    assert "Warning: --app-password" not in err
+    content = output.read_text()
+    assert "gm-pw" in content
 
 
 def test_detect_refines_host_with_llm_on_connection_failure(
@@ -958,23 +1071,23 @@ def test_detect_overwrite_with_oauth2_flags(
             "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
         ),
         mock.patch("getpass.getpass") as mock_getpass,
-        mock.patch(
-            "robotsix_auto_mail.oauth2.device_code_login"
-        ) as mock_login,
-        mock.patch(
-            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
-        ),
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
+        mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
             [
                 "detect",
                 "user@tii.ae",
-                "--id", "tii",
+                "--id",
+                "tii",
                 "--overwrite",
-                "--oauth2-client-id", "12345678-1234-1234-1234-123456789abc",
-                "--oauth2-tenant", "tii.ae",
-                "--output", str(output),
+                "--oauth2-client-id",
+                "12345678-1234-1234-1234-123456789abc",
+                "--oauth2-tenant",
+                "tii.ae",
+                "--output",
+                str(output),
             ]
         )
 

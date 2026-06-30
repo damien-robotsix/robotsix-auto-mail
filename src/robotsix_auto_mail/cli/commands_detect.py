@@ -63,6 +63,18 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     if provider is None:
         return 1
     microsoft = is_microsoft_provider(provider)
+    if microsoft and args.app_password:
+        if args.oauth2_client_id or args.oauth2_tenant:
+            sys.stderr.write(
+                "Error: --app-password is mutually exclusive with "
+                "--oauth2-client-id / --oauth2-tenant.\n"
+            )
+            return 1
+        sys.stderr.write(
+            "Warning: --app-password bypasses OAuth2; basic auth may be"
+            " disabled for your tenant.\n"
+        )
+        microsoft = False
     # Microsoft 365 rejects password auth; it uses MSAL-managed XOAUTH2, so we
     # never prompt for or write a password for these accounts.
     if microsoft:
@@ -129,4 +141,5 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         overwrite=args.overwrite,
         oauth2_client_id=args.oauth2_client_id,
         oauth2_tenant=args.oauth2_tenant,
+        app_password=args.app_password,
     )
