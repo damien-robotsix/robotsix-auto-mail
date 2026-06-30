@@ -19,6 +19,10 @@
   ``_oauth2_client_secret`` (parameters and instance attributes). Removed the
   corresponding vulture whitelist entries.
 
+- Removed a stale vulture whitelist entry that referenced ``logger`` via a
+  broken import path (``robotsix_auto_mail.config.logger`` is not re-exported
+  by the package).
+
 - Consolidated the `component-agent` module into `server`:
   moved `config_contract.py` → `_component_agent_config_contract.py` and
   `responder.py` → `_component_agent_responder.py`; updated all imports;
