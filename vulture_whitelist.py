@@ -72,6 +72,18 @@ BoardAdapter.card_extra_html
 BoardAdapter.column_extra_html
 
 # ===========================================================================
+# Component-agent responder — ``_config_set`` mirrors ``_config_get`` /
+# ``_monitor`` as the broker-style entry point and delegates to
+# ``config_set_direct``. The production HTTP mixin calls ``config_set_direct``
+# directly, so ``_config_set`` is exercised only via tests and is invisible to
+# the src-only vulture scan.
+# ===========================================================================
+
+from robotsix_auto_mail.component_agent.responder import ComponentAgentResponder
+
+ComponentAgentResponder._config_set
+
+# ===========================================================================
 # Genuinely dead code — removal deferred to a separate ticket.
 # ===========================================================================
 
