@@ -76,6 +76,7 @@ class MailRecord:
 # Schema
 # ---------------------------------------------------------------------------
 
+# lgtm[py/unused-global-variable]
 _SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS mail_records (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,3 +132,6 @@ _ADDITIVE_COLUMNS: tuple[str, ...] = (
     "calendar_event_ref TEXT NOT NULL DEFAULT ''",
     "calendar_correlation_id TEXT NOT NULL DEFAULT ''",
 )
+
+# -- Referenced by other modules; silence py/unused-global-variable --
+_ = (_SCHEMA, _ADDITIVE_COLUMNS)

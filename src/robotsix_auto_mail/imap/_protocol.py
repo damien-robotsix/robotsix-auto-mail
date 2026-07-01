@@ -83,10 +83,13 @@ class _ProtocolClient(abc.ABC):
     # -- abstract connection helpers ---------------------------------------
 
     @abc.abstractmethod
-    def _connect_direct_tls(self) -> None: ...
+    def _connect_direct_tls(self) -> None:
+        pass
 
     @abc.abstractmethod
-    def _connect_starttls(self) -> None: ...
+    def _connect_starttls(self) -> None:
+        pass
 
     @abc.abstractmethod
-    def _connect_plain(self) -> None: ...
+    def _connect_plain(self) -> None:
+        pass

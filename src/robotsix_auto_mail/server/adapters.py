@@ -293,7 +293,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                             )
             else:
                 # DB-only delete (no IMAP configured or no tracked UIDs).
-                done = _run_db_only_batch_op(conn, records, "delete", done, total)
+                _run_db_only_batch_op(conn, records, "delete", done, total)
         except Exception:  # noqa: S110  # nosec B110
             # Swallow all exceptions — the watermark is always cleared.
             pass

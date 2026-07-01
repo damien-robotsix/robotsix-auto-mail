@@ -14,6 +14,8 @@
   ``resolve_llm_api_key`` / ``resolve_llm_provider_model`` now resolve from an
   explicit argument then the config file's ``llm.*`` section (no env).
 
+- Fix CodeQL code-scanning alerts: suppress false-positive unused-global-variable warnings on importable constants, replace ineffectual Ellipsis literals with ``pass`` in abstract/Protocol method stubs, and drop unused local variable in batch-op adapter.
+
 - Replaced the triage agent's JSON "memory" ledgers with a single
   human-readable ``triage_rules.md`` file maintained by a fast ("flash") LLM.
   Whenever you act on a message (board move, archive-to-folder, save-draft,

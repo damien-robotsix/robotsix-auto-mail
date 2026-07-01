@@ -22,19 +22,24 @@ from robotsix_auto_mail.config import (
     resolve_llm_api_key,
 )
 
+# TypeVar is used instead of PEP 695 ``[T: pydantic.BaseModel]`` to
+# avoid a CodeQL ``py/uninitialized-local-variable`` false positive on
+# the type parameter.
+_T = typing.TypeVar("_T", bound=pydantic.BaseModel)
 
-def _run_llm_agent[T: pydantic.BaseModel](
+
+def _run_llm_agent(  # noqa: UP047
     *,
     api_key: str | None,
     provider_model: str | None,
     tier: Tier,
     system_prompt: str,
-    output_model: type[T],
+    output_model: type[_T],
     user_message: str,
     label: str,
     what: str,
     exc_type: type[Exception],
-) -> T:
+) -> _T:
     """Resolve credentials, build an LLM agent, run it, and return its output.
 
     Args:
@@ -102,6 +107,7 @@ def _run_llm_agent[T: pydantic.BaseModel](
     )
 
     # -- call LLM --
+    result = None
     try:
         result = run_agent(
             agent_handle,
@@ -113,4 +119,4 @@ def _run_llm_agent[T: pydantic.BaseModel](
     except Exception as exc:
         raise exc_type(str(exc)) from exc
 
-    return typing.cast(T, result.output)
+    return typing.cast(_T, result.output)

@@ -83,7 +83,7 @@ from robotsix_auto_mail.server._component_agent_responder import (
     ComponentAgentResponder,
 )
 
-ComponentAgentResponder._config_set
+_ = ComponentAgentResponder._config_set  # lgtm[py/ineffectual-statement]
 
 # ===========================================================================
 # Pydantic model fields — accessed via model_dump / model_validate / keyword

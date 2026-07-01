@@ -45,19 +45,19 @@ _STATIC_BOARD_CSS = (
 # Auto-mail's app-layer stylesheet, served at /static/automail/board.css so
 # it does not collide with the library's /static/board.css.  Loaded after
 # the library CSS so its rules cascade over the library defaults.
-_STATIC_AUTOMAIL_BOARD_CSS = (
+_STATIC_AUTOMAIL_BOARD_CSS = (  # lgtm[py/unused-global-variable]
     importlib.resources.files("robotsix_auto_mail.server") / "static" / "board.css"
 ).read_text()
 # Auto-mail's app-layer JS overlay (board.js composer).  Served at
 # /static/board-auto-mail.js so it sits alongside the library's board.js.
-_STATIC_BOARD_AUTOMAIL_JS = (
+_STATIC_BOARD_AUTOMAIL_JS = (  # lgtm[py/unused-global-variable]
     importlib.resources.files("robotsix_auto_mail.server")
     / "static"
     / "board-auto-mail.js"
 ).read_text()
 
 # -- Constants --------------------------------------------------------------
-_BOARD_COLUMNS = TRIAGE_ACTION_ORDER
+_BOARD_COLUMNS = TRIAGE_ACTION_ORDER  # lgtm[py/unused-global-variable]
 
 #: Reserved sentinel account id that selects the aggregate (all-accounts)
 #: board view.  Must not be used as a real ``account_id`` — collisions
@@ -99,6 +99,10 @@ def _is_safe_redirect_path(location: str) -> bool:
         and not location.startswith(("//", "/\\"))
         and not any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in location)
     )
+
+
+# -- Referenced by other modules; silence py/unused-global-variable --
+_ = (_STATIC_AUTOMAIL_BOARD_CSS, _STATIC_BOARD_AUTOMAIL_JS, _BOARD_COLUMNS)
 
 
 def _parse_archive_structure(
