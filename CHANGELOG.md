@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Refresh the ``robotsix-agent-comm`` git pin (declared ``rev="main"``) from the
+  stale locked commit ``c57e9d74`` to ``e5e6d85e`` so the optional
+  ``[calendar]``/``[broker]`` extras can import ``ConfigContractError`` from
+  ``robotsix_agent_comm.protocol``. Lockfile-only change; no behaviour change.
 - Migrated from the ``Tier`` enum (removed from ``robotsix-llmio``) to a
   plain ``int`` level parameter: ``_run_llm_agent`` and all call sites
   (``config_sync_agent``, ``archive``, ``detect``, ``draft``, ``triage``)
