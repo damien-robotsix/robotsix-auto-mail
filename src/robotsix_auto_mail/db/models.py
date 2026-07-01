@@ -123,7 +123,6 @@ CREATE TABLE IF NOT EXISTS triage_decisions (
 #: :func:`._migrate.run_additive_migrations`; the fragments are byte-for-byte
 #: equivalent to the column definitions previously added by the per-column
 #: ``_migrate_add_*`` functions, in the same order.
-# lgtm[py/unused-global-variable]
 _ADDITIVE_COLUMNS: tuple[str, ...] = (
     "unsubscribe_header TEXT NOT NULL DEFAULT ''",
     "notes TEXT NOT NULL DEFAULT ''",
@@ -133,3 +132,6 @@ _ADDITIVE_COLUMNS: tuple[str, ...] = (
     "calendar_event_ref TEXT NOT NULL DEFAULT ''",
     "calendar_correlation_id TEXT NOT NULL DEFAULT ''",
 )
+
+# -- Referenced by other modules; silence py/unused-global-variable --
+_ = (_SCHEMA, _ADDITIVE_COLUMNS)

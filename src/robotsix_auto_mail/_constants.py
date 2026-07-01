@@ -1,14 +1,14 @@
 """Package-wide constants shared across submodules."""
 
 #: Root folder under which all managed archive folders live.
-_ARCHIVE_ROOT = "robotsix-mail-archive"  # lgtm[py/unused-global-variable]
+_ARCHIVE_ROOT = "robotsix-mail-archive"
 
 #: Watermark keys used by background worker single-flight guards.
-_TRIAGE_RUN_STATE_KEY = "triage_run:state"  # lgtm[py/unused-global-variable]
-_BATCH_OP_STATE_KEY = "batch_op:state"  # lgtm[py/unused-global-variable]
-_RECONCILE_STATE_KEY = "reconcile:state"  # lgtm[py/unused-global-variable]
+_TRIAGE_RUN_STATE_KEY = "triage_run:state"
+_BATCH_OP_STATE_KEY = "batch_op:state"
+_RECONCILE_STATE_KEY = "reconcile:state"
 
-_ARCHIVE_TAXONOMY_GUIDANCE = (  # lgtm[py/unused-global-variable]
+_ARCHIVE_TAXONOMY_GUIDANCE = (
     "Categorize by purpose or topic: choose a top-level semantic "
     "bucket adapted to the existing folders. Example buckets "
     "(adapt to the user's existing structure — these are not a fixed "
@@ -20,4 +20,13 @@ _ARCHIVE_TAXONOMY_GUIDANCE = (  # lgtm[py/unused-global-variable]
     "semantic parent (e.g. `Newsletters/LWN`) and only when no better "
     "topical bucket fits. Keep paths shallow: at most 2 levels (one "
     "`/` separator)."
+)
+
+# -- Referenced by other modules; silence py/unused-global-variable --
+_ = (
+    _ARCHIVE_ROOT,
+    _TRIAGE_RUN_STATE_KEY,
+    _BATCH_OP_STATE_KEY,
+    _RECONCILE_STATE_KEY,
+    _ARCHIVE_TAXONOMY_GUIDANCE,
 )

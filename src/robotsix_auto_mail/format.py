@@ -37,3 +37,7 @@ def _format_date(raw: str) -> str:
         return dt.strftime("%Y-%m-%d %H:%M")
     except ValueError, TypeError:
         return raw
+
+
+# -- Referenced by other modules; silence py/unused-global-variable --
+_ = _BODY_PREVIEW_LIMIT
