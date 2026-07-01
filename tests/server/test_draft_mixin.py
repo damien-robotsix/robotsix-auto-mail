@@ -724,7 +724,7 @@ class TestHandleGenerateDraft:
             mock.patch(
                 "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
             ) as mock_set,
-            mock.patch("robotsix_auto_mail.db.init_db") as mock_init_db,
+            mock.patch("robotsix_auto_mail.server._constants.init_db") as mock_init_db,
         ):
             handler._handle_generate_draft()
 

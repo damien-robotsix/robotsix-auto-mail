@@ -140,7 +140,7 @@ class TestPostAuthAutoProbe:
                 side_effect=_patch_device_code_login(),
             ),
             mock.patch(
-                "robotsix_auto_mail.db.init_db",
+                "robotsix_auto_mail.server._constants.init_db",
                 return_value=mock_conn,
             ),
             mock.patch(
@@ -182,7 +182,7 @@ class TestPostAuthAutoProbe:
                 side_effect=RuntimeError("IMAP timeout"),
             ),
             mock.patch(
-                "robotsix_auto_mail.db.init_db",
+                "robotsix_auto_mail.server._constants.init_db",
             ) as mock_init_db,
             mock.patch(
                 "robotsix_auto_mail.db.queries.write_account_health",

@@ -43,7 +43,7 @@ class TestMonitor:
         cfg = _make_config()
         responder = ComponentAgentResponder(cfg)
         with (
-            mock.patch("robotsix_auto_mail.db.init_db") as mock_init,
+            mock.patch("robotsix_auto_mail.server._constants.init_db") as mock_init,
             mock.patch("robotsix_auto_mail.db.list_records") as mock_list_records,
             mock.patch(
                 "robotsix_auto_mail.db.list_untriaged_records"
@@ -73,7 +73,7 @@ class TestMonitor:
     def test_db_unreachable_path(self) -> None:
         cfg = _make_config()
         responder = ComponentAgentResponder(cfg)
-        with mock.patch("robotsix_auto_mail.db.init_db") as mock_init:
+        with mock.patch("robotsix_auto_mail.server._constants.init_db") as mock_init:
             mock_init.side_effect = RuntimeError("disk full")
 
             result = responder._monitor()
@@ -87,7 +87,7 @@ class TestMonitor:
         )
         responder = ComponentAgentResponder(cfg)
         with (
-            mock.patch("robotsix_auto_mail.db.init_db") as mock_init,
+            mock.patch("robotsix_auto_mail.server._constants.init_db") as mock_init,
             mock.patch("robotsix_auto_mail.db.list_records") as mock_list_records,
             mock.patch(
                 "robotsix_auto_mail.db.list_untriaged_records"
@@ -110,7 +110,7 @@ class TestMonitor:
         cfg = _make_config()
         responder = ComponentAgentResponder(cfg)
         with (
-            mock.patch("robotsix_auto_mail.db.init_db") as mock_init,
+            mock.patch("robotsix_auto_mail.server._constants.init_db") as mock_init,
             mock.patch("robotsix_auto_mail.db.list_records") as mock_list_records,
             mock.patch(
                 "robotsix_auto_mail.db.list_untriaged_records"

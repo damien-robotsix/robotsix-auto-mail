@@ -38,14 +38,12 @@ def _build_detail_html(
     ``redirect_to`` carry an ``account`` query parameter so the POST
     routes to the correct account's database.
     """
-    from robotsix_auto_mail.db import get_record_by_message_id, init_db
+    from robotsix_auto_mail.db import get_record_by_message_id
+    from robotsix_auto_mail.server._constants import _with_db
 
-    conn = init_db(db_path, skip_migrations=True)
-    try:
+    with _with_db(db_path, skip_migrations=True) as conn:
         record = get_record_by_message_id(conn, message_id)
         triage_decision = get_triage_decision(conn, message_id)
-    finally:
-        conn.close()
 
     if record is None:
         return None
