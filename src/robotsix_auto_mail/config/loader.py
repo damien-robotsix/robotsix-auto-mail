@@ -1,10 +1,17 @@
 """Configuration loaders: the public ``load*`` entry points.
 
-Configuration is read **exclusively from the YAML file** at
-``MAIL_CONFIG_PATH`` (default ``config/mail.local.yaml``), which must use the
-multi-account ``accounts:`` shape.  There is no environment-variable config
-path — ``MAIL_CONFIG_PATH`` only *locates* the file.  Depends on
-:mod:`robotsix_auto_mail.config.model`.
+The primary configuration source is the YAML file at ``MAIL_CONFIG_PATH``
+(default ``config/mail.local.yaml``), which must use the multi-account
+``accounts:`` shape.  ``MAIL_CONFIG_PATH`` only *locates* the file — it is
+not a general environment-variable config path.
+
+The two LLM-only resolvers (:func:`resolve_llm_api_key`,
+:func:`resolve_llm_provider_model`) additionally consult the
+``LLM_API_KEY`` and ``LLM_PROVIDER_MODEL`` environment variables as a
+fallback tier between explicit arguments and the YAML file.  The remaining
+loaders (``load_accounts``, ``load``, etc.) are YAML-only.
+
+Depends on :mod:`robotsix_auto_mail.config.model`.
 """
 
 from __future__ import annotations
@@ -120,7 +127,8 @@ def resolve_llm_api_key(
     resolved = api_key or os.getenv("LLM_API_KEY") or load_llm()
     if not resolved and raise_on_missing:
         raise ConfigurationError(
-            "No LLM API key found — add an `llm.api_key` entry to your config file"
+            "No LLM API key found — set the LLM_API_KEY environment variable"
+            " or add an `llm.api_key` entry to your config file"
         )
     return resolved
 
