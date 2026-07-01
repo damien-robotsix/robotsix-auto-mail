@@ -47,19 +47,17 @@ class _ConfigMixin:
             )
             return
 
-        from robotsix_auto_mail.db import init_db
+        from robotsix_auto_mail.server._constants import _with_db
 
-        conn = init_db(self.db_path)
         try:
-            result = run_config_sync_agent(conn=conn)
+            with _with_db(self.db_path, skip_migrations=False) as conn:
+                result = run_config_sync_agent(conn=conn)
         except ConfigSyncError as exc:
             self._serve_json({"error": str(exc)}, status=503)
             return
         except Exception as exc:
             self._serve_json({"error": str(exc)}, status=503)
             return
-        finally:
-            conn.close()
 
         self._serve_json(result.model_dump(), status=200)
 

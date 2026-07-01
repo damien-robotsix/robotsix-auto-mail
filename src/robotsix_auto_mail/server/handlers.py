@@ -36,7 +36,7 @@ from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._component_agent_mixin import _ComponentAgentApiMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
-from robotsix_auto_mail.server._constants import GLOBAL_VIEW_ACCOUNT_ID
+from robotsix_auto_mail.server._constants import GLOBAL_VIEW_ACCOUNT_ID, _with_db
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._triage_mixin import _TriageMixin
@@ -350,7 +350,6 @@ class BoardHandler(
         in each account's ``account_health`` watermark, and returns a JSON
         summary.
         """
-        from robotsix_auto_mail.db import init_db
         from robotsix_auto_mail.db.queries import write_account_health
         from robotsix_auto_mail.health import probe_account, utcnow
 
@@ -362,16 +361,13 @@ class BoardHandler(
         result: dict[str, dict[str, str | None]] = {}
         for account in accounts.accounts:
             status, error = probe_account(account.config)
-            conn = init_db(account.config.db_path)
-            try:
+            with _with_db(account.config.db_path) as conn:
                 write_account_health(
                     conn,
                     status=status,
                     error=error,
                     checked_at=utcnow(),
                 )
-            finally:
-                conn.close()
             result[account.account_id] = {"status": status, "error": error}
 
         self._serve_json({"accounts": result}, status=200)

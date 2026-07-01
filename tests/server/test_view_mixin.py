@@ -659,7 +659,7 @@ def mock_init_db() -> "mock._patch":
     # init_db is imported locally inside _serve_archive_proposal,
     # _serve_archive_folders, and _serve_email_status — patch at source.
     with mock.patch(
-        "robotsix_auto_mail.db.init_db",
+        "robotsix_auto_mail.server._constants.init_db",
         autospec=True,
     ) as m:
         yield m
