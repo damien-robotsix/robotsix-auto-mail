@@ -55,8 +55,7 @@ OAuth2 access token presented over SASL XOAUTH2:
 ### Ingestion
 
 - `pipeline/` — orchestrates fetch → parse → store → watermark; includes
-  watermark-aware IMAP fetch logic.
-- `parser/` — MIME to `MailRecord` parsing.
+  watermark-aware IMAP fetch logic and MIME-to-`MailRecord` parsing.
 
 ### Datastore
 
@@ -133,7 +132,7 @@ OAuth2 access token presented over SASL XOAUTH2:
 2. `pipeline.fetch_new_messages()` reads the `imap_uid` watermark via
    `db.get_watermark()` and issues `UID SEARCH` / `UID FETCH BODY.PEEK[]` for
    messages with UIDs greater than the watermark.
-3. For each fetched message, `parser.parse_message()` produces a `MailRecord`.
+3. For each fetched message, `parse_message()` produces a `MailRecord`.
 4. `db.record_exists()` checks the `Message-ID` for deduplication; known
    messages are counted as duplicates and skipped.
 5. New records are stored with `db.insert_record()` (skipped under

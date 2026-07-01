@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Update `docs/architecture.md` to reflect parser consolidation into `pipeline/` — remove standalone `parser/` entry and update ingestion data flow reference from `parser.parse_message()` to `parse_message()`.
 - Add structured feature request issue template (`.github/ISSUE_TEMPLATE/feature_request.yml`) with initial checks, description, and affected-areas sections.
 - Consolidated the `parser` module into `pipeline`: moved `src/robotsix_auto_mail/parser/__init__.py` → `src/robotsix_auto_mail/pipeline/_parse.py`, updated all imports and the module taxonomy.
 - Add `LLM_API_KEY` and `LLM_PROVIDER_MODEL` environment variable fallbacks
