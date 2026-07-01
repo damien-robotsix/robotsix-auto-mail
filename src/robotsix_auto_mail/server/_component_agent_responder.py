@@ -128,8 +128,9 @@ class ComponentAgentResponder:
 
     def config_set_direct(self, updates: dict[str, Any]) -> dict[str, Any]:
         """Apply config updates; return {"applied": <audit>} or {"error": {...}}."""
+        from robotsix_agent_comm.protocol import ConfigContractError
+
         from robotsix_auto_mail.server._component_agent_config_contract import (
-            ConfigContractError,
             apply_config_update,
         )
 

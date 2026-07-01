@@ -10,12 +10,12 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from robotsix_agent_comm.protocol import ConfigContractError
 
 from robotsix_auto_mail.config.model import MailConfig
 from robotsix_auto_mail.config.schema import _FIELD_SPECS, _FieldSpec
 from robotsix_auto_mail.server._component_agent_config_contract import (
     SETTABLE_KEYS,
-    ConfigContractError,
     _coerce_value,
     apply_config_update,
     describe_config,
@@ -392,6 +392,6 @@ class TestConfigContractError:
         exc = ConfigContractError(code="x", message="y")
         assert isinstance(exc, Exception)
 
-    def test_str_returns_message(self) -> None:
+    def test_str_includes_code_and_message(self) -> None:
         exc = ConfigContractError(code="invalid_value", message="bad value")
-        assert str(exc) == "bad value"
+        assert str(exc) == "[invalid_value] bad value"

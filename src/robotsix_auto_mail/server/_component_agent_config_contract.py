@@ -10,31 +10,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from robotsix_agent_comm.protocol import ConfigContractError
+
 from robotsix_auto_mail.config.schema import _FIELD_SPECS, _FieldSpec, _parse_bool
 
 if TYPE_CHECKING:
     from robotsix_auto_mail.config.model import MailConfig
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Error type
-# ---------------------------------------------------------------------------
-
-
-class ConfigContractError(Exception):
-    """Raised on invalid config keys or values during ``config-set``.
-
-    Mirrors the ``(code, message, **details)`` shape so it maps cleanly
-    onto HTTP error responses.
-    """
-
-    def __init__(self, code: str, message: str, **details: Any) -> None:
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.details = details
-
 
 # ---------------------------------------------------------------------------
 # Settable keys allowlist
