@@ -17,7 +17,7 @@ classifiers = [
 ]
 keywords = ["mail", "imap", "smtp", "triage", "kanban"]
 dependencies = [
-    "urllib3>=2.0",
+    "urllib3>=2.7.0",
     "pydantic>=2.0",
     "robotsix-board",
     "robotsix-llmio",
