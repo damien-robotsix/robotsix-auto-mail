@@ -255,6 +255,21 @@ class TestRenderAccountsYaml:
         yaml_text = render_accounts_yaml([account], "main")
         assert "langfuse:" not in yaml_text
 
+    def test_logging_section_non_default(self) -> None:
+        account = _make_account(
+            "main", log_level="DEBUG", log_format="json", log_file_dir="/var/log/mail"
+        )
+        yaml_text = render_accounts_yaml([account], "main")
+        assert "logging:" in yaml_text
+        assert 'level: "DEBUG"' in yaml_text
+        assert 'format: "json"' in yaml_text
+        assert 'file_dir: "/var/log/mail"' in yaml_text
+
+    def test_logging_section_default_omitted(self) -> None:
+        account = _make_account("main")
+        yaml_text = render_accounts_yaml([account], "main")
+        assert "logging:" not in yaml_text
+
     def test_trailing_newline(self) -> None:
         account = _make_account("main")
         yaml_text = render_accounts_yaml([account], "main")
