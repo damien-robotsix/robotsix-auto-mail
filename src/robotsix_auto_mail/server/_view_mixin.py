@@ -27,6 +27,7 @@ from robotsix_auto_mail.triage import (
     INBOX,
     get_archive_subfolder,
     get_triage_decision,
+    rules_text_for,
 )
 
 
@@ -159,6 +160,7 @@ class _BoardViewMixin:
                 message_id,
                 record,
                 api_key=self.mail_config.llm_api_key if self.mail_config else "",
+                rules=rules_text_for(self.mail_config),
             )
             overrides = _load_archive_overrides(conn)
             hints = _load_llm_archive_hints(conn)

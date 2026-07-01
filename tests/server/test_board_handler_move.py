@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from collections.abc import Iterator
 from unittest import mock
 from urllib.request import urlopen
 
-if TYPE_CHECKING:
-    pass
-
+import pytest
 from tests.server.conftest import (
     _populate_db,
     _post_form,
@@ -18,6 +16,20 @@ from tests.server.conftest import (
 )
 
 from robotsix_auto_mail.config import MailConfig
+
+
+@pytest.fixture(autouse=True)
+def no_rules_update() -> Iterator[None]:
+    """Neutralize the background triage-rules flash-LLM update.
+
+    A board move fires ``record_user_action`` which (with an API key set)
+    spawns a background thread that calls the LLM provider — that would race
+    the provider-call assertions in this file.  Patch it out everywhere so
+    these tests observe only the archive-subfolder proposal's provider use.
+    """
+    with mock.patch("robotsix_auto_mail.server._action_mixin.record_user_action"):
+        yield
+
 
 # ---------------------------------------------------------------------------
 # POST /move tests

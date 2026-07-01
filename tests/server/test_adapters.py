@@ -144,7 +144,9 @@ class TestRunTriageBackground:
         ):
             _run_triage_background("/fake/db.sqlite", user_email="x@y.com")
 
-        mock_run_triage.assert_called_once_with(mock_conn, user_email="x@y.com")
+        mock_run_triage.assert_called_once_with(
+            mock_conn, user_email="x@y.com", rules_path=None
+        )
 
     def test_passes_none_user_email_by_default(self) -> None:
         mock_conn = mock.MagicMock(spec=sqlite3.Connection)
@@ -157,7 +159,9 @@ class TestRunTriageBackground:
         ):
             _run_triage_background("/fake/db.sqlite")
 
-        mock_run_triage.assert_called_once_with(mock_conn, user_email=None)
+        mock_run_triage.assert_called_once_with(
+            mock_conn, user_email=None, rules_path=None
+        )
 
 
 # ---------------------------------------------------------------------------

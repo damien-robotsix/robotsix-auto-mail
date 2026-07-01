@@ -16,14 +16,10 @@ from robotsix_auto_mail.db import (
 )
 from robotsix_auto_mail.triage import (
     ArchiveSubfolderProposal,
-    SenderMemory,
     _load_llm_archive_hints,
-    _load_memory,
-    _sender_key,
     get_archive_subfolder,
     propose_archive_subfolder_llm,
 )
-from robotsix_auto_mail.triage.classifier import _save_memory
 
 
 def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
@@ -225,27 +221,22 @@ def test_propose_archive_subfolder_llm_existing_folders_in_prompt(
         conn.close()
 
 
-def test_propose_archive_subfolder_llm_sender_memory_in_prompt(
+def test_propose_archive_subfolder_llm_rules_in_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """When sender has prior decisions, the prompt includes sender guidance."""
+    """A non-empty ``rules`` argument is injected into the system prompt."""
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
-        _insert_inbox(conn, "<memory@x.com>", sender="alice@example.com")
+        _insert_inbox(conn, "<rules@x.com>", sender="alice@example.com")
         record = _make_record(
-            message_id="<memory@x.com>",
+            message_id="<rules@x.com>",
             sender="alice@example.com",
             subject="Monthly report",
             date="2025-06-01T12:00:00",
         )
 
-        # Pre-populate sender memory
-        memory = _load_memory(conn)
-        memory[_sender_key("alice@example.com")] = SenderMemory(
-            action="TO_ARCHIVE", count=3, last_action="TO_ARCHIVE"
-        )
-        _save_memory(conn, memory)
+        rules_text = "- Mail from alice@example.com goes to Work/Reports."
 
         mock_handle = mock.MagicMock()
         mock_run_result = mock.MagicMock()
@@ -260,14 +251,14 @@ def test_propose_archive_subfolder_llm_sender_memory_in_prompt(
             "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
-            propose_archive_subfolder_llm(conn, record, api_key="sk-test")
+            propose_archive_subfolder_llm(
+                conn, record, api_key="sk-test", rules=rules_text
+            )
 
-        # Verify system prompt includes sender guidance
+        # Verify system prompt includes the injected rules text.
         call_kwargs = mock_provider.build_agent.call_args[1]
         system_prompt = call_kwargs["system_prompt"]
-        assert "alice@example.com" in system_prompt
-        assert "TO_ARCHIVE" in system_prompt
-        assert "3 times" in system_prompt
+        assert rules_text in system_prompt
     finally:
         conn.close()
 

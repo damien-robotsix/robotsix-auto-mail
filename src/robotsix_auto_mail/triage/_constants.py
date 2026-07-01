@@ -76,25 +76,11 @@ _AGENT_SELECTABLE_ACTIONS: frozenset[str] = VALID_TRIAGE_ACTIONS - {
 #: Accepted decision sources.
 _VALID_TRIAGE_SOURCES = frozenset({"agent", "user"})
 
-#: Watermark key owned by this module for the persistent human-decision
-#: memory.  The memory is persisted in ``db.py``'s ``watermark`` key-value
-#: table — NOT a separate on-disk file — using the same ``json.dumps`` /
-#: ``json.loads`` round-trip :mod:`robotsix_auto_mail.config.config_sync_agent` uses for
-#: its dedup ledger.  Reusing the watermark table keeps a single storage
-#: mechanism and a single DB file instead of a parallel format.
-_MEMORY_WATERMARK_KEY = "triage_human_memory"
-
 #: Watermark key owned by this module for user archive subfolder overrides.
 _ARCHIVE_OVERRIDES_WATERMARK_KEY = "archive_subfolder_overrides"
 
 #: Watermark key owned by this module for LLM-suggested archive subfolders.
 _ARCHIVE_LLM_HINTS_WATERMARK_KEY = "archive_subfolder_llm_hints"
-
-#: Watermark key owned by this module for the archive-folder memory — which
-#: subfolder a sender's / domain's mail has been filed into.  Persisted in
-#: ``db.py``'s ``watermark`` key-value table as JSON (no new tables / files),
-#: so the proposal can prefer reusing an established project folder.
-_ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY = "archive_folder_memory"
 
 #: Watermark key owned by this module for unsubscribe-suggestion cache.
 _UNSUBSCRIBE_SUGGESTIONS_KEY = "unsubscribe_suggestions"
@@ -114,10 +100,8 @@ __all__ = [
     "TRIAGE_ACTION_LABELS",
     "TRIAGE_ACTION_ORDER",
     "_AGENT_SELECTABLE_ACTIONS",
-    "_ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY",
     "_ARCHIVE_LLM_HINTS_WATERMARK_KEY",
     "_ARCHIVE_OVERRIDES_WATERMARK_KEY",
-    "_MEMORY_WATERMARK_KEY",
     "_UNSUBSCRIBE_SUGGESTIONS_KEY",
     "_VALID_CONFIDENCE_LEVELS",
     "_VALID_TRIAGE_SOURCES",

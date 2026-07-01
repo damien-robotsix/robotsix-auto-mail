@@ -32,12 +32,10 @@ from robotsix_auto_mail.db import (
 )
 from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.triage import (
-    SenderMemory,
-    _load_memory,
+    get_triage_decision,
     list_triage_decisions,
     set_triage_decision,
 )
-from robotsix_auto_mail.triage.classifier import _save_memory
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -173,8 +171,8 @@ def test_ingest_all_accounts_isolates_records_and_watermark(
 
 
 def test_triage_state_does_not_cross_account_dbs(tmp_path: Path) -> None:
-    """sender_memory, watermark and triage_decisions written to account A's
-    connection are invisible from account B's connection."""
+    """watermark and triage_decisions written to account A's connection are
+    invisible from account B's connection (per-account SQLite isolation)."""
     path_a = str(tmp_path / "a.db")
     path_b = str(tmp_path / "b.db")
 
@@ -193,27 +191,16 @@ def test_triage_state_does_not_cross_account_dbs(tmp_path: Path) -> None:
             ),
         )
         set_triage_decision(conn_a, "<m@a>", "TO_ARCHIVE", source="user")
-        _save_memory(
-            conn_a,
-            {
-                "alice@example.com": SenderMemory(
-                    action="TO_ARCHIVE",
-                    count=1,
-                    last_action="TO_ARCHIVE",
-                    updated_at="2025-01-01T00:00:00",
-                )
-            },
-        )
         set_watermark(conn_a, "imap_uid", "7")
 
         # -- Connection A sees its own state. -------------------------------
         assert [d.message_id for d in list_triage_decisions(conn_a)] == ["<m@a>"]
-        assert "alice@example.com" in _load_memory(conn_a)
+        assert get_triage_decision(conn_a, "<m@a>") is not None
         assert get_watermark(conn_a, "imap_uid") == "7"
 
         # -- Connection B observes none of it. ------------------------------
         assert list_triage_decisions(conn_b) == []
-        assert _load_memory(conn_b) == {}
+        assert get_triage_decision(conn_b, "<m@a>") is None
         assert get_watermark(conn_b, "imap_uid") is None
     finally:
         conn_a.close()

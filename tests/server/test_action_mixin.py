@@ -22,6 +22,22 @@ from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 from robotsix_auto_mail.imap import ImapError
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
+from robotsix_auto_mail.triage import TO_ARCHIVE
+
+
+@pytest.fixture(autouse=True)
+def record_user_action_mock() -> Any:
+    """Patch ``record_user_action`` so no background flash-LLM thread runs.
+
+    The move/archive handlers call ``record_user_action`` to update the
+    triage-rules file via a background daemon thread.  Patch it out so tests
+    stay deterministic and never touch the network.
+    """
+    with mock.patch(
+        "robotsix_auto_mail.server._action_mixin.record_user_action"
+    ) as patched:
+        yield patched
+
 
 # ---------------------------------------------------------------------------
 # Fake handler factory
@@ -518,8 +534,9 @@ class TestHandleMove:
         assert call_args[0][1].message_id == "arch-llm"  # record (pos 1)
         assert call_args[0][2] == "sk-test"  # api_key (pos 2)
         assert call_args[1] == {
-            "provider_model": "openrouter-deepseek"
-        }  # provider_model kwarg
+            "provider_model": "openrouter-deepseek",
+            "rules": "",
+        }  # provider_model + rules kwargs
 
     def test_to_archive_llm_exception_is_swallowed(self, single_db: str) -> None:
         _populate_db(
@@ -1263,9 +1280,11 @@ class TestArchiveAndDelete:
         finally:
             conn2.close()
 
-    def test_records_archive_folder_choice_before_delete(self, single_db: str) -> None:
-        """When a subfolder is chosen, ``record_archive_folder_choice``
-        is called before the local row is deleted."""
+    def test_records_user_action_before_delete(
+        self, single_db: str, record_user_action_mock: Any
+    ) -> None:
+        """When a subfolder is chosen, ``record_user_action`` is called with
+        that subfolder before the local row is deleted."""
         _populate_db(
             single_db,
             [
@@ -1299,12 +1318,7 @@ class TestArchiveAndDelete:
             )
             handler = _FakeHandler(single_db, mail_config=mail_config)
 
-            with (
-                mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
-                mock.patch(
-                    "robotsix_auto_mail.server._action_mixin.record_archive_folder_choice"
-                ) as mock_record,
-            ):
+            with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_client = mock_cls.return_value.__enter__.return_value
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
                 mock_client.search_uids.return_value = [7]
@@ -1312,12 +1326,14 @@ class TestArchiveAndDelete:
                 result = handler._archive_and_delete(conn, record)
 
             assert result is True
-            # record_archive_folder_choice should have been called with
-            # the record and the subfolder.
+            # record_user_action should have been called with the record,
+            # the TO_ARCHIVE action, and the chosen subfolder.
+            mock_record = record_user_action_mock
             mock_record.assert_called_once()
             call_args = mock_record.call_args
-            assert call_args[0][1].message_id == "arch-rec"
-            assert call_args[0][2] == "Lists/new-list"
+            assert call_args[0][0].message_id == "arch-rec"
+            assert call_args[0][1] == TO_ARCHIVE
+            assert call_args[1]["subfolder"] == "Lists/new-list"
         finally:
             conn.close()
 

@@ -2,6 +2,22 @@
 
 ## 0.0.0 (unreleased)
 
+- Replaced the triage agent's JSON "memory" ledgers with a single
+  human-readable ``triage_rules.md`` file maintained by a fast ("flash") LLM.
+  Whenever you act on a message (board move, archive-to-folder, save-draft,
+  ``triage-set``), the flash LLM is given your action plus the mail's sender,
+  subject, and body and rewrites the rules file only when a rule should
+  change; the triage agent and archive-subfolder proposal read this file so
+  triage reasons over the whole mail context. Removed the ``SenderMemory`` /
+  ``ArchiveFolderMemory`` models and the ``triage_human_memory`` /
+  ``archive_folder_memory`` watermark ledgers (the per-message archive
+  override + LLM-hint caches are unchanged). The file lives at
+  ``<db-dir>/triage_rules.md`` per account by default; override it with
+  ``triage.rules_path`` (``MAIL_TRIAGE_RULES_PATH``). Web-board actions update
+  the rules in a background thread (never blocking the action); ``triage-set``
+  updates inline. Rule maintenance is best-effort and a no-op without a
+  resolvable LLM API key.
+
 - `render_accounts_yaml` now emits a top-level `logging:` section when
   `log_level`, `log_format`, or `log_file_dir` differ from their defaults,
   matching the existing behaviour for `llm:` and `langfuse:`.

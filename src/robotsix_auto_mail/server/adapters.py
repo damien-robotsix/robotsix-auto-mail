@@ -55,7 +55,11 @@ class _NonEmptyColumnsAdapter:
         return getattr(self._adapter, name)
 
 
-def _run_triage_background(db_path: str, user_email: str | None = None) -> None:
+def _run_triage_background(
+    db_path: str,
+    user_email: str | None = None,
+    rules_path: str | None = None,
+) -> None:
     """Run the triage agent in a background thread, clearing the watermark on exit.
 
     Opens its own SQLite connection so it never shares a connection with
@@ -73,7 +77,7 @@ def _run_triage_background(db_path: str, user_email: str | None = None) -> None:
                 )
             except ImportError:
                 return
-            run_triage_agent(conn, user_email=user_email)
+            run_triage_agent(conn, user_email=user_email, rules_path=rules_path)
         except Exception:  # noqa: S110  # nosec B110
             # Swallow all exceptions — the watermark is always cleared.
             pass
@@ -332,8 +336,9 @@ def _run_batch_archive_background(
         cross_folder_resolve,
         resolve_uid_with_fallback,
     )
-    from robotsix_auto_mail.triage import get_archive_subfolder
+    from robotsix_auto_mail.triage import get_archive_subfolder, rules_text_for
 
+    rules = rules_text_for(mail_config)
     with _with_db(db_path, skip_migrations=True) as conn:
         try:
             records = _collect_records_for_action(conn, TO_ARCHIVE)
@@ -342,7 +347,9 @@ def _run_batch_archive_background(
                 records = [
                     r
                     for r in records
-                    if get_archive_subfolder(conn, r.message_id, r, api_key=fkey)
+                    if get_archive_subfolder(
+                        conn, r.message_id, r, api_key=fkey, rules=rules
+                    )
                     == subfolder_filter
                 ]
             total = len(records)
@@ -379,6 +386,7 @@ def _run_batch_archive_background(
                             record.message_id,
                             record,
                             api_key=api_key,
+                            rules=rules,
                         )
                         dest = _archive_dest_folder(
                             effective_root, subfolder, delimiter

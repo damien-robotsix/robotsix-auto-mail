@@ -279,6 +279,7 @@ auth:
 | `archive.root` | no | `"robotsix-mail-archive"` | Root folder for the self-managed archive structure |
 | `archive.enabled` | no | `true` | Whether to create/manage the archive folder structure |
 | `triage.on_ingest` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
+| `triage.rules_path` | no | `""` | Path to the human-readable `triage_rules.md` the flash LLM maintains from board actions; empty derives `<db-dir>/triage_rules.md` from `store.path` |
 | `component_agent.enabled` | no | `false` | Whether the HTTP component-agent API is served (allows external agents to monitor status / read or apply configuration over HTTP) |
 | `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing (may instead be supplied via `LLM_API_KEY`) |
 | `llm.provider_model` | no | `""` | LLM provider-model identifier (e.g. `openrouter-deepseek`, `claude-sdk`); see robotsix-llmio README for available backends |
@@ -314,6 +315,7 @@ auth:
 | `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Root folder for the self-managed archive structure |
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to create/manage the archive folder structure |
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
+| `MAIL_TRIAGE_RULES_PATH` | no |  | Path to the human-readable `triage_rules.md` the flash LLM maintains from board actions; empty derives `<db-dir>/triage_rules.md` from `MAIL_DB_PATH` |
 | `COMPONENT_AGENT_ENABLED` | no | `false` | Whether the HTTP component-agent API is served (overrides `component_agent.enabled`) |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
 | `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |
@@ -1590,22 +1592,26 @@ triage decision always places the card in one of these columns. Note
 that `TO_DELETE` moves the card to the To delete column (a board move only, not
 an IMAP deletion).
 
-### Human-decision memory
+### Triage rules (`triage_rules.md`)
 
-The agent learns from your manual triage decisions. When you record a user
-decision (via `triage-set`, below), the system remembers that sender's
-preference in a persistent, per-sender memory. On future triage runs, the agent
-is biased toward repeating those preferences — it treats them as advisory
-guidance (not hard rules) so it can still adapt when a message from the same
-sender clearly differs in content.
+The agent learns from your manual triage actions through a single,
+**human-readable Markdown file**, `triage_rules.md`. Whenever you act on a
+message — move a card on the board, archive it into a folder, save a draft, or
+run `triage-set` — a small, fast ("flash") LLM is given your action plus the
+message's sender, subject, and body, and updates `triage_rules.md` if a rule
+should change. On every triage run the agent reads this file and treats the
+rules as advisory guidance (not hard rules), reasoning over the whole context
+of each new message rather than the subject alone.
 
-For example, if you've told the system "mail from alice@x.com goes to archive
-(3 times)", the prompt will note this preference and the agent will favor
-archiving alice's new messages unless context suggests otherwise.
+Because it is a plain Markdown file, you can open, review, and edit the rules
+directly — delete or reword anything you disagree with.
 
-The memory is stored in the SQLite `watermark` table under the key
-`triage_human_memory` (alongside other persistent metadata like the archive
-structure). It survives across runs and connections.
+The file lives next to each account's SQLite datastore
+(`<db-dir>/triage_rules.md`) by default; set `triage.rules_path`
+(`MAIL_TRIAGE_RULES_PATH`) to override the location. Rule updates triggered
+from the web board run in the background (they never delay a card move) and are
+best-effort — they require a resolvable LLM API key and never block or fail the
+action itself.
 
 ### Options
 
@@ -1655,10 +1661,10 @@ This records the decision in the `triage_decisions` table with `source=user`
 (distinguishing it from agent decisions), **moves the card to the mapped
 kanban board column** (see the action-to-column table under [Action statuses
 and kanban board mapping](#action-statuses-and-kanban-board-mapping)), and
-**also updates the human-decision memory ledger**, so future triage runs will
-favor that action for mail from the same sender. Like the LLM-driven
-`triage` command, this is a local-only board move — no IMAP operations
-occur.
+**updates the `triage_rules.md` file** (via the flash LLM) so future triage
+runs can apply the learned rule. Like the LLM-driven `triage` command, this is
+a local-only board move — no IMAP operations occur. (The `triage-set` rule
+update runs inline; the web-board actions defer it to the background.)
 
 ### Arguments
 
@@ -1684,11 +1690,11 @@ robotsix-auto-mail triage-set '<c@x.com>' HUMAN_TRIAGE
 
 - If the `message_id` is unknown, exits with code `1` and an error message.
 - If the `action` is invalid, exits with code `1` and an error message.
-- On success, the decision is stored and the human-decision memory is
-  updated; exit code is `0`.
+- On success, the decision is stored and `triage_rules.md` is updated (when an
+  LLM API key is resolvable); exit code is `0`.
 
-The next `triage` run will treat this sender's preference as advisory guidance
-for future mail from the same address.
+The next `triage` run reads `triage_rules.md` and treats the learned rules as
+advisory guidance for future mail.
 
 ### Requirements
 
@@ -1700,8 +1706,10 @@ The `triage-set` command requires:
   requirement, since `triage-set` imports the validation vocabulary and
   decision-recording helpers from the `triage` package.
 
-It does **not** require an LLM API key — unlike `triage`, it performs no LLM
-call; it is purely a local decision-recording tool.
+It does **not** require an LLM API key to record the decision. When a key
+*is* resolvable it additionally updates `triage_rules.md` via the flash LLM;
+without a key that rule-update step is silently skipped and the decision is
+still recorded.
 
 ## The config-sync-set command
 

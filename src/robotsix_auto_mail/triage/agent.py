@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import json
 import sqlite3
+from pathlib import Path
 
 from robotsix_llmio.core import Tier
 
@@ -34,9 +35,6 @@ from robotsix_auto_mail.triage._constants import (
     _UNSUBSCRIBE_SUGGESTIONS_KEY,
 )
 from robotsix_auto_mail.triage.classifier import (
-    _build_memory_guidance,
-    _domain_key,
-    _load_archive_folder_memory,
     _load_llm_archive_hints,
     _save_llm_archive_hints,
     _sender_key,
@@ -53,6 +51,7 @@ from robotsix_auto_mail.triage.persistence import (
     list_triage_decisions,
     set_triage_decision,
 )
+from robotsix_auto_mail.triage.rules import load_rules
 
 # ---------------------------------------------------------------------------
 # Prompt building
@@ -61,24 +60,17 @@ from robotsix_auto_mail.triage.persistence import (
 
 def _build_triage_system_prompt(
     archive_folders: list[str] | None = None,
-    archive_folder_history: list[str] | None = None,
-    archive_folder_usage: dict[str, int] | None = None,
     user_email: str | None = None,
 ) -> str:
     """Build the LLM system prompt describing the triage task and actions.
 
     When *archive_folders* is a non-empty list, appends a paragraph
     describing the available archive folders and the optional
-    ``archive_subfolder`` field.  When *archive_folder_history* is a
-    non-empty list of guidance lines (one per sender/domain with a recorded
-    archive-folder choice), the ``TO_ARCHIVE`` paragraph additionally lists
-    those previously-used folders and instructs the model to prefer reusing
-    an existing project folder for ongoing projects.  When
-    *archive_folder_usage* maps folder paths to aggregated usage counts,
-    each listed folder with a positive count is annotated with ``(used Nx)``
-    and the model is told to prefer high-count folders.  When *user_email* is
-    a non-empty string, appends an instruction telling the model never to
-    classify mail the user sent to themself as ``TO_ANSWER``.
+    ``archive_subfolder`` field.  When *user_email* is a non-empty string,
+    appends an instruction telling the model never to classify mail the user
+    sent to themself as ``TO_ANSWER``.  Learned per-sender/topic preferences
+    are supplied separately as the ``triage_rules.md`` guidance prepended to
+    the user message (see :func:`run_triage_agent`).
     """
     prompt = (
         "You are an inbox triage assistant. You are given a numbered list of "
@@ -107,15 +99,7 @@ def _build_triage_system_prompt(
         "the reply content indicates the thread still needs further action."
     )
     if archive_folders:
-        if archive_folder_usage:
-            folder_lines = "\n".join(
-                f"- {f} (used {archive_folder_usage[f]}x)"
-                if archive_folder_usage.get(f, 0) > 0
-                else f"- {f}"
-                for f in archive_folders
-            )
-        else:
-            folder_lines = "\n".join(f"- {f}" for f in archive_folders)
+        folder_lines = "\n".join(f"- {f}" for f in archive_folders)
         prompt += (
             "\n\nThe user has an archive folder structure with these "
             "existing sub-folders:\n"
@@ -128,20 +112,6 @@ def _build_triage_system_prompt(
             "message. Leave the field empty or omit it when you have no "
             "suggestion.\n" + _ARCHIVE_TAXONOMY_GUIDANCE + "\n"
         )
-        if archive_folder_usage:
-            prompt += (
-                "Prefer folders that already contain many mails (higher "
-                "`used Nx` counts) over inventing a near-duplicate folder.\n"
-            )
-        if archive_folder_history:
-            history_lines = "\n".join(archive_folder_history)
-            prompt += (
-                "\nArchive-folder history for senders in this batch:\n"
-                f"{history_lines}\n"
-                "Prefer reusing an existing project folder when the message "
-                "relates to an ongoing project, rather than inventing a new "
-                "folder or a date bucket.\n"
-            )
     if user_email:
         prompt += (
             f"\n\nThe user's own email address is `{user_email}`. Messages "
@@ -313,24 +283,8 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
         set_watermark(conn, _UNSUBSCRIBE_SUGGESTIONS_KEY, json.dumps(suggestions))
 
 
-def _is_non_semantic_subfolder(subfolder: str) -> bool:
-    """Return ``True`` when *subfolder*'s top-level segment looks like a domain.
-
-    A path whose segment before the first ``/`` contains a ``.`` (e.g.
-    ``lwn.net/lwn``, ``ls2n.fr/armada``) echoes sender identity rather than a
-    semantic topic.  A single-segment path or one whose top segment has no
-    dot (e.g. ``Newsletters/LWN``, ``Projects/armada``, ``Finance``) is
-    semantic.
-    """
-    top = subfolder.split("/", 1)[0]
-    return "." in top
-
-
-def _load_archive_guidance(
-    conn: sqlite3.Connection,
-    remaining: list[MailRecord],
-) -> tuple[list[str] | None, list[str], dict[str, int]]:
-    """Load archive folders, per-sender/domain history hints, and usage counts."""
+def _load_archive_folders(conn: sqlite3.Connection) -> list[str] | None:
+    """Load and normalise the archive folder structure for the prompt."""
     archive_raw = get_watermark(conn, "archive_structure")
     archive_folders: list[str] | None = None
     if archive_raw is not None:
@@ -344,46 +298,7 @@ def _load_archive_guidance(
         archive_folders = [
             f for f in (normalize_archive_subfolder(f) for f in archive_folders) if f
         ]
-
-    folder_memory = _load_archive_folder_memory(conn)
-    archive_folder_usage: dict[str, int] = {}
-    for entry in folder_memory.values():
-        archive_folder_usage[entry.subfolder] = (
-            archive_folder_usage.get(entry.subfolder, 0) + entry.count
-        )
-    weak_hint = (
-        " (previously used, but prefer a semantic topical folder over this "
-        "domain/sender path)"
-    )
-    archive_folder_history: list[str] = []
-    if folder_memory:
-        seen_keys: set[str] = set()
-        for record in remaining:
-            sender_key = _sender_key(record.sender)
-            sender_entry = folder_memory.get(sender_key)
-            if sender_entry is not None and sender_key not in seen_keys:
-                seen_keys.add(sender_key)
-                line = (
-                    f"- Mail from `{sender_key}` was previously archived to "
-                    f"`{sender_entry.subfolder}`."
-                )
-                if _is_non_semantic_subfolder(sender_entry.subfolder):
-                    line += weak_hint
-                archive_folder_history.append(line)
-            domain = _domain_key(record.sender)
-            domain_entry = folder_memory.get(domain) if domain else None
-            if domain_entry is not None and domain not in seen_keys:
-                seen_keys.add(domain)
-                times = "time" if domain_entry.count == 1 else "times"
-                line = (
-                    f"- Other mail from senders at domain `{domain}` was "
-                    f"previously archived to `{domain_entry.subfolder}` "
-                    f"({domain_entry.count} {times})."
-                )
-                if _is_non_semantic_subfolder(domain_entry.subfolder):
-                    line += weak_hint
-                archive_folder_history.append(line)
-    return archive_folders, archive_folder_history, archive_folder_usage
+    return archive_folders
 
 
 def _persist_llm_triage_results(
@@ -451,6 +366,7 @@ def _fill_missing_archive_hints(
     by_index: dict[int, TriageItem],
     api_key: str,
     provider_model: str | None,
+    rules: str = "",
 ) -> None:
     """Propose a subfolder for TO_ARCHIVE records the classifier left blank.
 
@@ -472,7 +388,9 @@ def _fill_missing_archive_hints(
         if record.message_id in hinted:
             continue
         # Persists the hint itself; swallows its own errors.
-        propose_archive_subfolder_llm(conn, record, api_key, provider_model)
+        propose_archive_subfolder_llm(
+            conn, record, api_key, provider_model, rules=rules
+        )
 
 
 def run_triage_agent(
@@ -483,6 +401,7 @@ def run_triage_agent(
     tier: Tier = Tier.CHEAP,
     only_undecided: bool = False,
     user_email: str | None = None,
+    rules_path: str | Path | None = None,
 ) -> list[TriageDecision]:
     """Classify every inbox mail into a triage action and persist the result.
 
@@ -544,23 +463,21 @@ def run_triage_agent(
     #    config.llm_provider_model) --
     resolved_provider_model = resolve_llm_provider_model(provider_model)
 
-    # -- read archive structure + per-sender/domain history for the prompt --
-    archive_folders, archive_folder_history, archive_folder_usage = (
-        _load_archive_guidance(conn, remaining)
-    )
+    # -- read archive folder structure for the prompt --
+    archive_folders = _load_archive_folders(conn)
 
-    system_prompt = _build_triage_system_prompt(
-        archive_folders,
-        archive_folder_history or None,
-        archive_folder_usage or None,
-        user_email,
-    )
+    system_prompt = _build_triage_system_prompt(archive_folders, user_email)
 
     user_message = _build_user_message(remaining)
 
-    # -- bias the model toward established human preferences (advisory) --
-    guidance = _build_memory_guidance(conn)
-    if guidance:
+    # -- bias the model toward the human-readable triage rules (advisory) --
+    rules = load_rules(Path(rules_path)) if rules_path else ""
+    if rules.strip():
+        guidance = (
+            "The user maintains these triage rules (advisory — follow them "
+            "unless a message clearly differs):\n"
+            f"{rules.strip()}"
+        )
         user_message = f"{guidance}\n\n{user_message}"
 
     output: TriageResult = _run_llm_agent(
@@ -588,7 +505,7 @@ def run_triage_agent(
     # Fill subfolders the classifier omitted, so the board renders each
     # TO_ARCHIVE destination from a cached hint (no LLM call per render).
     _fill_missing_archive_hints(
-        conn, remaining, by_index, resolved_key, resolved_provider_model
+        conn, remaining, by_index, resolved_key, resolved_provider_model, rules=rules
     )
 
     # -- check TO_DELETE senders for unsubscribe options ------------------

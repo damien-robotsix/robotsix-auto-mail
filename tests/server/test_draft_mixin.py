@@ -179,7 +179,15 @@ class TestHandleSaveDraft:
 
     def _setup_handler(self, db_path: str, message_id: str) -> _FakeHandler:
         """Create a _FakeHandler with form data for /save-draft."""
-        handler = _FakeHandler(db_path)
+        handler = _FakeHandler(
+            db_path,
+            mail_config=MailConfig(
+                imap_host="imap.example.com",
+                smtp_host="smtp.example.com",
+                username="me@example.com",
+                password="s3cret",
+            ),
+        )
         handler.headers.get.return_value = 200
         handler.rfile.read.return_value = (
             f"message_id={message_id}&draft_text=Hello+world&redirect_to=/board"
@@ -209,7 +217,7 @@ class TestHandleSaveDraft:
                 return_value=None,
             ),
             mock.patch("robotsix_auto_mail.server._draft_mixin.set_triage_decision"),
-            mock.patch("robotsix_auto_mail.server._draft_mixin.record_human_decision"),
+            mock.patch("robotsix_auto_mail.server._draft_mixin.record_user_action"),
         ):
             handler._handle_save_draft()
 
@@ -243,7 +251,7 @@ class TestHandleSaveDraft:
                 "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
             ) as mock_set,
             mock.patch(
-                "robotsix_auto_mail.server._draft_mixin.record_human_decision"
+                "robotsix_auto_mail.server._draft_mixin.record_user_action"
             ) as mock_record,
         ):
             handler._handle_save_draft()
@@ -251,7 +259,7 @@ class TestHandleSaveDraft:
         mock_set.assert_called_once_with(
             mock.ANY, "no-decision", "DRAFT_READY", source="user", reason="draft saved"
         )
-        mock_record.assert_called_once_with(mock.ANY, "no-decision", "DRAFT_READY")
+        mock_record.assert_called_once_with(mock.ANY, "DRAFT_READY", config=mock.ANY)
 
     def test_sets_draft_ready_when_current_action_is_not_draft_ready(
         self, single_db: str
@@ -280,7 +288,7 @@ class TestHandleSaveDraft:
                 "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
             ) as mock_set,
             mock.patch(
-                "robotsix_auto_mail.server._draft_mixin.record_human_decision"
+                "robotsix_auto_mail.server._draft_mixin.record_user_action"
             ) as mock_record,
         ):
             handler._handle_save_draft()
@@ -316,12 +324,12 @@ class TestHandleSaveDraft:
                 "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
             ) as mock_set,
             mock.patch(
-                "robotsix_auto_mail.server._draft_mixin.record_human_decision"
+                "robotsix_auto_mail.server._draft_mixin.record_user_action"
             ) as mock_record,
         ):
             handler._handle_save_draft()
 
-        # No new triage decision or human decision should be recorded.
+        # No new triage decision or user action should be recorded.
         mock_set.assert_not_called()
         mock_record.assert_not_called()
 

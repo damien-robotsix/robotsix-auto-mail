@@ -19,8 +19,8 @@ from robotsix_auto_mail.triage import (
     VALID_TRIAGE_ACTIONS,
     get_archive_subfolder,
     propose_archive_subfolder_llm,
-    record_archive_folder_choice,
-    record_human_decision,
+    record_user_action,
+    rules_text_for,
     set_triage_decision,
 )
 
@@ -173,7 +173,8 @@ class _BoardActionMixin:
                     source="user",
                     reason=f"moved to {triage_action}",
                 )
-                record_human_decision(conn, message_id, triage_action)
+                if self.mail_config is not None:
+                    record_user_action(record, triage_action, config=self.mail_config)
             except sqlite3.IntegrityError:
                 # Defense in depth: a stale CHECK constraint (legacy DB
                 # predating a new triage action) makes the upsert raise
@@ -195,6 +196,7 @@ class _BoardActionMixin:
                                 if self.mail_config
                                 else None
                             ),
+                            rules=rules_text_for(self.mail_config),
                         )
                 except Exception:  # noqa: S110  # nosec B110
                     pass  # Non-fatal: board falls back to deterministic proposal
@@ -337,6 +339,7 @@ class _BoardActionMixin:
             record.message_id,
             record,
             api_key=self.mail_config.llm_api_key if self.mail_config else "",
+            rules=rules_text_for(self.mail_config),
         )
 
         # Determine the archive root.
@@ -425,12 +428,14 @@ class _BoardActionMixin:
                 )
                 return False
 
-        # -- record the human-confirmed archive-folder choice (best-effort),
-        #    BEFORE the local row is deleted so the memory survives --
-        if subfolder:
+        # -- record the human-confirmed archive-folder choice (best-effort);
+        #    updates the triage rules file via the flash LLM --
+        if subfolder and self.mail_config is not None:
             with contextlib.suppress(Exception):
-                # Non-fatal: memory is advisory only
-                record_archive_folder_choice(conn, record, subfolder)
+                # Non-fatal: rule maintenance is advisory only
+                record_user_action(
+                    record, TO_ARCHIVE, config=self.mail_config, subfolder=subfolder
+                )
 
         # -- local DB cleanup --
         delete_record_by_message_id(conn, record.message_id)

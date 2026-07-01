@@ -4,14 +4,10 @@ from __future__ import annotations
 
 import json
 
-from tests.conftest import _make_record
-
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.triage import (
-    ArchiveFolderMemory,
     _build_triage_system_prompt,
-    _is_non_semantic_subfolder,
-    _load_archive_guidance,
+    _load_archive_folders,
 )
 
 # ---------------------------------------------------------------------------
@@ -75,42 +71,25 @@ def test_system_prompt_taxonomy_guidance_present() -> None:
     assert "at most 2 levels" in prompt
 
 
-def test_system_prompt_usage_counts_rendered() -> None:
-    """A usage map annotates positive-count folders with ``(used Nx)`` and
-    leaves zero/absent folders unannotated, with prefer-high-count guidance."""
-    prompt = _build_triage_system_prompt(
-        ["Lists/python-dev", "Finance", "Travel"],
-        None,
-        {"Lists/python-dev": 5, "Finance": 0},
-    )
-    assert "- Lists/python-dev (used 5x)" in prompt
-    # Zero-count and absent folders render plain (no annotation).
+def test_system_prompt_folders_rendered_plain() -> None:
+    """The folder list renders as plain ``- <folder>`` bullets, with no
+    usage-count or history annotations."""
+    prompt = _build_triage_system_prompt(["Lists/python-dev", "Finance", "Travel"])
+    assert "- Lists/python-dev\n" in prompt
     assert "- Finance\n" in prompt
     assert "- Travel\n" in prompt
-    assert "Finance (used" not in prompt
-    assert "Travel (used" not in prompt
-    assert "prefer folders that already contain many mails" in prompt.lower()
-
-
-def test_system_prompt_usage_counts_absent_renders_plain() -> None:
-    """With no usage map the folder list renders as plain bullets."""
-    prompt = _build_triage_system_prompt(["Finance", "Travel"])
-    assert "- Finance\n" in prompt
     assert "(used" not in prompt
+    assert "Archive-folder history" not in prompt
 
 
-def test_is_non_semantic_subfolder() -> None:
-    """Domain-like top-level segments are non-semantic; topical ones are not."""
-    assert _is_non_semantic_subfolder("lwn.net/lwn") is True
-    assert _is_non_semantic_subfolder("ls2n.fr/armada") is True
-    assert _is_non_semantic_subfolder("Newsletters/LWN") is False
-    assert _is_non_semantic_subfolder("Projects/armada") is False
-    assert _is_non_semantic_subfolder("Finance") is False
+# ---------------------------------------------------------------------------
+# _load_archive_folders
+# ---------------------------------------------------------------------------
 
 
-def test_load_archive_guidance_weakens_non_semantic_history() -> None:
-    """A remembered non-semantic ``domain/sender`` folder yields a weakened
-    history hint, while a semantic folder keeps the authoritative wording."""
+def test_load_archive_folders_normalises_structure() -> None:
+    """The persisted ``archive_structure`` list is loaded and normalised into
+    a plain list of folder paths."""
     conn = init_db(":memory:")
     try:
         set_watermark(
@@ -118,41 +97,16 @@ def test_load_archive_guidance_weakens_non_semantic_history() -> None:
             "archive_structure",
             json.dumps(["Newsletters/LWN", "Projects/armada"]),
         )
-        from robotsix_auto_mail.triage import _save_archive_folder_memory
+        folders = _load_archive_folders(conn)
+        assert folders == ["Newsletters/LWN", "Projects/armada"]
+    finally:
+        conn.close()
 
-        _save_archive_folder_memory(
-            conn,
-            {
-                "news@lwn.net": ArchiveFolderMemory(subfolder="lwn.net/lwn", count=2),
-                "dev@armada.example": ArchiveFolderMemory(
-                    subfolder="Projects/armada", count=4
-                ),
-            },
-        )
-        remaining = [
-            _make_record(
-                message_id="<a@lwn.net>",
-                sender="news@lwn.net",
-                subject="LWN weekly",
-                date="2025-06-01T12:00:00",
-            ),
-            _make_record(
-                message_id="<b@armada.example>",
-                sender="dev@armada.example",
-                subject="Armada update",
-                date="2025-06-01T12:00:00",
-            ),
-        ]
-        folders, history, usage = _load_archive_guidance(conn, remaining)
-        prompt = _build_triage_system_prompt(folders, history or None, usage or None)
 
-        lwn_line = next(line for line in history if "lwn.net/lwn" in line)
-        armada_line = next(line for line in history if "Projects/armada" in line)
-        assert "prefer a semantic topical folder over this domain/sender path" in (
-            lwn_line
-        )
-        assert "prefer a semantic topical folder" not in armada_line
-        # The weakened wording reaches the rendered prompt.
-        assert "prefer a semantic topical folder over this domain/sender path" in prompt
+def test_load_archive_folders_absent_is_none() -> None:
+    """With no persisted structure, ``_load_archive_folders`` returns None."""
+    conn = init_db(":memory:")
+    try:
+        assert _load_archive_folders(conn) is None
     finally:
         conn.close()

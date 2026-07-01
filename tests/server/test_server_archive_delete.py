@@ -243,7 +243,7 @@ def test_delete_stale_uid_preserves_record(single_db: str) -> None:
 
 def test_archive_stale_uid_preserves_record(single_db: str) -> None:
     """POST /archive with a stale UID and cross-folder search failing
-    (mail truly gone) → 302, local record removed, no folder memory."""
+    (mail truly gone) → 302, local record removed, no user action recorded."""
 
     _populate_db(
         single_db,
@@ -284,6 +284,9 @@ def test_archive_stale_uid_preserves_record(single_db: str) -> None:
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
             mock.patch("robotsix_auto_mail.imap.cross_folder_resolve") as mock_cross,
+            mock.patch(
+                "robotsix_auto_mail.server._action_mixin.record_user_action"
+            ) as mock_record,
         ):
             mock_client = mock_cls.return_value.__enter__.return_value
             mock_client.search_uids.return_value = []
@@ -294,17 +297,18 @@ def test_archive_stale_uid_preserves_record(single_db: str) -> None:
             )
 
         assert status == 302, f"Expected 302, got {status}: {body}"
+        # Mail is gone: the stale path deletes the row and returns before
+        # reaching the rules-recording step, so no user action is recorded.
+        mock_record.assert_not_called()
     finally:
         server.shutdown()
 
     from robotsix_auto_mail.db import get_record_by_message_id
-    from robotsix_auto_mail.triage import _load_archive_folder_memory
 
     conn = init_db(single_db)
     try:
-        # Record removed and archive-folder memory NOT written.
+        # Record removed.
         assert get_record_by_message_id(conn, "stale-arch") is None
-        assert _load_archive_folder_memory(conn) == {}
     finally:
         conn.close()
 
