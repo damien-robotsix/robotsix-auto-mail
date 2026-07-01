@@ -1,10 +1,17 @@
 """Configuration loaders: the public ``load*`` entry points.
 
-Configuration is read **exclusively from the YAML file** at
-``MAIL_CONFIG_PATH`` (default ``config/mail.local.yaml``), which must use the
-multi-account ``accounts:`` shape.  There is no environment-variable config
-path — ``MAIL_CONFIG_PATH`` only *locates* the file.  Depends on
-:mod:`robotsix_auto_mail.config.model`.
+The primary configuration source is the YAML file at ``MAIL_CONFIG_PATH``
+(default ``config/mail.local.yaml``), which must use the multi-account
+``accounts:`` shape.  ``MAIL_CONFIG_PATH`` only *locates* the file — it is
+not a general environment-variable config path.
+
+The two LLM-only resolvers (:func:`resolve_llm_api_key`,
+:func:`resolve_llm_provider_model`) additionally consult the
+``LLM_API_KEY`` and ``LLM_PROVIDER_MODEL`` environment variables as a
+fallback tier between explicit arguments and the YAML file.  The remaining
+loaders (``load_accounts``, ``load``, etc.) are YAML-only.
+
+Depends on :mod:`robotsix_auto_mail.config.model`.
 """
 
 from __future__ import annotations
@@ -102,7 +109,7 @@ def load_llm_provider_model() -> str:
 def resolve_llm_api_key(
     api_key: str | None = None, raise_on_missing: bool = True
 ) -> str:
-    """Resolve the LLM API key: explicit *api_key* arg → config file.
+    """Resolve the LLM API key: explicit *api_key* arg → env var → config file.
 
     Args:
         api_key: An explicit key, usually from a CLI parameter.
@@ -117,10 +124,11 @@ def resolve_llm_api_key(
         ConfigurationError: When *raise_on_missing* is ``True`` and no key
             is found.
     """
-    resolved = api_key or load_llm()
+    resolved = api_key or os.getenv("LLM_API_KEY") or load_llm()
     if not resolved and raise_on_missing:
         raise ConfigurationError(
-            "No LLM API key found — add an `llm.api_key` entry to your config file"
+            "No LLM API key found — set the LLM_API_KEY environment variable"
+            " or add an `llm.api_key` entry to your config file"
         )
     return resolved
 
@@ -128,7 +136,8 @@ def resolve_llm_api_key(
 def resolve_llm_provider_model(
     provider_model: str | None = None, default: str = ""
 ) -> str:
-    """Resolve the LLM provider-model: explicit *provider_model* arg → config file.
+    """Resolve the LLM provider-model: explicit *provider_model* arg → env var →
+    config file.
 
     Args:
         provider_model: An explicit provider-model identifier, usually from a
@@ -138,7 +147,9 @@ def resolve_llm_provider_model(
     Returns:
         The resolved provider-model identifier, or *default*.
     """
-    resolved = provider_model or load_llm_provider_model()
+    resolved = (
+        provider_model or os.getenv("LLM_PROVIDER_MODEL") or load_llm_provider_model()
+    )
     return resolved or default
 
 
