@@ -20,7 +20,7 @@ pytest.importorskip("hypothesis")
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-from robotsix_auto_mail.parser import ParseError, parse_message
+from robotsix_auto_mail.pipeline._parse import ParseError, parse_message
 
 # ---------------------------------------------------------------------------
 # Never-crashes invariant

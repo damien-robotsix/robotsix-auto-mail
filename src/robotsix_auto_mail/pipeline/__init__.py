@@ -22,7 +22,7 @@ from robotsix_auto_mail.db import (
 )
 from robotsix_auto_mail.db.archive import setup_archive
 from robotsix_auto_mail.imap import ImapClient
-from robotsix_auto_mail.parser import parse_message
+from robotsix_auto_mail.pipeline._parse import parse_message
 from robotsix_auto_mail.triage import resolve_rules_path, run_triage_agent
 
 _logger = logging.getLogger(__name__)

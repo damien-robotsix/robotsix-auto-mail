@@ -221,20 +221,15 @@ modules:
       - src/robotsix_auto_mail/oauth2/__init__.py
       - tests/oauth2/test_msal_provider.py
 
-  - id: parser
-    description: >-
-      MIME to MailRecord parsing.
-    paths:
-      - src/robotsix_auto_mail/parser/__init__.py
-      - tests/parser/test_parser.py
-      - tests/parser/test_parser_properties.py
-
   - id: pipeline
     description: >-
       Ingestion orchestration: fetch, parse, store, watermark.
     paths:
       - src/robotsix_auto_mail/pipeline/__init__.py
+      - src/robotsix_auto_mail/pipeline/_parse.py
       - tests/pipeline/test_pipeline.py
+      - tests/pipeline/test_parser.py
+      - tests/pipeline/test_parser_properties.py
 
   - id: smtp
     description: >-
