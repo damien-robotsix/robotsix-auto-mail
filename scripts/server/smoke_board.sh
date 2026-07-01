@@ -44,14 +44,26 @@ diagnose() {
     echo "-------------------------" >&2
 }
 
-# Isolated, dependency-free configuration: MailConfig.from_env() succeeds as
-# soon as the four required vars are present. Dummy IMAP/SMTP values are fine
-# because no mail connection is made at boot.
-export MAIL_IMAP_HOST="localhost"
-export MAIL_SMTP_HOST="localhost"
-export MAIL_USERNAME="smoke"
-export MAIL_PASSWORD="smoke"  # pragma: allowlist secret
-export MAIL_DB_PATH="${TMP_DIR}/smoke.db"
+# Isolated, dependency-free configuration: write a minimal multi-account
+# config.yaml to the temp dir and point MAIL_CONFIG_PATH at it. Dummy
+# IMAP/SMTP values are fine because no mail connection is made at boot.
+CONFIG_FILE="${TMP_DIR}/config.yaml"
+cat >"${CONFIG_FILE}" <<EOF
+default_account: smoke
+accounts:
+  - id: smoke
+    label: Smoke test
+    imap:
+      host: localhost
+    smtp:
+      host: localhost
+    auth:
+      username: smoke
+      password: smoke  # pragma: allowlist secret
+    store:
+      path: ${TMP_DIR}/smoke.db
+EOF
+export MAIL_CONFIG_PATH="${CONFIG_FILE}"
 
 # Launch the server in the background, capturing stdout/stderr for diagnosis.
 # Prefer `uv run --frozen` when available; the mill test-gate sandbox has no

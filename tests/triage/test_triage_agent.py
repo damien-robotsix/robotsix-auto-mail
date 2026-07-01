@@ -71,13 +71,12 @@ def test_run_triage_agent_empty_inbox_no_llm(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An empty inbox returns [] without invoking the LLM."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         with mock.patch(
             "robotsix_llmio.core.factory.get_provider_for_identifier"
         ) as cls:
-            out = run_triage_agent(conn)
+            out = run_triage_agent(conn, api_key="sk-test")
         assert out == []
         cls.assert_not_called()
     finally:
@@ -88,7 +87,6 @@ def test_run_triage_agent_happy_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Indices map to message_ids; decisions persisted with source='agent'."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -104,7 +102,7 @@ def test_run_triage_agent_happy_path(
             patcher,
             mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
         ):
-            out = run_triage_agent(conn)
+            out = run_triage_agent(conn, api_key="sk-test")
 
         assert [(d.message_id, d.action) for d in out] == [
             ("<a@x.com>", "TO_ANSWER"),
@@ -124,7 +122,6 @@ def test_run_triage_agent_uses_cheap_tier(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """build_agent is called with level=1 (cheap) by default."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -132,7 +129,7 @@ def test_run_triage_agent_uses_cheap_tier(
             TriageResult(items=[TriageItem(index=1, action="TO_ANSWER")])
         )
         with patcher as cls:
-            run_triage_agent(conn)
+            run_triage_agent(conn, api_key="sk-test")
             provider = cls.return_value
         provider.build_agent.assert_called_once()
         assert provider.build_agent.call_args.kwargs["level"] == 1
@@ -144,7 +141,6 @@ def test_run_triage_agent_forwards_user_email_to_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When user_email is passed, the built agent's system prompt includes it."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -155,7 +151,7 @@ def test_run_triage_agent_forwards_user_email_to_prompt(
             patcher as cls,
             mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
         ):
-            run_triage_agent(conn, user_email="me@example.com")
+            run_triage_agent(conn, api_key="sk-test", user_email="me@example.com")
             provider = cls.return_value
         call_kwargs = provider.build_agent.call_args.kwargs
         assert "me@example.com" in call_kwargs["system_prompt"]
@@ -167,7 +163,6 @@ def test_run_triage_agent_clamps_unknown_action(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An unknown action coerces to user_triage."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -175,7 +170,7 @@ def test_run_triage_agent_clamps_unknown_action(
         result_obj = TriageResult(items=[TriageItem(index=1, action="weird")])
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
-            out = run_triage_agent(conn)
+            out = run_triage_agent(conn, api_key="sk-test")
         assert out[0].action == "HUMAN_TRIAGE"
     finally:
         conn.close()
@@ -185,7 +180,6 @@ def test_run_triage_agent_omitted_record_defaults_user_triage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An inbox record the LLM omitted defaults to user_triage."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -194,7 +188,7 @@ def test_run_triage_agent_omitted_record_defaults_user_triage(
         result_obj = TriageResult(items=[TriageItem(index=1, action="TO_ANSWER")])
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
-            out = run_triage_agent(conn)
+            out = run_triage_agent(conn, api_key="sk-test")
         by_id = {d.message_id: d.action for d in out}
         assert by_id == {
             "<a@x.com>": "TO_ANSWER",
@@ -208,7 +202,6 @@ def test_run_triage_agent_only_undecided_skips_decided(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """only_undecided=True triages only inbox records with no decision row."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -221,7 +214,7 @@ def test_run_triage_agent_only_undecided_skips_decided(
         result_obj = TriageResult(items=[TriageItem(index=1, action="TO_ANSWER")])
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
-            out = run_triage_agent(conn, only_undecided=True)
+            out = run_triage_agent(conn, api_key="sk-test", only_undecided=True)
 
         assert [(d.message_id, d.action) for d in out] == [("<b@x.com>", "TO_ANSWER")]
         # The pre-existing decision is unchanged (still user/archive/pre).
@@ -267,7 +260,7 @@ def test_run_triage_agent_missing_api_key(
         ) as cls:
             with pytest.raises(TriageError) as exc:
                 run_triage_agent(conn, api_key=None)
-        assert "LLM_API_KEY" in str(exc.value)
+        assert "llm.api_key" in str(exc.value)
         cls.assert_not_called()
     finally:
         conn.close()
@@ -277,7 +270,6 @@ def test_run_triage_agent_llm_failure_wrapped(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A call_with_retry failure is wrapped as TriageError; close runs."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -290,7 +282,7 @@ def test_run_triage_agent_llm_failure_wrapped(
             return_value=mock_provider,
         ):
             with pytest.raises(TriageError) as exc:
-                run_triage_agent(conn)
+                run_triage_agent(conn, api_key="sk-test")
         assert "timeout" in str(exc.value)
         mock_handle.close.assert_called_once()
     finally:
@@ -301,7 +293,6 @@ def test_run_triage_agent_moves_status_column(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Triage no longer updates mail_records.status — it stays at default."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -309,7 +300,7 @@ def test_run_triage_agent_moves_status_column(
             TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
         )
         with patcher:
-            run_triage_agent(conn)
+            run_triage_agent(conn, api_key="sk-test")
         # mail_records.status stays at the default "to_read".
         row = conn.execute(
             "SELECT status FROM mail_records WHERE message_id = ?",
@@ -324,7 +315,6 @@ def test_run_triage_agent_performs_no_imap_calls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The triage path performs ZERO IMAP calls."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -336,7 +326,7 @@ def test_run_triage_agent_performs_no_imap_calls(
             mock.patch("imaplib.IMAP4") as imap4,
             mock.patch("imaplib.IMAP4_SSL") as imap4_ssl,
         ):
-            run_triage_agent(conn)
+            run_triage_agent(conn, api_key="sk-test")
         # (a) triage decision persisted.
         decision = get_triage_decision(conn, "<a@x.com>")
         assert decision is not None

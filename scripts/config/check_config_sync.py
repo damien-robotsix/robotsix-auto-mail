@@ -2,12 +2,14 @@
 """Check that config artifacts are in sync with ``MailConfig``.
 
 Cross-references the canonical ``MailConfig`` field list (obtained via
-``dataclasses.fields()``) against three user-facing artifacts:
+``dataclasses.fields()``) against two user-facing artifacts:
 
 1. ``docs/config/mail.local.example.yaml`` (the single, canonical multi-account
    example)
-2. ``.env.example``
-3. ``docs/connecting.md``
+2. ``docs/connecting.md`` (the YAML-key table)
+
+Configuration is read only from the YAML config file; environment-variable
+configuration has been removed, so no ``.env.example`` surface is checked.
 
 The merged ``docs/config/mail.local.example.yaml`` is checked two ways: its
 representative (first) account's nested sections plus the commented optional
@@ -38,11 +40,14 @@ _SRC = Path(__file__).resolve().parent.parent.parent / "src"
 sys.path.insert(0, str(_SRC))
 
 from robotsix_auto_mail.config import (  # noqa: E402
-    DEFAULT_DB_PATH,
     ConfigurationError,
     MailAccountsConfig,
     MailConfig,
 )
+
+# The legacy single-account flat db path.  Kept as a literal because the
+# ``DEFAULT_DB_PATH`` constant no longer exists in the source.
+_LEGACY_FLAT_DB_PATH = ".data/mail.db"
 
 # ---------------------------------------------------------------------------
 # Hard-coded field mappings (second pair of eyes on the mapping logic).
@@ -80,38 +85,6 @@ FIELD_TO_YAML: dict[str, str] = {
     "log_file_dir": "logging.file_dir",
 }
 
-FIELD_TO_ENV: dict[str, str] = {
-    "imap_host": "MAIL_IMAP_HOST",
-    "imap_port": "MAIL_IMAP_PORT",
-    "imap_tls_mode": "MAIL_IMAP_TLS_MODE",
-    "imap_folder": "MAIL_IMAP_FOLDER",
-    "smtp_host": "MAIL_SMTP_HOST",
-    "smtp_port": "MAIL_SMTP_PORT",
-    "smtp_tls_mode": "MAIL_SMTP_TLS_MODE",
-    "username": "MAIL_USERNAME",
-    "password": "MAIL_PASSWORD",
-    "oauth2_token": "MAIL_OAUTH2_TOKEN",
-    "oauth2_client_id": "MAIL_OAUTH2_CLIENT_ID",
-    "oauth2_client_secret": "MAIL_OAUTH2_CLIENT_SECRET",
-    "oauth2_provider": "MAIL_OAUTH2_PROVIDER",
-    "oauth2_tenant": "MAIL_OAUTH2_TENANT",
-    "db_path": "MAIL_DB_PATH",
-    "llm_api_key": "LLM_API_KEY",
-    "llm_provider_model": "LLM_PROVIDER_MODEL",
-    "ingest_interval_minutes": "MAIL_INGEST_INTERVAL",
-    "archive_root": "MAIL_ARCHIVE_ROOT",
-    "archive_enabled": "MAIL_ARCHIVE_ENABLED",
-    "triage_on_ingest": "MAIL_TRIAGE_ON_INGEST",
-    "triage_rules_path": "MAIL_TRIAGE_RULES_PATH",
-    "component_agent_enabled": "COMPONENT_AGENT_ENABLED",
-    "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
-    "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
-    "langfuse_base_url": "LANGFUSE_BASE_URL",
-    "log_level": "LOG_LEVEL",
-    "log_format": "LOG_FORMAT",
-    "log_file_dir": "LOG_FILE_DIR",
-}
-
 # ---------------------------------------------------------------------------
 # Placeholder patterns — values that are NOT default-mismatches.
 # ---------------------------------------------------------------------------
@@ -125,24 +98,13 @@ _PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^https://cloud\.langfuse\.com$"),
 ]
 
-# ---------------------------------------------------------------------------
-# Meta env vars / YAML keys excluded from "stale" checks.
-# ---------------------------------------------------------------------------
-
-_ENV_EXCLUDE_STALE: frozenset[str] = frozenset(
-    {
-        "MAIL_CONFIG_PATH",
-    }
-)
-
-
 # ====================================================================
 # Self-consistency check
 # ====================================================================
 
 
 def _self_consistency_check() -> None:
-    """Verify mapping dicts are 1:1 with ``MailConfig`` fields."""
+    """Verify the YAML mapping dict is 1:1 with ``MailConfig`` fields."""
     fields = {f.name for f in dataclasses.fields(MailConfig)}
 
     for field_name in fields:
@@ -151,22 +113,11 @@ def _self_consistency_check() -> None:
                 f"Internal error: field {field_name!r} missing from "
                 f"FIELD_TO_YAML mapping"
             )
-        if field_name not in FIELD_TO_ENV:
-            _fail(
-                f"Internal error: field {field_name!r} missing from "
-                f"FIELD_TO_ENV mapping"
-            )
 
     for field_name in FIELD_TO_YAML:
         if field_name not in fields:
             _fail(
                 f"Internal error: FIELD_TO_YAML key {field_name!r} "
-                f"is not a MailConfig field"
-            )
-    for field_name in FIELD_TO_ENV:
-        if field_name not in fields:
-            _fail(
-                f"Internal error: FIELD_TO_ENV key {field_name!r} "
                 f"is not a MailConfig field"
             )
 
@@ -457,91 +408,7 @@ def check_yaml_example(
 
 
 # ====================================================================
-# Check 2 — .env.example
-# ====================================================================
-
-
-def _parse_env_example(text: str) -> dict[str, str]:
-    """Parse a ``KEY=VALUE`` env-example file into a dict."""
-    result: dict[str, str] = {}
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if "=" not in stripped:
-            continue
-        key, _, value = stripped.partition("=")
-        result[key.strip()] = value.strip()
-    return result
-
-
-def check_env_example(
-    text: str,
-    path: str = ".env.example",
-) -> list[dict[str, Any]]:
-    """Check *text* (the ``.env.example`` file) against ``MailConfig``.
-
-    Returns a list of finding dicts.
-    """
-    findings: list[dict[str, Any]] = []
-    env_vars = _parse_env_example(text)
-
-    field_defaults: dict[str, Any] = {}
-    for f in dataclasses.fields(MailConfig):
-        field_defaults[f.name] = _field_default(f)
-
-    # Build reverse mapping: env var → field name.
-    env_to_field: dict[str, str] = {}
-    for field_name, ekey in FIELD_TO_ENV.items():
-        env_to_field[ekey] = field_name
-
-    # -- check each MailConfig field ----------------------------------------
-    for field_name, ekey in FIELD_TO_ENV.items():
-        if ekey not in env_vars:
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "missing-from-env-example",
-                    "key": ekey,
-                    "field": field_name,
-                }
-            )
-            continue
-
-        default = field_defaults[field_name]
-        if default is dataclasses.MISSING:
-            continue  # required field — presence check was enough
-
-        actual = env_vars[ekey]
-        if not _values_match(actual, default, raw_string=actual):
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "default-mismatch",
-                    "key": ekey,
-                    "expected": default,
-                    "actual": actual,
-                }
-            )
-
-    # -- stale env vars -----------------------------------------------------
-    for ekey in env_vars:
-        if ekey in _ENV_EXCLUDE_STALE:
-            continue
-        if ekey not in env_to_field:
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "stale-env-example-var",
-                    "key": ekey,
-                }
-            )
-
-    return findings
-
-
-# ====================================================================
-# Check 3 — docs/connecting.md
+# Check 2 — docs/connecting.md
 # ====================================================================
 
 
@@ -623,9 +490,8 @@ def check_docs_connecting(
     """
     findings: list[dict[str, Any]] = []
 
-    # -- parse the two tables -----------------------------------------------
+    # -- parse the YAML keys table ------------------------------------------
     yaml_rows = _parse_md_table(text, "### YAML config file")
-    env_rows = _parse_md_table(text, "### Environment variables")
 
     if not yaml_rows:
         findings.append(
@@ -633,14 +499,6 @@ def check_docs_connecting(
                 "artifact": path,
                 "type": "doc-parse-error",
                 "message": "Could not parse YAML keys table",
-            }
-        )
-    if not env_rows:
-        findings.append(
-            {
-                "artifact": path,
-                "type": "doc-parse-error",
-                "message": "Could not parse Environment variables table",
             }
         )
 
@@ -716,80 +574,11 @@ def check_docs_connecting(
                 }
             )
 
-    # -- Environment variables table ----------------------------------------
-
-    env_table: dict[str, dict[str, str]] = {}
-    for row in env_rows:
-        var_cell = row.get("Variable", "")
-        var_name = _strip_backticks(var_cell)
-        if var_name:
-            env_table[var_name] = row
-
-    for field_name, ekey in FIELD_TO_ENV.items():
-        if ekey not in env_table:
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "doc-missing-env-var",
-                    "key": ekey,
-                    "field": field_name,
-                }
-            )
-            continue
-
-        default = field_defaults[field_name]
-        if default is dataclasses.MISSING:
-            continue
-
-        row = env_table[ekey]
-        doc_default_raw = row.get("Default", "")
-        doc_default = _normalise_doc_default(doc_default_raw)
-
-        if doc_default is dataclasses.MISSING:
-            # Doc says "-" → no default documented.  Treat an
-            # empty-string MailConfig default as equivalent ("no value").
-            if default == "":
-                continue
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "doc-default-mismatch",
-                    "key": ekey,
-                    "expected": default,
-                    "actual": "(none documented)",
-                }
-            )
-            continue
-
-        if doc_default != default:
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "doc-default-mismatch",
-                    "key": ekey,
-                    "expected": default,
-                    "actual": doc_default_raw,
-                }
-            )
-
-    # Stale env var rows.
-    for var_name in env_table:
-        if var_name in _ENV_EXCLUDE_STALE:
-            continue
-        if var_name not in FIELD_TO_ENV.values():
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "doc-stale-env-var",
-                    "key": var_name,
-                }
-            )
-
     return findings
 
 
 # ====================================================================
-# Check 4 — structural validation of the merged multi-account example
+# Check 3 — structural validation of the merged multi-account example
 # ====================================================================
 
 # Legacy per-account default path form (``.data/mail-<id>.db``), replaced by
@@ -870,7 +659,7 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
     # per-account folder default ".data/<id>/mail.db" (or an explicit path).
     for account in config.accounts:
         db_path = account.config.db_path
-        if db_path == DEFAULT_DB_PATH or _LEGACY_FLAT_DB_PATH_RE.match(db_path):
+        if db_path == _LEGACY_FLAT_DB_PATH or _LEGACY_FLAT_DB_PATH_RE.match(db_path):
             findings.append(
                 {
                     "artifact": label,
@@ -935,7 +724,6 @@ def run_checks(
 
     # -- load artifact files ------------------------------------------------
     yaml_path = repo_root / "docs/config" / "mail.local.example.yaml"
-    env_path = repo_root / ".env.example"
     docs_path = repo_root / "docs" / "connecting.md"
 
     try:
@@ -948,18 +736,6 @@ def run_checks(
         return 2
     except OSError as exc:
         print(f"ERROR: cannot read {yaml_path}: {exc}", file=sys.stderr)
-        return 2
-
-    try:
-        env_text = env_path.read_text()
-    except FileNotFoundError:
-        print(
-            f"ERROR: {env_path} not found — cannot run env-example check",
-            file=sys.stderr,
-        )
-        return 2
-    except OSError as exc:
-        print(f"ERROR: cannot read {env_path}: {exc}", file=sys.stderr)
         return 2
 
     try:
@@ -977,7 +753,6 @@ def run_checks(
     # -- run checks ---------------------------------------------------------
     findings: list[dict[str, Any]] = []
     findings.extend(check_yaml_example(yaml_text, str(yaml_path)))
-    findings.extend(check_env_example(env_text, str(env_path)))
     findings.extend(check_docs_connecting(docs_text, str(docs_path)))
     findings.extend(check_accounts_example(yaml_path, str(yaml_path)))
 

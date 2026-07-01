@@ -1,13 +1,14 @@
 # Connecting
 
 `robotsix-auto-mail` needs IMAP and SMTP connection parameters. They are
-resolved through a single, predictable cascade:
+resolved from **built-in defaults overlaid by a single YAML config file** —
+any field you omit falls back to its built-in default.
 
-**built-in defaults → a YAML config file → environment variables.**
-
-Each layer overrides the one before it, field by field. You can supply
-everything in the YAML file, everything via `MAIL_*` environment variables,
-or mix the two (e.g. host/username in the file, password via `MAIL_PASSWORD`).
+> **Configuration is provided ONLY via the YAML config file.** The
+> `MAIL_CONFIG_PATH` environment variable *locates* the file (default
+> `config/mail.local.yaml`); it does not itself carry configuration. Individual
+> settings are **no longer read from environment variables** — put every value
+> (hosts, username, password, OAuth2, LLM, logging, …) in the YAML file.
 
 New users can also run `robotsix-auto-mail detect` to auto-generate the YAML
 file from just an email address — see [Auto-detection with
@@ -74,17 +75,18 @@ API key; autoconfig and MX detection do not.
 # dependencies in pyproject.toml, run `uv lock` and commit the updated
 # uv.lock.
 uv sync --extra dev
-
-# Set your OpenRouter API key (required)
-export LLM_API_KEY=sk-or-v1-…
 ```
 
-Instead of an environment variable, you can put this in the `llm:` section of
-`config/mail.local.yaml` (see [Configuration keys](#configuration-keys)). The
-LLM credentials resolve through the same cascade as everything else — the
-`LLM_API_KEY` environment variable overrides the file. The same
-settings will be reused by future LLM-assisted mail processing, not just
-`detect`.
+Set your OpenRouter API key (required for `detect`) in the `llm:` section of
+`config/mail.local.yaml` (see [Configuration keys](#configuration-keys)):
+
+```yaml
+llm:
+  api_key: sk-or-v1-…
+```
+
+The same settings will be reused by future LLM-assisted mail processing, not
+just `detect`.
 
 ### Minimal usage
 
@@ -132,7 +134,7 @@ robotsix-auto-mail detect user@gmail.com \
 | `--id ID` | no | (derived from email) | Account id for the detected account (the `accounts:` entry id and `.data/<id>/mail.db` store folder) |
 | `--password` | no | (prompted) | Password to write into the config file |
 | `--output PATH` | no | `config/mail.local.yaml` | Write mail config to this path |
-| `--stdout` | no | – | Print config to stdout instead of writing to file; password is intentionally omitted (must be filled in manually or via `MAIL_PASSWORD`); no verification is performed |
+| `--stdout` | no | – | Print config to stdout instead of writing to file; password is intentionally omitted (must be filled into `auth.password` manually); no verification is performed |
 | `--no-verify` | no | – | Skip the post-write IMAP/SMTP connection check |
 | `--overwrite` | no | – | When the account id already exists in the output file, update its transport settings (imap/smtp host, port, tls_mode) in place instead of erroring. Other account fields (label, username, password, db_path, archive, triage, calendar, oauth2 settings) are preserved from the existing entry unless explicitly supplied on the command line |
 | `--oauth2-client-id` | no | Thunderbird public client | Azure app-registration client ID for Microsoft 365 OAuth2 |
@@ -142,8 +144,8 @@ robotsix-auto-mail detect user@gmail.com \
 ### Docker invocation
 
 ```sh
-# Set your OpenRouter API key (or put it in the config file's llm: section)
-export LLM_API_KEY=sk-or-v1-…
+# Set your OpenRouter API key in the config file's llm: section
+# (config/mail.local.yaml → llm.api_key), then:
 
 # Detect provider settings, write config, and verify connectivity —
 # all in one step (prompts for the password; uses the run TTY).
@@ -169,8 +171,7 @@ interactive prompt appears (requires a TTY — use `docker compose run` without
   When using `--stdout`, the password is intentionally omitted from the printed
   config for security (to avoid leaking it into shell history or logs). You must
   supply the password separately: save the printed config to a file and edit it
-  to fill in `auth.password`, or supply the password via the `MAIL_PASSWORD`
-  environment variable before running other commands.
+  to fill in `auth.password` before running other commands.
   For Microsoft 365 accounts, `--stdout` may be combined with
   `--oauth2-client-id` and `--oauth2-tenant` — these are written into the
   printed YAML as `auth.oauth2_client_id` and `auth.oauth2_tenant`. Save the
@@ -232,7 +233,7 @@ smtp:
 
 auth:
   username: user@example.com
-  password: ""  # set your password here, or via the MAIL_PASSWORD env var
+  password: ""  # set your password here
   # OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that
   # requires modern SASL XOAUTH2.  When oauth2_token is set, password
   # auth is not used.  See "OAuth2 (XOAUTH2)" section below.
@@ -241,7 +242,7 @@ auth:
   # oauth2_client_secret: ""
 
 # store:
-#   path: .data/mail.db
+#   path: ""   # empty derives the per-account default .data/<id>/mail.db
 
 # archive:
 #   root: robotsix-mail-archive
@@ -249,7 +250,7 @@ auth:
 #   enabled: true
 
 # llm:
-#   api_key: sk-or-v1-…   # or via the LLM_API_KEY env var
+#   api_key: sk-or-v1-…
 #   provider_model: ""  # escape-hatch: override llmio tier default (leave blank to use tier default)
 
 # langfuse:
@@ -268,20 +269,20 @@ auth:
 | `smtp.port` | no | `587` | SMTP server port |
 | `smtp.tls_mode` | no | `"starttls"` | SMTP TLS mode |
 | `auth.username` | yes | – | Login username (typically the full email address) |
-| `auth.password` | no | – | Login password (may instead be supplied via `MAIL_PASSWORD`) |
+| `auth.password` | no | – | Login password |
 | `auth.oauth2_token` | no | – | OAuth2 access token for SASL XOAUTH2 (overrides password auth when set) |
 | `auth.oauth2_client_id` | no | – | OAuth2 client ID (required by some providers alongside the token) |
 | `auth.oauth2_client_secret` | no | – | OAuth2 client secret (required by some providers alongside the token) |
 | `auth.oauth2_provider` | no | – | MSAL OAuth2 provider; set to `microsoft` to acquire/refresh tokens via MSAL instead of a password |
 | `auth.oauth2_tenant` | no | `"organizations"` | Azure AD tenant for MSAL-managed OAuth2 |
-| `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
+| `store.path` | no | `""` | Filesystem path for the SQLite database; empty derives the per-account default `.data/<id>/mail.db` |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles (`ingest --watch`) |
 | `archive.root` | no | `"robotsix-mail-archive"` | Root folder for the self-managed archive structure |
 | `archive.enabled` | no | `true` | Whether to create/manage the archive folder structure |
 | `triage.on_ingest` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
 | `triage.rules_path` | no | `""` | Path to the human-readable `triage_rules.md` the flash LLM maintains from board actions; empty derives `<db-dir>/triage_rules.md` from `store.path` |
 | `component_agent.enabled` | no | `false` | Whether the HTTP component-agent API is served (allows external agents to monitor status / read or apply configuration over HTTP) |
-| `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing (may instead be supplied via `LLM_API_KEY`) |
+| `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing |
 | `llm.provider_model` | no | `""` | LLM provider-model identifier (e.g. `openrouter-deepseek`, `claude-sdk`); see robotsix-llmio README for available backends |
 | `langfuse.public_key` | no | – | Langfuse public key; when set with the secret key, every LLM agent run is traced |
 | `langfuse.secret_key` | no | – | Langfuse secret key (redacted in logs/repr) |
@@ -292,40 +293,10 @@ auth:
 
 **Trace ID injection.** Every log event automatically includes a `trace_id` field that correlates logs with OpenTelemetry / Langfuse recordings. When a Langfuse trace is active (see `langfuse.public_key` / `langfuse.secret_key` above), the `trace_id` is stamped as a 32-character lowercase hexadecimal string; when no trace is active (or OpenTelemetry is absent), it is set to `"-"`. This is transparent — no configuration is needed — and applies to both `json` and `console` log formats.
 
-### Environment variables
-
-| Variable | Required | Default | Purpose |
-|---|---|---|---|
-| `MAIL_IMAP_HOST` | yes | – | IMAP server hostname |
-| `MAIL_SMTP_HOST` | yes | – | SMTP server hostname |
-| `MAIL_USERNAME` | yes | – | Login username (typically the full email address) |
-| `MAIL_PASSWORD` | yes | – | Login password |
-| `MAIL_OAUTH2_TOKEN` | no | – | OAuth2 access token for SASL XOAUTH2 (overrides password auth when set) |
-| `MAIL_OAUTH2_CLIENT_ID` | no | – | OAuth2 client ID |
-| `MAIL_OAUTH2_CLIENT_SECRET` | no | – | OAuth2 client secret |
-| `MAIL_OAUTH2_PROVIDER` | no | – | MSAL OAuth2 provider; set to `microsoft` to use MSAL-managed tokens |
-| `MAIL_OAUTH2_TENANT` | no | `organizations` | Azure AD tenant for MSAL-managed OAuth2 |
-| `MAIL_IMAP_PORT` | no | `993` | IMAP server port |
-| `MAIL_IMAP_TLS_MODE` | no | `direct-tls` | TLS negotiation for IMAP — one of `direct-tls`, `starttls`, `none` |
-| `MAIL_SMTP_PORT` | no | `587` | SMTP server port |
-| `MAIL_SMTP_TLS_MODE` | no | `starttls` | TLS negotiation for SMTP — one of `starttls`, `direct-tls`, `none` |
-| `MAIL_IMAP_FOLDER` | no | `INBOX` | IMAP mailbox folder name |
-| `MAIL_DB_PATH` | no | `.data/mail.db` | Filesystem path for the SQLite database |
-| `MAIL_INGEST_INTERVAL` | no | `15` | Minutes between automatic ingest cycles (`ingest --watch`) |
-| `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Root folder for the self-managed archive structure |
-| `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to create/manage the archive folder structure |
-| `MAIL_TRIAGE_ON_INGEST` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
-| `MAIL_TRIAGE_RULES_PATH` | no |  | Path to the human-readable `triage_rules.md` the flash LLM maintains from board actions; empty derives `<db-dir>/triage_rules.md` from `MAIL_DB_PATH` |
-| `COMPONENT_AGENT_ENABLED` | no | `false` | Whether the HTTP component-agent API is served (overrides `component_agent.enabled`) |
-| `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Filesystem path to the YAML config file |
-| `LLM_API_KEY` | no | – | LLM provider API key (overrides `llm.api_key`); required for `detect` |
-| `LLM_PROVIDER_MODEL` | no |  | LLM provider-model identifier (overrides `llm.provider_model`); see robotsix-llmio README for available backends |
-| `LANGFUSE_PUBLIC_KEY` | no | – | Langfuse public key (overrides `langfuse.public_key`); enables LLM tracing |
-| `LANGFUSE_SECRET_KEY` | no | – | Langfuse secret key (overrides `langfuse.secret_key`; redacted) |
-| `LANGFUSE_BASE_URL` | no | – | Langfuse host URL (overrides `langfuse.base_url`) |
-| `LOG_LEVEL` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `LOG_FORMAT` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
-| `LOG_FILE_DIR` | no | `.mail_log` | Directory for date-stamped debug log files; empty disables file logging |
+> **No environment-variable configuration.** Every setting above lives in the
+> YAML config file. Environment variables are not read for configuration; the
+> only environment variable the application consults is `MAIL_CONFIG_PATH`,
+> which merely *locates* the YAML file (default `config/mail.local.yaml`).
 
 **TLS modes**
 
@@ -348,7 +319,7 @@ IMAP/SMTP. The simplest working setup needs no OAuth2 client registration — an
 3. Create an App Password at <https://myaccount.google.com/apppasswords>
    (choose "Mail" / "Other"). Google shows a **16-character** value — copy it
    (the spaces are cosmetic and may be omitted).
-4. Use that App Password as `auth.password` (or `MAIL_PASSWORD`), with your
+4. Use that App Password as `auth.password`, with your
    full address as `auth.username`:
 
    ```yaml
@@ -398,9 +369,9 @@ account password, but accepts either an
 [App Password](#gmail-app-password--simplest) (simplest — see above) or
 XOAUTH2.
 
-When ``oauth2_token`` is set (in the YAML config or via ``MAIL_OAUTH2_TOKEN``),
-the IMAP and SMTP clients authenticate via XOAUTH2 instead of the legacy
-``login()`` call.  Password auth is only used when no token is present.
+When ``oauth2_token`` is set in the YAML config, the IMAP and SMTP clients
+authenticate via XOAUTH2 instead of the legacy ``login()`` call.  Password auth
+is only used when no token is present.
 
 #### Obtaining an OAuth2 token
 
@@ -426,9 +397,9 @@ the IMAP and SMTP clients authenticate via XOAUTH2 instead of the legacy
        --client_secret=<CLIENT_SECRET>
    ```
 
-5. Set the resulting access token as ``auth.oauth2_token`` (or
-   ``MAIL_OAUTH2_TOKEN``).  If your flow requires it, also set
-   ``auth.oauth2_client_id`` and ``auth.oauth2_client_secret``.
+5. Set the resulting access token as ``auth.oauth2_token``.  If your flow
+   requires it, also set ``auth.oauth2_client_id`` and
+   ``auth.oauth2_client_secret``.
 
 **Microsoft 365 / Outlook.com (MSAL device-code, recommended):**
 
@@ -575,9 +546,8 @@ OAuth2 fields unset — the existing password path works as before.
 accounts are modelled as N independent configurations — each account is a
 complete set of the connection settings described above, plus a stable
 `id` and an optional human-friendly `label`. The `accounts:` list is the only
-supported runtime config-file shape; the single-account `MAIL_*` environment
-described above is retained for isolated boots, but a single-account ("mono")
-YAML **file** is no longer loaded (see below).
+supported config-file shape; a single-account ("mono") YAML **file** is no
+longer loaded (see below).
 
 **One SQLite DB per account.** Rather than tagging every database row with an
 `account_id`, each account carries its **own** `store.path` (SQLite database
@@ -594,8 +564,7 @@ which is unique per account and created automatically on first DB use.
 > supported**: such a file fails to load with an actionable error. Run
 > [`robotsix-auto-mail migrate-config`](#the-migrate-config-command) to convert
 > an old config to the multi-account shape, or
-> [`robotsix-auto-mail detect`](#scripting-usage) to regenerate it. (The
-> single-account `MAIL_*` **environment** is unaffected and remains supported.)
+> [`robotsix-auto-mail detect`](#scripting-usage) to regenerate it.
 
 **YAML shape.** A multi-account YAML file uses a top-level `accounts:` list
 instead of the single-account top-level sections. Each list entry is a
@@ -650,17 +619,10 @@ The Microsoft 365 account above carries **no password** — run
 `robotsix-auto-mail auth login --account office365` (or let `detect` do it)
 to seed the MSAL token cache at `.data/office365/msal_cache.json`.
 
-**Environment-variable scheme.** Each per-field environment variable is
-namespaced per account by inserting `ACCOUNTS_<n>_` after `MAIL_`, where `<n>`
-is a zero-based account index. A field whose single-account variable is
-`MAIL_<X>` becomes `MAIL_ACCOUNTS_<n>_<X>` (for example
-`MAIL_ACCOUNTS_0_IMAP_HOST`, `MAIL_ACCOUNTS_1_PASSWORD`); `LLM_API_KEY`, `LLM_PROVIDER_MODEL`, and `LANGFUSE_*` are application-wide (global) and read from the bare env vars, not namespaced. Two
-extra namespaced variables describe the account itself: `MAIL_ACCOUNTS_<n>_ID`
-(required — the stable account id, e.g. `MAIL_ACCOUNTS_0_ID=personal`) and
-`MAIL_ACCOUNTS_<n>_LABEL` (optional). Account indices must be contiguous
-starting at 0 (a gap raises an error). An optional `MAIL_ACCOUNTS_DEFAULT`
-names the default account id. As with `store.path` in YAML, an account whose
-`MAIL_ACCOUNTS_<n>_DB_PATH` is unset defaults to `.data/<id>/mail.db`.
+The `llm:` and `langfuse:` sections are application-wide (top-level) — they
+apply to every account. All other sections (`imap` / `smtp` / `auth` / `store`
+/ `ingest` / `archive` / `triage` / `component_agent`) are per-account and live
+under each `accounts:` entry.
 
 ### Self-managed archive structure
 
@@ -672,7 +634,7 @@ folders; the resulting folder list is then persisted in the SQLite
 every subsequent run — no folders are listed, no LLM is called, and nothing
 is recreated.
 
-Set `archive.enabled` (env `MAIL_ARCHIVE_ENABLED`) to `false` to disable
+Set `archive.enabled` to `false` to disable
 archive management entirely: `setup_archive` is never called, no watermark is
 written, and ingestion proceeds normally. Re-enabling it later runs setup on
 the next ingest (since the watermark was never set).
@@ -684,30 +646,17 @@ root only takes effect on a fresh run that has no watermark yet.
 
 ## Precedence rules
 
-`mail.load()` resolves configuration in this order:
+Configuration resolves from **built-in defaults overlaid by the YAML config
+file** at `MAIL_CONFIG_PATH` (default `config/mail.local.yaml`). Each field the
+file supplies overrides its built-in default; any field the file omits keeps
+its default. Environment variables are **not** consulted for configuration —
+only `MAIL_CONFIG_PATH` (which locates the file) is read from the environment.
 
-1. **Environment variables are evaluated first.** If all four required
-   variables (`MAIL_IMAP_HOST`, `MAIL_SMTP_HOST`, `MAIL_USERNAME`,
-   `MAIL_PASSWORD`) are set, they are used and the file is ignored.
-2. **File fallback.** If only required fields are missing from the
-   environment (no invalid values), `load()` reads the YAML config file at
-   `MAIL_CONFIG_PATH` (default: `config/mail.local.yaml`).
-3. **Env-override merge.** Every environment variable that *is* set is
-   then re-applied on top of the file values. This lets you keep shared
-   settings in the config file while overriding just the password via
-   `MAIL_PASSWORD`, for example.
+If the config file has an *invalid* value (e.g. a non-integer port), the error
+is raised immediately so your typo is not silently swallowed.
 
-Fields absent from both the file and the environment fall back to their
-built-in defaults.
-
-If any environment variable has an *invalid* value (e.g. a non-integer
-port), the error is raised immediately — the file fallback is skipped so
-your typo is not silently swallowed.
-
-**LLM settings** (`llm.api_key`) follow the same rule —
-`LLM_API_KEY` overrides the file's `llm:` section. The `detect`
-command resolves them on their own (via `load_llm()`) so it works before the
-mail fields are filled in.
+The `detect` command resolves the LLM settings (`llm.api_key`) on their own
+(via `load_llm()`) so it works before the mail fields are filled in.
 
 ## Example setups
 
@@ -715,58 +664,25 @@ mail fields are filled in.
 
 ```yaml
 # config/mail.local.yaml (git-ignored)
-imap:
-  host: imap.mail.example.com
-  port: 993
-  tls_mode: direct-tls
+default_account: main
 
-smtp:
-  host: smtp.mail.example.com
-  port: 587
-  tls_mode: starttls
-
-auth:
-  username: user@mail.example.com
-  password: your-app-password-here
+accounts:
+  - id: main
+    imap:
+      host: imap.mail.example.com
+      port: 993
+      tls_mode: direct-tls
+    smtp:
+      host: smtp.mail.example.com
+      port: 587
+      tls_mode: starttls
+    auth:
+      username: user@mail.example.com
+      password: your-app-password-here
 ```
 
 ```sh
 docker compose run robotsix-auto-mail probe
-```
-
-### Generic IMAP + SMTP (.env)
-
-```sh
-# .env
-MAIL_IMAP_HOST=imap.mail.example.com
-MAIL_IMAP_PORT=993
-MAIL_IMAP_TLS_MODE=direct-tls
-MAIL_SMTP_HOST=smtp.mail.example.com
-MAIL_SMTP_PORT=587
-MAIL_SMTP_TLS_MODE=starttls
-MAIL_USERNAME=user@mail.example.com
-MAIL_PASSWORD=your-app-password-here
-```
-
-### Config file + password from the environment
-
-Keep non-secret settings in the YAML file and supply only the password via
-`MAIL_PASSWORD` (which overrides `auth.password`):
-
-```yaml
-# config/mail.local.yaml (git-ignored)
-imap:
-  host: imap.mail.example.com
-smtp:
-  host: smtp.mail.example.com
-auth:
-  username: user@mail.example.com
-  # password omitted — supplied via MAIL_PASSWORD below
-```
-
-```sh
-export MAIL_PASSWORD=your-app-password-here
-robotsix-auto-mail probe
 ```
 
 ## The `probe` command
@@ -923,7 +839,7 @@ count badge.  Every mail card has a **Move** dropdown that lets you change
 the card's status column via `POST /move`.
 
 **Account picker (multi-account mode).**  When two or more accounts are configured
-(via `config/mail.local.yaml` or environment variables), an account picker
+(via `config/mail.local.yaml`), an account picker
 dropdown appears in the page header. The dropdown
 shows each configured account with its `label` (or `id` if no label is set), and
 you can click to switch accounts. Switching navigates to `/board?account=<id>` and
@@ -1059,8 +975,8 @@ will, on re-trigger, process only the remaining 218 without re-deleting the firs
 
 ### Multi-account request routing
 
-When multiple accounts are configured (via `config/mail.local.yaml` or
-environment variables), the `serve` command hosts all accounts at a single
+When multiple accounts are configured (via `config/mail.local.yaml`), the
+`serve` command hosts all accounts at a single
 HTTP server address. Per-request account selection determines which account's
 database and mail config are used to handle each request.
 
@@ -1165,7 +1081,7 @@ error (e.g., missing API key):
 
 The endpoint requires the same setup as the CLI `config-sync` command:
 - The `pydantic-ai` package (install via `pip install robotsix-auto-mail[dev]`)
-- An LLM API key (via `LLM_API_KEY` env or `llm.api_key` in config)
+- An LLM API key (`llm.api_key` in the config file)
 
 The endpoint applies dedup filtering by default (consulting the persisted
 ledger in the SQLite `watermark` table), so previously-seen drift proposals
@@ -1378,8 +1294,8 @@ deterministic checker doesn't encode. Because a successful advisory run exits
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--api-key` | – | OpenRouter API key; overrides `LLM_API_KEY` env and config file |
-| `--provider-model` | – | LLM provider-model identifier (e.g. `openrouter-deepseek`); overrides `LLM_PROVIDER_MODEL` env and config file |
+| `--api-key` | – | OpenRouter API key; overrides the config file's `llm.api_key` |
+| `--provider-model` | – | LLM provider-model identifier (e.g. `openrouter-deepseek`); overrides the config file's `llm.provider_model` |
 | `--output-format` | `text` | Output format: `text` (human-readable) or `json` (machine-readable) |
 | `--dedup` | – | Consult/update the dedup memory ledger to suppress previously-seen findings; requires a loadable config (for db path) |
 
@@ -1387,7 +1303,7 @@ deterministic checker doesn't encode. Because a successful advisory run exits
 
 The `config-sync` command requires:
 - The `pydantic-ai` package (install via `pip install robotsix-auto-mail[dev]`)
-- An LLM API key (via `--api-key`, `LLM_API_KEY` env, or `llm.api_key` in config)
+- An LLM API key (via `--api-key` or `llm.api_key` in the config file)
 
 When `--dedup` is **not** passed, the command does not require a full mail config
 — it skips config loading and uses `conn=None`. When `--dedup` **is** passed,
@@ -1454,15 +1370,13 @@ text or JSON output, look at its `title`, `body`, `affected_field`, and
   `python scripts/config/check_config_sync.py` goes green again. Those surfaces
   are:
   - the `MailConfig` dataclass (`src/robotsix_auto_mail/config/__init__.py`),
-  - the YAML template (`docs/config/mail.local.example.yaml`),
-  - `.env.example`, and
-  - the two config tables in this file — "YAML config file" and "Environment
-    variables".
+  - the YAML template (`docs/config/mail.local.example.yaml`), and
+  - the "YAML config file" key table in this file.
 
-  The `FIELD_TO_YAML` / `FIELD_TO_ENV` mappings in
-  `scripts/config/check_config_sync.py` are the **source of truth** for which
-  YAML key and environment variable each `MailConfig` field corresponds to;
-  reconcile every surface to agree with them.
+  The `FIELD_TO_YAML` mapping in
+  `scripts/config/check_config_sync.py` is the **source of truth** for which
+  YAML key each `MailConfig` field corresponds to; reconcile every surface to
+  agree with it.
 - **Intentional divergence → ignore the proposal.** If the reported difference
   is a deliberate design choice the deterministic rules simply don't model,
   treat the proposal as a false positive and do nothing — no code change is
@@ -1486,17 +1400,18 @@ imap_folder documented value mismatch
   confidence: high
   affected field: imap_folder
 
-The `MAIL_IMAP_FOLDER` row in the "Environment variables" table documents a
+The `imap.folder` row in the "YAML config file" table documents a
 default of `INBOX.All`, but the MailConfig default for imap_folder is INBOX.
 ```
 
 You confirm it is a **real drift** — the documented default no longer matches
-the dataclass. Reconcile the affected surface(s), e.g. fix the `MAIL_IMAP_FOLDER`
-row in the "Environment variables" table (and any other surface that disagrees,
-such as `.env.example`) so the documented default reads `INBOX` again:
+the dataclass. Reconcile the affected surface(s), e.g. fix the `imap.folder`
+row in the "YAML config file" table (and any other surface that disagrees, such
+as `docs/config/mail.local.example.yaml`) so the documented default reads
+`INBOX` again:
 
 ```text
-| `MAIL_IMAP_FOLDER` | no | `INBOX` | IMAP mailbox folder name |
+| `imap.folder` | no | `"INBOX"` | IMAP mailbox folder name |
 ```
 
 Then re-run the deterministic gate, which now exits `0`:
@@ -1608,7 +1523,7 @@ directly — delete or reword anything you disagree with.
 
 The file lives next to each account's SQLite datastore
 (`<db-dir>/triage_rules.md`) by default; set `triage.rules_path`
-(`MAIL_TRIAGE_RULES_PATH`) to override the location. Rule updates triggered
+to override the location. Rule updates triggered
 from the web board run in the background (they never delay a card move) and are
 best-effort — they require a resolvable LLM API key and never block or fail the
 action itself.
@@ -1617,14 +1532,14 @@ action itself.
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--api-key` | – | OpenRouter API key; overrides `LLM_API_KEY` env and config file |
+| `--api-key` | – | OpenRouter API key; overrides the config file's `llm.api_key` |
 | `--output-format` | `text` | Output format: `text` (human-readable) or `json` (machine-readable) |
 
 ### Requirements
 
 The `triage` command requires:
 - The `pydantic-ai` package (install via `pip install robotsix-auto-mail[dev]`)
-- An LLM API key (via `--api-key`, `LLM_API_KEY` env, or `llm.api_key` in config)
+- An LLM API key (via `--api-key` or `llm.api_key` in the config file)
 
 ### Representative text output
 

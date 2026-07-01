@@ -77,7 +77,7 @@ def test_config_sync_text_output(
         _patch_config_sync_llm(result),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["config-sync"])
+        rc = main(["config-sync", "--api-key", "sk-test"])
 
     assert rc == 0
     out = capsys.readouterr().out
@@ -104,7 +104,7 @@ def test_config_sync_json_output(
         _patch_config_sync_llm(result),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["config-sync", "--output-format", "json"])
+        rc = main(["config-sync", "--api-key", "sk-test", "--output-format", "json"])
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
@@ -122,7 +122,7 @@ def test_config_sync_no_drift(
         _patch_config_sync_llm(ConfigSyncResult(proposals=[])),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["config-sync"])
+        rc = main(["config-sync", "--api-key", "sk-test"])
 
     assert rc == 0
     assert "No config drift detected." in capsys.readouterr().out
@@ -136,7 +136,7 @@ def test_config_sync_error_path(
         "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
         side_effect=ConfigSyncError("surface read failed"),
     ):
-        rc = main(["config-sync"])
+        rc = main(["config-sync", "--api-key", "sk-test"])
 
     assert rc == 1
     err = capsys.readouterr().err

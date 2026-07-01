@@ -1,16 +1,16 @@
 """Configuration model: the ``MailConfig`` / ``MailAccount`` dataclasses.
 
-Holds the immutable configuration dataclasses and their ``from_env`` /
-``from_yaml`` loaders, plus the per-field environment build helpers that
-construct them.  Depends on :mod:`robotsix_auto_mail.config.schema` for the
-error type, validation constants and the field-spec table.
+Holds the immutable configuration dataclasses and the multi-account YAML
+loader (``MailAccountsConfig.from_yaml``) plus the per-account section-parsing
+helpers that construct them.  Depends on
+:mod:`robotsix_auto_mail.config.schema` for the error type, validation
+constants and the field-spec table.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import logging
-import os
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -28,7 +28,6 @@ from robotsix_auto_mail.config.schema import (
     _VALID_LOG_LEVELS,
     _VALID_TLS_MODES,
     DEFAULT_ARCHIVE_ROOT,
-    DEFAULT_DB_PATH,
     DEFAULT_IMAP_TLS_MODE,
     DEFAULT_INGEST_INTERVAL_MINUTES,
     DEFAULT_SMTP_TLS_MODE,
@@ -70,13 +69,6 @@ def _validate_template_literals(cfg: MailConfig) -> None:
                 f"template literal: {display}. "
                 f"Check your config rendering pipeline."
             )
-
-
-# Prefix for the namespaced multi-account environment scheme.
-_ENV_ACCOUNTS_PREFIX = "MAIL_ACCOUNTS_"
-
-# Matches ``MAIL_ACCOUNTS_<n>_<FIELD>`` and captures the integer index.
-_ENV_ACCOUNT_INDEX_RE: Final[re.Pattern[str]] = re.compile(r"^MAIL_ACCOUNTS_(\d+)_")
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +178,9 @@ class MailConfig:
     smtp_port: int = 587
     smtp_tls_mode: str = DEFAULT_SMTP_TLS_MODE
 
-    db_path: str = DEFAULT_DB_PATH
+    # Empty by default; the accounts loader derives ``.data/<id>/mail.db``
+    # per account when ``store.path`` is absent.
+    db_path: str = ""
     imap_folder: str = "INBOX"
 
     # LLM provider settings — optional; only needed for the `detect`
@@ -266,32 +260,6 @@ class MailConfig:
     # -- loaders -----------------------------------------------------------
 
     @classmethod
-    def from_env(cls) -> MailConfig:
-        """Build a ``MailConfig`` from environment variables.
-
-        Required env vars:
-          ``MAIL_IMAP_HOST``, ``MAIL_SMTP_HOST``, ``MAIL_USERNAME``,
-          ``MAIL_PASSWORD``
-
-        Optional env vars (with defaults):
-          ``MAIL_IMAP_PORT`` (993), ``MAIL_IMAP_TLS_MODE`` (direct-tls),
-          ``MAIL_SMTP_PORT`` (587), ``MAIL_SMTP_TLS_MODE`` (starttls)
-
-        Returns:
-            A fully-populated ``MailConfig``.
-
-        Raises:
-            ConfigurationError: If any required variable is missing or
-                any value is invalid.
-        """
-        cfg = _build_config_from_env(
-            lambda spec: os.environ.get(spec.env_key, ""),
-            lambda spec: spec.env_key,
-        )
-        _validate_template_literals(cfg)
-        return cfg
-
-    @classmethod
     def _parse_config_dict(
         cls, data: dict[str, object], path: Path, *, validate: bool = True
     ) -> MailConfig:
@@ -343,53 +311,6 @@ class MailConfig:
 
         return cls(**kwargs)
 
-    @classmethod
-    def from_yaml(cls, path: str | Path, *, validate: bool = True) -> MailConfig:
-        """Build a ``MailConfig`` from a YAML file.
-
-        The file is expected to follow this structure::
-
-            imap:
-              host: imap.example.com
-              port: 993
-              tls_mode: direct-tls
-
-            smtp:
-              host: smtp.example.com
-              port: 587
-              tls_mode: starttls
-
-            auth:
-              username: user@example.com
-              password: s3cret
-
-            llm:
-              api_key: sk-or-v1-…
-
-        All fields are optional; missing fields fall back to the same
-        defaults as ``from_env()``.
-
-        Args:
-            path: Filesystem path to the YAML file.
-            validate: If True (the default), raise ConfigurationError
-                when required fields are empty.  Set to False to load a
-                partial file that intentionally leaves required fields
-                blank (e.g. round-tripping ``detect`` output in tests).
-
-        Returns:
-            A fully-populated ``MailConfig``.
-
-        Raises:
-            ConfigurationError: If the file cannot be parsed or (when
-                *validate* is True) if required fields are missing.
-            FileNotFoundError: If *path* does not exist.
-        """
-        path = Path(path)
-        data = _read_config_yaml(path)
-        cfg = cls._parse_config_dict(data, path, validate=validate)
-        _validate_template_literals(cfg)
-        return cfg
-
 
 # ---------------------------------------------------------------------------
 # Self-consistency: ``_FIELD_SPECS`` must enumerate every dataclass field
@@ -404,80 +325,6 @@ assert _spec_names == _dc_names, (  # noqa: S101  # nosec B101
     f"missing from specs={_dc_names - _spec_names}, "
     f"missing from dataclass={_spec_names - _dc_names}"
 )
-
-
-# ---------------------------------------------------------------------------
-# Shared per-field environment parsing
-# ---------------------------------------------------------------------------
-
-
-def _build_config_from_env(
-    raw_for: Callable[[_FieldSpec], str],
-    label_for: Callable[[_FieldSpec], str],
-    *,
-    skip_global: bool = False,
-) -> MailConfig:
-    """Build a ``MailConfig`` from a per-field environment source.
-
-    ``raw_for(spec)`` returns the raw string value for a field (``""`` when
-    absent); ``label_for(spec)`` returns the variable name used in error
-    messages.  Factored out so both ``MailConfig.from_env`` and the
-    namespaced multi-account loader (``MailAccountsConfig.from_env``) share
-    exactly the same required-field / default / coercion / validation logic
-    rather than duplicating it.
-
-    When *skip_global* is True, fields marked ``global_field=True`` are
-    skipped — the caller is responsible for populating them separately
-    (e.g. from bare environment variables in the multi-account path).
-    """
-    missing: list[str] = []
-    errors: list[str] = []
-    kwargs: dict[str, Any] = {}
-
-    for spec in _FIELD_SPECS:
-        if skip_global and spec.global_field:
-            kwargs[spec.field_name] = spec.default
-            continue
-        raw = raw_for(spec)
-        label = label_for(spec)
-        if not raw:
-            if spec.required_in_env:
-                missing.append(label)
-                kwargs[spec.field_name] = ""
-            else:
-                kwargs[spec.field_name] = spec.default
-            continue
-        value, err = _coerce_field(spec, raw, label)
-        kwargs[spec.field_name] = value
-        if err:
-            errors.append(err)
-
-    # -- final validation --------------------------------------------------
-
-    # Microsoft MSAL accounts never use a password — don't require MAIL_PASSWORD.
-    if kwargs.get("oauth2_provider") == "microsoft":
-        _pw_spec = next((s for s in _FIELD_SPECS if s.field_name == "password"), None)
-        if _pw_spec:
-            _pw_label = label_for(_pw_spec)
-            missing = [m for m in missing if m != _pw_label]
-
-    msgs: list[str] = []
-    if missing:
-        msgs.append(
-            "Missing required environment variable(s): " + ", ".join(sorted(missing))
-        )
-    msgs.extend(errors)
-    if msgs:
-        # If *only* missing-required-field errors (no invalid values), flag
-        # the error so load()/load_accounts() can safely fall back to the
-        # YAML file.  Invalid values mean the user explicitly set an env var
-        # — falling back would silently swallow their typo.
-        raise ConfigurationError(
-            "\n".join(msgs),
-            missing_only=bool(missing and not errors),
-        )
-
-    return MailConfig(**kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -796,140 +643,3 @@ class MailAccountsConfig:
             default_account_id=default_id,
             failed_accounts=tuple(failed),
         )
-
-    @classmethod
-    def from_env(cls) -> MailAccountsConfig:
-        """Build a ``MailAccountsConfig`` from environment variables.
-
-        Two shapes are recognised:
-
-        * **Namespaced multi-account** — any ``MAIL_ACCOUNTS_<n>_*`` var is
-          present.  For each contiguous index ``n`` starting at 0, one
-          account is built from the namespaced vars.  A field whose
-          single-account env var is ``MAIL_<X>`` becomes
-          ``MAIL_ACCOUNTS_<n>_<X>``.  ``LLM_API_KEY``, ``LLM_PROVIDER_MODEL``,
-          and ``LANGFUSE_*`` are application-wide (global) and read from
-          the bare env vars, not namespaced.  Two extra
-          vars: ``MAIL_ACCOUNTS_<n>_ID`` (required) and
-          ``MAIL_ACCOUNTS_<n>_LABEL`` (optional).  A missing ``store.path``
-          yields the per-account default ``".data/<id>/mail.db"``.  An
-          optional ``MAIL_ACCOUNTS_DEFAULT`` names the default id.  A gap in
-          the index sequence raises :class:`ConfigurationError`.
-        * **Single-account** — no ``MAIL_ACCOUNTS_*`` vars.  Delegates
-          to :meth:`MailConfig.from_env` and wraps the result as the
-          one-element ``"default"`` container (a supported isolated-boot
-          mechanism, loaded silently).
-
-        Raises:
-            ConfigurationError: On invalid values, an id gap, or an invalid
-                account id.
-        """
-        present_indices = sorted(
-            {
-                int(match.group(1))
-                for key in os.environ
-                if (match := _ENV_ACCOUNT_INDEX_RE.match(key))
-            }
-        )
-        if not present_indices:
-            # Single-account ``MAIL_*`` env is a supported isolated-boot
-            # mechanism — load it silently as the one-element "default"
-            # container.
-            cfg = MailConfig.from_env()
-            return cls(
-                accounts=(MailAccount(account_id="default", config=cfg, label=None),),
-                default_account_id="default",
-            )
-
-        accounts: list[MailAccount] = []
-        failed: list[FailedAccountEntry] = []
-        index = 0
-        while any(
-            key.startswith(f"{_ENV_ACCOUNTS_PREFIX}{index}_") for key in os.environ
-        ):
-            raw_id = os.environ.get(
-                f"{_ENV_ACCOUNTS_PREFIX}{index}_ID", f"<account-{index}>"
-            )
-            try:
-                accounts.append(_build_account_from_env(index))
-            except ConfigurationError as exc:
-                logger.error(
-                    "Skipping account %r — invalid config: %s",
-                    raw_id,
-                    exc,
-                )
-                failed.append(FailedAccountEntry(account_id=raw_id, error=str(exc)))
-            index += 1
-
-        # Contiguity: every present index must be < the count we consumed.
-        if present_indices[-1] >= index:
-            raise ConfigurationError(
-                f"non-contiguous MAIL_ACCOUNTS_* indices: consumed 0..{index - 1} "
-                f"but index {present_indices[-1]} is also set (gap before it)"
-            )
-
-        raw_default = os.environ.get("MAIL_ACCOUNTS_DEFAULT")
-        default_id = (
-            raw_default if raw_default else (accounts[0].account_id if accounts else "")
-        )
-        return cls(
-            accounts=tuple(accounts),
-            default_account_id=default_id,
-            failed_accounts=tuple(failed),
-        )
-
-
-def _build_account_from_env(index: int) -> MailAccount:
-    """Build one :class:`MailAccount` from ``MAIL_ACCOUNTS_<index>_*`` vars."""
-    prefix = f"{_ENV_ACCOUNTS_PREFIX}{index}_"
-
-    def namespaced(env_key: str) -> str:
-        suffix = env_key[len("MAIL_") :] if env_key.startswith("MAIL_") else env_key
-        return f"{prefix}{suffix}"
-
-    cfg = _build_config_from_env(
-        lambda spec: os.environ.get(namespaced(spec.env_key), ""),
-        lambda spec: namespaced(spec.env_key),
-        skip_global=True,
-    )
-    _validate_template_literals(cfg)
-
-    # Global fields are application-wide; read them from bare (non-namespaced)
-    # env vars.  They were skipped in _build_config_from_env above.
-    cfg = dataclasses.replace(
-        cfg,
-        llm_api_key=os.environ.get("LLM_API_KEY", cfg.llm_api_key),
-        llm_provider_model=os.environ.get("LLM_PROVIDER_MODEL", cfg.llm_provider_model),
-        langfuse_public_key=os.environ.get(
-            "LANGFUSE_PUBLIC_KEY", cfg.langfuse_public_key
-        ),
-        langfuse_secret_key=os.environ.get(
-            "LANGFUSE_SECRET_KEY", cfg.langfuse_secret_key
-        ),
-        langfuse_base_url=os.environ.get("LANGFUSE_BASE_URL", cfg.langfuse_base_url),
-        log_level=os.environ.get("LOG_LEVEL", cfg.log_level),
-        log_format=os.environ.get("LOG_FORMAT", cfg.log_format),
-        log_file_dir=os.environ.get("LOG_FILE_DIR", cfg.log_file_dir),
-    )
-
-    # Validate global logging fields (skipped by _build_config_from_env).
-    errs: list[str] = []
-    raw_lvl = os.environ.get("LOG_LEVEL", "")
-    if raw_lvl and raw_lvl.upper() not in _VALID_LOG_LEVELS:
-        errs.append(
-            f"LOG_LEVEL must be one of {sorted(_VALID_LOG_LEVELS)!r}, got {raw_lvl!r}"
-        )
-    raw_fmt = os.environ.get("LOG_FORMAT", "")
-    if raw_fmt and raw_fmt.lower() not in _VALID_LOG_FORMATS:
-        errs.append(
-            f"LOG_FORMAT must be one of {sorted(_VALID_LOG_FORMATS)!r}, got {raw_fmt!r}"
-        )
-    if errs:
-        raise ConfigurationError("\n".join(errs))
-
-    account_id = os.environ.get(f"{prefix}ID", "")
-    if not os.environ.get(namespaced("MAIL_DB_PATH")):
-        cfg = dataclasses.replace(cfg, db_path=f".data/{account_id}/mail.db")
-    raw_label = os.environ.get(f"{prefix}LABEL")
-    label = raw_label if raw_label else None
-    return MailAccount(account_id=account_id, config=cfg, label=label)

@@ -35,7 +35,7 @@ def test_probe_success(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) -> N
     with (
         mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         rc = main(["probe"])
 
@@ -78,7 +78,7 @@ def test_probe_imap_failure_smtp_ok(
     with (
         mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         rc = main(["probe"])
 
@@ -113,7 +113,7 @@ def test_probe_smtp_failure_imap_ok(
     with (
         mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         rc = main(["probe"])
 
@@ -147,7 +147,7 @@ def test_probe_both_fail(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) ->
     with (
         mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         rc = main(["probe"])
 
@@ -172,7 +172,7 @@ def test_probe_never_calls_send_message(
     with (
         mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         main(["probe"])
 
@@ -196,7 +196,7 @@ def test_probe_imap_connection_refused(
             side_effect=ConnectionRefusedError("Connection refused"),
         ),
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         rc = main(["probe"])
 
@@ -223,7 +223,7 @@ def test_probe_smtp_connection_refused(
             "smtplib.SMTP",
             side_effect=ConnectionRefusedError("Connection refused"),
         ),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         rc = main(["probe"])
 
@@ -263,7 +263,7 @@ def test_probe_imap_tls_failure(
     with (
         mock.patch("imaplib.IMAP4", return_value=mock_imap),
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         rc = main(["probe"])
 
@@ -290,7 +290,7 @@ def test_probe_smtp_tls_failure(
     with (
         mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         rc = main(["probe"])
 
@@ -320,7 +320,7 @@ def test_probe_imap_auth_failure(
     with (
         mock.patch("imaplib.IMAP4_SSL", return_value=mock_imap),
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
-        mock.patch("robotsix_auto_mail.config.MailConfig.from_env", return_value=cfg),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
         rc = main(["probe"])
 
@@ -340,7 +340,7 @@ def test_probe_config_load_failure(
 ) -> None:
     """probe exits with code 1 when config loading fails."""
     with mock.patch(
-        "robotsix_auto_mail.config.MailConfig.from_env",
+        "robotsix_auto_mail.cli.load_accounts",
         side_effect=RuntimeError("boom"),
     ):
         with pytest.raises(SystemExit) as exc:

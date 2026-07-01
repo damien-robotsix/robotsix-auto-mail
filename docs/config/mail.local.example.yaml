@@ -8,20 +8,15 @@
 # account MUST use a distinct store.path; when omitted it defaults to
 # `.data/<id>/mail.db`, which is unique per account.
 #
-# Any field you omit falls back to its built-in default (shown commented
-# below). The namespaced MAIL_ACCOUNTS_<n>_* environment variables override
-# the corresponding value here.
-#
-# NOTE: the legacy single-account shape (top-level imap:/smtp:/auth: with no
-# `accounts:` key) is DEPRECATED but still loads. Run
-# `robotsix-auto-mail migrate-config` to convert an old config to this shape.
+# This YAML file is the sole source of configuration — there are no
+# environment-variable overrides. Any field you omit falls back to its
+# built-in default (shown commented below).
 #
 # llm: and langfuse: are application-wide (top-level) sections — they apply
-# to every account.  Bare LLM_API_KEY / LANGFUSE_* env vars override them.
+# to every account.
 
 # LLM provider — used by the `detect` command and future LLM-assisted mail
-# processing.  The LLM_API_KEY / LLM_PROVIDER_MODEL environment variables override
-# these values.
+# processing.
 # llm:
 #   api_key: sk-or-v1-…
 #   provider_model: ""  # escape-hatch: override llmio tier default (leave blank to use tier default)
@@ -33,8 +28,7 @@
 #   secret_key: ""
 #   base_url: ""
 
-# Logging configuration — application-wide.  The LOG_LEVEL / LOG_FORMAT /
-# LOG_FILE_DIR environment variables override these values.
+# Logging configuration — application-wide.
 # logging:
 #   level: INFO
 #   format: console
@@ -60,13 +54,13 @@ accounts:
       # tls_mode: starttls
     auth:
       username: me@gmail.com
-      password: ""  # set your password here, or via MAIL_ACCOUNTS_0_PASSWORD
+      password: ""  # set your password here
       # OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that
       # requires modern SASL XOAUTH2 instead of password-based login().
       # When oauth2_token is set, password auth is not used.
-      # oauth2_token: ""          # or via MAIL_ACCOUNTS_0_OAUTH2_TOKEN
-      # oauth2_client_id: ""      # or via MAIL_ACCOUNTS_0_OAUTH2_CLIENT_ID
-      # oauth2_client_secret: ""  # or via MAIL_ACCOUNTS_0_OAUTH2_CLIENT_SECRET
+      # oauth2_token: ""
+      # oauth2_client_id: ""
+      # oauth2_client_secret: ""
       # MSAL-managed OAuth2 (Microsoft 365). Set oauth2_provider to
       # "microsoft" to acquire/refresh tokens via MSAL instead of a password.
       # oauth2_provider: ""              # "microsoft" to enable MSAL
@@ -74,7 +68,7 @@ accounts:
     store:
       path: .data/personal/mail.db
     # Automatic ingestion (used by `ingest --watch`). How often, in minutes,
-    # to fetch new mail. Overridable via MAIL_ACCOUNTS_0_INGEST_INTERVAL.
+    # to fetch new mail.
     # ingest:
     #   interval_minutes: 15
     # Self-managed archive folder structure.
@@ -100,7 +94,7 @@ accounts:
       host: smtp.work.example.com
     auth:
       username: me@work.example.com
-      password: ""  # set here, or via MAIL_ACCOUNTS_1_PASSWORD
+      password: ""  # set here
     store:
       path: .data/work/mail.db
     # Component agent — HTTP API for external agents to monitor status

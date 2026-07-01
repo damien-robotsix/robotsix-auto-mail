@@ -102,7 +102,7 @@ def test_run_config_sync_agent_happy_path(
     )
     handle, patcher = _patch_llm(result_obj)
     with patcher:
-        out = run_config_sync_agent()
+        out = run_config_sync_agent(api_key="sk-test")
 
     assert isinstance(out, ConfigSyncResult)
     assert len(out.proposals) == 1
@@ -121,7 +121,7 @@ def test_run_config_sync_agent_uses_cheap_tier(
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     _handle, patcher = _patch_llm(ConfigSyncResult(proposals=[]))
     with patcher as cls:
-        run_config_sync_agent()
+        run_config_sync_agent(api_key="sk-test")
         provider = cls.return_value
     provider.build_agent.assert_called_once()
     assert provider.build_agent.call_args.kwargs["level"] == 1
@@ -134,7 +134,7 @@ def test_run_config_sync_agent_empty_no_drift(
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     handle, patcher = _patch_llm(ConfigSyncResult(proposals=[]))
     with patcher:
-        out = run_config_sync_agent()
+        out = run_config_sync_agent(api_key="sk-test")
     assert out.proposals == []
     handle.close.assert_called_once()
 
@@ -149,7 +149,7 @@ def test_run_config_sync_agent_missing_api_key(
     with mock.patch("robotsix_llmio.core.factory.get_provider_for_identifier") as cls:
         with pytest.raises(ConfigSyncError) as exc:
             run_config_sync_agent(api_key=None)
-    assert "LLM_API_KEY" in str(exc.value)
+    assert "llm.api_key" in str(exc.value)
     cls.assert_not_called()
 
 
@@ -167,7 +167,7 @@ def test_run_config_sync_agent_llm_failure_wrapped(
         return_value=mock_provider,
     ):
         with pytest.raises(ConfigSyncError) as exc:
-            run_config_sync_agent()
+            run_config_sync_agent(api_key="sk-test")
     assert "timeout" in str(exc.value)
     mock_handle.close.assert_called_once()
 
@@ -175,20 +175,18 @@ def test_run_config_sync_agent_llm_failure_wrapped(
 def test_run_config_sync_agent_all_surfaces_reach_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """All four surfaces + the ground-truth mappings reach the user message."""
+    """All config surfaces + the ground-truth mappings reach the user message."""
     monkeypatch.setenv("LLM_API_KEY", "sk-test")
     handle, patcher = _patch_llm(ConfigSyncResult(proposals=[]))
     with patcher:
-        run_config_sync_agent()
+        run_config_sync_agent(api_key="sk-test")
 
     user_message = handle.run_sync.call_args.args[0]
 
     # The three on-disk surfaces are embedded verbatim.
     yaml_text = (_REPO_ROOT / "docs/config" / "mail.local.example.yaml").read_text()
-    env_text = (_REPO_ROOT / ".env.example").read_text()
     docs_text = (_REPO_ROOT / "docs" / "connecting.md").read_text()
     assert yaml_text in user_message
-    assert env_text in user_message
     assert docs_text in user_message
 
     # The MailConfig dataclass surface and the mappings are embedded too.
@@ -367,7 +365,7 @@ def test_run_config_sync_agent_without_conn_unchanged(
     result_obj = ConfigSyncResult(proposals=[_drift("only")])
     handle, patcher = _patch_llm(result_obj)
     with patcher:
-        out = run_config_sync_agent()
+        out = run_config_sync_agent(api_key="sk-test")
     assert [p.title for p in out.proposals] == ["only"]
     handle.close.assert_called_once()
 
@@ -382,9 +380,9 @@ def test_run_config_sync_agent_with_conn_dedups(
         result_obj = ConfigSyncResult(proposals=[_drift("recurring")])
         handle, patcher = _patch_llm(result_obj)
         with patcher:
-            first = run_config_sync_agent(conn=conn)
+            first = run_config_sync_agent(conn=conn, api_key="sk-test")
             assert [p.title for p in first.proposals] == ["recurring"]
-            second = run_config_sync_agent(conn=conn)
+            second = run_config_sync_agent(conn=conn, api_key="sk-test")
             assert second.proposals == []
         handle.close.assert_called()
     finally:

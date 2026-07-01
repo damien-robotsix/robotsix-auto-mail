@@ -10,7 +10,7 @@ from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
@@ -1490,20 +1490,28 @@ def env_cfg_ingest() -> MailConfig:
     )
 
 
+def _accounts_ingest(cfg: MailConfig) -> MailAccountsConfig:
+    """Wrap a single ``MailConfig`` in a one-element accounts container."""
+    return MailAccountsConfig(
+        accounts=(MailAccount(account_id="default", config=cfg, label=None),),
+        default_account_id="default",
+    )
+
+
 @mock.patch("robotsix_auto_mail.cli.ImapClient")
 @mock.patch("robotsix_auto_mail.cli.init_db")
 @mock.patch(
-    "robotsix_auto_mail.config.MailConfig.from_env",
+    "robotsix_auto_mail.cli.load_accounts",
 )
 def test_cli_ingest_with_errors_exits_zero(
-    mock_from_env: mock.MagicMock,
+    mock_load_accounts: mock.MagicMock,
     mock_init_db: mock.MagicMock,
     mock_imap_cls: mock.MagicMock,
     env_cfg_ingest: MailConfig,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """ingest subcommand exits 0 even when per-message errors are present."""
-    mock_from_env.return_value = env_cfg_ingest
+    mock_load_accounts.return_value = _accounts_ingest(env_cfg_ingest)
 
     # Set up an in-memory DB for init_db.
     db = init_db(":memory:")
@@ -1553,17 +1561,17 @@ def test_cli_ingest_with_errors_exits_zero(
 @mock.patch("robotsix_auto_mail.cli.ImapClient")
 @mock.patch("robotsix_auto_mail.cli.init_db")
 @mock.patch(
-    "robotsix_auto_mail.config.MailConfig.from_env",
+    "robotsix_auto_mail.cli.load_accounts",
 )
 def test_cli_ingest_success_no_errors(
-    mock_from_env: mock.MagicMock,
+    mock_load_accounts: mock.MagicMock,
     mock_init_db: mock.MagicMock,
     mock_imap_cls: mock.MagicMock,
     env_cfg_ingest: MailConfig,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """ingest subcommand exits 0 when there are no errors."""
-    mock_from_env.return_value = env_cfg_ingest
+    mock_load_accounts.return_value = _accounts_ingest(env_cfg_ingest)
 
     db = init_db(":memory:")
     mock_init_db.return_value = db
@@ -1596,10 +1604,10 @@ def test_cli_ingest_success_no_errors(
 @mock.patch("robotsix_auto_mail.cli.ImapClient")
 @mock.patch("robotsix_auto_mail.cli.init_db")
 @mock.patch(
-    "robotsix_auto_mail.config.MailConfig.from_env",
+    "robotsix_auto_mail.cli.load_accounts",
 )
 def test_cli_ingest_imap_client_raises_exits_one(
-    mock_from_env: mock.MagicMock,
+    mock_load_accounts: mock.MagicMock,
     mock_init_db: mock.MagicMock,
     mock_imap_cls: mock.MagicMock,
     env_cfg_ingest: MailConfig,
@@ -1607,7 +1615,7 @@ def test_cli_ingest_imap_client_raises_exits_one(
     """ingest returns 1 when ImapClient raises (fatal connection failure)."""
     from robotsix_auto_mail.imap import ImapError
 
-    mock_from_env.return_value = env_cfg_ingest
+    mock_load_accounts.return_value = _accounts_ingest(env_cfg_ingest)
 
     db = init_db(":memory:")
     mock_init_db.return_value = db
@@ -1626,17 +1634,17 @@ def test_cli_ingest_imap_client_raises_exits_one(
 @mock.patch("robotsix_auto_mail.cli.ImapClient")
 @mock.patch("robotsix_auto_mail.cli.init_db")
 @mock.patch(
-    "robotsix_auto_mail.config.MailConfig.from_env",
+    "robotsix_auto_mail.cli.load_accounts",
 )
 def test_cli_ingest_dry_run_passes_flag(
-    mock_from_env: mock.MagicMock,
+    mock_load_accounts: mock.MagicMock,
     mock_init_db: mock.MagicMock,
     mock_imap_cls: mock.MagicMock,
     env_cfg_ingest: MailConfig,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """ingest --dry-run passes dry_run=True to ingest_mail and prints banner."""
-    mock_from_env.return_value = env_cfg_ingest
+    mock_load_accounts.return_value = _accounts_ingest(env_cfg_ingest)
 
     db = init_db(":memory:")
     mock_init_db.return_value = db
@@ -1684,13 +1692,13 @@ def test_parser_ingest_has_dry_run_flag() -> None:
     assert args2.dry_run is False
 
 
-@mock.patch("robotsix_auto_mail.config.MailConfig.from_env")
+@mock.patch("robotsix_auto_mail.cli.load_accounts")
 def test_cli_ingest_config_load_failure(
-    mock_from_env: mock.MagicMock,
+    mock_load_accounts: mock.MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """ingest exits with code 1 when config loading fails."""
-    mock_from_env.side_effect = RuntimeError("boom")
+    mock_load_accounts.side_effect = RuntimeError("boom")
 
     from robotsix_auto_mail.cli import main
 

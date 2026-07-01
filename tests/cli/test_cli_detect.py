@@ -283,24 +283,23 @@ def test_detect_detection_error(
     assert "test error" in captured.err
 
 
-def test_detect_llm_api_key_env(
+def test_detect_llm_api_key_from_config(
     capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """detect passes LLM_API_KEY from the environment to
-    detect_provider (model is no longer forwarded — the tier bakes the model
-    choice)."""
+    """detect resolves the LLM api key from the config file (llm.api_key) and
+    forwards it to detect_provider (model is no longer forwarded — the tier
+    bakes the model choice)."""
     mock_provider = MailProvider(
         imap_host="imap.gmail.com",
         smtp_host="smtp.gmail.com",
     )
     mock_dp = mock.MagicMock(return_value=mock_provider)
 
-    with mock.patch.dict(
-        os.environ,
-        {"LLM_API_KEY": "sk-test"},
+    with (
+        mock.patch("robotsix_auto_mail.config.load_llm", return_value="sk-test"),
+        mock.patch("robotsix_auto_mail.detect.detect_provider", mock_dp),
     ):
-        with mock.patch("robotsix_auto_mail.detect.detect_provider", mock_dp):
-            rc = main(["detect", "user@x.com", "--stdout"])
+        rc = main(["detect", "user@x.com", "--stdout"])
 
     assert rc == 0
     mock_dp.assert_called_once_with(
@@ -840,21 +839,22 @@ def test_detect_prompts_for_host_when_llm_cannot_fix(
 def test_detect_preserves_existing_llm_section(
     tmp_path: Path, no_autoconfig: object
 ) -> None:
-    """Re-running detect over a file keeps its llm: section."""
+    """Re-running detect over an accounts file keeps its top-level llm: section."""
     output = tmp_path / "mail.local.yaml"
     output.write_text(
         """\
-imap:
-  host: old.example.com
-
-smtp:
-  host: old.example.com
-
-auth:
-  username: old@example.com
-
 llm:
   api_key: sk-keep-me
+
+default_account: existing
+accounts:
+  - id: existing
+    imap:
+      host: old.example.com
+    smtp:
+      host: old.example.com
+    auth:
+      username: old@example.com
 """
     )
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")

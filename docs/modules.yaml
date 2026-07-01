@@ -69,7 +69,7 @@ modules:
   - id: cli
     description: >-
       CLI entry point exposing probe, ingest, board, serve, detect,
-      config-sync, triage, migrate-config, and auth subcommands.
+      config-sync, triage, and auth subcommands.
     paths:
       - src/robotsix_auto_mail/cli/__init__.py
       - src/robotsix_auto_mail/cli/commands.py
@@ -78,7 +78,6 @@ modules:
       - src/robotsix_auto_mail/cli/commands_config_sync.py
       - src/robotsix_auto_mail/cli/commands_detect.py
       - src/robotsix_auto_mail/cli/commands_ingest.py
-      - src/robotsix_auto_mail/cli/commands_migrate.py
       - src/robotsix_auto_mail/cli/commands_probe.py
       - src/robotsix_auto_mail/cli/commands_serve.py
       - src/robotsix_auto_mail/cli/commands_triage.py
@@ -90,19 +89,18 @@ modules:
       - tests/cli/test_cli_config_sync.py
       - tests/cli/test_cli_detect.py
       - tests/cli/test_cli_ingest.py
-      - tests/cli/test_cli_migrate.py
       - tests/cli/test_cli_probe.py
       - tests/cli/test_cli_refine.py
       - tests/cli/test_cli_triage.py
 
   - id: config
     description: >-
-      Configuration loading (YAML file + env), config template,
-      the deterministic drift-detection script, and the optional
-      LLM-driven drift-advisory agent. Together they keep the
-      MailConfig dataclass, env example, YAML example, and
-      connecting docs in sync. Also covers multi-account loading
-      (MailAccountsConfig) and per-account SQLite DB isolation.
+      Configuration loading from the YAML config file only, the config
+      template, the deterministic drift-detection script, and the optional
+      LLM-driven drift-advisory agent. Together they keep the MailConfig
+      dataclass, YAML example, and connecting docs in sync. Also covers
+      multi-account loading (MailAccountsConfig) and per-account SQLite DB
+      isolation.
     paths:
       - src/robotsix_auto_mail/config/__init__.py
       - src/robotsix_auto_mail/config/loader.py
@@ -112,7 +110,6 @@ modules:
       - src/robotsix_auto_mail/config/config_sync_agent.py
       - tests/config/test_mailconfig_basics.py
       - tests/config/test_schema.py
-      - tests/config/test_config_from_env.py
       - tests/config/test_config_from_yaml.py
       - tests/config/test_config_load.py
       - tests/config/test_config_llm.py
@@ -120,7 +117,6 @@ modules:
       - tests/config/test_config_ingest.py
       - tests/config/test_config_archive.py
       - tests/config/test_config_triage.py
-      - .env.example
       - docs/config/.gitkeep
       - docs/config/mail.local.example.yaml
       - scripts/config/check_config_sync.py

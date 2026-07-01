@@ -34,12 +34,12 @@ Configuration keys, precedence rules, and walkthroughs of the `probe`
 diagnostics command, the `ingest` mail-fetching command, and the `board`
 read-only view are documented in [docs/connecting.md](docs/connecting.md).
 
-The multi-account `accounts:` config shape is the only supported runtime
-config-file shape. The single-account ("mono") YAML file shape is **removed**:
-such a file fails to load with an actionable error. Run
-`robotsix-auto-mail migrate-config` to convert an old config to the
-multi-account shape (it preserves every value and writes a `<path>.bak` backup
-before rewriting), or `robotsix-auto-mail detect` to regenerate it.
+Configuration is loaded from a single YAML config file (default
+`config/mail.local.yaml`, located via `MAIL_CONFIG_PATH`) using the
+multi-account `accounts:` shape — the only supported config-file shape. Copy
+`docs/config/mail.local.example.yaml` to `config/mail.local.yaml` and fill in
+your values, or run `robotsix-auto-mail detect` to generate it from your email
+address.
 
 ## Further documentation
 

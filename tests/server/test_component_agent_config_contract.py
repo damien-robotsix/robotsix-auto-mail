@@ -273,15 +273,12 @@ def _make_spec(
     yaml_path: str,
     kind: str,
     default: Any = "",
-    env_key: str = "",
 ) -> _FieldSpec:
     return _FieldSpec(
         field_name=field_name,
-        env_key=env_key,
         yaml_path=yaml_path,
         kind=kind,
         default=default,
-        required_in_env=False,
         required_in_yaml=False,
     )
 

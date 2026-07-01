@@ -12,7 +12,6 @@ sys.path.insert(0, str(_SCRIPTS))
 from check_config_sync import (  # noqa: E402
     check_accounts_example,
     check_docs_connecting,
-    check_env_example,
     check_yaml_example,
     run_checks,
 )
@@ -108,40 +107,6 @@ accounts:
       path: .data/work/mail.db
 """
 
-_ENV_EXAMPLE = """\
-# Example environment variables for robotsix-auto-mail.
-
-MAIL_IMAP_HOST=imap.example.com
-MAIL_IMAP_PORT=993
-MAIL_IMAP_TLS_MODE=direct-tls
-MAIL_IMAP_FOLDER=INBOX
-MAIL_SMTP_HOST=smtp.example.com
-MAIL_SMTP_PORT=587
-MAIL_SMTP_TLS_MODE=starttls
-MAIL_USERNAME=user@example.com
-MAIL_PASSWORD=your-password-here
-MAIL_OAUTH2_TOKEN=
-MAIL_OAUTH2_CLIENT_ID=
-MAIL_OAUTH2_CLIENT_SECRET=
-MAIL_OAUTH2_PROVIDER=
-MAIL_OAUTH2_TENANT=organizations
-MAIL_DB_PATH=.data/mail.db
-MAIL_INGEST_INTERVAL=15
-MAIL_ARCHIVE_ROOT=robotsix-mail-archive
-MAIL_ARCHIVE_ENABLED=true
-MAIL_TRIAGE_ON_INGEST=true
-MAIL_TRIAGE_RULES_PATH=
-COMPONENT_AGENT_ENABLED=false
-LLM_API_KEY=sk-or-v1-…
-LLM_PROVIDER_MODEL=
-LANGFUSE_PUBLIC_KEY=
-LANGFUSE_SECRET_KEY=
-LANGFUSE_BASE_URL=
-LOG_LEVEL=INFO
-LOG_FORMAT=console
-LOG_FILE_DIR=.mail_log
-"""
-
 _ACCOUNTS_EXAMPLE = """\
 # Example multi-account configuration.
 default_account: personal
@@ -187,7 +152,7 @@ _DOCS_YAML_TABLE = """\
 | `auth.oauth2_client_secret` | no | - | OAuth2 client secret |
 | `auth.oauth2_provider` | no | - | MSAL OAuth2 provider |
 | `auth.oauth2_tenant` | no | `organizations` | Azure AD tenant |
-| `store.path` | no | `".data/mail.db"` | Filesystem path for the SQLite database |
+| `store.path` | no | `""` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles |
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
@@ -204,50 +169,10 @@ _DOCS_YAML_TABLE = """\
 | `logging.file_dir` | no | `.mail_log` | Log file directory |
 """
 
-_DOCS_ENV_TABLE = """\
-### Environment variables
 
-| Variable | Required | Default | Purpose |
-|---|---|---|---|
-| `MAIL_IMAP_HOST` | yes | - | IMAP server hostname |
-| `MAIL_SMTP_HOST` | yes | - | SMTP server hostname |
-| `MAIL_USERNAME` | yes | - | Login username |
-| `MAIL_PASSWORD` | yes | - | Login password |
-| `MAIL_OAUTH2_TOKEN` | no | - | OAuth2 access token for SASL XOAUTH2 |
-| `MAIL_OAUTH2_CLIENT_ID` | no | - | OAuth2 client ID |
-| `MAIL_OAUTH2_CLIENT_SECRET` | no | - | OAuth2 client secret |
-| `MAIL_OAUTH2_PROVIDER` | no | - | MSAL OAuth2 provider |
-| `MAIL_OAUTH2_TENANT` | no | `organizations` | Azure AD tenant |
-| `MAIL_IMAP_PORT` | no | `993` | IMAP server port |
-| `MAIL_IMAP_TLS_MODE` | no | `direct-tls` | TLS negotiation for IMAP |
-| `MAIL_SMTP_PORT` | no | `587` | SMTP server port |
-| `MAIL_SMTP_TLS_MODE` | no | `starttls` | TLS negotiation for SMTP |
-| `MAIL_IMAP_FOLDER` | no | `INBOX` | IMAP mailbox folder name |
-| `MAIL_DB_PATH` | no | `.data/mail.db` | Filesystem path for the SQLite database |
-| `MAIL_INGEST_INTERVAL` | no | `15` | Minutes between automatic ingest cycles |
-| `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Archive root folder |
-| `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to manage the archive structure |
-| `MAIL_TRIAGE_ON_INGEST` | no | `true` | Run inbox triage automatically after ingest |
-| `MAIL_TRIAGE_RULES_PATH` | no |  | Path to the human-readable triage rules file |
-| `COMPONENT_AGENT_ENABLED` | no | `false` | Whether the component-agent HTTP API is served |
-| `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
-| `LLM_API_KEY` | no | - | LLM provider API key |
-| `LLM_PROVIDER_MODEL` | no |  | LLM provider-model identifier |
-| `LANGFUSE_PUBLIC_KEY` | no | - | Langfuse public key for LLM tracing |
-| `LANGFUSE_SECRET_KEY` | no | - | Langfuse secret key for LLM tracing |
-| `LANGFUSE_BASE_URL` | no | - | Langfuse base URL for LLM tracing |
-| `LOG_LEVEL` | no | `INFO` | Log level |
-| `LOG_FORMAT` | no | `console` | Log format |
-| `LOG_FILE_DIR` | no | `.mail_log` | Log file directory |
-"""
-
-
-def _full_docs(yaml_table: str, env_table: str) -> str:
-    """Wrap the two tables in minimal md so the parser finds them."""
-    return (
-        "# Connecting\n\n"
-        "## Configuration keys\n\n" + yaml_table + "\n\n" + env_table + "\n"
-    )
+def _full_docs(yaml_table: str) -> str:
+    """Wrap the YAML-key table in minimal md so the parser finds it."""
+    return "# Connecting\n\n## Configuration keys\n\n" + yaml_table + "\n"
 
 
 # ====================================================================
@@ -261,15 +186,9 @@ def test_yaml_example_happy() -> None:
     assert findings == []
 
 
-def test_env_example_happy() -> None:
-    """No findings when .env.example matches MailConfig."""
-    findings = check_env_example(_ENV_EXAMPLE)
-    assert findings == []
-
-
 def test_docs_happy() -> None:
     """No findings when docs match MailConfig."""
-    text = _full_docs(_DOCS_YAML_TABLE, _DOCS_ENV_TABLE)
+    text = _full_docs(_DOCS_YAML_TABLE)
     findings = check_docs_connecting(text)
     assert findings == []
 
@@ -279,10 +198,7 @@ def test_run_checks_happy(tmp_path: Path) -> None:
     repo = tmp_path
     (repo / "docs/config").mkdir(parents=True)
     (repo / "docs/config" / "mail.local.example.yaml").write_text(_YAML_EXAMPLE)
-    (repo / ".env.example").write_text(_ENV_EXAMPLE)
-    (repo / "docs" / "connecting.md").write_text(
-        _full_docs(_DOCS_YAML_TABLE, _DOCS_ENV_TABLE)
-    )
+    (repo / "docs" / "connecting.md").write_text(_full_docs(_DOCS_YAML_TABLE))
     assert run_checks(repo) == 0
 
 
@@ -337,53 +253,6 @@ def test_yaml_uncommented_default_mismatch() -> None:
 
 
 # ====================================================================
-# .env.example drift
-# ====================================================================
-
-
-def test_env_missing_var() -> None:
-    """Removing a line reports missing-from-env-example."""
-    modified = _ENV_EXAMPLE.replace("MAIL_IMAP_PORT=993\n", "")
-    findings = check_env_example(modified)
-    assert any(
-        f["type"] == "missing-from-env-example" and f["key"] == "MAIL_IMAP_PORT"
-        for f in findings
-    )
-
-
-def test_env_stale_var() -> None:
-    """Adding a made-up env var reports stale-env-example-var."""
-    modified = _ENV_EXAMPLE + "MAIL_FOO=1\n"
-    findings = check_env_example(modified)
-    assert any(
-        f["type"] == "stale-env-example-var" and f["key"] == "MAIL_FOO"
-        for f in findings
-    )
-
-
-def test_env_default_mismatch() -> None:
-    """Changing a port number reports default-mismatch."""
-    modified = _ENV_EXAMPLE.replace("MAIL_IMAP_PORT=993", "MAIL_IMAP_PORT=1")
-    findings = check_env_example(modified)
-    assert any(
-        f["type"] == "default-mismatch"
-        and f["key"] == "MAIL_IMAP_PORT"
-        and f["expected"] == 993
-        for f in findings
-    )
-
-
-def test_env_stale_excludes_config_path() -> None:
-    """MAIL_CONFIG_PATH is excluded from stale checks."""
-    # It IS present in the example, but shouldn't be flagged as stale.
-    findings = check_env_example(_ENV_EXAMPLE)
-    assert not any(
-        f["type"] == "stale-env-example-var" and f["key"] == "MAIL_CONFIG_PATH"
-        for f in findings
-    )
-
-
-# ====================================================================
 # Placeholder tolerance
 # ====================================================================
 
@@ -397,37 +266,6 @@ def test_placeholder_llm_api_key_yaml() -> None:
     )
 
 
-def test_placeholder_llm_api_key_env() -> None:
-    """LLM_API_KEY placeholder is not a default-mismatch."""
-    findings = check_env_example(_ENV_EXAMPLE)
-    assert not any(
-        f["type"] == "default-mismatch" and "LLM_API_KEY" in str(f) for f in findings
-    )
-
-
-def test_placeholder_llm_api_key_changed() -> None:
-    """Changing LLM_API_KEY to another sk-or-v1 token still exits clean."""
-    modified = _ENV_EXAMPLE.replace(
-        "LLM_API_KEY=sk-or-v1-…", "LLM_API_KEY=sk-or-v1-different"
-    )
-    findings = check_env_example(modified)
-    assert not any(
-        f["type"] == "default-mismatch" and "LLM_API_KEY" in str(f) for f in findings
-    )
-
-
-def test_placeholder_password_env() -> None:
-    """MAIL_PASSWORD placeholder is not a default-mismatch."""
-    # password is MISSING in dataclass → skip comparison anyway.
-    modified = _ENV_EXAMPLE.replace(
-        "MAIL_PASSWORD=your-password-here", "MAIL_PASSWORD=realpw"
-    )
-    findings = check_env_example(modified)
-    assert not any(
-        f["type"] == "default-mismatch" and "MAIL_PASSWORD" in str(f) for f in findings
-    )
-
-
 # ====================================================================
 # Docs table drift
 # ====================================================================
@@ -438,7 +276,7 @@ def test_doc_missing_yaml_key() -> None:
     modified = _DOCS_YAML_TABLE.replace(
         "| `imap.port` | no | `993` | IMAP server port |\n", ""
     )
-    text = _full_docs(modified, _DOCS_ENV_TABLE)
+    text = _full_docs(modified)
     findings = check_docs_connecting(text)
     assert any(
         f["type"] == "doc-missing-yaml-key" and f["key"] == "imap.port"
@@ -446,23 +284,10 @@ def test_doc_missing_yaml_key() -> None:
     )
 
 
-def test_doc_missing_env_var() -> None:
-    """Removing an env var table row reports doc-missing-env-var."""
-    modified = _DOCS_ENV_TABLE.replace(
-        "| `MAIL_IMAP_PORT` | no | `993` | IMAP server port |\n", ""
-    )
-    text = _full_docs(_DOCS_YAML_TABLE, modified)
-    findings = check_docs_connecting(text)
-    assert any(
-        f["type"] == "doc-missing-env-var" and f["key"] == "MAIL_IMAP_PORT"
-        for f in findings
-    )
-
-
 def test_doc_default_mismatch() -> None:
     """Changing a documented default reports doc-default-mismatch."""
     modified = _DOCS_YAML_TABLE.replace("`993`", "`1993`", 1)
-    text = _full_docs(modified, _DOCS_ENV_TABLE)
+    text = _full_docs(modified)
     findings = check_docs_connecting(text)
     assert any(
         f["type"] == "doc-default-mismatch" and f["key"] == "imap.port"
@@ -473,30 +298,10 @@ def test_doc_default_mismatch() -> None:
 def test_doc_stale_yaml_key() -> None:
     """Adding a made-up YAML row reports doc-stale-yaml-key."""
     modified = _DOCS_YAML_TABLE + ("| `foo.bar` | no | `1` | Made up |\n")
-    text = _full_docs(modified, _DOCS_ENV_TABLE)
+    text = _full_docs(modified)
     findings = check_docs_connecting(text)
     assert any(
         f["type"] == "doc-stale-yaml-key" and f["key"] == "foo.bar" for f in findings
-    )
-
-
-def test_doc_stale_env_var() -> None:
-    """Adding a made-up env var row reports doc-stale-env-var."""
-    modified = _DOCS_ENV_TABLE + ("| `MAIL_FOO` | no | `1` | Made up |\n")
-    text = _full_docs(_DOCS_YAML_TABLE, modified)
-    findings = check_docs_connecting(text)
-    assert any(
-        f["type"] == "doc-stale-env-var" and f["key"] == "MAIL_FOO" for f in findings
-    )
-
-
-def test_doc_stale_excludes_config_path() -> None:
-    """MAIL_CONFIG_PATH is excluded from doc stale checks."""
-    text = _full_docs(_DOCS_YAML_TABLE, _DOCS_ENV_TABLE)
-    findings = check_docs_connecting(text)
-    assert not any(
-        f["type"] == "doc-stale-env-var" and f["key"] == "MAIL_CONFIG_PATH"
-        for f in findings
     )
 
 
@@ -511,10 +316,7 @@ def test_run_checks_missing_file(tmp_path: Path) -> None:
     repo = tmp_path
     (repo / "docs/config").mkdir(parents=True)
     # intentionally skip mail.local.example.yaml
-    (repo / ".env.example").write_text(_ENV_EXAMPLE)
-    (repo / "docs" / "connecting.md").write_text(
-        _full_docs(_DOCS_YAML_TABLE, _DOCS_ENV_TABLE)
-    )
+    (repo / "docs" / "connecting.md").write_text(_full_docs(_DOCS_YAML_TABLE))
     assert run_checks(repo) == 2
 
 
@@ -545,8 +347,8 @@ def test_accounts_example_duplicate_ids(tmp_path: Path) -> None:
 
 
 def test_accounts_example_no_accounts_key(tmp_path: Path) -> None:
-    """A single-account-shaped doc (no `accounts:` key) is rejected with the
-    actionable error naming `migrate-config` and `detect`."""
+    """A single-account-shaped doc (no `accounts:` key) is rejected with an
+    actionable error naming the `accounts:` list and `detect`."""
     mono = (
         "imap:\n  host: imap.example.com\n"
         "smtp:\n  host: smtp.example.com\n"
@@ -559,7 +361,7 @@ def test_accounts_example_no_accounts_key(tmp_path: Path) -> None:
     load_errors = [f for f in findings if f["type"] == "accounts-load-error"]
     assert load_errors
     message = load_errors[0]["message"]
-    assert "migrate-config" in message
+    assert "accounts:" in message
     assert "detect" in message
 
 

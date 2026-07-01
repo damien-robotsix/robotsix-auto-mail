@@ -57,8 +57,6 @@ def test_detect_unsubscribe_fast_path_header(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When unsubscribe_header is non-empty, return detection without LLM call."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
-
     records = [
         _make_record(
             message_id="<1@x.com>",
@@ -95,8 +93,6 @@ def test_detect_unsubscribe_fast_path_mailto(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """mailto: unsubscribe_header is detected as method='mailto'."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
-
     records = [
         _make_record(
             message_id="<1@x.com>",
@@ -126,8 +122,6 @@ def test_detect_unsubscribe_llm_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When no header, LLM is called with full body_plain."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
-
     records = [
         _make_record(
             message_id="<1@x.com>",
@@ -154,9 +148,15 @@ def test_detect_unsubscribe_llm_path(
     mock_provider.build_agent.return_value = mock_handle
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
-    with mock.patch(
-        "robotsix_llmio.core.factory.get_provider_for_identifier",
-        return_value=mock_provider,
+    with (
+        mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
+            return_value=mock_provider,
+        ),
+        mock.patch(
+            "robotsix_auto_mail.triage.agent.resolve_llm_api_key",
+            return_value="sk-test",
+        ),
     ):
         result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
 
@@ -181,8 +181,6 @@ def test_detect_unsubscribe_llm_failure_returns_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """On LLM failure, _detect_unsubscribe_for_sender returns None gracefully."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
-
     records = [
         _make_record(
             message_id="<1@x.com>",
@@ -201,9 +199,15 @@ def test_detect_unsubscribe_llm_failure_returns_none(
     # Simulate call_with_retry propagating the exception.
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
-    with mock.patch(
-        "robotsix_llmio.core.factory.get_provider_for_identifier",
-        return_value=mock_provider,
+    with (
+        mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
+            return_value=mock_provider,
+        ),
+        mock.patch(
+            "robotsix_auto_mail.triage.agent.resolve_llm_api_key",
+            return_value="sk-test",
+        ),
     ):
         result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
 
@@ -219,8 +223,6 @@ def test_check_unsubscribe_for_to_delete_populates_watermark(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """3+ TO_DELETE records from same sender → watermark entry created."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
-
     conn = init_db(":memory:")
     try:
         # Insert 3 records from the same sender and mark them TO_DELETE.
@@ -254,8 +256,6 @@ def test_check_unsubscribe_threshold_not_met(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Only 2 TO_DELETE records → no watermark entry created."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
-
     conn = init_db(":memory:")
     try:
         for i in range(2):
@@ -287,8 +287,6 @@ def test_check_unsubscribe_caching_skips_llm(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Pre-populated watermark entry → LLM NOT called again."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
-
     conn = init_db(":memory:")
     try:
         # Pre-populate the watermark.
@@ -336,8 +334,6 @@ def test_check_unsubscribe_multiple_senders(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Multiple senders above threshold each get checked independently."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
-
     conn = init_db(":memory:")
     try:
         # Sender A: 3 records with header.

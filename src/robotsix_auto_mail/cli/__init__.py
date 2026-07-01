@@ -33,9 +33,6 @@ from robotsix_auto_mail.cli.commands_ingest import (
 from robotsix_auto_mail.cli.commands_ingest import (
     _ingest_cycle as _ingest_cycle,
 )
-from robotsix_auto_mail.cli.commands_migrate import (
-    _cmd_migrate_config,
-)
 from robotsix_auto_mail.cli.commands_probe import (
     _cmd_probe,
 )
@@ -338,31 +335,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ledger state: pending, accepted, or rejected.",
     )
 
-    migrate_config_parser = sub.add_parser(
-        "migrate-config",
-        help="Convert a deprecated single-account config file into the "
-        "multi-account `accounts:` shape (writes a .bak backup)",
-    )
-    migrate_config_parser.add_argument(
-        "--config",
-        default=None,
-        metavar="PATH",
-        help="Config file to migrate (default: the canonical config path).",
-    )
-    migrate_config_parser.add_argument(
-        "--id",
-        dest="id",
-        default=None,
-        metavar="ID",
-        help="Account id for the migrated single account (default: 'default').",
-    )
-    migrate_config_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        default=False,
-        help="Print the migrated YAML to stdout without writing any file.",
-    )
-
     auth_parser = sub.add_parser(
         "auth", help="Authenticate accounts (OAuth2 device-code login)"
     )
@@ -431,9 +403,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "detect":
         return _cmd_detect(args)
-
-    if args.command == "migrate-config":
-        return _cmd_migrate_config(args)
 
     if args.command == "config-sync":
         return _cmd_config_sync(args)

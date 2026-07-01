@@ -83,7 +83,7 @@ class SmtpClient(_ProtocolClient):
 
     Typical usage::
 
-        cfg = MailConfig.from_env()
+        cfg = load_accounts().default.config
         with SmtpClient(cfg) as client:
             client.send(
                 from_addr="bot@example.com",
