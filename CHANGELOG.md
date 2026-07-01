@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add `security_posture` periodic workflow presence trigger (`.robotsix-mill/periodic/security_posture.yaml`)
 - Removed the root ``CLAUDE.md`` orientation file; ``AGENT.md`` is now the
   sole agent-facing root document. Updated the references in ``AGENT.md`` and
   ``README.md`` and dropped the path from ``docs/modules.yaml``.
