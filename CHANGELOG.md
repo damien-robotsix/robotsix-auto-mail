@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- `render_accounts_yaml` now emits a top-level `logging:` section when
+  `log_level`, `log_format`, or `log_file_dir` differ from their defaults,
+  matching the existing behaviour for `llm:` and `langfuse:`.
 - Fix OpenSSF Scorecard workflow: move `id-token: write` from top-level to job-level permissions block
 - Add `id-token: write` at the job level in `analysis` job in `.github/workflows/scorecard.yml` to satisfy `ossf/scorecard-action` `publish_results` requirement
 - Add OpenSSF Scorecard integration (`.github/workflows/scorecard.yml`) — runs weekly and on pushes to `main`, publishing results via SARIF upload for GitHub code-scanning alerts.

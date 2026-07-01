@@ -147,6 +147,17 @@ def render_accounts_yaml(
         lines.append(f"  base_url: {_yaml_scalar(representative.langfuse_base_url)}")
         lines.append("")
 
+    if (
+        representative.log_level != "INFO"
+        or representative.log_format != "console"
+        or representative.log_file_dir != ".mail_log"
+    ):
+        lines.append("logging:")
+        lines.append(f"  level: {_yaml_scalar(representative.log_level)}")
+        lines.append(f"  format: {_yaml_scalar(representative.log_format)}")
+        lines.append(f"  file_dir: {_yaml_scalar(representative.log_file_dir)}")
+        lines.append("")
+
     lines.append(f"default_account: {_yaml_scalar(default_account_id)}")
     lines.append("")
     lines.append("accounts:")
