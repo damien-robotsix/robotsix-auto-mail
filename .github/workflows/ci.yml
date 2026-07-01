@@ -62,6 +62,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --extra dev
 
+      - name: Dependency vulnerability audit
+        run: uv audit --frozen
+
       - name: Check config sync
         run: uv run --frozen python scripts/config/check_config_sync.py
 
