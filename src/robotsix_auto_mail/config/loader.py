@@ -102,7 +102,7 @@ def load_llm_provider_model() -> str:
 def resolve_llm_api_key(
     api_key: str | None = None, raise_on_missing: bool = True
 ) -> str:
-    """Resolve the LLM API key: explicit *api_key* arg → config file.
+    """Resolve the LLM API key: explicit *api_key* arg → env var → config file.
 
     Args:
         api_key: An explicit key, usually from a CLI parameter.
@@ -117,7 +117,7 @@ def resolve_llm_api_key(
         ConfigurationError: When *raise_on_missing* is ``True`` and no key
             is found.
     """
-    resolved = api_key or load_llm()
+    resolved = api_key or os.getenv("LLM_API_KEY") or load_llm()
     if not resolved and raise_on_missing:
         raise ConfigurationError(
             "No LLM API key found — add an `llm.api_key` entry to your config file"
@@ -128,7 +128,8 @@ def resolve_llm_api_key(
 def resolve_llm_provider_model(
     provider_model: str | None = None, default: str = ""
 ) -> str:
-    """Resolve the LLM provider-model: explicit *provider_model* arg → config file.
+    """Resolve the LLM provider-model: explicit *provider_model* arg → env var →
+    config file.
 
     Args:
         provider_model: An explicit provider-model identifier, usually from a
@@ -138,7 +139,9 @@ def resolve_llm_provider_model(
     Returns:
         The resolved provider-model identifier, or *default*.
     """
-    resolved = provider_model or load_llm_provider_model()
+    resolved = (
+        provider_model or os.getenv("LLM_PROVIDER_MODEL") or load_llm_provider_model()
+    )
     return resolved or default
 
 
