@@ -135,24 +135,28 @@ modules:
   - id: triage
     description: >-
       LLM-driven inbox triage agent and local triage-decision
-      persistence: classifies inbox mail into advisory action statuses
-      (answer / archive / delete / ignore / user_triage) stored in the
-      triage_decisions table without moving mail in the mailbox.
+      persistence: classifies inbox mail into the triage actions
+      (INBOX / HUMAN_TRIAGE / PENDING_ACTION / TO_ARCHIVE / TO_DELETE /
+      TO_CALENDAR / TO_ANSWER / DRAFT_READY) stored in the
+      triage_decisions table without moving mail in the mailbox.  Learned
+      preferences live in a human-readable triage_rules.md file that a
+      flash LLM maintains from the user's board actions.
     paths:
       - src/robotsix_auto_mail/triage/__init__.py
       - src/robotsix_auto_mail/triage/_constants.py
       - src/robotsix_auto_mail/triage/agent.py
       - src/robotsix_auto_mail/triage/classifier.py
       - src/robotsix_auto_mail/triage/persistence.py
+      - src/robotsix_auto_mail/triage/rules.py
       - tests/triage/test_triage_agent.py
       - tests/triage/test_triage_archive_hints.py
       - tests/triage/test_triage_archive_llm.py
       - tests/triage/test_triage_archive_subfolder.py
       - tests/triage/test_triage_crud.py
-      - tests/triage/test_triage_memory.py
       - tests/triage/test_triage_models.py
       - tests/triage/test_triage_prompt.py
       - tests/triage/test_triage_propose_name.py
+      - tests/triage/test_triage_rules.py
       - tests/triage/test_triage_unsubscribe.py
 
   - id: draft

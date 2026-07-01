@@ -13,7 +13,7 @@ from robotsix_auto_mail.server._constants import _is_safe_redirect_path, _with_d
 from robotsix_auto_mail.triage import (
     DRAFT_READY,
     get_triage_decision,
-    record_human_decision,
+    record_user_action,
     set_triage_decision,
 )
 
@@ -67,7 +67,8 @@ class _DraftMixin:
                     source="user",
                     reason="draft saved",
                 )
-                record_human_decision(conn, record.message_id, DRAFT_READY)
+                if self.mail_config is not None:
+                    record_user_action(record, DRAFT_READY, config=self.mail_config)
             return True
 
         self._handle_post_action(

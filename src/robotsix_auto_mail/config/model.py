@@ -204,6 +204,11 @@ class MailConfig:
     # Run the inbox triage agent automatically at the end of each ingest.
     triage_on_ingest: bool = True
 
+    # Path to the human-readable triage rules file maintained by the flash
+    # LLM from user actions.  Empty means "derive from db_path"
+    # (``<db-dir>/triage_rules.md``).
+    triage_rules_path: str = ""
+
     # Whether the component-agent HTTP API (monitor / config-get / config-set)
     # is served on the board server.
     component_agent_enabled: bool = False
@@ -560,9 +565,9 @@ class MailAccountsConfig:
     instances, each carrying its **own** ``db_path``, rather than adding an
     ``account_id`` column to every table.  The rationale:
 
-    - Per-account state (triage decisions, ``SenderMemory``, archive
-      watermarks — all keyed by ``message_id`` in each DB) is naturally
-      isolated with zero schema migration.
+    - Per-account state (triage decisions, archive watermarks — all keyed
+      by ``message_id`` in each DB, plus the per-account ``triage_rules.md``
+      file) is naturally isolated with zero schema migration.
     - Each :class:`MailConfig` already owns a ``db_path`` field, so no new
       per-row plumbing is required.
     - The cost is one SQLite file per account; uniqueness of ``db_path``

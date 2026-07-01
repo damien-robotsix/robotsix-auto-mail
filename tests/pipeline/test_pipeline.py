@@ -1045,6 +1045,7 @@ def test_ingest_runs_triage_on_new_mail(
         provider_model=cfg.llm_provider_model,
         only_undecided=True,
         user_email=cfg.username,
+        rules_path=mock.ANY,
     )
     assert result.triaged == 2
     # Triage must perform no IMAP/mailbox action of its own.

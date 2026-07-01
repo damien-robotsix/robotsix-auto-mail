@@ -236,6 +236,18 @@ _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
         False,
         False,
     ),
+    # Path to the human-readable triage rules file that the flash LLM
+    # maintains from user actions.  Empty means "derive from db_path"
+    # (``<db-dir>/triage_rules.md``); per-account like db_path.
+    _FieldSpec(
+        "triage_rules_path",
+        "MAIL_TRIAGE_RULES_PATH",
+        "triage.rules_path",
+        "str",
+        "",
+        False,
+        False,
+    ),
     # OAuth2 / XOAUTH2 — optional; when oauth2_token is set, SASL XOAUTH2
     # is used instead of password-based login().
     _FieldSpec(

@@ -84,6 +84,7 @@ accounts:
     # Inbox triage agent — runs automatically after each ingest cycle.
     # triage:
     #   on_ingest: true
+    #   rules_path: ""
     # Component agent — HTTP API for external agents to monitor status
     # and read/apply configuration over HTTP (without the agent-comm broker).
     # component_agent:
@@ -129,6 +130,7 @@ MAIL_INGEST_INTERVAL=15
 MAIL_ARCHIVE_ROOT=robotsix-mail-archive
 MAIL_ARCHIVE_ENABLED=true
 MAIL_TRIAGE_ON_INGEST=true
+MAIL_TRIAGE_RULES_PATH=
 COMPONENT_AGENT_ENABLED=false
 LLM_API_KEY=sk-or-v1-…
 LLM_PROVIDER_MODEL=
@@ -190,6 +192,7 @@ _DOCS_YAML_TABLE = """\
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
+| `triage.rules_path` | no | `""` | Path to the human-readable triage rules file |
 | `component_agent.enabled` | no | `false` | Whether the component-agent HTTP API is served |
 | `llm.api_key` | no | - | LLM provider API key |
 | `llm.provider_model` | no | `""` | LLM provider-model identifier |
@@ -225,6 +228,7 @@ _DOCS_ENV_TABLE = """\
 | `MAIL_ARCHIVE_ROOT` | no | `robotsix-mail-archive` | Archive root folder |
 | `MAIL_ARCHIVE_ENABLED` | no | `true` | Whether to manage the archive structure |
 | `MAIL_TRIAGE_ON_INGEST` | no | `true` | Run inbox triage automatically after ingest |
+| `MAIL_TRIAGE_RULES_PATH` | no |  | Path to the human-readable triage rules file |
 | `COMPONENT_AGENT_ENABLED` | no | `false` | Whether the component-agent HTTP API is served |
 | `MAIL_CONFIG_PATH` | no | `config/mail.local.yaml` | Path to the YAML config file |
 | `LLM_API_KEY` | no | - | LLM provider API key |

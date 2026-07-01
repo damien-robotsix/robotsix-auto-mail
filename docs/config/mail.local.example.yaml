@@ -82,8 +82,11 @@ accounts:
     #   root: robotsix-mail-archive
     #   enabled: true
     # Inbox triage agent — runs automatically after each ingest cycle.
+    # ``rules_path`` overrides where the human-readable triage rules file
+    # lives (empty derives it from the DB path: <db-dir>/triage_rules.md).
     # triage:
     #   on_ingest: true
+    #   rules_path: ""
     # Component agent — HTTP API for external agents to monitor status
     # and read/apply configuration over HTTP (without the agent-comm broker).
     # component_agent:

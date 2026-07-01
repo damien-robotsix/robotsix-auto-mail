@@ -23,7 +23,7 @@ from robotsix_auto_mail.db import (
 from robotsix_auto_mail.db.archive import setup_archive
 from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.parser import parse_message
-from robotsix_auto_mail.triage import run_triage_agent
+from robotsix_auto_mail.triage import resolve_rules_path, run_triage_agent
 
 _logger = logging.getLogger(__name__)
 
@@ -347,6 +347,9 @@ def ingest_mail(
                 provider_model=config.llm_provider_model,
                 only_undecided=True,
                 user_email=config.username,
+                rules_path=resolve_rules_path(
+                    db_path=config.db_path, rules_path=config.triage_rules_path
+                ),
             )
             triaged = len(decisions)
             _logger.info("triage_done decisions=%s", triaged)

@@ -24,7 +24,11 @@ def _cmd_triage(args: argparse.Namespace) -> int:
     pydantic_ai, TriageError).
     """
     try:
-        from robotsix_auto_mail.triage import TriageError, run_triage_agent
+        from robotsix_auto_mail.triage import (
+            TriageError,
+            resolve_rules_path,
+            run_triage_agent,
+        )
     except ImportError:
         sys.stderr.write(
             "The 'triage' command requires the pydantic-ai package. "
@@ -40,6 +44,9 @@ def _cmd_triage(args: argparse.Namespace) -> int:
             api_key=args.api_key,
             provider_model=config.llm_provider_model,
             user_email=config.username,
+            rules_path=resolve_rules_path(
+                db_path=config.db_path, rules_path=config.triage_rules_path
+            ),
         )
     except TriageError as exc:
         sys.stderr.write(f"Error: {exc}\n")
@@ -77,7 +84,7 @@ def _cmd_triage_set(args: argparse.Namespace) -> int:
         from robotsix_auto_mail.triage import (
             VALID_TRIAGE_ACTIONS,
             TriageError,
-            record_human_decision,
+            record_user_action,
             set_triage_decision,
         )
     except ImportError:
@@ -97,12 +104,15 @@ def _cmd_triage_set(args: argparse.Namespace) -> int:
     config = _load_config_or_exit(args.account)
     conn = init_db(config.db_path)
     try:
-        if get_record_by_message_id(conn, args.message_id) is None:
+        record = get_record_by_message_id(conn, args.message_id)
+        if record is None:
             sys.stderr.write(f"Error: no mail with message_id {args.message_id!r}\n")
             return 1
         try:
             set_triage_decision(conn, args.message_id, args.action, source="user")
-            record_human_decision(conn, args.message_id, args.action)
+            # Update the human-readable triage rules inline (CLI: no server
+            # thread to defer to; latency here is acceptable).
+            record_user_action(record, args.action, config=config, background=False)
         except TriageError as exc:
             sys.stderr.write(f"Error: {exc}\n")
             return 1

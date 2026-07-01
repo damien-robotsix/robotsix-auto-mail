@@ -1,9 +1,11 @@
-"""Deterministic triage classification.
+"""Deterministic triage classification and archive-subfolder proposals.
 
-Archive-subfolder proposals (deterministic + override storage + optional
-LLM hints), persistent human-decision memory, and deterministic triage
-rule proposal / dedup / application.  The ``pydantic_ai`` /
-LLM-provider imports stay lazy inside
+Archive-subfolder proposals (deterministic + per-message override storage +
+optional per-message LLM hints) and sender-key helpers.  The learned
+preferences that used to live in JSON watermark ledgers now live in the
+human-readable ``triage_rules.md`` file (see :mod:`robotsix_auto_mail.triage.rules`),
+which the archive-subfolder LLM proposal reads via its ``rules`` argument.
+The ``pydantic_ai`` / LLM-provider imports stay lazy inside
 ``propose_archive_subfolder_llm`` to keep module-load time low.
 """
 
@@ -25,22 +27,15 @@ from robotsix_auto_mail.config import (
 from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS,
     MailRecord,
-    get_record_by_message_id,
     get_watermark,
     set_watermark,
 )
 from robotsix_auto_mail.triage._constants import (
-    _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY,
     _ARCHIVE_LLM_HINTS_WATERMARK_KEY,
     _ARCHIVE_OVERRIDES_WATERMARK_KEY,
-    _MEMORY_WATERMARK_KEY,
 )
 from robotsix_auto_mail.triage.persistence import (
-    ArchiveFolderMemory,
     ArchiveSubfolderProposal,
-    SenderMemory,
-    TriageError,
-    _utc_now_iso,
 )
 
 # ---------------------------------------------------------------------------
@@ -173,66 +168,12 @@ def _save_llm_archive_hints(conn: sqlite3.Connection, hints: dict[str, str]) -> 
     )
 
 
-def _load_archive_folder_memory(
-    conn: sqlite3.Connection,
-) -> dict[str, ArchiveFolderMemory]:
-    """Load the archive-folder memory from the watermark table.
-
-    Returns ``{key: ArchiveFolderMemory}`` keyed by sender key and sender
-    domain; an empty dict when the memory has never been written.
-    """
-    return {
-        key: ArchiveFolderMemory.model_validate(entry)
-        for key, entry in _load_json_watermark(
-            conn, _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY
-        ).items()
-    }
-
-
-def _save_archive_folder_memory(
-    conn: sqlite3.Connection, memory: dict[str, ArchiveFolderMemory]
-) -> None:
-    """Persist *memory* to the watermark table (json round-trip)."""
-    payload = {key: entry.model_dump() for key, entry in memory.items()}
-    _save_json_watermark(
-        conn, _ARCHIVE_FOLDER_MEMORY_WATERMARK_KEY, cast("dict[str, object]", payload)
-    )
-
-
-def record_archive_folder_choice(
-    conn: sqlite3.Connection, record: MailRecord, subfolder: str
-) -> None:
-    """Remember that *record*'s sender / domain mail is filed into *subfolder*.
-
-    Upserts BOTH a sender-key entry (``_sender_key``) and a sender-domain
-    entry, incrementing ``count`` on repeat so the most-used folder can be
-    surfaced.  A no-op when *subfolder* is empty; the domain entry is skipped
-    when the sender address has no ``@``.  Record only human-confirmed folder
-    choices here — never the LLM's own proposal/hint.
-    """
-    if not subfolder:
-        return
-    keys = [_sender_key(record.sender)]
-    domain = _domain_key(record.sender)
-    if domain:
-        keys.append(domain)
-    memory = _load_archive_folder_memory(conn)
-    for key in keys:
-        previous = memory.get(key)
-        count = previous.count + 1 if previous is not None else 1
-        memory[key] = ArchiveFolderMemory(
-            subfolder=subfolder,
-            count=count,
-            updated_at=_utc_now_iso(),
-        )
-    _save_archive_folder_memory(conn, memory)
-
-
 def get_archive_subfolder(
     conn: sqlite3.Connection,
     message_id: str,
     record: MailRecord,
     api_key: str = "",
+    rules: str = "",
 ) -> str:
     """Return the effective archive subfolder for *message_id*.
 
@@ -240,8 +181,9 @@ def get_archive_subfolder(
     1. User override (from ``archive_subfolder_overrides`` watermark).
     2. LLM hint (previously persisted in ``archive_subfolder_llm_hints``).
     3. On-the-fly LLM proposal — only when *api_key* is non-empty; calls
-       :func:`propose_archive_subfolder_llm` and re-reads hints so a
-       successful proposal also populates the hint for next time.
+       :func:`propose_archive_subfolder_llm` (passing *rules* for guidance)
+       and re-reads hints so a successful proposal also populates the hint
+       for next time.
     4. Deterministic proposal via :func:`propose_archive_subfolder`.
     """
     # 1. User override
@@ -256,7 +198,7 @@ def get_archive_subfolder(
 
     # 3. On-the-fly LLM proposal (NEW)
     if api_key:
-        propose_archive_subfolder_llm(conn, record, api_key)
+        propose_archive_subfolder_llm(conn, record, api_key, rules=rules)
         hints = _load_llm_archive_hints(conn)  # re-read after persist
         if message_id in hints:
             return normalize_archive_subfolder(hints[message_id])
@@ -286,10 +228,14 @@ def propose_archive_subfolder_llm(
     record: MailRecord,
     api_key: str,
     provider_model: str | None = None,
+    rules: str = "",
 ) -> None:
     """Run a cheap LLM to propose an archive subfolder for *record*
     and persist the hint.  Best-effort — failures are silently
     swallowed so the board falls back to the deterministic proposal.
+
+    *rules* is the human-readable ``triage_rules.md`` content; when
+    non-empty it is injected so the proposal honours the user's rules.
     """
     # -- resolve API key --
     resolved_key = resolve_llm_api_key(api_key, raise_on_missing=False)
@@ -306,16 +252,6 @@ def propose_archive_subfolder_llm(
         except json.JSONDecodeError, TypeError, KeyError:
             existing_folders = []
 
-    # -- load sender memory for this sender --
-    memory = _load_memory(conn)
-    sender_memory_entry = memory.get(_sender_key(record.sender))
-
-    # -- load archive-folder memory for this sender / domain --
-    folder_memory = _load_archive_folder_memory(conn)
-    sender_folder_entry = folder_memory.get(_sender_key(record.sender))
-    domain = _domain_key(record.sender)
-    domain_folder_entry = folder_memory.get(domain) if domain else None
-
     # -- build system prompt --
     system_prompt = (
         "You are an assistant that proposes archive subfolders for email.\n"
@@ -331,31 +267,10 @@ def propose_archive_subfolder_llm(
             f"{folder_lines}\n"
             "You may pick one of these or propose a new one.\n"
         )
-    if sender_memory_entry is not None:
+    if rules.strip():
         system_prompt += (
-            f"\nSender guidance: mail from {record.sender} was previously "
-            f"triaged as `{sender_memory_entry.action}` "
-            f"({sender_memory_entry.count} times). "
-            "Use this to inform your folder proposal.\n"
-        )
-    if sender_folder_entry is not None or domain_folder_entry is not None:
-        system_prompt += "\nArchive-folder history:\n"
-        if sender_folder_entry is not None:
-            system_prompt += (
-                f"Mail from this sender was previously archived to "
-                f"`{sender_folder_entry.subfolder}`.\n"
-            )
-        if domain_folder_entry is not None:
-            times = "time" if domain_folder_entry.count == 1 else "times"
-            system_prompt += (
-                f"Other mail from senders at domain `{domain}` was previously "
-                f"archived to `{domain_folder_entry.subfolder}` "
-                f"({domain_folder_entry.count} {times}).\n"
-            )
-        system_prompt += (
-            "Prefer reusing an existing project folder when the message "
-            "relates to an ongoing project, rather than inventing a new "
-            "folder or a date bucket.\n"
+            "\nThe user's triage rules (honour these when they apply):\n"
+            f"{rules.strip()}\n"
         )
     system_prompt += "\nFolder taxonomy rules:\n" + _ARCHIVE_TAXONOMY_GUIDANCE + "\n"
 
@@ -395,7 +310,7 @@ def propose_archive_subfolder_llm(
 
 
 # ---------------------------------------------------------------------------
-# Human-decision memory ledger — watermark table
+# Sender-key helpers
 # ---------------------------------------------------------------------------
 
 
@@ -407,94 +322,3 @@ def _sender_key(sender: str) -> str:
     """
     address = parseaddr(sender)[1]
     return (address or sender).strip().lower()
-
-
-def _domain_key(sender: str) -> str:
-    """Return the lowercased domain of *sender*, or ``""`` when absent."""
-    key = _sender_key(sender)
-    if "@" in key:
-        return key.split("@", 1)[1]
-    return ""
-
-
-def _load_memory(conn: sqlite3.Connection) -> dict[str, SenderMemory]:
-    """Load the human-decision memory from the watermark table.
-
-    Returns an empty dict when the memory has never been written.
-    """
-    raw = get_watermark(conn, _MEMORY_WATERMARK_KEY)
-    if raw is None:
-        return {}
-    data: dict[str, object] = json.loads(raw)
-    return {
-        sender: SenderMemory.model_validate(entry) for sender, entry in data.items()
-    }
-
-
-def _save_memory(conn: sqlite3.Connection, memory: dict[str, SenderMemory]) -> None:
-    """Persist *memory* to the watermark table (json round-trip)."""
-    payload = {sender: entry.model_dump() for sender, entry in memory.items()}
-    set_watermark(conn, _MEMORY_WATERMARK_KEY, json.dumps(payload))
-
-
-def record_human_decision(
-    conn: sqlite3.Connection, message_id: str, action: str
-) -> None:
-    """Remember a human triage *action* for the sender of *message_id*.
-
-    Looks up the sender via :func:`get_record_by_message_id`, updates that
-    sender's :class:`SenderMemory` entry (incrementing ``count`` and moving
-    ``action`` toward the latest human decision) and persists the memory.
-    A no-op when *message_id* is unknown.  Validates *action* against
-    :data:`VALID_TRIAGE_ACTIONS`.
-    """
-    if action not in VALID_TRIAGE_ACTIONS:
-        raise TriageError(
-            f"action must be one of {sorted(VALID_TRIAGE_ACTIONS)!r}; got {action!r}"
-        )
-    record = get_record_by_message_id(conn, message_id)
-    if record is None:
-        return
-    key = _sender_key(record.sender)
-    memory = _load_memory(conn)
-    previous = memory.get(key)
-    if previous is None:
-        entry = SenderMemory(
-            action=action,
-            count=1,
-            last_action=action,
-            updated_at=_utc_now_iso(),
-        )
-    else:
-        entry = SenderMemory(
-            action=action,
-            count=previous.count + 1,
-            last_action=previous.action,
-            updated_at=_utc_now_iso(),
-        )
-    memory[key] = entry
-    _save_memory(conn, memory)
-
-
-def _build_memory_guidance(conn: sqlite3.Connection) -> str:
-    """Render the human-decision memory as concise prompt guidance.
-
-    Returns one line per remembered sender (ordered by sender key) and an
-    empty string when the memory is empty.
-    """
-    memory = _load_memory(conn)
-    if not memory:
-        return ""
-    lines = [
-        "Established human triage preferences (advisory — follow unless "
-        "the new message clearly differs):"
-    ]
-    for sender in sorted(memory):
-        entry = memory[sender]
-        times = "time" if entry.count == 1 else "times"
-        lines.append(
-            f"- Mail from `{sender}` was triaged by the user as "
-            f"`{entry.action}` ({entry.count} {times}) — prefer this "
-            "unless the new message clearly differs."
-        )
-    return "\n".join(lines)
