@@ -192,6 +192,24 @@ def test_resolve_llm_api_key_explicit_empty_string_falls_through(
     assert resolve_llm_api_key("") == "sk-from-file"
 
 
+def test_resolve_llm_api_key_env_var_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When no explicit arg, LLM_API_KEY env var is picked up."""
+    monkeypatch.delenv("MAIL_CONFIG_PATH", raising=False)
+    monkeypatch.setenv("LLM_API_KEY", "env-key")
+    assert resolve_llm_api_key() == "env-key"
+
+
+def test_resolve_llm_api_key_explicit_wins_over_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An explicit api_key arg wins over the LLM_API_KEY env var."""
+    monkeypatch.delenv("MAIL_CONFIG_PATH", raising=False)
+    monkeypatch.setenv("LLM_API_KEY", "env-key")
+    assert resolve_llm_api_key("explicit-key") == "explicit-key"
+
+
 # ---------------------------------------------------------------------------
 # resolve_llm_provider_model()
 # ---------------------------------------------------------------------------
@@ -229,6 +247,24 @@ def test_resolve_llm_provider_model_explicit_empty_falls_through(
     yaml_file = _multi_account_yaml(tmp_path, llm_provider_model="yaml-model")
     monkeypatch.setenv("MAIL_CONFIG_PATH", str(yaml_file))
     assert resolve_llm_provider_model("") == "yaml-model"
+
+
+def test_resolve_llm_provider_model_env_var_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When no explicit arg, LLM_PROVIDER_MODEL env var is picked up."""
+    monkeypatch.delenv("MAIL_CONFIG_PATH", raising=False)
+    monkeypatch.setenv("LLM_PROVIDER_MODEL", "env-model")
+    assert resolve_llm_provider_model() == "env-model"
+
+
+def test_resolve_llm_provider_model_explicit_wins_over_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An explicit provider_model arg wins over the LLM_PROVIDER_MODEL env var."""
+    monkeypatch.delenv("MAIL_CONFIG_PATH", raising=False)
+    monkeypatch.setenv("LLM_PROVIDER_MODEL", "env-model")
+    assert resolve_llm_provider_model("explicit-model") == "explicit-model"
 
 
 # ---------------------------------------------------------------------------
