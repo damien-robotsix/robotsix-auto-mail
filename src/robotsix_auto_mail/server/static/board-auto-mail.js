@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-window no-window-prefix
 /*
  * board-auto-mail.js — app-specific overlay for the Mail Board.
  *
@@ -20,10 +21,10 @@
    * 0.  Configuration (from #board-config)
    * ================================================================ */
 
-  var CFG = null;
+  let CFG = null;
 
   function bootConfig() {
-    var el = document.getElementById("board-config");
+    const el = document.getElementById("board-config");
     if (!el) return false;
     try {
       CFG = JSON.parse(el.textContent || "{}");
@@ -38,9 +39,9 @@
     return;
   }
 
-  var accountQs = CFG.account_qs || "";
-  var fetchQs = CFG.fetch_qs || "";
-  var dataAccountJs = CFG.data_account_js === true;
+  const accountQs = CFG.account_qs || "";
+  const fetchQs = CFG.fetch_qs || "";
+  const dataAccountJs = CFG.data_account_js === true;
 
   /* ----- shared fetch helper -------------------------------------- */
 
@@ -56,7 +57,7 @@
    * ================================================================ */
 
   function openDetail(messageId, subject, focusDraft, cardAccount) {
-    var src = "/email/" + messageId + "?embed=1";
+    let src = "/email/" + messageId + "?embed=1";
     if (cardAccount && dataAccountJs) {
       src += "&account=" + cardAccount;
     } else if (!dataAccountJs && accountQs) {
@@ -64,24 +65,24 @@
     }
     if (focusDraft) src += "&draft=1";
 
-    var panel = document.querySelector(".side-panel");
+    const panel = document.querySelector(".side-panel");
     if (!panel) return;
     panel.querySelector("iframe").src = src;
     panel.classList.add("open");
-    var wrapper = document.querySelector(".board-wrapper");
+    const wrapper = document.querySelector(".board-wrapper");
     if (wrapper) wrapper.classList.add("panel-open");
-    var titleEl = document.querySelector(".panel-title");
+    const titleEl = document.querySelector(".panel-title");
     if (titleEl) titleEl.textContent = subject || "";
     location.hash = messageId;
   }
 
   function closeDetail() {
-    var panel = document.querySelector(".side-panel");
+    const panel = document.querySelector(".side-panel");
     if (panel) {
       panel.classList.remove("open");
       panel.querySelector("iframe").src = "";
     }
-    var wrapper = document.querySelector(".board-wrapper");
+    const wrapper = document.querySelector(".board-wrapper");
     if (wrapper) wrapper.classList.remove("panel-open");
     location.hash = "";
   }
@@ -91,18 +92,18 @@
    * ================================================================ */
 
   function attachCardClickInterceptor() {
-    var board = document.querySelector(".board");
+    const board = document.querySelector(".board");
     if (!board) return;
 
     board.addEventListener("click", function (e) {
       // Ignore clicks on interactive elements inside cards.
       if (e.target.closest("button, select, input")) return;
 
-      var card = e.target.closest(".board-card");
+      const card = e.target.closest(".board-card");
       if (!card) return;
 
-      var meta = card.querySelector(".card-extra");
-      var mid = meta && meta.getAttribute("data-message-id");
+      const meta = card.querySelector(".card-extra");
+      const mid = meta && meta.getAttribute("data-message-id");
       if (!mid) return;
 
       if (e.target.closest("form")) return;
@@ -110,9 +111,9 @@
       e.preventDefault();
       e.stopPropagation(); // prevent board.js's drawer delegation
 
-      var subject = (meta && meta.getAttribute("data-subject")) || "";
+      const subject = (meta && meta.getAttribute("data-subject")) || "";
       if (dataAccountJs) {
-        var cardAccount = (meta && meta.getAttribute("data-account")) || "";
+        const cardAccount = (meta && meta.getAttribute("data-account")) || "";
         openDetail(mid, subject, false, cardAccount);
       } else {
         openDetail(mid, subject, false);
@@ -131,28 +132,28 @@
    * ================================================================ */
 
   function buildArchiveGroupHeader(dest, count) {
-    var label = dest || "Archive root";
-    var wrap = document.createElement("div");
+    const label = dest || "Archive root";
+    const wrap = document.createElement("div");
     wrap.className = "archive-group";
 
-    var lbl = document.createElement("span");
+    const lbl = document.createElement("span");
     lbl.className = "archive-group-label";
     lbl.textContent = "📁 " + label + " (" + count + ")";
     wrap.appendChild(lbl);
 
-    var form = document.createElement("form");
+    const form = document.createElement("form");
     form.className = "archive-group-form";
     form.method = "post";
     form.action = "/batch-archive-folder" + fetchQs;
     form.onsubmit = function () {
       return confirm("Archive " + count + " mail to " + label + "?");
     };
-    var input = document.createElement("input");
+    const input = document.createElement("input");
     input.type = "hidden";
     input.name = "folder";
     input.value = dest; // .value is safe — no HTML injection
     form.appendChild(input);
-    var btn = document.createElement("button");
+    const btn = document.createElement("button");
     btn.type = "submit";
     btn.className = "archive-btn archive-group-btn";
     btn.textContent = "Archive these " + count + " →";
@@ -163,20 +164,20 @@
 
   function renderArchiveGroups() {
     // Clear any headers from a previous render (idempotent on refresh).
-    var old = document.querySelectorAll(".archive-group");
-    for (var i = 0; i < old.length; i++) old[i].remove();
+    const old = document.querySelectorAll(".archive-group");
+    for (let i = 0; i < old.length; i++) old[i].remove();
 
     // The aggregate ("All mailboxes") view mixes accounts; per-folder batch
     // archive targets a single account, so skip grouping there — mirroring the
     // server suppressing "Archive All" in aggregate mode.
     if (dataAccountJs) return;
 
-    var extras = document.querySelectorAll(".card-extra[data-archive-dest]");
-    var groups = [];
-    var cur = null;
-    for (var j = 0; j < extras.length; j++) {
-      var dest = extras[j].getAttribute("data-archive-dest") || "";
-      var card = extras[j].closest(".board-card");
+    const extras = document.querySelectorAll(".card-extra[data-archive-dest]");
+    const groups = [];
+    let cur = null;
+    for (let j = 0; j < extras.length; j++) {
+      const dest = extras[j].getAttribute("data-archive-dest") || "";
+      const card = extras[j].closest(".board-card");
       if (!card) continue;
       if (!cur || cur.dest !== dest) {
         cur = { dest: dest, firstCard: card, count: 0 };
@@ -184,9 +185,9 @@
       }
       cur.count += 1;
     }
-    for (var k = 0; k < groups.length; k++) {
-      var g = groups[k];
-      var header = buildArchiveGroupHeader(g.dest, g.count);
+    for (let k = 0; k < groups.length; k++) {
+      const g = groups[k];
+      const header = buildArchiveGroupHeader(g.dest, g.count);
       g.firstCard.parentNode.insertBefore(header, g.firstCard);
     }
   }
@@ -201,9 +202,9 @@
    * closes the popover.  Suppressed in aggregate (dataAccountJs) mode.
    * ================================================================ */
 
-  var folderCache = null; // null = not fetched yet, [] = empty
-  var folderPopover = null;
-  var folderBrowseBtn = null;
+  let folderCache = null; // null = not fetched yet, [] = empty
+  let folderPopover = null;
+  let folderBrowseBtn = null;
 
   function fetchFolders() {
     if (folderCache !== null) return;
@@ -228,19 +229,19 @@
   }
 
   function hideBrowseButtons() {
-    var btns = document.querySelectorAll(".archive-browse-btn");
-    for (var i = 0; i < btns.length; i++) {
+    const btns = document.querySelectorAll(".archive-browse-btn");
+    for (let i = 0; i < btns.length; i++) {
       btns[i].style.display = "none";
     }
   }
 
   function buildFolderTree(folders) {
-    var root = { _children: {} };
+    const root = { _children: {} };
     folders.forEach(function (path) {
-      var parts = path.split("/");
-      var node = root;
-      for (var i = 0; i < parts.length; i++) {
-        var part = parts[i];
+      const parts = path.split("/");
+      let node = root;
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
         if (!node._children[part]) {
           node._children[part] = { _children: {} };
         }
@@ -252,21 +253,21 @@
   }
 
   function renderTree(name, node, depth, fullPath) {
-    var children = Object.keys(node._children);
-    var hasChildren = children.length > 0;
-    var isLeaf = node._leaf && !hasChildren;
+    const children = Object.keys(node._children);
+    const hasChildren = children.length > 0;
+    const isLeaf = node._leaf && !hasChildren;
 
-    var row = document.createElement("div");
+    const row = document.createElement("div");
     row.className = "ft-node";
     row.style.paddingLeft = (depth * 1.2 + 0.3) + "em";
     row.setAttribute("data-ft-path", fullPath);
 
     if (hasChildren) {
-      var toggle = document.createElement("span");
+      const toggle = document.createElement("span");
       toggle.className = "ft-toggle";
       toggle.textContent = "\u25b6"; // ▶
 
-      var label = document.createElement("span");
+      const label = document.createElement("span");
       label.textContent = "\u{1F4C1} " + name;
       if (node._leaf) {
         label.className = "ft-branch ft-branch-leaf";
@@ -278,21 +279,21 @@
         label.className = "ft-branch";
       }
 
-      var childContainer = document.createElement("div");
+      const childContainer = document.createElement("div");
       childContainer.className = "ft-children";
       childContainer.style.display = "none";
 
       children.sort().forEach(function (childName) {
-        var childNode = node._children[childName];
-        var childFullPath = fullPath ? fullPath + "/" + childName : childName;
+        const childNode = node._children[childName];
+        const childFullPath = fullPath ? fullPath + "/" + childName : childName;
         childContainer.appendChild(
-          renderTree(childName, childNode, depth + 1, childFullPath)
+          renderTree(childName, childNode, depth + 1, childFullPath),
         );
       });
 
       toggle.addEventListener("click", function (e) {
         e.stopPropagation();
-        var collapsed = childContainer.style.display === "none";
+        const collapsed = childContainer.style.display === "none";
         childContainer.style.display = collapsed ? "block" : "none";
         toggle.textContent = collapsed ? "\u25bc" : "\u25b6"; // ▼ / ▶
       });
@@ -301,7 +302,7 @@
       row.appendChild(label);
       row.appendChild(childContainer);
     } else if (isLeaf) {
-      var leafLabel = document.createElement("span");
+      const leafLabel = document.createElement("span");
       leafLabel.className = "ft-leaf";
       leafLabel.textContent = "\u{1F4C4} " + name;
       leafLabel.addEventListener("click", function (e) {
@@ -312,7 +313,7 @@
     } else {
       // Empty intermediate node (should not happen with the current
       // data model, but handle gracefully).
-      var emptyLabel = document.createElement("span");
+      const emptyLabel = document.createElement("span");
       emptyLabel.className = "ft-branch";
       emptyLabel.textContent = "\u{1F4C1} " + name;
       row.appendChild(emptyLabel);
@@ -323,19 +324,19 @@
 
   function selectArchiveFolder(path) {
     if (!folderBrowseBtn) return;
-    var mid = folderBrowseBtn.getAttribute("data-message-id");
-    var card = document.querySelector(
-      '.card-extra[data-message-id="' + CSS.escape(mid) + '"]'
+    const mid = folderBrowseBtn.getAttribute("data-message-id");
+    const card = document.querySelector(
+      '.card-extra[data-message-id="' + CSS.escape(mid) + '"]',
     );
     if (!card) return;
-    var form = card.querySelector(".archive-override-form");
+    const form = card.querySelector(".archive-override-form");
     if (!form) return;
-    var input = form.querySelector('input[name="subfolder"]');
+    const input = form.querySelector('input[name="subfolder"]');
     if (!input) return;
     input.value = path;
     closeFolderPopover();
     // Focus the Set button so the user can immediately confirm.
-    var setBtn = form.querySelector('button[type="submit"]');
+    const setBtn = form.querySelector('button[type="submit"]');
     if (setBtn) setBtn.focus();
   }
 
@@ -345,18 +346,18 @@
 
     folderBrowseBtn = btn;
 
-    var popover = document.createElement("div");
+    const popover = document.createElement("div");
     popover.className = "folder-tree-popover";
 
-    var tree = buildFolderTree(folderCache);
-    var rootKeys = Object.keys(tree._children).sort();
-    for (var i = 0; i < rootKeys.length; i++) {
-      var name = rootKeys[i];
-      var node = tree._children[name];
+    const tree = buildFolderTree(folderCache);
+    const rootKeys = Object.keys(tree._children).sort();
+    for (let i = 0; i < rootKeys.length; i++) {
+      const name = rootKeys[i];
+      const node = tree._children[name];
       popover.appendChild(renderTree(name, node, 0, name));
     }
     if (rootKeys.length === 0) {
-      var emptyMsg = document.createElement("div");
+      const emptyMsg = document.createElement("div");
       emptyMsg.className = "ft-empty";
       emptyMsg.textContent = "(no subfolders)";
       popover.appendChild(emptyMsg);
@@ -375,23 +376,23 @@
   }
 
   function positionFolderPopover(btn, popover) {
-    var rect = btn.getBoundingClientRect();
-    var scrollX = window.pageXOffset;
-    var scrollY = window.pageYOffset;
+    const rect = btn.getBoundingClientRect();
+    const scrollX = window.pageXOffset;
+    const scrollY = window.pageYOffset;
 
     popover.style.position = "absolute";
     popover.style.top = (rect.bottom + scrollY + 4) + "px";
     popover.style.left = (rect.left + scrollX) + "px";
 
     // Nudge into the viewport if it overflows on the right or bottom.
-    var popRect = popover.getBoundingClientRect();
+    const popRect = popover.getBoundingClientRect();
     if (popRect.right > window.innerWidth - 8) {
-      var adjLeft = window.innerWidth - popRect.width - 8 + scrollX;
+      let adjLeft = window.innerWidth - popRect.width - 8 + scrollX;
       if (adjLeft < 8) adjLeft = 8;
       popover.style.left = adjLeft + "px";
     }
     if (popRect.bottom > window.innerHeight - 8) {
-      var adjTop = rect.top + scrollY - popRect.height - 4;
+      let adjTop = rect.top + scrollY - popRect.height - 4;
       if (adjTop < 8) adjTop = 8;
       popover.style.top = adjTop + "px";
     }
@@ -421,7 +422,7 @@
 
   // Delegate click on Browse buttons.
   document.addEventListener("click", function (e) {
-    var btn = e.target.closest(".archive-browse-btn");
+    const btn = e.target.closest(".archive-browse-btn");
     if (!btn) return;
     e.preventDefault();
     e.stopPropagation();
@@ -432,7 +433,9 @@
       // silently earlier).
       if (folderCache === null) {
         fetch("/archive-folders" + fetchQs)
-          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            return r.json();
+          })
           .then(function (data) {
             folderCache = data.folders || [];
             if (folderCache.length) openFolderPopover(btn);
@@ -457,20 +460,22 @@
 
   function attachHashRouting() {
     if (location.hash) {
-      var mid = location.hash.slice(1);
+      const mid = location.hash.slice(1);
       if (mid) {
         // Open the detail for the hashed message.  We don't know the
         // subject at this point (the card might not even be rendered
         // yet), but the server-rendered board cards carry data-subject.
-        var card = document.querySelector(
-          '.card-extra[data-message-id="' + CSS.escape(mid) + '"]'
+        const card = document.querySelector(
+          '.card-extra[data-message-id="' + CSS.escape(mid) + '"]',
         );
-        var subject = "";
+        let subject = "";
         if (card) {
           subject = card.getAttribute("data-subject") || "";
         }
         if (dataAccountJs) {
-          var cardAccount = card ? (card.getAttribute("data-account") || "") : "";
+          const cardAccount = card
+            ? (card.getAttribute("data-account") || "")
+            : "";
           openDetail(mid, subject, false, cardAccount);
         } else {
           openDetail(mid, subject, false);
@@ -501,32 +506,32 @@
    * 4.  Board auto-refresh polling
    * ================================================================ */
 
-  var refreshTimer = null;
+  let _refreshTimer = null;
 
   function refreshBoard(force) {
     // Close the folder-tree popover if open — the card HTML it
     // references will be replaced.
     if (folderPopover) closeFolderPopover();
 
-    var sidePanel = document.getElementById("side-panel");
+    const sidePanel = document.getElementById("side-panel");
     if (!force && sidePanel && sidePanel.classList.contains("open")) return;
 
-    var savedX = window.pageXOffset;
-    var savedY = window.pageYOffset;
-    var prevBoard = document.querySelector(".board");
-    var savedBoardLeft = prevBoard ? prevBoard.scrollLeft : 0;
-    var savedBoardTop = prevBoard ? prevBoard.scrollTop : 0;
+    const savedX = window.pageXOffset;
+    const savedY = window.pageYOffset;
+    const prevBoard = document.querySelector(".board");
+    const savedBoardLeft = prevBoard ? prevBoard.scrollLeft : 0;
+    const savedBoardTop = prevBoard ? prevBoard.scrollTop : 0;
 
     fetchJson("/board-content" + fetchQs)
       .then(function (data) {
-        var board = document.querySelector(".board");
+        const board = document.querySelector(".board");
         if (board) board.innerHTML = data.columns_html;
         renderArchiveGroups();
 
-        var proposals = document.querySelector(".rule-proposals");
+        const proposals = document.querySelector(".rule-proposals");
         if (proposals) proposals.outerHTML = data.proposals_html;
 
-        var tc = document.getElementById("triage-control");
+        const tc = document.getElementById("triage-control");
         if (tc) {
           if (data.triage_running) {
             tc.innerHTML =
@@ -537,18 +542,17 @@
           }
         }
 
-        var bc = document.getElementById("batch-control");
+        const bc = document.getElementById("batch-control");
         if (bc) {
-          var op = data.batch_op;
+          const op = data.batch_op;
           if (op) {
-            var verbLabels = CFG.batch_op_verb_labels;
-            var verb = verbLabels[op.op] || "Processing";
-            var prog =
+            const verbLabels = CFG.batch_op_verb_labels;
+            const verb = verbLabels[op.op] || "Processing";
+            const prog =
               typeof op.done === "number" && typeof op.total === "number"
                 ? ": " + op.done + "/" + op.total
                 : "";
-            bc.innerHTML =
-              '<div class="batch-banner">' +
+            bc.innerHTML = '<div class="batch-banner">' +
               verb +
               " mail" +
               prog +
@@ -558,13 +562,13 @@
           }
         }
 
-        var ha = document.getElementById("health-alerts");
+        const ha = document.getElementById("health-alerts");
         if (ha) {
           ha.innerHTML = data.health_alerts_html || "";
         }
 
         window.scrollTo(savedX, savedY);
-        var newBoard = document.querySelector(".board");
+        const newBoard = document.querySelector(".board");
         if (newBoard) {
           newBoard.scrollLeft = savedBoardLeft;
           newBoard.scrollTop = savedBoardTop;
@@ -576,7 +580,7 @@
   }
 
   function startRefreshLoop() {
-    refreshTimer = setInterval(refreshBoard, 30000);
+    _refreshTimer = setInterval(refreshBoard, 30000);
   }
 
   /* ==================================================================
@@ -584,89 +588,105 @@
    * ================================================================ */
 
   function _createAuthModal() {
-    var overlay = document.createElement('div');
-    overlay.className = 'auth-modal-overlay';
+    const overlay = document.createElement("div");
+    overlay.className = "auth-modal-overlay";
     overlay.innerHTML = [
       '<div class="auth-modal">',
-      '  <h3>Microsoft Authorization Required</h3>',
+      "  <h3>Microsoft Authorization Required</h3>",
       '  <p class="auth-modal-message"></p>',
       '  <p>Open <a class="auth-modal-link" href="" target="_blank" rel="noopener"></a></p>',
       '  <p>Enter code: <strong class="auth-modal-code"></strong></p>',
       '  <p class="auth-modal-status"></p>',
-      '</div>'
-    ].join('\n');
+      "</div>",
+    ].join("\n");
     return overlay;
   }
 
   async function authorizeAccount(btn) {
-    var accountId = btn.dataset.accountId || '';
+    const accountId = btn.dataset.accountId || "";
     btn.disabled = true;
-    btn.textContent = 'Starting\u2026';
+    btn.textContent = "Starting\u2026";
 
-    var modal = _createAuthModal();
+    const modal = _createAuthModal();
     document.body.appendChild(modal);
-    modal.querySelector('.auth-modal-status').textContent = 'Requesting authorization code\u2026';
+    modal.querySelector(".auth-modal-status").textContent =
+      "Requesting authorization code\u2026";
 
-    var pollTimer = null;
+    let pollTimer = null;
 
     function cleanup() {
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
     }
 
     try {
-      var resp = await fetch('/auth-start', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({account_id: accountId}).toString(),
+      const resp = await fetch("/auth-start", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ account_id: accountId }).toString(),
       });
-      var data = await resp.json();
-      if (data.status === 'error') {
-        modal.querySelector('.auth-modal-status').textContent = '\u274c ' + (data.error || 'Unknown error');
+      const data = await resp.json();
+      if (data.status === "error") {
+        modal.querySelector(".auth-modal-status").textContent = "\u274c " +
+          (data.error || "Unknown error");
         cleanup();
         btn.disabled = false;
-        btn.textContent = 'Authorize / Reconnect';
+        btn.textContent = "Authorize / Reconnect";
         return;
       }
       if (data.message) {
-        modal.querySelector('.auth-modal-message').textContent = data.message;
+        modal.querySelector(".auth-modal-message").textContent = data.message;
       }
       if (data.verification_uri) {
-        var link = modal.querySelector('.auth-modal-link');
+        const link = modal.querySelector(".auth-modal-link");
         link.href = data.verification_uri;
         link.textContent = data.verification_uri;
       }
       if (data.user_code) {
-        modal.querySelector('.auth-modal-code').textContent = data.user_code;
+        modal.querySelector(".auth-modal-code").textContent = data.user_code;
       }
-      if (data.status === 'success') {
+      if (data.status === "success") {
         // Rare: flow completed before POST returned
-        modal.querySelector('.auth-modal-status').textContent = '\u2705 Connected! Reloading\u2026';
-        setTimeout(function () { window.location.reload(); }, 1500);
+        modal.querySelector(".auth-modal-status").textContent =
+          "\u2705 Connected! Reloading\u2026";
+        setTimeout(function () {
+          window.location.reload();
+        }, 1500);
         return;
       }
-      modal.querySelector('.auth-modal-status').textContent = 'Waiting for consent\u2026';
+      modal.querySelector(".auth-modal-status").textContent =
+        "Waiting for consent\u2026";
     } catch (e) {
-      modal.querySelector('.auth-modal-status').textContent = '\u274c Network error: ' + e.message;
+      modal.querySelector(".auth-modal-status").textContent =
+        "\u274c Network error: " + e.message;
       cleanup();
       btn.disabled = false;
-      btn.textContent = 'Authorize / Reconnect';
+      btn.textContent = "Authorize / Reconnect";
       return;
     }
 
     // Poll /auth-status every 3 s until success or error
     pollTimer = setInterval(async function () {
       try {
-        var r = await fetch('/auth-status?account_id=' + encodeURIComponent(accountId));
-        var s = await r.json();
-        if (s.status === 'success') {
+        const r = await fetch(
+          "/auth-status?account_id=" + encodeURIComponent(accountId),
+        );
+        const s = await r.json();
+        if (s.status === "success") {
           cleanup();
-          modal.querySelector('.auth-modal-status').textContent = '\u2705 Connected! Reloading\u2026';
-          setTimeout(function () { window.location.reload(); }, 1500);
-        } else if (s.status === 'error') {
+          modal.querySelector(".auth-modal-status").textContent =
+            "\u2705 Connected! Reloading\u2026";
+          setTimeout(function () {
+            window.location.reload();
+          }, 1500);
+        } else if (s.status === "error") {
           cleanup();
-          modal.querySelector('.auth-modal-status').textContent = '\u274c ' + (s.error || 'Unknown error');
+          modal.querySelector(".auth-modal-status").textContent = "\u274c " +
+            (s.error || "Unknown error");
           btn.disabled = false;
-          btn.textContent = 'Authorize / Reconnect';
+          btn.textContent = "Authorize / Reconnect";
         }
         // pending_prompt / pending_consent / idle: keep polling
       } catch (_e) { /* network hiccup — keep polling */ }

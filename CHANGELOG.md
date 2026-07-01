@@ -3,6 +3,7 @@
 ## 0.0.0 (unreleased)
 
 - Convert 11 remaining raw `init_db()`/`try`/`finally: conn.close()` call sites to use the `_with_db()` context manager from `server/_constants.py`. Affected files: `_auth_mixin.py`, `_config_mixin.py`, `_component_agent_responder.py`, `adapters.py`, `views/board.py`, `views/detail.py`, `handlers.py`.
+- Add Deno-based JavaScript linting (`deno lint`) and formatting (`deno fmt --check`) for `board-auto-mail.js` via pre-commit hooks and a CI step in `repo-checks`.
 - Add `security_posture` periodic workflow presence trigger (`.robotsix-mill/periodic/security_posture.yaml`)
 - Removed the root ``CLAUDE.md`` orientation file; ``AGENT.md`` is now the
   sole agent-facing root document. Updated the references in ``AGENT.md`` and
