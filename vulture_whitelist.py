@@ -86,23 +86,6 @@ from robotsix_auto_mail.server._component_agent_responder import (
 ComponentAgentResponder._config_set
 
 # ===========================================================================
-# Genuinely dead code — removal deferred to a separate ticket.
-# ===========================================================================
-
-from robotsix_auto_mail.config import logger
-
-logger  # noqa
-
-from robotsix_auto_mail.detect import ProviderEntry
-
-_ = ProviderEntry.in_managed_hosting
-
-from robotsix_auto_mail.protocol import _ProtocolClient
-
-_ProtocolClient._oauth2_client_id
-_ProtocolClient._oauth2_client_secret
-
-# ===========================================================================
 # Pydantic model fields — accessed via model_dump / model_validate / keyword
 # construction, never read as plain class attributes by application code.
 # ===========================================================================

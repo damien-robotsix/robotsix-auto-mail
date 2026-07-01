@@ -62,6 +62,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --extra dev
 
+      - name: Dependency vulnerability audit
+        run: uv audit --frozen
+
       - name: Check config sync
         run: uv run --frozen python scripts/config/check_config_sync.py
 
@@ -85,6 +88,16 @@ jobs:
 
       - name: Dead code detection (vulture)
         run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
+
+      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282  # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Lint JavaScript
+        run: deno lint src/robotsix_auto_mail/server/static/board-auto-mail.js
+
+      - name: Check JavaScript formatting
+        run: deno fmt --check src/robotsix_auto_mail/server/static/board-auto-mail.js
 
       - name: Validate pyproject.toml (validate-pyproject)
         run: uvx 'validate-pyproject[all,store]'
@@ -117,6 +130,27 @@ jobs:
       run-pip-audit: true
       pip-audit-requirements-file: requirements-locked.txt
       pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board robotsix-auto-mail robotsix-llmio robotsix-modules"
+
+  # Standalone CycloneDX SBOM of the full Python dependency tree (direct +
+  # transitive), generated from uv.lock. Uploaded as a workflow artifact so
+  # tools like Dependency-Track or OWASP Dependency-Check can consume it
+  # independently of the container image.
+  sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-project
+      - name: Generate CycloneDX SBOM
+        run: uv export --format cyclonedx1.5 --output-file sbom.cdx.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: cyclonedx-sbom
+          path: sbom.cdx.json
 
   # Diff-scoped dependency review gate on pull requests. Uses GitHub's
   # dependency-review-action to (a) block PRs that add dependencies with known

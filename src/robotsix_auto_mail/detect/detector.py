@@ -44,7 +44,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="smtp.gmail.com",
         mx_needles=("google.com", "googlemail.com"),
         domain_patterns=("gmail.com", "googlemail.com"),
-        in_managed_hosting=True,
     ),
     ProviderEntry(
         label="Outlook / Hotmail / Live / MS365",
@@ -60,7 +59,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
             "live.*",
             "msn.com",
         ),
-        in_managed_hosting=True,
     ),
     ProviderEntry(
         label="Yahoo Mail",
@@ -82,7 +80,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="smtp.fastmail.com",
         mx_needles=("messagingengine.com", "fastmail"),
         domain_patterns=("fastmail.com", "fastmail.*"),
-        in_managed_hosting=True,
     ),
     ProviderEntry(
         label="Zoho Mail",
@@ -90,7 +87,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="smtp.zoho.com",
         mx_needles=("zoho.com", "zoho.eu"),
         domain_patterns=("zoho.com", "zoho.*"),
-        in_managed_hosting=True,
     ),
     ProviderEntry(
         label="Proton Mail Bridge",
@@ -159,7 +155,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="smtp.mailbox.org",
         mx_needles=("mailbox.org",),
         in_prompt_table=False,
-        in_managed_hosting=True,
     ),
     ProviderEntry(
         label="Migadu",
@@ -167,7 +162,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="smtp.migadu.com",
         mx_needles=("migadu.com",),
         in_prompt_table=False,
-        in_managed_hosting=True,
     ),
     ProviderEntry(
         label="Gandi",
@@ -175,7 +169,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="mail.gandi.net",
         mx_needles=("gandi.net",),
         in_prompt_table=False,
-        in_managed_hosting=True,
     ),
     ProviderEntry(
         label="OVH",
@@ -183,7 +176,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="ssl0.ovh.net",
         mx_needles=("ovh.net", "ovh.ca"),
         in_prompt_table=False,
-        in_managed_hosting=True,
     ),
     ProviderEntry(
         label="Infomaniak",
@@ -191,7 +183,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="mail.infomaniak.com",
         mx_needles=("infomaniak.com",),
         in_prompt_table=False,
-        in_managed_hosting=True,
     ),
     ProviderEntry(
         label="Purelymail",
@@ -199,7 +190,6 @@ _PROVIDER_DB: tuple[ProviderEntry, ...] = (
         smtp_host="smtp.purelymail.com",
         mx_needles=("purelymail.com",),
         in_prompt_table=False,
-        in_managed_hosting=True,
     ),
     # ---- MX-only (GoDaddy — never in prompt) ----
     ProviderEntry(

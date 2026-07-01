@@ -59,7 +59,7 @@ class TestBuildDetailHtml:
 
         with (
             mock.patch(
-                "robotsix_auto_mail.db.init_db", return_value=fake_conn
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
             ) as mock_init,
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
@@ -89,7 +89,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,
@@ -110,7 +112,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=None,
@@ -135,7 +139,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,
@@ -162,7 +168,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,
@@ -186,7 +194,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,
@@ -206,7 +216,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,
@@ -232,7 +244,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,
@@ -254,7 +268,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,
@@ -277,7 +293,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,
@@ -307,7 +325,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,
@@ -329,7 +349,9 @@ class TestBuildDetailHtml:
         fake_conn = mock.Mock()
 
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=fake_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
             mock.patch(
                 "robotsix_auto_mail.db.get_record_by_message_id",
                 return_value=record,

@@ -50,10 +50,10 @@ class ComponentAgentResponder:
         """
         from robotsix_auto_mail.db import (
             get_watermark,
-            init_db,
             list_records,
             list_untriaged_records,
         )
+        from robotsix_auto_mail.server._constants import _with_db
 
         cfg = self._holder.config
 
@@ -66,32 +66,28 @@ class ComponentAgentResponder:
 
         # DB reachability + counts
         try:
-            conn = init_db(cfg.db_path, skip_migrations=True)
+            with _with_db(cfg.db_path, skip_migrations=True) as conn:
+                records = list_records(conn)
+                untriaged = list_untriaged_records(conn)
+                telemetry["db"] = {
+                    "reachable": True,
+                    "path": cfg.db_path,
+                    "record_count": len(records),
+                    "untriaged_count": len(untriaged),
+                }
+
+                # Watermark states
+                for key in (
+                    "imap_uid",
+                    _RECONCILE_STATE_KEY,
+                    _TRIAGE_RUN_STATE_KEY,
+                    _BATCH_OP_STATE_KEY,
+                ):
+                    wm = get_watermark(conn, key)
+                    telemetry["watermarks"][key] = wm
         except Exception as exc:
             telemetry["db"] = {"reachable": False, "error": str(exc)}
             return telemetry
-
-        try:
-            records = list_records(conn)
-            untriaged = list_untriaged_records(conn)
-            telemetry["db"] = {
-                "reachable": True,
-                "path": cfg.db_path,
-                "record_count": len(records),
-                "untriaged_count": len(untriaged),
-            }
-
-            # Watermark states
-            for key in (
-                "imap_uid",
-                _RECONCILE_STATE_KEY,
-                _TRIAGE_RUN_STATE_KEY,
-                _BATCH_OP_STATE_KEY,
-            ):
-                wm = get_watermark(conn, key)
-                telemetry["watermarks"][key] = wm
-        finally:
-            conn.close()
 
         # Per-account board summary (single-account for now)
         telemetry["board"] = {

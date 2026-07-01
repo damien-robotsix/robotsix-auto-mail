@@ -93,6 +93,9 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     if cfg.triage_on_ingest != defaults.triage_on_ingest:
         lines.append(f"{item}triage:")
         lines.append(f"{item}  on_ingest: {_yaml_scalar(cfg.triage_on_ingest)}")
+    if cfg.component_agent_enabled != defaults.component_agent_enabled:
+        lines.append(f"{item}component_agent:")
+        lines.append(f"{item}  enabled: {_yaml_scalar(cfg.component_agent_enabled)}")
     return lines
 
 
@@ -145,6 +148,17 @@ def render_accounts_yaml(
             f"  secret_key: {_yaml_scalar(representative.langfuse_secret_key)}"
         )
         lines.append(f"  base_url: {_yaml_scalar(representative.langfuse_base_url)}")
+        lines.append("")
+
+    if (
+        representative.log_level != "INFO"
+        or representative.log_format != "console"
+        or representative.log_file_dir != ".mail_log"
+    ):
+        lines.append("logging:")
+        lines.append(f"  level: {_yaml_scalar(representative.log_level)}")
+        lines.append(f"  format: {_yaml_scalar(representative.log_format)}")
+        lines.append(f"  file_dir: {_yaml_scalar(representative.log_file_dir)}")
         lines.append("")
 
     lines.append(f"default_account: {_yaml_scalar(default_account_id)}")

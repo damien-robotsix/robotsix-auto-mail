@@ -26,6 +26,7 @@ from robotsix_auto_mail.server._constants import (
     _BOARD_COLUMNS,
     BATCH_OP_VERB_LABELS,
     BATCH_OP_VERBS,
+    _with_db,
 )
 from robotsix_auto_mail.server.adapters import _NonEmptyColumnsAdapter
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
@@ -90,11 +91,10 @@ def _gather_account_board_data(
     This is the DB-reading half of :func:`_build_board_content`, extracted
     so the global board can call it per-account.
     """
-    from robotsix_auto_mail.db import get_watermark, init_db
+    from robotsix_auto_mail.db import get_watermark
     from robotsix_auto_mail.db.queries import get_account_health
 
-    conn = init_db(db_path, skip_migrations=True)
-    try:
+    with _with_db(db_path, skip_migrations=True) as conn:
         # Read account health so the board can display a red banner on failures.
         health = get_account_health(conn)
         # Check whether the triage agent is currently running so the
@@ -215,8 +215,6 @@ def _gather_account_board_data(
             for name in existing_folders
             if name.startswith(_root_prefix) and name != effective_root
         )
-    finally:
-        conn.close()
 
     return {
         "triage_running": triage_running,
@@ -658,16 +656,12 @@ def _build_board_html(
     # multiple accounts are configured.
     picker_health: dict[str, dict[str, Any] | None] = {}
     if accounts is not None and len(accounts.ids()) >= 2:
-        from robotsix_auto_mail.db import init_db as _init_db
         from robotsix_auto_mail.db.queries import get_account_health as _get_h
 
         for a in accounts.accounts:
             try:
-                c = _init_db(a.config.db_path, skip_migrations=True)
-                try:
+                with _with_db(a.config.db_path, skip_migrations=True) as c:
                     picker_health[a.account_id] = _get_h(c)
-                finally:
-                    c.close()
             except Exception:
                 picker_health[a.account_id] = None
 

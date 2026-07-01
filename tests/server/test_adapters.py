@@ -78,7 +78,8 @@ class TestRunTriageBackground:
         mock_conn = mock.MagicMock(spec=sqlite3.Connection)
         with (
             mock.patch(
-                "robotsix_auto_mail.db.init_db", return_value=mock_conn
+                "robotsix_auto_mail.server._constants.init_db",
+                return_value=mock_conn,
             ) as mock_init_db,
             mock.patch("robotsix_auto_mail.db.set_watermark") as mock_set_watermark,
             mock.patch("robotsix_auto_mail.triage.run_triage_agent"),
@@ -94,7 +95,9 @@ class TestRunTriageBackground:
     def test_clears_watermark_when_agent_raises(self) -> None:
         mock_conn = mock.MagicMock(spec=sqlite3.Connection)
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=mock_conn
+            ),
             mock.patch("robotsix_auto_mail.db.set_watermark") as mock_set_watermark,
             mock.patch(
                 "robotsix_auto_mail.triage.run_triage_agent",
@@ -113,7 +116,9 @@ class TestRunTriageBackground:
         """When triage cannot be imported the watermark is still cleared."""
         mock_conn = mock.MagicMock(spec=sqlite3.Connection)
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=mock_conn
+            ),
             mock.patch("robotsix_auto_mail.db.set_watermark") as mock_set_watermark,
         ):
             # Make the triage module unimportable.
@@ -131,7 +136,9 @@ class TestRunTriageBackground:
     def test_passes_user_email_to_agent(self) -> None:
         mock_conn = mock.MagicMock(spec=sqlite3.Connection)
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=mock_conn
+            ),
             mock.patch("robotsix_auto_mail.db.set_watermark"),
             mock.patch("robotsix_auto_mail.triage.run_triage_agent") as mock_run_triage,
         ):
@@ -144,7 +151,9 @@ class TestRunTriageBackground:
     def test_passes_none_user_email_by_default(self) -> None:
         mock_conn = mock.MagicMock(spec=sqlite3.Connection)
         with (
-            mock.patch("robotsix_auto_mail.db.init_db", return_value=mock_conn),
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=mock_conn
+            ),
             mock.patch("robotsix_auto_mail.db.set_watermark"),
             mock.patch("robotsix_auto_mail.triage.run_triage_agent") as mock_run_triage,
         ):

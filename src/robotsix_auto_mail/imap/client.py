@@ -89,8 +89,6 @@ class ImapClient(_ProtocolClient):
             username=config.username,
             password=config.password,
             oauth2_token=config.oauth2_token,
-            oauth2_client_id=config.oauth2_client_id,
-            oauth2_client_secret=config.oauth2_client_secret,
         )
         # Resolve ``build_token_provider`` through the package at call time so
         # that ``mock.patch("robotsix_auto_mail.imap.build_token_provider")``
