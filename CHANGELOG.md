@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add `id-token: write` at the job level in `analysis` job in `.github/workflows/scorecard.yml` to satisfy `ossf/scorecard-action` `publish_results` requirement
 - Add OpenSSF Scorecard integration (`.github/workflows/scorecard.yml`) — runs weekly and on pushes to `main`, publishing results via SARIF upload for GitHub code-scanning alerts.
 - Switched CI dependency vulnerability audit from `pip-audit` to `uv audit --frozen`.
 - Convert 11 remaining raw `init_db()`/`try`/`finally: conn.close()` call sites to use the `_with_db()` context manager from `server/_constants.py`. Affected files: `_auth_mixin.py`, `_config_mixin.py`, `_component_agent_responder.py`, `adapters.py`, `views/board.py`, `views/detail.py`, `handlers.py`.
