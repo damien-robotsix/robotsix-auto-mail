@@ -13,8 +13,6 @@ import json
 import sqlite3
 from pathlib import Path
 
-from robotsix_llmio.core import Tier
-
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
@@ -224,7 +222,7 @@ def _detect_unsubscribe_for_sender(
         return _run_llm_agent(
             api_key=resolved_key,
             provider_model=resolved_provider_model,
-            tier=Tier.CHEAP,
+            level=1,
             system_prompt=system_prompt,
             output_model=UnsubscribeDetection,
             user_message=user_message,
@@ -398,7 +396,7 @@ def run_triage_agent(
     *,
     api_key: str | None = None,
     provider_model: str | None = None,
-    tier: Tier = Tier.CHEAP,
+    level: int = 1,
     only_undecided: bool = False,
     user_email: str | None = None,
     rules_path: str | Path | None = None,
@@ -424,7 +422,7 @@ def run_triage_agent(
             Resolves with the precedence ``provider_model`` argument →
             ``LLM_PROVIDER_MODEL`` env var → ``config.llm_provider_model`` (via
             :func:`~robotsix_auto_mail.config.resolve_llm_provider_model`).
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default).
+        level: LLM integer tier to use.  ``1`` (cheap, default).
         only_undecided: When ``True``, inbox records that already have a
             ``triage_decisions`` row (per :func:`get_triage_decision`) are
             dropped before both the deterministic-rule fast-path and the
@@ -483,7 +481,7 @@ def run_triage_agent(
     output: TriageResult = _run_llm_agent(
         api_key=resolved_key,
         provider_model=resolved_provider_model,
-        tier=tier,
+        level=level,
         system_prompt=system_prompt,
         output_model=TriageResult,
         user_message=user_message,

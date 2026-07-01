@@ -10,7 +10,6 @@ from unittest import mock
 import pydantic
 import pytest
 import urllib3.exceptions
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail.detect import (
     DetectedProvider,
@@ -402,7 +401,7 @@ def test_detect_provider_missing_api_key() -> None:
         assert "llm.api_key" in str(exc.value)
 
 
-def test_detect_provider_tier_default() -> None:
+def test_detect_provider_level_default() -> None:
     """When no tier arg is passed, build_agent is called with level=1 (cheap)."""
     with mock.patch.dict(os.environ, {}, clear=True):
         mock_run_result = mock.MagicMock()
@@ -428,8 +427,8 @@ def test_detect_provider_tier_default() -> None:
         assert call_kwargs["level"] == 1
 
 
-def test_detect_provider_explicit_tier() -> None:
-    """When tier=Tier.DEFAULT is passed, build_agent is called with level=2."""
+def test_detect_provider_explicit_level() -> None:
+    """When level=2 is passed, build_agent is called with level=2."""
     with mock.patch.dict(os.environ, {}, clear=True):
         mock_run_result = mock.MagicMock()
         mock_run_result.output = DetectedProvider(
@@ -447,7 +446,7 @@ def test_detect_provider_explicit_tier() -> None:
             "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
-            detect_provider("user@example.com", api_key="sk-test", tier=Tier.DEFAULT)
+            detect_provider("user@example.com", api_key="sk-test", level=2)
 
         mock_provider.build_agent.assert_called_once()
         call_kwargs = mock_provider.build_agent.call_args.kwargs

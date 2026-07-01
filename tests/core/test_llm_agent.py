@@ -11,7 +11,6 @@ from unittest import mock
 
 import pydantic
 import pytest
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import ConfigurationError
@@ -65,7 +64,7 @@ def test_happy_path_returns_typed_output(mock_deps):
     result = _run_llm_agent(
         api_key=None,
         provider_model="openrouter/deepseek",
-        tier=Tier.CHEAP,
+        level=1,
         system_prompt="You are a helpful assistant.",
         output_model=_FakeOutput,
         user_message="hello",
@@ -96,7 +95,7 @@ def test_missing_api_key_raises_exc_type(mock_deps):
         _run_llm_agent(
             api_key=None,
             provider_model=None,
-            tier=Tier.CHEAP,
+            level=1,
             system_prompt="test",
             output_model=_FakeOutput,
             user_message="hello",
@@ -125,7 +124,7 @@ def test_run_agent_failure_raises_exc_type(mock_deps):
         _run_llm_agent(
             api_key="sk-test",
             provider_model=None,
-            tier=Tier.CHEAP,
+            level=1,
             system_prompt="test",
             output_model=_FakeOutput,
             user_message="hello",
@@ -140,18 +139,18 @@ def test_run_agent_failure_raises_exc_type(mock_deps):
 
 
 # ---------------------------------------------------------------------------
-# Tier mapping
+# Level mapping
 # ---------------------------------------------------------------------------
 
 
-def test_tier_default_completes_successfully(mock_deps):
-    """``Tier.DEFAULT`` (non-CHEAP) selects level=2 and the call succeeds."""
+def test_level2_completes_successfully(mock_deps):
+    """``level=2`` (non-cheap) selects level=2 and the call succeeds."""
     _mock_key, mock_get_prov, mock_run = mock_deps
 
     result = _run_llm_agent(
         api_key=None,
         provider_model=None,
-        tier=Tier.DEFAULT,
+        level=2,
         system_prompt="test",
         output_model=_FakeOutput,
         user_message="hello",

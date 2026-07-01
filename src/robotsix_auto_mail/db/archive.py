@@ -19,7 +19,6 @@ import sqlite3
 import typing
 
 import pydantic
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._constants import (
     _ARCHIVE_ROOT,
@@ -108,7 +107,7 @@ def determine_archive_structure(
     archive_root: str = ARCHIVE_ROOT,
     api_key: str | None = None,
     provider_model: str | None = None,
-    tier: Tier = Tier.CHEAP,
+    level: int = 1,
 ) -> list[str]:
     """Ask an LLM to propose an archive folder layout under the root.
 
@@ -124,7 +123,7 @@ def determine_archive_structure(
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
             back to the tier-level default model.
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default).
+        level: LLM integer tier to use.  ``1`` (cheap, default).
 
     Returns:
         A list of sub-paths relative to the archive root (``/``-separated).
@@ -139,7 +138,7 @@ def determine_archive_structure(
     structure = _run_llm_agent(
         api_key=api_key,
         provider_model=provider_model,
-        tier=tier,
+        level=level,
         system_prompt=_build_archive_system_prompt(archive_root),
         output_model=ArchiveStructure,
         user_message=user_message,
@@ -162,7 +161,7 @@ def setup_archive(
     archive_root: str = ARCHIVE_ROOT,
     api_key: str | None = None,
     provider_model: str | None = None,
-    tier: Tier = Tier.CHEAP,
+    level: int = 1,
 ) -> list[str]:
     """Ensure the managed archive folder structure exists and is remembered.
 
@@ -186,7 +185,7 @@ def setup_archive(
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
             back to the tier-level default model.
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default).
+        level: LLM integer tier to use.  ``1`` (cheap, default).
 
     Returns:
         The list of full archive folder names that exist after setup.
@@ -219,7 +218,7 @@ def setup_archive(
             archive_root=archive_root,
             api_key=resolved_key,
             provider_model=provider_model,
-            tier=tier,
+            level=level,
         )
     else:
         subpaths = []

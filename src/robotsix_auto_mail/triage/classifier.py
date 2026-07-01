@@ -17,8 +17,6 @@ import sqlite3
 from email.utils import parseaddr
 from typing import cast
 
-from robotsix_llmio.core import Tier
-
 from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
@@ -287,7 +285,7 @@ def propose_archive_subfolder_llm(
         proposed: ArchiveSubfolderProposal = _run_llm_agent(
             api_key=resolved_key,
             provider_model=provider_model,
-            tier=Tier.CHEAP,
+            level=1,
             system_prompt=system_prompt,
             output_model=ArchiveSubfolderProposal,
             user_message=user_message,

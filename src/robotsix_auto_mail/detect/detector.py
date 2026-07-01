@@ -12,7 +12,6 @@ from xml.etree import ElementTree  # nosec B405
 
 import urllib3
 import urllib3.exceptions
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
@@ -361,7 +360,7 @@ _DETECT_SYSTEM_PROMPT: str = _build_system_prompt()
 def detect_provider(
     email_address: str,
     *,
-    tier: Tier = Tier.CHEAP,
+    level: int = 1,
     api_key: str | None = None,
     provider_model: str | None = None,
     feedback: str | None = None,
@@ -371,9 +370,7 @@ def detect_provider(
 
     Args:
         email_address: The email address to detect provider settings for.
-        tier: LLM tier to use.  The concrete model for each tier is
-            resolved by the configured provider backend (see
-            :func:`robotsix_llmio.core.get_provider_for_identifier`).
+        level: LLM integer tier to use.  ``1`` (cheap, default).
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
             :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
@@ -420,7 +417,7 @@ def detect_provider(
     detected: DetectedProvider = _run_llm_agent(
         api_key=api_key,
         provider_model=provider_model,
-        tier=tier,
+        level=level,
         system_prompt=_DETECT_SYSTEM_PROMPT,
         output_model=DetectedProvider,
         user_message=user_message,

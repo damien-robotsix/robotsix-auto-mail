@@ -24,7 +24,6 @@ import sys
 from pathlib import Path
 
 import pydantic
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
@@ -326,7 +325,7 @@ def run_config_sync_agent(
     repo_root: Path | None = None,
     api_key: str | None = None,
     provider_model: str | None = None,
-    tier: Tier = Tier.CHEAP,
+    level: int = 1,
     conn: sqlite3.Connection | None = None,
 ) -> ConfigSyncResult:
     """Ask an LLM to detect config drift across the config surfaces.
@@ -340,7 +339,7 @@ def run_config_sync_agent(
         provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
             ``None`` falls back to the tier-level default model (via
             :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default).
+        level: LLM integer tier to use.  ``1`` (cheap, default).
         conn: Optional open SQLite connection.  When provided, the result
             is passed through the dedup memory ledger
             (:func:`record_and_filter_proposals`): findings already seen in
@@ -365,7 +364,7 @@ def run_config_sync_agent(
     output = _run_llm_agent(
         api_key=api_key,
         provider_model=provider_model,
-        tier=tier,
+        level=level,
         system_prompt=_build_config_sync_system_prompt(),
         output_model=ConfigSyncResult,
         user_message=user_message,
