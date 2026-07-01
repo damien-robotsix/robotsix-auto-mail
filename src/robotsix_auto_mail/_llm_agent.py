@@ -15,7 +15,6 @@ from __future__ import annotations
 import typing
 
 import pydantic
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail.config import (
     ConfigurationError,
@@ -32,7 +31,7 @@ def _run_llm_agent(  # noqa: UP047
     *,
     api_key: str | None,
     provider_model: str | None,
-    tier: Tier,
+    level: int,
     system_prompt: str,
     output_model: type[_T],
     user_message: str,
@@ -47,8 +46,8 @@ def _run_llm_agent(  # noqa: UP047
             standard resolution cascade (env → config file).
         provider_model: LLM provider-model identifier.  ``None`` falls
             back to the tier-level default model from the configured tier.
-        tier: LLM tier — ``Tier.CHEAP`` maps to ``level=1``; any other
-            tier maps to ``level=2``.
+        level: Integer model tier — ``1`` = cheap (fastest/cheapest),
+            ``2`` = default.
         system_prompt: The system prompt for ``build_agent``.
         output_model: A **plain** ``pydantic.BaseModel`` subclass (NOT
             a ``PromptedOutput`` instance).  The helper wraps it in
@@ -94,7 +93,7 @@ def _run_llm_agent(  # noqa: UP047
     _tier_config = TierConfig(
         level1=LEVEL1_DEFAULT, level2=LEVEL2_DEFAULT, level3=LEVEL3_DEFAULT
     )
-    _level = 1 if tier == Tier.CHEAP else 2
+    _level = level
     _tlc = _tier_config.for_level(_level)
     model_id = provider_model if provider_model else _tlc.model
     model_provider = _get_provider(

@@ -16,7 +16,6 @@ from __future__ import annotations
 import sqlite3
 
 from pydantic import BaseModel
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.db import (
@@ -96,7 +95,7 @@ def generate_draft_reply(
     *,
     api_key: str | None = None,
     provider_model: str | None = None,
-    tier: Tier = Tier.CHEAP,
+    level: int = 1,
 ) -> str:
     """Generate, persist, and return an LLM draft reply for *message_id*.
 
@@ -115,7 +114,7 @@ def generate_draft_reply(
         provider_model: LLM provider-model identifier (e.g. ``openrouter-deepseek``).
             ``None`` falls back to the tier-level default model (via
             :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
-        tier: LLM tier to use.  ``Tier.CHEAP`` (default).
+        level: LLM integer tier to use.  ``1`` (cheap, default).
 
     Raises:
         DraftGenerationError: If no record exists for *message_id* or the
@@ -130,7 +129,7 @@ def generate_draft_reply(
     output = _run_llm_agent(
         api_key=api_key,
         provider_model=provider_model,
-        tier=tier,
+        level=level,
         system_prompt=_build_draft_system_prompt(),
         output_model=DraftResult,
         user_message=user_message,

@@ -24,7 +24,6 @@ import threading
 from pathlib import Path
 
 import pydantic
-from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
@@ -202,7 +201,7 @@ def update_rules_for_action(
             result = _run_llm_agent(
                 api_key=resolved_key,
                 provider_model=resolve_llm_provider_model(provider_model),
-                tier=Tier.CHEAP,
+                level=1,
                 system_prompt=_build_rules_system_prompt(),
                 output_model=RulesMarkdown,
                 user_message=_build_rules_user_message(
