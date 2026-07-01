@@ -72,16 +72,39 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
 
-  release-notes:
-    needs: publish
-    if: github.ref_type == 'tag'
+  sbom:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           persist-credentials: false
+      - uses: ./.github/actions/setup-project
+      - name: Generate CycloneDX SBOM
+        run: uv export --format cyclonedx1.5 --output-file sbom.cdx.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: cyclonedx-sbom
+          path: sbom.cdx.json
+
+  release-notes:
+    needs: [publish, sbom]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - name: Download SBOM artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          name: cyclonedx-sbom
 
       - name: Extract release notes from CHANGELOG
         env:
@@ -105,9 +128,8 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
-        with:
-          body_path: /tmp/release_body.md
-          generate_release_notes: true
-          tag_name: ${{ github.ref_name }}
-          name: "${{ github.ref_name }}"
+        run: |
+          gh release create "$GITHUB_REF_NAME" sbom.cdx.json \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file /tmp/release_body.md \
+            --generate-notes

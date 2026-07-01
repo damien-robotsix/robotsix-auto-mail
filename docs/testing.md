@@ -47,7 +47,10 @@ made of four jobs:
   taxonomy/registration validation, changelog enforcement, vulture dead-code
   detection, `validate-pyproject`, and the zizmor workflow scan.
 - **`security`** — delegates to the reusable
-  `python-security.yml` workflow (secret scan, pip-audit, CycloneDX SBOM).
+  `python-security.yml` workflow (secret scan, pip-audit).
+- **`sbom`** — generates a standalone CycloneDX SBOM of the full Python
+  dependency tree (direct + transitive) from `uv.lock` and uploads it as a
+  downloadable workflow artifact.
 - **`dependency-review`** — diff-scoped dependency review on pull requests.
 
 To mirror the `ci` job locally before pushing, run:

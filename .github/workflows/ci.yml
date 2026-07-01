@@ -131,6 +131,27 @@ jobs:
       pip-audit-requirements-file: requirements-locked.txt
       pip-audit-ignore-packages: "robotsix-yaml-config robotsix-board robotsix-auto-mail robotsix-llmio robotsix-modules"
 
+  # Standalone CycloneDX SBOM of the full Python dependency tree (direct +
+  # transitive), generated from uv.lock. Uploaded as a workflow artifact so
+  # tools like Dependency-Track or OWASP Dependency-Check can consume it
+  # independently of the container image.
+  sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-project
+      - name: Generate CycloneDX SBOM
+        run: uv export --format cyclonedx1.5 --output-file sbom.cdx.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: cyclonedx-sbom
+          path: sbom.cdx.json
+
   # Diff-scoped dependency review gate on pull requests. Uses GitHub's
   # dependency-review-action to (a) block PRs that add dependencies with known
   # CVEs rated moderate or higher and (b) deny strong-copyleft licenses
