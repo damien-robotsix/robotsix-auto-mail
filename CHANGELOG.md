@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added unit tests for the serve CLI subcommand and the background reconcile loop (`tests/cli/test_commands_serve.py`).
 - Bump actions/checkout from v4 (34e1148) to v6 (df4cb1c) across all workflow files.
 - Fix the ``lockfile.yml`` workflow: pass ``GITHUB_TOKEN`` so the
   "Commit updated lockfile" step can authenticate its ``git push``.
