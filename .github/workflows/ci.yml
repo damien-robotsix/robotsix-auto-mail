@@ -145,7 +145,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-project
       - name: Generate CycloneDX SBOM
-        run: uv export --format cyclonedx --output-file sbom.cdx.json
+        run: uv export --format cyclonedx1.5 --output-file sbom.cdx.json
       - name: Upload SBOM
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
