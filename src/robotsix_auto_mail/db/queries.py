@@ -59,7 +59,7 @@ def init_db(
         _migrate_triage_action_check(conn)
         _migrate_legacy_statuses(conn)
         _migrate_status_to_triage(conn)
-        run_additive_migrations(conn, "mail_records", _ADDITIVE_COLUMNS)
+        run_additive_migrations(conn, "mail_records", _ADDITIVE_COLUMNS)  # type: ignore[arg-type]  # _SQLiteConn Protocol vs positional-only sqlite3.execute
     return conn
 
 

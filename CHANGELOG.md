@@ -2,6 +2,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Migrated ``add_column_if_missing`` and ``run_additive_migrations`` helpers
+  from a local copy in ``db/_migrate.py`` to the fleet-shared
+  ``robotsix_llmio.core.sqlite_utils`` module.
+
 - Refresh the ``robotsix-agent-comm`` git pin (declared ``rev="main"``) from the
   stale locked commit ``c57e9d74`` to ``e5e6d85e`` so the optional
   ``[calendar]``/``[broker]`` extras can import ``ConfigContractError`` from
