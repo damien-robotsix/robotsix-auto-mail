@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add structured feature request issue template (`.github/ISSUE_TEMPLATE/feature_request.yml`) with initial checks, description, and affected-areas sections.
 - Add `LLM_API_KEY` and `LLM_PROVIDER_MODEL` environment variable fallbacks
   in `resolve_llm_api_key` and `resolve_llm_provider_model`, making the
   resolution chain (arg → env var → config file) match the documented behavior
