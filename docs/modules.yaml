@@ -227,9 +227,13 @@ modules:
     paths:
       - src/robotsix_auto_mail/pipeline/__init__.py
       - src/robotsix_auto_mail/pipeline/_parse.py
-      - tests/pipeline/test_pipeline.py
+      - tests/pipeline/_helpers.py
+      - tests/pipeline/test_pipeline_cli_ingest.py
+      - tests/pipeline/test_fetch.py
+      - tests/pipeline/test_ingest.py
       - tests/pipeline/test_parser.py
       - tests/pipeline/test_parser_properties.py
+      - tests/pipeline/test_reconcile.py
 
   - id: smtp
     description: >-
