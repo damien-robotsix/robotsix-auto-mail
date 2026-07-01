@@ -296,7 +296,7 @@ def test_detect_llm_api_key_from_config(
     mock_dp = mock.MagicMock(return_value=mock_provider)
 
     with (
-        mock.patch("robotsix_auto_mail.config.load_llm", return_value="sk-test"),
+        mock.patch("robotsix_auto_mail.config.loader.load_llm", return_value="sk-test"),
         mock.patch("robotsix_auto_mail.detect.detect_provider", mock_dp),
     ):
         rc = main(["detect", "user@x.com", "--stdout"])
@@ -1233,6 +1233,106 @@ def test_detect_overwrite_app_password_clears_oauth2_provider(
     assert "app-pw-789" in content
     # oauth2_provider must be cleared
     assert "oauth2_provider:" not in content
+
+
+def test_detect_overwrite_preserves_llm_api_key(
+    tmp_path: Path, no_autoconfig: object
+) -> None:
+    """--overwrite preserves llm_api_key, llm_provider_model, and langfuse_*
+    fields from an existing config file (re-deploy path)."""
+    from robotsix_auto_mail.config import render_accounts_yaml
+
+    output = tmp_path / "cfg.yaml"
+    seed_cfg = MailConfig(
+        imap_host="old.example.com",
+        smtp_host="old.example.com",
+        username="test@gmail.com",
+        password="old-pw",
+        llm_api_key="sk-seed",
+        llm_provider_model="openai/gpt-4o",
+        langfuse_public_key="pk-seed",
+        langfuse_secret_key="sk-seed-lf",
+        langfuse_base_url="https://cloud.langfuse.com",
+    )
+    seed_account = MailAccount(account_id="main", config=seed_cfg, label="Main")
+    output.write_text(render_accounts_yaml([seed_account], "main"))
+
+    mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-env"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "test@gmail.com",
+                "--id",
+                "main",
+                "--overwrite",
+                "--password",
+                "pw",
+                "--no-verify",
+                "--output",
+                str(output),
+            ]
+        )
+
+    assert rc == 0
+    accounts = MailAccountsConfig.from_yaml(str(output))
+    cfg = accounts.get("main").config
+    # Existing llm/langfuse values preserved from the seed file.
+    assert cfg.llm_api_key == "sk-seed"
+    assert cfg.llm_provider_model == "openai/gpt-4o"
+    assert cfg.langfuse_public_key == "pk-seed"
+    assert cfg.langfuse_secret_key == "sk-seed-lf"
+    assert cfg.langfuse_base_url == "https://cloud.langfuse.com"
+    # Transport fields updated.
+    assert cfg.imap_host == "imap.gmail.com"
+
+    # Raw file carries the top-level llm: and langfuse: sections.
+    content = output.read_text()
+    assert "llm:" in content
+    assert "langfuse:" in content
+    assert 'api_key: "sk-seed"' in content
+    assert 'public_key: "pk-seed"' in content
+
+
+def test_detect_writes_llm_api_key_from_env(
+    tmp_path: Path, no_autoconfig: object
+) -> None:
+    """Fresh detect with LLM_API_KEY env var writes llm.api_key into the output."""
+    output = tmp_path / "cfg.yaml"
+    mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.detect.detect_provider", return_value=mock_provider
+        ),
+        mock.patch("getpass.getpass", return_value="pw"),
+        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-env"}),
+    ):
+        rc = main(
+            [
+                "detect",
+                "user@gmail.com",
+                "--output",
+                str(output),
+                "--no-verify",
+            ]
+        )
+
+    assert rc == 0
+    content = output.read_text()
+    # Top-level llm: section with api_key from env.
+    assert "llm:" in content
+    assert 'api_key: "sk-env"' in content
+
+    accounts = MailAccountsConfig.from_yaml(str(output))
+    cfg = accounts.default.config
+    assert cfg.llm_api_key == "sk-env"
 
 
 # ---------------------------------------------------------------------------
