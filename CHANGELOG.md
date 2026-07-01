@@ -2,6 +2,13 @@
 
 ## 0.0.0 (unreleased)
 
+- Migrated from the ``Tier`` enum (removed from ``robotsix-llmio``) to a
+  plain ``int`` level parameter: ``_run_llm_agent`` and all call sites
+  (``config_sync_agent``, ``archive``, ``detect``, ``draft``, ``triage``)
+  now accept ``level: int`` (where ``1`` = cheap, ``2`` = default) instead
+  of ``tier: Tier``.  Pinned ``robotsix-llmio`` to the updated commit that
+  removed ``Tier``.
+
 - Configuration is now read **only from the YAML config file** — all
   environment-variable-based configuration has been removed. The single
   ``MAIL_CONFIG_PATH`` variable still *locates* the file (default
