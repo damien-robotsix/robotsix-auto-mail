@@ -60,6 +60,11 @@ dev = [
     "vulture>=2.16",
     # zizmor: GitHub Actions security scanning (CI + pre-commit gate).
     "zizmor",
+    # robotsix-agent-comm: component-agent protocol used by the server
+    # (_component_agent_config_contract, _component_agent_responder) and
+    # their tests.  Declared here so the dev extra (used by CI) can import
+    # ConfigContractError and run the config-contract test suite.
+    "robotsix-agent-comm",
 ]
 llm = [
     "robotsix-llmio[openrouter,tracing]",

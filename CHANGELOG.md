@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Added ``robotsix-agent-comm`` to the ``dev`` extra so CI can run the
+  component-agent config-contract tests.
+
 - Bump ``astral-sh/setup-uv`` action from v8.1.0 to v8.2.0.
 
 - Migrated ``add_column_if_missing`` and ``run_additive_migrations`` helpers
