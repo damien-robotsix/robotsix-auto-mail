@@ -102,6 +102,7 @@ def _run_llm_agent[T: pydantic.BaseModel](
     )
 
     # -- call LLM --
+    result = None
     try:
         result = run_agent(
             agent_handle,

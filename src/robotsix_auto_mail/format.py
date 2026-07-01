@@ -10,7 +10,7 @@ from robotsix_llmio.core import html_to_text
 if TYPE_CHECKING:
     from robotsix_auto_mail.db import MailRecord
 
-_BODY_PREVIEW_LIMIT = 150
+_BODY_PREVIEW_LIMIT = 150  # lgtm[py/unused-global-variable]
 
 
 def _effective_body_plain(record: MailRecord) -> str:

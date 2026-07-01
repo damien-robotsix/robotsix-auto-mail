@@ -21,12 +21,17 @@ class BoardHandlerProtocol(Protocol):
         body: bytes | str,
         status: int = 200,
         content_type: str = "text/plain; charset=utf-8",
-    ) -> None: ...
+    ) -> None:
+        pass
 
-    def _redirect(self, location: str, code: int = 301) -> None: ...
+    def _redirect(self, location: str, code: int = 301) -> None:
+        pass
 
-    def _not_found(self) -> None: ...
+    def _not_found(self) -> None:
+        pass
 
-    def _bad_request(self, message: str) -> None: ...
+    def _bad_request(self, message: str) -> None:
+        pass
 
-    def _serve_json(self, payload: object, status: int = 200) -> None: ...
+    def _serve_json(self, payload: object, status: int = 200) -> None:
+        pass
