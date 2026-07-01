@@ -49,7 +49,7 @@ dev = [
     # pyyaml is no longer used by the package itself (YAML loading is delegated
     # to robotsix-yaml-config); it remains a dev-only need for the CI helper
     # scripts/config/check_config_sync.py, which imports `yaml` directly.
-    "pyyaml>=6.0",
+    "pyyaml>=6.0.3",
     "types-PyYAML",
     "robotsix-llmio[openrouter,tracing]",
     # robotsix-modules provides the CLI used by CI / pre-commit to validate and
