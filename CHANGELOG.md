@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Split `tests/pipeline/test_pipeline.py` into domain-focused test modules:
+  `test_fetch.py`, `test_ingest.py`, `test_reconcile.py`,
+  `test_pipeline_cli_ingest.py`, and `_helpers.py`.
 - Update `docs/architecture.md` to reflect parser consolidation into `pipeline/` — remove standalone `parser/` entry and update ingestion data flow reference from `parser.parse_message()` to `parse_message()`.
 - Add structured feature request issue template (`.github/ISSUE_TEMPLATE/feature_request.yml`) with initial checks, description, and affected-areas sections.
 - Consolidated the `parser` module into `pipeline`: moved `src/robotsix_auto_mail/parser/__init__.py` → `src/robotsix_auto_mail/pipeline/_parse.py`, updated all imports and the module taxonomy.
