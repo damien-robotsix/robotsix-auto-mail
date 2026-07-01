@@ -1,4 +1,4 @@
-"""Tests for the MIME parser (parser.py)."""
+"""Tests for the MIME parser (_parse.py)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import email.mime.multipart
 import email.mime.text
 import json
 
-from robotsix_auto_mail.parser import ParseError, parse_message
+from robotsix_auto_mail.pipeline._parse import ParseError, parse_message
 
 # ---------------------------------------------------------------------------
 # Header extraction

@@ -19,7 +19,6 @@ from robotsix_auto_mail.db import (
     set_watermark,
 )
 from robotsix_auto_mail.imap import ImapClient
-from robotsix_auto_mail.parser import ParseError
 from robotsix_auto_mail.pipeline import (
     IngestError,
     IngestResult,
@@ -28,6 +27,7 @@ from robotsix_auto_mail.pipeline import (
     reconcile_records,
     update_watermark,
 )
+from robotsix_auto_mail.pipeline._parse import ParseError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -222,7 +222,7 @@ def test_ingest_partial_parse_failure(
     mock_fetch.return_value = [(1, r1), (2, r2), (3, r3), (4, r4), (5, r5)]
 
     # Let the real parse_message handle good messages; only fail on UID 3.
-    from robotsix_auto_mail.parser import parse_message as real_parse
+    from robotsix_auto_mail.pipeline._parse import parse_message as real_parse
 
     def side_effect(
         raw_bytes: bytes,
@@ -534,7 +534,7 @@ def test_ingest_mixed_store_skip_error(
 
     mock_fetch.return_value = [(10, r10), (11, r11), (12, r12), (13, r13)]
 
-    from robotsix_auto_mail.parser import parse_message as real_parse
+    from robotsix_auto_mail.pipeline._parse import parse_message as real_parse
 
     def side_effect(
         raw_bytes: bytes,
@@ -762,7 +762,7 @@ def test_pipeline_imports_from_expected_modules() -> None:
     content = open(source).read()
     assert "from robotsix_auto_mail.db import" in content
     assert "from robotsix_auto_mail.imap import" in content
-    assert "from robotsix_auto_mail.parser import" in content
+    assert "from robotsix_auto_mail.pipeline._parse import" in content
     assert "from robotsix_auto_mail.config import" in content
     # Must not import smtp_client.
     assert "from robotsix_auto_mail.smtp import" not in content
@@ -859,7 +859,7 @@ def test_ingest_dry_run_parses_messages(
     imap = _mock_imap_client()
 
     # Let the real parser handle r1; fail on r2.
-    from robotsix_auto_mail.parser import parse_message as real_parse
+    from robotsix_auto_mail.pipeline._parse import parse_message as real_parse
 
     def side_effect(
         raw_bytes: bytes,
