@@ -18,6 +18,12 @@
 
 - Bump ``astral-sh/setup-uv`` action from v8.1.0 to v8.2.0.
 
+- Fixed ``detect --overwrite`` to preserve top-level ``llm:`` and ``langfuse:``
+  sections from an existing config file (previously overwrite mode dropped
+  them).  Also fixed the ``detect`` command to properly resolve and write the
+  LLM API key and provider model (from argument, env var, or config file) into
+  the output config, making it self-contained.
+
 - Migrated ``add_column_if_missing`` and ``run_additive_migrations`` helpers
   from a local copy in ``db/_migrate.py`` to the fleet-shared
   ``robotsix_llmio.core.sqlite_utils`` module.
