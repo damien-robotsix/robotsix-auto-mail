@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Bump actions/checkout from v4 (34e1148) to v6 (df4cb1c) across all workflow files.
 - Fix the ``lockfile.yml`` workflow: pass ``GITHUB_TOKEN`` so the
   "Commit updated lockfile" step can authenticate its ``git push``.
 
