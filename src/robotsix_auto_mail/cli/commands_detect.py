@@ -43,7 +43,10 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         return 1
 
-    from robotsix_auto_mail.config import load_llm, load_llm_provider_model
+    from robotsix_auto_mail.config import (
+        resolve_llm_api_key,
+        resolve_llm_provider_model,
+    )
 
     account_id = args.id or _account_id_from_email(args.email)
     label = args.email
@@ -57,8 +60,8 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         return 1
 
-    api_key = load_llm()
-    llm_provider_model_str = load_llm_provider_model()
+    api_key = resolve_llm_api_key(None, raise_on_missing=False)
+    llm_provider_model_str = resolve_llm_provider_model(None)
     provider, mx_hosts = _detect_settings(
         args.email,
         api_key,

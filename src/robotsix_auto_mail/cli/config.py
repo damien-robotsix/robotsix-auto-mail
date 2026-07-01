@@ -505,6 +505,16 @@ def _verify_and_refine(
                 oauth2_client_id=oauth2_client_id or result.oauth2_client_id,
                 oauth2_tenant=oauth2_tenant or result.oauth2_tenant,
             )
+
+        # Persist the resolved LLM key and model into the written config so
+        # the file is self-contained.  In overwrite mode, existing_account.config
+        # already carries the file's values; or fills in when the file was
+        # sparse/new.
+        if api_key and not result.llm_api_key:
+            result = dataclasses.replace(result, llm_api_key=api_key)
+        if llm_provider_model and not result.llm_provider_model:
+            result = dataclasses.replace(result, llm_provider_model=llm_provider_model)
+
         return result
 
     def _write(cfg: MailConfig) -> None:
