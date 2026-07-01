@@ -120,9 +120,10 @@ CREATE TABLE IF NOT EXISTS triage_decisions (
 
 #: Additive ``mail_records`` columns applied at startup for legacy DBs that
 #: predate them.  Each entry is a column DDL fragment passed to
-#: :func:`._migrate.run_additive_migrations`; the fragments are byte-for-byte
-#: equivalent to the column definitions previously added by the per-column
-#: ``_migrate_add_*`` functions, in the same order.
+#: :func:`robotsix_llmio.core.sqlite_utils.run_additive_migrations`;
+#: the fragments are byte-for-byte equivalent to the column definitions
+#: previously added by the per-column ``_migrate_add_*`` functions,
+#: in the same order.
 _ADDITIVE_COLUMNS: tuple[str, ...] = (
     "unsubscribe_header TEXT NOT NULL DEFAULT ''",
     "notes TEXT NOT NULL DEFAULT ''",

@@ -12,11 +12,12 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from robotsix_llmio.core.sqlite_utils import run_additive_migrations
+
 from ._migrate import (
     _migrate_legacy_statuses,
     _migrate_status_to_triage,
     _migrate_triage_action_check,
-    run_additive_migrations,
 )
 from .models import (
     _ADDITIVE_COLUMNS,

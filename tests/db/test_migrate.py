@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import sqlite3
 
-from robotsix_auto_mail.db import init_db
-from robotsix_auto_mail.db._migrate import (
+from robotsix_llmio.core.sqlite_utils import (
     add_column_if_missing,
     run_additive_migrations,
 )
+
+from robotsix_auto_mail.db import init_db
 from robotsix_auto_mail.db.models import VALID_TRIAGE_ACTIONS
 
 # A ``triage_decisions`` table whose CHECK constraint predates the
