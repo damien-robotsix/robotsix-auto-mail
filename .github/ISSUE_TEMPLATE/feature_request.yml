@@ -1,0 +1,38 @@
+name: "🚀 Feature request"
+description: Suggest a new feature or enhancement
+labels: ["feature request"]
+
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for contributing! Before filing, please check that a similar request doesn't already exist.
+
+  - type: checkboxes
+    id: initial-checks
+    attributes:
+      label: Initial Checks
+      description: Make sure you need to create a feature request.
+      options:
+        - label: I have searched GitHub for similar requests and couldn't find anything
+          required: true
+        - label: I have read and followed the docs and still think this feature is missing
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Please describe the feature in detail — use cases, how you'd use it, why it belongs in robotsix-auto-mail rather than in an external script.
+      placeholder: |
+        (1) What problem does this solve?
+        (2) How would you use this feature?
+        (3) Have you considered a workaround?
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected-components
+    attributes:
+      label: Affected Areas
+      description: Which parts of the project does this feature affect?
+      placeholder: e.g. ingestion pipeline, triage agent, board UI, config, CLI, new module
