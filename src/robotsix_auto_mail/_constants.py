@@ -21,3 +21,12 @@ _ARCHIVE_TAXONOMY_GUIDANCE = (
     "topical bucket fits. Keep paths shallow: at most 2 levels (one "
     "`/` separator)."
 )
+
+# -- Referenced by other modules; silence py/unused-global-variable --
+_ = (
+    _ARCHIVE_ROOT,
+    _TRIAGE_RUN_STATE_KEY,
+    _BATCH_OP_STATE_KEY,
+    _RECONCILE_STATE_KEY,
+    _ARCHIVE_TAXONOMY_GUIDANCE,
+)
