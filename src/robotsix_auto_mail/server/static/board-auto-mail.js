@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-window no-window-prefix
 /*
  * board-auto-mail.js — app-specific overlay for the Mail Board.
  *
@@ -501,7 +502,7 @@
    * 4.  Board auto-refresh polling
    * ================================================================ */
 
-  let refreshTimer = null;
+  let _refreshTimer = null;
 
   function refreshBoard(force) {
     // Close the folder-tree popover if open — the card HTML it
@@ -576,7 +577,7 @@
   }
 
   function startRefreshLoop() {
-    refreshTimer = setInterval(refreshBoard, 30000);
+    _refreshTimer = setInterval(refreshBoard, 30000);
   }
 
   /* ==================================================================
