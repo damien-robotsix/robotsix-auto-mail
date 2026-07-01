@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Bump ``astral-sh/setup-uv`` action from v8.1.0 to v8.2.0.
+
 - Migrated ``add_column_if_missing`` and ``run_additive_migrations`` helpers
   from a local copy in ``db/_migrate.py`` to the fleet-shared
   ``robotsix_llmio.core.sqlite_utils`` module.
