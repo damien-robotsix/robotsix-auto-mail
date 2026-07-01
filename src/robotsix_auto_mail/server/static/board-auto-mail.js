@@ -287,7 +287,7 @@
         const childNode = node._children[childName];
         const childFullPath = fullPath ? fullPath + "/" + childName : childName;
         childContainer.appendChild(
-          renderTree(childName, childNode, depth + 1, childFullPath)
+          renderTree(childName, childNode, depth + 1, childFullPath),
         );
       });
 
@@ -326,7 +326,7 @@
     if (!folderBrowseBtn) return;
     const mid = folderBrowseBtn.getAttribute("data-message-id");
     const card = document.querySelector(
-      '.card-extra[data-message-id="' + CSS.escape(mid) + '"]'
+      '.card-extra[data-message-id="' + CSS.escape(mid) + '"]',
     );
     if (!card) return;
     const form = card.querySelector(".archive-override-form");
@@ -433,7 +433,9 @@
       // silently earlier).
       if (folderCache === null) {
         fetch("/archive-folders" + fetchQs)
-          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            return r.json();
+          })
           .then(function (data) {
             folderCache = data.folders || [];
             if (folderCache.length) openFolderPopover(btn);
@@ -464,14 +466,16 @@
         // subject at this point (the card might not even be rendered
         // yet), but the server-rendered board cards carry data-subject.
         const card = document.querySelector(
-          '.card-extra[data-message-id="' + CSS.escape(mid) + '"]'
+          '.card-extra[data-message-id="' + CSS.escape(mid) + '"]',
         );
         let subject = "";
         if (card) {
           subject = card.getAttribute("data-subject") || "";
         }
         if (dataAccountJs) {
-          const cardAccount = card ? (card.getAttribute("data-account") || "") : "";
+          const cardAccount = card
+            ? (card.getAttribute("data-account") || "")
+            : "";
           openDetail(mid, subject, false, cardAccount);
         } else {
           openDetail(mid, subject, false);
@@ -548,8 +552,7 @@
               typeof op.done === "number" && typeof op.total === "number"
                 ? ": " + op.done + "/" + op.total
                 : "";
-            bc.innerHTML =
-              '<div class="batch-banner">' +
+            bc.innerHTML = '<div class="batch-banner">' +
               verb +
               " mail" +
               prog +
@@ -585,89 +588,105 @@
    * ================================================================ */
 
   function _createAuthModal() {
-    const overlay = document.createElement('div');
-    overlay.className = 'auth-modal-overlay';
+    const overlay = document.createElement("div");
+    overlay.className = "auth-modal-overlay";
     overlay.innerHTML = [
-      '<div class="auth-modal">',
-      '  <h3>Microsoft Authorization Required</h3>',
-      '  <p class="auth-modal-message"></p>',
-      '  <p>Open <a class="auth-modal-link" href="" target="_blank" rel="noopener"></a></p>',
-      '  <p>Enter code: <strong class="auth-modal-code"></strong></p>',
-      '  <p class="auth-modal-status"></p>',
-      '</div>'
-    ].join('\n');
+      "<div class=\"auth-modal\">",
+      "  <h3>Microsoft Authorization Required</h3>",
+      "  <p class=\"auth-modal-message\"></p>",
+      "  <p>Open <a class=\"auth-modal-link\" href=\"\" target=\"_blank\" rel=\"noopener\"></a></p>",
+      "  <p>Enter code: <strong class=\"auth-modal-code\"></strong></p>",
+      "  <p class=\"auth-modal-status\"></p>",
+      "</div>",
+    ].join("\n");
     return overlay;
   }
 
   async function authorizeAccount(btn) {
-    const accountId = btn.dataset.accountId || '';
+    const accountId = btn.dataset.accountId || "";
     btn.disabled = true;
-    btn.textContent = 'Starting\u2026';
+    btn.textContent = "Starting\u2026";
 
     const modal = _createAuthModal();
     document.body.appendChild(modal);
-    modal.querySelector('.auth-modal-status').textContent = 'Requesting authorization code\u2026';
+    modal.querySelector(".auth-modal-status").textContent =
+      "Requesting authorization code\u2026";
 
     let pollTimer = null;
 
     function cleanup() {
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
     }
 
     try {
-      const resp = await fetch('/auth-start', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({account_id: accountId}).toString(),
+      const resp = await fetch("/auth-start", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ account_id: accountId }).toString(),
       });
       const data = await resp.json();
-      if (data.status === 'error') {
-        modal.querySelector('.auth-modal-status').textContent = '\u274c ' + (data.error || 'Unknown error');
+      if (data.status === "error") {
+        modal.querySelector(".auth-modal-status").textContent = "\u274c " +
+          (data.error || "Unknown error");
         cleanup();
         btn.disabled = false;
-        btn.textContent = 'Authorize / Reconnect';
+        btn.textContent = "Authorize / Reconnect";
         return;
       }
       if (data.message) {
-        modal.querySelector('.auth-modal-message').textContent = data.message;
+        modal.querySelector(".auth-modal-message").textContent = data.message;
       }
       if (data.verification_uri) {
-        const link = modal.querySelector('.auth-modal-link');
+        const link = modal.querySelector(".auth-modal-link");
         link.href = data.verification_uri;
         link.textContent = data.verification_uri;
       }
       if (data.user_code) {
-        modal.querySelector('.auth-modal-code').textContent = data.user_code;
+        modal.querySelector(".auth-modal-code").textContent = data.user_code;
       }
-      if (data.status === 'success') {
+      if (data.status === "success") {
         // Rare: flow completed before POST returned
-        modal.querySelector('.auth-modal-status').textContent = '\u2705 Connected! Reloading\u2026';
-        setTimeout(function () { window.location.reload(); }, 1500);
+        modal.querySelector(".auth-modal-status").textContent =
+          "\u2705 Connected! Reloading\u2026";
+        setTimeout(function () {
+          window.location.reload();
+        }, 1500);
         return;
       }
-      modal.querySelector('.auth-modal-status').textContent = 'Waiting for consent\u2026';
+      modal.querySelector(".auth-modal-status").textContent =
+        "Waiting for consent\u2026";
     } catch (e) {
-      modal.querySelector('.auth-modal-status').textContent = '\u274c Network error: ' + e.message;
+      modal.querySelector(".auth-modal-status").textContent =
+        "\u274c Network error: " + e.message;
       cleanup();
       btn.disabled = false;
-      btn.textContent = 'Authorize / Reconnect';
+      btn.textContent = "Authorize / Reconnect";
       return;
     }
 
     // Poll /auth-status every 3 s until success or error
     pollTimer = setInterval(async function () {
       try {
-        const r = await fetch('/auth-status?account_id=' + encodeURIComponent(accountId));
+        const r = await fetch(
+          "/auth-status?account_id=" + encodeURIComponent(accountId),
+        );
         const s = await r.json();
-        if (s.status === 'success') {
+        if (s.status === "success") {
           cleanup();
-          modal.querySelector('.auth-modal-status').textContent = '\u2705 Connected! Reloading\u2026';
-          setTimeout(function () { window.location.reload(); }, 1500);
-        } else if (s.status === 'error') {
+          modal.querySelector(".auth-modal-status").textContent =
+            "\u2705 Connected! Reloading\u2026";
+          setTimeout(function () {
+            window.location.reload();
+          }, 1500);
+        } else if (s.status === "error") {
           cleanup();
-          modal.querySelector('.auth-modal-status').textContent = '\u274c ' + (s.error || 'Unknown error');
+          modal.querySelector(".auth-modal-status").textContent = "\u274c " +
+            (s.error || "Unknown error");
           btn.disabled = false;
-          btn.textContent = 'Authorize / Reconnect';
+          btn.textContent = "Authorize / Reconnect";
         }
         // pending_prompt / pending_consent / idle: keep polling
       } catch (_e) { /* network hiccup — keep polling */ }
