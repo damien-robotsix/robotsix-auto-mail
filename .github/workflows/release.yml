@@ -128,11 +128,8 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REF_NAME: ${{ github.ref_name }}
         run: |
-          gh release create "$REF_NAME" sbom.cdx.json \
-            --title "$REF_NAME" \
+          gh release create "$GITHUB_REF_NAME" sbom.cdx.json \
+            --title "$GITHUB_REF_NAME" \
             --notes-file /tmp/release_body.md \
             --generate-notes
