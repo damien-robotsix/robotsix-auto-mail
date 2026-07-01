@@ -591,13 +591,13 @@
     const overlay = document.createElement("div");
     overlay.className = "auth-modal-overlay";
     overlay.innerHTML = [
-      "<div class=\"auth-modal\">",
-      "  <h3>Microsoft Authorization Required</h3>",
-      "  <p class=\"auth-modal-message\"></p>",
-      "  <p>Open <a class=\"auth-modal-link\" href=\"\" target=\"_blank\" rel=\"noopener\"></a></p>",
-      "  <p>Enter code: <strong class=\"auth-modal-code\"></strong></p>",
-      "  <p class=\"auth-modal-status\"></p>",
-      "</div>",
+      '<div class="auth-modal">',
+      '  <h3>Microsoft Authorization Required</h3>',
+      '  <p class="auth-modal-message"></p>',
+      '  <p>Open <a class="auth-modal-link" href="" target="_blank" rel="noopener"></a></p>',
+      '  <p>Enter code: <strong class="auth-modal-code"></strong></p>',
+      '  <p class="auth-modal-status"></p>',
+      '</div>',
     ].join("\n");
     return overlay;
   }
