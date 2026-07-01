@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Fix the ``lockfile.yml`` workflow: pass ``GITHUB_TOKEN`` so the
+  "Commit updated lockfile" step can authenticate its ``git push``.
+
 - Added ``robotsix-agent-comm`` to the ``dev`` extra so CI can run the
   component-agent config-contract tests.
 

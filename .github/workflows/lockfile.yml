@@ -32,6 +32,8 @@ jobs:
         run: uv lock
 
       - name: Commit updated lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if git diff --quiet -- uv.lock; then
             echo "uv.lock already up to date — nothing to commit."
@@ -39,6 +41,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
           git add uv.lock
           git commit -m "chore: refresh uv.lock after pyproject.toml change"
           git push
