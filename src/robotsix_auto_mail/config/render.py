@@ -93,6 +93,9 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     if cfg.triage_on_ingest != defaults.triage_on_ingest:
         lines.append(f"{item}triage:")
         lines.append(f"{item}  on_ingest: {_yaml_scalar(cfg.triage_on_ingest)}")
+    if cfg.component_agent_enabled != defaults.component_agent_enabled:
+        lines.append(f"{item}component_agent:")
+        lines.append(f"{item}  enabled: {_yaml_scalar(cfg.component_agent_enabled)}")
     return lines
 
 
