@@ -26,9 +26,9 @@ from robotsix_auto_mail.config.schema import (
 def test_mono_shape_error_contains_path_and_commands() -> None:
     result = _mono_shape_error(Path("/etc/mail/my-config.yaml"))
     assert "/etc/mail/my-config.yaml" in result
-    assert "migrate-config" in result
     assert "detect" in result
     assert "single-account" in result
+    assert "migrate-config" not in result
 
 
 # ---------------------------------------------------------------------------
@@ -92,27 +92,16 @@ def test_parse_bool_empty_string() -> None:
 def test_field_spec_construction() -> None:
     spec = _FieldSpec(
         field_name="imap_host",
-        env_key="MAIL_IMAP_HOST",
         yaml_path="imap.host",
         kind="str",
         default=_REQUIRED,
-        required_in_env=True,
         required_in_yaml=True,
-        global_field=True,
     )
     assert spec.field_name == "imap_host"
-    assert spec.env_key == "MAIL_IMAP_HOST"
     assert spec.yaml_path == "imap.host"
     assert spec.kind == "str"
     assert spec.default is _REQUIRED
-    assert spec.required_in_env is True
     assert spec.required_in_yaml is True
-    assert spec.global_field is True
-
-
-def test_field_spec_global_field_defaults_false() -> None:
-    spec = _FieldSpec("x", "X", "x.y", "str", "", False, False)
-    assert spec.global_field is False
 
 
 # ---------------------------------------------------------------------------
@@ -125,9 +114,9 @@ def test_field_specs_field_names_unique() -> None:
     assert len(names) == len(set(names)), f"Duplicate field_names: {names}"
 
 
-def test_field_specs_env_keys_unique() -> None:
-    keys = [s.env_key for s in _FIELD_SPECS]
-    assert len(keys) == len(set(keys)), f"Duplicate env_keys: {keys}"
+def test_field_specs_yaml_paths_unique() -> None:
+    paths = [s.yaml_path for s in _FIELD_SPECS]
+    assert len(paths) == len(set(paths)), f"Duplicate yaml_paths: {paths}"
 
 
 def test_field_specs_yaml_paths_have_one_dot() -> None:
@@ -148,14 +137,6 @@ def test_field_specs_valid_kind_values() -> None:
         assert spec.kind in valid_kinds, (
             f"Unknown kind {spec.kind!r} for {spec.field_name}"
         )
-
-
-def test_field_specs_required_in_env_implies_env_key() -> None:
-    for spec in _FIELD_SPECS:
-        if spec.required_in_env:
-            assert spec.env_key, (
-                f"required_in_env True but empty env_key for {spec.field_name}"
-            )
 
 
 def test_field_specs_bool_kind_has_bool_default() -> None:
@@ -184,7 +165,7 @@ def test_field_specs_str_kind_has_str_default() -> None:
 
 def test_field_specs_required_fields_have_required_sentinel() -> None:
     for spec in _FIELD_SPECS:
-        if spec.required_in_env or spec.required_in_yaml:
+        if spec.required_in_yaml:
             assert spec.default is _REQUIRED, (
                 f"{spec.field_name} is required but default={spec.default!r}, "
                 f"expected _REQUIRED sentinel"

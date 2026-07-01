@@ -114,15 +114,15 @@ def test_provider_not_bound_at_module_level() -> None:
 
 def test_determine_archive_structure_success() -> None:
     """The model's relative sub-paths are returned."""
-    with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+    with mock.patch.dict(os.environ, {}, clear=True):
         with _patch_llm(["Receipts", "Work/2024"]):
-            result = determine_archive_structure(["INBOX", "Sent"])
+            result = determine_archive_structure(["INBOX", "Sent"], api_key="sk-test")
     assert result == ["Receipts", "Work/2024"]
 
 
 def test_determine_archive_structure_uses_cheap_tier() -> None:
     """build_agent is called with level=1 (cheap) by default."""
-    with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+    with mock.patch.dict(os.environ, {}, clear=True):
         with mock.patch(
             "robotsix_llmio.core.factory.get_provider_for_identifier"
         ) as cls:
@@ -134,7 +134,7 @@ def test_determine_archive_structure_uses_cheap_tier() -> None:
             provider.build_agent.return_value = mock_handle
             provider.call_with_retry.side_effect = lambda fn, what: fn()
 
-            determine_archive_structure(["INBOX"])
+            determine_archive_structure(["INBOX"], api_key="sk-test")
 
         provider.build_agent.assert_called_once()
         assert provider.build_agent.call_args.kwargs["level"] == 1
@@ -146,12 +146,12 @@ def test_determine_archive_structure_missing_api_key() -> None:
     with mock.patch.dict(os.environ, {}, clear=True):
         with pytest.raises(ArchiveError) as exc:
             determine_archive_structure(["INBOX"])
-    assert "LLM_API_KEY" in str(exc.value)
+    assert "llm.api_key" in str(exc.value)
 
 
 def test_determine_archive_structure_llm_error_wrapped() -> None:
     """A call_with_retry failure is wrapped in ArchiveError."""
-    with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+    with mock.patch.dict(os.environ, {}, clear=True):
         mock_handle = mock.MagicMock()
         mock_provider = mock.MagicMock()
         mock_provider.build_agent.return_value = mock_handle
@@ -161,7 +161,7 @@ def test_determine_archive_structure_llm_error_wrapped() -> None:
             return_value=mock_provider,
         ):
             with pytest.raises(ArchiveError) as exc:
-                determine_archive_structure(["INBOX"])
+                determine_archive_structure(["INBOX"], api_key="sk-test")
     assert "timeout" in str(exc.value)
     mock_handle.close.assert_called_once()
 
@@ -176,9 +176,11 @@ def test_setup_archive_first_run_creates_and_persists() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX"), _folder("Sent")])
-        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True):
             with _patch_llm(["Receipts", "Work/2024"]):
-                result = setup_archive(conn, cast(ImapClient, client))
+                result = setup_archive(
+                    conn, cast(ImapClient, client), api_key="sk-test"
+                )
 
         expected = [
             ARCHIVE_ROOT,
@@ -199,9 +201,11 @@ def test_setup_archive_translates_delimiter() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX", delimiter=".")])
-        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True):
             with _patch_llm(["Work/2024"]):
-                result = setup_archive(conn, cast(ImapClient, client))
+                result = setup_archive(
+                    conn, cast(ImapClient, client), api_key="sk-test"
+                )
         assert result == [ARCHIVE_ROOT, f"{ARCHIVE_ROOT}.Work.2024"]
         assert client.created == result
     finally:
@@ -213,9 +217,11 @@ def test_setup_archive_skips_existing_folders() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX"), _folder(ARCHIVE_ROOT)])
-        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True):
             with _patch_llm(["Receipts"]):
-                result = setup_archive(conn, cast(ImapClient, client))
+                result = setup_archive(
+                    conn, cast(ImapClient, client), api_key="sk-test"
+                )
         assert result == [ARCHIVE_ROOT, f"{ARCHIVE_ROOT}/Receipts"]
         # ARCHIVE_ROOT already existed → only the sub-folder is created.
         assert client.created == [f"{ARCHIVE_ROOT}/Receipts"]
@@ -228,12 +234,13 @@ def test_setup_archive_custom_root_creates_and_persists() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX"), _folder("Sent")])
-        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True):
             with _patch_llm(["Receipts", "Work/2024"]):
                 result = setup_archive(
                     conn,
                     cast(ImapClient, client),
                     archive_root="custom-archive",
+                    api_key="sk-test",
                 )
 
         expected = [
@@ -257,7 +264,7 @@ def test_setup_archive_custom_root_passed_to_llm() -> None:
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX")])
-        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True):
             with mock.patch(
                 "robotsix_llmio.core.factory.get_provider_for_identifier"
             ) as cls:
@@ -273,6 +280,7 @@ def test_setup_archive_custom_root_passed_to_llm() -> None:
                     conn,
                     cast(ImapClient, client),
                     archive_root="custom-archive",
+                    api_key="sk-test",
                 )
 
         prompt = provider.build_agent.call_args.kwargs["system_prompt"]
@@ -296,7 +304,7 @@ def test_setup_archive_excludes_special_use_folders_from_llm() -> None:
                 _special_folder("[Gmail]/Important", ("\\Important",)),
             ]
         )
-        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True):
             with mock.patch(
                 "robotsix_llmio.core.factory.get_provider_for_identifier"
             ) as cls:
@@ -308,7 +316,7 @@ def test_setup_archive_excludes_special_use_folders_from_llm() -> None:
                 provider.build_agent.return_value = mock_handle
                 provider.call_with_retry.side_effect = lambda fn, what: fn()
 
-                setup_archive(conn, cast(ImapClient, client))
+                setup_archive(conn, cast(ImapClient, client), api_key="sk-test")
 
         user_message = mock_handle.run_sync.call_args.args[0]
         # Ordinary folders inform the layout; system folders are filtered out.
@@ -385,10 +393,10 @@ def test_setup_archive_create_folder_error_propagates_and_does_not_persist() -> 
                 raise ImapError("CREATE failed: NO")
 
         client = _FailingCreateClient([_folder("INBOX")])
-        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True):
             with _patch_llm(["Receipts"]):
                 with pytest.raises(ImapError):
-                    setup_archive(conn, cast(ImapClient, client))
+                    setup_archive(conn, cast(ImapClient, client), api_key="sk-test")
         assert get_watermark(conn, _ARCHIVE_WATERMARK_KEY) is None
     finally:
         conn.close()
@@ -404,9 +412,9 @@ def test_setup_archive_list_folders_error_propagates_and_does_not_persist() -> N
                 raise ImapError("LIST failed")
 
         client = _FailingListClient([])
-        with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ImapError):
-                setup_archive(conn, cast(ImapClient, client))
+                setup_archive(conn, cast(ImapClient, client), api_key="sk-test")
         assert get_watermark(conn, _ARCHIVE_WATERMARK_KEY) is None
     finally:
         conn.close()

@@ -139,15 +139,6 @@ def test_existing_account_ids_multi_account(tmp_path: Path) -> None:
     assert _existing_account_ids(path) == {"alpha", "beta"}
 
 
-def test_existing_account_ids_mono_config(tmp_path: Path) -> None:
-    """A deprecated mono config file returns {'default'}."""
-    path = tmp_path / "mono.yaml"
-    path.write_text(
-        "auth:\n  username: user@example.com\nimap:\n  host: imap.example.com\n"
-    )
-    assert _existing_account_ids(path) == {"default"}
-
-
 def test_existing_account_ids_empty_yaml(tmp_path: Path) -> None:
     """An empty YAML file returns an empty set."""
     path = tmp_path / "empty.yaml"
@@ -244,24 +235,8 @@ def test_existing_accounts_for_append_new_id(tmp_path: Path) -> None:
     assert others[0].account_id == "alpha"
 
 
-def test_existing_accounts_for_append_mono_file_default(tmp_path: Path) -> None:
-    """Mono file with new id 'default': no 'other' accounts needed."""
-    path = tmp_path / "mono.yaml"
-    path.write_text(
-        "auth:\n"
-        "  username: old@example.com\n"
-        "imap:\n"
-        "  host: imap.old.com\n"
-        "smtp:\n"
-        "  host: smtp.old.com\n"
-    )
-    others, default_id = _existing_accounts_for_append(path, "default")
-    assert default_id == "default"
-    assert others == []
-
-
-def test_existing_accounts_for_append_mono_file_other_id(tmp_path: Path) -> None:
-    """Mono file with a different new id: old becomes 'default' in others."""
+def test_existing_accounts_for_append_non_accounts_file(tmp_path: Path) -> None:
+    """A file without an `accounts:` list is not valid config → start fresh."""
     path = tmp_path / "mono.yaml"
     path.write_text(
         "auth:\n"
@@ -272,10 +247,8 @@ def test_existing_accounts_for_append_mono_file_other_id(tmp_path: Path) -> None
         "  host: smtp.old.com\n"
     )
     others, default_id = _existing_accounts_for_append(path, "new-id")
-    assert default_id == "default"
-    assert len(others) == 1
-    assert others[0].account_id == "default"
-    assert others[0].config.username == "old@example.com"
+    assert others == []
+    assert default_id == "new-id"
 
 
 def test_existing_accounts_for_append_invalid_yaml(tmp_path: Path) -> None:
@@ -604,21 +577,3 @@ def test_existing_accounts_for_append_multi_account_validation_error(
         others, default_id = _existing_accounts_for_append(path, "new-id")
     assert others == []
     assert default_id == "new-id"
-
-
-def test_existing_accounts_for_append_mono_validation_error(
-    tmp_path: Path,
-) -> None:
-    """Mono YAML that parses but fails MailConfig schema → graceful fallback."""
-    path = tmp_path / "bad_mono.yaml"
-    path.write_text(
-        "auth:\n  username: user@example.com\nimap:\n  host: imap.example.com\n"
-    )
-    # Force MailConfig.from_yaml to raise to cover the except path.
-    with mock.patch(
-        "robotsix_auto_mail.cli.config.MailConfig.from_yaml",
-        side_effect=ValueError("validation failed"),
-    ):
-        others, default_id = _existing_accounts_for_append(path, "myid")
-    assert others == []
-    assert default_id == "myid"

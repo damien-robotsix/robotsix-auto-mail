@@ -75,7 +75,7 @@ class ImapClient(_ProtocolClient):
 
     Typical usage::
 
-        cfg = MailConfig.from_env()
+        cfg = load_accounts().default.config
         with ImapClient(cfg) as client:
             folders = client.list_folders()
             count = client.select_folder("INBOX")

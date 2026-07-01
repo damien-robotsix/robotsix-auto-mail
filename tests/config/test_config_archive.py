@@ -2,17 +2,33 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail.config import ConfigurationError, MailConfig
+from robotsix_auto_mail.config import ConfigurationError, MailAccountsConfig, MailConfig
 
 # ---------------------------------------------------------------------------
-# Archive settings (archive.root / archive.enabled + MAIL_ARCHIVE_* env vars)
+# Archive settings (per-account archive.root / archive.enabled section),
+# parsed through MailAccountsConfig.from_yaml.
 # ---------------------------------------------------------------------------
+
+
+def _write_accounts(tmp_path: Path, account_body: str) -> Path:
+    """Write a one-entry ``accounts:`` YAML file and return its path."""
+    yaml_file = tmp_path / "accounts.yaml"
+    yaml_file.write_text(
+        "accounts:\n"
+        "  - id: default\n"
+        "    imap:\n"
+        "      host: imap.example.com\n"
+        "    smtp:\n"
+        "      host: smtp.example.com\n"
+        "    auth:\n"
+        "      username: u\n"
+        "      password: p\n" + account_body
+    )
+    return yaml_file
 
 
 def test_archive_defaults() -> None:
@@ -22,84 +38,35 @@ def test_archive_defaults() -> None:
     assert cfg.archive_enabled is True
 
 
-def test_from_env_reads_archive_fields() -> None:
-    """from_env reads MAIL_ARCHIVE_ROOT and a valid MAIL_ARCHIVE_ENABLED."""
-    env: dict[str, str] = {
-        "MAIL_IMAP_HOST": "i",
-        "MAIL_SMTP_HOST": "s",
-        "MAIL_USERNAME": "u",
-        "MAIL_PASSWORD": "p",
-        "MAIL_ARCHIVE_ROOT": "custom-archive",
-        "MAIL_ARCHIVE_ENABLED": "false",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        cfg = MailConfig.from_env()
-        assert cfg.archive_root == "custom-archive"
-        assert cfg.archive_enabled is False
-
-
-def test_from_env_invalid_archive_enabled() -> None:
-    """A non-boolean MAIL_ARCHIVE_ENABLED → ConfigurationError."""
-    env: dict[str, str] = {
-        "MAIL_IMAP_HOST": "i",
-        "MAIL_SMTP_HOST": "s",
-        "MAIL_USERNAME": "u",
-        "MAIL_PASSWORD": "p",
-        "MAIL_ARCHIVE_ENABLED": "maybe",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        with pytest.raises(ConfigurationError) as exc:
-            MailConfig.from_env()
-        msg = str(exc.value)
-        assert "MAIL_ARCHIVE_ENABLED" in msg
-        assert "maybe" in msg
+def test_from_yaml_archive_defaults(tmp_path: Path) -> None:
+    """An account without an archive: section keeps the archive defaults."""
+    yaml_file = _write_accounts(tmp_path, "")
+    accounts = MailAccountsConfig.from_yaml(yaml_file)
+    cfg = accounts.default.config
+    assert cfg.archive_root == "robotsix-mail-archive"
+    assert cfg.archive_enabled is True
 
 
 def test_from_yaml_reads_archive_section(tmp_path: Path) -> None:
     """from_yaml parses the archive.root / archive.enabled keys."""
-    yaml_file = tmp_path / "arch.yaml"
-    yaml_file.write_text(
-        """\
-imap:
-  host: imap.example.com
-
-smtp:
-  host: smtp.example.com
-
-auth:
-  username: u
-  password: p
-
-archive:
-  root: custom-archive
-  enabled: false
-"""
+    yaml_file = _write_accounts(
+        tmp_path,
+        "    archive:\n      root: custom-archive\n      enabled: false\n",
     )
-    cfg = MailConfig.from_yaml(yaml_file)
+    accounts = MailAccountsConfig.from_yaml(yaml_file)
+    cfg = accounts.default.config
     assert cfg.archive_root == "custom-archive"
     assert cfg.archive_enabled is False
 
 
 def test_from_yaml_invalid_archive_enabled(tmp_path: Path) -> None:
     """A non-bool archive.enabled in YAML → ConfigurationError."""
-    yaml_file = tmp_path / "bad_arch.yaml"
-    yaml_file.write_text(
-        """\
-imap:
-  host: imap.example.com
-
-smtp:
-  host: smtp.example.com
-
-auth:
-  username: u
-  password: p
-
-archive:
-  enabled: sometimes
-"""
+    yaml_file = _write_accounts(
+        tmp_path,
+        "    archive:\n      enabled: sometimes\n",
     )
     with pytest.raises(ConfigurationError) as exc:
-        MailConfig.from_yaml(yaml_file)
+        MailAccountsConfig.from_yaml(yaml_file)
     msg = str(exc.value)
     assert "enabled" in msg
+    assert "sometimes" in msg

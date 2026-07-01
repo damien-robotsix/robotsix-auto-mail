@@ -74,9 +74,6 @@ from robotsix_auto_mail.config.schema import (
     DEFAULT_ARCHIVE_ROOT as DEFAULT_ARCHIVE_ROOT,
 )
 from robotsix_auto_mail.config.schema import (
-    DEFAULT_DB_PATH as DEFAULT_DB_PATH,
-)
-from robotsix_auto_mail.config.schema import (
     DEFAULT_IMAP_TLS_MODE as DEFAULT_IMAP_TLS_MODE,
 )
 from robotsix_auto_mail.config.schema import (
@@ -89,7 +86,6 @@ from robotsix_auto_mail.config.schema import (
 __all__ = [
     "DEFAULT_ARCHIVE_ROOT",
     "DEFAULT_CONFIG_PATH",
-    "DEFAULT_DB_PATH",
     "DEFAULT_IMAP_TLS_MODE",
     "DEFAULT_SMTP_TLS_MODE",
     "_FIELD_SPECS",

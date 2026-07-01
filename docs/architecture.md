@@ -166,17 +166,17 @@ hierarchy and how to diagnose each failure.
 
 ## Configuration resolution
 
-`MailConfig` is loaded from a YAML config file and environment variables
-through a single cascade — built-in defaults → YAML file → environment
-variables, applied field by field.  The full precedence rules and the
-complete key table are documented in [docs/connecting.md](connecting.md);
-this document does not restate them.
+`MailConfig` is loaded from a single YAML config file (located via
+`MAIL_CONFIG_PATH`, default `config/mail.local.yaml`), with any omitted
+field falling back to its built-in default.  The complete key table is
+documented in [docs/connecting.md](connecting.md); this document does not
+restate it.
 
 ## CLI and board surfaces
 
 `cli/` exposes the subcommands (`probe`, `ingest`, `board`, `serve`,
 `detect`, `config-sync`, `triage`, `triage-set`, `config-sync-set`,
-`migrate-config`, and `auth` — with its `auth login` sub-subcommand for the
+and `auth` — with its `auth login` sub-subcommand for the
 OAuth2 device-code flow).  Only `triage` and `config-sync` have `-set`
 companions.  `server/` serves the read/write kanban board over HTTP, backed
 by the same SQLite datastore.

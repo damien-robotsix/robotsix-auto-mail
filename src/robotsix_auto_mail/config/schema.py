@@ -4,8 +4,8 @@ This module is the dependency leaf of the ``config`` package — it imports
 nothing from its sibling submodules.  It defines the configuration error
 type, the validation constants and defaults, the boolean parser, the
 per-field spec table (``_FIELD_SPECS``) that is the single source of truth
-for how every ``MailConfig`` field is read from the environment and from
-YAML, plus the generic dict-extraction helpers used by the model loaders.
+for how every ``MailConfig`` field is read from the YAML config file, plus
+the generic dict-extraction helpers used by the model loaders.
 """
 
 from __future__ import annotations
@@ -24,14 +24,13 @@ def _mono_shape_error(path: Path) -> str:
     """Return the actionable error for a removed single-account YAML file.
 
     The single-account ("mono") YAML file shape is no longer supported. The
-    message names *path* and both remediation commands: ``migrate-config``
-    (convert the existing file) and ``detect`` (regenerate from scratch).
+    message names *path* and points at ``detect`` to (re)generate a
+    multi-account ``accounts:`` config.
     """
     return (
-        f"Config {path} uses the single-account config shape, which is no "
-        "longer supported. Run `robotsix-auto-mail migrate-config` to convert "
-        "this file to the multi-account `accounts:` shape, or "
-        "`robotsix-auto-mail detect` to regenerate it."
+        f"Config {path} does not use the multi-account `accounts:` shape "
+        "(the single-account shape is no longer supported). Add an "
+        "`accounts:` list, or run `robotsix-auto-mail detect` to generate one."
     )
 
 
@@ -81,10 +80,6 @@ _VALIDATION_SETS = (
 DEFAULT_IMAP_TLS_MODE = "direct-tls"
 DEFAULT_SMTP_TLS_MODE = "starttls"
 
-# Default location for the SQLite store: a ``.data/`` directory next to the
-# current working directory (git-ignored), keeping the repo root clean.
-DEFAULT_DB_PATH = ".data/mail.db"
-
 # Default interval (minutes) between automatic ingest cycles in watch mode.
 DEFAULT_INGEST_INTERVAL_MINUTES = 15
 
@@ -115,254 +110,100 @@ _REQUIRED: Final[object] = object()
 
 
 class _FieldSpec(NamedTuple):
-    """How to read one ``MailConfig`` field from the env and the YAML file.
+    """How to read one ``MailConfig`` field from the YAML config file.
 
-    ``env_key`` is the environment variable name; ``yaml_path`` is a dotted
-    ``section.key`` pair (exactly two segments).  ``kind`` selects the
-    parser / validator: ``"str"``, ``"int"`` or ``"tls_mode"``.  ``default``
-    is the value used when the source is absent and the field is not
-    required for that source (or :data:`_REQUIRED` if no real default
-    exists).  ``required_in_env`` / ``required_in_yaml`` are intentionally
-    independent — ``password`` is required in env but not in YAML.
+    ``yaml_path`` is a dotted ``section.key`` pair (exactly two segments).
+    ``kind`` selects the parser / validator: ``"str"``, ``"int"``,
+    ``"bool"``, ``"tls_mode"``, ``"log_level"`` or ``"log_format"``.
+    ``default`` is the value used when the key is absent (or
+    :data:`_REQUIRED` if no real default exists).  ``required_in_yaml``
+    marks a field that must be present in the config file.
 
-    ``global_field`` marks a field that is application-wide (llm, langfuse);
-    in the multi-account loader these fields are read from bare (non-namespaced)
-    env vars, not from ``MAIL_ACCOUNTS_<n>_*``.
+    The application-wide sections (``llm``, ``langfuse``, ``logging``) live
+    at the top level of the YAML file and are applied to every account by
+    the accounts loader.
     """
 
     field_name: str
-    env_key: str
     yaml_path: str
     kind: str
     default: Any
-    required_in_env: bool
     required_in_yaml: bool
-    global_field: bool = False
 
 
 _FIELD_SPECS: Final[tuple[_FieldSpec, ...]] = (
+    _FieldSpec("imap_host", "imap.host", "str", _REQUIRED, True),
+    _FieldSpec("imap_port", "imap.port", "int", 993, False),
     _FieldSpec(
-        "imap_host", "MAIL_IMAP_HOST", "imap.host", "str", _REQUIRED, True, True
+        "imap_tls_mode", "imap.tls_mode", "tls_mode", DEFAULT_IMAP_TLS_MODE, False
     ),
-    _FieldSpec("imap_port", "MAIL_IMAP_PORT", "imap.port", "int", 993, False, False),
+    _FieldSpec("imap_folder", "imap.folder", "str", "INBOX", False),
+    _FieldSpec("smtp_host", "smtp.host", "str", _REQUIRED, True),
+    _FieldSpec("smtp_port", "smtp.port", "int", 587, False),
     _FieldSpec(
-        "imap_tls_mode",
-        "MAIL_IMAP_TLS_MODE",
-        "imap.tls_mode",
-        "tls_mode",
-        DEFAULT_IMAP_TLS_MODE,
-        False,
-        False,
+        "smtp_tls_mode", "smtp.tls_mode", "tls_mode", DEFAULT_SMTP_TLS_MODE, False
     ),
-    _FieldSpec(
-        "imap_folder", "MAIL_IMAP_FOLDER", "imap.folder", "str", "INBOX", False, False
-    ),
-    _FieldSpec(
-        "smtp_host", "MAIL_SMTP_HOST", "smtp.host", "str", _REQUIRED, True, True
-    ),
-    _FieldSpec("smtp_port", "MAIL_SMTP_PORT", "smtp.port", "int", 587, False, False),
-    _FieldSpec(
-        "smtp_tls_mode",
-        "MAIL_SMTP_TLS_MODE",
-        "smtp.tls_mode",
-        "tls_mode",
-        DEFAULT_SMTP_TLS_MODE,
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "username", "MAIL_USERNAME", "auth.username", "str", _REQUIRED, True, True
-    ),
-    # password: required in env, but optional in YAML (env can supply it).
-    _FieldSpec(
-        "password", "MAIL_PASSWORD", "auth.password", "str", _REQUIRED, True, False
-    ),
-    _FieldSpec(
-        "db_path", "MAIL_DB_PATH", "store.path", "str", DEFAULT_DB_PATH, False, False
-    ),
-    _FieldSpec(
-        "llm_api_key",
-        "LLM_API_KEY",
-        "llm.api_key",
-        "str",
-        "",
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "llm_provider_model",
-        "LLM_PROVIDER_MODEL",
-        "llm.provider_model",
-        "str",
-        "",
-        False,
-        False,
-        global_field=True,
-    ),
+    _FieldSpec("username", "auth.username", "str", _REQUIRED, True),
+    # password: optional in YAML (may be supplied, or unused with OAuth2).
+    _FieldSpec("password", "auth.password", "str", _REQUIRED, False),
+    # db_path: empty default; the accounts loader derives ``.data/<id>/mail.db``
+    # per account when ``store.path`` is absent.
+    _FieldSpec("db_path", "store.path", "str", "", False),
+    _FieldSpec("llm_api_key", "llm.api_key", "str", "", False),
+    _FieldSpec("llm_provider_model", "llm.provider_model", "str", "", False),
     _FieldSpec(
         "ingest_interval_minutes",
-        "MAIL_INGEST_INTERVAL",
         "ingest.interval_minutes",
         "int",
         DEFAULT_INGEST_INTERVAL_MINUTES,
         False,
-        False,
     ),
-    _FieldSpec(
-        "archive_root",
-        "MAIL_ARCHIVE_ROOT",
-        "archive.root",
-        "str",
-        DEFAULT_ARCHIVE_ROOT,
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "archive_enabled",
-        "MAIL_ARCHIVE_ENABLED",
-        "archive.enabled",
-        "bool",
-        True,
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "triage_on_ingest",
-        "MAIL_TRIAGE_ON_INGEST",
-        "triage.on_ingest",
-        "bool",
-        True,
-        False,
-        False,
-    ),
+    _FieldSpec("archive_root", "archive.root", "str", DEFAULT_ARCHIVE_ROOT, False),
+    _FieldSpec("archive_enabled", "archive.enabled", "bool", True, False),
+    _FieldSpec("triage_on_ingest", "triage.on_ingest", "bool", True, False),
     # Path to the human-readable triage rules file that the flash LLM
     # maintains from user actions.  Empty means "derive from db_path"
     # (``<db-dir>/triage_rules.md``); per-account like db_path.
-    _FieldSpec(
-        "triage_rules_path",
-        "MAIL_TRIAGE_RULES_PATH",
-        "triage.rules_path",
-        "str",
-        "",
-        False,
-        False,
-    ),
+    _FieldSpec("triage_rules_path", "triage.rules_path", "str", "", False),
     # OAuth2 / XOAUTH2 — optional; when oauth2_token is set, SASL XOAUTH2
     # is used instead of password-based login().
-    _FieldSpec(
-        "oauth2_token",
-        "MAIL_OAUTH2_TOKEN",
-        "auth.oauth2_token",
-        "str",
-        "",
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "oauth2_client_id",
-        "MAIL_OAUTH2_CLIENT_ID",
-        "auth.oauth2_client_id",
-        "str",
-        "",
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "oauth2_client_secret",
-        "MAIL_OAUTH2_CLIENT_SECRET",
-        "auth.oauth2_client_secret",
-        "str",
-        "",
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "oauth2_provider",
-        "MAIL_OAUTH2_PROVIDER",
-        "auth.oauth2_provider",
-        "str",
-        "",
-        False,
-        False,
-    ),
-    _FieldSpec(
-        "oauth2_tenant",
-        "MAIL_OAUTH2_TENANT",
-        "auth.oauth2_tenant",
-        "str",
-        "organizations",
-        False,
-        False,
-    ),
+    _FieldSpec("oauth2_token", "auth.oauth2_token", "str", "", False),
+    _FieldSpec("oauth2_client_id", "auth.oauth2_client_id", "str", "", False),
+    _FieldSpec("oauth2_client_secret", "auth.oauth2_client_secret", "str", "", False),
+    _FieldSpec("oauth2_provider", "auth.oauth2_provider", "str", "", False),
+    _FieldSpec("oauth2_tenant", "auth.oauth2_tenant", "str", "organizations", False),
     _FieldSpec(
         "langfuse_public_key",
-        "LANGFUSE_PUBLIC_KEY",
         "langfuse.public_key",
         "str",
         "",
         False,
-        False,
-        global_field=True,
     ),
     _FieldSpec(
         "langfuse_secret_key",
-        "LANGFUSE_SECRET_KEY",
         "langfuse.secret_key",
         "str",
         "",
         False,
-        False,
-        global_field=True,
     ),
-    _FieldSpec(
-        "langfuse_base_url",
-        "LANGFUSE_BASE_URL",
-        "langfuse.base_url",
-        "str",
-        "",
-        False,
-        False,
-        global_field=True,
-    ),
-    _FieldSpec(
-        "log_level",
-        "LOG_LEVEL",
-        "logging.level",
-        "log_level",
-        "INFO",
-        False,
-        False,
-        global_field=True,
-    ),
+    _FieldSpec("langfuse_base_url", "langfuse.base_url", "str", "", False),
+    _FieldSpec("log_level", "logging.level", "log_level", "INFO", False),
     _FieldSpec(
         "log_format",
-        "LOG_FORMAT",
         "logging.format",
         "log_format",
         "console",
         False,
-        False,
-        global_field=True,
     ),
     _FieldSpec(
         "log_file_dir",
-        "LOG_FILE_DIR",
         "logging.file_dir",
         "str",
         ".mail_log",
         False,
-        False,
-        global_field=True,
     ),
     _FieldSpec(
-        "component_agent_enabled",
-        "COMPONENT_AGENT_ENABLED",
-        "component_agent.enabled",
-        "bool",
-        False,
-        False,
-        False,
+        "component_agent_enabled", "component_agent.enabled", "bool", False, False
     ),
 )
 

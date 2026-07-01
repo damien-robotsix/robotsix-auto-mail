@@ -2,6 +2,18 @@
 
 ## 0.0.0 (unreleased)
 
+- Configuration is now read **only from the YAML config file** — all
+  environment-variable-based configuration has been removed. The single
+  ``MAIL_CONFIG_PATH`` variable still *locates* the file (default
+  ``config/mail.local.yaml``); it must use the multi-account ``accounts:``
+  shape. Removed the ``MAIL_*`` / ``MAIL_ACCOUNTS_*`` / ``LLM_*`` /
+  ``LANGFUSE_*`` / ``LOG_*`` config env vars, the single-account ("mono")
+  config path (including the historical ``.data/mail.db`` default — each
+  account uses ``.data/<id>/mail.db``), the ``migrate-config`` command, the
+  ``.env.example`` file, and the env half of the config-sync checker.
+  ``resolve_llm_api_key`` / ``resolve_llm_provider_model`` now resolve from an
+  explicit argument then the config file's ``llm.*`` section (no env).
+
 - Replaced the triage agent's JSON "memory" ledgers with a single
   human-readable ``triage_rules.md`` file maintained by a fast ("flash") LLM.
   Whenever you act on a message (board move, archive-to-folder, save-draft,

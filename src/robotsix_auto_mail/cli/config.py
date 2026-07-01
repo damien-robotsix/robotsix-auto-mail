@@ -231,17 +231,8 @@ def _existing_accounts_for_append(
         others = [a for a in container.accounts if a.account_id != new_account_id]
         return others, container.default_account_id
 
-    # Deprecated mono file → convert the existing config to a "default" account.
-    try:
-        mono_cfg = MailConfig.from_yaml(path, validate=False)
-    except Exception:
-        return [], new_account_id
-    others = (
-        []
-        if new_account_id == "default"
-        else [MailAccount(account_id="default", config=mono_cfg, label="default")]
-    )
-    return others, "default"
+    # A file without an `accounts:` list is not a valid config — start fresh.
+    return [], new_account_id
 
 
 def _find_existing_account(path: Path, account_id: str) -> MailAccount | None:

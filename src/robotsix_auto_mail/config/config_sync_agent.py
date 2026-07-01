@@ -2,11 +2,11 @@
 
 The deterministic ``scripts/config/check_config_sync.py`` checker is the
 fast, free, exact CI gate — it catches drift that fits its hard-coded
-``FIELD_TO_YAML`` / ``FIELD_TO_ENV`` mappings and rule set.  This module is
+``FIELD_TO_YAML`` mapping and rule set.  This module is
 an *optional, operator-facing advisory tool* that **complements** (and does
-NOT replace) that gate: it asks an LLM to compare the four config surfaces
-(the ``MailConfig`` dataclass, the YAML template, ``.env.example`` and the
-connecting docs) against those same ground-truth mappings and emit
+NOT replace) that gate: it asks an LLM to compare the three config surfaces
+(the ``MailConfig`` dataclass, the YAML template, and the connecting docs)
+against those same ground-truth mappings and emit
 human-readable drift proposals — catching *unanticipated* patterns the
 deterministic rules cannot express.
 
@@ -42,7 +42,6 @@ from robotsix_auto_mail.db import get_watermark, set_watermark
 #: ``MailConfig`` dataclass which is rendered from ``_FIELD_SPECS``.
 _SURFACE_FILES: tuple[str, ...] = (
     "docs/config/mail.local.example.yaml",
-    ".env.example",
     "docs/connecting.md",
 )
 #: Watermark key owned by this module for the dedup memory ledger.
@@ -222,18 +221,17 @@ def _default_repo_root() -> Path:
 
 def _render_mailconfig_surface() -> str:
     """Render the ``MailConfig`` dataclass surface from ``_FIELD_SPECS``."""
-    lines = ["MailConfig fields (field | yaml_path | env_key | kind | default):"]
+    lines = ["MailConfig fields (field | yaml_path | kind | default):"]
     for spec in _FIELD_SPECS:
         default = "<required>" if spec.default is _REQUIRED else repr(spec.default)
         lines.append(
-            f"- {spec.field_name} | {spec.yaml_path} | {spec.env_key} | "
-            f"{spec.kind} | {default}"
+            f"- {spec.field_name} | {spec.yaml_path} | {spec.kind} | {default}"
         )
     return "\n".join(lines)
 
 
 def _read_config_surfaces(repo_root: Path) -> dict[str, str]:
-    """Read the four config surfaces, keyed by a human-readable label."""
+    """Read the config surfaces, keyed by a human-readable label."""
     surfaces: dict[str, str] = {}
     for rel in _SURFACE_FILES:
         path = repo_root / rel
@@ -247,7 +245,7 @@ def _read_config_surfaces(repo_root: Path) -> dict[str, str]:
 
 def _load_field_mappings(
     repo_root: Path,
-) -> tuple[dict[str, str], dict[str, str]]:
+) -> dict[str, str]:
     """Import the ground-truth mappings from the deterministic checker.
 
     The checker lives at ``scripts/config/check_config_sync.py`` (not on the
@@ -264,8 +262,7 @@ def _load_field_mappings(
             f"Cannot import check_config_sync from {scripts_dir}: {exc}"
         ) from exc
     field_to_yaml: dict[str, str] = module.FIELD_TO_YAML
-    field_to_env: dict[str, str] = module.FIELD_TO_ENV
-    return field_to_yaml, field_to_env
+    return field_to_yaml
 
 
 # ---------------------------------------------------------------------------
@@ -278,11 +275,11 @@ def _build_config_sync_system_prompt() -> str:
     return (
         "You are a configuration-consistency auditor for a Python project. "
         "You are given an authoritative mapping of each `MailConfig` field "
-        "to its YAML key and environment variable, followed by the text of "
-        "four configuration surfaces: the `MailConfig` dataclass, the YAML "
-        "template, the `.env.example` file, and the connecting docs.\n"
+        "to its YAML key, followed by the text of three configuration "
+        "surfaces: the `MailConfig` dataclass, the YAML template, and the "
+        "connecting docs.\n"
         "\n"
-        "Compare the four surfaces against the authoritative mapping and "
+        "Compare the three surfaces against the authoritative mapping and "
         "against each other. Emit a human-readable proposal for any "
         "divergence — for example a field described with the wrong "
         "semantics in prose, a YAML key that looks meaningful but is not in "
@@ -300,24 +297,20 @@ def _build_config_sync_system_prompt() -> str:
     )
 
 
-def _render_mappings(
-    field_to_yaml: dict[str, str], field_to_env: dict[str, str]
-) -> str:
-    """Render the ground-truth field/YAML/env mapping for the prompt."""
-    lines = ["Authoritative field -> YAML key -> env var mapping:"]
+def _render_mappings(field_to_yaml: dict[str, str]) -> str:
+    """Render the ground-truth field/YAML mapping for the prompt."""
+    lines = ["Authoritative field -> YAML key mapping:"]
     for field_name, yaml_key in field_to_yaml.items():
-        env_key = field_to_env.get(field_name, "")
-        lines.append(f"- {field_name}: yaml=`{yaml_key}` env=`{env_key}`")
+        lines.append(f"- {field_name}: yaml=`{yaml_key}`")
     return "\n".join(lines)
 
 
 def _build_user_message(
     surfaces: dict[str, str],
     field_to_yaml: dict[str, str],
-    field_to_env: dict[str, str],
 ) -> str:
-    """Assemble the user message from the mapping + the four surfaces."""
-    sections = [_render_mappings(field_to_yaml, field_to_env)]
+    """Assemble the user message from the mapping + the config surfaces."""
+    sections = [_render_mappings(field_to_yaml)]
     for label, text in surfaces.items():
         sections.append(f"===== {label} =====\n{text}")
     return "\n\n".join(sections)
@@ -336,13 +329,13 @@ def run_config_sync_agent(
     tier: Tier = Tier.CHEAP,
     conn: sqlite3.Connection | None = None,
 ) -> ConfigSyncResult:
-    """Ask an LLM to detect config drift across the four config surfaces.
+    """Ask an LLM to detect config drift across the config surfaces.
 
     Args:
         repo_root: Repository root.  Defaults to auto-detection (resolved
             the same way the deterministic checker resolves it).
         api_key: OpenRouter API key.  Resolves with the precedence
-            ``api_key`` argument → ``LLM_API_KEY`` env var →
+            ``api_key`` argument →
             ``config.llm_api_key`` (via the config loader).
         provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
             ``None`` falls back to the tier-level default model (via
@@ -366,8 +359,8 @@ def run_config_sync_agent(
     """
     resolved_root = repo_root if repo_root is not None else _default_repo_root()
     surfaces = _read_config_surfaces(resolved_root)
-    field_to_yaml, field_to_env = _load_field_mappings(resolved_root)
-    user_message = _build_user_message(surfaces, field_to_yaml, field_to_env)
+    field_to_yaml = _load_field_mappings(resolved_root)
+    user_message = _build_user_message(surfaces, field_to_yaml)
 
     output = _run_llm_agent(
         api_key=api_key,

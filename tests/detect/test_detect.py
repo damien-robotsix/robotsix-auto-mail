@@ -249,10 +249,10 @@ def test_provider_to_config_imap_folder_defaults_to_inbox() -> None:
 
 
 def test_provider_to_config_default_db_path() -> None:
-    """db_path defaults to '.data/mail.db' when not overridden."""
+    """db_path defaults to '' (the accounts loader derives it per account)."""
     mp = MailProvider(imap_host="ih", smtp_host="sh")
     cfg = provider_to_config(mp, "user@example.com")
-    assert cfg.db_path == ".data/mail.db"
+    assert cfg.db_path == ""
 
 
 def test_provider_to_config_explicit_db_path() -> None:
@@ -314,7 +314,7 @@ def test_provider_to_config_microsoft_writes_oauth2_no_password() -> None:
 
 def test_detect_provider_success() -> None:
     """Mock the provider; detect_provider returns expected MailProvider."""
-    with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+    with mock.patch.dict(os.environ, {}, clear=True):
         mock_run_result = mock.MagicMock()
         mock_run_result.output = DetectedProvider(
             imap_host="imap.example.com",
@@ -335,7 +335,7 @@ def test_detect_provider_success() -> None:
             "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
-            result = detect_provider("user@example.com")
+            result = detect_provider("user@example.com", api_key="sk-test")
 
         assert isinstance(result, MailProvider)
         assert result.imap_host == "imap.example.com"
@@ -377,7 +377,7 @@ def test_detect_provider_passes_api_key_arg() -> None:
 
 def test_detect_provider_llm_call_error() -> None:
     """When call_with_retry raises, DetectionError wraps the original message."""
-    with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+    with mock.patch.dict(os.environ, {}, clear=True):
         mock_handle = mock.MagicMock()
         mock_provider = mock.MagicMock()
         mock_provider.build_agent.return_value = mock_handle
@@ -388,7 +388,7 @@ def test_detect_provider_llm_call_error() -> None:
             return_value=mock_provider,
         ):
             with pytest.raises(DetectionError) as exc:
-                detect_provider("user@example.com")
+                detect_provider("user@example.com", api_key="sk-test")
 
         assert "LLM API timeout" in str(exc.value)
         mock_handle.close.assert_called_once()
@@ -399,12 +399,12 @@ def test_detect_provider_missing_api_key() -> None:
     with mock.patch.dict(os.environ, {}, clear=True):
         with pytest.raises(DetectionError) as exc:
             detect_provider("user@example.com")
-        assert "LLM_API_KEY" in str(exc.value)
+        assert "llm.api_key" in str(exc.value)
 
 
 def test_detect_provider_tier_default() -> None:
     """When no tier arg is passed, build_agent is called with level=1 (cheap)."""
-    with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+    with mock.patch.dict(os.environ, {}, clear=True):
         mock_run_result = mock.MagicMock()
         mock_run_result.output = DetectedProvider(
             imap_host="imap.example.com",
@@ -421,7 +421,7 @@ def test_detect_provider_tier_default() -> None:
             "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
-            detect_provider("user@example.com")
+            detect_provider("user@example.com", api_key="sk-test")
 
         mock_provider.build_agent.assert_called_once()
         call_kwargs = mock_provider.build_agent.call_args.kwargs
@@ -430,7 +430,7 @@ def test_detect_provider_tier_default() -> None:
 
 def test_detect_provider_explicit_tier() -> None:
     """When tier=Tier.DEFAULT is passed, build_agent is called with level=2."""
-    with mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}, clear=True):
+    with mock.patch.dict(os.environ, {}, clear=True):
         mock_run_result = mock.MagicMock()
         mock_run_result.output = DetectedProvider(
             imap_host="imap.example.com",
@@ -447,7 +447,7 @@ def test_detect_provider_explicit_tier() -> None:
             "robotsix_llmio.core.factory.get_provider_for_identifier",
             return_value=mock_provider,
         ):
-            detect_provider("user@example.com", tier=Tier.DEFAULT)
+            detect_provider("user@example.com", api_key="sk-test", tier=Tier.DEFAULT)
 
         mock_provider.build_agent.assert_called_once()
         call_kwargs = mock_provider.build_agent.call_args.kwargs

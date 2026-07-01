@@ -1,240 +1,208 @@
 # Configuration Reference
 
-`robotsix-auto-mail` is configured through a three-layer cascade:
-**built-in defaults → YAML config file → environment variables** —
-each layer overrides the previous one field by field.
+`robotsix-auto-mail` is configured through **built-in defaults overlaid by a
+single YAML config file**. Each field the YAML file supplies overrides its
+built-in default; any field you omit keeps its default.
 
-This page documents every environment variable accepted by the
-application, grouped by category. For the YAML file counterpart and
-a guided setup, see [Connecting](connecting.md).
+> **Configuration is provided ONLY via the YAML config file.** Environment
+> variables are **not** read for configuration. The only environment variable
+> the application consults is `MAIL_CONFIG_PATH`, which merely *locates* the
+> file (default `config/mail.local.yaml`).
 
----
-
-## Configuration cascade
-
-At startup, fields are resolved in this order:
-
-1. **Built-in defaults** — safe, minimal defaults are baked into the
-   `MailConfig` dataclass and the `_FIELD_SPECS` table (see
-   `src/robotsix_auto_mail/config/`).
-2. **YAML config file** — `config/mail.local.yaml` (when
-   `MAIL_CONFIG_PATH` points at it) overrides defaults. See
-   `docs/config/mail.local.example.yaml` for the template.
-3. **Environment variables** — `MAIL_*` vars (and global `LLM_*`,
-   `LANGFUSE_*`, etc.) override both defaults and the YAML file.
-
-Each layer sets only the fields it supplies; missing fields fall through
-to the next source below it.
+For a guided setup and the `detect` auto-configuration command, see
+[Connecting](connecting.md). The canonical template ships in
+[`docs/config/mail.local.example.yaml`](config/mail.local.example.yaml).
 
 ---
 
-## Config file path
+## Config file location
 
-| Variable | Default | Kind | Required | Description |
+The loader reads the YAML file at the path given by `MAIL_CONFIG_PATH`
+(default `config/mail.local.yaml`). `MAIL_CONFIG_PATH` only *points at* the
+file — it carries no configuration values itself.
+
+| Environment variable | Default | Purpose |
+|---|---|---|
+| `MAIL_CONFIG_PATH` | `config/mail.local.yaml` | Filesystem path used to locate the YAML config file. |
+
+---
+
+## File shape
+
+The config file has a top-level `accounts:` list — one entry per mailbox — plus
+optional application-wide `llm:`, `langfuse:`, and `logging:` sections and an
+optional `default_account:` key.
+
+```yaml
+# Application-wide (top-level) sections
+llm:
+  api_key: sk-or-v1-…
+langfuse:
+  public_key: ""
+logging:
+  level: INFO
+
+# The default account for CLI operations (absent → the first account below)
+default_account: personal
+
+accounts:
+  - id: personal          # required, stable, filesystem/URL-safe id
+    label: Personal Gmail # optional human-friendly display name
+    imap:
+      host: imap.gmail.com
+    smtp:
+      host: smtp.gmail.com
+    auth:
+      username: me@gmail.com
+      password: ""
+    store:
+      path: .data/personal/mail.db
+
+  - id: work
+    label: Work mailbox
+    imap:
+      host: imap.work.example.com
+    smtp:
+      host: smtp.work.example.com
+    auth:
+      username: me@work.example.com
+      password: ""
+    store:
+      path: .data/work/mail.db
+```
+
+- **Per-account sections** — `imap`, `smtp`, `auth`, `store`, `ingest`,
+  `archive`, `triage`, and `component_agent` — live under each `accounts:`
+  entry.
+- **Application-wide sections** — `llm`, `langfuse`, and `logging` — are
+  top-level and apply to every account.
+- The single-account ("mono") shape (top-level `imap:` / `smtp:` / `auth:`
+  with no `accounts:` key) is **no longer loaded**. Run
+  `robotsix-auto-mail migrate-config` to convert an old file, or
+  `robotsix-auto-mail detect` to regenerate it.
+
+---
+
+## Per-account sections
+
+### `imap` — incoming mail
+
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `MAIL_CONFIG_PATH` | `config/mail.local.yaml` | string | no | Path to the YAML config file loaded as the second layer of the configuration cascade. |
+| `imap.host` | *(none)* | string | yes | Hostname of the IMAP server. |
+| `imap.port` | `993` | integer | no | IMAP server port. |
+| `imap.tls_mode` | `direct-tls` | `starttls` / `direct-tls` / `none` | no | TLS negotiation mode. `direct-tls` initiates TLS immediately (port 993 convention); `starttls` upgrades after connecting (port 143 convention); `none` disables TLS entirely. |
+| `imap.folder` | `INBOX` | string | no | Mailbox (folder) to watch for new mail. |
 
----
+### `smtp` — outgoing mail
 
-## Variable categories
-
-### Single-account vs multi-account
-
-The variables listed below describe a **single account**. To drive
-several mailboxes from one process, use the namespaced scheme:
-prefix every per-account variable with `MAIL_ACCOUNTS_<n>_` where `<n>`
-is a zero-based, contiguous integer index. Global variables (LLM,
-Langfuse, logging) are read from the bare names below —
-they are never namespaced.
-
-See [Multi-account variables](#multi-account-variables) for details.
-
----
-
-## IMAP (incoming mail)
-
-| Variable | Default | Kind | Required | Description |
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `MAIL_IMAP_HOST` | *(none)* | string | yes | Hostname of the IMAP server. |
-| `MAIL_IMAP_PORT` | `993` | integer | no | IMAP server port. |
-| `MAIL_IMAP_TLS_MODE` | `direct-tls` | `starttls` / `direct-tls` / `none` | no | TLS negotiation mode. `direct-tls` initiates TLS immediately (port 993 convention); `starttls` upgrades after connecting (port 143 convention); `none` disables TLS entirely. |
-| `MAIL_IMAP_FOLDER` | `INBOX` | string | no | Mailbox (folder) to watch for new mail. |
+| `smtp.host` | *(none)* | string | yes | Hostname of the SMTP server. |
+| `smtp.port` | `587` | integer | no | SMTP server port. |
+| `smtp.tls_mode` | `starttls` | `starttls` / `direct-tls` / `none` | no | TLS negotiation mode. |
 
----
+### `auth` — authentication
 
-## SMTP (outgoing mail)
-
-| Variable | Default | Kind | Required | Description |
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `MAIL_SMTP_HOST` | *(none)* | string | yes | Hostname of the SMTP server. |
-| `MAIL_SMTP_PORT` | `587` | integer | no | SMTP server port. |
-| `MAIL_SMTP_TLS_MODE` | `starttls` | `starttls` / `direct-tls` / `none` | no | TLS negotiation mode. |
+| `auth.username` | *(none)* | string | yes | Login username — typically the full email address. |
+| `auth.password` | *(none)* | string | no | Login password. Masked in logs and `repr`. Not required when `auth.oauth2_provider` is `microsoft` (MSAL acquires tokens instead). |
+| `auth.oauth2_token` | `""` | string | no | OAuth2 access token for SASL XOAUTH2. When set, password-based `login()` is skipped. |
+| `auth.oauth2_client_id` | `""` | string | no | OAuth2 client identifier — required by some providers alongside the token. |
+| `auth.oauth2_client_secret` | `""` | string | no | OAuth2 client secret. Masked in logs and `repr`. |
+| `auth.oauth2_provider` | `""` | string | no | MSAL OAuth2 provider. Set to `microsoft` to acquire and refresh tokens via MSAL instead of password auth. |
+| `auth.oauth2_tenant` | `organizations` | string | no | Azure AD tenant for MSAL-managed OAuth2. |
 
----
+### `store` — storage
 
-## Authentication
-
-| Variable | Default | Kind | Required | Description |
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `MAIL_USERNAME` | *(none)* | string | yes | Login username — typically the full email address. |
-| `MAIL_PASSWORD` | *(none)* | string | yes | Login password. Masked in logs and `repr`. Not required when `MAIL_OAUTH2_PROVIDER=microsoft` (MSAL acquires tokens instead), and optional at the YAML layer. |
-| `MAIL_OAUTH2_TOKEN` | `""` | string | no | OAuth2 access token for SASL XOAUTH2. When set, password-based `login()` is skipped. |
-| `MAIL_OAUTH2_CLIENT_ID` | `""` | string | no | OAuth2 client identifier — required by some providers alongside the token. |
-| `MAIL_OAUTH2_CLIENT_SECRET` | `""` | string | no | OAuth2 client secret. Masked in logs and `repr`. |
-| `MAIL_OAUTH2_PROVIDER` | `""` | string | no | MSAL OAuth2 provider. Set to `"microsoft"` to acquire and refresh tokens via MSAL instead of password auth. |
-| `MAIL_OAUTH2_TENANT` | `organizations` | string | no | Azure AD tenant for MSAL-managed OAuth2. |
+| `store.path` | `""` | string | no | Path to the SQLite database file. When empty, the per-account default `.data/<id>/mail.db` is derived (unique per account). Every account must resolve to a distinct path. |
 
----
+### `ingest` — automatic ingestion
 
-## Storage
-
-| Variable | Default | Kind | Required | Description |
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `MAIL_DB_PATH` | `.data/mail.db` | string | no | Path to the SQLite database file. In multi-account mode, when omitted the default per-account path is `.data/<account-id>/mail.db`. |
+| `ingest.interval_minutes` | `15` | integer | no | Minutes between automatic ingest cycles when running `ingest --watch`. |
 
----
+### `archive`
 
-## Automatic ingestion
-
-| Variable | Default | Kind | Required | Description |
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `MAIL_INGEST_INTERVAL` | `15` | integer | no | Minutes between automatic ingest cycles when running `ingest --watch`. |
+| `archive.root` | `robotsix-mail-archive` | string | no | Root folder under which the self-managed archive structure lives. |
+| `archive.enabled` | `true` | boolean | no | Whether to create and manage the archive folder structure. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
 
----
+### `triage` — inbox triage
 
-## Archive
-
-| Variable | Default | Kind | Required | Description |
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `MAIL_ARCHIVE_ROOT` | `robotsix-mail-archive` | string | no | Root folder under which the self-managed archive structure lives. |
-| `MAIL_ARCHIVE_ENABLED` | `true` | boolean | no | Whether to create and manage the archive folder structure. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
+| `triage.on_ingest` | `true` | boolean | no | Whether to run the inbox triage agent automatically after each ingest cycle. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
+| `triage.rules_path` | `""` | string | no | Path to the human-readable `triage_rules.md` the flash LLM maintains from board actions. When empty, `<db-dir>/triage_rules.md` is derived from `store.path`. |
 
----
-
-## Inbox triage
-
-| Variable | Default | Kind | Required | Description |
-|---|---|---|---|---|
-| `MAIL_TRIAGE_ON_INGEST` | `true` | boolean | no | Whether to run the inbox triage agent automatically after each ingest cycle. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
-
----
-
-## LLM provider (global)
-
-Used by the `detect` subcommand and future LLM-assisted mail processing.
-These are application-wide — they are **not** namespaced in multi-account
-mode.
-
-| Variable | Default | Kind | Required | Description |
-|---|---|---|---|---|
-| `LLM_API_KEY` | `""` | string | no | OpenRouter API key (or provider-specific key). Get one at https://openrouter.ai/keys. Masked in logs and `repr`. |
-| `LLM_PROVIDER_MODEL` | `""` | string | no | LLM backend name. When empty, the `robotsix-llmio` library's tier default is used. See its README for available backends. |
-
----
-
-## Langfuse tracing (global)
-
-When both `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set, every
-LLM agent run is traced to the configured Langfuse project. These are
-application-wide — they are **not** namespaced in multi-account mode.
-
-| Variable | Default | Kind | Required | Description |
-|---|---|---|---|---|
-| `LANGFUSE_PUBLIC_KEY` | `""` | string | no | Public key from your Langfuse project settings. |
-| `LANGFUSE_SECRET_KEY` | `""` | string | no | Secret key from your Langfuse project settings. Masked in logs and `repr`. |
-| `LANGFUSE_BASE_URL` | `""` | string | no | Langfuse host override. When empty, the `robotsix-llmio` library default (`https://cloud.langfuse.com`) is used. |
-
----
-
-## Logging / observability (global)
-
-| Variable | Default | Kind | Required | Description |
-|---|---|---|---|---|
-| `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` | no | Minimum log level. |
-| `LOG_FORMAT` | `console` | `json` / `console` | no | Log renderer. `json` for structured production logs; `console` for human-friendly development output. |
-| `LOG_FILE_DIR` | `.mail_log` | string | no | Directory for date-stamped debug log files (`mail-YYYY-MM-DD.log`). An empty or whitespace-only value disables file logging. |
-
----
-
-## Component agent
+### `component_agent`
 
 Optional HTTP API (monitor / config-get / config-set) served on the board
 server, letting external agents inspect status and read/apply configuration
-over HTTP — without the agent-comm broker. This is a **per-account** field:
-in multi-account mode it is namespaced as
-`MAIL_ACCOUNTS_<n>_COMPONENT_AGENT_ENABLED` (YAML `component_agent.enabled`
-under each account). For the full setup guide, see [Connecting](connecting.md).
+over HTTP — without the agent-comm broker. This is a **per-account** field.
 
-| Variable | Default | Kind | Required | Description |
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `COMPONENT_AGENT_ENABLED` | `false` | boolean | no | Whether the component-agent HTTP API is served on the board server. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
+| `component_agent.enabled` | `false` | boolean | no | Whether the component-agent HTTP API is served on the board server. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
 
 ---
 
-## Multi-account variables
+## Application-wide (top-level) sections
 
-When any `MAIL_ACCOUNTS_*` environment variable is present, the loader
-switches into **multi-account mode**. Every per-account field from the
-sections above is namespaced: `MAIL_<FIELD>` becomes
-`MAIL_ACCOUNTS_<n>_<FIELD>` where `<n>` is a zero-based integer.
-
-Global variables (`LLM_API_KEY`, `LLM_PROVIDER_MODEL`, `LANGFUSE_*`,
-`LOG_LEVEL`, `LOG_FORMAT`, `LOG_FILE_DIR`) are **not**
-namespaced — they remain at their bare names above and apply to every
+These sections are **not** nested under `accounts:` — they apply to every
 account.
 
-### Per-account identifiers
+### `llm` — LLM provider
 
-| Variable | Default | Kind | Required | Description |
+Used by the `detect` subcommand and future LLM-assisted mail processing.
+
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `MAIL_ACCOUNTS_<n>_ID` | *(none)* | string | yes | Stable, filesystem/URL-safe identifier for this account (e.g. `personal`). Must match `^[A-Za-z0-9._-]+$`. |
-| `MAIL_ACCOUNTS_<n>_LABEL` | *(none)* | string | no | Human-friendly display name (e.g. `Personal Gmail`). |
+| `llm.api_key` | `""` | string | no | OpenRouter API key (or provider-specific key). Get one at <https://openrouter.ai/keys>. Masked in logs and `repr`. |
+| `llm.provider_model` | `""` | string | no | LLM backend name. When empty, the `robotsix-llmio` library's tier default is used. See its README for available backends. |
 
-### Default account
+### `langfuse` — tracing
 
-| Variable | Default | Kind | Required | Description |
+When both `langfuse.public_key` and `langfuse.secret_key` are set, every LLM
+agent run is traced to the configured Langfuse project.
+
+| Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `MAIL_ACCOUNTS_DEFAULT` | *(first index)* | string | no | The `account_id` of the default account. When absent, index `0` is the default. |
+| `langfuse.public_key` | `""` | string | no | Public key from your Langfuse project settings. |
+| `langfuse.secret_key` | `""` | string | no | Secret key from your Langfuse project settings. Masked in logs and `repr`. |
+| `langfuse.base_url` | `""` | string | no | Langfuse host override. When empty, the `robotsix-llmio` library default (`https://cloud.langfuse.com`) is used. |
 
-### Rules
+### `logging` — observability
 
-- Indices must be **contiguous** starting at 0 (`0`, `1`, `2`, …). A gap
-  (e.g. `0` and `2` set but `1` missing) raises `ConfigurationError`.
-- `MAIL_ACCOUNTS_<n>_ID` is required for every account.
-- When `MAIL_ACCOUNTS_<n>_DB_PATH` is omitted, it defaults to
-  `.data/<id>/mail.db` (unique per account).
-- The presence of **any** `MAIL_ACCOUNTS_*` variable switches the loader
-  into multi-account mode; with no such vars set, the loader stays in
-  single-account mode (full backward compatibility).
+| Key | Default | Kind | Required | Description |
+|---|---|---|---|---|
+| `logging.level` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` | no | Minimum log level. |
+| `logging.format` | `console` | `json` / `console` | no | Log renderer. `json` for structured production logs; `console` for human-friendly development output. |
+| `logging.file_dir` | `.mail_log` | string | no | Directory for date-stamped debug log files (`mail-YYYY-MM-DD.log`). An empty or whitespace-only value disables file logging. |
 
-### Example
+---
 
-```sh
-# Global (application-wide — NOT namespaced)
-LLM_API_KEY=sk-or-v1-abc
-LANGFUSE_PUBLIC_KEY=pk-lf-xyz
-LANGFUSE_SECRET_KEY=sk-lf-xyz
-LOG_LEVEL=DEBUG
+## Accounts container
 
-# Default account
-MAIL_ACCOUNTS_DEFAULT=personal
+| Key | Default | Kind | Required | Description |
+|---|---|---|---|---|
+| `accounts` | *(none)* | list | yes | List of per-account mappings. Each entry requires a stable `id` and the `imap` / `smtp` / `auth` sections above; other per-account sections are optional. |
+| `accounts[].id` | *(none)* | string | yes | Stable, filesystem/URL-safe identifier for the account (e.g. `personal`). Must match `^[A-Za-z0-9._-]+$` and be unique across accounts. |
+| `accounts[].label` | *(none)* | string | no | Human-friendly display name (e.g. `Personal Gmail`). |
+| `default_account` | *(first account)* | string | no | The `id` of the default account for CLI operations. When absent, the first `accounts:` entry is the default. |
 
-# Account 0
-MAIL_ACCOUNTS_0_ID=personal
-MAIL_ACCOUNTS_0_LABEL=Personal Gmail
-MAIL_ACCOUNTS_0_IMAP_HOST=imap.gmail.com
-MAIL_ACCOUNTS_0_SMTP_HOST=smtp.gmail.com
-MAIL_ACCOUNTS_0_USERNAME=me@gmail.com
-MAIL_ACCOUNTS_0_PASSWORD=app-password
+Rules enforced when the file loads:
 
-# Account 1
-MAIL_ACCOUNTS_1_ID=work
-MAIL_ACCOUNTS_1_LABEL=Work mailbox
-MAIL_ACCOUNTS_1_IMAP_HOST=imap.work.example.com
-MAIL_ACCOUNTS_1_SMTP_HOST=smtp.work.example.com
-MAIL_ACCOUNTS_1_USERNAME=me@work.example.com
-MAIL_ACCOUNTS_1_PASSWORD=s3cret
-```
+- At least one account is required; every account needs a unique, non-empty
+  `id`.
+- Every account's resolved `store.path` must be unique (one SQLite database per
+  account).
+- `default_account`, when set, must name an existing account `id`.
 
 ---
 

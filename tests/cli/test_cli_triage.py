@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import os
 from pathlib import Path
 from unittest import mock
 
@@ -111,9 +110,8 @@ def test_triage_text_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
         mock.patch(
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["triage"])
+        rc = main(["triage", "--api-key", "sk-test"])
 
     assert rc == 0
     out = capsys.readouterr().out
@@ -134,9 +132,8 @@ def test_triage_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
         mock.patch(
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["triage", "--output-format", "json"])
+        rc = main(["triage", "--output-format", "json", "--api-key", "sk-test"])
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
@@ -160,7 +157,6 @@ def test_triage_empty_inbox(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
         mock.patch(
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(["triage"])
 

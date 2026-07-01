@@ -16,7 +16,6 @@ from robotsix_llmio.core import Tier
 
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
-    DEFAULT_DB_PATH,
     MailConfig,
 )
 from robotsix_auto_mail.detect.models import (
@@ -653,7 +652,7 @@ def provider_to_config(
     provider: MailProvider,
     username: str,
     password: str = "",  # nosec B107 -- empty default is intentional; provider may not require a password
-    db_path: str = DEFAULT_DB_PATH,
+    db_path: str = "",
 ) -> MailConfig:
     """Convert a ``MailProvider`` + username (+ optional password) into a
     ``MailConfig``.

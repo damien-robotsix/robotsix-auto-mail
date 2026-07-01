@@ -6,10 +6,10 @@ import os
 from pathlib import Path
 from unittest import mock
 
-from robotsix_auto_mail.config import MailConfig, load_llm
+from robotsix_auto_mail.config import MailAccountsConfig, MailConfig, load_llm
 
 # ---------------------------------------------------------------------------
-# LLM settings (llm: section + LLM_* env vars)
+# LLM settings (top-level llm: section + LLM_* env vars)
 # ---------------------------------------------------------------------------
 
 
@@ -33,56 +33,50 @@ def test_llm_api_key_redacted_in_repr() -> None:
     assert "<redacted>" in repr(cfg)
 
 
-def test_from_yaml_reads_llm_section(tmp_path: Path) -> None:
-    """from_yaml parses the optional llm: section."""
-    yaml_file = tmp_path / "with_llm.yaml"
+def test_from_yaml_reads_top_level_llm_section(tmp_path: Path) -> None:
+    """from_yaml parses the top-level llm: section onto each account."""
+    yaml_file = tmp_path / "accounts.yaml"
     yaml_file.write_text(
         """\
-imap:
-  host: imap.example.com
-
-smtp:
-  host: smtp.example.com
-
-auth:
-  username: u
-  password: p
-
 llm:
   api_key: sk-or-from-file
+accounts:
+  - id: default
+    imap:
+      host: imap.example.com
+    smtp:
+      host: smtp.example.com
+    auth:
+      username: u
+      password: p
 """
     )
-    cfg = MailConfig.from_yaml(yaml_file)
-    assert cfg.llm_api_key == "sk-or-from-file"
+    accounts = MailAccountsConfig.from_yaml(yaml_file)
+    assert accounts.default.config.llm_api_key == "sk-or-from-file"
 
 
-def test_from_env_reads_llm_vars() -> None:
-    """from_env picks up LLM_API_KEY."""
-    env: dict[str, str] = {
-        "MAIL_IMAP_HOST": "i",
-        "MAIL_SMTP_HOST": "s",
-        "MAIL_USERNAME": "u",
-        "MAIL_PASSWORD": "p",
-        "LLM_API_KEY": "sk-env",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        cfg = MailConfig.from_env()
-        assert cfg.llm_api_key == "sk-env"
+def test_from_yaml_llm_default_when_absent(tmp_path: Path) -> None:
+    """Without a top-level llm: section, llm_api_key defaults to empty."""
+    yaml_file = tmp_path / "accounts.yaml"
+    yaml_file.write_text(
+        """\
+accounts:
+  - id: default
+    imap:
+      host: imap.example.com
+    smtp:
+      host: smtp.example.com
+    auth:
+      username: u
+      password: p
+"""
+    )
+    accounts = MailAccountsConfig.from_yaml(yaml_file)
+    assert accounts.default.config.llm_api_key == ""
 
 
-def test_load_llm_env_wins() -> None:
-    """load_llm prefers the environment variable."""
-    env: dict[str, str] = {
-        "LLM_API_KEY": "sk-env",
-        # point at a path that does not exist so the file branch is skipped
-        "MAIL_CONFIG_PATH": "/nonexistent/mail.yaml",
-    }
-    with mock.patch.dict(os.environ, env, clear=True):
-        assert load_llm() == "sk-env"
-
-
-def test_load_llm_falls_back_to_file(tmp_path: Path) -> None:
-    """load_llm reads the top-level llm: section when env is absent."""
+def test_load_llm_reads_file(tmp_path: Path) -> None:
+    """load_llm reads the top-level llm: section from the config file."""
     yaml_file = tmp_path / "mail.local.yaml"
     yaml_file.write_text(
         """\

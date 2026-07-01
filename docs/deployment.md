@@ -51,11 +51,12 @@ $EDITOR config/mail.local.yaml
 
 ### 2a. Alternative: auto-detect provider settings (detect)
 
-Instead of manually creating `config/mail.local.yaml`, you can auto-generate
-it from just your email address:
+Instead of manually creating the whole `config/mail.local.yaml`, you can
+auto-generate the account settings from just your email address. First put
+your LLM API key in the config file's top-level `llm:` section (e.g. copy the
+example and set `llm.api_key`), then run:
 
 ```sh
-export LLM_API_KEY=sk-or-v1-…
 docker compose run robotsix-auto-mail detect user@gmail.com
 ```
 
@@ -66,18 +67,6 @@ for full details.
 
 The file `config/mail.local.yaml` is **git-ignored** (`config/mail.local.yaml`
 in `.gitignore`), so your credentials stay local and never land in the repo.
-
-**Using environment variables instead:**  copy `.env.example` to `.env`, edit
-it, and source it before running commands:
-
-```sh
-cp .env.example .env
-$EDITOR .env
-set -a && source .env && set +a
-```
-
-(No `python-dotenv` is used at runtime; you must export the variables into
-the shell or pass them via `docker compose run -e …`.)
 
 ---
 
@@ -178,15 +167,14 @@ ls -la .mail_data/        # mail.db lives here
 
 ## Configuration quick-reference
 
-Configuration resolves through one cascade: built-in defaults → YAML file →
-environment variables (which win field-by-field).
+Configuration is loaded from a single YAML config file; any field you omit
+falls back to its built-in default.
 
 | Path | Mechanism | How to use |
 |---|---|---|
-| **YAML file** | A single `config/mail.local.yaml` | Recommended. Copy `docs/config/mail.local.example.yaml` → `config/mail.local.yaml` and edit. |
-| **Env vars** | `MAIL_IMAP_HOST`, `MAIL_SMTP_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` (and optional `MAIL_IMAP_PORT`, …) | Set in shell or via `docker compose run -e …`. Either set all four required vars or supply a config file, or the entrypoint will refuse to start. |
+| **YAML file** | A single `config/mail.local.yaml` | Copy `docs/config/mail.local.example.yaml` → `config/mail.local.yaml` and edit. Located via `MAIL_CONFIG_PATH`. |
 
-Full precedence rules and every config key are documented in
+Full config-key details are documented in
 **[docs/connecting.md](connecting.md)**.  Do not duplicate that reference
 here — the connecting doc is authoritative.
 
@@ -215,7 +203,7 @@ The Compose file defines two services that share the same image and data:
 | `stdin_open` | `true` | Keeps stdin open so one-shot interactive commands (e.g. `detect`'s password prompt) work. |
 | `tty` | `false` | No pseudo-TTY allocation; output is plain streams. |
 | `restart` | `unless-stopped` | The default command is a long-running daemon, so it should stay up. |
-| `environment` | `MAIL_CONFIG_PATH`, `LLM_API_KEY` | Points the tool at the mounted config and passes LLM credentials through. |
+| `environment` | `MAIL_CONFIG_PATH` | Points the tool at the mounted config file; all credentials (including LLM keys) live in that file. |
 | `volumes` | Three entries (see below) | Config bind-mount + data bind-mount + log bind-mount. |
 
 `docker compose up -d` runs this service (the ingester) alongside `board`.
@@ -376,15 +364,13 @@ docker run --rm \
 ### What the entrypoint does
 
 Before the Python interpreter starts, [`entrypoint.sh`](../entrypoint.sh)
-validates that either:
+validates that a readable YAML config file exists at
+`${MAIL_CONFIG_PATH:-config/mail.local.yaml}`.
 
-- All four `MAIL_*` environment variables are set, **or**
-- `MAIL_CONFIG_PATH` points to a readable config file.
-
-If neither condition is met, the script prints a clear error message to
-`stderr` and exits with code `1`.  This means config failures surface
-immediately — no Python traceback, no mysterious `KeyError` deep in the
-config loader.
+If the file is missing or unreadable, the script prints a clear error message
+to `stderr` (naming the config file and the `detect` command) and exits with
+code `1`.  This means config failures surface immediately — no Python
+traceback, no mysterious `KeyError` deep in the config loader.
 
 The entrypoint also supports optional `envsubst` templating: if `envsubst`
 is available in the image and a config file is in use, the file is run
@@ -438,19 +424,14 @@ messages from the watermark baseline.
 
 ## Troubleshooting / FAQ
 
-### "Missing required configuration"
+### "Missing configuration file"
 
 ```text
-Missing required configuration.
-
-Provide either:
-  • All four MAIL_* environment variables:
-      MAIL_IMAP_HOST, MAIL_SMTP_HOST, MAIL_USERNAME, MAIL_PASSWORD
-  • A YAML config file via MAIL_CONFIG_PATH
+Missing configuration file: config/mail.local.yaml
 ```
 
-The entrypoint validated config before launching Python and found neither
-environment variables nor a readable config file.
+The entrypoint validated config before launching Python and could not read a
+config file at `${MAIL_CONFIG_PATH:-config/mail.local.yaml}`.
 
 **Diagnose:**
 
@@ -462,36 +443,10 @@ cat config/mail.local.yaml
 docker compose run robotsix-auto-mail ls -l /home/mailbot/config/mail.local.yaml
 ```
 
-**Fix:**  ensure `config/mail.local.yaml` exists and is readable, **or** set
-all four `MAIL_*` env vars.  If using env vars, pass them explicitly:
-
-```sh
-docker compose run -e MAIL_IMAP_HOST=imap.example.com \
-  -e MAIL_SMTP_HOST=smtp.example.com \
-  -e MAIL_USERNAME=user@example.com \
-  -e MAIL_PASSWORD=your-password \
-  robotsix-auto-mail probe
-```
-
----
-
-### "Config file not found: /home/mailbot/config/mail.local.yaml"
-
-The entrypoint found `MAIL_CONFIG_PATH` set but could not read the file at
-that path inside the container.
-
-**Diagnose:**
-
-```sh
-# Does the file exist on the host?
-ls -l config/mail.local.yaml
-
-# Is the bind-mount working?
-docker compose run robotsix-auto-mail ls -la /home/mailbot/config/
-```
-
-**Fix:**  create the file (`cp docs/config/mail.local.example.yaml config/mail.local.yaml`)
-or verify the bind-mount isn't being shadowed by another volume definition.
+**Fix:**  ensure the config file exists and is readable — copy the example
+(`cp docs/config/mail.local.example.yaml config/mail.local.yaml`) or generate
+one with `robotsix-auto-mail detect user@example.com`, then verify the
+bind-mount isn't being shadowed by another volume definition.
 
 ---
 

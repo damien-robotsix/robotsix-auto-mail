@@ -217,11 +217,9 @@ def test_single_account_ingest_is_unchanged(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """A one-element container (account_id='default', db_path defaulting to
-    '.data/mail.db') ingests exactly as today and prints no per-account header."""
+    """A single-account container ingests and prints no per-account header."""
     from robotsix_auto_mail.cli import main
 
-    # chdir into the tmp dir so the default ``.data/mail.db`` lands there.
     monkeypatch.chdir(tmp_path)
 
     cfg = MailConfig(
@@ -229,11 +227,10 @@ def test_single_account_ingest_is_unchanged(
         smtp_host="smtp.example.com",
         username="solo@example.com",
         password="s3cret",
+        db_path=str(tmp_path / "solo.db"),
         archive_enabled=False,
         triage_on_ingest=False,
     )
-    # The per-account db_path default is preserved for backward compatibility.
-    assert cfg.db_path == ".data/mail.db"
 
     accounts = MailAccountsConfig(
         accounts=(MailAccount(account_id="default", config=cfg, label=None),),

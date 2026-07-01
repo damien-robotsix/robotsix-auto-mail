@@ -65,23 +65,23 @@ endpoint, handler mixin, or logical concern.
 
 ## Configuration conventions
 
-### The `.env.example` / `mail.local.example.yaml` / `MailConfig` triangle
+### The `mail.local.example.yaml` / `MailConfig` pair
 
-Every configuration field lives on the `MailConfig` frozen dataclass
-(`src/robotsix_auto_mail/config/model.py`).  When you **add** a new
-configuration field you MUST update **all three** artifacts:
+Configuration is loaded from a single YAML config file only — there are no
+environment-variable overrides. Every configuration field lives on the
+`MailConfig` frozen dataclass (`src/robotsix_auto_mail/config/model.py`).
+When you **add** a new configuration field you MUST update **both** artifacts:
 
 1. **`MailConfig`** — add the dataclass field with its default.
 2. **`docs/config/mail.local.example.yaml`** — add the commented-out entry so
    users know it exists.
-3. **`.env.example`** — add the corresponding `MAIL_*` env var.
 
 The `_FIELD_SPECS` table in `src/robotsix_auto_mail/config/schema.py`
 must enumerate every `MailConfig` field exactly once — an
 `assert _spec_names == _dc_names` guard at import time enforces this.
 When you add a field, add its `_FieldSpec` row in the same commit.
 
-Failure mode: if the three artifacts drift, the `config-sync` CLI
+Failure mode: if the two artifacts drift, the `config-sync` CLI
 subcommand reports the gap, and CI gates on it.
 
 ### secrets
@@ -90,12 +90,10 @@ Credentials are masked in `MailConfig.__repr__` via `_SECRET_FIELDS`.
 Add any new secret field to that tuple.  Never log or repr a raw
 credential.
 
-### Multi-account vs single-account
+### Multi-account config shape
 
-The YAML config supports both a legacy single-account (mono) shape and
-the modern `accounts:` list shape.  The mono shape is **deprecated**;
-new features MUST work in multi-account mode.  Run
-`robotsix-auto-mail migrate-config` to convert an old config.
+The YAML config uses the `accounts:` list shape — the only supported
+config-file shape. New features MUST work in multi-account mode.
 
 ---
 
@@ -158,8 +156,8 @@ All structured-logging and Langfuse-tracing infrastructure lives in
   `robotsix_llmio.logging.setup_logging()` (called from
   `src/robotsix_auto_mail/observability/__init__.py`).
 - **Langfuse tracing**: `robotsix_llmio.core.run_agent` automatically
-  traces every LLM call when `LANGFUSE_PUBLIC_KEY` /
-  `LANGFUSE_SECRET_KEY` are set.  No extra code needed in auto-mail.
+  traces every LLM call when Langfuse credentials are configured (via the
+  config file's `langfuse:` section).  No extra code needed in auto-mail.
 
 The only thing auto-mail adds on top is a date-stamped `FileHandler`
 (always `DEBUG` level, writing to `.mail_log/mail-YYYY-MM-DD.log`).
@@ -170,9 +168,8 @@ directly — extend `robotsix_llmio` instead.
 
 Langfuse credentials live on `MailConfig` (`langfuse_public_key`,
 `langfuse_secret_key`, `langfuse_base_url`) and are populated from
-either `config/mail.local.yaml` (under the top-level `langfuse:`
-section) or the bare `LANGFUSE_*` environment variables.  They are
-application-wide (not per-account).
+`config/mail.local.yaml` (under the top-level `langfuse:` section).
+They are application-wide (not per-account).
 
 ---
 

@@ -4,9 +4,13 @@ set -eu
 # ---------------------------------------------------------------------------
 # robotsix-auto-mail entrypoint — pre-flight validation and optional
 # config-file templating via envsubst before handing off to the Python CLI.
+#
+# Configuration is loaded from a single YAML config file only. The file is
+# located via MAIL_CONFIG_PATH (default: config/mail.local.yaml); the deploy
+# sets MAIL_CONFIG_PATH=/home/mailbot/config/config.yaml.
 # ---------------------------------------------------------------------------
 
-# Bypass config checks for flags that should never require config.
+# Bypass config checks for flags/commands that should never require config.
 case "${1-}" in
     -h|--help|-V|--version|""|detect) exec robotsix-auto-mail "$@" ;;
 esac
@@ -22,51 +26,34 @@ cleanup() {
 trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
-# Pre-flight validation
+# Pre-flight validation — a readable YAML config file is required.
 # ---------------------------------------------------------------------------
 
-_have_env_vars=0
-if [ -n "${MAIL_IMAP_HOST-}" ] && \
-   [ -n "${MAIL_SMTP_HOST-}" ] && \
-   [ -n "${MAIL_USERNAME-}" ] && \
-   [ -n "${MAIL_PASSWORD-}" ]; then
-    _have_env_vars=1
-fi
+_CONFIG_PATH="${MAIL_CONFIG_PATH:-config/mail.local.yaml}"
 
-_have_config_path=0
-if [ -n "${MAIL_CONFIG_PATH-}" ]; then
-    if [ -r "${MAIL_CONFIG_PATH}" ]; then
-        _have_config_path=1
-    else
-        echo "Config file not found: ${MAIL_CONFIG_PATH}" >&2
-        exit 1
-    fi
-fi
-
-if [ "${_have_env_vars}" -eq 0 ] && [ "${_have_config_path}" -eq 0 ]; then
+if [ ! -r "${_CONFIG_PATH}" ]; then
     cat >&2 <<EOF
-Missing required configuration.
+Missing configuration file: ${_CONFIG_PATH}
 
-Provide either:
-  • All four MAIL_* environment variables:
-      MAIL_IMAP_HOST, MAIL_SMTP_HOST, MAIL_USERNAME, MAIL_PASSWORD
-  • A YAML config file via MAIL_CONFIG_PATH
+robotsix-auto-mail loads its configuration from a single YAML file located
+via MAIL_CONFIG_PATH (default: config/mail.local.yaml).
 
-Examples:
-  docker compose run -e MAIL_IMAP_HOST=… -e MAIL_SMTP_HOST=… \\
-      -e MAIL_USERNAME=… -e MAIL_PASSWORD=… robotsix-auto-mail probe
+Provide a readable config file at that path, e.g.:
+  cp docs/config/mail.local.example.yaml config/mail.local.yaml
 
-  docker compose run robotsix-auto-mail probe
-  (reads config from MAIL_CONFIG_PATH=\${MAIL_CONFIG_PATH:-config/mail.local.yaml})
+or auto-generate one from your email address:
+  robotsix-auto-mail detect user@example.com
 EOF
     exit 1
 fi
+
+export MAIL_CONFIG_PATH="${_CONFIG_PATH}"
 
 # ---------------------------------------------------------------------------
 # Optional config-file templating via envsubst
 # ---------------------------------------------------------------------------
 
-if [ "${_have_config_path}" -eq 1 ] && command -v envsubst >/dev/null 2>&1; then
+if command -v envsubst >/dev/null 2>&1; then
     _TEMP_CONFIG="$(mktemp /tmp/mail-config.XXXXXX)"
     envsubst < "${MAIL_CONFIG_PATH}" > "${_TEMP_CONFIG}"
     MAIL_CONFIG_PATH="${_TEMP_CONFIG}"

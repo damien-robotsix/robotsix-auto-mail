@@ -68,7 +68,6 @@ def test_run_triage_agent_stores_llm_hints(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """LLM returns archive_subfolder for TO_ARCHIVE → hint persisted."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -79,7 +78,7 @@ def test_run_triage_agent_stores_llm_hints(
         )
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
-            run_triage_agent(conn)
+            run_triage_agent(conn, api_key="sk-test")
 
         hints = _load_llm_archive_hints(conn)
         assert hints.get("<a@x.com>") == "Lists/dev"
@@ -92,7 +91,6 @@ def test_run_triage_agent_clears_stale_hints(
 ) -> None:
     """A record previously hinted for TO_ARCHIVE is re-triaged to a
     non-archive action → hint removed."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         # Pre-populate an LLM hint for a record that will be re-triaged to
@@ -103,7 +101,7 @@ def test_run_triage_agent_clears_stale_hints(
         result_obj = TriageResult(items=[TriageItem(index=1, action="HUMAN_TRIAGE")])
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
-            run_triage_agent(conn)
+            run_triage_agent(conn, api_key="sk-test")
 
         hints = _load_llm_archive_hints(conn)
         assert "<a@x.com>" not in hints
@@ -116,7 +114,6 @@ def test_run_triage_agent_ignores_archive_subfolder_for_non_archive(
 ) -> None:
     """LLM returns archive_subfolder with a non-archive action → hint NOT
     stored."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
@@ -131,7 +128,7 @@ def test_run_triage_agent_ignores_archive_subfolder_for_non_archive(
         )
         _handle, patcher = _patch_llm(result_obj)
         with patcher:
-            run_triage_agent(conn)
+            run_triage_agent(conn, api_key="sk-test")
 
         hints = _load_llm_archive_hints(conn)
         assert "<a@x.com>" not in hints
@@ -149,7 +146,6 @@ def test_propose_archive_subfolder_llm_rules_in_prompt(
 ) -> None:
     """When a non-empty ``rules`` text is passed, the system prompt injects
     the user's triage rules verbatim."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<armada@ls2n.fr>", sender="crew@ls2n-fr.org")
@@ -189,7 +185,6 @@ def test_propose_archive_subfolder_llm_no_rules_omits_section(
 ) -> None:
     """With empty ``rules`` the triage-rules section is absent from the
     system prompt."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<armada@ls2n.fr>", sender="crew@ls2n-fr.org")
