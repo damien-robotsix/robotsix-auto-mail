@@ -7,8 +7,6 @@ Covers ``get_config_snapshot``, ``describe_config``,
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 pytest.importorskip("robotsix_agent_comm")
@@ -16,10 +14,9 @@ pytest.importorskip("robotsix_agent_comm")
 from robotsix_agent_comm.protocol import ConfigContractError
 
 from robotsix_auto_mail.config.model import MailConfig
-from robotsix_auto_mail.config.schema import _FIELD_SPECS, _FieldSpec
 from robotsix_auto_mail.server._component_agent_config_contract import (
+    _FIELD_TO_YAML_PATH,
     SETTABLE_KEYS,
-    _coerce_value,
     apply_config_update,
     describe_config,
     get_config_snapshot,
@@ -65,8 +62,9 @@ class TestGetConfigSnapshot:
     def test_includes_all_field_specs(self) -> None:
         cfg = _make_config()
         snap = get_config_snapshot(cfg)
-        for spec in _FIELD_SPECS:
-            assert spec.yaml_path in snap, f"Missing {spec.yaml_path}"
+        for field_name in MailConfig.model_fields:
+            dotted = _FIELD_TO_YAML_PATH.get(field_name, field_name)
+            assert dotted in snap, f"Missing {dotted}"
 
     def test_redacts_password(self) -> None:
         cfg = _make_config(password="secret123")
@@ -93,9 +91,10 @@ class TestDescribeConfig:
     def test_returns_dict_with_metadata_per_key(self) -> None:
         cfg = _make_config()
         desc = describe_config(cfg)
-        for spec in _FIELD_SPECS:
-            assert spec.yaml_path in desc
-            entry = desc[spec.yaml_path]
+        for field_name in MailConfig.model_fields:
+            dotted = _FIELD_TO_YAML_PATH.get(field_name, field_name)
+            assert dotted in desc
+            entry = desc[dotted]
             assert "value" in entry
             assert "kind" in entry
             assert "settable" in entry
@@ -114,8 +113,15 @@ class TestDescribeConfig:
     def test_kind_matches_field_spec(self) -> None:
         cfg = _make_config()
         desc = describe_config(cfg)
-        for spec in _FIELD_SPECS:
-            assert desc[spec.yaml_path]["kind"] == spec.kind
+        for field_name, field_info in MailConfig.model_fields.items():
+            dotted = _FIELD_TO_YAML_PATH.get(field_name, field_name)
+            annotation = field_info.annotation
+            expected_kind = "str"
+            if annotation is bool:
+                expected_kind = "bool"
+            elif annotation is int:
+                expected_kind = "int"
+            assert desc[dotted]["kind"] == expected_kind
 
 
 # ---------------------------------------------------------------------------
@@ -264,117 +270,6 @@ class TestApplyConfigUpdate:
         except ConfigContractError:
             pass
         assert holder.config.archive_root == "/original"
-
-
-# ---------------------------------------------------------------------------
-# _coerce_value
-# ---------------------------------------------------------------------------
-
-
-def _make_spec(
-    field_name: str,
-    yaml_path: str,
-    kind: str,
-    default: Any = "",
-) -> _FieldSpec:
-    return _FieldSpec(
-        field_name=field_name,
-        yaml_path=yaml_path,
-        kind=kind,
-        default=default,
-        required_in_yaml=False,
-    )
-
-
-class TestCoerceValue:
-    def test_str_accepts_string(self) -> None:
-        spec = _make_spec("archive_root", "archive.root", "str")
-        assert _coerce_value(spec, "/some/path") == "/some/path"
-
-    def test_str_rejects_non_string(self) -> None:
-        spec = _make_spec("archive_root", "archive.root", "str")
-        with pytest.raises(ConfigContractError) as exc_info:
-            _coerce_value(spec, 42)
-        assert exc_info.value.code == "invalid_value"
-
-    def test_int_accepts_integer(self) -> None:
-        spec = _make_spec(
-            "ingest_interval_minutes", "ingest.interval_minutes", "int", default=10
-        )
-        assert _coerce_value(spec, 42) == 42
-
-    def test_int_rejects_bool(self) -> None:
-        spec = _make_spec(
-            "ingest_interval_minutes", "ingest.interval_minutes", "int", default=10
-        )
-        with pytest.raises(ConfigContractError) as exc_info:
-            _coerce_value(spec, True)
-        assert "bool" in exc_info.value.message
-
-    def test_int_rejects_float(self) -> None:
-        spec = _make_spec(
-            "ingest_interval_minutes", "ingest.interval_minutes", "int", default=10
-        )
-        with pytest.raises(ConfigContractError) as exc_info:
-            _coerce_value(spec, 3.14)
-        assert exc_info.value.code == "invalid_value"
-
-    def test_bool_accepts_true(self) -> None:
-        spec = _make_spec("triage_on_ingest", "triage.on_ingest", "bool", default=True)
-        assert _coerce_value(spec, True) is True
-
-    def test_bool_accepts_false(self) -> None:
-        spec = _make_spec("triage_on_ingest", "triage.on_ingest", "bool", default=True)
-        assert _coerce_value(spec, False) is False
-
-    @pytest.mark.parametrize("raw", ["true", "True", "TRUE", "1", "yes", "on"])
-    def test_bool_parses_string_true(self, raw: str) -> None:
-        spec = _make_spec("triage_on_ingest", "triage.on_ingest", "bool", default=True)
-        assert _coerce_value(spec, raw) is True
-
-    @pytest.mark.parametrize("raw", ["false", "False", "FALSE", "0", "no", "off"])
-    def test_bool_parses_string_false(self, raw: str) -> None:
-        spec = _make_spec("triage_on_ingest", "triage.on_ingest", "bool", default=True)
-        assert _coerce_value(spec, raw) is False
-
-    def test_bool_rejects_invalid_string(self) -> None:
-        spec = _make_spec("triage_on_ingest", "triage.on_ingest", "bool", default=True)
-        with pytest.raises(ConfigContractError) as exc_info:
-            _coerce_value(spec, "maybe")
-        assert exc_info.value.code == "invalid_value"
-
-    def test_bool_rejects_int(self) -> None:
-        spec = _make_spec("triage_on_ingest", "triage.on_ingest", "bool", default=True)
-        with pytest.raises(ConfigContractError) as exc_info:
-            _coerce_value(spec, 1)
-        assert exc_info.value.code == "invalid_value"
-
-    def test_tls_mode_accepts_string(self) -> None:
-        spec = _make_spec("imap_tls_mode", "imap.tls_mode", "tls_mode", default="SSL")
-        assert _coerce_value(spec, "STARTTLS") == "STARTTLS"
-
-    def test_tls_mode_rejects_non_string(self) -> None:
-        spec = _make_spec("imap_tls_mode", "imap.tls_mode", "tls_mode", default="SSL")
-        with pytest.raises(ConfigContractError) as exc_info:
-            _coerce_value(spec, 42)
-        assert exc_info.value.code == "invalid_value"
-
-    def test_log_level_accepts_string(self) -> None:
-        spec = _make_spec("log_level", "logging.level", "log_level", default="INFO")
-        assert _coerce_value(spec, "DEBUG") == "DEBUG"
-
-    def test_log_format_accepts_string(self) -> None:
-        spec = _make_spec(
-            "log_format", "logging.format", "log_format", default="console"
-        )
-        assert _coerce_value(spec, "json") == "json"
-
-    def test_unknown_kind_raises(self) -> None:
-        spec = _make_spec("some_field", "some.path", "fantasy_type")
-        with pytest.raises(ConfigContractError) as exc_info:
-            _coerce_value(spec, "anything")
-        assert exc_info.value.code == "invalid_value"
-        assert "fantasy_type" in exc_info.value.message
 
 
 # ---------------------------------------------------------------------------

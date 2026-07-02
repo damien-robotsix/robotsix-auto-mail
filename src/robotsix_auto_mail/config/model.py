@@ -210,11 +210,13 @@ class MailConfig(BaseModel):
             "smtp.port": "smtp_port",
             "smtp.tls_mode": "smtp_tls_mode",
             "auth.username": "username",
+            # pragma: allowlist nextline secret
             "auth.password": "password",
             "auth.oauth2_provider": "oauth2_provider",
             "auth.oauth2_tenant": "oauth2_tenant",
             "auth.oauth2_token": "oauth2_token",
             "auth.oauth2_client_id": "oauth2_client_id",
+            # pragma: allowlist nextline secret
             "auth.oauth2_client_secret": "oauth2_client_secret",
             "store.path": "db_path",
             "archive.root": "archive_root",
@@ -391,13 +393,15 @@ class MailAccountsConfig(BaseModel):
         * **Legacy single-account** — no top-level ``accounts:`` key.  The
           whole file is rejected with an actionable error.
 
-        ``validate=False`` skips per-account required-field checks but still
-        enforces id / db_path uniqueness.
+        ``validate`` is accepted for API compatibility but is a no-op —
+        pydantic always validates.
 
         Raises:
             ConfigurationError: On invalid structure or failed validation.
             FileNotFoundError: If *path* does not exist.
         """
+        _ = validate  # accepted for API compat; pydantic always validates
+        _ = validate  # accepted for API compat; pydantic always validates
         path = Path(path)
         data = _read_config_yaml(path)
 

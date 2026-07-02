@@ -72,11 +72,12 @@ _YAML_PATH_TO_FIELD: dict[str, str] = {
     "smtp.port": "smtp_port",
     "smtp.tls_mode": "smtp_tls_mode",
     "auth.username": "username",
-    "auth.password": "password",
+    "auth.password": "password",  # pragma: allowlist secret
     "auth.oauth2_provider": "oauth2_provider",
     "auth.oauth2_tenant": "oauth2_tenant",
     "auth.oauth2_token": "oauth2_token",
     "auth.oauth2_client_id": "oauth2_client_id",
+    # pragma: allowlist nextline secret
     "auth.oauth2_client_secret": "oauth2_client_secret",
     "store.path": "db_path",
     "archive.root": "archive_root",
@@ -85,9 +86,10 @@ _YAML_PATH_TO_FIELD: dict[str, str] = {
     "triage.rules_path": "triage_rules_path",
     "ingest.interval_minutes": "ingest_interval_minutes",
     "component_agent.enabled": "component_agent_enabled",
-    "llm.api_key": "llm_api_key",
+    "llm.api_key": "llm_api_key",  # pragma: allowlist secret
     "llm.provider_model": "llm_provider_model",
     "langfuse.public_key": "langfuse_public_key",
+    # pragma: allowlist nextline secret
     "langfuse.secret_key": "langfuse_secret_key",
     "langfuse.base_url": "langfuse_base_url",
     "logging.level": "log_level",

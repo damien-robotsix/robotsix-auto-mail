@@ -89,3 +89,22 @@ _ = ComponentAgentResponder._config_set  # lgtm[py/ineffectual-statement]
 # Pydantic model fields — accessed via model_dump / model_validate / keyword
 # construction, never read as plain class attributes by application code.
 # ===========================================================================
+
+from robotsix_auto_mail.config.model import FailedAccountEntry
+
+FailedAccountEntry.model_config
+
+from robotsix_auto_mail.config.model import MailConfig
+
+MailConfig.model_config
+MailConfig._flatten_yaml_sections
+
+from robotsix_auto_mail.config.model import MailAccount
+
+MailAccount.model_config
+MailAccount._validate_account_id
+
+from robotsix_auto_mail.config.model import MailAccountsConfig
+
+MailAccountsConfig.model_config
+MailAccountsConfig._validate_accounts
