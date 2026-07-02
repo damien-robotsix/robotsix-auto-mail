@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- docs/troubleshooting.md: Fix second row of IMAP/SMTP error table to use YAML dotted-key forms (`imap.tls_mode`/`smtp.tls_mode`) instead of Python dataclass field names.
+- Fix stale documentation: remove "env variables" claim from config-loading description in architecture.md, fix component_agent package reference, update ROADMAP.md to not list already-implemented features as future work, remove non-existent test directories from testing.md, add missing CLI subcommands to modules.yaml, and replace dataclass field names with YAML dotted keys in troubleshooting.md
 - Fixed stale content in README.md and docs/index.md: removed dead links to nonexistent `docs/decisions/` directory, corrected board column count from four to eight, removed phantom "Add to Calendar" feature description, and replaced "read-only" board description with accurate "kanban board for reviewing and triaging mail".
 - Updated `docs/connecting.md`: removed all references to the removed `migrate-config` command, replaced legacy mono-shape YAML examples with valid `accounts:` list-form examples, corrected the error-message description to mention only `detect`, expanded the env-var section to list `LLM_API_KEY` and `LLM_PROVIDER_MODEL`, and corrected the account-selection fallback to describe the `__all__` aggregate view.
 - Fix `docs/configuration.md` env-var list to include `LLM_API_KEY` and `LLM_PROVIDER_MODEL`, and remove stale `migrate-config` reference.

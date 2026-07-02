@@ -75,8 +75,10 @@ OAuth2 access token presented over SASL XOAUTH2:
 - `config/__init__.py` — re-exports the config API (loaders, dataclasses,
   and schema) for callers.
 - `config/loader.py` — the actual load cascade (`load` / `load_accounts`)
-  that builds `MailConfig` from built-in defaults, the YAML file, and
-  environment variables.
+  that builds `MailConfig` from built-in defaults and the YAML file.
+  The `MAIL_CONFIG_PATH` env var locates the config file;
+  `LLM_API_KEY`/`LLM_PROVIDER_MODEL` serve as env-var fallbacks for LLM
+  calls specifically (not a general config override tier).
 - `config/model.py` — the config dataclasses (`MailConfig` and friends).
 - `config/schema.py` — the field defaults and specs the cascade applies.
 - `config/config_sync_agent.py` — the optional LLM-driven config-drift advisory
@@ -100,10 +102,10 @@ OAuth2 access token presented over SASL XOAUTH2:
 - `draft/` — `generate_draft_reply`, the draft-reply generator tied to the
   `TO_ANSWER` triage action; it persists the draft via `db.update_draft_text`
   (no mail is sent).
-- `component_agent/` — `ComponentAgentResponder` (in
-  `component_agent/responder.py`), the board server's component HTTP API
-  (`monitor` / `config-get` / `config-set`), wired in via
-  `server/_component_agent_mixin.py`.
+- `server/_component_agent_responder.py` and
+  `server/_component_agent_mixin.py` — the board server's component HTTP
+  API (`monitor` / `config-get` / `config-set`), implemented across two
+  server-package files.
 
 ### Surfaces
 
