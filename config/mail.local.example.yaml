@@ -1,0 +1,103 @@
+# Example configuration for robotsix-auto-mail (multi-account shape).
+#
+# Copy this file to config/mail.local.yaml and fill in your real values.
+# config/mail.local.yaml is git-ignored so credentials never land in the repo.
+#
+# Each account is an independent mailbox with its own stable `id`, optional
+# human-friendly `label`, and its own SQLite database (`store.path`). Every
+# account MUST use a distinct store.path; when omitted it defaults to
+# `.data/<id>/mail.db`, which is unique per account.
+#
+# This YAML file is the sole source of configuration — there are no
+# environment-variable overrides. Any field you omit falls back to its
+# built-in default (shown commented below).
+#
+# llm: and langfuse: are application-wide (top-level) sections — they apply
+# to every account.
+
+# LLM provider — used by the `detect` command and future LLM-assisted mail
+# processing.
+# llm:
+#   api_key: sk-or-v1-…
+#   provider_model: ""  # escape-hatch: override llmio tier default (leave blank to use tier default)
+
+# Langfuse observability — optional.  When public_key/secret_key are set,
+# every LLM agent run is traced to the configured Langfuse project.
+# langfuse:
+#   public_key: ""
+#   secret_key: ""
+#   base_url: ""
+
+# Logging configuration — application-wide.
+# logging:
+#   level: INFO
+#   format: console
+#   file_dir: .mail_log
+
+# Optional: the default account for CLI operations (e.g. `robotsix-auto-mail triage`
+# uses this account when --account is omitted). Absent → the first account below.
+# NOTE: this does NOT control the board view default — the board always shows all
+# mailboxes (aggregate view) by default for multi-account setups.
+default_account: personal
+
+accounts:
+  - id: personal
+    label: Personal Gmail
+    imap:
+      host: imap.gmail.com
+      # port: 993
+      # tls_mode: direct-tls
+      # folder: INBOX
+    smtp:
+      host: smtp.gmail.com
+      # port: 587
+      # tls_mode: starttls
+    auth:
+      username: me@gmail.com
+      password: ""  # set your password here
+      # OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that
+      # requires modern SASL XOAUTH2 instead of password-based login().
+      # When oauth2_token is set, password auth is not used.
+      # oauth2_token: ""
+      # oauth2_client_id: ""
+      # oauth2_client_secret: ""
+      # MSAL-managed OAuth2 (Microsoft 365). Set oauth2_provider to
+      # "microsoft" to acquire/refresh tokens via MSAL instead of a password.
+      # oauth2_provider: ""              # "microsoft" to enable MSAL
+      # oauth2_tenant: organizations     # Azure AD tenant
+    store:
+      path: .data/personal/mail.db
+    # Automatic ingestion (used by `ingest --watch`). How often, in minutes,
+    # to fetch new mail.
+    # ingest:
+    #   interval_minutes: 15
+    # Self-managed archive folder structure.
+    # archive:
+    #   root: robotsix-mail-archive
+    #   enabled: true
+    # Inbox triage agent — runs automatically after each ingest cycle.
+    # ``rules_path`` overrides where the human-readable triage rules file
+    # lives (empty derives it from the DB path: <db-dir>/triage_rules.md).
+    # triage:
+    #   on_ingest: true
+    #   rules_path: ""
+    # Component agent — HTTP API for external agents to monitor status
+    # and read/apply configuration over HTTP (without the agent-comm broker).
+    # component_agent:
+    #   enabled: false
+
+  - id: work
+    label: Work mailbox
+    imap:
+      host: imap.work.example.com
+    smtp:
+      host: smtp.work.example.com
+    auth:
+      username: me@work.example.com
+      password: ""  # set here
+    store:
+      path: .data/work/mail.db
+    # Component agent — HTTP API for external agents to monitor status
+    # and read/apply configuration over HTTP (without the agent-comm broker).
+    # component_agent:
+    #   enabled: false

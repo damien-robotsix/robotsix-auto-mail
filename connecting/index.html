@@ -1,0 +1,4720 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Automated mail ingestion, triage, and board for robotsix-auto-mail.">
+      
+      
+      
+      
+        <link rel="prev" href="../ingestion/">
+      
+      
+        <link rel="next" href="../configuration/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Connecting - robotsix-auto-mail</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#connecting" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="robotsix-auto-mail" class="md-header__button md-logo" aria-label="robotsix-auto-mail" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            robotsix-auto-mail
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Connecting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/damien-robotsix/robotsix-auto-mail" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="robotsix-auto-mail" class="md-nav__button md-logo" aria-label="robotsix-auto-mail" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    robotsix-auto-mail
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/damien-robotsix/robotsix-auto-mail" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingestion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connecting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connecting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start-docker-compose-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start — Docker Compose (recommended)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick start — Docker Compose (recommended)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-detection-with-detect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-detection with detect
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auto-detection with detect">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minimal-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimal usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scripting-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scripting usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-invocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker invocation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caveats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#converting-a-legacy-single-account-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Converting a legacy single-account config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration keys
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration keys">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#yaml-config-file-configmaillocalyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML config file (config/mail.local.yaml)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gmail-app-password-simplest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gmail (app password — simplest)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oauth2-xoauth2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OAuth2 (XOAUTH2)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OAuth2 (XOAUTH2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#obtaining-an-oauth2-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obtaining an OAuth2 token
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-refresh-lifecycle-msal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token refresh lifecycle (MSAL)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple accounts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#self-managed-archive-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-managed archive structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#precedence-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Precedence rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-setups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example setups
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example setups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-compose-with-yaml-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Compose with YAML (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-probe-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The probe command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The probe command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#representative-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-ingest-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The ingest command
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-board-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The board command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The board command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#representative-output_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empty-inbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Empty inbox
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-serve-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The serve command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The serve command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-board-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The board page
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-account-request-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-account request routing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contrast-with-board" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contrast with board
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-config-sync-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The /config-sync endpoint
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The /config-sync endpoint">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response-on-success-http-200" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response on success (HTTP 200)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses-http-503" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses (HTTP 503)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-batch-delete-and-batch-archive-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The /batch-delete and /batch-archive endpoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The /batch-delete and /batch-archive endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-batch-delete-bulk-delete-all-to_delete-mail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /batch-delete — bulk delete all TO_DELETE mail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST /batch-delete — bulk delete all TO_DELETE mail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response-on-success-http-302" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response on success (HTTP 302)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-batch-archive-bulk-archive-all-to_archive-mail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /batch-archive — bulk archive all TO_ARCHIVE mail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST /batch-archive — bulk archive all TO_ARCHIVE mail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response-on-success-http-302_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response on success (HTTP 302)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-batch-archive-folder-archive-one-destination-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /batch-archive-folder — archive one destination group
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST /batch-archive-folder — archive one destination group">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-config-sync-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The config-sync command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The config-sync command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#advisory-tool-vs-the-deterministic-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advisory tool vs. the deterministic gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-which" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to use which
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-dedup-memory-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The dedup memory ledger
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The dedup memory ledger">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ledger-state-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ledger state semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#responding-to-drift-proposals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Responding to drift proposals
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Responding to drift proposals">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#worked-reconciliation-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked reconciliation example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#representative-text-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative text output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#json-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-triage-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The triage command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The triage command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#action-statuses-and-kanban-board-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Action statuses and kanban board mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triage-rules-triage_rulesmd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triage rules (triage_rules.md)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#representative-text-output_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative text output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-triage-set-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The triage-set command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The triage-set command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-config-sync-set-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The config-sync-set command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The config-sync-set command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-auth-login-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The auth login command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The auth login command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-with-ingest-and-serve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with ingest and serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Board HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../codeql-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CodeQL Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/CHANGELOG.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start-docker-compose-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start — Docker Compose (recommended)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick start — Docker Compose (recommended)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-detection-with-detect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-detection with detect
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auto-detection with detect">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minimal-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimal usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scripting-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scripting usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-invocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker invocation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caveats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#converting-a-legacy-single-account-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Converting a legacy single-account config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration keys
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration keys">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#yaml-config-file-configmaillocalyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML config file (config/mail.local.yaml)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gmail-app-password-simplest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gmail (app password — simplest)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oauth2-xoauth2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OAuth2 (XOAUTH2)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OAuth2 (XOAUTH2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#obtaining-an-oauth2-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obtaining an OAuth2 token
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-refresh-lifecycle-msal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token refresh lifecycle (MSAL)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple accounts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#self-managed-archive-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-managed archive structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#precedence-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Precedence rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-setups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example setups
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example setups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-compose-with-yaml-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Compose with YAML (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-probe-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The probe command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The probe command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#representative-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-ingest-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The ingest command
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-board-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The board command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The board command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#representative-output_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empty-inbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Empty inbox
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-serve-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The serve command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The serve command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-board-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The board page
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-account-request-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-account request routing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contrast-with-board" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contrast with board
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-config-sync-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The /config-sync endpoint
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The /config-sync endpoint">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response-on-success-http-200" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response on success (HTTP 200)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses-http-503" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses (HTTP 503)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-batch-delete-and-batch-archive-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The /batch-delete and /batch-archive endpoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The /batch-delete and /batch-archive endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-batch-delete-bulk-delete-all-to_delete-mail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /batch-delete — bulk delete all TO_DELETE mail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST /batch-delete — bulk delete all TO_DELETE mail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response-on-success-http-302" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response on success (HTTP 302)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-batch-archive-bulk-archive-all-to_archive-mail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /batch-archive — bulk archive all TO_ARCHIVE mail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST /batch-archive — bulk archive all TO_ARCHIVE mail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response-on-success-http-302_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response on success (HTTP 302)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-batch-archive-folder-archive-one-destination-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /batch-archive-folder — archive one destination group
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST /batch-archive-folder — archive one destination group">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-config-sync-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The config-sync command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The config-sync command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#advisory-tool-vs-the-deterministic-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advisory tool vs. the deterministic gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-which" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to use which
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-dedup-memory-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The dedup memory ledger
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The dedup memory ledger">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ledger-state-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ledger state semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#responding-to-drift-proposals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Responding to drift proposals
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Responding to drift proposals">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#worked-reconciliation-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked reconciliation example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#representative-text-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative text output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#json-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-triage-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The triage command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The triage command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#action-statuses-and-kanban-board-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Action statuses and kanban board mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triage-rules-triage_rulesmd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triage rules (triage_rules.md)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#representative-text-output_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative text output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-triage-set-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The triage-set command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The triage-set command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-config-sync-set-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The config-sync-set command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The config-sync-set command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-auth-login-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The auth login command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The auth login command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-with-ingest-and-serve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with ingest and serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="connecting">Connecting<a class="headerlink" href="#connecting" title="Permanent link">&para;</a></h1>
+<p><code>robotsix-auto-mail</code> needs IMAP and SMTP connection parameters. They are
+resolved from <strong>built-in defaults overlaid by a single YAML config file</strong> —
+any field you omit falls back to its built-in default.</p>
+<blockquote>
+<p><strong>Configuration is provided ONLY via the YAML config file.</strong> The
+<code>MAIL_CONFIG_PATH</code> environment variable <em>locates</em> the file (default
+<code>config/mail.local.yaml</code>); it does not itself carry configuration. Individual
+settings are <strong>no longer read from environment variables</strong> — put every value
+(hosts, username, password, OAuth2, LLM, logging, …) in the YAML file.</p>
+</blockquote>
+<p>New users can also run <code>robotsix-auto-mail detect</code> to auto-generate the YAML
+file from just an email address — see <a href="#auto-detection-with-detect">Auto-detection with
+<code>detect</code></a>.</p>
+<h2 id="quick-start-docker-compose-recommended">Quick start — Docker Compose (recommended)<a class="headerlink" href="#quick-start-docker-compose-recommended" title="Permanent link">&para;</a></h2>
+<p>The project includes a <code>docker-compose.yml</code> that builds the container and
+mounts configuration without rebuilding the image.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Create your local config from the template</span>
+cp<span class="w"> </span>docs/config/mail.local.example.yaml<span class="w"> </span>config/mail.local.yaml
+
+<span class="c1"># 2. Edit it with your real credentials</span>
+<span class="nv">$EDITOR</span><span class="w"> </span>config/mail.local.yaml
+
+<span class="c1"># 3. Build the image</span>
+docker<span class="w"> </span>compose<span class="w"> </span>build
+
+<span class="c1"># 4. Run commands via `docker compose run`</span>
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>probe
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>board
+</code></pre></div>
+<h3 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>config/mail.local.yaml</code> <em>(git-ignored)</em> holds your settings — typically
+  <code>imap.host</code>, <code>smtp.host</code>, <code>auth.username</code>, and <code>auth.password</code>. Any field
+  you omit falls back to its built-in default.</li>
+<li>The <code>./config</code> directory is bind-mounted into the container at
+  <code>/home/mailbot/config</code>, so editing <code>config/mail.local.yaml</code> on the host
+  is picked up immediately — no rebuild needed.</li>
+<li>The <code>MAIL_CONFIG_PATH</code> environment variable is set to
+  <code>/home/mailbot/config/mail.local.yaml</code> by <code>docker-compose.yml</code>.</li>
+<li>The mail database persists in <code>./.mail_data</code> on the host (bind-mounted,
+  git-ignored).</li>
+</ul>
+<h2 id="auto-detection-with-detect">Auto-detection with <code>detect</code><a class="headerlink" href="#auto-detection-with-detect" title="Permanent link">&para;</a></h2>
+<p>Instead of manually researching and writing config, you can auto-generate it
+from just an email address. The <code>detect</code> command resolves the IMAP/SMTP
+settings through a ladder, most authoritative first:</p>
+<ol>
+<li><strong>Published autoconfig</strong> — the Mozilla ISPDB and the domain's own
+   <code>autoconfig.&lt;domain&gt;</code> endpoint.</li>
+<li><strong>MX records</strong> — a DNS-over-HTTPS lookup identifies the hosting provider
+   from the domain's mail servers (e.g. <code>*.mail.ovh.net</code> → OVH), mapped to
+   that provider's known IMAP/SMTP settings.</li>
+<li><strong>LLM</strong> — only if the first two miss; the MX hostnames are passed in as a
+   hint so it identifies the provider rather than guessing blindly.</li>
+</ol>
+<p>After writing the config, <code>detect</code> verifies it by connecting (see below), and
+refines on failure. The LLM step needs a <code>pydantic-ai</code> installation and an
+API key; autoconfig and MX detection do not.</p>
+<h3 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Installs dev dependencies (incl. pydantic-ai) from the committed uv.lock,</span>
+<span class="c1"># so you get the exact same resolved versions as CI. The dev tooling lives</span>
+<span class="c1"># in the `dev` extra, which `--extra dev` pulls in. After changing</span>
+<span class="c1"># dependencies in pyproject.toml, run `uv lock` and commit the updated</span>
+<span class="c1"># uv.lock.</span>
+uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>dev
+</code></pre></div>
+<p>Set your OpenRouter API key (required for <code>detect</code>) in the <code>llm:</code> section of
+<code>config/mail.local.yaml</code> (see <a href="#configuration-keys">Configuration keys</a>):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">llm</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sk-or-v1-…</span>
+</code></pre></div>
+<p>The same settings will be reused by future LLM-assisted mail processing, not
+just <code>detect</code>.</p>
+<h3 id="minimal-usage">Minimal usage<a class="headerlink" href="#minimal-usage" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>robotsix-auto-mail<span class="w"> </span>detect<span class="w"> </span>user@gmail.com
+</code></pre></div>
+<p>This auto-detects settings, prompts for the password interactively, writes a
+multi-account <code>config/mail.local.yaml</code> (a top-level <code>default_account:</code> plus an
+<code>accounts:</code> list with one entry) with the password included, and then verifies
+the settings by connecting to the IMAP and SMTP servers (the same check as the
+<code>probe</code> command). Pass <code>--no-verify</code> to skip that connection check.</p>
+<p>The detected account's <code>id</code> is derived from the email address (a sanitised
+<code>local-part-domain</code> form) unless you pass <code>--id &lt;id&gt;</code> explicitly; its store
+defaults to the per-account folder <code>.data/&lt;id&gt;/mail.db</code>, and <code>default_account</code>
+is set to that id when the file is new.</p>
+<p><strong>Appending accounts.</strong> Re-running <code>detect</code> against an existing multi-account
+file <strong>appends</strong> the newly-detected account, preserving the other accounts
+already in the file. If the resolved <code>id</code> already exists, <code>detect</code> refuses
+(exit 1) rather than clobbering it — pass <code>--id &lt;new-id&gt;</code> to add a distinct
+account, or <code>--overwrite</code> to update the existing entry's transport settings
+(imap/smtp host, port, tls_mode) in place. With <code>--overwrite</code>, the existing
+entry's other fields (label, username, password, db_path, archive, triage,
+calendar, oauth2 settings) are preserved unless you supply them explicitly on
+the command line. If the output file is still in the single-account ("mono") shape —
+which is no longer supported at runtime — the existing configuration is
+converted to a <code>default</code> account before the new one is appended (edit the
+<code>accounts:</code> block directly, or run <code>detect</code> to regenerate the config from
+scratch).</p>
+<h3 id="scripting-usage">Scripting usage<a class="headerlink" href="#scripting-usage" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>robotsix-auto-mail<span class="w"> </span>detect<span class="w"> </span>user@gmail.com<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--password<span class="w"> </span><span class="s2">&quot;app-password&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output<span class="w"> </span>config/mail.local.yaml
+</code></pre></div>
+<h3 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Required</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EMAIL</code> (positional)</td>
+<td>yes</td>
+<td>–</td>
+<td>Email address to detect settings for</td>
+</tr>
+<tr>
+<td><code>--id ID</code></td>
+<td>no</td>
+<td>(derived from email)</td>
+<td>Account id for the detected account (the <code>accounts:</code> entry id and <code>.data/&lt;id&gt;/mail.db</code> store folder)</td>
+</tr>
+<tr>
+<td><code>--password</code></td>
+<td>no</td>
+<td>(prompted)</td>
+<td>Password to write into the config file</td>
+</tr>
+<tr>
+<td><code>--output PATH</code></td>
+<td>no</td>
+<td><code>config/mail.local.yaml</code></td>
+<td>Write mail config to this path</td>
+</tr>
+<tr>
+<td><code>--stdout</code></td>
+<td>no</td>
+<td>–</td>
+<td>Print config to stdout instead of writing to file; password is intentionally omitted (must be filled into <code>auth.password</code> manually); no verification is performed</td>
+</tr>
+<tr>
+<td><code>--no-verify</code></td>
+<td>no</td>
+<td>–</td>
+<td>Skip the post-write IMAP/SMTP connection check</td>
+</tr>
+<tr>
+<td><code>--overwrite</code></td>
+<td>no</td>
+<td>–</td>
+<td>When the account id already exists in the output file, update its transport settings (imap/smtp host, port, tls_mode) in place instead of erroring. Other account fields (label, username, password, db_path, archive, triage, calendar, oauth2 settings) are preserved from the existing entry unless explicitly supplied on the command line</td>
+</tr>
+<tr>
+<td><code>--oauth2-client-id</code></td>
+<td>no</td>
+<td>Thunderbird public client</td>
+<td>Azure app-registration client ID for Microsoft 365 OAuth2</td>
+</tr>
+<tr>
+<td><code>--oauth2-tenant</code></td>
+<td>no</td>
+<td><code>organizations</code></td>
+<td>Azure AD tenant (GUID, domain, or <code>organizations</code>/<code>common</code>)</td>
+</tr>
+<tr>
+<td><code>--app-password</code></td>
+<td>no</td>
+<td>–</td>
+<td>Use password/basic auth even for Microsoft-hosted accounts. Mutually exclusive with <code>--oauth2-client-id</code> / <code>--oauth2-tenant</code>. Emits a warning that OAuth2 is strongly preferred</td>
+</tr>
+</tbody>
+</table>
+<h3 id="docker-invocation">Docker invocation<a class="headerlink" href="#docker-invocation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set your OpenRouter API key in the config file&#39;s llm: section</span>
+<span class="c1"># (config/mail.local.yaml → llm.api_key), then:</span>
+
+<span class="c1"># Detect provider settings, write config, and verify connectivity —</span>
+<span class="c1"># all in one step (prompts for the password; uses the run TTY).</span>
+docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>detect<span class="w"> </span>user@gmail.com
+</code></pre></div>
+<p>The <code>detect</code> command writes <code>config/mail.local.yaml</code> (with the password
+included when one is supplied) into the bind-mounted <code>./config</code> directory on
+the host.  No image rebuild is needed — the file is available immediately.</p>
+<p>The <code>--password</code> flag works the same as in native mode.  When omitted, an
+interactive prompt appears (requires a TTY — use <code>docker compose run</code> without
+<code>-T</code>).</p>
+<h3 id="caveats">Caveats<a class="headerlink" href="#caveats" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>LLM output can be wrong.</strong> That is exactly why <code>detect</code> verifies by
+  connecting after writing the config. If verification fails, edit
+  <code>config/mail.local.yaml</code> and re-run <code>probe</code>.</li>
+<li>With <code>--no-verify</code> (or <code>--stdout</code>, which never writes), no connection is
+  made — <code>detect</code> is then purely a config-file generator, so run
+  <code>robotsix-auto-mail probe</code> yourself afterwards.
+  When using <code>--stdout</code>, the password is intentionally omitted from the printed
+  config for security (to avoid leaking it into shell history or logs). You must
+  supply the password separately: save the printed config to a file and edit it
+  to fill in <code>auth.password</code> before running other commands.
+  For Microsoft 365 accounts, <code>--stdout</code> may be combined with
+  <code>--oauth2-client-id</code> and <code>--oauth2-tenant</code> — these are written into the
+  printed YAML as <code>auth.oauth2_client_id</code> and <code>auth.oauth2_tenant</code>. Save the
+  output to a file and then run <code>robotsix-auto-mail auth login --account &lt;id&gt;</code>
+  to complete the device-code consent flow and seed the token cache.</li>
+<li>For users who prefer manual config, the traditional approach (editing
+  <code>config/mail.local.yaml</code> by hand) is unaffected and fully supported.</li>
+</ul>
+<h2 id="converting-a-legacy-single-account-config">Converting a legacy single-account config<a class="headerlink" href="#converting-a-legacy-single-account-config" title="Permanent link">&para;</a></h2>
+<p>The single-account ("mono") config shape is <strong>removed</strong>. A mono YAML file no
+longer loads at runtime — it fails with an actionable error pointing at
+<code>detect</code> (to regenerate it from scratch). To convert an existing mono file to
+the multi-account <code>accounts:</code> shape, edit the file to wrap your settings in an
+<code>accounts:</code> list:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">default_account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+
+<span class="nt">accounts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<span class="w">    </span><span class="nt">imap</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">imap.example.com</span>
+<span class="w">    </span><span class="nt">smtp</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.example.com</span>
+<span class="w">    </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user@example.com</span>
+</code></pre></div>
+<p>Alternatively, run <code>robotsix-auto-mail detect</code> to regenerate the config from
+scratch with provider auto-detection.</p>
+<h2 id="configuration-keys">Configuration keys<a class="headerlink" href="#configuration-keys" title="Permanent link">&para;</a></h2>
+<h3 id="yaml-config-file-configmaillocalyaml">YAML config file (<code>config/mail.local.yaml</code>)<a class="headerlink" href="#yaml-config-file-configmaillocalyaml" title="Permanent link">&para;</a></h3>
+<p>Copy <code>docs/config/mail.local.example.yaml</code> and fill in your values. Any field you
+omit falls back to its built-in default.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">accounts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Personal</span>
+<span class="w">    </span><span class="nt">imap</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">imap.example.com</span>
+<span class="w">      </span><span class="c1"># port: 993</span>
+<span class="w">      </span><span class="c1"># tls_mode: direct-tls</span>
+<span class="w">      </span><span class="c1"># folder: INBOX</span>
+<span class="w">    </span><span class="nt">smtp</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.example.com</span>
+<span class="w">      </span><span class="c1"># port: 587</span>
+<span class="w">      </span><span class="c1"># tls_mode: starttls</span>
+<span class="w">    </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user@example.com</span>
+<span class="w">      </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">  </span><span class="c1"># set your password here</span>
+<span class="w">      </span><span class="c1"># OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that</span>
+<span class="w">      </span><span class="c1"># requires modern SASL XOAUTH2.  When oauth2_token is set, password</span>
+<span class="w">      </span><span class="c1"># auth is not used.  See &quot;OAuth2 (XOAUTH2)&quot; section below.</span>
+<span class="w">      </span><span class="c1"># oauth2_token: &quot;&quot;</span>
+<span class="w">      </span><span class="c1"># oauth2_client_id: &quot;&quot;</span>
+<span class="w">      </span><span class="c1"># oauth2_client_secret: &quot;&quot;</span>
+<span class="w">    </span><span class="c1"># store:</span>
+<span class="w">    </span><span class="c1">#   path: &quot;&quot;   # empty derives the per-account default .data/&lt;id&gt;/mail.db</span>
+<span class="w">    </span><span class="c1"># archive:</span>
+<span class="w">    </span><span class="c1">#   root: robotsix-mail-archive</span>
+<span class="w">    </span><span class="c1">#   namespace: &quot;&quot;</span>
+<span class="w">    </span><span class="c1">#   enabled: true</span>
+
+<span class="c1"># Application-wide settings (outside the accounts: list):</span>
+<span class="c1"># llm:</span>
+<span class="c1">#   api_key: sk-or-v1-…</span>
+<span class="c1">#   provider_model: &quot;&quot;  # escape-hatch: override llmio tier default (leave blank to use tier default)</span>
+<span class="c1"># langfuse:</span>
+<span class="c1">#   public_key: &quot;&quot;</span>
+<span class="c1">#   secret_key: &quot;&quot;</span>
+<span class="c1">#   base_url: &quot;&quot;</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Required</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>imap.host</code></td>
+<td>yes</td>
+<td>–</td>
+<td>IMAP server hostname</td>
+</tr>
+<tr>
+<td><code>imap.port</code></td>
+<td>no</td>
+<td><code>993</code></td>
+<td>IMAP server port</td>
+</tr>
+<tr>
+<td><code>imap.tls_mode</code></td>
+<td>no</td>
+<td><code>"direct-tls"</code></td>
+<td>IMAP TLS mode</td>
+</tr>
+<tr>
+<td><code>imap.folder</code></td>
+<td>no</td>
+<td><code>"INBOX"</code></td>
+<td>IMAP mailbox folder name</td>
+</tr>
+<tr>
+<td><code>smtp.host</code></td>
+<td>yes</td>
+<td>–</td>
+<td>SMTP server hostname</td>
+</tr>
+<tr>
+<td><code>smtp.port</code></td>
+<td>no</td>
+<td><code>587</code></td>
+<td>SMTP server port</td>
+</tr>
+<tr>
+<td><code>smtp.tls_mode</code></td>
+<td>no</td>
+<td><code>"starttls"</code></td>
+<td>SMTP TLS mode</td>
+</tr>
+<tr>
+<td><code>auth.username</code></td>
+<td>yes</td>
+<td>–</td>
+<td>Login username (typically the full email address)</td>
+</tr>
+<tr>
+<td><code>auth.password</code></td>
+<td>no</td>
+<td>–</td>
+<td>Login password</td>
+</tr>
+<tr>
+<td><code>auth.oauth2_token</code></td>
+<td>no</td>
+<td>–</td>
+<td>OAuth2 access token for SASL XOAUTH2 (overrides password auth when set)</td>
+</tr>
+<tr>
+<td><code>auth.oauth2_client_id</code></td>
+<td>no</td>
+<td>–</td>
+<td>OAuth2 client ID (required by some providers alongside the token)</td>
+</tr>
+<tr>
+<td><code>auth.oauth2_client_secret</code></td>
+<td>no</td>
+<td>–</td>
+<td>OAuth2 client secret (required by some providers alongside the token)</td>
+</tr>
+<tr>
+<td><code>auth.oauth2_provider</code></td>
+<td>no</td>
+<td>–</td>
+<td>MSAL OAuth2 provider; set to <code>microsoft</code> to acquire/refresh tokens via MSAL instead of a password</td>
+</tr>
+<tr>
+<td><code>auth.oauth2_tenant</code></td>
+<td>no</td>
+<td><code>"organizations"</code></td>
+<td>Azure AD tenant for MSAL-managed OAuth2</td>
+</tr>
+<tr>
+<td><code>store.path</code></td>
+<td>no</td>
+<td><code>""</code></td>
+<td>Filesystem path for the SQLite database; empty derives the per-account default <code>.data/&lt;id&gt;/mail.db</code></td>
+</tr>
+<tr>
+<td><code>ingest.interval_minutes</code></td>
+<td>no</td>
+<td><code>15</code></td>
+<td>Minutes between automatic ingest cycles (<code>ingest --watch</code>)</td>
+</tr>
+<tr>
+<td><code>archive.root</code></td>
+<td>no</td>
+<td><code>"robotsix-mail-archive"</code></td>
+<td>Root folder for the self-managed archive structure</td>
+</tr>
+<tr>
+<td><code>archive.enabled</code></td>
+<td>no</td>
+<td><code>true</code></td>
+<td>Whether to create/manage the archive folder structure</td>
+</tr>
+<tr>
+<td><code>triage.on_ingest</code></td>
+<td>no</td>
+<td><code>true</code></td>
+<td>Whether to run the inbox triage agent automatically after each ingest</td>
+</tr>
+<tr>
+<td><code>triage.rules_path</code></td>
+<td>no</td>
+<td><code>""</code></td>
+<td>Path to the human-readable <code>triage_rules.md</code> the flash LLM maintains from board actions; empty derives <code>&lt;db-dir&gt;/triage_rules.md</code> from <code>store.path</code></td>
+</tr>
+<tr>
+<td><code>component_agent.enabled</code></td>
+<td>no</td>
+<td><code>false</code></td>
+<td>Whether the HTTP component-agent API is served (allows external agents to monitor status / read or apply configuration over HTTP)</td>
+</tr>
+<tr>
+<td><code>llm.api_key</code></td>
+<td>no</td>
+<td>–</td>
+<td>LLM provider API key for <code>detect</code> / mail processing</td>
+</tr>
+<tr>
+<td><code>llm.provider_model</code></td>
+<td>no</td>
+<td><code>""</code></td>
+<td>LLM provider-model identifier (e.g. <code>openrouter-deepseek</code>, <code>claude-sdk</code>); see robotsix-llmio README for available backends</td>
+</tr>
+<tr>
+<td><code>langfuse.public_key</code></td>
+<td>no</td>
+<td>–</td>
+<td>Langfuse public key; when set with the secret key, every LLM agent run is traced</td>
+</tr>
+<tr>
+<td><code>langfuse.secret_key</code></td>
+<td>no</td>
+<td>–</td>
+<td>Langfuse secret key (redacted in logs/repr)</td>
+</tr>
+<tr>
+<td><code>langfuse.base_url</code></td>
+<td>no</td>
+<td>–</td>
+<td>Langfuse host URL (falls back to llmio's own default when unset)</td>
+</tr>
+<tr>
+<td><code>logging.level</code></td>
+<td>no</td>
+<td><code>INFO</code></td>
+<td>Minimum log level — one of <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code></td>
+</tr>
+<tr>
+<td><code>logging.format</code></td>
+<td>no</td>
+<td><code>console</code></td>
+<td>Log renderer — <code>json</code> for structured logs, <code>console</code> for human-friendly dev output</td>
+</tr>
+<tr>
+<td><code>logging.file_dir</code></td>
+<td>no</td>
+<td><code>.mail_log</code></td>
+<td>Directory for date-stamped debug log files; empty disables file logging</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Trace ID injection.</strong> Every log event automatically includes a <code>trace_id</code> field that correlates logs with OpenTelemetry / Langfuse recordings. When a Langfuse trace is active (see <code>langfuse.public_key</code> / <code>langfuse.secret_key</code> above), the <code>trace_id</code> is stamped as a 32-character lowercase hexadecimal string; when no trace is active (or OpenTelemetry is absent), it is set to <code>"-"</code>. This is transparent — no configuration is needed — and applies to both <code>json</code> and <code>console</code> log formats.</p>
+<blockquote>
+<p><strong>No environment-variable configuration.</strong> Every setting above lives in the
+YAML config file. Configuration values are not read from the environment;
+the application consults only three environment variables, which provide
+boot-level inputs rather than per-field overrides:</p>
+<ul>
+<li><strong><code>MAIL_CONFIG_PATH</code></strong> — locates the YAML config file (default
+  <code>config/mail.local.yaml</code>).</li>
+<li><strong><code>LLM_API_KEY</code></strong> — fallback LLM API key; used when the config file does
+  not supply <code>llm.api_key</code>.</li>
+<li><strong><code>LLM_PROVIDER_MODEL</code></strong> — fallback LLM provider-model identifier; used
+  when the config file does not supply <code>llm.provider_model</code>.</li>
+</ul>
+</blockquote>
+<p><strong>TLS modes</strong></p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>direct-tls</code></td>
+<td>TLS from the first byte, no plaintext negotiation (IMAP port 993, SMTP port 465)</td>
+</tr>
+<tr>
+<td><code>starttls</code></td>
+<td>Plain connection upgraded to TLS via STARTTLS (IMAP port 143, SMTP port 587)</td>
+</tr>
+<tr>
+<td><code>none</code></td>
+<td>No TLS at all — <strong>insecure, for local development only</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="gmail-app-password-simplest">Gmail (app password — simplest)<a class="headerlink" href="#gmail-app-password-simplest" title="Permanent link">&para;</a></h3>
+<p>Gmail supports IMAP, but Google rejects your <strong>normal account password</strong> over
+IMAP/SMTP. The simplest working setup needs no OAuth2 client registration — an
+<strong>App Password</strong>:</p>
+<ol>
+<li>Enable IMAP: Gmail → <strong>Settings</strong> → <strong>See all settings</strong> →
+   <strong>Forwarding and POP/IMAP</strong> → <strong>Enable IMAP</strong> → <strong>Save Changes</strong>.</li>
+<li>Turn on <strong>2-Step Verification</strong> for your Google account — App Passwords are
+   only offered once 2FA is enabled: <a href="https://myaccount.google.com/security">https://myaccount.google.com/security</a>.</li>
+<li>Create an App Password at <a href="https://myaccount.google.com/apppasswords">https://myaccount.google.com/apppasswords</a>
+   (choose "Mail" / "Other"). Google shows a <strong>16-character</strong> value — copy it
+   (the spaces are cosmetic and may be omitted).</li>
+<li>Use that App Password as <code>auth.password</code>, with your
+   full address as <code>auth.username</code>:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="nt">accounts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<span class="w">    </span><span class="nt">imap</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">imap.gmail.com</span>
+<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">993</span>
+<span class="w">      </span><span class="nt">tls_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">direct-tls</span>
+<span class="w">    </span><span class="nt">smtp</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.gmail.com</span>
+<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">587</span>
+<span class="w">      </span><span class="nt">tls_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">starttls</span>
+<span class="w">    </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">you@gmail.com</span>
+<span class="w">      </span><span class="c1"># the 16-char App Password, NOT your normal login password</span>
+<span class="w">      </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;abcd</span><span class="nv"> </span><span class="s">efgh</span><span class="nv"> </span><span class="s">ijkl</span><span class="nv"> </span><span class="s">mnop&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>robotsix-auto-mail<span class="w"> </span>probe
+</code></pre></div>
+<p>If you supply your normal password by mistake, authentication fails with an
+<code>Invalid credentials</code> error; because the host is Gmail, the client appends a
+reminder to use an App Password.</p>
+<blockquote>
+<p><strong>Labels, not folders.</strong> Gmail exposes its <em>labels</em> as IMAP folders, with the
+system folders under the <code>[Gmail]/</code> namespace (<code>All Mail</code>, <code>Sent Mail</code>,
+<code>Trash</code>, …) flagged as special-use. The self-managed archive creates its
+folders as ordinary Gmail <strong>labels</strong> and archives a message by copying it to
+the destination label and removing it from <code>INBOX</code> — so the message keeps
+resting in <strong>All Mail</strong> (Gmail's native "archived" state) with the new label
+applied. These special-use system folders are excluded from the LLM
+archive-layout proposal, so it never files mail into <code>All Mail</code> or <code>Trash</code>.</p>
+<p><strong>Expunge behaviour (important).</strong> Archiving relies on Gmail's <em>default</em>
+IMAP setting — Gmail → Settings → Forwarding and POP/IMAP → <em>"When a message
+is marked as deleted and expunged from the last visible IMAP folder:
+</em><em>Archive the message</em><em>"</em>. If you changed this to <em>"Move the message to the
+Trash"</em>, archiving from <code>INBOX</code> will <strong>trash</strong> mail instead — keep the
+default.</p>
+</blockquote>
+<h3 id="oauth2-xoauth2">OAuth2 (XOAUTH2)<a class="headerlink" href="#oauth2-xoauth2" title="Permanent link">&para;</a></h3>
+<p>Microsoft 365 has deprecated basic auth and now requires <strong>SASL XOAUTH2</strong> — an
+industry-standard OAuth2-based SASL mechanism. Gmail also rejects your normal
+account password, but accepts either an
+<a href="#gmail-app-password--simplest">App Password</a> (simplest — see above) or
+XOAUTH2.</p>
+<p>When <code>oauth2_token</code> is set in the YAML config, the IMAP and SMTP clients
+authenticate via XOAUTH2 instead of the legacy <code>login()</code> call.  Password auth
+is only used when no token is present.</p>
+<h4 id="obtaining-an-oauth2-token">Obtaining an OAuth2 token<a class="headerlink" href="#obtaining-an-oauth2-token" title="Permanent link">&para;</a></h4>
+<p><strong>Gmail / Google Workspace:</strong></p>
+<ol>
+<li>Go to the <a href="https://console.cloud.google.com/">Google Cloud Console</a> and
+   create a project (or use an existing one).</li>
+<li>Enable the <strong>Gmail API</strong> (not Gmail itself — the API is what OAuth2 scopes
+   connect to) under "APIs &amp; Services" → "Library".</li>
+<li>Under "APIs &amp; Services" → "Credentials", create an <strong>OAuth 2.0 Client ID</strong>
+   with application type "Desktop app".  Note the <strong>Client ID</strong> and
+   <strong>Client Secret</strong>.</li>
+<li>Use Google's OAuth2 playground or a tool like
+   <a href="https://github.com/google/gmail-oauth2-tools"><code>gmail-oauth2-tools</code></a> to
+   obtain an access token.  The required scope for IMAP is
+   <code>https://mail.google.com/</code> (this covers both IMAP and SMTP).</li>
+</ol>
+<p>A minimal offline flow with <code>gmail-oauth2-tools</code>:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>oauth2.py<span class="w"> </span>--generate_oauth2_token<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--client_id<span class="o">=</span>&lt;CLIENT_ID&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--client_secret<span class="o">=</span>&lt;CLIENT_SECRET&gt;
+</code></pre></div>
+<ol>
+<li>Set the resulting access token as <code>auth.oauth2_token</code>.  If your flow
+   requires it, also set <code>auth.oauth2_client_id</code> and
+   <code>auth.oauth2_client_secret</code>.</li>
+</ol>
+<p><strong>Microsoft 365 / Outlook.com (MSAL device-code, recommended):</strong></p>
+<p>Microsoft 365 rejects password auth and requires XOAUTH2. Rather than pasting
+a short-lived access token into <code>auth.oauth2_token</code>, set
+<code>auth.oauth2_provider: microsoft</code> and let the bundled MSAL integration
+acquire and silently refresh tokens for you:</p>
+<ol>
+<li>Install the optional dependency: <code>pip install 'robotsix-auto-mail[microsoft]'</code>.</li>
+<li>Run <a href="#scripting-usage"><code>robotsix-auto-mail detect &lt;address&gt;</code></a>. When the
+   detected host is Microsoft (<code>outlook.office365.com</code> /
+   <code>*.office365.com</code> / <code>outlook.com</code>), <code>detect</code> writes an
+   <code>oauth2_provider: microsoft</code> auth block (<strong>no password</strong>) and
+   automatically runs the device-code login: it prints a URL and a short code;
+   open the URL, enter the code, and sign in to consent. The post-write
+   verification then authenticates over XOAUTH2 on both IMAP and SMTP.</li>
+</ol>
+<p>If your tenant still allows legacy authentication (app passwords), you can
+   bypass OAuth2 entirely by passing <code>--app-password</code> (mutually exclusive
+   with <code>--oauth2-client-id</code> / <code>--oauth2-tenant</code>). The detected config will
+   contain a plain <code>password</code> field with no <code>oauth2_provider</code>, and the
+   verification loop uses password auth instead of device-code login. A warning
+   is printed that basic auth may be disabled for your tenant.
+3. To (re)run the consent flow later — e.g. after revoking access or moving to
+   a new machine — run
+   <code>robotsix-auto-mail auth login --account &lt;id&gt;</code>.</p>
+<p>The MSAL refresh-token cache is stored per account at
+<code>.data/&lt;id&gt;/msal_cache.json</code>; once seeded, <code>ingest --watch</code> refreshes
+access tokens silently for hours without re-prompting. The cache file holds
+secrets and is never committed to the repo.</p>
+<p>By default the integration uses a well-known public client id suitable for
+IMAP/SMTP device-code flow against the <code>organizations</code> tenant. Organisations
+with their own Azure AD <strong>app registration</strong> can override these via
+<code>auth.oauth2_client_id</code> (and <code>auth.oauth2_tenant</code> for a single-tenant
+directory id); the scopes used are
+<code>https://outlook.office365.com/IMAP.AccessAsUser.All</code>,
+<code>https://outlook.office365.com/SMTP.Send</code> and <code>offline_access</code>.</p>
+<blockquote>
+<p><strong>Admin-consent caveat (corporate tenants).</strong> Many Microsoft 365
+organisations restrict which applications may use IMAP/SMTP OAuth. If
+device-code login fails with a consent/permission error, choose one of
+the following resolution paths:</p>
+<p><strong>Option A — Allowlist the Thunderbird client in your tenant:</strong> In the
+Azure portal → Enterprise Applications → search for
+<code>9e5f94bc-e8a4-4e73-b8be-63364c29d753</code> (or "Thunderbird") → Grant admin
+consent for <code>IMAP.AccessAsUser.All</code> and <code>SMTP.Send</code>.</p>
+<p><strong>Option B — Register your own Azure app and pass it to <code>detect</code>:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># In Azure Portal → App registrations → New registration:</span>
+<span class="c1"># - Name: auto-mail (or any name)</span>
+<span class="c1"># - Supported account types: Accounts in this organizational directory only</span>
+<span class="c1"># - Redirect URI: Public client / native,</span>
+<span class="c1">#   https://login.microsoftonline.com/common/oauth2/nativeclient</span>
+<span class="c1">#</span>
+<span class="c1"># Under API Permissions → Add a permission → APIs my organization uses →</span>
+<span class="c1">#   Office 365 Exchange Online → Delegated permissions:</span>
+<span class="c1">#   - IMAP.AccessAsUser.All</span>
+<span class="c1">#   - SMTP.Send</span>
+<span class="c1">#   - offline_access (may be added automatically)</span>
+<span class="c1"># → Grant admin consent.</span>
+<span class="c1">#</span>
+<span class="c1"># Copy the Application (client) ID and Directory (tenant) ID.</span>
+
+robotsix-auto-mail<span class="w"> </span>detect<span class="w"> </span>user@example.com<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--oauth2-client-id<span class="w"> </span>&lt;your-app-client-id&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--oauth2-tenant<span class="w"> </span>&lt;your-tenant-id-or-domain&gt;
+</code></pre></div>
+<p><strong>Option C — App password (legacy tenants only):</strong></p>
+<div class="highlight"><pre><span></span><code>robotsix-auto-mail<span class="w"> </span>detect<span class="w"> </span>user@example.com<span class="w"> </span>--app-password
+</code></pre></div>
+<blockquote>
+<p><strong>Warning:</strong> only works if your organisation has explicitly enabled basic
+auth app passwords. Microsoft is phasing this out.</p>
+</blockquote>
+</blockquote>
+<h4 id="token-refresh-lifecycle-msal">Token refresh lifecycle (MSAL)<a class="headerlink" href="#token-refresh-lifecycle-msal" title="Permanent link">&para;</a></h4>
+<p>After the device-code consent flow completes once, the MSAL integration
+handles token refresh automatically — no user interaction is needed for normal
+operation.</p>
+<p><strong>Where tokens live.</strong> Access tokens are <strong>not</strong> stored in the YAML config
+(<code>auth.oauth2_token</code> is unused when <code>oauth2_provider: microsoft</code> is set).
+Instead, a refresh token is persisted in the MSAL serializable token cache at
+<code>&lt;dirname(db_path)&gt;/msal_cache.json</code> — one per account, next to its SQLite
+database. This cache file holds secrets and should never be committed to
+source control.</p>
+<p><strong>What happens on every connection.</strong> Each time <code>ingest</code> or <code>serve</code> opens
+an IMAP or SMTP connection, the client invokes the token provider, which calls
+<code>acquire_token_silent</code> against the cached account. MSAL returns the existing
+access token if it is still valid; if the access token has expired, MSAL
+transparently exchanges the cached refresh token for a new access token — all
+without re-prompting the user.</p>
+<p><strong>Cache persistence.</strong> After a silent refresh that changes cache state (e.g.
+a new access token was obtained), the updated cache is written back to
+<code>msal_cache.json</code> so that subsequent connections can reuse the refreshed
+state. If the cache has not changed (the existing access token was still
+valid), no write occurs.</p>
+<p><strong>Token longevity.</strong> Microsoft access tokens are short-lived (typically on the
+order of one hour). Refresh tokens are long-lived and rolling — Microsoft's
+default policy keeps them valid for up to ~90 days of inactivity, but exact
+durations are controlled by the tenant's conditional-access policies and may
+vary. The library does not expose or guarantee specific TTLs.</p>
+<p><strong>When refresh fails.</strong> If the refresh token is missing, expired, or has been
+revoked (e.g. the user removed the app's consent in the Azure portal),
+<code>acquire_token_silent</code> returns no <code>access_token</code> and the provider raises a
+<code>ConfigurationError</code> whose message directs the user to re-consent:</p>
+<pre><code>Microsoft token refresh failed (cache missing or expired).
+Run `robotsix-auto-mail auth login --account &lt;id&gt;` to re-consent.
+</code></pre>
+<p>Running <code>detect</code> for a Microsoft host also performs the device-code login
+inline.  See <a href="#the-auth-login-command">The <code>auth login</code> command</a> for details.</p>
+<p><strong>Microsoft 365 / Outlook.com (static token, manual):</strong></p>
+<p>If you prefer to manage tokens yourself, register an application in the
+<a href="https://portal.azure.com/">Azure Portal</a> under "App registrations", add the
+<code>IMAP.AccessAsUser.All</code> and <code>SMTP.Send</code> delegated permissions, run the
+OAuth2 device-code or authorization-code flow with scopes
+<code>https://outlook.office.com/IMAP.AccessAsUser.All</code> and
+<code>https://outlook.office.com/SMTP.Send</code>, and set the resulting access token
+as <code>auth.oauth2_token</code> (you are then responsible for refreshing it).</p>
+<p><strong>Self-hosted / other providers:</strong></p>
+<p>If your IMAP/SMTP server still accepts password-based <code>login()</code>, leave the
+OAuth2 fields unset — the existing password path works as before.</p>
+<h3 id="multiple-accounts">Multiple accounts<a class="headerlink" href="#multiple-accounts" title="Permanent link">&para;</a></h3>
+<p><code>robotsix-auto-mail</code> can manage more than one mailbox at once. Multiple
+accounts are modelled as N independent configurations — each account is a
+complete set of the connection settings described above, plus a stable
+<code>id</code> and an optional human-friendly <code>label</code>. The <code>accounts:</code> list is the only
+supported config-file shape; a single-account ("mono") YAML <strong>file</strong> is no
+longer loaded (see below).</p>
+<p><strong>One SQLite DB per account.</strong> Rather than tagging every database row with an
+<code>account_id</code>, each account carries its <strong>own</strong> <code>store.path</code> (SQLite database
+file). Per-account state (triage decisions, sender memory, archive
+watermarks) is therefore naturally isolated with zero schema changes, and the
+existing per-config <code>store.path</code> is the only plumbing needed. The cost is one
+SQLite file per account, so every account's <code>store.path</code> must be unique —
+uniqueness is enforced when the configuration loads. When an account omits
+<code>store.path</code>, it defaults to a dedicated per-account folder <code>.data/&lt;id&gt;/mail.db</code>,
+which is unique per account and created automatically on first DB use.</p>
+<blockquote>
+<p>The single-account ("mono") YAML <strong>file</strong> shape — top-level <code>imap:</code> /
+<code>smtp:</code> / <code>auth:</code> sections with no <code>accounts:</code> key — is <strong>no longer
+supported</strong>: such a file fails to load with an actionable error pointing at
+<code>detect</code>. Edit the file to wrap your settings in an <code>accounts:</code> list (see
+<a href="#converting-a-legacy-single-account-config">Converting a legacy single-account config</a>),
+or run <a href="#scripting-usage"><code>robotsix-auto-mail detect</code></a> to regenerate it.</p>
+</blockquote>
+<p><strong>YAML shape.</strong> A multi-account YAML file uses a top-level <code>accounts:</code> list
+instead of the single-account top-level sections. Each list entry is a
+mapping with a required string <code>id</code>, an optional <code>label</code>, and the usual
+nested <code>imap</code> / <code>smtp</code> / <code>auth</code> / <code>store</code> (and optional <code>llm</code> / <code>ingest</code> /
+<code>archive</code> / <code>triage</code>) sections — parsed exactly as in the single-account
+file. An optional top-level <code>default_account:</code> names the default account;
+when omitted, the first entry is the default. The canonical example ships in
+<code>docs/config/mail.local.example.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">default_account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">personal</span>
+
+<span class="nt">accounts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">personal</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Personal Gmail</span>
+<span class="w">    </span><span class="nt">imap</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">imap.gmail.com</span>
+<span class="w">    </span><span class="nt">smtp</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.gmail.com</span>
+<span class="w">    </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">me@gmail.com</span>
+<span class="w">    </span><span class="nt">store</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.data/personal/mail.db</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">work</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Work mailbox</span>
+<span class="w">    </span><span class="nt">imap</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">imap.work.example.com</span>
+<span class="w">    </span><span class="nt">smtp</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.work.example.com</span>
+<span class="w">    </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">me@work.example.com</span>
+<span class="w">    </span><span class="nt">store</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.data/work/mail.db</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">office365</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Microsoft 365</span>
+<span class="w">    </span><span class="nt">imap</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">outlook.office365.com</span>
+<span class="w">    </span><span class="nt">smtp</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.office365.com</span>
+<span class="w">    </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">me@contoso.com</span>
+<span class="w">      </span><span class="nt">oauth2_provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">microsoft</span>
+<span class="w">      </span><span class="nt">oauth2_tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">organizations</span>
+<span class="w">    </span><span class="nt">store</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.data/office365/mail.db</span>
+</code></pre></div>
+<p>The Microsoft 365 account above carries <strong>no password</strong> — run
+<code>robotsix-auto-mail auth login --account office365</code> (or let <code>detect</code> do it)
+to seed the MSAL token cache at <code>.data/office365/msal_cache.json</code>.</p>
+<p>The <code>llm:</code> and <code>langfuse:</code> sections are application-wide (top-level) — they
+apply to every account. All other sections (<code>imap</code> / <code>smtp</code> / <code>auth</code> / <code>store</code>
+/ <code>ingest</code> / <code>archive</code> / <code>triage</code> / <code>component_agent</code>) are per-account and live
+under each <code>accounts:</code> entry.</p>
+<h3 id="self-managed-archive-structure">Self-managed archive structure<a class="headerlink" href="#self-managed-archive-structure" title="Permanent link">&para;</a></h3>
+<p><code>robotsix-auto-mail</code> manages its own archive folder hierarchy, rooted at
+<code>archive.root</code> (default <code>robotsix-mail-archive</code>). On the first ingest a quick
+LLM call proposes an appropriate layout based on the mailbox's existing
+folders; the resulting folder list is then persisted in the SQLite
+<code>watermark</code> table under the key <code>archive_structure</code> and reused verbatim on
+every subsequent run — no folders are listed, no LLM is called, and nothing
+is recreated.</p>
+<p>Set <code>archive.enabled</code> to <code>false</code> to disable
+archive management entirely: <code>setup_archive</code> is never called, no watermark is
+written, and ingestion proceeds normally. Re-enabling it later runs setup on
+the next ingest (since the watermark was never set).</p>
+<p>Because the structure is remembered after the first run, <strong>changing
+<code>archive.root</code> afterwards does not move or recreate any folders</strong> — the
+persisted <code>archive_structure</code> watermark short-circuits subsequent runs. A new
+root only takes effect on a fresh run that has no watermark yet.</p>
+<h2 id="precedence-rules">Precedence rules<a class="headerlink" href="#precedence-rules" title="Permanent link">&para;</a></h2>
+<p>Configuration resolves from <strong>built-in defaults overlaid by the YAML config
+file</strong> at <code>MAIL_CONFIG_PATH</code> (default <code>config/mail.local.yaml</code>). Each field the
+file supplies overrides its built-in default; any field the file omits keeps
+its default. Environment variables are <strong>not</strong> consulted for configuration —
+only <code>MAIL_CONFIG_PATH</code> (which locates the file) is read from the environment.</p>
+<p>If the config file has an <em>invalid</em> value (e.g. a non-integer port), the error
+is raised immediately so your typo is not silently swallowed.</p>
+<p>The <code>detect</code> command resolves the LLM settings (<code>llm.api_key</code>) on their own
+(via <code>load_llm()</code>) so it works before the mail fields are filled in.</p>
+<h2 id="example-setups">Example setups<a class="headerlink" href="#example-setups" title="Permanent link">&para;</a></h2>
+<h3 id="docker-compose-with-yaml-recommended">Docker Compose with YAML (recommended)<a class="headerlink" href="#docker-compose-with-yaml-recommended" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># config/mail.local.yaml (git-ignored)</span>
+<span class="nt">default_account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+
+<span class="nt">accounts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+<span class="w">    </span><span class="nt">imap</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">imap.mail.example.com</span>
+<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">993</span>
+<span class="w">      </span><span class="nt">tls_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">direct-tls</span>
+<span class="w">    </span><span class="nt">smtp</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">smtp.mail.example.com</span>
+<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">587</span>
+<span class="w">      </span><span class="nt">tls_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">starttls</span>
+<span class="w">    </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user@mail.example.com</span>
+<span class="w">      </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-app-password-here</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>probe
+</code></pre></div>
+<h2 id="the-probe-command">The <code>probe</code> command<a class="headerlink" href="#the-probe-command" title="Permanent link">&para;</a></h2>
+<p>Once your configuration is in place, run the probe to verify connectivity:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>probe
+</code></pre></div>
+<h3 id="what-it-does">What it does<a class="headerlink" href="#what-it-does" title="Permanent link">&para;</a></h3>
+<p><code>probe</code> loads the mail configuration, then:</p>
+<ul>
+<li>Opens an authenticated IMAP connection and prints the server greeting,
+  capability list, and mailbox folder listing.</li>
+<li>Opens an authenticated SMTP connection and prints the EHLO response
+  and ESMTP feature set.</li>
+</ul>
+<p>No email is read or sent — this is a read-only diagnostic command.</p>
+<h3 id="representative-output">Representative output<a class="headerlink" href="#representative-output" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>IMAP Probe
+------------------------------------------------------------
+Greeting: * OK [CAPABILITY IMAP4rev1 …] IMAP server ready
+Capabilities:
+  - IMAP4rev1
+  - STARTTLS
+  - AUTH=PLAIN
+  - …
+
+Folders:
+  INBOX
+    attributes: (none)
+    delimiter:  /
+  Drafts
+    attributes: \HasNoChildren
+    delimiter:  /
+  Sent
+    attributes: \HasNoChildren
+    delimiter:  /
+
+SMTP Probe
+------------------------------------------------------------
+EHLO response: 250-smtp.mail.example.com
+250-PIPELINING
+250-SIZE 35651584
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250 8BITMIME
+
+ESMTP features:
+  AUTH: PLAIN LOGIN
+  ENHANCEDSTATUSCODES: (empty)
+  PIPELINING: (empty)
+  SIZE: 35651584
+  STARTTLS: (empty)
+</code></pre></div>
+<p>Exit code is <code>0</code> when both probes succeed, <code>1</code> when either fails.</p>
+<h2 id="the-ingest-command">The <code>ingest</code> command<a class="headerlink" href="#the-ingest-command" title="Permanent link">&para;</a></h2>
+<p>The ingestion pipeline is documented separately — see
+<a href="../ingestion/">docs/ingestion.md</a> for the full ingestion model, datastore
+schema, idempotency guarantees, configuration, and CLI usage.</p>
+<h2 id="the-board-command">The <code>board</code> command<a class="headerlink" href="#the-board-command" title="Permanent link">&para;</a></h2>
+<p>Once mail has been ingested (see <a href="#the-ingest-command">The <code>ingest</code> command</a>),
+view it with the read-only board:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>board
+</code></pre></div>
+<p><code>board</code> opens the local SQLite datastore and prints an "Inbox" header followed
+by a rendered card for each stored message.  Each card shows:</p>
+<ul>
+<li><code>From:</code> — the sender's address</li>
+<li><code>Subject:</code> — the message subject (or <code>(no subject)</code> when blank)</li>
+<li><code>Date:</code> — formatted as <code>YYYY-MM-DD HH:MM</code> (UTC)</li>
+<li>a body preview — the first 150 characters of the plain-text body, truncated
+  with <code>…</code> when longer (or <code>(no body)</code> when no plain-text body is available)</li>
+</ul>
+<p>Cards are separated by a 60-character <code>-</code> rule.  A message count line follows
+the last card.</p>
+<p>When the inbox is empty the command prints <code>Your inbox is empty.</code>.</p>
+<p>The command is read-only — it never modifies the database or contacts a mail
+server.</p>
+<h3 id="representative-output_1">Representative output<a class="headerlink" href="#representative-output_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Inbox
+------------------------------------------------------------
+From:    alice@example.com
+Subject: Hello
+Date:    2025-06-01 14:30
+
+Just checking in!
+------------------------------------------------------------
+From:    bob@example.com
+Subject: Meeting notes
+Date:    2025-06-02 09:15
+
+Here are the notes from this morning&#39;s standup.  We agreed to
+move the deadline to Friday and Alice will follow up on the…
+2 message(s)
+</code></pre></div>
+<h3 id="empty-inbox">Empty inbox<a class="headerlink" href="#empty-inbox" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Inbox
+------------------------------------------------------------
+Your inbox is empty.
+</code></pre></div>
+<p>Exit code is <code>0</code> on success, <code>1</code> when configuration cannot be loaded.</p>
+<h2 id="the-serve-command">The <code>serve</code> command<a class="headerlink" href="#the-serve-command" title="Permanent link">&para;</a></h2>
+<p>For a persistent, browser-based view of ingested mail, use the <code>serve</code>
+subcommand.  This starts a long-running HTTP server that hosts a read-only
+kanban board at <code>/board</code>.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>serve
+<span class="c1"># Listening on http://0.0.0.0:8080/board</span>
+</code></pre></div>
+<h3 id="options_1">Options<a class="headerlink" href="#options_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--account</code></td>
+<td>–</td>
+<td>Account id to serve; when omitted, the container's default account is served. This account is used as the default for requests that omit <code>?account=</code>.</td>
+</tr>
+<tr>
+<td><code>--port</code></td>
+<td><code>8080</code></td>
+<td>Port to listen on</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-board-page">The board page<a class="headerlink" href="#the-board-page" title="Permanent link">&para;</a></h3>
+<p>Open <code>http://localhost:&lt;port&gt;/board</code> in a browser.  The page shows ingested
+mail in <strong>eight columns</strong> — Inbox, Human triage, Pending action, To archive,
+To delete, To calendar, To answer, Draft ready — each with a card
+count badge.  Every mail card has a <strong>Move</strong> dropdown that lets you change
+the card's status column via <code>POST /move</code>.</p>
+<p><strong>Account picker (multi-account mode).</strong>  When two or more accounts are configured
+(via <code>config/mail.local.yaml</code>), an account picker
+dropdown appears in the page header. The dropdown
+shows each configured account with its <code>label</code> (or <code>id</code> if no label is set), and
+you can click to switch accounts. Switching navigates to <code>/board?account=&lt;id&gt;</code> and
+sets an <code>account</code> cookie (via <code>Set-Cookie: account=&lt;id&gt;; Path=/</code>) so every
+subsequent request on the page routes to the chosen account. The selected account
+is also threaded into the detail iframe and content refresh requests so deep-links
+and cookie-less clients maintain account context. When only one account is
+configured, the picker does not appear and the board behaves as a single-account
+view.</p>
+<p><strong>Triage badges.</strong>  When a mail record has a triage decision, the card displays a
+small <strong>triage badge</strong> showing the action label (one of <code>INBOX</code>, <code>HUMAN_TRIAGE</code>,
+<code>PENDING_ACTION</code>, <code>TO_ARCHIVE</code>, <code>TO_DELETE</code>, <code>TO_CALENDAR</code>, <code>TO_ANSWER</code>, or
+<code>DRAFT_READY</code>) with the decision reason visible in a
+tooltip when you hover over the badge. Cards without a triage decision show no
+badge.</p>
+<p><strong>Detail drawer.</strong>  Click any card to open a detail drawer showing the full
+message, including the <strong>Triage</strong> field with the decision action, reason, source
+(agent or user), and confidence level. If no decision has been recorded, the
+Triage field shows "(no triage decision)".</p>
+<p><strong>Draft generation.</strong>  For messages marked "To answer" (TO_ANSWER triage action),
+the detail drawer shows a <strong>Draft reply</strong> section with two interfaces:
+- A <strong>Generate with AI</strong> button (when no draft exists) or <strong>Regenerate with AI</strong>
+  button (when a draft already exists) that uses an LLM to prepare a concise,
+  professional reply draft in the same language as the incoming message. The LLM
+  incorporates any notes or instructions you have written in the <strong>Notes</strong> field
+  — use them to guide the draft (e.g., "decline politely", "mention invoice paid",
+  "propose Tuesday afternoon"). The generated draft appears in a textarea below
+  the button, ready for review and manual editing.
+- A <strong>Save draft</strong> form to persist your (edited) draft text and move the card to
+  "Draft ready" status.</p>
+<p>On the board card itself, a <strong>Draft reply</strong> button (visible only for TO_ANSWER
+cards) is a shortcut — click it to immediately generate a draft and re-open the
+detail drawer to show the result.</p>
+<p><strong>Sending replies.</strong>  Once a draft is saved (the card moves to "Draft ready" status),
+two additional buttons appear in the detail drawer:
+- <strong>Reply</strong> — sends the draft text as a reply to the original sender via SMTP,
+  then re-queues the original message for triage with the sent reply body stored.
+  The card reappears in the INBOX column and the triage agent will decide the
+  final disposition (typically to archive, but the agent may decide otherwise based
+  on the reply content). This allows the triage system to own the post-answer workflow.
+- <strong>Reply to all</strong> — sends the draft to the original sender and includes all
+  recipients from the original message (the <code>To</code> and <code>Cc</code> lists, excluding your own address
+  and duplicates). After sending, the message is re-queued for triage in the same manner.</p>
+<p>The reply always includes threading headers (<code>In-Reply-To</code> and <code>References</code>) so it appears
+as a conversation thread in the recipient's mail client. The subject is automatically prefixed
+with "Re: " unless it already starts with that (case-insensitive).</p>
+<p><strong>Archive-folder recommendations.</strong>  When you move a card to the "To archive" column
+(or the triage agent classifies one), the system proposes an archive subfolder. The
+proposal engine uses a <strong>three-tier strategy</strong>:</p>
+<ol>
+<li><strong>User override</strong> — if you have manually set a subfolder for that message, it is used.</li>
+<li><strong>LLM-learned history</strong> — the system remembers which archive subfolders you (or the triage
+   agent) have filed mail from each sender and domain into. When proposing a folder for a
+   similar sender (same email address, or same domain with a known project folder), it
+   suggests reusing the existing project folder instead of creating a new one. This is
+   especially useful when a domain hosts multiple project addresses — the system learns
+   that <code>armada@ls2n.fr</code> and <code>crew@ls2n-fr.org</code> both relate to the <code>ls2n/armada</code> project
+   and steers both there.</li>
+<li><strong>Deterministic fallback</strong> — if no history exists, the system proposes a folder based
+   on a simple rule: mailing-list brackets in the subject (<code>[python-dev]</code> → <code>Lists/python-dev</code>),
+   sender domain + local part (<code>alice@example.com</code> → <code>example.com/alice</code>), or a year/month
+   bucket from the message date.</li>
+</ol>
+<p>The board is the interface: no separate client is needed.</p>
+<p>The page includes <code>&lt;meta http-equiv="refresh" content="30"&gt;</code>, so the board
+auto-refreshes every 30 seconds.</p>
+<p><strong>Column-wide batch delete and archive.</strong>  For columns with many cards,
+individual card operations (delete one, archive one) can be tedious. The board
+offers two column-wide bulk operations, each accessed via an <strong>All</strong> button that
+appears only when the operation is not already running:</p>
+<ul>
+<li>
+<p><strong>Delete All</strong> (appears on the <code>TO_DELETE</code> column): bulk-deletes every message
+  in the column from both IMAP and the local database via <code>POST /batch-delete</code>.
+  Click the button and confirm the dialog to start; the operation runs in a
+  background daemon thread and does not block the board. While running, a
+  progress banner appears showing the operation status (e.g., "Deleting mail:
+  120/518. The board will refresh automatically.") and the Delete All button is
+  suppressed until the operation completes.</p>
+</li>
+<li>
+<p><strong>Archive All</strong> (appears on the <code>TO_ARCHIVE</code> column): bulk-archives every
+  message in the column to its proposed subfolder via IMAP (or removes it from
+  the local database if IMAP is not configured) via <code>POST /batch-archive</code>. Click
+  the button and confirm the dialog to start; like delete, the operation runs in
+  the background with a progress banner. The archive operation groups messages by
+  their destination subfolder so each group is moved in a single batched IMAP
+  operation, minimizing round-trips (a 518-mail column with multiple destination
+  folders costs at most ~6 IMAP round-trip pairs instead of one per message).</p>
+</li>
+<li>
+<p><strong>Per-destination groups</strong> (<code>TO_ARCHIVE</code> column): the column's cards are
+  ordered by destination folder and split into labelled groups, each headed by
+  the destination (and card count) and an <strong>Archive these N →</strong> button. The
+  button archives only that group's mail to its destination via
+  <code>POST /batch-archive-folder</code> (form field <code>folder</code> = the destination subfolder
+  relative to the archive root; empty = the root). This lets you review and
+  approve one destination at a time instead of the whole column. It shares the
+  same single-flight guard and background worker as <strong>Archive All</strong>.</p>
+</li>
+</ul>
+<p><strong>Progress and single-flight guard.</strong>  Only one batch operation (delete or
+archive) can run at a time per account — a second request to start an operation
+while one is already in flight returns a 302 redirect to <code>/board</code> with no action.
+The board's 30-second auto-refresh polls the operation status and hides the
+progress banner once complete. If a batch operation is interrupted by a container
+restart (SIGKILL), the watermark is reset at startup so the board recovers
+cleanly without a wedged banner.</p>
+<p><strong>All-mailboxes (aggregate) view.</strong>  In multi-account mode the <strong>All mailboxes</strong>
+selection shows a unified board merging every account's cards. The <strong>Delete All</strong>
+button is available here too: it posts to <code>/batch-delete?account=__all__</code>, which
+fans the operation out to every account that has <code>TO_DELETE</code> mail — starting one
+independent background worker per account (each against its own database and IMAP
+connection). Accounts already running a batch op, or with nothing to delete, are
+skipped. The progress banner sums the per-account workers' progress, and the
+button is suppressed while any of them is still in flight. The <strong>Archive All</strong>,
+per-destination archive, and <strong>Force Triage</strong> controls remain per-account and do
+not appear in the aggregate view (switch to a single account to use them).</p>
+<p><strong>Re-triggering after interruption.</strong>  Because each batch processes records in
+chunks and commits to the database per chunk, a mid-operation restart leaves
+already-deleted/archived records removed from the database. Re-triggering the same
+batch operation automatically skips the already-processed records and continues
+with the remaining ones — so a 518-mail delete that was interrupted at 300 mails
+will, on re-trigger, process only the remaining 218 without re-deleting the first
+300.</p>
+<h3 id="multi-account-request-routing">Multi-account request routing<a class="headerlink" href="#multi-account-request-routing" title="Permanent link">&para;</a></h3>
+<p>When multiple accounts are configured (via <code>config/mail.local.yaml</code>), the
+<code>serve</code> command hosts all accounts at a single
+HTTP server address. Per-request account selection determines which account's
+database and mail config are used to handle each request.</p>
+<p><strong>Account selection precedence</strong> (checked in this order):</p>
+<ol>
+<li><strong>Explicit query parameter</strong> — <code>?account=&lt;id&gt;</code> (e.g. <code>/board?account=work</code>)</li>
+<li><strong>Cookie</strong> — an <code>account</code> cookie set by a prior successful query param selection</li>
+<li><strong>Aggregate view</strong> — when no query param or cookie is present and multiple
+   accounts are configured, the server returns the <code>__all__</code> aggregate view
+   (all accounts combined). A <code>Set-Cookie: account=__all__</code> header is sent so
+   the aggregate preference persists. For single-account configurations the
+   lone account is served directly.</li>
+</ol>
+<p>When the HTTP response succeeds with an explicit <code>?account=&lt;id&gt;</code>, a <code>Set-Cookie: account=&lt;id&gt;; Path=/</code> header is sent so the selection persists across the board's cookie-less JavaScript fetches and POST→redirect flows. This allows the browser to stay on the chosen account without explicit URL parameters on every request.</p>
+<p><strong>Error handling:</strong></p>
+<ul>
+<li>An explicit <code>?account=&lt;unknown-id&gt;</code> returns a 404 (hard failure).</li>
+<li>A stale or unknown id supplied only via cookie is silently ignored — the
+  aggregate view is served instead (cookies must never hard-fail a request).</li>
+</ul>
+<p><strong>Single-account behavior:</strong> When only one account is configured, the
+precedence is satisfied immediately (the single account is always the
+default); multi-account selection is invisible to the user.</p>
+<p><strong>Example multi-account setup:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Config with two accounts</span>
+cat<span class="w"> </span>config/mail.local.yaml
+<span class="c1"># default_account: personal</span>
+<span class="c1"># accounts:</span>
+<span class="c1">#   - id: personal</span>
+<span class="c1">#   - id: work</span>
+
+<span class="c1"># Start the server (personal is the default)</span>
+robotsix-auto-mail<span class="w"> </span>serve
+<span class="c1"># Listening on http://0.0.0.0:8080/board</span>
+
+<span class="c1"># Users can select accounts:</span>
+<span class="c1"># - http://localhost:8080/board (uses personal account)</span>
+<span class="c1"># - http://localhost:8080/board?account=work (switches to work account, sets cookie)</span>
+<span class="c1"># - Subsequent requests without ?account= will use the work cookie until cleared</span>
+
+<span class="c1"># Or pick a different default at startup:</span>
+robotsix-auto-mail<span class="w"> </span>serve<span class="w"> </span>--account<span class="w"> </span>work
+<span class="c1"># Now requests without ?account= default to work</span>
+</code></pre></div>
+<h3 id="contrast-with-board">Contrast with <code>board</code><a class="headerlink" href="#contrast-with-board" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>board</code></th>
+<th><code>serve</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Output</strong></td>
+<td>Plain text to stdout</td>
+<td>HTML page in a browser</td>
+</tr>
+<tr>
+<td><strong>Layout</strong></td>
+<td>Single "Inbox" column</td>
+<td>Eight columns (Inbox, Human triage, Pending action, To archive, To delete, To calendar, To answer, Draft ready)</td>
+</tr>
+<tr>
+<td><strong>Lifetime</strong></td>
+<td>One-shot — prints and exits</td>
+<td>Persistent HTTP daemon</td>
+</tr>
+<tr>
+<td><strong>Interaction</strong></td>
+<td>Read-only</td>
+<td>Move dropdowns (<code>POST /move</code>)</td>
+</tr>
+<tr>
+<td><strong>Refresh</strong></td>
+<td>Manual (re-run the command)</td>
+<td>Automatic (30-second meta refresh)</td>
+</tr>
+</tbody>
+</table>
+<p>Both commands read from the same local SQLite datastore — no configuration
+changes are needed to switch between them.</p>
+<h3 id="the-config-sync-endpoint">The <code>/config-sync</code> endpoint<a class="headerlink" href="#the-config-sync-endpoint" title="Permanent link">&para;</a></h3>
+<p>In addition to the board page, the server hosts a <code>POST /config-sync</code> endpoint
+that runs the optional LLM drift advisory agent and returns structured JSON.
+This is useful for external schedulers (cron, systemd timer) or monitoring
+systems that want to check for configuration drift on demand.</p>
+<h4 id="request">Request<a class="headerlink" href="#request" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/config-sync
+</code></pre></div>
+<p>No request body is required.</p>
+<h4 id="response-on-success-http-200">Response on success (HTTP 200)<a class="headerlink" href="#response-on-success-http-200" title="Permanent link">&para;</a></h4>
+<p>Content-Type: <code>application/json</code></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;proposals&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;imap_folder default mismatch&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;body&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Docs say INBOX.All but the dataclass default is INBOX.&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;affected_field&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;imap_folder&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;confidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;high&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>When no drift is detected, the <code>proposals</code> array is empty.</p>
+<h4 id="error-responses-http-503">Error responses (HTTP 503)<a class="headerlink" href="#error-responses-http-503" title="Permanent link">&para;</a></h4>
+<p>If the LLM extra (<code>pydantic-ai</code>) is not installed or the agent encounters an
+error (e.g., missing API key):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Config-sync advisory requires the optional LLM extra, which is not installed&quot;</span><span class="p">}</span>
+</code></pre></div>
+<h4 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h4>
+<p>The endpoint requires the same setup as the CLI <code>config-sync</code> command:
+- The <code>pydantic-ai</code> package (install via <code>pip install robotsix-auto-mail[dev]</code>)
+- An LLM API key (<code>llm.api_key</code> in the config file)</p>
+<p>The endpoint applies dedup filtering by default (consulting the persisted
+ledger in the SQLite <code>watermark</code> table), so previously-seen drift proposals
+are suppressed automatically.</p>
+<h3 id="the-batch-delete-and-batch-archive-endpoints">The <code>/batch-delete</code> and <code>/batch-archive</code> endpoints<a class="headerlink" href="#the-batch-delete-and-batch-archive-endpoints" title="Permanent link">&para;</a></h3>
+<p>In addition to per-card delete and archive operations, the server hosts two
+endpoints for column-wide bulk deletions and archives. These endpoints are used
+by the board page's <strong>Delete All</strong> and <strong>Archive All</strong> buttons but can also be
+called directly by external tools or scripts.</p>
+<h4 id="post-batch-delete-bulk-delete-all-to_delete-mail"><code>POST /batch-delete</code> — bulk delete all TO_DELETE mail<a class="headerlink" href="#post-batch-delete-bulk-delete-all-to_delete-mail" title="Permanent link">&para;</a></h4>
+<p>Deletes every message in the <code>TO_DELETE</code> triage column from both IMAP and the
+local database in a background daemon thread.</p>
+<h5 id="request_1">Request<a class="headerlink" href="#request_1" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/batch-delete
+</code></pre></div>
+<p>No request body is required.</p>
+<h5 id="behavior">Behavior<a class="headerlink" href="#behavior" title="Permanent link">&para;</a></h5>
+<p>When the request succeeds:</p>
+<ol>
+<li>The server checks the <code>batch_op:state</code> watermark. If it is already running
+   (indicating a batch operation is in flight), the request returns a 302 redirect
+   to <code>/board</code> immediately with no action (single-flight guard).</li>
+<li>If no batch operation is running, the watermark is set to <code>"running"</code> and a
+   daemon background thread is spawned that:</li>
+<li>Collects every <code>TO_DELETE</code> triage decision and its corresponding <code>MailRecord</code>.</li>
+<li>Processes records in chunks (up to 100 UIDs per chunk to minimize IMAP
+     round-trips).</li>
+<li>For each chunk: issues a single batched <code>UID STORE +FLAGS (\Deleted)</code> and
+     <code>EXPUNGE</code> to mark all UIDs in the chunk deleted, then deletes the
+     corresponding local database rows and commits.</li>
+<li>Updates the <code>batch_op:state</code> watermark with progress JSON
+     (<code>{"op": "delete", "done": N, "total": M}</code>) after each chunk so the board
+     can display live progress.</li>
+<li>Records with <code>imap_uid is None</code> (DB-only records) are deleted without IMAP
+     operations.</li>
+<li>Always clears the <code>batch_op:state</code> watermark back to <code>"idle"</code> in a
+     <code>finally</code> block, even on error.</li>
+<li>The server immediately returns a 302 redirect to <code>/board</code> so the browser
+   returns to the board page. The deletion runs in the background and the board
+   auto-refreshes every 30 seconds to reflect the deletion progress and status
+   change.</li>
+</ol>
+<h5 id="response-on-success-http-302">Response on success (HTTP 302)<a class="headerlink" href="#response-on-success-http-302" title="Permanent link">&para;</a></h5>
+<p>A 302 redirect to <code>/board</code> (the batch delete has been queued).</p>
+<h5 id="error-responses">Error responses<a class="headerlink" href="#error-responses" title="Permanent link">&para;</a></h5>
+<ul>
+<li><strong>HTTP 302</strong> — A batch operation (delete or archive) is already running (the
+  watermark <code>batch_op:state</code> is not <code>None</code> and not <code>"idle"</code>). The response is a
+  302 redirect to <code>/board</code> (idempotent — the request is silently ignored and the
+  watermark is unchanged).</li>
+</ul>
+<p>Errors during the background thread (e.g., <code>ImapError</code>, database errors) are
+swallowed so a transient IMAP failure never wedges the board. The thread always
+clears the watermark so the board eventually recovers. Already-deleted records
+remain deleted (per-chunk commits make progress durable), so re-triggering the
+batch continues with the remaining records.</p>
+<p>An optional <code>?account=&lt;id&gt;</code> query parameter is supported in multi-account mode
+(see <a href="#multi-account-request-routing">Multi-account request routing</a>).</p>
+<h4 id="post-batch-archive-bulk-archive-all-to_archive-mail"><code>POST /batch-archive</code> — bulk archive all TO_ARCHIVE mail<a class="headerlink" href="#post-batch-archive-bulk-archive-all-to_archive-mail" title="Permanent link">&para;</a></h4>
+<p>Archives every message in the <code>TO_ARCHIVE</code> triage column to its proposed
+subfolder via IMAP (or removes it from the local database if IMAP is not
+configured) in a background daemon thread.</p>
+<h5 id="request_2">Request<a class="headerlink" href="#request_2" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/batch-archive
+</code></pre></div>
+<p>No request body is required.</p>
+<h5 id="behavior_1">Behavior<a class="headerlink" href="#behavior_1" title="Permanent link">&para;</a></h5>
+<p>When the request succeeds:</p>
+<ol>
+<li>The server checks the <code>batch_op:state</code> watermark. If it is already running, the
+   request returns a 302 redirect to <code>/board</code> immediately with no action (the same
+   single-flight guard as <code>/batch-delete</code>, so delete and archive cannot run
+   concurrently).</li>
+<li>If no batch operation is running, the watermark is set to <code>"running"</code> and a
+   daemon background thread is spawned that:</li>
+<li>Collects every <code>TO_ARCHIVE</code> triage decision and its corresponding <code>MailRecord</code>.</li>
+<li>Computes each record's effective destination subfolder using the same logic
+     the board uses for archive-folder recommendations (user override → LLM-learned
+     history → deterministic fallback).</li>
+<li>Groups records by their destination folder so each group can be moved with a
+     single batched <code>UID COPY</code> command (minimizing IMAP round-trips).</li>
+<li>For each destination group: ensures the folder hierarchy exists, issues a
+     single batched <code>UID COPY</code> to the destination, then deletes the corresponding
+     local database rows and commits.</li>
+<li>Records with <code>imap_uid is None</code> (DB-only records) are deleted without IMAP
+     operations.</li>
+<li>Updates the <code>batch_op:state</code> watermark with progress JSON
+     (<code>{"op": "archive", "done": N, "total": M}</code>) after each group.</li>
+<li>Always clears the <code>batch_op:state</code> watermark back to <code>"idle"</code> in a
+     <code>finally</code> block, even on error.</li>
+<li>The server immediately returns a 302 redirect to <code>/board</code> so the browser
+   returns to the board page. The archival runs in the background and the board
+   auto-refreshes every 30 seconds to reflect progress and status changes.</li>
+</ol>
+<h5 id="response-on-success-http-302_1">Response on success (HTTP 302)<a class="headerlink" href="#response-on-success-http-302_1" title="Permanent link">&para;</a></h5>
+<p>A 302 redirect to <code>/board</code> (the batch archive has been queued).</p>
+<h5 id="error-responses_1">Error responses<a class="headerlink" href="#error-responses_1" title="Permanent link">&para;</a></h5>
+<ul>
+<li><strong>HTTP 302</strong> — A batch operation (delete or archive) is already running (the
+  watermark <code>batch_op:state</code> is not <code>None</code> and not <code>"idle"</code>). The response is a
+  302 redirect to <code>/board</code> (idempotent — the request is silently ignored).</li>
+</ul>
+<p>Errors during the background thread (e.g., <code>ImapError</code>, invalid destination
+folders, database errors) are swallowed. Already-archived records remain archived
+(per-group commits make progress durable), so re-triggering the batch continues
+with the remaining records.</p>
+<p>An optional <code>?account=&lt;id&gt;</code> query parameter is supported in multi-account mode
+(see <a href="#multi-account-request-routing">Multi-account request routing</a>).</p>
+<h4 id="post-batch-archive-folder-archive-one-destination-group"><code>POST /batch-archive-folder</code> — archive one destination group<a class="headerlink" href="#post-batch-archive-folder-archive-one-destination-group" title="Permanent link">&para;</a></h4>
+<p>Archives only the <code>TO_ARCHIVE</code> mail whose proposed destination equals the
+posted folder, leaving the rest of the column untouched. Backs the board's
+per-destination <strong>Archive these N →</strong> buttons.</p>
+<h5 id="request_3">Request<a class="headerlink" href="#request_3" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/batch-archive-folder<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;folder=Billing&#39;</span>
+</code></pre></div>
+<p>Form-encoded body parameter:
+- <code>folder</code> (required): the destination subfolder <strong>relative to the archive
+  root</strong> (e.g. <code>Billing</code>, <code>Finance/Banking</code>). An empty value targets the
+  archive root itself.</p>
+<h5 id="behavior_2">Behavior<a class="headerlink" href="#behavior_2" title="Permanent link">&para;</a></h5>
+<p>Identical to <code>POST /batch-archive</code> — same <code>batch_op:state</code> single-flight guard,
+synchronous stale-UID precheck, and background worker — except the worker keeps
+only the records whose effective subfolder (per the archive-folder
+recommendation logic) equals <code>folder</code>. Returns a 302 redirect to <code>/board</code>.
+An optional <code>?account=&lt;id&gt;</code> query parameter is supported in multi-account mode.</p>
+<h2 id="the-config-sync-command">The <code>config-sync</code> command<a class="headerlink" href="#the-config-sync-command" title="Permanent link">&para;</a></h2>
+<p>For operators who want to audit their configuration, the <code>config-sync</code>
+subcommand runs an <strong>optional, advisory LLM agent</strong> that examines four
+configuration surfaces and proposes human-readable drift corrections:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>config-sync
+</code></pre></div>
+<p>This is an <strong>advisory tool only</strong> — it does not replace the deterministic
+<code>scripts/config/check_config_sync.py</code> CI gate (which is fast and free).
+A successful run exits code <code>0</code> even when drift is found, so it won't break
+operator scripts.</p>
+<h3 id="advisory-tool-vs-the-deterministic-gate">Advisory tool vs. the deterministic gate<a class="headerlink" href="#advisory-tool-vs-the-deterministic-gate" title="Permanent link">&para;</a></h3>
+<p><code>robotsix-auto-mail</code> checks configuration consistency at two distinct layers,
+and they are <strong>complementary</strong> — neither replaces the other:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>scripts/config/check_config_sync.py</code></th>
+<th><code>config-sync</code> advisory agent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Role</strong></td>
+<td>Authoritative CI / pre-commit gate</td>
+<td>Optional operator-facing advisory tool</td>
+</tr>
+<tr>
+<td><strong>Mechanism</strong></td>
+<td>Deterministic, rule-based checks</td>
+<td>LLM inspection of config surfaces</td>
+</tr>
+<tr>
+<td><strong>Cost</strong></td>
+<td>Fast and free (no LLM, no API key)</td>
+<td>Requires <code>pydantic-ai</code> + an LLM API key</td>
+</tr>
+<tr>
+<td><strong>Coverage</strong></td>
+<td>Known, encoded drift patterns</td>
+<td><em>Unanticipated</em> drift the rules don't encode</td>
+</tr>
+<tr>
+<td><strong>On drift</strong></td>
+<td>Fails the build (blocks merge)</td>
+<td>Reports proposals; still exits <code>0</code></td>
+</tr>
+<tr>
+<td><strong>When it runs</strong></td>
+<td>Every commit / PR, automatically</td>
+<td>On demand, when an operator chooses</td>
+</tr>
+</tbody>
+</table>
+<p><code>scripts/config/check_config_sync.py</code> is the <strong>source of truth</strong>: it is the
+fast, free, deterministic gate that blocks merges on known configuration drift,
+and it runs automatically on every commit and pull request. The <code>config-sync</code>
+LLM agent (CLI subcommand and <code>POST /config-sync</code> endpoint) is an <strong>optional,
+operator-facing advisory tool</strong> that surfaces <em>unanticipated</em> drift patterns the
+deterministic checker doesn't encode. Because a successful advisory run exits
+<code>0</code> even when it reports drift, it <strong>does not gate anything</strong> — running
+<code>config-sync</code> is never a substitute for the deterministic gate passing.</p>
+<h3 id="when-to-use-which">When to use which<a class="headerlink" href="#when-to-use-which" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Rely on the deterministic gate for every commit and PR.</strong> It is automatic,
+  free, and authoritative — it is what actually keeps configuration surfaces in
+  sync, and a green build means the known drift checks pass.</li>
+<li><strong>Reach for the advisory tool occasionally / on demand.</strong> Good moments are
+  after a large config refactor, when onboarding a new configuration surface, or
+  on a periodic external schedule (e.g. a cron job hitting <code>POST /config-sync</code>)
+  to catch drift the deterministic rules don't yet cover. Treat its proposals as
+  hints to review, not as merge blockers.</li>
+</ul>
+<h3 id="options_2">Options<a class="headerlink" href="#options_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--api-key</code></td>
+<td>–</td>
+<td>OpenRouter API key; overrides the config file's <code>llm.api_key</code></td>
+</tr>
+<tr>
+<td><code>--provider-model</code></td>
+<td>–</td>
+<td>LLM provider-model identifier (e.g. <code>openrouter-deepseek</code>); overrides the config file's <code>llm.provider_model</code></td>
+</tr>
+<tr>
+<td><code>--output-format</code></td>
+<td><code>text</code></td>
+<td>Output format: <code>text</code> (human-readable) or <code>json</code> (machine-readable)</td>
+</tr>
+<tr>
+<td><code>--dedup</code></td>
+<td>–</td>
+<td>Consult/update the dedup memory ledger to suppress previously-seen findings; requires a loadable config (for db path)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requirements_1">Requirements<a class="headerlink" href="#requirements_1" title="Permanent link">&para;</a></h3>
+<p>The <code>config-sync</code> command requires:
+- The <code>pydantic-ai</code> package (install via <code>pip install robotsix-auto-mail[dev]</code>)
+- An LLM API key (via <code>--api-key</code> or <code>llm.api_key</code> in the config file)</p>
+<p>When <code>--dedup</code> is <strong>not</strong> passed, the command does not require a full mail config
+— it skips config loading and uses <code>conn=None</code>. When <code>--dedup</code> <strong>is</strong> passed,
+it loads the config to retrieve <code>db_path</code> for the dedup ledger.</p>
+<h3 id="the-dedup-memory-ledger">The dedup memory ledger<a class="headerlink" href="#the-dedup-memory-ledger" title="Permanent link">&para;</a></h3>
+<p>Operators who run the advisory tool regularly would otherwise see the same drift
+proposals on every run. The <strong>dedup memory ledger</strong> prevents that repeated noise:
+it persists a fingerprint of every drift proposal that has already been surfaced,
+stored in the SQLite <code>watermark</code> table under the key <code>config_sync_ledger</code>. On
+subsequent runs, proposals whose fingerprints are already recorded (i.e. those
+already seen, accepted, or rejected) are suppressed, so only genuinely new drift
+is reported.</p>
+<p>The two entry points apply the ledger differently, and this asymmetry is
+intentional:</p>
+<ul>
+<li>The <strong>CLI</strong> applies dedup only when you pass <code>--dedup</code> (which requires a
+  loadable config, since the ledger lives in the configured database).</li>
+<li>The <strong><code>POST /config-sync</code> endpoint</strong> applies dedup <strong>by default</strong>, consulting
+  and updating the ledger on every request — well suited to a periodic external
+  scheduler that should only be alerted about previously-unseen drift.</li>
+</ul>
+<h4 id="ledger-state-semantics">Ledger state semantics<a class="headerlink" href="#ledger-state-semantics" title="Permanent link">&para;</a></h4>
+<p>The ledger lives in the SQLite <code>watermark</code> table under the key
+<code>config_sync_ledger</code>, stored as a single JSON object keyed by a per-finding
+fingerprint:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;&lt;fingerprint&gt;&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;imap_folder default mismatch&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;affected_field&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;imap_folder&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pending&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<ul>
+<li><strong>Fingerprint basis.</strong> Each <code>&lt;fingerprint&gt;</code> is a SHA-256 hash derived from a
+  proposal's <strong>stable identity fields only</strong> — <code>affected_field</code> + <code>title</code>. The
+  <code>body</code> is deliberately <strong>excluded</strong> so that a reworded body (the LLM rephrases
+  its prose between runs) does not escape dedup and resurface the same finding
+  as new.</li>
+<li><strong>States.</strong> An entry's <code>state</code> is one of <code>pending</code>, <code>accepted</code>, or <code>rejected</code>.
+  All three suppress re-reporting equally — once a fingerprint is recorded in
+  <em>any</em> state, that proposal is filtered out of future <code>--dedup</code> CLI runs and
+  <code>POST /config-sync</code> responses.</li>
+<li><strong>First-seen proposals are recorded as <code>pending</code></strong> automatically. Operators
+  can set any of the three states (<code>pending</code>, <code>accepted</code>, or <code>rejected</code>)
+  manually via the <a href="#the-config-sync-set-command"><code>config-sync-set</code></a> command.</li>
+</ul>
+<h3 id="responding-to-drift-proposals">Responding to drift proposals<a class="headerlink" href="#responding-to-drift-proposals" title="Permanent link">&para;</a></h3>
+<p>The advisory agent only <em>reports</em> — it never edits config or files anything.
+Acting on a proposal is the operator's job. For each <code>DriftProposal</code> in the
+text or JSON output, look at its <code>title</code>, <code>body</code>, <code>affected_field</code>, and
+<code>confidence</code>, then decide:</p>
+<ul>
+<li><strong>Real divergence → reconcile the authoritative surfaces.</strong> If the proposal
+  describes a genuine inconsistency, fix it by editing the surfaces the
+  deterministic checker compares so that
+  <code>python scripts/config/check_config_sync.py</code> goes green again. Those surfaces
+  are:</li>
+<li>the <code>MailConfig</code> dataclass (<code>src/robotsix_auto_mail/config/__init__.py</code>),</li>
+<li>the YAML template (<code>docs/config/mail.local.example.yaml</code>), and</li>
+<li>the "YAML config file" key table in this file.</li>
+</ul>
+<p>The <code>FIELD_TO_YAML</code> mapping in
+  <code>scripts/config/check_config_sync.py</code> is the <strong>source of truth</strong> for which
+  YAML key each <code>MailConfig</code> field corresponds to; reconcile every surface to
+  agree with it.
+- <strong>Intentional divergence → ignore the proposal.</strong> If the reported difference
+  is a deliberate design choice the deterministic rules simply don't model,
+  treat the proposal as a false positive and do nothing — no code change is
+  needed.</p>
+<p>Either way, the dedup ledger suppresses an already-surfaced proposal on the
+next <code>--dedup</code> CLI run or <code>POST /config-sync</code> request <strong>regardless of your
+decision</strong>, because any recorded state (<code>pending</code> / <code>accepted</code> / <code>rejected</code>)
+suppresses re-reporting.</p>
+<h4 id="worked-reconciliation-example">Worked reconciliation example<a class="headerlink" href="#worked-reconciliation-example" title="Permanent link">&para;</a></h4>
+<p>Suppose an advisory run surfaces this proposal:</p>
+<div class="highlight"><pre><span></span><code>Config Drift Advisory
+------------------------------------------------------------
+
+imap_folder documented value mismatch
+  confidence: high
+  affected field: imap_folder
+
+The `imap.folder` row in the &quot;YAML config file&quot; table documents a
+default of `INBOX.All`, but the MailConfig default for imap_folder is INBOX.
+</code></pre></div>
+<p>You confirm it is a <strong>real drift</strong> — the documented default no longer matches
+the dataclass. Reconcile the affected surface(s), e.g. fix the <code>imap.folder</code>
+row in the "YAML config file" table (and any other surface that disagrees, such
+as <code>docs/config/mail.local.example.yaml</code>) so the documented default reads
+<code>INBOX</code> again:</p>
+<div class="highlight"><pre><span></span><code>| `imap.folder` | no | `&quot;INBOX&quot;` | IMAP mailbox folder name |
+</code></pre></div>
+<p>Then re-run the deterministic gate, which now exits <code>0</code>:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>python<span class="w"> </span>scripts/config/check_config_sync.py
+OK
+$<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span>
+<span class="m">0</span>
+</code></pre></div>
+<p>By contrast, if the proposal had flagged an <strong>intentional</strong> design choice the
+deterministic rules don't encode — e.g. a deliberately commented-out optional
+key — you would simply ignore it: no surface edit and no code change is needed.</p>
+<h3 id="representative-text-output">Representative text output<a class="headerlink" href="#representative-text-output" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Config Drift Advisory
+------------------------------------------------------------
+
+imap_folder default mismatch
+  confidence: high
+  affected field: imap_folder
+
+Docs say INBOX.All but the dataclass default is INBOX.
+</code></pre></div>
+<p>When no drift is detected:</p>
+<div class="highlight"><pre><span></span><code>Config Drift Advisory
+------------------------------------------------------------
+No config drift detected.
+</code></pre></div>
+<h3 id="json-output">JSON output<a class="headerlink" href="#json-output" title="Permanent link">&para;</a></h3>
+<p>With <code>--output-format json</code>, the output is a single JSON object with a
+<code>proposals</code> array (empty when no drift is found):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;proposals&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;imap_folder default mismatch&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;body&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Docs say INBOX.All but the dataclass default is INBOX.&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;affected_field&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;imap_folder&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;confidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;high&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Exit code is <code>0</code> on success (even with findings), <code>1</code> on error (missing API key,
+<code>pydantic-ai</code> not installed, or surface read failure).</p>
+<h2 id="the-triage-command">The <code>triage</code> command<a class="headerlink" href="#the-triage-command" title="Permanent link">&para;</a></h2>
+<p>The <code>triage</code> subcommand runs an <strong>LLM-driven inbox classifier</strong> that reads
+each ingested mail record and assigns it an <em>action status</em>:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>triage
+</code></pre></div>
+<p>Each triage decision is stored in the SQLite <code>triage_decisions</code> table <strong>and
+also moves the card's position on the local kanban board</strong> by writing the
+<code>status</code> column. The board move is <strong>local-only</strong> — triage performs <strong>zero
+IMAP / mailbox operations</strong>. No mail is archived, deleted, moved, or modified
+in the original mailbox. The agent defaults uncertain cases to <code>HUMAN_TRIAGE</code>
+(explicit deferral to a human) rather than guessing.</p>
+<h3 id="action-statuses-and-kanban-board-mapping">Action statuses and kanban board mapping<a class="headerlink" href="#action-statuses-and-kanban-board-mapping" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+<th>Board column</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>INBOX</code></td>
+<td>Not yet triaged (entry column); users may move a card here manually</td>
+<td>Inbox</td>
+</tr>
+<tr>
+<td><code>HUMAN_TRIAGE</code></td>
+<td>The system is not confident — defer to a human</td>
+<td>Human triage</td>
+</tr>
+<tr>
+<td><code>PENDING_ACTION</code></td>
+<td>Awaiting a response/action before it can be resolved</td>
+<td>Pending action</td>
+</tr>
+<tr>
+<td><code>TO_ARCHIVE</code></td>
+<td>Keep the message for reference but no reply needed</td>
+<td>To archive</td>
+</tr>
+<tr>
+<td><code>TO_DELETE</code></td>
+<td>The message is junk / worthless and can be discarded</td>
+<td>To delete</td>
+</tr>
+<tr>
+<td><code>TO_CALENDAR</code></td>
+<td>The message has date/time references for the calendar</td>
+<td>To calendar</td>
+</tr>
+<tr>
+<td><code>TO_ANSWER</code></td>
+<td>The message needs a personal reply</td>
+<td>To answer</td>
+</tr>
+<tr>
+<td><code>DRAFT_READY</code></td>
+<td>A reply draft has been prepared and is ready to send</td>
+<td>Draft ready</td>
+</tr>
+</tbody>
+</table>
+<p>Each action automatically moves the card to its mapped board column. The
+kanban board has eight columns — Inbox, Human triage, Pending action, To
+archive, To delete, To calendar, To answer, and Draft ready — and a
+triage decision always places the card in one of these columns. Note
+that <code>TO_DELETE</code> moves the card to the To delete column (a board move only, not
+an IMAP deletion).</p>
+<h3 id="triage-rules-triage_rulesmd">Triage rules (<code>triage_rules.md</code>)<a class="headerlink" href="#triage-rules-triage_rulesmd" title="Permanent link">&para;</a></h3>
+<p>The agent learns from your manual triage actions through a single,
+<strong>human-readable Markdown file</strong>, <code>triage_rules.md</code>. Whenever you act on a
+message — move a card on the board, archive it into a folder, save a draft, or
+run <code>triage-set</code> — a small, fast ("flash") LLM is given your action plus the
+message's sender, subject, and body, and updates <code>triage_rules.md</code> if a rule
+should change. On every triage run the agent reads this file and treats the
+rules as advisory guidance (not hard rules), reasoning over the whole context
+of each new message rather than the subject alone.</p>
+<p>Because it is a plain Markdown file, you can open, review, and edit the rules
+directly — delete or reword anything you disagree with.</p>
+<p>The file lives next to each account's SQLite datastore
+(<code>&lt;db-dir&gt;/triage_rules.md</code>) by default; set <code>triage.rules_path</code>
+to override the location. Rule updates triggered
+from the web board run in the background (they never delay a card move) and are
+best-effort — they require a resolvable LLM API key and never block or fail the
+action itself.</p>
+<h3 id="options_3">Options<a class="headerlink" href="#options_3" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--api-key</code></td>
+<td>–</td>
+<td>OpenRouter API key; overrides the config file's <code>llm.api_key</code></td>
+</tr>
+<tr>
+<td><code>--output-format</code></td>
+<td><code>text</code></td>
+<td>Output format: <code>text</code> (human-readable) or <code>json</code> (machine-readable)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requirements_2">Requirements<a class="headerlink" href="#requirements_2" title="Permanent link">&para;</a></h3>
+<p>The <code>triage</code> command requires:
+- The <code>pydantic-ai</code> package (install via <code>pip install robotsix-auto-mail[dev]</code>)
+- An LLM API key (via <code>--api-key</code> or <code>llm.api_key</code> in the config file)</p>
+<h3 id="representative-text-output_1">Representative text output<a class="headerlink" href="#representative-text-output_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Inbox Triage
+------------------------------------------------------------
+
+&lt;a@x.com&gt;
+  action: TO_ANSWER
+  confidence: high
+  reason: Sender is asking a direct question that needs a response.
+
+&lt;b@x.com&gt;
+  action: TO_ARCHIVE
+  confidence: high
+  reason: Promotional content; keep for reference but no reply needed.
+
+2 message(s) triaged
+</code></pre></div>
+<p>Exit code is <code>0</code> on success (even if decisions are produced), <code>1</code> on error
+(missing API key, <code>pydantic-ai</code> not installed, or LLM failure).</p>
+<h2 id="the-triage-set-command">The <code>triage-set</code> command<a class="headerlink" href="#the-triage-set-command" title="Permanent link">&para;</a></h2>
+<p>To manually record a triage decision for a single message, use <code>triage-set</code>:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>triage-set<span class="w"> </span>&lt;message_id&gt;<span class="w"> </span>&lt;action&gt;
+</code></pre></div>
+<p>This records the decision in the <code>triage_decisions</code> table with <code>source=user</code>
+(distinguishing it from agent decisions), <strong>moves the card to the mapped
+kanban board column</strong> (see the action-to-column table under <a href="#action-statuses-and-kanban-board-mapping">Action statuses
+and kanban board mapping</a>), and
+<strong>updates the <code>triage_rules.md</code> file</strong> (via the flash LLM) so future triage
+runs can apply the learned rule. Like the LLM-driven <code>triage</code> command, this is
+a local-only board move — no IMAP operations occur. (The <code>triage-set</code> rule
+update runs inline; the web-board actions defer it to the background.)</p>
+<h3 id="arguments">Arguments<a class="headerlink" href="#arguments" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;message_id&gt;</code></td>
+<td>The Message-ID of the mail to triage (from <code>board</code> or <code>triage</code> output)</td>
+</tr>
+<tr>
+<td><code>&lt;action&gt;</code></td>
+<td>The action status: <code>INBOX</code>, <code>HUMAN_TRIAGE</code>, <code>PENDING_ACTION</code>, <code>TO_ARCHIVE</code>, <code>TO_DELETE</code>, <code>TO_CALENDAR</code>, <code>TO_ANSWER</code>, or <code>DRAFT_READY</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Record that alice@x.com&#39;s message should be archived</span>
+robotsix-auto-mail<span class="w"> </span>triage-set<span class="w"> </span><span class="s1">&#39;&lt;a@x.com&gt;&#39;</span><span class="w"> </span>TO_ARCHIVE
+
+<span class="c1"># Mark a message as needing a reply</span>
+robotsix-auto-mail<span class="w"> </span>triage-set<span class="w"> </span><span class="s1">&#39;&lt;b@x.com&gt;&#39;</span><span class="w"> </span>TO_ANSWER
+
+<span class="c1"># Explicitly defer to a human (use this for ambiguous messages)</span>
+robotsix-auto-mail<span class="w"> </span>triage-set<span class="w"> </span><span class="s1">&#39;&lt;c@x.com&gt;&#39;</span><span class="w"> </span>HUMAN_TRIAGE
+</code></pre></div>
+<h3 id="behavior_3">Behavior<a class="headerlink" href="#behavior_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>If the <code>message_id</code> is unknown, exits with code <code>1</code> and an error message.</li>
+<li>If the <code>action</code> is invalid, exits with code <code>1</code> and an error message.</li>
+<li>On success, the decision is stored and <code>triage_rules.md</code> is updated (when an
+  LLM API key is resolvable); exit code is <code>0</code>.</li>
+</ul>
+<p>The next <code>triage</code> run reads <code>triage_rules.md</code> and treats the learned rules as
+advisory guidance for future mail.</p>
+<h3 id="requirements_3">Requirements<a class="headerlink" href="#requirements_3" title="Permanent link">&para;</a></h3>
+<p>The <code>triage-set</code> command requires:
+- A <strong>loadable configuration</strong> (for <code>db_path</code>).
+- The <strong><code>pydantic-ai</code> package</strong> (install via
+  <code>pip install robotsix-auto-mail[dev]</code>); the command's import guard exits <code>1</code>
+  with an install hint if it is absent. This matches <code>triage</code>'s pydantic-ai
+  requirement, since <code>triage-set</code> imports the validation vocabulary and
+  decision-recording helpers from the <code>triage</code> package.</p>
+<p>It does <strong>not</strong> require an LLM API key to record the decision. When a key
+<em>is</em> resolvable it additionally updates <code>triage_rules.md</code> via the flash LLM;
+without a key that rule-update step is silently skipped and the decision is
+still recorded.</p>
+<h2 id="the-config-sync-set-command">The config-sync-set command<a class="headerlink" href="#the-config-sync-set-command" title="Permanent link">&para;</a></h2>
+<p>To manually record an operator decision for a single config-drift finding in
+the dedup memory ledger, use <code>config-sync-set</code>:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>config-sync-set<span class="w"> </span>&lt;fingerprint&gt;<span class="w"> </span>&lt;state&gt;
+</code></pre></div>
+<p>This writes the chosen <code>state</code> (<code>pending</code>, <code>accepted</code>, or <code>rejected</code>) into the
+finding's entry in the persisted dedup ledger. See <a href="#the-dedup-memory-ledger">The dedup memory
+ledger</a> and <a href="#ledger-state-semantics">Ledger state
+semantics</a> under the <code>config-sync</code> command for how the
+ledger is stored in the <code>watermark</code> table under the <code>config_sync_ledger</code> key,
+how per-finding fingerprints are derived, and why all three states suppress
+re-reporting equally.</p>
+<h3 id="arguments_1">Arguments<a class="headerlink" href="#arguments_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;fingerprint&gt;</code></td>
+<td>The per-finding fingerprint of a config-drift proposal, as recorded in the ledger by a prior <code>config-sync --dedup</code> run (the same SHA-256 fingerprint described in <a href="#ledger-state-semantics">Ledger state semantics</a>)</td>
+</tr>
+<tr>
+<td><code>&lt;state&gt;</code></td>
+<td>The ledger state: <code>pending</code>, <code>accepted</code>, or <code>rejected</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="examples_1">Examples<a class="headerlink" href="#examples_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Accept a drift finding (records state=accepted in the ledger)</span>
+robotsix-auto-mail<span class="w"> </span>config-sync-set<span class="w"> </span>&lt;fingerprint&gt;<span class="w"> </span>accepted
+
+<span class="c1"># Reject a drift finding</span>
+robotsix-auto-mail<span class="w"> </span>config-sync-set<span class="w"> </span>&lt;fingerprint&gt;<span class="w"> </span>rejected
+</code></pre></div>
+<h3 id="behavior_4">Behavior<a class="headerlink" href="#behavior_4" title="Permanent link">&para;</a></h3>
+<p>The state is written into the <code>config_sync_ledger</code> entry inside the SQLite
+<code>watermark</code> table. Because any recorded state suppresses re-reporting, setting a
+finding's state keeps it from resurfacing on future <code>config-sync --dedup</code> CLI
+runs and <code>POST /config-sync</code> endpoint calls (see <a href="#the-dedup-memory-ledger">The dedup memory
+ledger</a> for the full detail).</p>
+<p>Error handling:</p>
+<ul>
+<li>If <code>&lt;state&gt;</code> is not one of <code>pending</code>, <code>accepted</code>, or <code>rejected</code>, prints an
+  <code>Error: invalid state ...</code> message listing the valid states and exits with
+  code <code>1</code>.</li>
+<li>If <code>&lt;fingerprint&gt;</code> matches no ledger entry, prints
+  <code>Error: No ledger finding with fingerprint '&lt;fingerprint&gt;'</code> and exits with
+  code <code>1</code>.</li>
+<li>If the configuration cannot be loaded, prints an
+  <code>Error loading configuration: ...</code> message and exits with code <code>1</code>.</li>
+</ul>
+<p>On success, the state is recorded and exit code is <code>0</code>.</p>
+<h3 id="requirements_4">Requirements<a class="headerlink" href="#requirements_4" title="Permanent link">&para;</a></h3>
+<p>The <code>config-sync-set</code> command requires:
+- A <strong>loadable configuration</strong> (for <code>db_path</code>) and an existing SQLite database
+  whose <code>config_sync_ledger</code> has already been populated by a prior
+  <code>config-sync --dedup</code> run.
+- The <strong><code>pydantic-ai</code> package</strong> (install via
+  <code>pip install robotsix-auto-mail[dev]</code>); the command's import guard exits <code>1</code>
+  with an install hint if it is absent. This matches <code>config-sync</code>'s
+  pydantic-ai requirement.</p>
+<p>It does <strong>not</strong> require an LLM API key — unlike <code>config-sync</code>, it performs no
+LLM call.</p>
+<h2 id="the-auth-login-command">The <code>auth login</code> command<a class="headerlink" href="#the-auth-login-command" title="Permanent link">&para;</a></h2>
+<p>To seed the MSAL refresh-token cache for OAuth2 accounts (enabling subsequent
+silent token refresh), run the device-code login flow interactively:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>--account<span class="w"> </span>&lt;id&gt;
+</code></pre></div>
+<h3 id="what-it-does_1">What it does<a class="headerlink" href="#what-it-does_1" title="Permanent link">&para;</a></h3>
+<p><code>auth login</code> loads the configuration for the specified account, initiates the
+OAuth2 device-code flow, and persists the token cache in the account's data
+folder. With a single configured account, <code>--account</code> may be omitted.</p>
+<p>The command:</p>
+<ol>
+<li>Resolves the account's configuration by <code>id</code> (or uses the only configured
+   account if exactly one exists and <code>--account</code> is omitted).</li>
+<li>Checks that the account is configured for OAuth2 (<code>oauth2_provider</code>
+   set — currently only <code>microsoft</code> is supported).</li>
+<li>Prints a verification URL and device code to stderr.</li>
+<li>Blocks until the user completes device consent in a browser.</li>
+<li>On success, writes the MSAL token cache to
+   <code>.data/&lt;account-id&gt;/msal_cache.json</code> and prints the cache path to stdout.</li>
+</ol>
+<p>Subsequent token acquisition for that account runs silently (no user
+interaction required).</p>
+<p>Exit code is <code>0</code> on success, <code>1</code> on any error (unknown account, non-OAuth2
+account, missing <code>msal</code> package, device-flow failure, or user abort).</p>
+<h3 id="examples_2">Examples<a class="headerlink" href="#examples_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># With a single configured account (--account is optional)</span>
+robotsix-auto-mail<span class="w"> </span>auth<span class="w"> </span>login
+
+<span class="c1"># With multiple accounts, specify which one to authenticate</span>
+robotsix-auto-mail<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>--account<span class="w"> </span>work
+
+<span class="c1"># With a non-existent account id</span>
+$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>--account<span class="w"> </span>nope
+Error:<span class="w"> </span>Account<span class="w"> </span>nope<span class="w"> </span>not<span class="w"> </span>found.<span class="w"> </span>Available<span class="w"> </span>ids:<span class="w"> </span><span class="o">[</span><span class="s1">&#39;personal&#39;</span>,<span class="w"> </span><span class="s1">&#39;work&#39;</span><span class="o">]</span>
+</code></pre></div>
+<h3 id="error-handling">Error handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Unknown account id</strong>: If <code>--account</code> names an id that doesn't exist, or if
+  multiple accounts are configured and <code>--account</code> is omitted, the command
+  exits with code <code>1</code> and lists the available account ids.</li>
+<li><strong>Non-OAuth2 account</strong>: If the account has no <code>oauth2_provider</code> set (or a
+  provider other than <code>microsoft</code>), the command exits with code <code>1</code> and prints
+  a clear message.</li>
+<li><strong>Missing <code>msal</code> package</strong>: If the <code>msal</code> library is not installed, the
+  command exits with code <code>1</code> and prints an install hint:
+  <code>pip install 'robotsix-auto-mail[microsoft]'</code>.</li>
+<li><strong>Device-code flow failure</strong>: If the user aborts or the flow encounters an
+  error (e.g. network failure), the command exits with code <code>1</code> and prints the
+  error.</li>
+</ul>
+<h3 id="requirements_5">Requirements<a class="headerlink" href="#requirements_5" title="Permanent link">&para;</a></h3>
+<p>The <code>auth login</code> command requires:</p>
+<ul>
+<li>A <strong>loadable configuration</strong> with at least one account and an <code>oauth2_provider</code>
+  field.</li>
+<li>The <strong><code>msal</code> package</strong>, installed via <code>pip install 'robotsix-auto-mail[microsoft]'</code>
+  or the <code>[dev]</code> extra. The command exits with code <code>1</code> and a clear install
+  hint if <code>msal</code> is not available.</li>
+</ul>
+<p>It does <strong>not</strong> require IMAP or SMTP connectivity — authentication is purely
+OAuth2-based and happens out-of-band via the device-code flow.</p>
+<h3 id="integration-with-ingest-and-serve">Integration with <code>ingest</code> and <code>serve</code><a class="headerlink" href="#integration-with-ingest-and-serve" title="Permanent link">&para;</a></h3>
+<p>Once the token cache is seeded, subsequent <code>ingest</code> and <code>serve</code> commands for
+that account will use the cached token automatically. If the token expires,
+it is refreshed silently using the refresh token (no user interaction required).
+If refresh fails (e.g. the user has revoked the app's consent), a new
+device-code login is required.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
