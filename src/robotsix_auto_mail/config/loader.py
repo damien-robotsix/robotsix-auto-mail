@@ -54,6 +54,15 @@ def load_accounts() -> MailAccountsConfig:
             f"`accounts:` list (run `detect` to generate one), or point "
             f"MAIL_CONFIG_PATH at an existing config file."
         )
+    mode = os.stat(config_path).st_mode
+    if mode & 0o077:  # group or world read/write/execute bits set
+        logger.warning(
+            "Config file %s has permissions %s; consider chmod 600 "
+            "to protect plaintext credentials.",
+            config_path,
+            oct(mode & 0o777),
+        )
+
     try:
         data = read_yaml_file(config_path)
     except YamlConfigError as exc:

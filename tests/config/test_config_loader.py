@@ -9,6 +9,8 @@ resolve_llm_provider_model().
 
 from __future__ import annotations
 
+import logging
+import os
 from pathlib import Path
 
 import pytest
@@ -366,3 +368,42 @@ def test_load_missing_config_file(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MAIL_CONFIG_PATH", "/nonexistent/mail.yaml")
     with pytest.raises(ConfigurationError):
         load()
+
+
+# ---------------------------------------------------------------------------
+# File permission warning (chmod 600 check)
+# ---------------------------------------------------------------------------
+
+
+_PERM_CHMOD_MSG = "chmod 600"
+
+
+@pytest.mark.skipif(os.getuid() == 0, reason="os.chmod is a no-op under root")
+@pytest.mark.parametrize(
+    ("file_mode", "expect_warning"),
+    [
+        (0o644, True),
+        (0o600, False),
+    ],
+)
+def test_load_accounts_permission_warning(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    file_mode: int,
+    expect_warning: bool,
+) -> None:
+    """load_accounts warns when the config file has lax group/world permissions."""
+    yaml_file = _multi_account_yaml(tmp_path)
+    os.chmod(yaml_file, file_mode)
+    monkeypatch.setenv("MAIL_CONFIG_PATH", str(yaml_file))
+
+    with caplog.at_level(logging.WARNING, logger="robotsix_auto_mail.config.loader"):
+        load_accounts()
+
+    warnings = [r.message for r in caplog.records if _PERM_CHMOD_MSG in r.message]
+    if expect_warning:
+        assert len(warnings) == 1, f"Expected one warning, got: {warnings}"
+        assert str(yaml_file) in warnings[0]
+    else:
+        assert len(warnings) == 0, f"Expected no warnings, got: {warnings}"

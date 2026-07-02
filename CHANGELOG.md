@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Warn when `mail.local.yaml` has lax (group/world-readable) file permissions, suggesting `chmod 600` to protect plaintext credentials.
 - Fix silent mail loss after IMAP ``UIDVALIDITY`` changes: ingestion now tracks
   the mailbox's ``UIDVALIDITY`` and, when the server renumbers UIDs (mailbox
   recreated/restored, some server maintenance), resets the stale ``imap_uid``
