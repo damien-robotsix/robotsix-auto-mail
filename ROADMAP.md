@@ -113,12 +113,6 @@ The multi-column kanban board (Inbox, Triaging, Done, Archive) with per-card
 Move dropdowns is **delivered** — see the `serve` subcommand and
 [docs/connecting.md](docs/connecting.md#the-serve-command).
 
-### Direction (future work)
-
-- **Actions on mail items**: reply (via SMTP), archive, delete, mark as read/unread.
-- **Rules and automation**: user-defined rules for routing incoming mail into specific columns (e.g. by sender, subject pattern).
-- **Multi-mailbox support**: ingest and display mail from more than one IMAP account or folder.
-
 ### Dependencies
 
 - **Phases 2–4** — the complete core loop must be stable before workflow features are added.

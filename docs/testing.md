@@ -70,11 +70,12 @@ and `pytest` locally before pushing mirrors what CI enforces.
 ## Test organization
 
 Tests live under `tests/` with per-module subdirectories that mirror `src/`
-(`tests/imap/`, `tests/smtp/`, `tests/cli/`, `tests/db/`, `tests/fetch/`,
-`tests/parser/`, `tests/pipeline/`, `tests/detect/`, `tests/archive/`,
-`tests/status/`, `tests/triage/`, `tests/config/`, `tests/server/`, …).  The
+(`tests/imap/`, `tests/smtp/`, `tests/cli/`, `tests/db/`,
+`tests/pipeline/`, `tests/detect/`, `tests/triage/`, `tests/config/`,
+`tests/server/`, `tests/core/`, `tests/draft/`, `tests/oauth2/`,
+`tests/observability/`, `tests/dev/`, …).  The
 `tests/` package itself has an `__init__.py`, and some subdirectories carry
-their own (e.g. `tests/component_agent/__init__.py`).  Top-level files such as
+their own (e.g. `tests/server/conftest.py`).  Top-level files such as
 `tests/test_stub.py` and the shared `tests/conftest.py` are also valid.
 
 Conventions every test file follows:

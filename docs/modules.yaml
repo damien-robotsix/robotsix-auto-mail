@@ -69,7 +69,8 @@ modules:
   - id: cli
     description: >-
       CLI entry point exposing probe, ingest, board, serve, detect,
-      config-sync, triage, and auth subcommands.
+      config-sync, config-sync-set, triage, triage-set, and auth
+      subcommands.
     paths:
       - src/robotsix_auto_mail/cli/__init__.py
       - src/robotsix_auto_mail/cli/commands.py
