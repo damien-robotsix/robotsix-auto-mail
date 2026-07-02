@@ -110,8 +110,8 @@ repos:
       - id: stylelint
         args: [--fix]
         additional_dependencies:
-          - "stylelint@17.14.0"
-          - "stylelint-config-standard@40.0.0"
+          - stylelint@17.14.0
+          - stylelint-config-standard
 
   - repo: local
     hooks:
