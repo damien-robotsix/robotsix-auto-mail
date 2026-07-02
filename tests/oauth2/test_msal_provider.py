@@ -211,6 +211,36 @@ def test_provider_persists_cache_after_state_changing_refresh(
     assert cache_path.read_text() == '{"cached": "refreshed"}'
 
 
+def test_persisted_cache_has_restrictive_permissions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The persisted cache file is created with mode 0o600 inside a 0o700
+    directory, so the refresh token is not readable by other local users."""
+    _install_fake_msal(
+        monkeypatch,
+        accounts=[{"username": "user@contoso.com"}],
+        silent_result={"access_token": "fresh-token-123"},
+        change_state=True,
+    )
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    provider = build_token_provider(cfg)
+    assert provider is not None
+    provider()
+
+    cache_path = cache_path_for(cfg)
+    assert cache_path.exists()
+
+    # File mode: 0o600 (owner rw- only).
+    import stat
+
+    file_mode = stat.S_IMODE(cache_path.stat().st_mode)
+    assert file_mode == 0o600, f"expected 0o600, got {file_mode:#o}"
+
+    # Directory mode: 0o700 (owner rwx only).
+    dir_mode = stat.S_IMODE(cache_path.parent.stat().st_mode)
+    assert dir_mode == 0o700, f"expected 0o700, got {dir_mode:#o}"
+
+
 def test_provider_does_not_persist_cache_when_state_unchanged(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
