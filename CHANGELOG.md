@@ -3,6 +3,7 @@
 ## 0.0.0 (unreleased)
 
 - Fix ``run_config_sync_agent`` docstring to include ``LLM_API_KEY`` env var in the ``api_key`` resolution chain.
+- Fix stale comment in `.robotsix-mill/periodic/config_sync.yaml` — removed reference to non-existent `.env.example`.
 - Add unit tests for the health-check module (`tests/core/test_health.py`).
 - Update `setup_archive` docstring to document the full API key resolution chain (explicit arg → env var → config file).
 - Fixed stale comments and docs: triage-set help now lists all 8 valid actions, db/models.py says "eight kanban columns", ImapClient docstring enumerates all public methods, AGENT.md clarifies LLM_API_KEY/LLM_PROVIDER_MODEL env-var exceptions and fixes stale file paths, CHANGELOG no longer implies MAIL_TRIAGE_RULES_PATH is an env var, and the unused cryptography dev-dep is removed.
