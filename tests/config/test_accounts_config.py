@@ -191,7 +191,9 @@ def test_load_accounts_reads_multi_json(tmp_path: Path) -> None:
             }
         )
     )
-    with mock.patch.dict(os.environ, {"ROBOTSIX_CONFIG_FILE": str(json_file)}, clear=True):
+    with mock.patch.dict(
+        os.environ, {"ROBOTSIX_CONFIG_FILE": str(json_file)}, clear=True
+    ):
         from robotsix_auto_mail.config.loader import load_accounts as _load_accounts
 
         accounts = _load_accounts()
@@ -209,7 +211,9 @@ def test_save_and_reload_json(tmp_path: Path) -> None:
     container = MailAccountsConfig(accounts=[account], default_account_id="p")
 
     save_path = tmp_path / "saved.json"
-    with mock.patch.dict(os.environ, {"ROBOTSIX_CONFIG_FILE": str(save_path)}, clear=True):
+    with mock.patch.dict(
+        os.environ, {"ROBOTSIX_CONFIG_FILE": str(save_path)}, clear=True
+    ):
         save_accounts(container)
 
     assert save_path.exists()

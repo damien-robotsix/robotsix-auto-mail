@@ -54,7 +54,9 @@ def test_archive_custom_values() -> None:
 
 def test_archive_enabled_wrong_type() -> None:
     """A non-bool archive_enabled → ValidationError."""
-    with pytest.raises(pydantic.ValidationError):  # pydantic ValidationError on type mismatch
+    with pytest.raises(
+        pydantic.ValidationError
+    ):  # pydantic ValidationError on type mismatch
         MailConfig(
             imap_host="i",
             smtp_host="s",

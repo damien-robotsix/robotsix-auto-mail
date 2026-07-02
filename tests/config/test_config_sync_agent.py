@@ -148,9 +148,13 @@ def test_run_config_sync_agent_missing_api_key(
     # Mock resolve_llm_api_key to simulate no key configured
     with mock.patch(
         "robotsix_auto_mail._llm_agent.resolve_llm_api_key",
-        side_effect=ConfigurationError("No LLM API key found — add llm_api_key to config/config.json"),
+        side_effect=ConfigurationError(
+            "No LLM API key found — add llm_api_key to config/config.json"
+        ),
     ):
-        with mock.patch("robotsix_llmio.core.factory.get_provider_for_identifier") as cls:
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as cls:
             with pytest.raises(ConfigSyncError) as exc:
                 run_config_sync_agent(api_key=None)
     assert "llm_api_key" in str(exc.value)

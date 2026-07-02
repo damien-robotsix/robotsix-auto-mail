@@ -87,7 +87,9 @@ def test_load_llm_reads_from_config(monkeypatch: pytest.MonkeyPatch) -> None:
         default_account_id="default",
     )
 
-    with mock.patch("robotsix_auto_mail.config.loader.load_accounts", return_value=accts):
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
+    ):
         assert load_llm() == "sk-from-file"
 
 
@@ -108,7 +110,9 @@ def test_load_llm_default_when_nothing_set(monkeypatch: pytest.MonkeyPatch) -> N
         default_account_id="default",
     )
 
-    with mock.patch("robotsix_auto_mail.config.loader.load_accounts", return_value=accts):
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
+    ):
         assert load_llm() == ""
 
 

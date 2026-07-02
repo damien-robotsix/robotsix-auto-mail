@@ -916,6 +916,7 @@ def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
 
     assert rc == 0
     import json as _json2
+
     accounts = MailAccountsConfig.model_validate(_json2.loads(output.read_text()))
     assert accounts.ids() == ("personal",)
     assert accounts.default_account_id == "personal"
@@ -962,6 +963,7 @@ def test_detect_appends_second_account(tmp_path: Path, no_autoconfig: object) ->
     assert rc1 == 0
     assert rc2 == 0
     import json as _json3
+
     accounts = MailAccountsConfig.model_validate(_json3.loads(output.read_text()))
     assert set(accounts.ids()) == {"personal", "work"}
     assert accounts.get("work").config.imap_host == "imap.work.com"
@@ -1010,6 +1012,7 @@ def test_detect_refuses_duplicate_id(
     assert rc2 == 1
     assert "already exists" in capsys.readouterr().err
     import json as _json2
+
     accounts = MailAccountsConfig.model_validate(_json2.loads(output.read_text()))
     assert accounts.ids() == ("personal",)
 
@@ -1054,6 +1057,7 @@ def test_detect_overwrite_existing_account(
 
     assert rc == 0
     import json as _json2
+
     accounts = MailAccountsConfig.model_validate(_json2.loads(output.read_text()))
     # No duplicate account appended
     assert accounts.ids() == ("main",)
@@ -1176,6 +1180,7 @@ def test_detect_overwrite_with_oauth2_flags(
     assert '"oauth2_tenant": "tii.ae"' in content
     # Existing non-transport fields are preserved.
     import json as _json4
+
     accounts = MailAccountsConfig.model_validate(_json4.loads(output.read_text()))
     cfg = accounts.get("tii").config
     assert cfg.username == "user@tii.ae"
@@ -1290,6 +1295,7 @@ def test_detect_overwrite_preserves_llm_api_key(
 
     assert rc == 0
     import json as _json2
+
     accounts = MailAccountsConfig.model_validate(_json2.loads(output.read_text()))
     cfg = accounts.get("main").config
     # Existing llm/langfuse values preserved from the seed file.
@@ -1337,6 +1343,7 @@ def test_detect_writes_llm_api_key_from_env(
     assert "sk-env" in content
 
     import json as _json5
+
     accounts = MailAccountsConfig.model_validate(_json5.loads(output.read_text()))
     cfg = accounts.default.config
     assert cfg.llm_api_key == "sk-env"

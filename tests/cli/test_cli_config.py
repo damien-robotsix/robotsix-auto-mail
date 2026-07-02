@@ -272,7 +272,16 @@ def test_existing_accounts_for_append_non_accounts_file(tmp_path: Path) -> None:
     import json
 
     path = tmp_path / "mono.json"
-    path.write_text(json.dumps({"imap_host": "imap.old.com", "smtp_host": "smtp.old.com", "username": "old@example.com", "password": ""}))
+    path.write_text(
+        json.dumps(
+            {
+                "imap_host": "imap.old.com",
+                "smtp_host": "smtp.old.com",
+                "username": "old@example.com",
+                "password": "",
+            }
+        )
+    )
     others, default_id = _existing_accounts_for_append(path, "new-id")
     assert others == []
     assert default_id == "new-id"

@@ -692,9 +692,7 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
 
     # Per-account db_paths: unique (skip empty defaults).
     db_paths = [
-        account.config.db_path
-        for account in config.accounts
-        if account.config.db_path
+        account.config.db_path for account in config.accounts if account.config.db_path
     ]
     duplicate_paths = sorted({p for p in db_paths if db_paths.count(p) > 1})
     if duplicate_paths:
