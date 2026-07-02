@@ -104,6 +104,15 @@ repos:
         pass_filenames: false
         always_run: true
 
+  - repo: https://github.com/thibaudcolas/pre-commit-stylelint
+    rev: v17.14.0
+    hooks:
+      - id: stylelint
+        args: [--fix]
+        additional_dependencies:
+          - stylelint@17.14.0
+          - stylelint-config-standard
+
   - repo: local
     hooks:
       - id: deno-lint
@@ -114,8 +123,8 @@ repos:
         files: ^src/robotsix_auto_mail/server/static/.*\.js$
 
       - id: deno-fmt
-        name: Format JavaScript (deno fmt)
+        name: Format JavaScript / CSS (deno fmt)
         entry: deno fmt --check
         language: system
-        types: [javascript]
-        files: ^src/robotsix_auto_mail/server/static/.*\.js$
+        types: [javascript, css]
+        files: ^src/robotsix_auto_mail/server/static/.*\.(js|css)$

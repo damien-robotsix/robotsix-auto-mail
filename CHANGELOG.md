@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add CSS linting via stylelint to pre-commit config and a minimal `stylelint.config.mjs` extending `stylelint-config-standard`. Also extend `deno fmt` coverage to `.css` files in both pre-commit and CI.
 - Extract `reconcile_records` from `pipeline/__init__.py` into its own module
   at `pipeline/reconcile.py`, re-exported for backward compatibility.
 - Enable `changelog_autofill` periodic runner to automatically insert changelog entries on PR branches where the changelog-enforcer CI check is failing.
