@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Enable `changelog_autofill` periodic runner to automatically insert changelog entries on PR branches where the changelog-enforcer CI check is failing.
 - Split `tests/pipeline/test_pipeline.py` into domain-focused test modules:
   `test_fetch.py`, `test_ingest.py`, `test_reconcile.py`,
   `test_pipeline_cli_ingest.py`, and `_helpers.py`.
