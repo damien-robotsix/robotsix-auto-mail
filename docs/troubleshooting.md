@@ -32,7 +32,7 @@ what the error means and how to fix it.
 | IMAP | SMTP | Meaning | Fix |
 |---|---|---|---|
 | `ImapConnectionError` | `SmtpConnectionError` | Socket unreachable, wrong host/port, or no server greeting. | Check `imap.host`/`imap.port` (`smtp.host`/`smtp.port`) and that the host running the tool can reach the server on that port. |
-| `ImapTlsError` | `SmtpTlsError` | STARTTLS negotiation or SSL handshake failure. | The TLS mode is wrong for the port: reconcile `imap_tls_mode`/`smtp_tls_mode` (`direct-tls` vs `starttls` vs `none`) with the port — see below. |
+| `ImapTlsError` | `SmtpTlsError` | STARTTLS negotiation or SSL handshake failure. | The TLS mode is wrong for the port: reconcile `imap.tls_mode`/`smtp.tls_mode` (`direct-tls` vs `starttls` vs `none`) with the port — see below. |
 | `ImapAuthError` | `SmtpAuthError` | Bad credentials. | Check the username/password.  Providers like Gmail require an app password rather than the account password. |
 | — | `SmtpSendError` | The server rejected the message on send. | Check the recipient/sender addresses and any provider send policy. |
 
