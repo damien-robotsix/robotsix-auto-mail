@@ -350,6 +350,19 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value
     conn.commit()
 
 
+def delete_watermark(conn: sqlite3.Connection, key: str) -> None:
+    """Remove a watermark row so ``get_watermark`` returns ``None`` again.
+
+    Used to reset a watermark that has become meaningless — e.g. the
+    ``"imap_uid"`` watermark after the server's ``UIDVALIDITY`` changes,
+    which puts UIDs into a fresh numbering space. Deleting (rather than
+    zeroing) the key means the next fetch falls back to a full ``ALL``
+    scan. No-op if the key is absent.
+    """
+    conn.execute("DELETE FROM watermark WHERE key = ?", (key,))
+    conn.commit()
+
+
 # ---------------------------------------------------------------------------
 # Calendar helpers
 # ---------------------------------------------------------------------------

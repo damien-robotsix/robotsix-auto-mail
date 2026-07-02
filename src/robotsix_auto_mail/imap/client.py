@@ -341,6 +341,40 @@ class ImapClient(_ProtocolClient):
                 return 0
         return 0
 
+    def select_folder_and_uidvalidity(self, name: str) -> tuple[int, int | None]:
+        """Select a mailbox and return ``(message_count, uidvalidity)``.
+
+        ``UIDVALIDITY`` is the server's UID-namespace generation for the
+        mailbox (RFC 3501 §2.3.1.1). It only changes when the server
+        renumbers UIDs (mailbox recreated/restored, some server
+        maintenance) — and when it does, any stored UID watermark from the
+        old namespace is meaningless. Callers persist this value and reset
+        their UID watermark on a mismatch so incremental fetch keeps working.
+
+        Returns the ``UIDVALIDITY`` as an ``int`` when the server advertises
+        it on ``SELECT`` (all RFC-3501 servers do), or ``None`` when it is
+        absent or unparseable — in which case callers must leave their UID
+        watermark untouched rather than guess.
+
+        Args:
+            name: Mailbox name (e.g. ``"INBOX"``).
+
+        Raises:
+            ImapError: If the client is not connected or the ``SELECT``
+                returns a non-OK response.
+        """
+        count = self.select_folder(name)
+        if self._imap is None:  # pragma: no cover - select_folder already guards
+            raise ImapError("Not connected")
+        _typ, data = self._imap.response("UIDVALIDITY")
+        uidvalidity: int | None = None
+        if data and data[0]:
+            try:
+                uidvalidity = int(data[0])
+            except ValueError, TypeError:
+                uidvalidity = None
+        return count, uidvalidity
+
     def create_folder(self, name: str) -> None:
         """Create a mailbox (folder) on the server, idempotently.
 

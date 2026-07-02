@@ -323,3 +323,52 @@ def test_is_waste_folder_matches_junk(name: str) -> None:
 def test_is_waste_folder_rejects_normal_names(name: str) -> None:
     """_is_waste_folder returns False for non-waste folder names."""
     assert _is_waste_folder(name) is False
+
+
+# ---------------------------------------------------------------------------
+# select_folder_and_uidvalidity
+# ---------------------------------------------------------------------------
+
+
+def test_select_folder_and_uidvalidity_returns_pair(cfg: MailConfig) -> None:
+    """Returns (message_count, uidvalidity) parsed from SELECT + UIDVALIDITY."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.select.return_value = ("OK", [b"42"])
+    mock_ssl.response.return_value = ("UIDVALIDITY", [b"1234567890"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            count, uidvalidity = client.select_folder_and_uidvalidity("INBOX")
+
+    assert count == 42
+    assert uidvalidity == 1234567890
+    mock_ssl.response.assert_called_with("UIDVALIDITY")
+
+
+def test_select_folder_and_uidvalidity_none_when_absent(cfg: MailConfig) -> None:
+    """uidvalidity is None when the server doesn't advertise it."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.select.return_value = ("OK", [b"1"])
+    mock_ssl.response.return_value = ("UIDVALIDITY", [None])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            count, uidvalidity = client.select_folder_and_uidvalidity("INBOX")
+
+    assert count == 1
+    assert uidvalidity is None
+
+
+def test_select_folder_and_uidvalidity_none_when_unparseable(
+    cfg: MailConfig,
+) -> None:
+    """uidvalidity is None when the advertised value is not an integer."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.select.return_value = ("OK", [b"1"])
+    mock_ssl.response.return_value = ("UIDVALIDITY", [b"not-a-number"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            _count, uidvalidity = client.select_folder_and_uidvalidity("INBOX")
+
+    assert uidvalidity is None

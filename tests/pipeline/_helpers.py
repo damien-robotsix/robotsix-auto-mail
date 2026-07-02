@@ -9,7 +9,11 @@ from robotsix_auto_mail.imap import ImapClient
 
 def _mock_imap_client() -> mock.MagicMock:
     """Return a MagicMock that looks enough like an ImapClient."""
-    return mock.MagicMock(spec=ImapClient)
+    client = mock.MagicMock(spec=ImapClient)
+    # select_folder_and_uidvalidity defaults to (count=1, uidvalidity=None) so
+    # full-pipeline tests don't trigger a UIDVALIDITY reset unless they opt in.
+    client.select_folder_and_uidvalidity.return_value = (1, None)
+    return client
 
 
 def _make_raw_message(
