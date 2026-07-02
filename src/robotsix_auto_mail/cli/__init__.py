@@ -326,7 +326,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     triage_set_parser.add_argument(
         "action",
-        help="Triage action: INBOX, HUMAN_TRIAGE, TO_ARCHIVE, TO_DELETE, or TO_ANSWER.",
+        help="Triage action: INBOX, HUMAN_TRIAGE, PENDING_ACTION, TO_ARCHIVE, "
+        "TO_DELETE, TO_CALENDAR, TO_ANSWER, or DRAFT_READY.",
     )
 
     config_sync_set_parser = sub.add_parser(
@@ -369,7 +370,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    # -- load configuration (env → YAML cascade) --
+    # -- load configuration --
     from robotsix_auto_mail import config as _config
 
     try:

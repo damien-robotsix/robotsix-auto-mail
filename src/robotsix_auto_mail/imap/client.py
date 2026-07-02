@@ -1,9 +1,15 @@
 """IMAP client built on stdlib ``imaplib``.
 
-Provides ``ImapClient`` - a context manager that connects to a real IMAP
-server, negotiates TLS, authenticates, and exposes ``list_folders()``,
-``select_folder()``, and ``create_folder()`` for mailbox inspection and
-creation.
+Provides ``ImapClient`` — a context manager that connects to a real IMAP
+server, negotiates TLS, authenticates, and exposes mailbox inspection,
+message retrieval, and message mutation primitives:
+
+- Server metadata: ``server_greeting``, ``capabilities``
+- Mailbox management: ``list_folders()``, ``select_folder()``,
+  ``select_folder_and_uidvalidity()``, ``create_folder()``
+- Message retrieval: ``search_uids()``, ``fetch_messages()``
+- Message mutation: ``delete_message()``, ``move_message()``,
+  ``delete_messages()``, ``move_messages()``
 
 Depends only on ``MailConfig`` from ``robotsix_auto_mail.config`` and the
 Python standard library (``imaplib``, ``ssl``).
@@ -72,6 +78,16 @@ class ImapClient(_ProtocolClient):
     Constructor accepts a ``MailConfig`` and extracts only the IMAP-relevant
     fields (``imap_host``, ``imap_port``, ``imap_tls_mode``, ``username``,
     ``password``).  The SMTP fields are never referenced.
+
+    Public API (beyond the context-manager protocol ``__enter__`` /
+    ``__exit__``):
+
+    - Server metadata: ``server_greeting``, ``capabilities``
+    - Mailbox management: ``list_folders()``, ``select_folder()``,
+      ``select_folder_and_uidvalidity()``, ``create_folder()``
+    - Message retrieval: ``search_uids()``, ``fetch_messages()``
+    - Message mutation: ``delete_message()``, ``move_message()``,
+      ``delete_messages()``, ``move_messages()``
 
     Typical usage::
 
