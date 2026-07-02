@@ -401,10 +401,17 @@ def test_unsubscribe_mailto_javascript_blocked() -> None:
         },
         record_notes={},
         column_records={
-            "TO_DELETE": [_make_record(message_id="<x@example.com>")],
+            "TO_DELETE": [
+                _make_record(
+                    message_id="<x@example.com>", sender="attacker@example.com"
+                )
+            ],
         },
     )
     html_out = adapter.column_extra_html("TO_DELETE")
+    # The banner should be rendered (the suggestion key matches the sender).
+    assert "unsubscribe-banner" in html_out
+    # But the javascript: URL must NOT produce an anchor.
     assert "<a href=" not in html_out
 
 
