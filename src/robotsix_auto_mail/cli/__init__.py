@@ -164,6 +164,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=8080,
         help="Port to listen on (default: %(default)s)",
     )
+    serve_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help=(
+            "Address to bind the board server to (default: %(default)s). "
+            "Use 0.0.0.0 to listen on all interfaces (e.g. inside Docker "
+            "with host-level network isolation)."
+        ),
+    )
 
     detect_parser = sub.add_parser(
         "detect",
@@ -399,7 +408,12 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
         else:
             resolved = accounts.default_account_id
-        return _cmd_serve(accounts, default_account_id=resolved, port=args.port)
+        return _cmd_serve(
+            accounts,
+            default_account_id=resolved,
+            port=args.port,
+            host=args.host,
+        )
 
     if args.command == "detect":
         return _cmd_detect(args)
