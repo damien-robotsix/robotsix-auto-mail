@@ -373,6 +373,7 @@ modules:
       - .hadolint.yaml
       - .pre-commit-config.yaml
       - .secrets.baseline
+      - .stylelintrc.json
       - .trivyignore
       - renovate.json
       - scripts/ci/check_kind_literals.py
