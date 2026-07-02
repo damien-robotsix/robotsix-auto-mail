@@ -151,6 +151,8 @@ class BoardHandler(
 
     def do_POST(self) -> None:
         """Route POST requests via an exact-match table."""
+        if not self._check_csrf():
+            return
         # /auth-start is cross-account by design — handle before
         # _select_account() so it works regardless of the session account.
         if urlsplit(self.path).path == "/auth-start":
@@ -195,6 +197,32 @@ class BoardHandler(
             self._not_found()
             return
         handler()
+
+    def _check_csrf(self) -> bool:
+        """Reject cross-origin POST requests.
+
+        Modern browsers always include an ``Origin`` header on cross-origin
+        requests (including simple ``application/x-www-form-urlencoded``
+        form POSTs that do not trigger a CORS preflight).  When the header
+        is present and does not match the server's own loopback origin the
+        request is rejected with 403.
+
+        Requests without an ``Origin`` header (same-origin page navigation,
+        ``curl``, CLI tools) are allowed — malicious cross-site forms cannot
+        suppress the header.
+        """
+        origin = self.headers.get("Origin")
+        if origin is None:
+            return True
+        server_port = self.server.server_address[1]  # type: ignore[index]
+        allowed = {
+            f"http://127.0.0.1:{server_port}",
+            f"http://localhost:{server_port}",
+        }
+        if origin in allowed:
+            return True
+        self._send_response("Forbidden: cross-origin request rejected", status=403)
+        return False
 
     def _select_account(self) -> bool:
         """Resolve the per-request account and bind its DB / mail config.

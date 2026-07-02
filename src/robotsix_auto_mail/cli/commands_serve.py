@@ -49,7 +49,11 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
 
 
 def _cmd_serve(
-    accounts: MailAccountsConfig, *, default_account_id: str, port: int
+    accounts: MailAccountsConfig,
+    *,
+    default_account_id: str,
+    port: int,
+    host: str = "127.0.0.1",
 ) -> int:
     """Run the serve subcommand: start the web board HTTP server.
 
@@ -94,12 +98,13 @@ def _cmd_serve(
 
     threading.Thread(target=_reconcile_loop, args=(accounts,), daemon=True).start()
 
-    print(f"Serving board on http://0.0.0.0:{port}/board")
+    print(f"Serving board on http://{host}:{port}/board")
     try:
-        # Binding to 0.0.0.0 is intentional: ``serve_board`` is a local dev
-        # convenience tool, not a production server.
+        # Binding to 127.0.0.1 by default: the board is a local dev tool.
+        # Pass --host 0.0.0.0 to expose it on all interfaces (e.g. Docker
+        # where network isolation is enforced at the container level).
         # lgtm[py/clear-text-transmission-sensitive-data]
-        server = HTTPServer(("0.0.0.0", port), handler_class)  # noqa: S104  # nosec B104
+        server = HTTPServer((host, port), handler_class)
         server.serve_forever()
     except KeyboardInterrupt:
         print("Shutting down.")

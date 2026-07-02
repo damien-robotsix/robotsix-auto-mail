@@ -4,6 +4,7 @@
 
 - Dry-run ingestion no longer calls ``update_record_source`` on duplicate messages, preventing unintended DB mutations.
 - Security: MSAL OAuth2 token cache file is now created with restrictive permissions (file 0600, directory 0700) so the refresh token is not readable by other local users on multi-user hosts.
+- Security: added CSRF protection via Origin-header check in `BoardHandler._check_csrf` for all POST endpoints. Changed default server bind from `0.0.0.0` to `127.0.0.1` and added `--host` CLI flag to the `serve` subcommand for explicit opt-in to external access.
 - SMTP client now passes ``timeout=60`` to all three connection constructors
   (direct-TLS, STARTTLS, plain), mirroring the IMAP client's timeout.
   Prevents a stalled server from blocking the sending thread indefinitely.
