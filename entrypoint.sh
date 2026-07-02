@@ -2,8 +2,8 @@
 set -eu
 
 # ---------------------------------------------------------------------------
-# robotsix-auto-mail entrypoint — pre-flight validation and optional
-# config-file templating via envsubst before handing off to the Python CLI.
+# robotsix-auto-mail entrypoint — pre-flight validation before handing off
+# to the Python CLI.
 #
 # Configuration is loaded from a single YAML config file only. The file is
 # located via MAIL_CONFIG_PATH (default: config/mail.local.yaml); the deploy
@@ -14,16 +14,6 @@ set -eu
 case "${1-}" in
     -h|--help|-V|--version|""|detect) exec robotsix-auto-mail "$@" ;;
 esac
-
-_TEMP_CONFIG=""
-
-# Clean up any temporary config file on exit.
-cleanup() {
-    if [ -n "${_TEMP_CONFIG}" ] && [ -f "${_TEMP_CONFIG}" ]; then
-        rm -f "${_TEMP_CONFIG}"
-    fi
-}
-trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
 # Pre-flight validation — a readable YAML config file is required.
@@ -48,17 +38,6 @@ EOF
 fi
 
 export MAIL_CONFIG_PATH="${_CONFIG_PATH}"
-
-# ---------------------------------------------------------------------------
-# Optional config-file templating via envsubst
-# ---------------------------------------------------------------------------
-
-if command -v envsubst >/dev/null 2>&1; then
-    _TEMP_CONFIG="$(mktemp /tmp/mail-config.XXXXXX)"
-    envsubst < "${MAIL_CONFIG_PATH}" > "${_TEMP_CONFIG}"
-    MAIL_CONFIG_PATH="${_TEMP_CONFIG}"
-    export MAIL_CONFIG_PATH
-fi
 
 # ---------------------------------------------------------------------------
 # Launch the application (replaces this shell process)

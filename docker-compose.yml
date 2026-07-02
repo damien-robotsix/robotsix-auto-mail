@@ -32,9 +32,11 @@ services:
 
     # Default: run the periodic ingester. `docker compose run … <cmd>`
     # overrides this for one-shot commands (probe, detect, ingest, …).
-    command: ingest --watch
+    command: ingest --watch --heartbeat-file /home/mailbot/.data/ingest.heartbeat
 
     environment:
+      # Dev uses mail.local.yaml (git-ignored local config); deploy uses
+      # config.yaml (managed by deploy tooling). See entrypoint.sh header.
       MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml
       LLM_API_KEY: ${LLM_API_KEY:-}
 
@@ -63,12 +65,7 @@ services:
     image: ghcr.io/damien-robotsix/robotsix-auto-mail:${IMAGE_TAG:-main}
     # Always serve on 8080 inside the container so the image healthcheck
     # (GET :8080/healthz) passes; BOARD_PORT only remaps the host side.
-    # --host 0.0.0.0 is required: `serve` defaults to 127.0.0.1, which is
-    # unreachable from other containers (e.g. the central-deploy gateway
-    # proxying mail.<domain> → this container) and 502s every request.
-    command: serve --host 0.0.0.0 --port 8080
-    labels:
-      robotsix.deploy.primary: "true"
+    command: serve --port 8080
     restart: unless-stopped
 
     environment:
