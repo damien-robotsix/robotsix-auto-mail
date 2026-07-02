@@ -383,3 +383,72 @@ def test_served_css_orders_banner_above_column_extra_top_above_cards() -> None:
         assert "order: 0" in body
     finally:
         server.shutdown()
+
+
+def test_unsubscribe_mailto_javascript_blocked() -> None:
+    """``method=mailto`` with ``javascript:`` URL must NOT produce an anchor."""
+    adapter = MailBoardAdapter(
+        triage_by_mid={},
+        archive_subfolders={},
+        folder_exists={},
+        archive_root="",
+        unsubscribe_suggestions={
+            "attacker@example.com": {
+                "method": "mailto",
+                "url": "javascript:alert(1)",
+                "description": "Click here.",
+            }
+        },
+        record_notes={},
+        column_records={
+            "TO_DELETE": [_make_record(message_id="<x@example.com>")],
+        },
+    )
+    html_out = adapter.column_extra_html("TO_DELETE")
+    assert "<a href=" not in html_out
+
+
+def test_unsubscribe_mailto_valid_url() -> None:
+    """``method=mailto`` with a valid ``mailto:`` URL produces the anchor."""
+    adapter = MailBoardAdapter(
+        triage_by_mid={},
+        archive_subfolders={},
+        folder_exists={},
+        archive_root="",
+        unsubscribe_suggestions={
+            "sender@example.com": {
+                "method": "mailto",
+                "url": "mailto:unsub@example.com",
+                "description": "Reply to unsubscribe.",
+            }
+        },
+        record_notes={},
+        column_records={
+            "TO_DELETE": [_make_record(message_id="<d1@example.com>")],
+        },
+    )
+    html_out = adapter.column_extra_html("TO_DELETE")
+    assert '<a href="mailto:unsub@example.com">Unsubscribe</a>' in html_out
+
+
+def test_unsubscribe_header_mailto_still_works() -> None:
+    """``method=header`` with a valid ``mailto:`` URL still produces the anchor."""
+    adapter = MailBoardAdapter(
+        triage_by_mid={},
+        archive_subfolders={},
+        folder_exists={},
+        archive_root="",
+        unsubscribe_suggestions={
+            "sender@example.com": {
+                "method": "header",
+                "url": "mailto:unsub@example.com",
+                "description": "List-Unsubscribe header.",
+            }
+        },
+        record_notes={},
+        column_records={
+            "TO_DELETE": [_make_record(message_id="<d1@example.com>")],
+        },
+    )
+    html_out = adapter.column_extra_html("TO_DELETE")
+    assert '<a href="mailto:unsub@example.com">Unsubscribe</a>' in html_out

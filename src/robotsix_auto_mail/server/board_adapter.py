@@ -498,9 +498,7 @@ class MailBoardAdapter:
                 method = str(suggestion.get("method", ""))
                 url = str(suggestion.get("url", ""))
                 description = str(suggestion.get("description", ""))
-                if method == "mailto" or (
-                    method == "header" and url.lower().startswith("mailto:")
-                ):
+                if url.lower().startswith("mailto:") and method in ("mailto", "header"):
                     link_html = f'<a href="{html.escape(url)}">Unsubscribe</a>'
                     note = ""
                 elif url.startswith("https://") or url.startswith("http://"):
