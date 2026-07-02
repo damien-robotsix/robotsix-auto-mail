@@ -181,7 +181,9 @@ def setup_archive(
         client: Connected IMAP client.
         archive_root: Logical root folder name (e.g.
             ``"robotsix-mail-archive"``).
-        api_key: OpenRouter API key.  Defaults to the ``LLM_API_KEY`` env var.
+        api_key: OpenRouter API key.  Resolves with the precedence
+            ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
+            :func:`~robotsix_auto_mail.config.resolve_llm_api_key`).
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
             back to the tier-level default model.
