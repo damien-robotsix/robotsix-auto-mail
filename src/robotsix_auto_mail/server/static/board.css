@@ -32,7 +32,9 @@ button {
   border-radius: 4px;
   cursor: pointer;
 }
-button:hover { background: #1a4d7a; }
+button:hover {
+  background: #1a4d7a;
+}
 
 /* -- move form ------------------------------------------------------------ */
 /* render_board emits a generic move form (a direct child of .board-card)
@@ -65,73 +67,141 @@ button:hover { background: #1a4d7a; }
 }
 
 /* -- body preview / card indicators -------------------------------------- */
-.body-preview { font-size: 0.85rem; color: #c0c0e0; margin-top: 0.25rem; }
-.no-body { font-style: italic; color: #707090; }
+.body-preview {
+  font-size: 0.85rem;
+  color: #c0c0e0;
+  margin-top: 0.25rem;
+}
+.no-body {
+  font-style: italic;
+  color: #707090;
+}
 .card-notes-indicator {
-  font-size: 0.8rem; color: #a0a0c0; margin-top: 0.2rem;
-  display: block; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.8rem;
+  color: #a0a0c0;
+  margin-top: 0.2rem;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .card-draft-indicator {
-  display: block; font-size: 0.8rem; color: #a0a0c0; margin-top: 0.2rem;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: block;
+  font-size: 0.8rem;
+  color: #a0a0c0;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* -- detail page --------------------------------------------------------- */
 .back-link {
-    display: inline-block; margin-bottom: 1rem;
-    color: #333; text-decoration: none;
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #333;
+  text-decoration: none;
 }
-.back-link:hover { text-decoration: underline; }
+.back-link:hover {
+  text-decoration: underline;
+}
 .nav-link {
   color: #a0c0ff;
   text-decoration: none;
   font-size: 0.9rem;
   margin-left: 1rem;
 }
-.nav-link:hover { text-decoration: underline; }
-.detail-container { max-width: 800px; }
-.embed-detail { padding: 1rem; font-family: system-ui, -apple-system, sans-serif; }
-.detail-field { margin-bottom: 0.75rem; }
+.nav-link:hover {
+  text-decoration: underline;
+}
+.detail-container {
+  max-width: 800px;
+}
+.embed-detail {
+  padding: 1rem;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+.detail-field {
+  margin-bottom: 0.75rem;
+}
 .detail-label {
-    font-weight: 700; font-size: 0.85rem;
-    color: #a0a0c0; margin-bottom: 0.15rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #a0a0c0;
+  margin-bottom: 0.15rem;
 }
-.detail-value { font-size: 0.95rem; }
-.detail-value pre { margin: 0; white-space: pre-wrap; font-family: inherit; }
+.detail-value {
+  font-size: 0.95rem;
+}
+.detail-value pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
 .detail-value code {
-    font-size: 0.85rem; background: #0f3460; color: #c0c0e0;
-    padding: 0.1rem 0.3rem; border-radius: 3px;
+  font-size: 0.85rem;
+  background: #0f3460;
+  color: #c0c0e0;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
 }
-.detail-form { margin-top: 0.25rem; display: flex; gap: 0.25rem; align-items: center; }
-.detail-form select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }
-.detail-form button { font-size: 0.8rem; padding: 0.15rem 0.6rem; cursor: pointer; }
+.detail-form {
+  margin-top: 0.25rem;
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.detail-form select {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.3rem;
+}
+.detail-form button {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.6rem;
+  cursor: pointer;
+}
 .detail-form textarea {
-    width: 100%; font-family: inherit; font-size: 0.9rem;
-    border: 1px solid #ccc; border-radius: 4px; padding: 0.5rem;
-    box-sizing: border-box; resize: vertical;
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  resize: vertical;
 }
 .detail-notes {
-  font-size: 0.95rem; font-family: inherit;
-  padding: 0.3rem; border: 1px solid #ccc;
-  border-radius: 4px; resize: vertical;
+  font-size: 0.95rem;
+  font-family: inherit;
+  padding: 0.3rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
 }
 .detail-draft {
-    width: 100%; min-height: 8em; font-family: inherit; font-size: 0.9rem;
-    border: 1px solid #ccc; border-radius: 4px; padding: 0.5rem;
-    box-sizing: border-box;
+  width: 100%;
+  min-height: 8em;
+  font-family: inherit;
+  font-size: 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.5rem;
+  box-sizing: border-box;
 }
 
 /* -- side panel (auto-mail iframe drawer, not the library #drawer) ------- */
 .side-panel {
   position: fixed;
-  top: 0; right: 0;
-  width: 45vw; max-width: 100vw; height: 100vh;
+  top: 0;
+  right: 0;
+  width: 45vw;
+  max-width: 100vw;
+  height: 100vh;
   background: #16213e;
   box-shadow: -2px 0 8px rgba(0,0,0,0.15);
   border-left: 1px solid #2a2a4a;
   z-index: 1000;
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
   transform: translateX(100%);
   transition: transform 0.3s ease;
   overflow-y: auto;
@@ -140,24 +210,37 @@ button:hover { background: #1a4d7a; }
   transform: translateX(0);
 }
 .panel-header {
-  display: flex; justify-content: space-between;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid #2a2a4a;
   background: #0f3460;
 }
 .panel-header .panel-title {
-  font-weight: 600; font-size: 0.95rem; color: #e0e0e0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #e0e0e0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .panel-header .close-btn {
-  background: none; border: none;
-  font-size: 1.25rem; cursor: pointer;
-  padding: 0 0.25rem; line-height: 1; color: #a0a0c0;
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+  color: #a0a0c0;
 }
-.panel-header .close-btn:hover { color: #e0e0e0; }
+.panel-header .close-btn:hover {
+  color: #e0e0e0;
+}
 .side-panel iframe {
-  flex: 1; border: none; width: 100%;
+  flex: 1;
+  border: none;
+  width: 100%;
 }
 
 /* -- card account badge (aggregate board) --------------------------------- */
@@ -174,56 +257,88 @@ button:hover { background: #1a4d7a; }
 
 /* -- delete / force-triage buttons --------------------------------------- */
 .delete-btn {
-  background: #d32f2f; color: #fff; border: none;
-  padding: 0.25rem 0.6rem; border-radius: 4px;
-  cursor: pointer; font-size: 0.8rem;
+  background: #d32f2f;
+  color: #fff;
+  border: none;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
   margin-top: 0.3rem;
 }
-.delete-btn:hover { background: #b71c1c; }
+.delete-btn:hover {
+  background: #b71c1c;
+}
 .force-triage-form {
   display: inline;
 }
 .force-triage-btn {
-  background: #1976d2; color: #fff; border: none;
-  padding: 0.25rem 0.6rem; border-radius: 4px;
-  cursor: pointer; font-size: 0.75rem;
-  margin-top: 0.3rem; margin-left: 0.3rem;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
+  margin-left: 0.3rem;
 }
-.force-triage-btn:hover { background: #1565c0; }
+.force-triage-btn:hover {
+  background: #1565c0;
+}
 
 /* -- column flex ordering: banner -> header/action buttons -> cards ------- */
-.column-extra-top { order: 1; margin-bottom: 0.3rem; }
-.board-column-cards { order: 2; }
-.unsubscribe-banner { order: 0; }
+.column-extra-top {
+  order: 1;
+  margin-bottom: 0.3rem;
+}
+.board-column-cards {
+  order: 2;
+}
+.unsubscribe-banner {
+  order: 0;
+}
 
 /* -- triage-running indicator -------------------------------------------- */
 .triage-banner {
-  background: #fff3cd; color: #664d03;
-  text-align: center; padding: 0.5rem 1rem;
-  border-radius: 6px; margin-bottom: 0.75rem;
-  font-size: 0.9rem; border: 1px solid #ffecb5;
+  background: #fff3cd;
+  color: #664d03;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid #ffecb5;
 }
 
 /* -- batch-op (delete/archive) progress indicator ------------------------ */
 .batch-banner {
-  background: #d1e7dd; color: #0a3622;
-  text-align: center; padding: 0.5rem 1rem;
-  border-radius: 6px; margin-bottom: 0.75rem;
-  font-size: 0.9rem; border: 1px solid #a3cfbb;
+  background: #d1e7dd;
+  color: #0a3622;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid #a3cfbb;
 }
 
 /* -- unsubscribe suggestion banner --------------------------------------- */
 .unsubscribe-banner {
-  background: #e3f2fd; color: #1a3a5c;
-  padding: 0.5rem 0.75rem; margin-bottom: 0.75rem;
-  border-radius: 6px; font-size: 0.85rem;
-  border: 1px solid #bbdefb;
+  background: #e3f2fd;
+  color: #1a3a5c;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
 }
 .unsubscribe-banner a {
-  color: #1565c0; font-weight: 600;
+  color: #1565c0;
+  font-weight: 600;
 }
 .unsubscribe-note {
-  font-size: 0.8rem; color: #666;
+  font-size: 0.8rem;
+  color: #666;
 }
 
 /* -- archive browse button (folder-tree popover trigger) ----------------- */
@@ -320,60 +435,113 @@ button:hover { background: #1a4d7a; }
 
 /* -- archive proposal inline section ------------------------------------- */
 .archive-proposal {
-  margin-top: 0.35rem; font-size: 0.8rem;
-  color: #555; display: flex; align-items: center;
-  gap: 0.25rem; flex-wrap: wrap;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
 }
-.archive-path { font-family: monospace; background: #eee;
-  padding: 0.05rem 0.3rem; border-radius: 3px; }
-.archive-exists { color: #2e7d32; font-weight: 600; font-size: 0.75rem; }
-.archive-override-form { display: flex; gap: 0.15rem; align-items: center; }
+.archive-path {
+  font-family: monospace;
+  background: #eee;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+}
+.archive-exists {
+  color: #2e7d32;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+.archive-override-form {
+  display: flex;
+  gap: 0.15rem;
+  align-items: center;
+}
 .archive-override-form input[type="text"] {
-  font-size: 0.7rem; padding: 0.1rem 0.2rem; border: 1px solid #ccc;
-  border-radius: 3px; width: 160px;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.2rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  width: 160px;
 }
 .archive-override-form button {
-  font-size: 0.7rem; padding: 0.1rem 0.4rem; cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
 }
-.archive-confirm-form { display: flex; gap: 0.15rem; align-items: center; }
+.archive-confirm-form {
+  display: flex;
+  gap: 0.15rem;
+  align-items: center;
+}
 .archive-btn {
-  background: #2e7d32; color: #fff; border: none;
-  padding: 0.25rem 0.6rem; border-radius: 4px;
-  cursor: pointer; font-size: 0.75rem;
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
 }
-.archive-btn:hover { background: #1b5e20; }
+.archive-btn:hover {
+  background: #1b5e20;
+}
 
 /* -- per-destination archive group header (JS-injected) ------------------ */
 .archive-group {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 0.5rem; flex-wrap: wrap;
-  margin: 0.5rem 0 0.25rem; padding: 0.3rem 0.5rem;
-  background: #e8f0e8; border: 1px solid #cfe0cf;
-  border-left: 4px solid #2e7d32; border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0.25rem;
+  padding: 0.3rem 0.5rem;
+  background: #e8f0e8;
+  border: 1px solid #cfe0cf;
+  border-left: 4px solid #2e7d32;
+  border-radius: 5px;
 }
 .archive-group-label {
-  font-weight: 600; font-size: 0.8rem; color: #1b5e20;
-  font-family: monospace; word-break: break-all;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #1b5e20;
+  font-family: monospace;
+  word-break: break-all;
 }
-.archive-group-form { margin: 0; }
-.archive-group-btn { white-space: nowrap; }
+.archive-group-form {
+  margin: 0;
+}
+.archive-group-btn {
+  white-space: nowrap;
+}
 
 /* -- draft reply button -------------------------------------------------- */
 .draft-reply-btn {
-    font-size: 0.75rem; padding: 0.1rem 0.5rem; cursor: pointer;
-    background: #2563eb; color: #fff; border: none;
-    border-radius: 4px; margin-left: 0.25rem;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  cursor: pointer;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  margin-left: 0.25rem;
 }
-.draft-reply-btn:hover { background: #1d4ed8; }
-.draft-reply-form { display: inline; }
+.draft-reply-btn:hover {
+  background: #1d4ed8;
+}
+.draft-reply-form {
+  display: inline;
+}
 
 /* -- empty board placeholder --------------------------------------------- */
 .empty-board {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 3rem 1rem;
-    color: #6b7280;
-    font-size: 1.125rem;
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+  font-size: 1.125rem;
 }
 
 /* -- responsive: narrow viewports ---------------------------------------- */
@@ -394,21 +562,21 @@ button:hover { background: #1a4d7a; }
 /* -- health alert banner -------------------------------------------- */
 
 .health-alert-banner {
-    background-color: #fde8e8;
-    border: 2px solid #d93025;
-    border-radius: 4px;
-    color: #b71c1c;
-    font-weight: bold;
-    padding: 0.75em 1em;
-    margin-bottom: 1em;
+  background-color: #fde8e8;
+  border: 2px solid #d93025;
+  border-radius: 4px;
+  color: #b71c1c;
+  font-weight: bold;
+  padding: 0.75em 1em;
+  margin-bottom: 1em;
 }
 .health-alert-banner ul {
-    margin: 0.5em 0 0 1.5em;
-    font-weight: normal;
+  margin: 0.5em 0 0 1.5em;
+  font-weight: normal;
 }
 
 #probe-health-btn {
-    margin-bottom: 0.75em;
+  margin-bottom: 0.75em;
 }
 
 /* OAuth2 Authorize button (inline in health alert banners) */
@@ -423,7 +591,10 @@ button:hover { background: #1a4d7a; }
   font-size: 0.85em;
   vertical-align: middle;
 }
-.auth-btn:disabled { opacity: 0.6; cursor: default; }
+.auth-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 
 /* Device-code auth modal */
 .auth-modal-overlay {
@@ -444,6 +615,16 @@ button:hover { background: #1a4d7a; }
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   color: #1e293b;
 }
-.auth-modal h3 { margin-top: 0; color: #1a1a4e; }
-.auth-modal-code { font-size: 1.4em; letter-spacing: 0.15em; font-family: monospace; }
-.auth-modal-status { font-style: italic; color: #1e293b; }
+.auth-modal h3 {
+  margin-top: 0;
+  color: #1a1a4e;
+}
+.auth-modal-code {
+  font-size: 1.4em;
+  letter-spacing: 0.15em;
+  font-family: monospace;
+}
+.auth-modal-status {
+  font-style: italic;
+  color: #1e293b;
+}
