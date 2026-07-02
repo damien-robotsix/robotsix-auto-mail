@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Replace dead `.robotsix-mill/periodic/data_dir_audit.yaml` with `.robotsix-mill/periodic/data_dir_gc.yaml` to enable the `data_dir_gc` built-in periodic workflow for stale-file detection and cleanup under `.data/`.
 - Add CSS linting via stylelint to pre-commit config and a minimal `stylelint.config.mjs` extending `stylelint-config-standard`. Also extend `deno fmt` coverage to `.css` files in both pre-commit and CI.
 - Extract `reconcile_records` from `pipeline/__init__.py` into its own module
   at `pipeline/reconcile.py`, re-exported for backward compatibility.

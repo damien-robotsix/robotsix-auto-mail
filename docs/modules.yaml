@@ -389,7 +389,7 @@ modules:
       - .robotsix-mill/periodic/audit.yaml
       - .robotsix-mill/periodic/bc_check.yaml
       - .robotsix-mill/periodic/config_sync.yaml
-      - .robotsix-mill/periodic/data_dir_audit.yaml
+      - .robotsix-mill/periodic/data_dir_gc.yaml
       - .robotsix-mill/periodic/env_doc_sync.yaml
       - .robotsix-mill/periodic/completeness_check.yaml
       - .robotsix-mill/periodic/copy_paste.yaml
