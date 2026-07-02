@@ -375,8 +375,11 @@ def test_served_css_orders_banner_above_column_extra_top_above_cards() -> None:
     try:
         resp = urlopen(f"http://127.0.0.1:{port}/static/automail/board.css")
         body = resp.read().decode("utf-8")
-        assert "column-extra-top" in body and "order: 1" in body
-        assert "board-column-cards" in body and "order: 2" in body
-        assert "unsubscribe-banner" in body and "order: 0" in body
+        assert "column-extra-top" in body
+        assert "order: 1" in body
+        assert "board-column-cards" in body
+        assert "order: 2" in body
+        assert "unsubscribe-banner" in body
+        assert "order: 0" in body
     finally:
         server.shutdown()
