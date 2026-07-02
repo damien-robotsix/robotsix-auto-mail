@@ -134,8 +134,22 @@ def test_existing_account_ids_multi_account(tmp_path: Path) -> None:
         json.dumps(
             {
                 "accounts": [
-                    {"account_id": "alpha"},
-                    {"account_id": "beta"},
+                    {
+                        "account_id": "alpha",
+                        "config": {
+                            "imap_host": "imap.a.com",
+                            "smtp_host": "smtp.a.com",
+                            "username": "a@a.com",
+                        },
+                    },
+                    {
+                        "account_id": "beta",
+                        "config": {
+                            "imap_host": "imap.b.com",
+                            "smtp_host": "smtp.b.com",
+                            "username": "b@b.com",
+                        },
+                    },
                 ],
                 "default_account_id": "alpha",
             }
