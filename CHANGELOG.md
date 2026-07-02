@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Security: MSAL OAuth2 token cache file is now created with restrictive permissions (file 0600, directory 0700) so the refresh token is not readable by other local users on multi-user hosts.
 - Fix stored XSS in email detail view: escape the subject in the ``<title>`` tag (the ``<h1>`` was already escaped; this was the only unescaped sink).
 - Fix silent data loss on config round-trip: `MailAccountsConfig.from_yaml` now reads the
   top-level `logging:` YAML section (level, format, file_dir) and applies it to every

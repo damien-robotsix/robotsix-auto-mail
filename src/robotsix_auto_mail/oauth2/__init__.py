@@ -106,7 +106,9 @@ def _persist_cache(config: MailConfig, cache: Any) -> None:
         return
     path = cache_path_for(config)
     path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.chmod(0o700)
     path.write_text(cache.serialize())
+    path.chmod(0o600)
 
 
 # ---------------------------------------------------------------------------
