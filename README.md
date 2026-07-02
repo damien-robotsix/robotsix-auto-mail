@@ -121,6 +121,10 @@ When you send a reply, the original message re-enters the triage queue with the
 reply body stored so the triage agent can decide the final disposition.
 Full details are in [docs/connecting.md](docs/connecting.md#the-serve-command).
 
+## Standards
+
+This repo follows the [robotsix stack standards](https://github.com/damien-robotsix/robotsix-standards).
+
 ## License
 
 This project is licensed under the MIT License (SPDX: `MIT`). See [LICENSE](LICENSE) for the full text.

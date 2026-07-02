@@ -5,6 +5,8 @@ in CI, test gates, or the fleet's periodic workflows.  It is *not* a general
 orientation document; it is a set of constraints the agent system must
 follow.
 
+This repo follows the [robotsix stack standards](https://github.com/damien-robotsix/robotsix-standards).
+
 ---
 
 ## Testing conventions
