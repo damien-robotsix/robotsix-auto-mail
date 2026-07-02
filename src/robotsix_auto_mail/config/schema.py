@@ -48,15 +48,6 @@ _VALID_LOG_LEVELS: Final[frozenset[str]] = frozenset(
 )
 _VALID_LOG_FORMATS: Final[frozenset[str]] = frozenset({"json", "console"})
 
-# The validation sets above are imported by model.py and detect/models.py
-# for field-level validation.  This module-level reference ensures they are
-# treated as "used" by module-local static analysis (CodeQL).
-_VALIDATION_SETS = (
-    _VALID_TLS_MODES,
-    _VALID_LOG_LEVELS,
-    _VALID_LOG_FORMATS,
-)
-
 # Default TLS modes for IMAP and SMTP connections.
 DEFAULT_IMAP_TLS_MODE: Final[str] = "direct-tls"
 DEFAULT_SMTP_TLS_MODE: Final[str] = "starttls"

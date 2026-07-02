@@ -48,10 +48,10 @@ _FIELD_YAML_MAP: dict[str, str] = {
     "smtp_port": "smtp.port",
     "smtp_tls_mode": "smtp.tls_mode",
     "username": "auth.username",
-    "password": "auth.password",
-    "oauth2_token": "auth.oauth2_token",
+    "password": "auth.password",  # pragma: allowlist secret
+    "oauth2_token": "auth.oauth2_token",  # pragma: allowlist secret
     "oauth2_client_id": "auth.oauth2_client_id",
-    "oauth2_client_secret": "auth.oauth2_client_secret",
+    "oauth2_client_secret": "auth.oauth2_client_secret",  # pragma: allowlist secret
     "oauth2_provider": "auth.oauth2_provider",
     "oauth2_tenant": "auth.oauth2_tenant",
     "db_path": "store.path",
@@ -64,7 +64,7 @@ _FIELD_YAML_MAP: dict[str, str] = {
     "triage_rules_path": "triage.rules_path",
     "component_agent_enabled": "component_agent.enabled",
     "langfuse_public_key": "langfuse.public_key",
-    "langfuse_secret_key": "langfuse.secret_key",
+    "langfuse_secret_key": "langfuse.secret_key",  # pragma: allowlist secret
     "langfuse_base_url": "langfuse.base_url",
     "log_level": "logging.level",
     "log_format": "logging.format",
