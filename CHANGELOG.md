@@ -9,6 +9,9 @@
   keeps it idempotent). Adds ``ImapClient.select_folder_and_uidvalidity`` and
   ``db.delete_watermark``.
 - Switch board HTTP server from `HTTPServer` to `ThreadingHTTPServer` so a slow `/generate-draft` or `/config-sync` request no longer blocks the entire board.)
+- Guard `_load_json_watermark` against corrupt JSON and non-dict JSON values
+  (e.g. arrays), returning `{}` instead of raising `JSONDecodeError` or
+  downstream `AttributeError`.
 - Fix incorrect install instructions: update `detect` error message to reference `uv sync --extra llm`, correct README Python version claim to 3.14, add explicit non-PyPI note, and remove `robotsix-autoupdate` from `[project.scripts]`.
 - Dry-run ingestion no longer calls ``update_record_source`` on duplicate messages, preventing unintended DB mutations.
 - Security: MSAL OAuth2 token cache file is now created with restrictive permissions (file 0600, directory 0700) so the refresh token is not readable by other local users on multi-user hosts.

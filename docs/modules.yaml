@@ -155,6 +155,7 @@ modules:
       - tests/triage/test_triage_propose_name.py
       - tests/triage/test_triage_rules.py
       - tests/triage/test_triage_unsubscribe.py
+      - tests/triage/test_classifier.py
 
   - id: draft
     description: >-

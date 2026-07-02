@@ -114,11 +114,17 @@ def _sanitise_subfolder(raw: str) -> str:
 
 
 def _load_json_watermark(conn: sqlite3.Connection, key: str) -> dict[str, object]:
-    """Read a JSON-serialised dict watermark, returning {} when absent."""
+    """Read a JSON-serialised dict watermark, returning {} when absent or corrupt."""
     raw = get_watermark(conn, key)
     if raw is None:
         return {}
-    return cast(dict[str, object], json.loads(raw))
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return data
 
 
 def _save_json_watermark(
