@@ -17,7 +17,6 @@ from robotsix_auto_mail._constants import (
 )
 from robotsix_auto_mail.config import (
     DEFAULT_ARCHIVE_ROOT,
-    FailedAccountEntry,
     MailAccountsConfig,
 )
 from robotsix_auto_mail.db import MailRecord, list_records
@@ -235,7 +234,7 @@ def _build_board_content(
     archive_root: str = DEFAULT_ARCHIVE_ROOT,
     *,
     account_id: str = "main",
-    config_failures: tuple[FailedAccountEntry, ...] = (),
+    config_failures: tuple[tuple[str, str], ...] = (),
     mail_config: object | None = None,
 ) -> dict[str, Any]:
     """Return ``{"columns_html": …, "triage_running": …}``.
@@ -418,7 +417,7 @@ def _build_global_board_content(
     health_alerts_html = _health_alerts_html(
         account_health,
         account_labels,
-        config_failures=accounts.failed_accounts,
+        config_failures=(),
         account_configs={a.account_id: a.config for a in accounts.accounts},
     )
 
@@ -463,19 +462,19 @@ def _health_alerts_html(
     account_health: dict[str, dict[str, Any] | None],
     account_labels: dict[str, str] | None = None,
     *,
-    config_failures: tuple[FailedAccountEntry, ...] = (),
+    config_failures: tuple[tuple[str, str], ...] = (),
     account_configs: dict[str, object] | None = None,
 ) -> str:
     """Return a red banner listing every failing account, or ``""`` if all OK."""
     parts: list[str] = []
 
     # Config-load failures (no DB connection needed).
-    for entry in config_failures:
+    for account_id, error in config_failures:
         parts.append(
             '<div class="health-alert-banner" role="alert">\n'
             f"  &#9888; <strong>Account config error &mdash; account"
-            f" '{html.escape(entry.account_id)}' could not be loaded and"
-            f" is disabled:</strong> {html.escape(entry.error)}\n"
+            f" '{html.escape(account_id)}' could not be loaded and"
+            f" is disabled:</strong> {html.escape(error)}\n"
             "</div>"
         )
 
@@ -647,7 +646,7 @@ def _build_board_html(
         db_path,
         archive_root=archive_root,
         account_id=current_account_id or "main",
-        config_failures=accounts.failed_accounts if accounts else (),
+        config_failures=(),
     )
 
     # -- per-account health for picker badges ---------------------------

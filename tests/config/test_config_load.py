@@ -1,19 +1,18 @@
-"""Tests for load(), ConfigurationError, and YAML-file-only config loading.
+"""Tests for load(), ConfigurationError, and JSON-file-only config loading.
 
-Environment-variable configuration has been removed: ``load()`` reads
-exclusively from the YAML file located by ``MAIL_CONFIG_PATH`` (default
-``config/mail.local.yaml``), which must use the ``accounts:`` shape.
-``MAIL_CONFIG_PATH`` only *locates* the file — it carries no config values.
+Configuration is read exclusively from the JSON config file located by
+``ROBOTSIX_CONFIG_FILE`` via the ``robotsix-config`` library.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
+from unittest import mock
 
 import pytest
 
 from robotsix_auto_mail.config import (
     ConfigurationError,
+    MailAccount,
     MailAccountsConfig,
     MailConfig,
     load,
@@ -24,34 +23,36 @@ from robotsix_auto_mail.config import (
 # ---------------------------------------------------------------------------
 
 
-def _accounts_yaml(tmp_path: Path) -> Path:
-    """Write a minimal single-entry ``accounts:`` YAML file and return its path."""
-    yaml_file = tmp_path / "mail.local.yaml"
-    yaml_file.write_text(
-        """\
-accounts:
-  - id: default
-    imap:
-      host: imap.file.com
-    smtp:
-      host: smtp.file.com
-    auth:
-      username: file_user
-      password: file_pass
-"""
+def _default_accounts() -> MailAccountsConfig:
+    """Return a minimal single-account config."""
+    return MailAccountsConfig(
+        accounts=[
+            MailAccount(
+                account_id="default",
+                config=MailConfig(
+                    imap_host="imap.file.com",
+                    smtp_host="smtp.file.com",
+                    username="file_user",
+                    password="file_pass",
+                ),
+            )
+        ],
+        default_account_id="default",
     )
-    return yaml_file
 
 
 # ---------------------------------------------------------------------------
-# load() convenience function — YAML file only
+# load() convenience function
 # ---------------------------------------------------------------------------
 
 
-def test_load_reads_yaml_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """load() returns the default account's config from the located YAML file."""
-    monkeypatch.setenv("MAIL_CONFIG_PATH", str(_accounts_yaml(tmp_path)))
-    cfg = load()
+def test_load_returns_default_account_config() -> None:
+    """load() returns the default account's config from the config file."""
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts",
+        return_value=_default_accounts(),
+    ):
+        cfg = load()
     assert isinstance(cfg, MailConfig)
     assert cfg.imap_host == "imap.file.com"
     assert cfg.smtp_host == "smtp.file.com"
@@ -59,35 +60,14 @@ def test_load_reads_yaml_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     assert cfg.password == "file_pass"
 
 
-def test_load_missing_config_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A missing config file → ConfigurationError."""
-    monkeypatch.setenv("MAIL_CONFIG_PATH", "/nonexistent/path/mail.yaml")
-    with pytest.raises(ConfigurationError):
-        load()
-
-
-def test_load_mono_shape_file_raises(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """A file without an ``accounts:`` list (mono shape) → ConfigurationError."""
-    yaml_file = tmp_path / "mono.yaml"
-    yaml_file.write_text(
-        """\
-imap:
-  host: imap.file.com
-smtp:
-  host: smtp.file.com
-auth:
-  username: file_user
-  password: file_pass
-"""
-    )
-    monkeypatch.setenv("MAIL_CONFIG_PATH", str(yaml_file))
-    with pytest.raises(ConfigurationError) as exc:
-        load()
-    msg = str(exc.value)
-    assert "single-account" in msg
-    assert "detect" in msg
+def test_load_when_load_accounts_fails() -> None:
+    """A failing load_accounts → ConfigurationError propagates."""
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts",
+        side_effect=ConfigurationError("no config"),
+    ):
+        with pytest.raises(ConfigurationError):
+            load()
 
 
 # ---------------------------------------------------------------------------
@@ -116,25 +96,17 @@ def test_configuration_error_missing_only_true() -> None:
 
 
 # ---------------------------------------------------------------------------
-# auth.password is optional in the YAML file
+# MailConfig construction — password optional
 # ---------------------------------------------------------------------------
 
 
-def test_from_yaml_missing_auth_password_ok(tmp_path: Path) -> None:
-    """A YAML account without auth.password loads with an empty password."""
-    yaml_file = tmp_path / "no_pass.yaml"
-    yaml_file.write_text(
-        """\
-accounts:
-  - id: default
-    imap:
-      host: imap.example.com
-    smtp:
-      host: smtp.example.com
-    auth:
-      username: user@example.com
-"""
+def test_mailconfig_password_missing_ok() -> None:
+    """A MailConfig without password loads with an empty password."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="",
     )
-    cfg = MailAccountsConfig.from_yaml(yaml_file).default.config
     assert cfg.password == ""
     assert cfg.username == "user@example.com"

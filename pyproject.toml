@@ -22,7 +22,7 @@ dependencies = [
     "robotsix-board",
     "robotsix-llmio",
     "structlog>=24.1",
-    "robotsix-yaml-config",
+    "robotsix-config",
 ]
 
 [project.urls]
@@ -42,9 +42,10 @@ dev = [
     "hypothesis>=6",
     "deptry",
     "hatchling",
-    # pyyaml is no longer used by the package itself (YAML loading is delegated
-    # to robotsix-yaml-config); it remains a dev-only need for the CI helper
+    # pyyaml is kept as a dev-only need for the CI helper
     # scripts/config/check_config_sync.py, which imports `yaml` directly.
+    # Also used by the `migrate-config` CLI command for one-shot YAML→JSON
+    # conversion of legacy config files.
     "pyyaml>=6.0.3",
     "types-PyYAML",
     "robotsix-llmio[openrouter,tracing]",
@@ -147,7 +148,7 @@ module = "msal"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "robotsix_yaml_config"
+module = "robotsix_config"
 ignore_missing_imports = true
 
 [tool.deptry]
@@ -192,5 +193,5 @@ ignore_names = ["format", "method_name", "on_notification"]
 robotsix-agent-comm = { git = "https://github.com/damien-robotsix/robotsix-agent-comm.git", rev = "e5e6d85ef51b4e68ad284e1180ced8d396310ce2" }  # pragma: allowlist secret
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "a364bf5116dcea5c35b036d158d2f3e47b8caeec" }  # pragma: allowlist secret
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "3da3c4317f4a" }  # pragma: allowlist secret
-robotsix-yaml-config = { git = "https://github.com/damien-robotsix/robotsix-yaml-config.git", rev = "8a64b2c1382c91763cafccb0c33b1b22de409628" }  # pre-rename robotsix-yaml-config; migrating to robotsix-config  # pragma: allowlist secret
-robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "8a40eee6130d5e005148bb9ddf85e1af7f7dee4f" }  # pragma: allowlist secret
+robotsix-config = { git = "https://github.com/damien-robotsix/robotsix-config.git", rev = "424f8ec5140e14e9699b92d5c3755d929625b570" }
+robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "8a40eee6130d5e005148bb9ddf85e1af7f7dee4f" }  # pragma: allowlist secret)

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import dataclasses
 import sys
 from pathlib import Path
 
@@ -16,7 +15,7 @@ from robotsix_auto_mail.cli.config import (
 )
 from robotsix_auto_mail.config import (
     MailAccount,
-    render_accounts_yaml,
+    MailAccountsConfig,
 )
 
 
@@ -43,6 +42,8 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         return 1
 
+    import os as _os
+
     from robotsix_auto_mail.config import (
         resolve_llm_api_key,
         resolve_llm_provider_model,
@@ -60,7 +61,9 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         return 1
 
-    api_key = resolve_llm_api_key(None, raise_on_missing=False)
+    api_key = _os.environ.get("LLM_API_KEY") or resolve_llm_api_key(
+        None, raise_on_missing=False
+    )
     llm_provider_model_str = resolve_llm_provider_model(None)
     provider, mx_hosts = _detect_settings(
         args.email,
@@ -90,25 +93,22 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         if password is None:
             return 1
     if args.stdout:
-        config = dataclasses.replace(
-            provider_to_config(
-                provider,
-                args.email,
-                # lgtm[py/clear-text-storage-sensitive-data]
-                password="",  # nosec B106 - intentionally omitted from stdout
-            ),
-            db_path=f".data/{account_id}/mail.db",
-        )
+        config = provider_to_config(
+            provider,
+            args.email,
+            # lgtm[py/clear-text-storage-sensitive-data]
+            password="",  # nosec B106 - intentionally omitted from stdout
+        ).model_copy(update={"db_path": f".data/{account_id}/mail.db"})
         if args.app_password and config.oauth2_provider:
             # provider_to_config sets oauth2_provider="microsoft" for
             # Microsoft hosts unconditionally; --app-password must clear it
             # in the stdout path because _build() is never reached here.
-            config = dataclasses.replace(config, oauth2_provider="")
+            config = config.model_copy(update={"oauth2_provider": ""})
         if microsoft:
             sys.stderr.write(
                 f"# Detected Microsoft 365 settings for {args.email} — "
                 "OAuth2 (XOAUTH2); no password is used.\n"
-                "# Save this as config/mail.local.yaml, then run:\n"
+                "# Save this as config/config.json, then run:\n"
                 f"#   robotsix-auto-mail auth login --account {account_id}\n"
                 "# to complete the device-code consent and seed the token "
                 "cache.\n"
@@ -117,12 +117,15 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             sys.stderr.write(
                 f"# Detected settings for {args.email} — verify before using.\n"
                 "# The password was intentionally omitted: fill in auth.password "
-                "or set the MAIL_PASSWORD env var before use.\n"
-                "# Save this as config/mail.local.yaml.\n"
+                "before use.\n"
+                "# Save this as config/config.json.\n"
             )
         account = MailAccount(account_id=account_id, config=config, label=label)
+        container = MailAccountsConfig(
+            accounts=[account], default_account_id=account_id
+        )
         # lgtm[py/clear-text-storage-sensitive-data]
-        sys.stdout.write(render_accounts_yaml([account], account_id))
+        sys.stdout.write(container.model_dump_json(indent=2))
         return 0
 
     output_path = Path(args.output)

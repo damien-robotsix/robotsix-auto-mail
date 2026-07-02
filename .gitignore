@@ -26,7 +26,7 @@ uv.tgz
 !.env.example
 
 # Real mail configuration (may contain credentials)
-config/mail.local.yaml
+config/config.json
 
 # Runtime SQLite store written by the ingest pipeline. Local runs use
 # ./.data/mail.db; the Docker stack bind-mounts ./.mail_data for it. The

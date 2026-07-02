@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import getpass
+import logging
 import re
 import sys
 from collections.abc import Callable
@@ -19,7 +20,7 @@ from robotsix_auto_mail.config import (
     MailAccount,
     MailAccountsConfig,
     MailConfig,
-    render_accounts_yaml,
+    save_accounts,
 )
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
 from robotsix_auto_mail.smtp import (
@@ -30,6 +31,8 @@ from robotsix_auto_mail.smtp import (
 
 if TYPE_CHECKING:
     from robotsix_auto_mail.detect import MailProvider
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -154,7 +157,7 @@ def _prompt_hosts(config: MailConfig, result: _VerifyResult) -> MailConfig | Non
         return None
     if not changed:
         return None
-    return dataclasses.replace(config, imap_host=imap_host, smtp_host=smtp_host)
+    return config.model_copy(update={"imap_host": imap_host, "smtp_host": smtp_host})
 
 
 def _account_id_from_email(email: str) -> str:
@@ -171,33 +174,140 @@ def _account_id_from_email(email: str) -> str:
     return cleaned or "default"
 
 
+def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
+    """Load :class:`MailAccountsConfig` from *path* (JSON or YAML).
+
+    Returns ``None`` when the file is missing or unparseable.
+    """
+    if not path.exists():
+        return None
+    try:
+        from robotsix_config import load_config as _rc_load
+
+        return _rc_load(MailAccountsConfig, path=path)
+    except ModuleNotFoundError:
+        pass
+    # Fallback without robotsix_config: try JSON first, then YAML.
+    text = path.read_text()
+    try:
+        import json
+
+        return MailAccountsConfig.model_validate(json.loads(text))
+    except Exception:
+        logger.debug("JSON parse failed for %s — trying YAML", path)
+    try:
+        import yaml
+
+        data = yaml.safe_load(text)
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    # Convert legacy YAML account list to pydantic model shape.
+    if isinstance(data.get("accounts"), list):
+        converted: list[dict[str, object]] = []
+        for entry in data["accounts"]:
+            if isinstance(entry, dict):
+                converted.append(_normalise_legacy_account(entry))
+        data["accounts"] = converted
+    try:
+        return MailAccountsConfig.model_validate(data)
+    except Exception:
+        return None
+
+
+def _normalise_legacy_account(entry: dict[str, object]) -> dict[str, object]:
+    """Convert a single legacy YAML account entry to modern shape.
+
+    Legacy shape (robotsix-yaml-config)::
+
+        id: myid
+        auth: {username: ..., password: ...}
+        imap: {host: ..., port: ...}
+        smtp: {host: ..., port: ...}
+        label: ...
+
+    Modern shape::
+
+        account_id: myid
+        config: {imap_host: ..., smtp_host: ..., username: ..., ...}
+        label: ...
+    """
+    account_id = entry.get("id", entry.get("account_id", "default"))
+    auth = entry.get("auth", {})
+    imap = entry.get("imap", {})
+    smtp = entry.get("smtp", {})
+    label = entry.get("label")
+
+    if not isinstance(auth, dict):
+        auth = {}
+    if not isinstance(imap, dict):
+        imap = {}
+    if not isinstance(smtp, dict):
+        smtp = {}
+
+    config: dict[str, object] = {}
+    # Transport
+    if "host" in imap:
+        config["imap_host"] = imap["host"]
+    if "port" in imap:
+        config["imap_port"] = imap["port"]
+    if "host" in smtp:
+        config["smtp_host"] = smtp["host"]
+    if "port" in smtp:
+        config["smtp_port"] = smtp["port"]
+    # Auth
+    if "username" in auth:
+        config["username"] = auth["username"]
+    config["password"] = auth.get("password", "")
+
+    result: dict[str, object] = {"account_id": account_id, "config": config}
+    if label is not None:
+        result["label"] = label
+    return result
+
+
 def _existing_account_ids(path: Path) -> set[str]:
     """Return the account ids already present in the config file at *path*.
 
-    A multi-account file yields its entry ids; a deprecated mono file yields
-    ``{"default"}`` (it will be converted to a ``"default"`` account on
-    append); a missing/empty file yields an empty set.
+    A multi-account file yields its entry ids; a missing/empty file yields
+    an empty set.  Reads raw JSON/YAML — full model validation is not needed
+    just to discover which ids are present.
     """
-    from robotsix_yaml_config import (
-        YamlConfigError,
-        read_yaml_file,
-    )
-
     if not path.exists():
         return set()
+    # Try the full loader first (handles both JSON and YAML).
+    container = _load_accounts_from_file(path)
+    if container is not None:
+        return {a.account_id for a in container.accounts}
+    # Fallback: parse raw JSON or YAML to extract ids from partial data.
+    text = path.read_text()
+    data: object = None
     try:
-        data = read_yaml_file(path)
-    except YamlConfigError:
+        import json
+
+        data = json.loads(text)
+    except Exception:
+        logger.debug("JSON parse failed for %s in _existing_account_ids", path)
+    if data is None:
+        try:
+            import yaml
+
+            data = yaml.safe_load(text)
+        except Exception:
+            return set()
+    if not isinstance(data, dict):
         return set()
-    if isinstance(data, dict) and isinstance(data.get("accounts"), list):
-        ids: set[str] = set()
-        for entry in data["accounts"]:
-            if isinstance(entry, dict) and isinstance(entry.get("id"), str):
-                ids.add(entry["id"])
-        return ids
-    if isinstance(data, dict) and data:
-        return {"default"}
-    return set()
+    raw_accounts = data.get("accounts")
+    if not isinstance(raw_accounts, list):
+        return set()
+    ids: set[str] = set()
+    for entry in raw_accounts:
+        if isinstance(entry, dict):
+            account_id = entry.get("account_id", entry.get("id"))
+            if isinstance(account_id, str):
+                ids.add(account_id)
+    return ids
 
 
 def _existing_accounts_for_append(
@@ -210,29 +320,12 @@ def _existing_accounts_for_append(
     single config becomes a ``"default"`` account.  ``default_account_id`` is
     the file's existing default (or ``new_account_id`` when the file is new).
     """
-    if not path.exists():
+    container = _load_accounts_from_file(path)
+    if container is None:
         return [], new_account_id
 
-    from robotsix_yaml_config import (
-        YamlConfigError,
-        read_yaml_file,
-    )
-
-    try:
-        data = read_yaml_file(path)
-    except YamlConfigError:
-        return [], new_account_id
-
-    if isinstance(data, dict) and isinstance(data.get("accounts"), list):
-        try:
-            container = MailAccountsConfig.from_yaml(path, validate=False)
-        except Exception:
-            return [], new_account_id
-        others = [a for a in container.accounts if a.account_id != new_account_id]
-        return others, container.default_account_id
-
-    # A file without an `accounts:` list is not a valid config — start fresh.
-    return [], new_account_id
+    others = [a for a in container.accounts if a.account_id != new_account_id]
+    return others, container.default_account_id
 
 
 def _find_existing_account(path: Path, account_id: str) -> MailAccount | None:
@@ -241,11 +334,8 @@ def _find_existing_account(path: Path, account_id: str) -> MailAccount | None:
     Used by the overwrite path to load the existing account's config before
     merging freshly-detected transport fields into it.
     """
-    if not path.exists():
-        return None
-    try:
-        container = MailAccountsConfig.from_yaml(path, validate=False)
-    except Exception:
+    container = _load_accounts_from_file(path)
+    if container is None:
         return None
     for account in container.accounts:
         if account.account_id == account_id:
@@ -468,26 +558,29 @@ def _verify_and_refine(
 
     def _build(prov: MailProvider, pw: str | None) -> MailConfig:
         detected = provider_to_config(prov, email, password=pw or "")
-        detected = dataclasses.replace(detected, db_path=f".data/{account_id}/mail.db")
+        detected = detected.model_copy(
+            update={"db_path": f".data/{account_id}/mail.db"}
+        )
         if app_password and detected.oauth2_provider:
             # Clear MSAL provider so IMAP/SMTP use plain password auth.
-            detected = dataclasses.replace(
-                detected, oauth2_provider="", password=pw or ""
+            detected = detected.model_copy(
+                update={"oauth2_provider": "", "password": pw or ""}
             )
         if existing_account is not None:
             # Overwrite mode: overlay only the six detected transport fields
             # and the supplied password onto the existing config. Everything
             # else (db_path, imap_folder, archive_*, triage_*, calendar_*,
             # oauth2_*, langfuse_*, llm_*, ingest_*) is preserved as-is.
-            result = dataclasses.replace(
-                existing_account.config,
-                imap_host=detected.imap_host,
-                imap_port=detected.imap_port,
-                imap_tls_mode=detected.imap_tls_mode,
-                smtp_host=detected.smtp_host,
-                smtp_port=detected.smtp_port,
-                smtp_tls_mode=detected.smtp_tls_mode,
-                password=detected.password,
+            result = existing_account.config.model_copy(
+                update={
+                    "imap_host": detected.imap_host,
+                    "imap_port": detected.imap_port,
+                    "imap_tls_mode": detected.imap_tls_mode,
+                    "smtp_host": detected.smtp_host,
+                    "smtp_port": detected.smtp_port,
+                    "smtp_tls_mode": detected.smtp_tls_mode,
+                    "password": detected.password,
+                }
             )
         else:
             result = detected
@@ -496,14 +589,15 @@ def _verify_and_refine(
             # - non-overwrite: detected was already cleared, harmless re-set
             # - overwrite: the overlay above preserves existing oauth2_provider
             #   so this explicitly clears it on the final result
-            result = dataclasses.replace(result, oauth2_provider="")
+            result = result.model_copy(update={"oauth2_provider": ""})
         # Overlay explicit CLI-supplied oauth2 fields in both modes so
         # --oauth2-client-id / --oauth2-tenant are honoured in --overwrite.
         if oauth2_client_id or oauth2_tenant:
-            result = dataclasses.replace(
-                result,
-                oauth2_client_id=oauth2_client_id or result.oauth2_client_id,
-                oauth2_tenant=oauth2_tenant or result.oauth2_tenant,
+            result = result.model_copy(
+                update={
+                    "oauth2_client_id": oauth2_client_id or result.oauth2_client_id,
+                    "oauth2_tenant": oauth2_tenant or result.oauth2_tenant,
+                }
             )
 
         # Persist the resolved LLM key and model into the written config so
@@ -511,26 +605,22 @@ def _verify_and_refine(
         # already carries the file's values; or fills in when the file was
         # sparse/new.
         if api_key and not result.llm_api_key:
-            result = dataclasses.replace(result, llm_api_key=api_key)
+            result = result.model_copy(update={"llm_api_key": api_key})
         if llm_provider_model and not result.llm_provider_model:
-            result = dataclasses.replace(result, llm_provider_model=llm_provider_model)
+            result = result.model_copy(
+                update={"llm_provider_model": llm_provider_model}
+            )
 
         return result
 
     def _write(cfg: MailConfig) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         account = MailAccount(account_id=account_id, config=cfg, label=effective_label)
-        banner = (
-            f"# Auto-detected mail configuration — generated by "
-            f"`robotsix-auto-mail detect {email}`.\n"
-            "# Verify these settings before using — run "
-            "`robotsix-auto-mail probe`."
+        container = MailAccountsConfig(
+            accounts=[*other_accounts, account],
+            default_account_id=default_account_id,
         )
-        output_path.write_text(
-            render_accounts_yaml(
-                [*other_accounts, account], default_account_id, banner=banner
-            )
-        )
+        save_accounts(container, path=output_path)
 
     config = _build(provider, password)
     _write(config)

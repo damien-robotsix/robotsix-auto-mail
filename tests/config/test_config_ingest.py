@@ -2,31 +2,28 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from robotsix_auto_mail.config import MailAccountsConfig, MailConfig
-
-# ---------------------------------------------------------------------------
-# Ingest interval (per-account ingest.interval_minutes section), parsed
-# through MailAccountsConfig.from_yaml.
-# ---------------------------------------------------------------------------
+from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 
 
-def _write_accounts(tmp_path: Path, account_body: str) -> Path:
-    """Write a one-entry ``accounts:`` YAML file and return its path."""
-    yaml_file = tmp_path / "accounts.yaml"
-    yaml_file.write_text(
-        "accounts:\n"
-        "  - id: default\n"
-        "    imap:\n"
-        "      host: imap.example.com\n"
-        "    smtp:\n"
-        "      host: smtp.example.com\n"
-        "    auth:\n"
-        "      username: u\n"
-        "      password: p\n" + account_body
+def _account(**overrides: object) -> MailAccount:
+    base: dict[str, object] = {
+        "imap_host": "imap.example.com",
+        "smtp_host": "smtp.example.com",
+        "username": "u",
+        "password": "p",
+    }
+    base.update(overrides)
+    return MailAccount(
+        account_id="default",
+        config=MailConfig(**base),  # type: ignore[arg-type]
     )
-    return yaml_file
+
+
+def _accounts(**overrides: object) -> MailAccountsConfig:
+    return MailAccountsConfig(
+        accounts=[_account(**overrides)],
+        default_account_id="default",
+    )
 
 
 def test_ingest_interval_default() -> None:
@@ -35,18 +32,13 @@ def test_ingest_interval_default() -> None:
     assert cfg.ingest_interval_minutes == 15
 
 
-def test_from_yaml_ingest_interval_default(tmp_path: Path) -> None:
-    """An account without an ingest: section keeps the default interval."""
-    yaml_file = _write_accounts(tmp_path, "")
-    accounts = MailAccountsConfig.from_yaml(yaml_file)
-    assert accounts.default.config.ingest_interval_minutes == 15
+def test_ingest_interval_default_when_unset() -> None:
+    """An account without an explicit interval keeps the default."""
+    accts = _accounts()
+    assert accts.default.config.ingest_interval_minutes == 15
 
 
-def test_from_yaml_reads_ingest_interval(tmp_path: Path) -> None:
-    """from_yaml parses the ingest.interval_minutes key."""
-    yaml_file = _write_accounts(
-        tmp_path,
-        "    ingest:\n      interval_minutes: 5\n",
-    )
-    accounts = MailAccountsConfig.from_yaml(yaml_file)
-    assert accounts.default.config.ingest_interval_minutes == 5
+def test_ingest_interval_custom() -> None:
+    """ingest_interval_minutes can be set explicitly."""
+    accts = _accounts(ingest_interval_minutes=5)
+    assert accts.default.config.ingest_interval_minutes == 5

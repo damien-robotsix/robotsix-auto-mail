@@ -146,7 +146,7 @@ def test_determine_archive_structure_missing_api_key() -> None:
     with mock.patch.dict(os.environ, {}, clear=True):
         with pytest.raises(ArchiveError) as exc:
             determine_archive_structure(["INBOX"])
-    assert "llm.api_key" in str(exc.value)
+    assert "llm_api_key" in str(exc.value)
 
 
 def test_determine_archive_structure_llm_error_wrapped() -> None:

@@ -93,7 +93,7 @@ class _BoardViewMixin:
                 self.db_path,
                 archive_root=archive_root,
                 account_id=self._current_account_id or "main",
-                config_failures=self.accounts.failed_accounts if self.accounts else (),
+                config_failures=(),
                 mail_config=self.mail_config,
             )
         except Exception:

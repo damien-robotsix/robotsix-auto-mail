@@ -398,7 +398,7 @@ def test_detect_provider_missing_api_key() -> None:
     with mock.patch.dict(os.environ, {}, clear=True):
         with pytest.raises(DetectionError) as exc:
             detect_provider("user@example.com")
-        assert "llm.api_key" in str(exc.value)
+        assert "llm_api_key" in str(exc.value)
 
 
 def test_detect_provider_level_default() -> None:
