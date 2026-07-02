@@ -2,6 +2,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Fix silent data loss on config round-trip: `MailAccountsConfig.from_yaml` now reads the
+  top-level `logging:` YAML section (level, format, file_dir) and applies it to every
+  account, matching the existing behaviour for `llm:` and `langfuse:` sections.
 - Replace dead `.robotsix-mill/periodic/data_dir_audit.yaml` with `.robotsix-mill/periodic/data_dir_gc.yaml` to enable the `data_dir_gc` built-in periodic workflow for stale-file detection and cleanup under `.data/`.
 - Add CSS linting via stylelint to pre-commit config and a minimal `stylelint.config.mjs` extending `stylelint-config-standard`. Also extend `deno fmt` coverage to `.css` files in both pre-commit and CI.
 - Extract `reconcile_records` from `pipeline/__init__.py` into its own module

@@ -545,6 +545,9 @@ class MailAccountsConfig:
         global_langfuse_public_key: str = ""
         global_langfuse_secret_key: str = ""
         global_langfuse_base_url: str = ""
+        global_log_level: str = ""
+        global_log_format: str = ""
+        global_log_file_dir: str = ""
 
         if isinstance(data, dict):
             llm = _extract_section_fields(
@@ -570,6 +573,19 @@ class MailAccountsConfig:
             global_langfuse_public_key = langfuse["public_key"]
             global_langfuse_secret_key = langfuse["secret_key"]
             global_langfuse_base_url = langfuse["base_url"]
+
+            logging_section = _extract_section_fields(
+                data,
+                "logging",
+                [
+                    ("level", _get_str, "level", ""),
+                    ("format", _get_str, "format", ""),
+                    ("file_dir", _get_str, "file_dir", ""),
+                ],
+            )
+            global_log_level = logging_section["level"]
+            global_log_format = logging_section["format"]
+            global_log_file_dir = logging_section["file_dir"]
 
         accounts: list[MailAccount] = []
         failed: list[FailedAccountEntry] = []
@@ -616,6 +632,9 @@ class MailAccountsConfig:
                     langfuse_secret_key=global_langfuse_secret_key
                     or cfg.langfuse_secret_key,
                     langfuse_base_url=global_langfuse_base_url or cfg.langfuse_base_url,
+                    log_level=global_log_level or cfg.log_level,
+                    log_format=global_log_format or cfg.log_format,
+                    log_file_dir=global_log_file_dir or cfg.log_file_dir,
                 )
 
                 accounts.append(

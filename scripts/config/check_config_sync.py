@@ -324,8 +324,8 @@ def check_yaml_example(
         if isinstance(value, dict):
             _collect_paths(value, section)
 
-    # -- top-level keys (llm, langfuse) ------------------------------------
-    for tls in ("llm", "langfuse"):
+    # -- top-level keys (llm, langfuse, logging) ----------------------------
+    for tls in ("llm", "langfuse", "logging"):
         tls_data = data.get(tls)
         if isinstance(tls_data, dict):
             for k, v in tls_data.items():
