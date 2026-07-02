@@ -50,7 +50,7 @@ $ robotsix-auto-mail ingest --watch
 ```
 
 Runs a cycle, then repeats every `ingest.interval_minutes` (config, default
-15; override with `MAIL_INGEST_INTERVAL`).  A failed cycle is logged and the
+15; configured via the `ingest.interval_minutes` YAML key).  A failed cycle is logged and the
 loop continues; Ctrl-C stops it cleanly.  This is the default command of the
 `robotsix-auto-mail` Docker service, so `docker compose up -d` keeps the
 board's datastore fed automatically.
@@ -95,7 +95,8 @@ automation — a single malformed message will not cause a non-zero exit.
 
 ## Datastore schema
 
-The local SQLite database (default: `.data/mail.db`) contains three tables —
+The local SQLite database (default: `.data/<account-id>/mail.db`, set via the
+`store.path` YAML key in each account block) contains three tables —
 `mail_records`, `watermark`, and `triage_decisions` — created automatically on
 first run (`CREATE TABLE IF NOT EXISTS`).
 
@@ -198,11 +199,8 @@ settings as the rest of `robotsix-auto-mail` (see
 [docs/connecting.md](connecting.md)).  Two additional keys control the local
 datastore and the watch interval:
 
-| Variable | YAML key | Default | Purpose |
-|---|---|---|---|
-| `MAIL_DB_PATH` | `store.path` | `.data/mail.db` | Filesystem path to the SQLite database |
-| `MAIL_IMAP_FOLDER` | `imap.folder` | `INBOX` | IMAP mailbox folder to fetch from |
-| `MAIL_INGEST_INTERVAL` | `ingest.interval_minutes` | `15` | Minutes between cycles in `--watch` mode |
+These fields are YAML-only configuration keys with no environment-variable
+override:
 
 The database is created automatically on first use — no manual setup is needed.
 
