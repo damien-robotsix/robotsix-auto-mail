@@ -145,7 +145,6 @@ are loaded at module level via `Path(__file__).parent / "static" /
 "<filename>").read_text()`.  Do **not** embed CSS or JS as Python
 string literals in `server/` — the separation keeps the server module
 navigable and allows CSS/JS tooling to apply.
-navigable and allows CSS/JS tooling to apply.
 
 ---
 
