@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed stale content in README.md and docs/index.md: removed dead links to nonexistent `docs/decisions/` directory, corrected board column count from four to eight, removed phantom "Add to Calendar" feature description, and replaced "read-only" board description with accurate "kanban board for reviewing and triaging mail".
 - Updated `docs/connecting.md`: removed all references to the removed `migrate-config` command, replaced legacy mono-shape YAML examples with valid `accounts:` list-form examples, corrected the error-message description to mention only `detect`, expanded the env-var section to list `LLM_API_KEY` and `LLM_PROVIDER_MODEL`, and corrected the account-selection fallback to describe the `__all__` aggregate view.
 - Fix `javascript:` scheme filtering in the mailto unsubscribe link — the `method == "mailto"` branch now requires the `mailto:` prefix like the `header` branch already did, preventing LLM-produced `javascript:` URLs from reaching the board UI.
 - Warn when `mail.local.yaml` has lax (group/world-readable) file permissions, suggesting `chmod 600` to protect plaintext credentials.

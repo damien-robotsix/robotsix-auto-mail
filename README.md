@@ -10,13 +10,13 @@ Automated email handling — sending, receiving, and routing email through progr
 
 The mail ingestion pipeline is implemented: `robotsix-auto-mail` can fetch messages from an IMAP inbox, parse them into structured records, and store them idempotently in a local SQLite database.  See [docs/ingestion.md](docs/ingestion.md) for the full ingestion model, schema, configuration, and CLI usage.
 
-**Language:** Python 3.14, chosen for its standard-library support for IMAP, SMTP, MIME parsing, and SQLite — the four core capabilities required by the [ROADMAP](ROADMAP.md). Full rationale is in [ADR 0001](docs/decisions/0001-programming-language.md).
+**Language:** Python 3.14, chosen for its standard-library support for IMAP, SMTP, MIME parsing, and SQLite — the four core capabilities required by the [ROADMAP](ROADMAP.md).
 
 ## Directory layout
 
 | Directory | Role |
 |---|---|
-| `src/robotsix_auto_mail/` | Production Python package, following the `src` layout prescribed by [ADR 0001](docs/decisions/0001-programming-language.md). |
+| `src/robotsix_auto_mail/` | Production Python package, following the `src` layout. |
 | `tests/` | Test code mirroring the `src/` package structure. |
 | `config/` | Example and sample configuration files for operators. |
 | `docs/` | Project documentation, including architecture decision records. |
@@ -32,7 +32,7 @@ The mail ingestion pipeline is implemented: `robotsix-auto-mail` can fetch messa
 
 Configuration keys, precedence rules, and walkthroughs of the `probe`
 diagnostics command, the `ingest` mail-fetching command, and the `board`
-read-only view are documented in [docs/connecting.md](docs/connecting.md).
+web view are documented in [docs/connecting.md](docs/connecting.md).
 
 Configuration is loaded from a single YAML config file (default
 `config/mail.local.yaml`, located via `MAIL_CONFIG_PATH`) using the
@@ -95,7 +95,7 @@ pip install pre-commit && pre-commit install
 
 ## Web Board
 
-Start the read-only kanban board to view ingested mail in a browser:
+Start the kanban board to review and triage ingested mail in a browser:
 
 ```sh
 # Native (port 8080 by default)
@@ -107,14 +107,12 @@ docker compose up board
 # Then open http://localhost:<port>/board
 ```
 
-The board shows ingested mail in four columns — Inbox, Triaging, Done,
-Archive — with per-card Move dropdowns and a 30-second auto-refresh. Cards
-display triage badges showing the decision action (e.g. answer, archive)
-with the reason visible on hover. Click any card to view full details
-including the triage action, reason, and confidence. Cards with date/time references in the body also show an **Add to Calendar**
-button that dispatches a calendar event request to the `robotsix-calendar`
-agent over the agent-comm message bus. See
-[docs/connecting.md](docs/connecting.md#calendar-add-to-calendar) for details.
+The board shows ingested mail in eight columns — Inbox, Human triage, Pending
+action, To archive, To delete, To calendar, To answer, Draft ready — with
+per-card Move dropdowns and a 30-second auto-refresh. Cards display triage
+badges showing the decision action (e.g. answer, archive) with the reason
+visible on hover. Click any card to view full details including the triage
+action, reason, and confidence.
 
 Cards marked "Needs reply"
 have a **Draft reply** button that triggers LLM-driven draft generation — click it
