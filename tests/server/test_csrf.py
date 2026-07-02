@@ -154,7 +154,7 @@ class TestCmdServeHost:
                 default_account_id="A",
             )
             with (
-                mock.patch("http.server.HTTPServer") as m,
+                mock.patch("http.server.ThreadingHTTPServer") as m,
                 mock.patch(
                     "robotsix_auto_mail.cli.commands_serve._clear_stale_triage_state"
                 ),
@@ -177,7 +177,7 @@ class TestCmdServeHost:
                 default_account_id="A",
             )
             with (
-                mock.patch("http.server.HTTPServer") as m,
+                mock.patch("http.server.ThreadingHTTPServer") as m,
                 mock.patch(
                     "robotsix_auto_mail.cli.commands_serve._clear_stale_triage_state"
                 ),
