@@ -1,7 +1,7 @@
 # Per-repo periodic workflow: presence enables config_sync for this repo.
 # Runs the config-drift advisory agent
 # (src/robotsix_auto_mail/config/config_sync_agent.py) to compare the
-# MailConfig dataclass, the YAML template, .env.example, and connecting
-# docs, then files human-readable drift proposals. Complements the
+# MailConfig dataclass, the YAML template, and connecting docs, then files
+# human-readable drift proposals. Complements the
 # deterministic scripts/config/check_config_sync.py CI gate.
 name: config_sync
