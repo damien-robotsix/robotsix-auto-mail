@@ -178,6 +178,10 @@ DEP003 = ["pydantic_ai"]
 # flagged as an unused (DEP002) dependency. The extra is retained for the
 # optional agent-comm integration.
 DEP002 = ["structlog", "robotsix-agent-comm"]
+# pyyaml / yaml is declared as a dev dependency (used by CI helpers and the
+# migrate-config CLI command) but is imported at runtime by cli/config.py
+# for legacy config migration.
+DEP004 = ["yaml"]
 
 [tool.vulture]
 paths = ["src/robotsix_auto_mail"]

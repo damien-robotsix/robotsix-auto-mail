@@ -89,3 +89,32 @@ _ = ComponentAgentResponder._config_set  # lgtm[py/ineffectual-statement]
 # Pydantic model fields — accessed via model_dump / model_validate / keyword
 # construction, never read as plain class attributes by application code.
 # ===========================================================================
+
+from robotsix_auto_mail.config.model import MailConfig
+
+MailConfig._validate_template_literals
+MailConfig.model_config
+MailConfig.oauth2_client_secret
+MailConfig._validate_imap_tls_mode
+MailConfig._validate_smtp_tls_mode
+MailConfig._validate_log_level
+MailConfig._validate_log_format
+
+from robotsix_auto_mail.config.model import MailAccountConfig
+
+MailAccountConfig.model_config
+MailAccountConfig._validate_account_id
+
+from robotsix_auto_mail.config.model import MailAccountsConfig
+
+MailAccountsConfig.model_config
+MailAccountsConfig._validate
+
+# ===========================================================================
+# NamedTuple fields — accessed by attribute but not recognized as "used" by
+# vulture because they are only default values.
+# ===========================================================================
+
+from robotsix_auto_mail.server._component_agent_config_contract import _FieldSpec
+
+_FieldSpec.required_in_yaml

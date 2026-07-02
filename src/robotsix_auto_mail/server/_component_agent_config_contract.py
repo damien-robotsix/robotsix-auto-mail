@@ -55,7 +55,7 @@ _FIELD_YAML_MAP: dict[str, str] = {
     "oauth2_provider": "auth.oauth2_provider",
     "oauth2_tenant": "auth.oauth2_tenant",
     "db_path": "store.path",
-    "llm_api_key": "llm.api_key",
+    "llm_api_key": "llm.api_key",  # pragma: allowlist secret
     "llm_provider_model": "llm.provider_model",
     "ingest_interval_minutes": "ingest.interval_minutes",
     "archive_root": "archive.root",
