@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Dry-run ingestion no longer calls ``update_record_source`` on duplicate messages, preventing unintended DB mutations.
 - Security: MSAL OAuth2 token cache file is now created with restrictive permissions (file 0600, directory 0700) so the refresh token is not readable by other local users on multi-user hosts.
 - SMTP client now passes ``timeout=60`` to all three connection constructors
   (direct-TLS, STARTTLS, plain), mirroring the IMAP client's timeout.
