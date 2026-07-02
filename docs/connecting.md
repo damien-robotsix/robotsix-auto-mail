@@ -115,8 +115,9 @@ entry's other fields (label, username, password, db_path, archive, triage,
 calendar, oauth2 settings) are preserved unless you supply them explicitly on
 the command line. If the output file is still in the single-account ("mono") shape —
 which is no longer supported at runtime — the existing configuration is
-converted to a `default` account before the new one is appended (run
-`migrate-config` first if you prefer to convert it explicitly).
+converted to a `default` account before the new one is appended (edit the
+`accounts:` block directly, or run `detect` to regenerate the config from
+scratch).
 
 ### Scripting usage
 
@@ -180,37 +181,29 @@ interactive prompt appears (requires a TTY — use `docker compose run` without
 - For users who prefer manual config, the traditional approach (editing
   `config/mail.local.yaml` by hand) is unaffected and fully supported.
 
-## The migrate-config command
+## Converting a legacy single-account config
 
 The single-account ("mono") config shape is **removed**. A mono YAML file no
 longer loads at runtime — it fails with an actionable error pointing at
-`migrate-config` (to convert the existing file) and `detect` (to regenerate it
-from scratch). To convert an existing mono file to the multi-account
-`accounts:` shape, run:
+`detect` (to regenerate it from scratch). To convert an existing mono file to
+the multi-account `accounts:` shape, edit the file to wrap your settings in an
+`accounts:` list:
 
-```sh
-robotsix-auto-mail migrate-config
+```yaml
+default_account: default
+
+accounts:
+  - id: default
+    imap:
+      host: imap.example.com
+    smtp:
+      host: smtp.example.com
+    auth:
+      username: user@example.com
 ```
 
-This reads the canonical config file (`config/mail.local.yaml` by default, or
-`--config PATH`), rewrites it into a one-entry `accounts:` container that
-**preserves every value verbatim**, and sets `default_account` to the migrated
-account's id. Before overwriting, it writes a backup of the original to
-`<path>.bak`.
-
-| Option | Required | Default | Purpose |
-|---|---|---|---|
-| `--config PATH` | no | the canonical config path | Config file to migrate |
-| `--id ID` | no | `default` | Account id assigned to the migrated single account |
-| `--dry-run` | no | – | Print the migrated YAML to stdout without writing the file or the backup |
-
-Behaviour:
-
-- A file already in the multi-account shape is left untouched (a clear
-  "already migrated" message is printed; exit 0).
-- A missing file is an error (exit 1).
-- A migrated account that had no explicit `store.path` gets the per-account
-  default `.data/<id>/mail.db`; an explicit `store.path` is preserved.
+Alternatively, run `robotsix-auto-mail detect` to regenerate the config from
+scratch with provider auto-detection.
 
 ## Configuration keys
 
@@ -220,39 +213,38 @@ Copy `docs/config/mail.local.example.yaml` and fill in your values. Any field yo
 omit falls back to its built-in default.
 
 ```yaml
-imap:
-  host: imap.example.com
-  # port: 993
-  # tls_mode: direct-tls
-  # folder: INBOX
+accounts:
+  - id: default
+    label: Personal
+    imap:
+      host: imap.example.com
+      # port: 993
+      # tls_mode: direct-tls
+      # folder: INBOX
+    smtp:
+      host: smtp.example.com
+      # port: 587
+      # tls_mode: starttls
+    auth:
+      username: user@example.com
+      password: ""  # set your password here
+      # OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that
+      # requires modern SASL XOAUTH2.  When oauth2_token is set, password
+      # auth is not used.  See "OAuth2 (XOAUTH2)" section below.
+      # oauth2_token: ""
+      # oauth2_client_id: ""
+      # oauth2_client_secret: ""
+    # store:
+    #   path: ""   # empty derives the per-account default .data/<id>/mail.db
+    # archive:
+    #   root: robotsix-mail-archive
+    #   namespace: ""
+    #   enabled: true
 
-smtp:
-  host: smtp.example.com
-  # port: 587
-  # tls_mode: starttls
-
-auth:
-  username: user@example.com
-  password: ""  # set your password here
-  # OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that
-  # requires modern SASL XOAUTH2.  When oauth2_token is set, password
-  # auth is not used.  See "OAuth2 (XOAUTH2)" section below.
-  # oauth2_token: ""
-  # oauth2_client_id: ""
-  # oauth2_client_secret: ""
-
-# store:
-#   path: ""   # empty derives the per-account default .data/<id>/mail.db
-
-# archive:
-#   root: robotsix-mail-archive
-#   namespace: ""
-#   enabled: true
-
+# Application-wide settings (outside the accounts: list):
 # llm:
 #   api_key: sk-or-v1-…
 #   provider_model: ""  # escape-hatch: override llmio tier default (leave blank to use tier default)
-
 # langfuse:
 #   public_key: ""
 #   secret_key: ""
@@ -294,9 +286,16 @@ auth:
 **Trace ID injection.** Every log event automatically includes a `trace_id` field that correlates logs with OpenTelemetry / Langfuse recordings. When a Langfuse trace is active (see `langfuse.public_key` / `langfuse.secret_key` above), the `trace_id` is stamped as a 32-character lowercase hexadecimal string; when no trace is active (or OpenTelemetry is absent), it is set to `"-"`. This is transparent — no configuration is needed — and applies to both `json` and `console` log formats.
 
 > **No environment-variable configuration.** Every setting above lives in the
-> YAML config file. Environment variables are not read for configuration; the
-> only environment variable the application consults is `MAIL_CONFIG_PATH`,
-> which merely *locates* the YAML file (default `config/mail.local.yaml`).
+> YAML config file. Configuration values are not read from the environment;
+> the application consults only three environment variables, which provide
+> boot-level inputs rather than per-field overrides:
+>
+> - **`MAIL_CONFIG_PATH`** — locates the YAML config file (default
+>   `config/mail.local.yaml`).
+> - **`LLM_API_KEY`** — fallback LLM API key; used when the config file does
+>   not supply `llm.api_key`.
+> - **`LLM_PROVIDER_MODEL`** — fallback LLM provider-model identifier; used
+>   when the config file does not supply `llm.provider_model`.
 
 **TLS modes**
 
@@ -323,18 +322,20 @@ IMAP/SMTP. The simplest working setup needs no OAuth2 client registration — an
    full address as `auth.username`:
 
    ```yaml
-   imap:
-     host: imap.gmail.com
-     port: 993
-     tls_mode: direct-tls
-   smtp:
-     host: smtp.gmail.com
-     port: 587
-     tls_mode: starttls
-   auth:
-     username: you@gmail.com
-     # the 16-char App Password, NOT your normal login password
-     password: "abcd efgh ijkl mnop"
+   accounts:
+     - id: default
+       imap:
+         host: imap.gmail.com
+         port: 993
+         tls_mode: direct-tls
+       smtp:
+         host: smtp.gmail.com
+         port: 587
+         tls_mode: starttls
+       auth:
+         username: you@gmail.com
+         # the 16-char App Password, NOT your normal login password
+         password: "abcd efgh ijkl mnop"
    ```
 
    ```sh
@@ -561,10 +562,10 @@ which is unique per account and created automatically on first DB use.
 
 > The single-account ("mono") YAML **file** shape — top-level `imap:` /
 > `smtp:` / `auth:` sections with no `accounts:` key — is **no longer
-> supported**: such a file fails to load with an actionable error. Run
-> [`robotsix-auto-mail migrate-config`](#the-migrate-config-command) to convert
-> an old config to the multi-account shape, or
-> [`robotsix-auto-mail detect`](#scripting-usage) to regenerate it.
+> supported**: such a file fails to load with an actionable error pointing at
+> `detect`. Edit the file to wrap your settings in an `accounts:` list (see
+> [Converting a legacy single-account config](#converting-a-legacy-single-account-config)),
+> or run [`robotsix-auto-mail detect`](#scripting-usage) to regenerate it.
 
 **YAML shape.** A multi-account YAML file uses a top-level `accounts:` list
 instead of the single-account top-level sections. Each list entry is a
@@ -984,14 +985,19 @@ database and mail config are used to handle each request.
 
 1. **Explicit query parameter** — `?account=<id>` (e.g. `/board?account=work`)
 2. **Cookie** — an `account` cookie set by a prior successful query param selection
-3. **Default account** — either the account passed via `serve --account <id>`, or the container's `default_account` from the config
+3. **Aggregate view** — when no query param or cookie is present and multiple
+   accounts are configured, the server returns the `__all__` aggregate view
+   (all accounts combined). A `Set-Cookie: account=__all__` header is sent so
+   the aggregate preference persists. For single-account configurations the
+   lone account is served directly.
 
 When the HTTP response succeeds with an explicit `?account=<id>`, a `Set-Cookie: account=<id>; Path=/` header is sent so the selection persists across the board's cookie-less JavaScript fetches and POST→redirect flows. This allows the browser to stay on the chosen account without explicit URL parameters on every request.
 
 **Error handling:**
 
 - An explicit `?account=<unknown-id>` returns a 404 (hard failure).
-- A stale or unknown id supplied only via cookie is silently ignored — the default account is served instead (cookies must never hard-fail a request).
+- A stale or unknown id supplied only via cookie is silently ignored — the
+  aggregate view is served instead (cookies must never hard-fail a request).
 
 **Single-account behavior:** When only one account is configured, the
 precedence is satisfied immediately (the single account is always the
