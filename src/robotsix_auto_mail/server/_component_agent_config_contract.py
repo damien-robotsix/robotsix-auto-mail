@@ -10,12 +10,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from pydantic import ValidationError
 from robotsix_agent_comm.protocol import ConfigContractError
 
-from robotsix_auto_mail.config.schema import _FIELD_SPECS, _FieldSpec, _parse_bool
+from robotsix_auto_mail.config.model import MailConfig
 
 if TYPE_CHECKING:
-    from robotsix_auto_mail.config.model import MailConfig
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,6 @@ logger = logging.getLogger(__name__)
 
 # Runtime-safe dotted config keys ONLY.  Excludes startup-only fields:
 # bind host/port, db/store paths, IMAP/SMTP host/credentials.
-# Derived from ``_FIELD_SPECS[*].yaml_path`` so the allowlist references
-# real paths.
 _SETTABLE_YAML_PATHS: frozenset[str] = frozenset(
     {
         "ingest.interval_minutes",
@@ -42,14 +41,6 @@ _SETTABLE_YAML_PATHS: frozenset[str] = frozenset(
         "langfuse.base_url",
     }
 )
-
-# Validate that every settable path references a real _FieldSpec.
-_all_yaml_paths = {s.yaml_path for s in _FIELD_SPECS}
-_unknown_settable = _SETTABLE_YAML_PATHS - _all_yaml_paths
-if _unknown_settable:  # pragma: no cover
-    raise AssertionError(
-        f"SETTABLE_KEYS references unknown yaml_path(s): {_unknown_settable!r}"
-    )
 
 # Public frozenset of dotted keys.
 SETTABLE_KEYS: frozenset[str] = _SETTABLE_YAML_PATHS
@@ -71,13 +62,47 @@ _SECRET_FIELDS: frozenset[str] = frozenset(
 
 _REDACTED = "<redacted>"
 
-_yaml_path_to_spec: dict[str, _FieldSpec] = {s.yaml_path: s for s in _FIELD_SPECS}
+# Mapping: dotted YAML key → MailConfig field name
+_YAML_PATH_TO_FIELD: dict[str, str] = {
+    "imap.host": "imap_host",
+    "imap.port": "imap_port",
+    "imap.tls_mode": "imap_tls_mode",
+    "imap.folder": "imap_folder",
+    "smtp.host": "smtp_host",
+    "smtp.port": "smtp_port",
+    "smtp.tls_mode": "smtp_tls_mode",
+    "auth.username": "username",
+    "auth.password": "password",
+    "auth.oauth2_provider": "oauth2_provider",
+    "auth.oauth2_tenant": "oauth2_tenant",
+    "auth.oauth2_token": "oauth2_token",
+    "auth.oauth2_client_id": "oauth2_client_id",
+    "auth.oauth2_client_secret": "oauth2_client_secret",
+    "store.path": "db_path",
+    "archive.root": "archive_root",
+    "archive.enabled": "archive_enabled",
+    "triage.on_ingest": "triage_on_ingest",
+    "triage.rules_path": "triage_rules_path",
+    "ingest.interval_minutes": "ingest_interval_minutes",
+    "component_agent.enabled": "component_agent_enabled",
+    "llm.api_key": "llm_api_key",
+    "llm.provider_model": "llm_provider_model",
+    "langfuse.public_key": "langfuse_public_key",
+    "langfuse.secret_key": "langfuse_secret_key",
+    "langfuse.base_url": "langfuse_base_url",
+    "logging.level": "log_level",
+    "logging.format": "log_format",
+    "logging.file_dir": "log_file_dir",
+}
+
+# Reverse mapping for emitting snapshots: field_name → dotted path
+_FIELD_TO_YAML_PATH: dict[str, str] = {v: k for k, v in _YAML_PATH_TO_FIELD.items()}
 
 
-def _field_value(config: MailConfig, spec: _FieldSpec) -> object:
-    """Return the current value of *spec* from *config*, redacted if secret."""
-    raw = getattr(config, spec.field_name)
-    if spec.field_name in _SECRET_FIELDS:
+def _field_value(config: MailConfig, field_name: str) -> object:
+    """Return the current value of *field_name* from *config*, redacted if secret."""
+    raw = getattr(config, field_name)
+    if field_name in _SECRET_FIELDS:
         return _REDACTED
     return raw
 
@@ -94,8 +119,9 @@ def get_config_snapshot(config: MailConfig) -> dict[str, Any]:
     ``"<redacted>"``; raw secret values are **never** emitted.
     """
     snapshot: dict[str, Any] = {}
-    for spec in _FIELD_SPECS:
-        snapshot[spec.yaml_path] = _field_value(config, spec)
+    for field_name in MailConfig.model_fields:
+        dotted = _FIELD_TO_YAML_PATH.get(field_name, field_name)
+        snapshot[dotted] = _field_value(config, field_name)
     return snapshot
 
 
@@ -104,11 +130,17 @@ def describe_config(config: MailConfig) -> dict[str, Any]:
     type/kind, and whether it is settable.
     """
     result: dict[str, Any] = {}
-    for spec in _FIELD_SPECS:
-        dotted = spec.yaml_path
+    for field_name, field_info in MailConfig.model_fields.items():
+        dotted = _FIELD_TO_YAML_PATH.get(field_name, field_name)
+        annotation = field_info.annotation
+        kind = "str"
+        if annotation is bool:
+            kind = "bool"
+        elif annotation is int:
+            kind = "int"
         result[dotted] = {
-            "value": _field_value(config, spec),
-            "kind": spec.kind,
+            "value": _field_value(config, field_name),
+            "kind": kind,
             "settable": dotted in SETTABLE_KEYS,
         }
     return result
@@ -121,20 +153,19 @@ def validate_config_update(
 
     - Rejects unknown or non-settable keys with
       ``ConfigContractError(code="invalid_key")``.
-    - Coerces/validates each value per the field's ``kind``.
-    - Builds a candidate ``MailConfig`` via ``dataclasses.replace`` so
-      ``__post_init__`` invariants run.
+    - Coerces/validates each value through a candidate ``MailConfig``.
+    - Builds a candidate ``MailConfig`` via ``model_copy`` so
+      pydantic validators run.
     - On any failure raises ``ConfigContractError(code="invalid_value")``.
 
     Returns an audit map ``{dotted_key: (old_value, new_value)}`` of the
     changes that **would** apply.
     """
-    import dataclasses
 
     # -- Reject unknown / non-settable keys --------------------------------
 
     for key in updates:
-        if key not in _yaml_path_to_spec:
+        if key not in _YAML_PATH_TO_FIELD:
             raise ConfigContractError(
                 code="invalid_key",
                 message=f"Unknown config key: {key!r}",
@@ -147,43 +178,33 @@ def validate_config_update(
                 key=key,
             )
 
-    # -- Coerce + validate each value -------------------------------------
-
-    coerced: dict[str, object] = {}
-    for key, raw_value in updates.items():
-        spec = _yaml_path_to_spec[key]
-        try:
-            coerced[key] = _coerce_value(spec, raw_value)
-        except ConfigContractError:
-            raise
-        except Exception as exc:
-            raise ConfigContractError(
-                code="invalid_value",
-                message=f"Invalid value for {key}: {exc}",
-                key=key,
-            ) from exc
-
-    # -- Build candidate config via dataclasses.replace -------------------
+    # -- Build field-level update dict ------------------------------------
 
     replace_kwargs: dict[str, object] = {}
-    for key, new_val in coerced.items():
-        spec = _yaml_path_to_spec[key]
-        replace_kwargs[spec.field_name] = new_val
+    for key, raw_value in updates.items():
+        field_name = _YAML_PATH_TO_FIELD[key]
+        replace_kwargs[field_name] = raw_value
+
+    # -- Build candidate config via model_copy ----------------------------
 
     try:
-        dataclasses.replace(config, **replace_kwargs)  # type: ignore[arg-type]
-    except Exception as exc:
+        config.model_copy(update=replace_kwargs)
+    except ValidationError as exc:
         raise ConfigContractError(
             code="invalid_value",
             message=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise ConfigContractError(
+            code="invalid_value",
+            message=f"Invalid value for config update: {exc}",
         ) from exc
 
     # -- Build audit map --------------------------------------------------
 
     audit: dict[str, tuple[object, object]] = {}
-    for key, new_val in coerced.items():
-        spec = _yaml_path_to_spec[key]
-        old_val = getattr(config, spec.field_name)
+    for key, new_val in replace_kwargs.items():
+        old_val = getattr(config, key)
         audit[key] = (old_val, new_val)
 
     return audit
@@ -204,92 +225,19 @@ def apply_config_update(
     old_config = holder.config
     audit = validate_config_update(old_config, updates)
 
-    import dataclasses
-
     replace_kwargs: dict[str, object] = {}
     for key, (_, new_val) in audit.items():
-        spec = _yaml_path_to_spec[key]
-        replace_kwargs[spec.field_name] = new_val
-    new_config = dataclasses.replace(old_config, **replace_kwargs)
+        replace_kwargs[key] = new_val
+    new_config = old_config.model_copy(update=replace_kwargs)
     holder.config = new_config
 
     # Emit audit log with secrets redacted.
     redacted: dict[str, tuple[object, object]] = {}
     for key, (old, new) in audit.items():
-        spec = _yaml_path_to_spec[key]
-        if spec.field_name in _SECRET_FIELDS:
+        if key in _SECRET_FIELDS:
             redacted[key] = (_REDACTED, _REDACTED)
         else:
             redacted[key] = (old, new)
     logger.info("config-set applied: %s", redacted)
 
     return audit
-
-
-# ---------------------------------------------------------------------------
-# Internal: value coercion
-# ---------------------------------------------------------------------------
-
-
-def _coerce_value(spec: _FieldSpec, raw: object) -> object:
-    """Coerce *raw* to the type declared by *spec.kind*.
-
-    Raises ``ConfigContractError`` on type mismatch or invalid value.
-    """
-    if spec.kind == "str":
-        if not isinstance(raw, str):
-            raise ConfigContractError(
-                code="invalid_value",
-                message=f"{spec.yaml_path} must be a string, got {type(raw).__name__}",
-                key=spec.yaml_path,
-            )
-        return raw
-    elif spec.kind == "int":
-        if isinstance(raw, bool):
-            raise ConfigContractError(
-                code="invalid_value",
-                message=f"{spec.yaml_path} must be an integer, got bool",
-                key=spec.yaml_path,
-            )
-        if not isinstance(raw, int):
-            raise ConfigContractError(
-                code="invalid_value",
-                message=(
-                    f"{spec.yaml_path} must be an integer, got {type(raw).__name__}"
-                ),
-                key=spec.yaml_path,
-            )
-        return raw
-    elif spec.kind == "bool":
-        if isinstance(raw, bool):
-            return raw
-        if isinstance(raw, str):
-            try:
-                return _parse_bool(spec.yaml_path, raw)
-            except Exception as exc:
-                raise ConfigContractError(
-                    code="invalid_value",
-                    message=str(exc),
-                    key=spec.yaml_path,
-                ) from exc
-        raise ConfigContractError(
-            code="invalid_value",
-            message=f"{spec.yaml_path} must be a boolean, got {type(raw).__name__}",
-            key=spec.yaml_path,
-        )
-    elif spec.kind in ("tls_mode", "log_level", "log_format"):
-        # These kinds are not in SETTABLE_KEYS, but handle gracefully.
-        if not isinstance(raw, str):
-            raise ConfigContractError(
-                code="invalid_value",
-                message=f"{spec.yaml_path} must be a string, got {type(raw).__name__}",
-                key=spec.yaml_path,
-            )
-        return raw
-    else:
-        # Unknown kind — should not happen with validated _FIELD_SPECS.
-        raise ConfigContractError(
-            code="invalid_value",
-            message=f"Unknown field kind {spec.kind!r} for {spec.yaml_path}",
-            key=spec.yaml_path,
-        )

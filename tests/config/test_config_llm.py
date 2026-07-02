@@ -16,7 +16,7 @@ from robotsix_auto_mail.config import MailAccountsConfig, MailConfig, load_llm
 def test_llm_defaults_when_absent() -> None:
     """llm api key defaults to an empty string."""
     cfg = MailConfig(imap_host="i", smtp_host="s", username="u", password="p")
-    assert cfg.llm_api_key == ""
+    assert cfg.llm_api_key.get_secret_value() == ""
 
 
 def test_llm_api_key_redacted_in_repr() -> None:
@@ -30,7 +30,7 @@ def test_llm_api_key_redacted_in_repr() -> None:
     )
     assert "sk-or-secret" not in repr(cfg)
     assert "sk-or-secret" not in str(cfg)
-    assert "<redacted>" in repr(cfg)
+    assert "**********" in repr(cfg)
 
 
 def test_from_yaml_reads_top_level_llm_section(tmp_path: Path) -> None:
@@ -52,7 +52,7 @@ accounts:
 """
     )
     accounts = MailAccountsConfig.from_yaml(yaml_file)
-    assert accounts.default.config.llm_api_key == "sk-or-from-file"
+    assert accounts.default.config.llm_api_key.get_secret_value() == "sk-or-from-file"
 
 
 def test_from_yaml_llm_default_when_absent(tmp_path: Path) -> None:
@@ -72,7 +72,7 @@ accounts:
 """
     )
     accounts = MailAccountsConfig.from_yaml(yaml_file)
-    assert accounts.default.config.llm_api_key == ""
+    assert accounts.default.config.llm_api_key.get_secret_value() == ""
 
 
 def test_load_llm_reads_file(tmp_path: Path) -> None:

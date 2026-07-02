@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import logging
 import sqlite3
 from dataclasses import FrozenInstanceError
@@ -698,7 +697,7 @@ def test_ingest_calls_setup_archive_before_fetch(
         conn,
         imap,
         archive_root=cfg.archive_root,
-        api_key=cfg.llm_api_key,
+        api_key=cfg.llm_api_key.get_secret_value(),
         provider_model=cfg.llm_provider_model,
     )
     # setup_archive must run before fetch_new_messages.
@@ -732,7 +731,7 @@ def test_ingest_archive_disabled_does_not_call_setup_archive(
     cfg: MailConfig,
 ) -> None:
     """archive_enabled=False must skip setup_archive entirely."""
-    cfg_disabled = dataclasses.replace(cfg, archive_enabled=False)
+    cfg_disabled = cfg.model_copy(update={"archive_enabled": False})
     mock_fetch.return_value = []
     imap = _mock_imap_client()
 
@@ -750,7 +749,7 @@ def test_ingest_passes_configured_archive_root(
     cfg: MailConfig,
 ) -> None:
     """The configured archive_root is forwarded to setup_archive."""
-    cfg_custom = dataclasses.replace(cfg, archive_root="custom-archive")
+    cfg_custom = cfg.model_copy(update={"archive_root": "custom-archive"})
     mock_fetch.return_value = []
     imap = _mock_imap_client()
 
@@ -760,7 +759,7 @@ def test_ingest_passes_configured_archive_root(
         conn,
         imap,
         archive_root="custom-archive",
-        api_key=cfg.llm_api_key,
+        api_key=cfg.llm_api_key.get_secret_value(),
         provider_model=cfg.llm_provider_model,
     )
 
@@ -811,7 +810,7 @@ def test_ingest_runs_triage_on_new_mail(
 
     mock_triage.assert_called_once_with(
         conn,
-        api_key=cfg.llm_api_key,
+        api_key=cfg.llm_api_key.get_secret_value(),
         provider_model=cfg.llm_provider_model,
         only_undecided=True,
         user_email=cfg.username,
@@ -833,7 +832,7 @@ def test_ingest_triage_disabled_does_not_call_triage(
     cfg: MailConfig,
 ) -> None:
     """triage_on_ingest=False must skip run_triage_agent entirely."""
-    cfg_disabled = dataclasses.replace(cfg, triage_on_ingest=False)
+    cfg_disabled = cfg.model_copy(update={"triage_on_ingest": False})
     mock_fetch.return_value = [(1, _make_raw_message(message_id="<a@x>"))]
     imap = _mock_imap_client()
 

@@ -238,17 +238,15 @@ def test_yaml_default_mismatch() -> None:
 
 
 def test_yaml_uncommented_default_mismatch() -> None:
-    """Changing an uncommented value reports default-mismatch."""
-    # Change smtp.host to something else — it's required so no comparison,
-    # but we can change a value that has a default... actually smtp.host
-    # has no default.  Let's change the password to non-empty.
-    modified = _YAML_EXAMPLE.replace('password: ""', 'password: "real"')
+    """Changing a required field (no default) does not report default-mismatch."""
+    # smtp.host is required (no default), so changing its value should not
+    # produce a default-mismatch finding.
+    modified = _YAML_EXAMPLE.replace(
+        "host: smtp.example.com", "host: smtp.other.com", 1
+    )
     findings = check_yaml_example(modified)
-    # password is MISSING in dataclass, so no default comparison.
-    # But we should still verify it's not flagged.
     assert not any(
-        f["type"] == "default-mismatch" and f["key"] == "auth.password"
-        for f in findings
+        f["type"] == "default-mismatch" and f["key"] == "smtp.host" for f in findings
     )
 
 

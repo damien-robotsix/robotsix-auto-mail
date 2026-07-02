@@ -104,8 +104,8 @@ class SmtpClient(_ProtocolClient):
             port=config.smtp_port,
             tls_mode=config.smtp_tls_mode,
             username=config.username,
-            password=config.password,
-            oauth2_token=config.oauth2_token,
+            password=config.password.get_secret_value(),
+            oauth2_token=config.oauth2_token.get_secret_value(),
         )
         self._token_provider = build_token_provider(config)
 

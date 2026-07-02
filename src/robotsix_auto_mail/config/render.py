@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 
+from pydantic import SecretStr
+
 from robotsix_auto_mail.config.model import MailAccount, MailConfig
 
 
@@ -44,7 +46,9 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
     top-level sections by :func:`render_accounts_yaml`.
     """
     cfg = account.config
-    defaults = MailConfig(imap_host="", smtp_host="", username="", password="")
+    defaults = MailConfig(
+        imap_host="", smtp_host="", username="", password=SecretStr("")
+    )
     item = indent + "  "
     lines = [f"{indent}- id: {_yaml_scalar(account.account_id)}"]
     if account.label:
@@ -69,14 +73,19 @@ def _render_account_block(account: MailAccount, indent: str) -> list[str]:
         # This function intentionally writes secrets to a YAML config file
         # that is stored with restrictive permissions (0600).
         # lgtm[py/clear-text-storage-sensitive-data]
-        lines.append(f"{item}  password: {_yaml_scalar(cfg.password)}")
-    if cfg.oauth2_token:
-        lines.append(f"{item}  oauth2_token: {_yaml_scalar(cfg.oauth2_token)}")
+        lines.append(
+            f"{item}  password: {_yaml_scalar(cfg.password.get_secret_value())}"
+        )
+    if cfg.oauth2_token.get_secret_value():
+        lines.append(
+            f"{item}  oauth2_token: {_yaml_scalar(cfg.oauth2_token.get_secret_value())}"
+        )
     if cfg.oauth2_client_id:
         lines.append(f"{item}  oauth2_client_id: {_yaml_scalar(cfg.oauth2_client_id)}")
-    if cfg.oauth2_client_secret:
+    if cfg.oauth2_client_secret.get_secret_value():
         lines.append(
-            f"{item}  oauth2_client_secret: {_yaml_scalar(cfg.oauth2_client_secret)}"
+            f"{item}  oauth2_client_secret: "
+            f"{_yaml_scalar(cfg.oauth2_client_secret.get_secret_value())}"
         )
     lines.append(f"{item}store:")
     lines.append(f"{item}  path: {_yaml_scalar(cfg.db_path)}")
@@ -120,13 +129,19 @@ def render_accounts_yaml(
     # Emit top-level llm: / langfuse: sections using the first account's
     # config values (they are identical across all accounts by construction).
     representative = accounts[0].config
-    if representative.llm_api_key or representative.llm_provider_model:
+    if (
+        representative.llm_api_key.get_secret_value()
+        or representative.llm_provider_model
+    ):
         lines.append("llm:")
-        if representative.llm_api_key:
+        if representative.llm_api_key.get_secret_value():
             # Writing the API key to a YAML config file is intentional;
             # the file is stored with restrictive permissions (0600).
             # lgtm[py/clear-text-storage-sensitive-data]
-            lines.append(f"  api_key: {_yaml_scalar(representative.llm_api_key)}")
+            lines.append(
+                "  api_key: "
+                f"{_yaml_scalar(representative.llm_api_key.get_secret_value())}"
+            )
         if representative.llm_provider_model:
             lines.append(
                 f"  provider_model: {_yaml_scalar(representative.llm_provider_model)}"
@@ -134,7 +149,7 @@ def render_accounts_yaml(
         lines.append("")
     if (
         representative.langfuse_public_key
-        or representative.langfuse_secret_key
+        or representative.langfuse_secret_key.get_secret_value()
         or representative.langfuse_base_url
     ):
         lines.append("langfuse:")
@@ -145,7 +160,8 @@ def render_accounts_yaml(
         # the file is stored with restrictive permissions (0600).
         # lgtm[py/clear-text-storage-sensitive-data]
         lines.append(
-            f"  secret_key: {_yaml_scalar(representative.langfuse_secret_key)}"
+            "  secret_key: "
+            f"{_yaml_scalar(representative.langfuse_secret_key.get_secret_value())}"
         )
         lines.append(f"  base_url: {_yaml_scalar(representative.langfuse_base_url)}")
         lines.append("")

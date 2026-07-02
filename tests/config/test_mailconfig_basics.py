@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import dataclasses
-
 import pytest
+from pydantic import ValidationError
 
 from robotsix_auto_mail.config import MailConfig
 
@@ -48,7 +47,7 @@ def test_mailconfig_is_immutable() -> None:
         username="u",
         password="p",
     )
-    with pytest.raises(dataclasses.FrozenInstanceError):
+    with pytest.raises(ValidationError):
         cfg.imap_host = "other"  # type: ignore[misc]
 
 
@@ -62,7 +61,7 @@ def test_mailconfig_repr_redacts_password() -> None:
     )
     r = repr(cfg)
     assert "s3cret" not in r
-    assert "<redacted>" in r
+    assert "'**********'" in r
 
 
 def test_mailconfig_str_redacts_password() -> None:
@@ -75,7 +74,7 @@ def test_mailconfig_str_redacts_password() -> None:
     )
     s = str(cfg)
     assert "s3cret" not in s
-    assert "<redacted>" in s
+    assert "'**********'" in s
 
 
 def test_mailconfig_langfuse_defaults_empty() -> None:
@@ -87,7 +86,7 @@ def test_mailconfig_langfuse_defaults_empty() -> None:
         password="p",
     )
     assert cfg.langfuse_public_key == ""
-    assert cfg.langfuse_secret_key == ""
+    assert cfg.langfuse_secret_key.get_secret_value() == ""
     assert cfg.langfuse_base_url == ""
 
 
@@ -102,4 +101,4 @@ def test_mailconfig_repr_redacts_langfuse_secret_key() -> None:
     )
     r = repr(cfg)
     assert "sk-lf-supersecret" not in r
-    assert "<redacted>" in r
+    assert "'**********'" in r

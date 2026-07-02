@@ -58,8 +58,8 @@ def test_mailaccount_accepts_valid_id() -> None:
 def _accounts() -> MailAccountsConfig:
     return MailAccountsConfig(
         accounts=(
-            MailAccount("personal", _cfg(db_path=".data/p.db")),
-            MailAccount("work", _cfg(db_path=".data/w.db")),
+            MailAccount(account_id="personal", config=_cfg(db_path=".data/p.db")),
+            MailAccount(account_id="work", config=_cfg(db_path=".data/w.db")),
         ),
         default_account_id="personal",
     )
@@ -90,8 +90,8 @@ def test_accounts_duplicate_id_raises() -> None:
     with pytest.raises(ConfigurationError):
         MailAccountsConfig(
             accounts=(
-                MailAccount("dup", _cfg(db_path=".data/a.db")),
-                MailAccount("dup", _cfg(db_path=".data/b.db")),
+                MailAccount(account_id="dup", config=_cfg(db_path=".data/a.db")),
+                MailAccount(account_id="dup", config=_cfg(db_path=".data/b.db")),
             ),
             default_account_id="dup",
         )
@@ -101,8 +101,8 @@ def test_accounts_duplicate_db_path_raises() -> None:
     with pytest.raises(ConfigurationError):
         MailAccountsConfig(
             accounts=(
-                MailAccount("a", _cfg(db_path=".data/same.db")),
-                MailAccount("b", _cfg(db_path=".data/same.db")),
+                MailAccount(account_id="a", config=_cfg(db_path=".data/same.db")),
+                MailAccount(account_id="b", config=_cfg(db_path=".data/same.db")),
             ),
             default_account_id="a",
         )
@@ -111,7 +111,7 @@ def test_accounts_duplicate_db_path_raises() -> None:
 def test_accounts_unknown_default_raises() -> None:
     with pytest.raises(ConfigurationError):
         MailAccountsConfig(
-            accounts=(MailAccount("a", _cfg(db_path=".data/a.db")),),
+            accounts=(MailAccount(account_id="a", config=_cfg(db_path=".data/a.db")),),
             default_account_id="nope",
         )
 
@@ -163,8 +163,8 @@ def test_from_yaml_multi_account_example() -> None:
 def test_render_accounts_yaml_microsoft_oauth2_block() -> None:
     """A Microsoft OAuth2 account emits oauth2_provider/tenant and NO password."""
     account = MailAccount(
-        "office365",
-        _cfg(
+        account_id="office365",
+        config=_cfg(
             imap_host="outlook.office365.com",
             smtp_host="smtp.office365.com",
             username="me@contoso.com",
@@ -183,8 +183,8 @@ def test_render_accounts_yaml_microsoft_oauth2_block() -> None:
 def test_render_accounts_yaml_microsoft_round_trips(tmp_path: Path) -> None:
     """The rendered Microsoft OAuth2 account parses back via from_yaml()."""
     account = MailAccount(
-        "office365",
-        _cfg(
+        account_id="office365",
+        config=_cfg(
             imap_host="outlook.office365.com",
             smtp_host="smtp.office365.com",
             username="me@contoso.com",
@@ -200,12 +200,12 @@ def test_render_accounts_yaml_microsoft_round_trips(tmp_path: Path) -> None:
     cfg = parsed.get("office365").config
     assert cfg.oauth2_provider == "microsoft"
     assert cfg.oauth2_tenant == "organizations"
-    assert cfg.password == ""
+    assert cfg.password.get_secret_value() == ""
 
 
 def test_render_accounts_yaml_password_block_unchanged() -> None:
     """A non-OAuth2 account still emits a password line and no oauth2 fields."""
-    account = MailAccount("p", _cfg(db_path=".data/p/mail.db"))
+    account = MailAccount(account_id="p", config=_cfg(db_path=".data/p/mail.db"))
     text = render_accounts_yaml([account], "p")
     assert "password:" in text
     assert "oauth2_provider" not in text
@@ -395,9 +395,9 @@ accounts:
 """
     )
     accounts = MailAccountsConfig.from_yaml(yaml_file)
-    assert accounts.get("a").config.llm_api_key == "sk-global"
+    assert accounts.get("a").config.llm_api_key.get_secret_value() == "sk-global"
     assert accounts.get("a").config.llm_provider_model == ""
-    assert accounts.get("b").config.llm_api_key == "sk-global"
+    assert accounts.get("b").config.llm_api_key.get_secret_value() == "sk-global"
     assert accounts.get("b").config.llm_provider_model == ""
 
 
@@ -434,11 +434,11 @@ accounts:
     accounts = MailAccountsConfig.from_yaml(yaml_file)
     cfg_a = accounts.get("a").config
     assert cfg_a.langfuse_public_key == "pk-lf-global"
-    assert cfg_a.langfuse_secret_key == "sk-lf-global"
+    assert cfg_a.langfuse_secret_key.get_secret_value() == "sk-lf-global"
     assert cfg_a.langfuse_base_url == "https://langfuse.example.com"
     cfg_b = accounts.get("b").config
     assert cfg_b.langfuse_public_key == "pk-lf-global"
-    assert cfg_b.langfuse_secret_key == "sk-lf-global"
+    assert cfg_b.langfuse_secret_key.get_secret_value() == "sk-lf-global"
     assert cfg_b.langfuse_base_url == "https://langfuse.example.com"
 
 
@@ -463,7 +463,7 @@ accounts:
 """
     )
     accounts = MailAccountsConfig.from_yaml(yaml_file)
-    assert accounts.get("a").config.llm_api_key == "sk-global"
+    assert accounts.get("a").config.llm_api_key.get_secret_value() == "sk-global"
 
 
 def test_from_yaml_per_account_llm_rejected(tmp_path: Path) -> None:
@@ -552,8 +552,8 @@ accounts:
 def test_render_accounts_yaml_emits_top_level_llm() -> None:
     """render_accounts_yaml emits a top-level llm: section, not per-account."""
     account = MailAccount(
-        "alpha",
-        _cfg(
+        account_id="alpha",
+        config=_cfg(
             llm_api_key="sk-test",
             llm_provider_model="",
             db_path=".data/alpha/mail.db",
@@ -574,8 +574,8 @@ def test_render_accounts_yaml_emits_top_level_llm() -> None:
 def test_render_accounts_yaml_emits_top_level_langfuse() -> None:
     """render_accounts_yaml emits a top-level langfuse: section, not per-account."""
     account = MailAccount(
-        "alpha",
-        _cfg(
+        account_id="alpha",
+        config=_cfg(
             langfuse_public_key="pk-lf-test",
             langfuse_secret_key="sk-lf-test",
             langfuse_base_url="https://cloud.langfuse.com",
@@ -596,14 +596,18 @@ def test_render_accounts_yaml_emits_top_level_langfuse() -> None:
 def test_render_accounts_yaml_omits_llm_when_defaults() -> None:
     """render_accounts_yaml does NOT emit llm: when api_key is empty and
     provider is the default."""
-    account = MailAccount("alpha", _cfg(db_path=".data/alpha/mail.db"))
+    account = MailAccount(
+        account_id="alpha", config=_cfg(db_path=".data/alpha/mail.db")
+    )
     text = render_accounts_yaml([account], "alpha")
     assert "llm:" not in text
 
 
 def test_render_accounts_yaml_omits_langfuse_when_all_empty() -> None:
     """render_accounts_yaml does NOT emit langfuse: when all fields are empty."""
-    account = MailAccount("alpha", _cfg(db_path=".data/alpha/mail.db"))
+    account = MailAccount(
+        account_id="alpha", config=_cfg(db_path=".data/alpha/mail.db")
+    )
     text = render_accounts_yaml([account], "alpha")
     assert "langfuse:" not in text
 
@@ -611,8 +615,8 @@ def test_render_accounts_yaml_omits_langfuse_when_all_empty() -> None:
 def test_render_accounts_yaml_emits_llm_when_only_provider_non_default() -> None:
     """llm: section emitted even with empty api_key if provider differs from default."""
     account = MailAccount(
-        "alpha",
-        _cfg(
+        account_id="alpha",
+        config=_cfg(
             llm_provider_model="claude-sdk",
             db_path=".data/alpha/mail.db",
         ),

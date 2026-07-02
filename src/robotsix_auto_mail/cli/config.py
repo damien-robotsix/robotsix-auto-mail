@@ -15,6 +15,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pydantic import SecretStr
+
 from robotsix_auto_mail.config import (
     MailAccount,
     MailAccountsConfig,
@@ -154,7 +156,7 @@ def _prompt_hosts(config: MailConfig, result: _VerifyResult) -> MailConfig | Non
         return None
     if not changed:
         return None
-    return dataclasses.replace(config, imap_host=imap_host, smtp_host=smtp_host)
+    return config.model_copy(update={"imap_host": imap_host, "smtp_host": smtp_host})
 
 
 def _account_id_from_email(email: str) -> str:
@@ -389,7 +391,9 @@ def _refine_with_llm(
     if refined is None:
         return _RefineOutcome()
     sys.stderr.write(f"  LLM: imap={refined.imap_host} smtp={refined.smtp_host}\n")
-    return _RefineOutcome(config=build(refined, config.password), provider=refined)
+    return _RefineOutcome(
+        config=build(refined, config.password.get_secret_value()), provider=refined
+    )
 
 
 def _refine_manual(config: MailConfig, result: _VerifyResult) -> _RefineOutcome:
@@ -468,26 +472,29 @@ def _verify_and_refine(
 
     def _build(prov: MailProvider, pw: str | None) -> MailConfig:
         detected = provider_to_config(prov, email, password=pw or "")
-        detected = dataclasses.replace(detected, db_path=f".data/{account_id}/mail.db")
+        detected = detected.model_copy(
+            update={"db_path": f".data/{account_id}/mail.db"}
+        )
         if app_password and detected.oauth2_provider:
             # Clear MSAL provider so IMAP/SMTP use plain password auth.
-            detected = dataclasses.replace(
-                detected, oauth2_provider="", password=pw or ""
+            detected = detected.model_copy(
+                update={"oauth2_provider": "", "password": SecretStr(pw or "")}
             )
         if existing_account is not None:
             # Overwrite mode: overlay only the six detected transport fields
             # and the supplied password onto the existing config. Everything
             # else (db_path, imap_folder, archive_*, triage_*, calendar_*,
             # oauth2_*, langfuse_*, llm_*, ingest_*) is preserved as-is.
-            result = dataclasses.replace(
-                existing_account.config,
-                imap_host=detected.imap_host,
-                imap_port=detected.imap_port,
-                imap_tls_mode=detected.imap_tls_mode,
-                smtp_host=detected.smtp_host,
-                smtp_port=detected.smtp_port,
-                smtp_tls_mode=detected.smtp_tls_mode,
-                password=detected.password,
+            result = existing_account.config.model_copy(
+                update={
+                    "imap_host": detected.imap_host,
+                    "imap_port": detected.imap_port,
+                    "imap_tls_mode": detected.imap_tls_mode,
+                    "smtp_host": detected.smtp_host,
+                    "smtp_port": detected.smtp_port,
+                    "smtp_tls_mode": detected.smtp_tls_mode,
+                    "password": SecretStr(detected.password.get_secret_value()),
+                }
             )
         else:
             result = detected
@@ -496,24 +503,27 @@ def _verify_and_refine(
             # - non-overwrite: detected was already cleared, harmless re-set
             # - overwrite: the overlay above preserves existing oauth2_provider
             #   so this explicitly clears it on the final result
-            result = dataclasses.replace(result, oauth2_provider="")
+            result = result.model_copy(update={"oauth2_provider": ""})
         # Overlay explicit CLI-supplied oauth2 fields in both modes so
         # --oauth2-client-id / --oauth2-tenant are honoured in --overwrite.
         if oauth2_client_id or oauth2_tenant:
-            result = dataclasses.replace(
-                result,
-                oauth2_client_id=oauth2_client_id or result.oauth2_client_id,
-                oauth2_tenant=oauth2_tenant or result.oauth2_tenant,
+            result = result.model_copy(
+                update={
+                    "oauth2_client_id": oauth2_client_id or result.oauth2_client_id,
+                    "oauth2_tenant": oauth2_tenant or result.oauth2_tenant,
+                }
             )
 
         # Persist the resolved LLM key and model into the written config so
         # the file is self-contained.  In overwrite mode, existing_account.config
         # already carries the file's values; or fills in when the file was
         # sparse/new.
-        if api_key and not result.llm_api_key:
-            result = dataclasses.replace(result, llm_api_key=api_key)
+        if api_key and not result.llm_api_key.get_secret_value():
+            result = result.model_copy(update={"llm_api_key": SecretStr(api_key)})
         if llm_provider_model and not result.llm_provider_model:
-            result = dataclasses.replace(result, llm_provider_model=llm_provider_model)
+            result = result.model_copy(
+                update={"llm_provider_model": llm_provider_model}
+            )
 
         return result
 
@@ -554,7 +564,7 @@ def _verify_and_refine(
             sys.stderr.write(f"Error: device-code login failed: {exc}\n")
             return 1
     else:
-        if not config.password:
+        if not config.password.get_secret_value():
             sys.stderr.write(
                 f"No password provided — add it to {output_path} "
                 "(or set MAIL_PASSWORD), then run `probe` to verify.\n"

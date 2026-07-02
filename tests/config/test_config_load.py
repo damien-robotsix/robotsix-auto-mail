@@ -56,7 +56,7 @@ def test_load_reads_yaml_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     assert cfg.imap_host == "imap.file.com"
     assert cfg.smtp_host == "smtp.file.com"
     assert cfg.username == "file_user"
-    assert cfg.password == "file_pass"
+    assert cfg.password.get_secret_value() == "file_pass"
 
 
 def test_load_missing_config_file(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -136,5 +136,5 @@ accounts:
 """
     )
     cfg = MailAccountsConfig.from_yaml(yaml_file).default.config
-    assert cfg.password == ""
+    assert cfg.password.get_secret_value() == ""
     assert cfg.username == "user@example.com"

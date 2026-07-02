@@ -27,8 +27,7 @@ import pydantic
 
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
-    _FIELD_SPECS,
-    _REQUIRED,
+    MailConfig,
 )
 from robotsix_auto_mail.config.pydantic_utils import validate_confidence
 from robotsix_auto_mail.db import get_watermark, set_watermark
@@ -38,7 +37,7 @@ from robotsix_auto_mail.db import get_watermark, set_watermark
 # ---------------------------------------------------------------------------
 
 #: Config surfaces (repo-relative) the agent compares, besides the
-#: ``MailConfig`` dataclass which is rendered from ``_FIELD_SPECS``.
+#: ``MailConfig`` model which is rendered from ``MailConfig.model_fields``.
 _SURFACE_FILES: tuple[str, ...] = (
     "docs/config/mail.local.example.yaml",
     "docs/connecting.md",
@@ -219,13 +218,12 @@ def _default_repo_root() -> Path:
 
 
 def _render_mailconfig_surface() -> str:
-    """Render the ``MailConfig`` dataclass surface from ``_FIELD_SPECS``."""
-    lines = ["MailConfig fields (field | yaml_path | kind | default):"]
-    for spec in _FIELD_SPECS:
-        default = "<required>" if spec.default is _REQUIRED else repr(spec.default)
-        lines.append(
-            f"- {spec.field_name} | {spec.yaml_path} | {spec.kind} | {default}"
-        )
+    """Render the ``MailConfig`` surface from ``MailConfig.model_fields``."""
+    lines = ["MailConfig fields (field | default):"]
+    for field_name, field_info in MailConfig.model_fields.items():
+        default = field_info.default
+        default_repr = "<required>" if default is ... else repr(default)
+        lines.append(f"- {field_name} | {default_repr}")
     return "\n".join(lines)
 
 

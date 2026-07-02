@@ -2,7 +2,7 @@
 """Check that config artifacts are in sync with ``MailConfig``.
 
 Cross-references the canonical ``MailConfig`` field list (obtained via
-``dataclasses.fields()``) against two user-facing artifacts:
+``MailConfig.model_fields``) against two user-facing artifacts:
 
 1. ``docs/config/mail.local.example.yaml`` (the single, canonical multi-account
    example)
@@ -24,7 +24,6 @@ Exits 0 when in sync, 1 when drift is found, 2 on a script-level error.
 
 from __future__ import annotations
 
-import dataclasses
 import re
 import sys
 import tempfile
@@ -32,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic.fields import PydanticUndefined
 
 # ---------------------------------------------------------------------------
 # Make src/ importable both when run directly and when imported by tests.
@@ -105,7 +105,7 @@ _PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
 
 def _self_consistency_check() -> None:
     """Verify the YAML mapping dict is 1:1 with ``MailConfig`` fields."""
-    fields = {f.name for f in dataclasses.fields(MailConfig)}
+    fields = set(MailConfig.model_fields.keys())
 
     for field_name in fields:
         if field_name not in FIELD_TO_YAML:
@@ -160,13 +160,25 @@ def _get_nested(data: dict[str, Any], path: str) -> Any:
     return data
 
 
-def _field_default(field: dataclasses.Field[Any]) -> Any:
-    """Return *field*'s default, or ``dataclasses.MISSING``."""
-    if field.default is not dataclasses.MISSING:
-        return field.default
-    if field.default_factory is not dataclasses.MISSING:
-        return field.default_factory()
-    return dataclasses.MISSING
+def _field_default(field_info: Any) -> Any:
+    """Return *field_info*'s default, or ``_MISSING_SENTINEL``.
+
+    ``SecretStr`` defaults are unwrapped to plain strings so they can be
+    compared with YAML / doc-table values.
+    """
+    from pydantic import SecretStr as _SecretStr
+
+    if field_info.default is not PydanticUndefined:
+        default = field_info.default
+        if isinstance(default, _SecretStr):
+            return default.get_secret_value()
+        return default
+    if field_info.default_factory is not None:
+        default = field_info.default_factory()
+        if isinstance(default, _SecretStr):
+            return default.get_secret_value()
+        return default
+    return _MISSING_SENTINEL
 
 
 def _values_match(
@@ -189,7 +201,7 @@ def _values_match(
         return True
 
     # Required fields (MISSING default) — no comparison performed.
-    if mailconfig_default is dataclasses.MISSING:
+    if mailconfig_default is _MISSING_SENTINEL:
         return True
 
     # Direct match.
@@ -337,8 +349,8 @@ def check_yaml_example(
 
     # -- check each MailConfig field ----------------------------------------
     field_defaults: dict[str, Any] = {}
-    for f in dataclasses.fields(MailConfig):
-        field_defaults[f.name] = _field_default(f)
+    for field_name, field_info in MailConfig.model_fields.items():
+        field_defaults[field_name] = _field_default(field_info)
 
     for field_name, ypath in FIELD_TO_YAML.items():
         has_structured = ypath in structured
@@ -356,7 +368,7 @@ def check_yaml_example(
             continue
 
         default = field_defaults[field_name]
-        if default is dataclasses.MISSING:
+        if default is _MISSING_SENTINEL:
             continue  # required field — presence check was enough
         if ypath in _SKIP_DEFAULT_CHECK:
             continue  # per-account value; presence check was enough
@@ -468,11 +480,11 @@ def _strip_backticks(s: str) -> str:
 def _normalise_doc_default(raw: str) -> Any:
     """Convert a documented default value to a Python object.
 
-    Returns ``dataclasses.MISSING`` when the doc says "-" (none).
+    Returns ``_MISSING_SENTINEL`` when the doc says "-" (none).
     """
     stripped = _strip_backticks(raw.strip())
     if stripped in ("–", "—", "-", "N/A", ""):  # noqa: RUF001
-        return dataclasses.MISSING
+        return _MISSING_SENTINEL
     # YAML-parse: bare numbers, quoted strings, etc.
     try:
         return yaml.safe_load(stripped)
@@ -503,8 +515,8 @@ def check_docs_connecting(
         )
 
     field_defaults: dict[str, Any] = {}
-    for f in dataclasses.fields(MailConfig):
-        field_defaults[f.name] = _field_default(f)
+    for field_name, field_info in MailConfig.model_fields.items():
+        field_defaults[field_name] = _field_default(field_info)
 
     # -- YAML keys table ----------------------------------------------------
 
@@ -529,14 +541,14 @@ def check_docs_connecting(
             continue
 
         default = field_defaults[field_name]
-        if default is dataclasses.MISSING:
+        if default is _MISSING_SENTINEL:
             continue
 
         row = yaml_table[ypath]
         doc_default_raw = row.get("Default", "")
         doc_default = _normalise_doc_default(doc_default_raw)
 
-        if doc_default is dataclasses.MISSING:
+        if doc_default is _MISSING_SENTINEL:
             # Doc says "-" → no default documented.  Treat an
             # empty-string MailConfig default as equivalent ("no value").
             if default == "":
