@@ -2,7 +2,7 @@
 
 robotsix-auto-mail consumes several first-party packages from git
 (`robotsix-agent-comm`, `robotsix-board`, `robotsix-llmio`,
-`robotsix-yaml-config`, `robotsix-modules`) alongside its PyPI
+`robotsix-config`, `robotsix-modules`) alongside its PyPI
 dependencies. `robotsix-agent-comm` backs the `calendar` / `broker`
 extras. To keep builds reproducible and prevent silent breakage, we
 follow a **pin + bump** model.
