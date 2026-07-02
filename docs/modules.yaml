@@ -235,6 +235,7 @@ modules:
       - tests/pipeline/test_parser.py
       - tests/pipeline/test_parser_properties.py
       - tests/pipeline/test_reconcile.py
+      - tests/pipeline/test_uidvalidity.py
 
   - id: smtp
     description: >-

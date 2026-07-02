@@ -136,7 +136,7 @@ def test_ingest_all_accounts_isolates_records_and_watermark(
 
     with (
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
-        mock.patch("robotsix_auto_mail.cli.ImapClient"),
+        mock.patch("robotsix_auto_mail.cli.ImapClient") as mock_imap,
         mock.patch(
             "robotsix_auto_mail.pipeline.fetch_new_messages", side_effect=fake_fetch
         ),
@@ -145,6 +145,10 @@ def test_ingest_all_accounts_isolates_records_and_watermark(
             return_value=(0, 0),
         ),
     ):
+        # The UIDVALIDITY reconcile step selects the folder; give the mocked
+        # client a parseable (count, uidvalidity) so it doesn't trigger a reset.
+        _client = mock_imap.return_value.__enter__.return_value
+        _client.select_folder_and_uidvalidity.return_value = (0, None)
         rc = main(["ingest", "--all-accounts"])
 
     assert rc == 0
@@ -249,7 +253,7 @@ def test_single_account_ingest_is_unchanged(
 
     with (
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
-        mock.patch("robotsix_auto_mail.cli.ImapClient"),
+        mock.patch("robotsix_auto_mail.cli.ImapClient") as mock_imap,
         mock.patch(
             "robotsix_auto_mail.pipeline.fetch_new_messages", side_effect=fake_fetch
         ),
@@ -258,6 +262,10 @@ def test_single_account_ingest_is_unchanged(
             return_value=(0, 0),
         ),
     ):
+        # The UIDVALIDITY reconcile step selects the folder; give the mocked
+        # client a parseable (count, uidvalidity) so it doesn't trigger a reset.
+        _client = mock_imap.return_value.__enter__.return_value
+        _client.select_folder_and_uidvalidity.return_value = (0, None)
         rc = main(["ingest"])
 
     assert rc == 0

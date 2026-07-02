@@ -15,6 +15,7 @@ import time
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
+    delete_watermark,
     get_watermark,
     insert_record,
     record_exists,
@@ -42,6 +43,50 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 _WATERMARK_KEY = "imap_uid"
+_UIDVALIDITY_KEY = "imap_uidvalidity"
+
+
+def _reconcile_uidvalidity(
+    conn: sqlite3.Connection,
+    client: ImapClient,
+    config: MailConfig,
+    *,
+    dry_run: bool = False,
+) -> int | None:
+    """Detect a server ``UIDVALIDITY`` change and reset the stale UID watermark.
+
+    IMAP UIDs are only monotonic *within a given ``UIDVALIDITY``* (RFC 3501
+    §2.3.1.1). When the server renumbers UIDs — mailbox recreated/restored,
+    some Exchange/Dovecot maintenance — the stored ``"imap_uid"`` watermark
+    points into the old namespace, so the incremental search ``UID <wm>:*``
+    silently returns nothing and **all new mail stops being ingested**.
+
+    This selects the folder, reads its current ``UIDVALIDITY``, and — when it
+    differs from the value stored on the previous run — deletes the
+    ``"imap_uid"`` watermark so :func:`fetch_new_messages` falls back to a full
+    ``ALL`` scan (duplicates are dropped idempotently downstream by the
+    ``message_id`` uniqueness check). Returns the current ``UIDVALIDITY`` so
+    the caller can persist it alongside the new UID watermark once ingest
+    succeeds.
+
+    No DB writes occur on a dry run, or when the server does not advertise a
+    parseable ``UIDVALIDITY`` (``None`` returned — the caller then leaves both
+    watermarks untouched).
+    """
+    _count, current = client.select_folder_and_uidvalidity(config.imap_folder)
+    if current is None:
+        return None
+    stored = get_watermark(conn, _UIDVALIDITY_KEY)
+    if stored is not None and stored != str(current) and not dry_run:
+        _logger.warning(
+            "imap_uidvalidity_changed old=%s new=%s folder=%s — clearing UID "
+            "watermark to re-scan the mailbox",
+            stored,
+            current,
+            config.imap_folder,
+        )
+        delete_watermark(conn, _WATERMARK_KEY)
+    return current
 
 
 def fetch_new_messages(
@@ -326,6 +371,14 @@ def ingest_mail(
         except Exception:
             _logger.exception("archive_setup_failed")
 
+    # 0.6 UIDVALIDITY guard: if the server renumbered UIDs, the stored
+    #     "imap_uid" watermark is meaningless — reset it so this run re-scans
+    #     the folder (dedup by message_id keeps re-ingestion idempotent).
+    #     Returns the current UIDVALIDITY to persist once ingest succeeds.
+    current_uidvalidity = _reconcile_uidvalidity(
+        db_conn, imap_client, config, dry_run=dry_run
+    )
+
     # 1. Fetch raw messages (read-only on DB).
     messages = fetch_new_messages(db_conn, imap_client, config)
     total_fetched = len(messages)
@@ -339,10 +392,15 @@ def ingest_mail(
         db_conn, messages, dry_run=dry_run, source_folder=config.imap_folder
     )
 
-    # 3. Advance watermark to the highest UID seen (skip in dry-run).
+    # 3. Advance watermark to the highest UID seen, and persist the current
+    #    UIDVALIDITY alongside it so the pair stays consistent (skip in
+    #    dry-run).
     max_uid = max((uid for uid, _ in messages), default=0)
-    if max_uid > 0 and not dry_run:
-        update_watermark(db_conn, max_uid)
+    if not dry_run:
+        if max_uid > 0:
+            update_watermark(db_conn, max_uid)
+        if current_uidvalidity is not None:
+            set_watermark(db_conn, _UIDVALIDITY_KEY, str(current_uidvalidity))
 
     # 4. Triage newly-stored inbox mail (best-effort; skipped in dry-run
     #    and when disabled via config).  Only undecided inbox records are
