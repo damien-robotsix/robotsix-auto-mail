@@ -2,8 +2,7 @@
 
 `robotsix-auto-mail` is a dedicated module for automated email processing:
 it fetches messages from an IMAP inbox, parses them into structured records,
-stores them idempotently in a local SQLite database, and exposes a read-only
-kanban board for triaging ingested mail — removing manual email steps from
+stores them idempotently in a local SQLite database, and exposes a kanban board for reviewing and triaging ingested mail — removing manual email steps from
 automated workflows.
 
 ## Start here
