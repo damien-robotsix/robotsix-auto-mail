@@ -618,6 +618,19 @@ def test_ingest_dry_run_skips_duplicates(
     # Watermark untouched.
     assert get_watermark(conn, "imap_uid") is None
 
+    # Existing row must be byte-for-byte unchanged — dry run must not UPDATE.
+    row = conn.execute(
+        "SELECT source_folder, imap_uid FROM mail_records WHERE message_id = ?",
+        ("<existing@x>",),
+    ).fetchone()
+    assert row is not None
+    assert (
+        row[0] == "INBOX"
+    )  # source_folder: default from MailRecord, must not be overwritten
+    assert (
+        row[1] is None
+    )  # imap_uid: was None at insert; must not be overwritten to uid=1
+
 
 @mock.patch("robotsix_auto_mail.pipeline.fetch_new_messages")
 @mock.patch("robotsix_auto_mail.pipeline.parse_message")

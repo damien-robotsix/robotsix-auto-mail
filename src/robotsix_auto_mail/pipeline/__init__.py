@@ -206,14 +206,16 @@ def _process_messages(
             # When a duplicate is found, refresh the existing row's
             # source_folder + UID so legacy mails re-ingested from a
             # named folder become actionable for archive/delete.
-            from robotsix_auto_mail.db import update_record_source
+            # Suppress the write on dry runs — no commits must occur.
+            if not dry_run:
+                from robotsix_auto_mail.db import update_record_source
 
-            update_record_source(
-                db_conn,
-                record.message_id,
-                source_folder=source_folder,
-                imap_uid=uid,
-            )
+                update_record_source(
+                    db_conn,
+                    record.message_id,
+                    source_folder=source_folder,
+                    imap_uid=uid,
+                )
             skipped += 1
             _logger.debug(
                 "message_processing uid=%s message_id=%s action=skipped",
