@@ -63,7 +63,10 @@ services:
     image: ghcr.io/damien-robotsix/robotsix-auto-mail:${IMAGE_TAG:-main}
     # Always serve on 8080 inside the container so the image healthcheck
     # (GET :8080/healthz) passes; BOARD_PORT only remaps the host side.
-    command: serve --port 8080
+    # --host 0.0.0.0 is required: `serve` defaults to 127.0.0.1, which is
+    # unreachable from other containers (e.g. the central-deploy gateway
+    # proxying mail.<domain> → this container) and 502s every request.
+    command: serve --host 0.0.0.0 --port 8080
     labels:
       robotsix.deploy.primary: "true"
     restart: unless-stopped
