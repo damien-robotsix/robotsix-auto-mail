@@ -20,6 +20,7 @@ modules:
       - src/robotsix_auto_mail/format.py
       - src/robotsix_auto_mail/health.py
       - tests/core/test_format.py
+      - tests/core/test_health.py
       - tests/core/test_llm_agent.py
       - pyproject.toml
       - uv.lock
