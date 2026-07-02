@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Pin first-party `[tool.uv.sources]` git dependencies to commit SHAs instead of `rev = "main"` (agent-comm, board, modules, and the pre-rename robotsix-yaml-config), so a lock refresh can't silently drift or break resolution. Pins are bumped via the automated pin-bump workflow.
 - Add `.robotsix-mill/periodic/triage_boilerplate.yaml` presence file to enable the triage-boilerplate periodic workflow.
 - Fix ``run_config_sync_agent`` docstring to include ``LLM_API_KEY`` env var in the ``api_key`` resolution chain.
 - Fix stale comment in `.robotsix-mill/periodic/config_sync.yaml` — removed reference to non-existent `.env.example`.
