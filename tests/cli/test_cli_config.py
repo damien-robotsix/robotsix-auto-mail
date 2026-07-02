@@ -140,6 +140,7 @@ def test_existing_account_ids_multi_account(tmp_path: Path) -> None:
                             "imap_host": "imap.a.com",
                             "smtp_host": "smtp.a.com",
                             "username": "a@a.com",
+                            "password": "",
                         },
                     },
                     {
@@ -148,6 +149,7 @@ def test_existing_account_ids_multi_account(tmp_path: Path) -> None:
                             "imap_host": "imap.b.com",
                             "smtp_host": "smtp.b.com",
                             "username": "b@b.com",
+                            "password": "",
                         },
                     },
                 ],
