@@ -20,6 +20,11 @@ from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response
 from robotsix_auto_mail.oauth2 import build_token_provider
 
+# Socket timeout (seconds) for SMTP connections, mirroring the IMAP client's
+# _IMAP_TIMEOUT_SECONDS.  stdlib ``smtplib`` opens sockets with NO timeout by
+# default, so a stalled server blocks the sending thread forever.
+_SMTP_TIMEOUT_SECONDS = 60
+
 # Store a reference to SMTPException *before* any mocking can replace
 # smtplib.SMTP and turn ``SMTPException`` into a MagicMock attribute.
 # Using this reference in except clauses keeps tests reliable.
@@ -222,7 +227,9 @@ class SmtpClient(_ProtocolClient):
     def _connect_direct_tls(self) -> None:
         ctx = ssl.create_default_context()
         try:
-            self._smtp = smtplib.SMTP_SSL(self._host, self._port, context=ctx)
+            self._smtp = smtplib.SMTP_SSL(
+                self._host, self._port, context=ctx, timeout=_SMTP_TIMEOUT_SECONDS
+            )
         except (OSError, _SMTP_EXCEPTION) as exc:
             raise SmtpConnectionError(
                 f"Direct-TLS connection to {self._host}:{self._port} failed: {exc}"
@@ -231,7 +238,9 @@ class SmtpClient(_ProtocolClient):
     def _connect_starttls(self) -> None:
         # 1. Plain connection.
         try:
-            self._smtp = smtplib.SMTP(self._host, self._port)
+            self._smtp = smtplib.SMTP(
+                self._host, self._port, timeout=_SMTP_TIMEOUT_SECONDS
+            )
         except (OSError, _SMTP_EXCEPTION) as exc:
             raise SmtpConnectionError(
                 f"Plain connection to {self._host}:{self._port} failed: {exc}"
@@ -262,7 +271,9 @@ class SmtpClient(_ProtocolClient):
 
     def _connect_plain(self) -> None:
         try:
-            self._smtp = smtplib.SMTP(self._host, self._port)
+            self._smtp = smtplib.SMTP(
+                self._host, self._port, timeout=_SMTP_TIMEOUT_SECONDS
+            )
         except (OSError, _SMTP_EXCEPTION) as exc:
             raise SmtpConnectionError(
                 f"Plain (no-TLS) connection to {self._host}:{self._port} failed: {exc}"

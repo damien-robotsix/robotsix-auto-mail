@@ -119,6 +119,7 @@ def test_connect_direct_tls_creates_smtp_ssl(cfg: MailConfig) -> None:
         _, kwargs = patched.call_args
         assert kwargs["context"] is not None
         assert isinstance(kwargs["context"], ssl.SSLContext)
+        assert kwargs["timeout"] == 60
 
     mock_smtp.login.assert_called_once_with("user@example.com", "s3cret")
 
@@ -137,7 +138,7 @@ def test_connect_starttls_creates_plain_smtp_calls_starttls(
         client = SmtpClient(cfg)
         client.connect()
 
-        patched.assert_called_once_with("smtp.example.com", 587)
+        patched.assert_called_once_with("smtp.example.com", 587, timeout=60)
 
     # ehlo before starttls
     assert mock_smtp.ehlo_or_helo_if_needed.call_count == 2
@@ -170,7 +171,7 @@ def test_connect_none_creates_plain_smtp_no_tls(cfg: MailConfig) -> None:
         client = SmtpClient(cfg)
         client.connect()
 
-        patched.assert_called_once_with("smtp.example.com", 25)
+        patched.assert_called_once_with("smtp.example.com", 25, timeout=60)
 
     mock_smtp.starttls.assert_not_called()
     mock_smtp.login.assert_called_once_with("user@example.com", "s3cret")
