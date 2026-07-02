@@ -4,6 +4,9 @@
 
 - Extract `reconcile_records` from `pipeline/__init__.py` into its own module
   at `pipeline/reconcile.py`, re-exported for backward compatibility.
+- Enable the `dockerfile` manager in Renovate configuration so that
+  the `python:3.14-slim` base image digest in the `Dockerfile` is
+  automatically updated when new patch versions are published.
 - Enable `changelog_autofill` periodic runner to automatically insert changelog entries on PR branches where the changelog-enforcer CI check is failing.
 - Split `tests/pipeline/test_pipeline.py` into domain-focused test modules:
   `test_fetch.py`, `test_ingest.py`, `test_reconcile.py`,
