@@ -37,6 +37,17 @@ services:
       - auto-mail-config:/home/mailbot/config
       - auto-mail-data:/home/mailbot/.data
       - auto-mail-logs:/home/mailbot/.mail_log
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request,sys;
+          sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthz', timeout=3).status == 200 else 1)"
+          || exit 1
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     labels:
       robotsix.deploy.primary: "true"
       robotsix.deploy.config-target: "/home/mailbot/config/config.yaml"
@@ -45,5 +56,9 @@ services:
 
 volumes:
   auto-mail-config:
+    labels:
+      robotsix.deploy.stateful: "true"
   auto-mail-data:
+    labels:
+      robotsix.deploy.stateful: "true"
   auto-mail-logs:
