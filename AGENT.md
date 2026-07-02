@@ -68,7 +68,10 @@ endpoint, handler mixin, or logical concern.
 ### The `mail.local.example.yaml` / `MailConfig` pair
 
 Configuration is loaded from a single YAML config file only — there are no
-environment-variable overrides. Every configuration field lives on the
+environment-variable overrides (with two narrow exceptions: ``LLM_API_KEY``
+and ``LLM_PROVIDER_MODEL`` are read as env-var fallbacks for LLM key/model
+resolution, via ``resolve_llm_api_key`` and ``resolve_llm_provider_model`` in
+``config/loader.py``). Every configuration field lives on the
 `MailConfig` frozen dataclass (`src/robotsix_auto_mail/config/model.py`).
 When you **add** a new configuration field you MUST update **both** artifacts:
 
@@ -137,10 +140,11 @@ the helpers promotable into codebases that use different ORMs.
 
 ### Static assets — no inline CSS/JS
 
-Static assets (CSS, JS) live in `src/robotsix_auto_mail/static/` and
+Static assets (CSS, JS) live in `src/robotsix_auto_mail/server/static/` and
 are loaded at module level via `Path(__file__).parent / "static" /
 "<filename>").read_text()`.  Do **not** embed CSS or JS as Python
-string literals in `server.py` — the separation keeps the server module
+string literals in `server/` — the separation keeps the server module
+navigable and allows CSS/JS tooling to apply.
 navigable and allows CSS/JS tooling to apply.
 
 ---
@@ -199,7 +203,7 @@ will reject the PR otherwise.
 ## Documentation conventions
 
 When you add or change a user-facing CLI subcommand in
-`src/robotsix_auto_mail/cli.py`, document it in `docs/connecting.md` in
+`src/robotsix_auto_mail/cli/__init__.py`, document it in `docs/connecting.md` in
 the same PR, following the `config-sync` command section pattern
 (purpose, optional-extra requirements, flags, example invocation, and
 output).

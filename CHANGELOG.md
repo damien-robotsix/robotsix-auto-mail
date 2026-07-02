@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed stale comments and docs: triage-set help now lists all 8 valid actions, db/models.py says "eight kanban columns", ImapClient docstring enumerates all public methods, AGENT.md clarifies LLM_API_KEY/LLM_PROVIDER_MODEL env-var exceptions and fixes stale file paths, CHANGELOG no longer implies MAIL_TRIAGE_RULES_PATH is an env var, and the unused cryptography dev-dep is removed.
 - docs/troubleshooting.md: Fix second row of IMAP/SMTP error table to use YAML dotted-key forms (`imap.tls_mode`/`smtp.tls_mode`) instead of Python dataclass field names.
 - Fix stale documentation: remove "env variables" claim from config-loading description in architecture.md, fix component_agent package reference, update ROADMAP.md to not list already-implemented features as future work, remove non-existent test directories from testing.md, add missing CLI subcommands to modules.yaml, and replace dataclass field names with YAML dotted keys in troubleshooting.md
 - Fixed stale content in README.md and docs/index.md: removed dead links to nonexistent `docs/decisions/` directory, corrected board column count from four to eight, removed phantom "Add to Calendar" feature description, and replaced "read-only" board description with accurate "kanban board for reviewing and triaging mail".
@@ -108,7 +109,7 @@
   ``archive_folder_memory`` watermark ledgers (the per-message archive
   override + LLM-hint caches are unchanged). The file lives at
   ``<db-dir>/triage_rules.md`` per account by default; override it with
-  ``triage.rules_path`` (``MAIL_TRIAGE_RULES_PATH``). Web-board actions update
+  the YAML config key ``triage.rules_path``. Web-board actions update
   the rules in a background thread (never blocking the action); ``triage-set``
   updates inline. Rule maintenance is best-effort and a no-op without a
   resolvable LLM API key.
