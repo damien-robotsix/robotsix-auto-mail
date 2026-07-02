@@ -10,6 +10,9 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
+pytest.importorskip("robotsix_agent_comm")
+
 from robotsix_agent_comm.protocol import ConfigContractError
 
 from robotsix_auto_mail.config.model import MailConfig

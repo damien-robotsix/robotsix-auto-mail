@@ -340,6 +340,35 @@ class TestBuildDetailHtml:
         assert 'name="redirect_to"' in result
         assert "&account=" not in result
 
+    def test_subject_script_injection_escaped_in_title(self):
+        """A subject containing ``</title><script>`` must be escaped in <title>."""
+        record = _make_record(subject="</title><script>alert(1)</script>")
+        decision = TriageDecision(
+            message_id=record.message_id, action="INBOX", source="agent"
+        )
+        fake_conn = mock.Mock()
+
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._constants.init_db", return_value=fake_conn
+            ),
+            mock.patch(
+                "robotsix_auto_mail.db.get_record_by_message_id",
+                return_value=record,
+            ),
+            mock.patch(self._PATCH_TRIG, return_value=decision),
+        ):
+            result = _build_detail_html(":memory:", record.message_id)
+
+        assert result is not None
+        # The raw script tag must NOT appear verbatim in the output.
+        assert "</title><script>alert(1)</script>" not in result
+        # The escaped form must appear in the <title> element.
+        assert (
+            "<title>Mail: &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</title>"
+            in result
+        )
+
     def test_aggregate_sentinel_omits_account(self):
         """``current_account_id="__all__"`` is treated as no-account."""
         record = _make_record()

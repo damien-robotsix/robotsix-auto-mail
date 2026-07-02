@@ -10,6 +10,10 @@ from __future__ import annotations
 import sqlite3
 from unittest import mock
 
+import pytest
+
+pytest.importorskip("robotsix_agent_comm")
+
 from robotsix_auto_mail.config.model import MailConfig
 from robotsix_auto_mail.server._component_agent_responder import (
     ComponentAgentResponder,
