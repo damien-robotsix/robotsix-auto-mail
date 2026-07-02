@@ -227,6 +227,7 @@ modules:
     paths:
       - src/robotsix_auto_mail/pipeline/__init__.py
       - src/robotsix_auto_mail/pipeline/_parse.py
+      - src/robotsix_auto_mail/pipeline/reconcile.py
       - tests/pipeline/_helpers.py
       - tests/pipeline/test_pipeline_cli_ingest.py
       - tests/pipeline/test_fetch.py

@@ -2,6 +2,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Extract `reconcile_records` from `pipeline/__init__.py` into its own module
+  at `pipeline/reconcile.py`, re-exported for backward compatibility.
 - Enable `changelog_autofill` periodic runner to automatically insert changelog entries on PR branches where the changelog-enforcer CI check is failing.
 - Split `tests/pipeline/test_pipeline.py` into domain-focused test modules:
   `test_fetch.py`, `test_ingest.py`, `test_reconcile.py`,
