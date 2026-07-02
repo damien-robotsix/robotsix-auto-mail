@@ -66,7 +66,7 @@ def _cmd_serve(
     initial board view.  Returns 0 on clean shutdown, 1 if the port is
     already in use.
     """
-    from http.server import HTTPServer
+    from http.server import ThreadingHTTPServer
 
     from robotsix_auto_mail.server import make_board_handler
 
@@ -104,7 +104,7 @@ def _cmd_serve(
         # Pass --host 0.0.0.0 to expose it on all interfaces (e.g. Docker
         # where network isolation is enforced at the container level).
         # lgtm[py/clear-text-transmission-sensitive-data]
-        server = HTTPServer((host, port), handler_class)
+        server = ThreadingHTTPServer((host, port), handler_class)
         server.serve_forever()
     except KeyboardInterrupt:
         print("Shutting down.")

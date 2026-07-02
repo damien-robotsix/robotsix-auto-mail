@@ -241,7 +241,7 @@ def test_cmd_serve_starts_http_server(
             return_value=mock_handler_class,
         ),
         mock.patch(
-            "http.server.HTTPServer",
+            "http.server.ThreadingHTTPServer",
             return_value=mock_server,
         ),
         mock.patch(
@@ -284,7 +284,7 @@ def test_cmd_serve_creates_component_responder_when_enabled(
             return_value=mock_handler_class,
         ) as mock_make_handler,
         mock.patch(
-            "http.server.HTTPServer",
+            "http.server.ThreadingHTTPServer",
             return_value=mock_server,
         ),
         mock.patch(
@@ -326,7 +326,7 @@ def test_cmd_serve_no_component_responder_when_disabled(
             return_value=mock_handler_class,
         ) as mock_make_handler,
         mock.patch(
-            "http.server.HTTPServer",
+            "http.server.ThreadingHTTPServer",
             return_value=mock_server,
         ),
         mock.patch(
@@ -361,7 +361,7 @@ def test_cmd_serve_clears_stale_triage_state(
             return_value=mock_handler_class,
         ),
         mock.patch(
-            "http.server.HTTPServer",
+            "http.server.ThreadingHTTPServer",
             return_value=mock_server,
         ),
         mock.patch(
@@ -395,7 +395,7 @@ def test_cmd_serve_starts_reconcile_background_thread(
             return_value=mock_handler_class,
         ),
         mock.patch(
-            "http.server.HTTPServer",
+            "http.server.ThreadingHTTPServer",
             return_value=mock_server,
         ),
         mock.patch(
@@ -431,7 +431,7 @@ def test_cmd_serve_eaddrinuse_returns_1(
             return_value=mock_handler_class,
         ),
         mock.patch(
-            "http.server.HTTPServer",
+            "http.server.ThreadingHTTPServer",
             side_effect=OSError(errno.EADDRINUSE, "Address already in use"),
         ),
         mock.patch(
@@ -464,7 +464,7 @@ def test_cmd_serve_other_oserror_propagates(
             return_value=mock_handler_class,
         ),
         mock.patch(
-            "http.server.HTTPServer",
+            "http.server.ThreadingHTTPServer",
             side_effect=OSError(errno.EACCES, "Permission denied"),
         ),
         mock.patch(
@@ -498,7 +498,7 @@ def test_cmd_serve_keyboard_interrupt_returns_0(
             return_value=mock_handler_class,
         ),
         mock.patch(
-            "http.server.HTTPServer",
+            "http.server.ThreadingHTTPServer",
             return_value=mock_server,
         ),
         mock.patch(
@@ -514,3 +514,54 @@ def test_cmd_serve_keyboard_interrupt_returns_0(
         rc = _cmd_serve(accounts, default_account_id="default", port=8099)
 
     assert rc == 0
+
+
+def test_cmd_serve_instantiates_threading_http_server(
+    cfg: MailConfig,
+) -> None:
+    """_cmd_serve constructs a ``ThreadingHTTPServer``, not plain ``HTTPServer``."""
+    from http.server import HTTPServer, ThreadingHTTPServer
+
+    from robotsix_auto_mail.cli.commands_serve import _cmd_serve
+
+    accounts = _accounts(cfg)
+    mock_handler_class = mock.MagicMock()
+
+    # Capture the server instance created by _cmd_serve so we can assert
+    # its type.  Mock server_bind / server_activate to avoid real socket
+    # operations; mock serve_forever to capture ``self`` and then raise
+    # KeyboardInterrupt for a clean exit.
+    server_instance = None
+
+    def _capture_serve_forever(self: ThreadingHTTPServer) -> None:
+        nonlocal server_instance
+        server_instance = self
+        raise KeyboardInterrupt
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.server.make_board_handler",
+            return_value=mock_handler_class,
+        ),
+        mock.patch.object(HTTPServer, "server_bind"),
+        mock.patch.object(HTTPServer, "server_activate"),
+        mock.patch.object(
+            ThreadingHTTPServer,
+            "serve_forever",
+            side_effect=_capture_serve_forever,
+            autospec=True,
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli.commands_serve._clear_stale_triage_state",
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli.commands_serve._reconcile_loop",
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli.commands_serve.threading.Thread",
+        ),
+    ):
+        _cmd_serve(accounts, default_account_id="default", port=8099)
+
+    assert server_instance is not None
+    assert isinstance(server_instance, ThreadingHTTPServer)
