@@ -99,6 +99,9 @@ jobs:
       - name: Check JavaScript formatting
         run: deno fmt --check src/robotsix_auto_mail/server/static/board-auto-mail.js
 
+      - name: Check CSS formatting
+        run: deno fmt --check src/robotsix_auto_mail/server/static/board.css
+
       - name: Validate pyproject.toml (validate-pyproject)
         run: uvx 'validate-pyproject[all,store]'
 
