@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Fix incorrect install instructions: update `detect` error message to reference `uv sync --extra llm`, correct README Python version claim to 3.14, add explicit non-PyPI note, and remove `robotsix-autoupdate` from `[project.scripts]`.
 - Dry-run ingestion no longer calls ``update_record_source`` on duplicate messages, preventing unintended DB mutations.
 - Security: MSAL OAuth2 token cache file is now created with restrictive permissions (file 0600, directory 0700) so the refresh token is not readable by other local users on multi-user hosts.
 - SMTP client now passes ``timeout=60`` to all three connection constructors

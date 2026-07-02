@@ -10,7 +10,7 @@ Automated email handling — sending, receiving, and routing email through progr
 
 The mail ingestion pipeline is implemented: `robotsix-auto-mail` can fetch messages from an IMAP inbox, parse them into structured records, and store them idempotently in a local SQLite database.  See [docs/ingestion.md](docs/ingestion.md) for the full ingestion model, schema, configuration, and CLI usage.
 
-**Language:** Python 3.12+, chosen for its standard-library support for IMAP, SMTP, MIME parsing, and SQLite — the four core capabilities required by the [ROADMAP](ROADMAP.md). Full rationale is in [ADR 0001](docs/decisions/0001-programming-language.md).
+**Language:** Python 3.14, chosen for its standard-library support for IMAP, SMTP, MIME parsing, and SQLite — the four core capabilities required by the [ROADMAP](ROADMAP.md). Full rationale is in [ADR 0001](docs/decisions/0001-programming-language.md).
 
 ## Directory layout
 
@@ -62,6 +62,27 @@ uv run --frozen mkdocs serve
 ```
 
 Then open http://localhost:8000 in your browser. The site will auto-reload as you edit markdown files in the `docs/` directory.
+
+## Installation
+
+This package is **not published to PyPI** (`pip install robotsix-auto-mail` will not work).
+
+Supported install paths:
+
+```sh
+# From source (requires Python 3.14 and uv)
+git clone https://github.com/damien-robotsix/robotsix-auto-mail.git
+cd robotsix-auto-mail
+uv sync --frozen
+```
+
+Or pull the pre-built container image from GHCR:
+
+```sh
+docker pull ghcr.io/damien-robotsix/robotsix-auto-mail:latest
+```
+
+See [docs/connecting.md](docs/connecting.md) for full configuration instructions.
 
 ## Development
 
