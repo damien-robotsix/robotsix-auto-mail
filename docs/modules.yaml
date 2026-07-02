@@ -405,3 +405,4 @@ modules:
       - .robotsix-mill/periodic/trace_review.yaml
       - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/changelog_autofill.yaml
+      - .robotsix-mill/periodic/triage_boilerplate.yaml

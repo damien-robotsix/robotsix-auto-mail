@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add `.robotsix-mill/periodic/triage_boilerplate.yaml` presence file to enable the triage-boilerplate periodic workflow.
 - Fix ``run_config_sync_agent`` docstring to include ``LLM_API_KEY`` env var in the ``api_key`` resolution chain.
 - Fix stale comment in `.robotsix-mill/periodic/config_sync.yaml` — removed reference to non-existent `.env.example`.
 - Add unit tests for the health-check module (`tests/core/test_health.py`).
