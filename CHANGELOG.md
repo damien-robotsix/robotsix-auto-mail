@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Update `setup_archive` docstring to document the full API key resolution chain (explicit arg → env var → config file).
 - Fixed stale comments and docs: triage-set help now lists all 8 valid actions, db/models.py says "eight kanban columns", ImapClient docstring enumerates all public methods, AGENT.md clarifies LLM_API_KEY/LLM_PROVIDER_MODEL env-var exceptions and fixes stale file paths, CHANGELOG no longer implies MAIL_TRIAGE_RULES_PATH is an env var, and the unused cryptography dev-dep is removed.
 - docs/troubleshooting.md: Fix second row of IMAP/SMTP error table to use YAML dotted-key forms (`imap.tls_mode`/`smtp.tls_mode`) instead of Python dataclass field names.
 - Fix stale documentation: remove "env variables" claim from config-loading description in architecture.md, fix component_agent package reference, update ROADMAP.md to not list already-implemented features as future work, remove non-existent test directories from testing.md, add missing CLI subcommands to modules.yaml, and replace dataclass field names with YAML dotted keys in troubleshooting.md
