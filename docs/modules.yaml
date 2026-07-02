@@ -397,3 +397,4 @@ modules:
       - .robotsix-mill/periodic/test_gap.yaml
       - .robotsix-mill/periodic/trace_review.yaml
       - .robotsix-mill/periodic/security_posture.yaml
+      - .robotsix-mill/periodic/changelog_autofill.yaml
