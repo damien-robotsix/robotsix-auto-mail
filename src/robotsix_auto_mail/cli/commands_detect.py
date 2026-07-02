@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import dataclasses
 import sys
 from pathlib import Path
 
@@ -90,20 +89,17 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         if password is None:
             return 1
     if args.stdout:
-        config = dataclasses.replace(
-            provider_to_config(
-                provider,
-                args.email,
-                # lgtm[py/clear-text-storage-sensitive-data]
-                password="",  # nosec B106 - intentionally omitted from stdout
-            ),
-            db_path=f".data/{account_id}/mail.db",
-        )
+        config = provider_to_config(
+            provider,
+            args.email,
+            # lgtm[py/clear-text-storage-sensitive-data]
+            password="",  # nosec B106 - intentionally omitted from stdout
+        ).model_copy(update={"db_path": f".data/{account_id}/mail.db"})
         if args.app_password and config.oauth2_provider:
             # provider_to_config sets oauth2_provider="microsoft" for
             # Microsoft hosts unconditionally; --app-password must clear it
             # in the stdout path because _build() is never reached here.
-            config = dataclasses.replace(config, oauth2_provider="")
+            config = config.model_copy(update={"oauth2_provider": ""})
         if microsoft:
             sys.stderr.write(
                 f"# Detected Microsoft 365 settings for {args.email} — "

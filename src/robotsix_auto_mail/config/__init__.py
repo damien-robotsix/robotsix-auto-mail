@@ -11,10 +11,9 @@ win field-by-field).
 The implementation is split across internal submodules:
 
 - ``schema`` — the ``ConfigurationError`` type, validation constants and
-  defaults, the boolean parser, the ``_FIELD_SPECS`` table and the generic
-  dict-extraction helpers.
+  defaults.
 - ``model`` — the ``MailConfig`` / ``MailAccount`` / ``MailAccountsConfig``
-  dataclasses, their loaders, and the per-field environment build helpers.
+  pydantic models, their loaders, and the per-field environment build helpers.
 - ``loader`` — the public ``load`` / ``load_llm`` / ``load_llm_provider_model`` /
   ``load_accounts`` cascade entry points.
 - ``render`` — the multi-account YAML rendering helpers.
@@ -62,12 +61,6 @@ from robotsix_auto_mail.config.render import (
     render_accounts_yaml as render_accounts_yaml,
 )
 from robotsix_auto_mail.config.schema import (
-    _FIELD_SPECS as _FIELD_SPECS,
-)
-from robotsix_auto_mail.config.schema import (
-    _REQUIRED as _REQUIRED,
-)
-from robotsix_auto_mail.config.schema import (
     _VALID_TLS_MODES as _VALID_TLS_MODES,
 )
 from robotsix_auto_mail.config.schema import (
@@ -88,8 +81,6 @@ __all__ = [
     "DEFAULT_CONFIG_PATH",
     "DEFAULT_IMAP_TLS_MODE",
     "DEFAULT_SMTP_TLS_MODE",
-    "_FIELD_SPECS",
-    "_REQUIRED",
     "_VALID_TLS_MODES",
     "ConfigurationError",
     "FailedAccountEntry",

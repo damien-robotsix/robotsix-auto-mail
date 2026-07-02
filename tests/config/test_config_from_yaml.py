@@ -31,7 +31,7 @@ def test_from_yaml_example_file() -> None:
     assert cfg.smtp_port == 587
     assert cfg.smtp_tls_mode == "starttls"
     assert cfg.username == "me@gmail.com"
-    assert cfg.password == ""
+    assert cfg.password.get_secret_value() == ""
     assert cfg.imap_folder == "INBOX"
 
 
@@ -90,7 +90,7 @@ accounts:
     assert cfg.smtp_port == 465
     assert cfg.smtp_tls_mode == "direct-tls"
     assert cfg.username == "user@example.com"
-    assert cfg.password == "s3cret"
+    assert cfg.password.get_secret_value() == "s3cret"
 
     # oauth2
     assert cfg.oauth2_provider == "microsoft"
@@ -103,10 +103,10 @@ accounts:
     assert cfg.triage_on_ingest is False
 
     # top-level llm / langfuse applied to the account
-    assert cfg.llm_api_key == "sk-top-level"
+    assert cfg.llm_api_key.get_secret_value() == "sk-top-level"
     assert cfg.llm_provider_model == "openrouter-deepseek"
     assert cfg.langfuse_public_key == "pk-lf-yaml"
-    assert cfg.langfuse_secret_key == "sk-lf-yaml"
+    assert cfg.langfuse_secret_key.get_secret_value() == "sk-lf-yaml"
     assert cfg.langfuse_base_url == "https://langfuse.example.net"
 
     # label round-trips
@@ -152,14 +152,14 @@ def test_from_yaml_langfuse_defaults_when_absent(tmp_path: Path) -> None:
     """Missing top-level langfuse: section → empty-string defaults."""
     cfg = MailAccountsConfig.from_yaml(_minimal_account_yaml(tmp_path)).default.config
     assert cfg.langfuse_public_key == ""
-    assert cfg.langfuse_secret_key == ""
+    assert cfg.langfuse_secret_key.get_secret_value() == ""
     assert cfg.langfuse_base_url == ""
 
 
 def test_from_yaml_llm_defaults_when_absent(tmp_path: Path) -> None:
     """Missing top-level llm: section → empty-string defaults."""
     cfg = MailAccountsConfig.from_yaml(_minimal_account_yaml(tmp_path)).default.config
-    assert cfg.llm_api_key == ""
+    assert cfg.llm_api_key.get_secret_value() == ""
     assert cfg.llm_provider_model == ""
 
 
@@ -244,9 +244,9 @@ accounts:
     with pytest.raises(ConfigurationError) as exc:
         MailAccountsConfig.from_yaml(yaml_file)
     msg = str(exc.value)
-    assert "imap.host" in msg
-    assert "smtp.host" in msg
-    assert "auth.username" in msg
+    assert "imap_host" in msg
+    assert "smtp_host" in msg
+    assert "username" in msg
     # auth.password is not required — it may be supplied out-of-band / OAuth2.
 
 
@@ -266,7 +266,7 @@ accounts:
 """
     )
     cfg = MailAccountsConfig.from_yaml(yaml_file).default.config
-    assert cfg.password == ""
+    assert cfg.password.get_secret_value() == ""
     assert cfg.username == "user@example.com"
 
 
@@ -290,7 +290,7 @@ accounts:
     with pytest.raises(ConfigurationError) as exc:
         MailAccountsConfig.from_yaml(yaml_file)
     msg = str(exc.value)
-    assert "imap.tls_mode" in msg
+    assert "imap_tls_mode" in msg
     assert "bad-mode" in msg
 
 
@@ -322,7 +322,7 @@ accounts:
 
 
 def test_from_yaml_validate_false_skips_required_checks(tmp_path: Path) -> None:
-    """validate=False skips required-field validation (defaults-loader path)."""
+    """validate=False is accepted (no-op now — pydantic handles all validation)."""
     yaml_file = tmp_path / "defaults.yaml"
     yaml_file.write_text(
         """\
@@ -338,18 +338,20 @@ accounts:
       password: ""
 """
     )
-    # validate=True (default) → missing required fields error out.
-    with pytest.raises(ConfigurationError):
-        MailAccountsConfig.from_yaml(yaml_file, validate=True)
-
-    # validate=False → succeeds with empty strings, db_path still derived.
-    cfg = MailAccountsConfig.from_yaml(yaml_file, validate=False).default.config
+    # validate=True (default) — pydantic accepts empty strings for required
+    # str fields; empty-string imap_host / smtp_host / username are valid.
+    cfg = MailAccountsConfig.from_yaml(yaml_file, validate=True).default.config
     assert cfg.imap_host == ""
     assert cfg.imap_port == 993
     assert cfg.smtp_host == ""
     assert cfg.username == ""
-    assert cfg.password == ""
+    assert cfg.password.get_secret_value() == ""
     assert cfg.db_path == ".data/personal/mail.db"
+
+    # validate=False — also succeeds (parameter is a no-op for pydantic models).
+    cfg2 = MailAccountsConfig.from_yaml(yaml_file, validate=False).default.config
+    assert cfg2.imap_host == ""
+    assert cfg2.db_path == ".data/personal/mail.db"
 
 
 # ---------------------------------------------------------------------------

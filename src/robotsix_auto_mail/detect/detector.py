@@ -12,6 +12,7 @@ from xml.etree import ElementTree  # nosec B405
 
 import urllib3
 import urllib3.exceptions
+from pydantic import SecretStr
 
 from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
@@ -668,12 +669,12 @@ def provider_to_config(
         return MailConfig(
             imap_host=provider.imap_host,
             imap_port=provider.imap_port,
-            imap_tls_mode=provider.imap_tls_mode,
+            imap_tls_mode=provider.imap_tls_mode,  # type: ignore[arg-type]
             smtp_host=provider.smtp_host,
             smtp_port=provider.smtp_port,
-            smtp_tls_mode=provider.smtp_tls_mode,
+            smtp_tls_mode=provider.smtp_tls_mode,  # type: ignore[arg-type]
             username=username,
-            password="",  # nosec B106 -- Microsoft uses OAuth2, never a password
+            password=SecretStr(""),  # nosec B106 -- Microsoft uses OAuth2, never a password
             oauth2_provider="microsoft",
             oauth2_tenant="organizations",
             oauth2_client_id="",
@@ -683,12 +684,12 @@ def provider_to_config(
     return MailConfig(
         imap_host=provider.imap_host,
         imap_port=provider.imap_port,
-        imap_tls_mode=provider.imap_tls_mode,
+        imap_tls_mode=provider.imap_tls_mode,  # type: ignore[arg-type]
         smtp_host=provider.smtp_host,
         smtp_port=provider.smtp_port,
-        smtp_tls_mode=provider.smtp_tls_mode,
+        smtp_tls_mode=provider.smtp_tls_mode,  # type: ignore[arg-type]
         username=username,
-        password=password,
+        password=SecretStr(password),
         db_path=db_path,
         imap_folder="INBOX",
     )

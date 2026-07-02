@@ -165,14 +165,14 @@ def _redact_audit(audit: dict[str, tuple[object, object]]) -> dict[str, list[Any
     """Redact secret values in an audit map for safe transmission."""
     from robotsix_auto_mail.server._component_agent_config_contract import (
         _SECRET_FIELDS,
-        _yaml_path_to_spec,
+        _YAML_PATH_TO_FIELD,
     )
 
     redacted_marker = "<redacted>"
     result: dict[str, list[Any]] = {}
     for key, (old, new) in audit.items():
-        spec = _yaml_path_to_spec.get(key)
-        if spec is not None and spec.field_name in _SECRET_FIELDS:
+        field_name = _YAML_PATH_TO_FIELD.get(key, key)
+        if field_name in _SECRET_FIELDS:
             result[key] = [redacted_marker, redacted_marker]
         else:
             result[key] = [old, new]

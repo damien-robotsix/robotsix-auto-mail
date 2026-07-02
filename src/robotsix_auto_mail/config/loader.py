@@ -106,7 +106,7 @@ def _load_file_config_optional() -> MailConfig | None:
 def load_llm() -> str:
     """Resolve the LLM API key from the config file's ``llm.api_key`` field."""
     file_cfg = _load_file_config_optional()
-    return file_cfg.llm_api_key if file_cfg is not None else ""
+    return file_cfg.llm_api_key.get_secret_value() if file_cfg is not None else ""
 
 
 def load_llm_provider_model() -> str:

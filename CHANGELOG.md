@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Migrate `MailConfig`, `MailAccount`, `MailAccountsConfig`, and `FailedAccountEntry` from frozen dataclasses to pydantic v2 `BaseModel`. Secret fields (`password`, `llm_api_key`, `oauth2_token`, `oauth2_client_secret`, `langfuse_secret_key`) are now `pydantic.SecretStr`. Remove the `_FIELD_SPECS` validation machinery from `schema.py` — validation is now handled by pydantic native types (`Literal`, `int`, `bool` coercion). `render.py`, `config_sync_agent.py`, `loader.py`, and all consumers adapted for `.get_secret_value()` access.
 - Fixed stale comments and docs: triage-set help now lists all 8 valid actions, db/models.py says "eight kanban columns", ImapClient docstring enumerates all public methods, AGENT.md clarifies LLM_API_KEY/LLM_PROVIDER_MODEL env-var exceptions and fixes stale file paths, CHANGELOG no longer implies MAIL_TRIAGE_RULES_PATH is an env var, and the unused cryptography dev-dep is removed.
 - Add robotsix-standards reference link to README.md and AGENT.md
 - docs/troubleshooting.md: Fix second row of IMAP/SMTP error table to use YAML dotted-key forms (`imap.tls_mode`/`smtp.tls_mode`) instead of Python dataclass field names.

@@ -376,7 +376,7 @@ def test_detect_verifies_connection_on_success(
 
     assert rc == 0
     mock_verify.assert_called_once()
-    assert mock_verify.call_args.args[0].password == "pw"
+    assert mock_verify.call_args.args[0].password.get_secret_value() == "pw"
     assert "Verification succeeded" in capsys.readouterr().err
 
 
@@ -1056,7 +1056,7 @@ def test_detect_overwrite_existing_account(
     assert cfg.imap_host == "imap.gmail.com"
     assert cfg.smtp_host == "smtp.gmail.com"
     # Password written (supplied via --password)
-    assert cfg.password == "secret"
+    assert cfg.password.get_secret_value() == "secret"
     # Non-transport fields preserved from seed
     assert cfg.username == "test@gmail.com"
     assert cfg.db_path == ".data/mail.db"  # legacy path preserved, not replaced
@@ -1284,10 +1284,10 @@ def test_detect_overwrite_preserves_llm_api_key(
     accounts = MailAccountsConfig.from_yaml(str(output))
     cfg = accounts.get("main").config
     # Existing llm/langfuse values preserved from the seed file.
-    assert cfg.llm_api_key == "sk-seed"
+    assert cfg.llm_api_key.get_secret_value() == "sk-seed"
     assert cfg.llm_provider_model == "openai/gpt-4o"
     assert cfg.langfuse_public_key == "pk-seed"
-    assert cfg.langfuse_secret_key == "sk-seed-lf"
+    assert cfg.langfuse_secret_key.get_secret_value() == "sk-seed-lf"
     assert cfg.langfuse_base_url == "https://cloud.langfuse.com"
     # Transport fields updated.
     assert cfg.imap_host == "imap.gmail.com"
@@ -1332,7 +1332,7 @@ def test_detect_writes_llm_api_key_from_env(
 
     accounts = MailAccountsConfig.from_yaml(str(output))
     cfg = accounts.default.config
-    assert cfg.llm_api_key == "sk-env"
+    assert cfg.llm_api_key.get_secret_value() == "sk-env"
 
 
 # ---------------------------------------------------------------------------

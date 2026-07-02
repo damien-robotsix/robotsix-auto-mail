@@ -1,43 +1,40 @@
-"""Configuration model: the ``MailConfig`` / ``MailAccount`` dataclasses.
+"""Configuration model: the ``MailConfig`` / ``MailAccount`` pydantic models.
 
-Holds the immutable configuration dataclasses and the multi-account YAML
+Holds the immutable configuration models and the multi-account YAML
 loader (``MailAccountsConfig.from_yaml``) plus the per-account section-parsing
 helpers that construct them.  Depends on
-:mod:`robotsix_auto_mail.config.schema` for the error type, validation
-constants and the field-spec table.
+:mod:`robotsix_auto_mail.config.schema` for the error type and validation
+constants.
 """
 
 from __future__ import annotations
 
-import dataclasses
 import logging
 import re
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, Literal
 
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from robotsix_yaml_config import (
     YamlConfigError,
     read_yaml_file,
 )
 
 from robotsix_auto_mail.config.schema import (
-    _FIELD_SPECS,
-    _REQUIRED,
-    _VALID_LOG_FORMATS,
-    _VALID_LOG_LEVELS,
-    _VALID_TLS_MODES,
     DEFAULT_ARCHIVE_ROOT,
     DEFAULT_IMAP_TLS_MODE,
     DEFAULT_INGEST_INTERVAL_MINUTES,
     DEFAULT_SMTP_TLS_MODE,
     ConfigurationError,
-    _FieldSpec,
-    _get_int,
-    _get_str,
-    _get_table,
     _mono_shape_error,
-    _parse_bool,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,6 +59,8 @@ def _validate_template_literals(cfg: MailConfig) -> None:
     contains an unsubstituted ``{...}`` template pattern."""
     for field_name in _TEMPLATE_CHECKED_FIELDS:
         value = getattr(cfg, field_name, "")
+        if field_name == "password":
+            value = cfg.password.get_secret_value()
         if value and _TEMPLATE_LITERAL_RE.search(value):
             display = "<redacted>" if field_name == "password" else repr(value)
             raise ConfigurationError(
@@ -77,58 +76,13 @@ def _validate_template_literals(cfg: MailConfig) -> None:
 # ---------------------------------------------------------------------------
 
 
-@dataclasses.dataclass(frozen=True)
-class FailedAccountEntry:
+class FailedAccountEntry(BaseModel):
     """Records an account that failed validation at config-load time."""
+
+    model_config = ConfigDict(frozen=True)
 
     account_id: str  # raw ``id:`` field from YAML / env, or ``'<account-N>'`` fallback
     error: str  # the ConfigurationError message
-
-
-# ---------------------------------------------------------------------------
-# Shared field-coercion helper
-# ---------------------------------------------------------------------------
-
-
-def _coerce_field(spec: _FieldSpec, raw: str, label: str) -> tuple[Any, str | None]:
-    """Coerce and validate a raw string value according to *spec.kind*.
-
-    Returns ``(value, error_message)``.  When *error_message* is not
-    ``None``, *value* is the default to fall back to.
-    """
-    kind = spec.kind
-    if kind == "str":
-        return raw, None
-    elif kind == "int":
-        try:
-            return int(raw), None
-        except ValueError:
-            return spec.default, f"{label} must be an integer, got {raw!r}"
-    elif kind == "bool":
-        try:
-            return _parse_bool(label, raw), None
-        except ConfigurationError as exc:
-            return spec.default, exc.message
-    elif kind == "tls_mode":
-        if raw not in _VALID_TLS_MODES:
-            return raw, (
-                f"{label} must be one of {sorted(_VALID_TLS_MODES)!r}, got {raw!r}"
-            )
-        return raw, None
-    elif kind == "log_level":
-        if raw.upper() not in _VALID_LOG_LEVELS:
-            return raw, (
-                f"{label} must be one of {sorted(_VALID_LOG_LEVELS)!r}, got {raw!r}"
-            )
-        return raw, None
-    elif kind == "log_format":
-        if raw.lower() not in _VALID_LOG_FORMATS:
-            return raw, (
-                f"{label} must be one of {sorted(_VALID_LOG_FORMATS)!r}, got {raw!r}"
-            )
-        return raw, None
-    else:
-        return raw, None
 
 
 # ---------------------------------------------------------------------------
@@ -158,25 +112,25 @@ def _read_config_yaml(path: str | Path) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-@dataclasses.dataclass(frozen=True)
-class MailConfig:
+class MailConfig(BaseModel):
     """Immutable application settings: mail server connection parameters
     plus optional LLM credentials used by ``detect`` (and future mail
     processing).
 
-    Credentials are stored in memory as plain ``str`` values but the
-    ``password`` and ``llm_api_key`` fields are masked in ``repr`` / ``str``.
+    Credentials are stored as ``SecretStr`` values — masked in ``repr`` / ``str``.
     """
+
+    model_config = ConfigDict(frozen=True)
 
     imap_host: str
     smtp_host: str
     username: str
-    password: str
+    password: SecretStr = Field(default=SecretStr(""))
 
     imap_port: int = 993
-    imap_tls_mode: str = DEFAULT_IMAP_TLS_MODE
+    imap_tls_mode: Literal["starttls", "direct-tls", "none"] = DEFAULT_IMAP_TLS_MODE
     smtp_port: int = 587
-    smtp_tls_mode: str = DEFAULT_SMTP_TLS_MODE
+    smtp_tls_mode: Literal["starttls", "direct-tls", "none"] = DEFAULT_SMTP_TLS_MODE
 
     # Empty by default; the accounts loader derives ``.data/<id>/mail.db``
     # per account when ``store.path`` is absent.
@@ -185,7 +139,7 @@ class MailConfig:
 
     # LLM provider settings — optional; only needed for the `detect`
     # subcommand and future LLM-assisted mail processing.
-    llm_api_key: str = ""
+    llm_api_key: SecretStr = Field(default=SecretStr(""))
     llm_provider_model: str = ""
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
@@ -210,9 +164,9 @@ class MailConfig:
     # OAuth2 / XOAUTH2 credentials (Gmail, Microsoft 365, etc.).
     # Optional; when ``oauth2_token`` is set, SASL XOAUTH2 is used
     # instead of password-based ``login()``.
-    oauth2_token: str = ""
+    oauth2_token: SecretStr = Field(default=SecretStr(""))
     oauth2_client_id: str = ""
-    oauth2_client_secret: str = ""
+    oauth2_client_secret: SecretStr = Field(default=SecretStr(""))
 
     # MSAL-managed OAuth2 (Microsoft 365). When ``oauth2_provider`` is set
     # to ``"microsoft"``, access tokens are acquired and refreshed via MSAL
@@ -224,149 +178,66 @@ class MailConfig:
     # Langfuse observability — optional; when public_key/secret_key are set,
     # every LLM agent run is traced to the configured Langfuse project.
     langfuse_public_key: str = ""
-    langfuse_secret_key: str = ""
+    langfuse_secret_key: SecretStr = Field(default=SecretStr(""))
     langfuse_base_url: str = ""
 
     # Logging configuration — application-wide (global).
-    log_level: str = "INFO"
-    log_format: str = "console"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    log_format: Literal["json", "console"] = "console"
     log_file_dir: str = ".mail_log"
 
-    # -- masking -----------------------------------------------------------
+    # -- validators --------------------------------------------------------
 
-    _SECRET_FIELDS = (
-        "password",
-        "llm_api_key",
-        "oauth2_token",
-        "oauth2_client_secret",
-        "langfuse_secret_key",
-    )
-
-    def __repr__(self) -> str:
-        cls = type(self).__name__
-        fields = dataclasses.fields(self)
-        parts = []
-        for f in fields:
-            val = getattr(self, f.name)
-            if f.name in self._SECRET_FIELDS:
-                parts.append(f"{f.name}=<redacted>")
-            else:
-                parts.append(f"{f.name}={val!r}")
-        return f"{cls}({', '.join(parts)})"
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    # -- loaders -----------------------------------------------------------
-
+    @model_validator(mode="before")
     @classmethod
-    def _parse_config_dict(
-        cls, data: dict[str, object], path: Path, *, validate: bool = True
-    ) -> MailConfig:
-        errors: list[str] = []
-        kwargs: dict[str, Any] = {}
-        # Memoise top-level section lookups so we don't re-validate
-        # the same mapping for every field that lives under it.
-        sections: dict[str, dict[str, object]] = {}
+    def _flatten_yaml_sections(cls, data: Any) -> Any:
+        """Map nested per-account YAML sections to flat ``MailConfig`` field names.
 
-        for spec in _FIELD_SPECS:
-            section_name, key_name = spec.yaml_path.split(".", 1)
-            if section_name not in sections:
-                sections[section_name] = _get_table(data, section_name) or {}
-            section = sections[section_name]
+        This is a ``mode='before'`` validator so it runs before pydantic's
+        field-level validation and coercion.  When *data* is not a dict
+        (already a ``MailConfig`` instance or fields dict), it passes through.
+        """
+        if not isinstance(data, dict):
+            return data
 
-            raw = section.get(key_name)
-            if raw is None:
-                kwargs[spec.field_name] = (
-                    "" if spec.default is _REQUIRED else spec.default
-                )
-                continue
+        # Mapping: dotted YAML key → MailConfig field name
+        mapping = {
+            "imap.host": "imap_host",
+            "imap.port": "imap_port",
+            "imap.tls_mode": "imap_tls_mode",
+            "imap.folder": "imap_folder",
+            "smtp.host": "smtp_host",
+            "smtp.port": "smtp_port",
+            "smtp.tls_mode": "smtp_tls_mode",
+            "auth.username": "username",
+            "auth.password": "password",
+            "auth.oauth2_provider": "oauth2_provider",
+            "auth.oauth2_tenant": "oauth2_tenant",
+            "auth.oauth2_token": "oauth2_token",
+            "auth.oauth2_client_id": "oauth2_client_id",
+            "auth.oauth2_client_secret": "oauth2_client_secret",
+            "store.path": "db_path",
+            "archive.root": "archive_root",
+            "archive.enabled": "archive_enabled",
+            "triage.on_ingest": "triage_on_ingest",
+            "triage.rules_path": "triage_rules_path",
+            "ingest.interval_minutes": "ingest_interval_minutes",
+            "component_agent.enabled": "component_agent_enabled",
+        }
 
-            # Reject non-scalar YAML values for config fields.
-            if isinstance(raw, (dict, list)):
-                errors.append(
-                    f"{spec.yaml_path} must be a scalar value, got {type(raw).__name__}"
-                )
-                kwargs[spec.field_name] = spec.default
-                continue
+        result: dict[str, Any] = {}
+        for yaml_key, field_name in mapping.items():
+            section_name, key_name = yaml_key.split(".", 1)
+            section = data.get(section_name)
+            if isinstance(section, dict) and key_name in section:
+                result[field_name] = section[key_name]
 
-            raw_str = str(raw) if not isinstance(raw, str) else raw
-            value, err = _coerce_field(spec, raw_str, spec.yaml_path)
-            kwargs[spec.field_name] = value
-            if err:
-                errors.append(err)
+        # Also pass through any already-flat keys (e.g. from direct construction)
+        for key, value in data.items():
+            if key not in result and "." not in key:
+                result[key] = value
 
-        # -- required fields (skipped when validate=False) -----------------
-
-        if validate:
-            missing: list[str] = []
-            for spec in _FIELD_SPECS:
-                if spec.required_in_yaml and not kwargs[spec.field_name]:
-                    missing.append(spec.yaml_path)
-            if missing:
-                errors.append("Missing required field(s): " + ", ".join(missing))
-
-        if errors:
-            raise ConfigurationError("\n".join(errors))
-
-        return cls(**kwargs)
-
-
-# ---------------------------------------------------------------------------
-# Self-consistency: ``_FIELD_SPECS`` must enumerate every dataclass field
-# exactly once.  If they drift apart, import fails immediately — making
-# "add a new field" a one-place edit.
-# ---------------------------------------------------------------------------
-
-_spec_names = {s.field_name for s in _FIELD_SPECS}
-_dc_names = {f.name for f in dataclasses.fields(MailConfig)}
-assert _spec_names == _dc_names, (  # noqa: S101  # nosec B101
-    f"_FIELD_SPECS / MailConfig drift: "
-    f"missing from specs={_dc_names - _spec_names}, "
-    f"missing from dataclass={_spec_names - _dc_names}"
-)
-
-
-# ---------------------------------------------------------------------------
-# Shared section-extraction helper
-# ---------------------------------------------------------------------------
-
-
-def _extract_section_fields(
-    data: dict[str, Any],
-    section_name: str,
-    field_map: list[tuple[str, Callable[..., Any], str, Any]],
-    path: Path | None = None,
-) -> dict[str, Any]:
-    """Extract fields from an optional top-level YAML section.
-
-    Args:
-        data: The parsed YAML dict.
-        section_name: Top-level key (e.g. ``"llm"``).
-        field_map: List of ``(result_key, extractor, yaml_key, default)``
-            tuples.  The *extractor* is one of :func:`_get_str`,
-            :func:`_get_str` or :func:`_get_int`.
-        path: Config file path for error messages (required when
-            *field_map* includes :func:`_get_int` entries).
-
-    Returns:
-        Dict mapping each *result_key* to the extracted value
-        (or its *default* when the section or key is absent).
-    """
-    section = _get_table(data, section_name)
-    result: dict[str, Any] = {}
-    for result_key, extractor, yaml_key, default in field_map:
-        if section is not None:
-            if extractor is _get_int:
-                assert path is not None, (  # noqa: S101  # nosec B101
-                    "_extract_section_fields: path required for _get_int"
-                )
-                result[result_key] = extractor(section, yaml_key, default, path)
-            else:
-                result[result_key] = extractor(section, yaml_key, default)
-        else:
-            result[result_key] = default
-    return result
+        return result
 
 
 # ---------------------------------------------------------------------------
@@ -379,8 +250,7 @@ def _extract_section_fields(
 _ACCOUNT_ID_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
-@dataclasses.dataclass(frozen=True)
-class MailAccount:
+class MailAccount(BaseModel):
     """One named mailbox: a stable ``account_id`` plus its ``MailConfig``.
 
     ``label`` is an optional human-friendly display name.  ``account_id`` is
@@ -389,21 +259,25 @@ class MailAccount:
     be non-empty and match ``^[A-Za-z0-9._-]+$``.
     """
 
+    model_config = ConfigDict(frozen=True)
+
     account_id: str
     config: MailConfig
     label: str | None = None
 
-    def __post_init__(self) -> None:
-        if not self.account_id:
+    @field_validator("account_id", mode="after")
+    @classmethod
+    def _validate_account_id(cls, v: str) -> str:
+        if not v:
             raise ConfigurationError("account_id must be non-empty")
-        if not _ACCOUNT_ID_RE.match(self.account_id):
+        if not _ACCOUNT_ID_RE.match(v):
             raise ConfigurationError(
-                f"account_id {self.account_id!r} must match {_ACCOUNT_ID_RE.pattern!r}"
+                f"account_id {v!r} must match {_ACCOUNT_ID_RE.pattern!r}"
             )
+        return v
 
 
-@dataclasses.dataclass(frozen=True)
-class MailAccountsConfig:
+class MailAccountsConfig(BaseModel):
     """An ordered collection of :class:`MailAccount`s plus a default id.
 
     One SQLite DB per account
@@ -432,13 +306,14 @@ class MailAccountsConfig:
     and does not consult this field.
     """
 
-    accounts: tuple[MailAccount, ...]
-    default_account_id: str
-    failed_accounts: tuple[FailedAccountEntry, ...] = dataclasses.field(
-        default_factory=tuple
-    )
+    model_config = ConfigDict(frozen=True)
 
-    def __post_init__(self) -> None:
+    accounts: list[MailAccount]
+    default_account_id: str
+    failed_accounts: tuple[FailedAccountEntry, ...] = Field(default=())
+
+    @model_validator(mode="after")
+    def _validate_accounts(self) -> MailAccountsConfig:
         if not self.accounts and not self.failed_accounts:
             raise ConfigurationError("No accounts configured.")
         if not self.accounts:
@@ -466,6 +341,8 @@ class MailAccountsConfig:
                 f"default_account_id {self.default_account_id!r} is not one "
                 f"of the configured accounts: {ids!r}"
             )
+
+        return self
 
     def get(self, account_id: str) -> MailAccount:
         """Return the account with *account_id*.
@@ -504,21 +381,18 @@ class MailAccountsConfig:
           a mapping with ``id`` (required str), optional ``label`` (str) and
           the usual nested config sections (``imap``, ``smtp``, ``auth``,
           ``store``, ``ingest``, ``archive``, ``triage``) parsed by
-          the same helper as the single-account loader.  ``llm:`` and
-          ``langfuse:`` are **top-level** sections (application-wide); they
-          are applied to every account via :func:`dataclasses.replace`.
-          An optional top-level ``default_account:`` names the default
-          (absent → the first entry).  When an entry omits ``store.path``
-          the per-account default ``".data/<id>/mail.db"`` is used so DBs
-          never collide.
+          :class:`MailConfig`'s ``_flatten_yaml_sections`` validator.
+          ``llm:`` and ``langfuse:`` are **top-level** sections
+          (application-wide); they are applied to every account via
+          :meth:`MailConfig.model_copy`.  An optional top-level
+          ``default_account:`` names the default (absent → the first entry).
+          When an entry omits ``store.path`` the per-account default
+          ``".data/<id>/mail.db"`` is used so DBs never collide.
         * **Legacy single-account** — no top-level ``accounts:`` key.  The
-          whole file is parsed via :meth:`MailConfig.from_yaml` and wrapped
-          in a one-element container with ``account_id="default"`` (keeping
-          the historical ``".data/mail.db"`` default).
+          whole file is rejected with an actionable error.
 
-        ``validate=False`` skips per-account required-field checks (mirroring
-        :meth:`MailConfig._parse_config_dict`) but still enforces id /
-        db_path uniqueness.
+        ``validate=False`` skips per-account required-field checks but still
+        enforces id / db_path uniqueness.
 
         Raises:
             ConfigurationError: On invalid structure or failed validation.
@@ -550,42 +424,22 @@ class MailAccountsConfig:
         global_log_file_dir: str = ""
 
         if isinstance(data, dict):
-            llm = _extract_section_fields(
-                data,
-                "llm",
-                [
-                    ("api_key", _get_str, "api_key", ""),
-                    ("provider_model", _get_str, "provider_model", ""),
-                ],
-            )
-            global_llm_api_key = llm["api_key"]
-            global_llm_provider_model = llm["provider_model"]
+            llm = data.get("llm")
+            if isinstance(llm, dict):
+                global_llm_api_key = str(llm.get("api_key", ""))
+                global_llm_provider_model = str(llm.get("provider_model", ""))
 
-            langfuse = _extract_section_fields(
-                data,
-                "langfuse",
-                [
-                    ("public_key", _get_str, "public_key", ""),
-                    ("secret_key", _get_str, "secret_key", ""),
-                    ("base_url", _get_str, "base_url", ""),
-                ],
-            )
-            global_langfuse_public_key = langfuse["public_key"]
-            global_langfuse_secret_key = langfuse["secret_key"]
-            global_langfuse_base_url = langfuse["base_url"]
+            langfuse = data.get("langfuse")
+            if isinstance(langfuse, dict):
+                global_langfuse_public_key = str(langfuse.get("public_key", ""))
+                global_langfuse_secret_key = str(langfuse.get("secret_key", ""))
+                global_langfuse_base_url = str(langfuse.get("base_url", ""))
 
-            logging_section = _extract_section_fields(
-                data,
-                "logging",
-                [
-                    ("level", _get_str, "level", ""),
-                    ("format", _get_str, "format", ""),
-                    ("file_dir", _get_str, "file_dir", ""),
-                ],
-            )
-            global_log_level = logging_section["level"]
-            global_log_format = logging_section["format"]
-            global_log_file_dir = logging_section["file_dir"]
+            logging_section = data.get("logging")
+            if isinstance(logging_section, dict):
+                global_log_level = str(logging_section.get("level", ""))
+                global_log_format = str(logging_section.get("format", ""))
+                global_log_file_dir = str(logging_section.get("file_dir", ""))
 
         accounts: list[MailAccount] = []
         failed: list[FailedAccountEntry] = []
@@ -615,32 +469,40 @@ class MailAccountsConfig:
                 has_store_path = (
                     isinstance(store_section, dict) and "path" in store_section
                 )
-                cfg = MailConfig._parse_config_dict(entry, path, validate=validate)
+                cfg = MailConfig.model_validate(entry)
                 _validate_template_literals(cfg)
                 if not has_store_path:
-                    cfg = dataclasses.replace(cfg, db_path=f".data/{raw_id}/mail.db")
+                    cfg = cfg.model_copy(update={"db_path": f".data/{raw_id}/mail.db"})
 
                 # Apply top-level llm / langfuse values
                 # (global wins over defaults).
-                cfg = dataclasses.replace(
-                    cfg,
-                    llm_api_key=global_llm_api_key or cfg.llm_api_key,
-                    llm_provider_model=global_llm_provider_model
-                    or cfg.llm_provider_model,
-                    langfuse_public_key=global_langfuse_public_key
-                    or cfg.langfuse_public_key,
-                    langfuse_secret_key=global_langfuse_secret_key
-                    or cfg.langfuse_secret_key,
-                    langfuse_base_url=global_langfuse_base_url or cfg.langfuse_base_url,
-                    log_level=global_log_level or cfg.log_level,
-                    log_format=global_log_format or cfg.log_format,
-                    log_file_dir=global_log_file_dir or cfg.log_file_dir,
+                cfg = cfg.model_copy(
+                    update={
+                        "llm_api_key": SecretStr(
+                            global_llm_api_key or cfg.llm_api_key.get_secret_value()
+                        ),
+                        "llm_provider_model": global_llm_provider_model
+                        or cfg.llm_provider_model,
+                        "langfuse_public_key": global_langfuse_public_key
+                        or cfg.langfuse_public_key,
+                        "langfuse_secret_key": SecretStr(
+                            global_langfuse_secret_key
+                            or cfg.langfuse_secret_key.get_secret_value()
+                        ),
+                        "langfuse_base_url": global_langfuse_base_url
+                        or cfg.langfuse_base_url,
+                        "log_level": global_log_level or cfg.log_level,
+                        "log_format": global_log_format or cfg.log_format,
+                        "log_file_dir": global_log_file_dir or cfg.log_file_dir,
+                    }
                 )
 
                 accounts.append(
                     MailAccount(account_id=raw_id, config=cfg, label=raw_label)
                 )
-            except ConfigurationError as exc:
+            except (ConfigurationError, ValidationError) as exc:
+                if isinstance(exc, ValidationError):
+                    exc = ConfigurationError(str(exc))
                 logger.error(
                     "Skipping account %r — invalid config: %s",
                     raw_id,
@@ -658,7 +520,7 @@ class MailAccountsConfig:
             raise ConfigurationError("'default_account' must be a string")
 
         return cls(
-            accounts=tuple(accounts),
+            accounts=accounts,
             default_account_id=default_id,
             failed_accounts=tuple(failed),
         )

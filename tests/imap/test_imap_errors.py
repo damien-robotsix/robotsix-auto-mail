@@ -89,14 +89,14 @@ def test_capabilities_property(cfg: MailConfig) -> None:
 
 
 def test_imap_client_invalid_tls_mode(cfg: MailConfig) -> None:
-    """Passing an unknown tls_mode raises ValueError on context entry."""
-    cfg_bad = MailConfig(
-        imap_host=cfg.imap_host,
-        smtp_host=cfg.smtp_host,
-        username=cfg.username,
-        password=cfg.password,
-        imap_tls_mode="invalid",
-    )
-    with pytest.raises(ValueError, match="Unknown TLS mode"):
-        with ImapClient(cfg_bad):
-            pass
+    """Passing an unknown tls_mode raises ValidationError on construction."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="imap_tls_mode"):
+        MailConfig(
+            imap_host=cfg.imap_host,
+            smtp_host=cfg.smtp_host,
+            username=cfg.username,
+            password=cfg.password.get_secret_value(),
+            imap_tls_mode="invalid",
+        )
