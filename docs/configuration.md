@@ -4,10 +4,14 @@
 single YAML config file**. Each field the YAML file supplies overrides its
 built-in default; any field you omit keeps its default.
 
-> **Configuration is provided ONLY via the YAML config file.** Environment
-> variables are **not** read for configuration. The only environment variable
-> the application consults is `MAIL_CONFIG_PATH`, which merely *locates* the
-> file (default `config/mail.local.yaml`).
+> **Configuration is provided primarily via the YAML config file.** Three
+> environment variables are consulted:
+>
+> - `MAIL_CONFIG_PATH` — locates the YAML config file (default
+>   `config/mail.local.yaml`).
+> - `LLM_API_KEY` — LLM API key fallback (read by `resolve_llm_api_key` in
+>   `config/loader.py`).
+> - `LLM_PROVIDER_MODEL` — LLM model/provider fallback.
 
 For a guided setup and the `detect` auto-configuration command, see
 [Connecting](connecting.md). The canonical template ships in
@@ -78,7 +82,7 @@ accounts:
   top-level and apply to every account.
 - The single-account ("mono") shape (top-level `imap:` / `smtp:` / `auth:`
   with no `accounts:` key) is **no longer loaded**. Run
-  `robotsix-auto-mail migrate-config` to convert an old file, or
+  edit the `accounts:` block directly, or run
   `robotsix-auto-mail detect` to regenerate it.
 
 ---
