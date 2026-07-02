@@ -2,6 +2,12 @@
 
 ## 0.0.0 (unreleased)
 
+- Fix silent mail loss after IMAP ``UIDVALIDITY`` changes: ingestion now tracks
+  the mailbox's ``UIDVALIDITY`` and, when the server renumbers UIDs (mailbox
+  recreated/restored, some server maintenance), resets the stale ``imap_uid``
+  watermark so a full ``ALL`` re-scan resumes ingestion (dedup by ``message_id``
+  keeps it idempotent). Adds ``ImapClient.select_folder_and_uidvalidity`` and
+  ``db.delete_watermark``.
 - Dry-run ingestion no longer calls ``update_record_source`` on duplicate messages, preventing unintended DB mutations.
 - Security: MSAL OAuth2 token cache file is now created with restrictive permissions (file 0600, directory 0700) so the refresh token is not readable by other local users on multi-user hosts.
 - SMTP client now passes ``timeout=60`` to all three connection constructors
