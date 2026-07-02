@@ -4,6 +4,7 @@
 
 - Fix `javascript:` scheme filtering in the mailto unsubscribe link — the `method == "mailto"` branch now requires the `mailto:` prefix like the `header` branch already did, preventing LLM-produced `javascript:` URLs from reaching the board UI.
 - Warn when `mail.local.yaml` has lax (group/world-readable) file permissions, suggesting `chmod 600` to protect plaintext credentials.
+- Document accepted SSRF risk in `_autoconfig_urls()` with a security comment explaining the rationale.
 - Fix silent mail loss after IMAP ``UIDVALIDITY`` changes: ingestion now tracks
   the mailbox's ``UIDVALIDITY`` and, when the server renumbers UIDs (mailbox
   recreated/restored, some server maintenance), resets the stale ``imap_uid``

@@ -455,6 +455,10 @@ def _autoconfig_urls(email_address: str) -> list[str]:
     if not domain:
         return []
     quoted = urllib.parse.quote(email_address)
+    # Security note: these URLs target autoconfig.<domain> derived from the
+    # operator-supplied email. A crafted domain could probe internal
+    # autoconfig hostnames (mild SSRF). Accepted: operator-initiated only,
+    # HTTPS-only probe, no credentials sent, 5 s timeout enforced by caller.
     return [
         # Mozilla ISPDB — central database keyed by domain.
         f"https://autoconfig.thunderbird.net/v1.1/{domain}",
@@ -524,6 +528,7 @@ def autoconfig_lookup(
     should then fall back to :func:`detect_provider`.
     """
     for url in _autoconfig_urls(email_address):
+        # See _autoconfig_urls() for the SSRF-risk rationale.
         try:
             resp = _HTTP.request("GET", url, timeout=timeout)
             if resp.status != 200:
