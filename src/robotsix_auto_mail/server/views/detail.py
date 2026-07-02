@@ -178,7 +178,7 @@ def _build_detail_html(
         '<html lang="en">\n'
         "<head>\n"
         '<meta charset="utf-8">\n'
-        f"<title>Mail: {title_subject}</title>\n"
+        f"<title>Mail: {html.escape(title_subject)}</title>\n"
         '<link rel="stylesheet" href="/static/board.css">\n'
         '<link rel="stylesheet" href="/static/automail/board.css">\n'
         "</head>\n"
