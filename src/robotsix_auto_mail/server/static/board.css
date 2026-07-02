@@ -295,9 +295,6 @@ button:hover {
 .board-column-cards {
   order: 2;
 }
-.unsubscribe-banner {
-  order: 0;
-}
 
 /* -- triage-running indicator -------------------------------------------- */
 .triage-banner {
@@ -331,6 +328,7 @@ button:hover {
   margin-bottom: 0.75rem;
   border-radius: 6px;
   font-size: 0.85rem;
+  order: 0;
 }
 .unsubscribe-banner a {
   color: #1565c0;
@@ -405,6 +403,13 @@ button:hover {
 .ft-branch-leaf {
   cursor: pointer;
 }
+
+/* -- leaf label (clickable) --------------------------------------------- */
+.ft-leaf {
+  color: #c0d0f0;
+  cursor: pointer;
+}
+
 .ft-branch-leaf:hover,
 .ft-leaf:hover {
   color: #ffffff;
@@ -412,12 +417,6 @@ button:hover {
   border-radius: 2px;
   padding: 0.05rem 0.2rem;
   margin: 0 -0.2rem;
-}
-
-/* -- leaf label (clickable) --------------------------------------------- */
-.ft-leaf {
-  color: #c0d0f0;
-  cursor: pointer;
 }
 
 /* -- children container (hidden by default when collapsed) --------------- */
