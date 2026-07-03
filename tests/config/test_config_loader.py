@@ -288,15 +288,21 @@ def test_load_accounts_returns_config() -> None:
 
 
 def test_load_accounts_missing_file_raises() -> None:
-    """When robotsix_config raises, load_accounts propagates it."""
+    """When robotsix_config raises, load_accounts falls back to direct load,
+    which raises ConfigurationError when config/config.json is missing."""
     import sys as _sys
 
     mock_rc = mock.MagicMock()
     mock_rc.load_config = mock.MagicMock(
         side_effect=FileNotFoundError("no config"),
     )
-    with mock.patch.dict(_sys.modules, {"robotsix_config": mock_rc}):
-        with pytest.raises(FileNotFoundError):
+    with (
+        mock.patch.dict(_sys.modules, {"robotsix_config": mock_rc}),
+        # Ensure the fallback can't read a local config file — the test
+        # must be deterministic regardless of what's on disk.
+        mock.patch("pathlib.Path.read_text", side_effect=FileNotFoundError),
+    ):
+        with pytest.raises(ConfigurationError, match="No valid configuration found"):
             load_accounts()
 
 
