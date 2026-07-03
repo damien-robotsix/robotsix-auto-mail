@@ -43,6 +43,7 @@ modules:
       - changelog/20260703T103000Z-drop-managed-config-artifacts.removal.md
       - changelog/20260703T101218Z-standards-round-2-drop-requires-python-u-a525.removal.md
       - changelog/20260703T110407Z-drop-pre-commit-autoupdate-yml-redundant-a748.misc.md
+      - changelog/20260703T151937Z-ci-fix-out-of-scope-ci-failure-shellchec-fbb2.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
