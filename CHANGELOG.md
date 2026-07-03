@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Split ``tests/server/test_draft_mixin.py`` (841 lines) into two domain-focused modules: ``test_draft_mixin_compute_and_save.py`` and ``test_draft_mixin_send_generate.py``.  The shared ``_DraftMixinFakeHandler`` test helper is now in ``tests/server/_test_helpers.py``.
 - Add Dependabot auto-merge caller workflow (`.github/workflows/dependabot-auto-merge.yml`) so Dependabot PRs auto-merge once required checks pass.
 - Fix Deno install step in CI: authenticate GitHub API call to avoid anonymous rate-limiting 403 errors on shared runners.
 - Fix coverage-comment job: produce `.coverage` SQLite data alongside XML so `MERGE_COVERAGE_FILES` has data to combine.
