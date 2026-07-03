@@ -105,7 +105,15 @@ jobs:
 
       - name: Install Deno
         run: |
-          curl -fsSL https://deno.land/install.sh | sh -s -- v2.2.4
+          # Resolve latest v2.x release via GitHub API (no auth needed for public repos)
+          V2_TAG=$(curl -sSf https://api.github.com/repos/denoland/deno/releases?per_page=30 \
+            | python3 -c "import sys,json; [print(r['tag_name']) for r in json.load(sys.stdin) if r['tag_name'].startswith('v2.')]" \
+            | head -1)
+          echo "Installing Deno ${V2_TAG}"
+          curl -fsSL "https://github.com/denoland/deno/releases/download/${V2_TAG}/deno-x86_64-unknown-linux-gnu.zip" -o deno.zip
+          unzip -q deno.zip
+          mkdir -p "$HOME/.deno/bin"
+          mv deno "$HOME/.deno/bin/"
           echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
 
       - name: Lint JavaScript
