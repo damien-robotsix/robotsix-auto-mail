@@ -30,7 +30,7 @@ jobs:
       mypy-advisory: false        # auto-mail runs `mypy --strict` as a BLOCKING gate; it must NOT become advisory
       run-deptry: true
       run-bandit: true
-      pytest-args: --hypothesis-profile=ci -m "not docker"
+      pytest-args: --hypothesis-profile=ci -m "not docker" --cov-report=xml:coverage.xml
 
   # auto-mail-specific checks with no equivalent in the reusable spine. They
   # keep their own steps and stay blocking on every push + PR.
@@ -202,3 +202,63 @@ jobs:
             LGPL-2.1-only, LGPL-2.1-or-later,
             LGPL-3.0-only, LGPL-3.0-or-later
           comment-summary-in-pr: true
+
+  # PR-only job: posts a per-file coverage diff PR comment.  This is
+  # INFORMATIONAL — the actual blocking coverage gate is --cov-fail-under=80
+  # inside the reusable, enforced in the `ci` job above.
+  #
+  # The reusable python-ci.yml workflow does not upload coverage artifacts,
+  # so this job generates its own .coverage + coverage.xml from a fresh test
+  # run.  Running the full suite twice is wasteful but the only way to get
+  # per-file diff commentary without modifying the shared reusable workflow.
+  coverage-comment:
+    if: github.event_name == 'pull_request'
+    needs: [ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0    # full history needed for coverage diff
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Install dev deps
+        env:
+          UV_PROJECT_ENVIRONMENT: system
+        run: uv sync --frozen --extra dev
+
+      - name: Generate coverage data
+        env:
+          UV_PROJECT_ENVIRONMENT: system
+        run: |
+          uv run --with pytest-xdist --with pytest-cov pytest tests/ \
+            -n auto --dist loadscope \
+            --hypothesis-profile=ci \
+            -m "not docker" \
+            --cov=robotsix_auto_mail \
+            --cov-report=xml:coverage.xml \
+            --tb=long
+
+      - name: Post coverage PR comment
+        uses: py-cov-action/python-coverage-comment-action@50d15ff8768f6d897b04e5a0805bd1a98f7096c4  # v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MERGE_COVERAGE_FILES: true
+
+      - name: Install coverage for HTML report
+        run: pip install coverage
+
+      - name: Generate HTML coverage report
+        run: |
+          coverage html --directory=coverage_html
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: coverage-html-report
+          path: coverage_html/
+          retention-days: 7
