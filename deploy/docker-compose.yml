@@ -27,7 +27,10 @@ services:
 
   board:
     image: ghcr.io/damien-robotsix/robotsix-auto-mail:main
-    command: serve --port 8080
+    # --host 0.0.0.0 is required: `serve` defaults to 127.0.0.1, which is
+    # unreachable from the central-deploy gateway container and 502s every
+    # proxied request.
+    command: serve --host 0.0.0.0 --port 8080
     restart: unless-stopped
     environment:
       ROBOTSIX_CONFIG_FILE: /home/mailbot/config/config.json
@@ -48,11 +51,13 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
+    # Configuration is NOT managed by central-deploy: the app reads the JSON
+    # file at ROBOTSIX_CONFIG_FILE, seeded manually into the auto-mail-config
+    # volume (e.g. via `robotsix-auto-mail detect ... --output`). No
+    # config-target/config-assist labels on purpose — central-deploy's config
+    # writer only speaks YAML and would produce a file the app ignores.
     labels:
       robotsix.deploy.primary: "true"
-      robotsix.deploy.config-target: "/home/mailbot/config/config.yaml"
-      robotsix.deploy.config-assist: "detect {accounts.0.auth.username} --id {accounts.0.id} --overwrite --password {accounts.0.auth.password} --no-verify --output /home/mailbot/config/config.yaml"
-      robotsix.deploy.config-assist-seeds: "accounts.0.auth.username,accounts.0.auth.password"
 
 volumes:
   auto-mail-config:
