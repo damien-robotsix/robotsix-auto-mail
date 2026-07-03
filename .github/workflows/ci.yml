@@ -245,12 +245,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           MERGE_COVERAGE_FILES: false
 
-      - name: Install coverage for HTML report
-        run: pip install coverage
-
       - name: Generate HTML coverage report
-        run: |
-          coverage html --directory=coverage_html
+        run: uv run coverage html --directory=coverage_html
 
       - name: Upload HTML report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
