@@ -84,6 +84,23 @@ def _build_triage_system_prompt(
         "discarded.\n"
         "- `TO_ANSWER`: the message needs a personal reply.\n"
         "\n"
+        "Common mail categories and their typical triage (apply these patterns "
+        "when they fit, but always consider the specific content):\n"
+        '- Newsletters / digests (e.g. "Weekly Roundup", "Monthly Digest") → '
+        'TO_ARCHIVE, archive_subfolder ~ "Newsletters/<source-name>"\n'
+        '- Receipts / invoices (e.g. "Your receipt from X", "Invoice #N") → '
+        'TO_ARCHIVE, archive_subfolder ~ "Finance"\n'
+        "- Order / shipping confirmations → TO_ARCHIVE, "
+        'archive_subfolder ~ "Orders"\n'
+        "- Calendar invites / event reminders → TO_CALENDAR\n"
+        "- Automated CI / monitoring alerts (e.g. GitHub Actions, Sentry) → "
+        'TO_ARCHIVE, archive_subfolder ~ "Notifications"\n'
+        '- Account / security notices (e.g. "Password changed", '
+        '"New sign-in") → TO_ARCHIVE, archive_subfolder ~ "Admin"\n'
+        "- Personal / direct email from a known contact → TO_ANSWER\n"
+        "- Unsolicited promotional email from an unknown sender → TO_DELETE\n"
+        "- Password-reset / email-verification links → TO_ANSWER (time-sensitive)\n"
+        "\n"
         "Reference each message by its 1-based `index` (do NOT echo back any "
         "message id). For each message return an `index`, an `action` (one "
         "of the values above), a short `reason`, and a `confidence` of "

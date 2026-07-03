@@ -28,10 +28,9 @@ def test_system_prompt_with_archive_folders() -> None:
 
 
 def test_system_prompt_without_archive_folders() -> None:
-    """When archive_folders is None, prompt is unchanged."""
+    """When archive_folders is None, the archive-specific section is omitted."""
     prompt = _build_triage_system_prompt(archive_folders=None)
     assert "existing sub-folders" not in prompt
-    assert "archive_subfolder" not in prompt
 
 
 def test_system_prompt_with_empty_archive_folders() -> None:
