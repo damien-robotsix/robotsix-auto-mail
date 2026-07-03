@@ -42,6 +42,7 @@ modules:
       - changelog/20260703T100000Z-deploy-contract-json-only-config.removal.md
       - changelog/20260703T103000Z-drop-managed-config-artifacts.removal.md
       - changelog/20260703T101218Z-standards-round-2-drop-requires-python-u-a525.removal.md
+      - changelog/20260703T110407Z-drop-pre-commit-autoupdate-yml-redundant-a748.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -380,7 +381,6 @@ modules:
       - .github/workflows/dependabot-auto-merge.yml
       - .github/workflows/docs.yml
       - .github/workflows/lockfile.yml
-      - .github/workflows/pre-commit-autoupdate.yml
       - .github/workflows/pre-commit.yml
       - .github/workflows/release.yml
       - .github/workflows/scan-container.yml
