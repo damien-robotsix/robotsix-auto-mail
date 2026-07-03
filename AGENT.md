@@ -191,13 +191,14 @@ The `pre-commit.yml` workflow runs `ruff`, `mypy`, `vulture`, and
 MUST be registered in `docs/modules.yaml` under the appropriate module,
 or the pre-commit gate will fail.
 
-### Changelog enforcer
+### Changelog fragments (towncrier)
 
 Every PR that adds or modifies source, test, or configuration files
-MUST either (a) add a `CHANGELOG.md` entry under the
-`## 0.0.0 (unreleased)` heading describing the change, or (b) carry the
-`Skip-Changelog` label.  The `changelog-enforcer` CI gate in `ci.yml`
-will reject the PR otherwise.
+MUST include a changelog fragment file under `changelog/`.  The fragment
+must be a ``.md`` file whose name follows the towncrier convention
+(``<ID>.<type>.md``) and whose type matches one of the configured
+categories: ``feature``, ``bugfix``, ``removal``, or ``misc``.  The
+`towncrier check` CI gate in `ci.yml` verifies this on pull requests.
 
 ---
 

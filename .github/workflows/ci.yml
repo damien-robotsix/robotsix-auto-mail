@@ -92,17 +92,6 @@ jobs:
       - name: Check module registration completeness
         run: uv run --frozen robotsix-modules check-registration docs/modules.yaml --root .
 
-      - name: Enforce changelog updates
-        if: github.event_name == 'pull_request'
-        uses: dangoslen/changelog-enforcer@204e7d3ef26579f4cd0fd759c57032656fdf23c7  # v3
-        with:
-          changeLogPath: CHANGELOG.md
-          skipLabels: Skip-Changelog
-          expectedLatestVersion: 0.0.0
-          versionPattern: '^## (\d+\.\d+\.\d+)'
-          missingUpdateErrorMessage: |
-            Please add a changelog entry under `## 0.0.0 (unreleased)` in CHANGELOG.md.
-            If this PR does not need a changelog entry, add the `Skip-Changelog` label.
 
       - name: Dead code detection (vulture)
         run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
