@@ -43,6 +43,15 @@ class _BoardViewMixin:
     # the ``self._account_cookie = None`` assignment in _serve_email_detail.
     _account_cookie: str | None
 
+    @property
+    def _effective_archive_root(self) -> str:
+        """The configured archive root, or the default when no config is set."""
+        return (
+            self.mail_config.archive_root
+            if self.mail_config is not None
+            else DEFAULT_ARCHIVE_ROOT
+        )
+
     def _serve_board(self) -> None:
         """Render and serve the kanban board HTML."""
         if self._aggregate and self.accounts is not None:
@@ -54,11 +63,7 @@ class _BoardViewMixin:
             self._send_response(body, content_type="text/html; charset=utf-8")
             return
 
-        archive_root = (
-            self.mail_config.archive_root
-            if self.mail_config is not None
-            else DEFAULT_ARCHIVE_ROOT
-        )
+        archive_root = self._effective_archive_root
         try:
             body = _build_board_html(
                 self.db_path,
@@ -83,11 +88,7 @@ class _BoardViewMixin:
             self._serve_json(payload)
             return
 
-        archive_root = (
-            self.mail_config.archive_root
-            if self.mail_config is not None
-            else DEFAULT_ARCHIVE_ROOT
-        )
+        archive_root = self._effective_archive_root
         try:
             payload = _build_board_content(
                 self.db_path,
@@ -143,11 +144,7 @@ class _BoardViewMixin:
         prefix = "/archive-proposal/"
         message_id = unquote(path[len(prefix) :])
 
-        archive_root = (
-            self.mail_config.archive_root
-            if self.mail_config is not None
-            else DEFAULT_ARCHIVE_ROOT
-        )
+        archive_root = self._effective_archive_root
 
         with _with_db(self.db_path) as conn:
             record = get_record_by_message_id(conn, message_id)
@@ -214,11 +211,7 @@ class _BoardViewMixin:
             self._serve_json({"delimiter": "/", "folders": []})
             return
 
-        archive_root = (
-            self.mail_config.archive_root
-            if self.mail_config is not None
-            else DEFAULT_ARCHIVE_ROOT
-        )
+        archive_root = self._effective_archive_root
 
         with _with_db(self.db_path) as conn:
             archive_raw = get_watermark(conn, "archive_structure")
