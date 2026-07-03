@@ -41,6 +41,7 @@ modules:
       - changelog/20260703T092619Z-ci-fix-out-of-scope-ci-failure-repo-chec-e128.misc.md
       - changelog/20260703T100000Z-deploy-contract-json-only-config.removal.md
       - changelog/20260703T103000Z-drop-managed-config-artifacts.removal.md
+      - changelog/20260703T101218Z-standards-round-2-drop-requires-python-u-a525.removal.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

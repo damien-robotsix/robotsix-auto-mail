@@ -37,5 +37,4 @@ FIELD_YAML_MAP: dict[str, str] = {
     "langfuse_base_url": "langfuse.base_url",
     "log_level": "logging.level",
     "log_format": "logging.format",
-    "log_file_dir": "logging.file_dir",
 }

@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Add `.mail_log/` to `.gitignore` to prevent runtime log files from being accidentally committed after file-logging removal.
+- Drop upper bound on ``requires-python`` (``>=3.14`` instead of ``>=3.14,<3.15``) per fleet standard.
+- Remove file-logging support: drop ``log_file_dir`` config field, ``FileHandler`` code, and all ``.mail_log``/``auto-mail-logs`` volume references from Docker/compose/docs.
+- Remove ``bandit`` from pre-commit hooks (CI-only scanner per fleet standard).
 - Simplify `entrypoint.sh` to the robotsix inverted-entrypoint contract: strip config validation (now owned by the Python application), replace `MAIL_CONFIG_PATH` with `ROBOTSIX_CONFIG_FILE`, and keep only genuine startup work (envsubst templating).
 - Adopt towncrier for changelog fragment management: add `[tool.towncrier]` config, `changelog/` directory, towncrier CI check, and release procedure in `CONTRIBUTING.md`.
 - Extract `_effective_archive_root` as a `@property` on `_BoardViewMixin`, replacing four identical inline `archive_root` computations (dedup; jscpd clone pair #5).

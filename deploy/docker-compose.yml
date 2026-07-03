@@ -12,7 +12,6 @@ services:
     volumes:
       - auto-mail-config:/home/mailbot/config
       - auto-mail-data:/home/mailbot/.data
-      - auto-mail-logs:/home/mailbot/.mail_log
     healthcheck:
       test:
         - CMD-SHELL
@@ -39,7 +38,6 @@ services:
     volumes:
       - auto-mail-config:/home/mailbot/config
       - auto-mail-data:/home/mailbot/.data
-      - auto-mail-logs:/home/mailbot/.mail_log
     healthcheck:
       test:
         - CMD-SHELL
@@ -66,4 +64,3 @@ volumes:
   auto-mail-data:
     labels:
       robotsix.deploy.stateful: "true"
-  auto-mail-logs:

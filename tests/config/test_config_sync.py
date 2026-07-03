@@ -92,7 +92,6 @@ accounts:
     # logging:
     #   level: INFO
     #   format: console
-    #   file_dir: .mail_log
 
   - id: work
     label: Work
@@ -166,7 +165,6 @@ _DOCS_YAML_TABLE = """\
 | `langfuse.base_url` | no | - | Langfuse base URL for LLM tracing |
 | `logging.level` | no | `INFO` | Log level |
 | `logging.format` | no | `console` | Log format |
-| `logging.file_dir` | no | `.mail_log` | Log file directory |
 """
 
 

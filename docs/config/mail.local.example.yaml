@@ -32,7 +32,6 @@
 # logging:
 #   level: INFO
 #   format: console
-#   file_dir: .mail_log
 
 # Optional: the default account for CLI operations (e.g. `robotsix-auto-mail triage`
 # uses this account when --account is omitted). Absent → the first account below.

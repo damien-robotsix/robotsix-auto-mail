@@ -45,25 +45,31 @@ diagnose() {
 }
 
 # Isolated, dependency-free configuration: write a minimal multi-account
-# config.yaml to the temp dir and point MAIL_CONFIG_PATH at it. Dummy
+# config.json to the temp dir and point ROBOTSIX_CONFIG_FILE at it. Dummy
 # IMAP/SMTP values are fine because no mail connection is made at boot.
-CONFIG_FILE="${TMP_DIR}/config.yaml"
+# Shape must match MailAccountsConfig (config/model.py):
+#   {"accounts": [{"account_id":..., "label":..., "config": {MailConfig}}],
+#    "default_account_id": ...}
+CONFIG_FILE="${TMP_DIR}/config.json"
 cat >"${CONFIG_FILE}" <<EOF
-default_account: smoke
-accounts:
-  - id: smoke
-    label: Smoke test
-    imap:
-      host: localhost
-    smtp:
-      host: localhost
-    auth:
-      username: smoke
-      password: smoke  # pragma: allowlist secret
-    store:
-      path: ${TMP_DIR}/smoke.db
+{
+  "accounts": [
+    {
+      "account_id": "smoke",
+      "label": "Smoke test",
+      "config": {
+        "imap_host": "localhost",
+        "smtp_host": "localhost",
+        "username": "smoke",
+        "password": "smoke",
+        "db_path": "${TMP_DIR}/smoke.db"
+      }
+    }
+  ],
+  "default_account_id": "smoke"
+}
 EOF
-export MAIL_CONFIG_PATH="${CONFIG_FILE}"
+export ROBOTSIX_CONFIG_FILE="${CONFIG_FILE}"
 
 # Launch the server in the background, capturing stdout/stderr for diagnosis.
 # Prefer `uv run --frozen` when available; the mill test-gate sandbox has no

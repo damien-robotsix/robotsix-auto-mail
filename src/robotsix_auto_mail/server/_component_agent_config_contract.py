@@ -89,7 +89,6 @@ _SETTABLE_YAML_PATHS: frozenset[str] = frozenset(
         "archive.root",
         "logging.level",
         "logging.format",
-        "logging.file_dir",
         "llm.api_key",
         "langfuse.public_key",
         "langfuse.secret_key",
