@@ -105,7 +105,7 @@ jobs:
 
       - name: Install Deno
         run: |
-          curl -fsSL https://deno.land/install.sh | sh -s -- v2
+          curl -fsSL https://deno.com/install.sh | sh -s -- v2
           echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
 
       - name: Lint JavaScript
