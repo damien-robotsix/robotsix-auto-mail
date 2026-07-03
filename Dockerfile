@@ -75,14 +75,14 @@ RUN groupadd --gid 1000 app && \
 
 VOLUME ["/data"]
 
-COPY --chown=mailbot:mailbot entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chown=app:app entrypoint.sh /usr/local/bin/entrypoint.sh
 
-USER mailbot
+USER app
 
 # Run from the home directory so relative defaults resolve under it:
 # the config file (config/config.json) and the SQLite store
 # (.data/mail.db) both land in the bind-mounted / persisted locations.
-WORKDIR /home/mailbot
+WORKDIR /home/app
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/health', timeout=3).status == 200 else 1)" || exit 1

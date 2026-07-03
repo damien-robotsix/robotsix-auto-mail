@@ -65,7 +65,11 @@ accounts:
       # oauth2_provider: ""              # "microsoft" to enable MSAL
       # oauth2_tenant: organizations     # Azure AD tenant
     store:
-      path: .data/personal/mail.db
+      # For container deployment, use an absolute path under /data:
+      path: /data/personal/mail.db
+      # For local dev, use a relative path (or omit store.path entirely
+      # — the default is .data/<id>/mail.db relative to the working dir):
+      # path: .data/personal/mail.db
     # Automatic ingestion (used by `ingest --watch`). How often, in minutes,
     # to fetch new mail.
     # ingest:
@@ -91,4 +95,7 @@ accounts:
       username: me@work.example.com
       password: ""  # set here
     store:
-      path: .data/work/mail.db
+      # For container deployment, use an absolute path under /data:
+      path: /data/work/mail.db
+      # For local dev, use a relative path:
+      # path: .data/work/mail.db

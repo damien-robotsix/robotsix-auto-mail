@@ -5,7 +5,7 @@ name: robotsix-auto-mail
 services:
   ingester:
     image: ghcr.io/damien-robotsix/robotsix-auto-mail:main
-    command: ingest --watch --heartbeat-file /home/mailbot/.data/ingest.heartbeat
+    command: ingest --watch --heartbeat-file /data/ingest.heartbeat
     restart: unless-stopped
     environment:
       ROBOTSIX_CONFIG_FILE: /home/app/config/config.json

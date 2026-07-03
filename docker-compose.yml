@@ -41,9 +41,8 @@ services:
       # Config bind-mount — YAML files available without image rebuild.
       - ./config:/home/app/config
       # Data bind-mount — the SQLite database lives in ./.mail_data on the
-      # host (git-ignored), mounted at the default store location
-      # (.data, under WORKDIR) inside the container.
-      - ./.mail_data:/home/mailbot/.data
+      # host (git-ignored), mounted at /data inside the container.
+      - ./.mail_data:/data
 
     # The ingester runs no HTTP server, so the image's HTTP healthcheck
     # (GET :8080/health) can never pass — disable it for this service.
@@ -76,4 +75,4 @@ services:
 
     volumes:
       - ./config:/home/app/config
-      - ./.mail_data:/home/mailbot/.data
+      - ./.mail_data:/data
