@@ -44,6 +44,7 @@ modules:
       - changelog/20260703T101218Z-standards-round-2-drop-requires-python-u-a525.removal.md
       - changelog/20260703T110407Z-drop-pre-commit-autoupdate-yml-redundant-a748.misc.md
       - changelog/20260703T151937Z-ci-fix-out-of-scope-ci-failure-shellchec-fbb2.misc.md
+      - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-d2d8.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -345,6 +346,7 @@ modules:
       - tests/server/test_view_mixin.py
       - tests/server/test_views_detail.py
       - tests/server/test_views_forms.py
+      - tests/server/test_batch_mixin.py
       - scripts/server/smoke_board.sh
 
   - id: docs
