@@ -11,17 +11,21 @@
 modules:
   - id: core
     description: >-
-      Project root, package identity, build configuration, and roadmap.
+      Project root, package identity, build configuration, roadmap,
+      and observability/logging/tracing startup.
     paths:
       - src/robotsix_auto_mail/__init__.py
       - src/robotsix_auto_mail/py.typed
       - src/robotsix_auto_mail/_constants.py
       - src/robotsix_auto_mail/_llm_agent.py
+      - src/robotsix_auto_mail/_observability.py
       - src/robotsix_auto_mail/format.py
       - src/robotsix_auto_mail/health.py
       - tests/core/test_format.py
       - tests/core/test_health.py
       - tests/core/test_llm_agent.py
+      - tests/core/test_observability_logging.py
+      - tests/core/test_observability_tracing.py
       - pyproject.toml
       - uv.lock
       - vulture_whitelist.py
@@ -284,17 +288,6 @@ modules:
     paths:
       - src/robotsix_auto_mail/smtp/__init__.py
       - tests/smtp/test_smtp_client.py
-
-  - id: observability
-    description: >-
-      Logging and Langfuse distributed-tracing setup: delegates
-      console/file logging to robotsix_llmio.logging and OTel
-      trace-provider initialisation to robotsix_llmio.core, with
-      a unified setup_observability() entry point.
-    paths:
-      - src/robotsix_auto_mail/observability/__init__.py
-      - tests/observability/test_logging.py
-      - tests/observability/test_tracing.py
 
   - id: server
     description: >-
