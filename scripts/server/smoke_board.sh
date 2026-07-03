@@ -22,8 +22,8 @@ LOG_FILE="${TMP_DIR}/server.log"
 SERVER_PID=""
 
 # Invoked indirectly via `trap cleanup EXIT`, so shellcheck's reachability
-# analysis cannot see the call site (SC2317 on the whole body).
-# shellcheck disable=SC2317
+# analysis cannot see the call site (SC2317 / SC2329 on the whole body).
+# shellcheck disable=SC2317,SC2329
 cleanup() {
     if [[ -n "${SERVER_PID}" ]] && kill -0 "${SERVER_PID}" 2>/dev/null; then
         kill "${SERVER_PID}" 2>/dev/null || true

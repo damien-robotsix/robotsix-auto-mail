@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Suppress shellcheck SC2329 false-positive on `cleanup()` in `scripts/server/smoke_board.sh` (function is invoked indirectly via `trap`).
 - Drop the bespoke ``pre-commit-autoupdate`` scheduled workflow (``.github/workflows/pre-commit-autoupdate.yml``); let Dependabot manage pre-commit hook updates via the new ``pre-commit`` ecosystem entry in ``.github/dependabot.yml``.
 - Add `.mail_log/` to `.gitignore` to prevent runtime log files from being accidentally committed after file-logging removal.
 - Drop upper bound on ``requires-python`` (``>=3.14`` instead of ``>=3.14,<3.15``) per fleet standard.
