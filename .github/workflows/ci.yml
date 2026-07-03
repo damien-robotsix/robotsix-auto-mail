@@ -103,9 +103,10 @@ jobs:
       - name: Dead code detection (vulture)
         run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
 
-      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282  # v2.0.4
-        with:
-          deno-version: v2.x
+      - name: Install Deno
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh -s -- v2.2.4
+          echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
 
       - name: Lint JavaScript
         run: deno lint src/robotsix_auto_mail/server/static/board-auto-mail.js

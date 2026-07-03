@@ -3,6 +3,7 @@
 ## 0.0.0 (unreleased)
 
 - Triage system prompt now includes a confidence-level rubric defining `low`, `medium`, and `high` so the LLM can calibrate its confidence scores.
+- Add a catalog of common mail categories with example triage dispositions to the triage agent's system prompt, helping the LLM classify newsletters, receipts, order confirmations, CI alerts, account notices, and other frequent patterns more consistently.
 - Fix board unreachable through the central-deploy gateway (502 / "mail.deploy.robotsix.net not working"): the compose `board` service now passes `--host 0.0.0.0` to `serve`, since the default 127.0.0.1 bind is unreachable from other containers.
 - Pin first-party `[tool.uv.sources]` git dependencies to commit SHAs instead of `rev = "main"` (agent-comm, board, modules, and the pre-rename robotsix-yaml-config), so a lock refresh can't silently drift or break resolution. Pins are bumped via the automated pin-bump workflow.
 - Migrate configuration from ``robotsix-yaml-config`` to ``robotsix-config`` (pydantic + JSON only). ``MailConfig``, ``MailAccount``, and ``MailAccountsConfig`` are now pydantic ``BaseModel`` subclasses (``frozen=True``). Config files use JSON format at ``config/config.json`` (``ROBOTSIX_CONFIG_FILE``); ``config/config.example.json`` is committed. YAML config, env-var fallbacks (``LLM_API_KEY``, ``LLM_PROVIDER_MODEL``, ``MAIL_PASSWORD``), and the ``render_accounts_yaml`` / ``from_yaml`` entry points are removed. A new CI schema-drift check keeps ``config/config.schema.json`` in sync with the model.
