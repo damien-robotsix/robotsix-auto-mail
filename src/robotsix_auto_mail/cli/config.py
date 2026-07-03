@@ -185,7 +185,7 @@ def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
         from robotsix_config import load_config as _rc_load
 
         return _rc_load(MailAccountsConfig, path=path)
-    except ModuleNotFoundError:
+    except Exception:
         pass
     # Fallback without robotsix_config: try JSON first, then YAML.
     text = path.read_text()
