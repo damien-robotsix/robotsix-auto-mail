@@ -8,7 +8,7 @@ services:
     command: ingest --watch --heartbeat-file /home/mailbot/.data/ingest.heartbeat
     restart: unless-stopped
     environment:
-      MAIL_CONFIG_PATH: /home/mailbot/config/config.yaml
+      ROBOTSIX_CONFIG_FILE: /home/mailbot/config/config.json
     volumes:
       - auto-mail-config:/home/mailbot/config
       - auto-mail-data:/home/mailbot/.data
@@ -30,7 +30,7 @@ services:
     command: serve --port 8080
     restart: unless-stopped
     environment:
-      MAIL_CONFIG_PATH: /home/mailbot/config/config.yaml
+      ROBOTSIX_CONFIG_FILE: /home/mailbot/config/config.json
     ports:
       - "8080:8080"
     volumes:

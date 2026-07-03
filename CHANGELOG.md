@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Simplify `entrypoint.sh` to the robotsix inverted-entrypoint contract: strip config validation (now owned by the Python application), replace `MAIL_CONFIG_PATH` with `ROBOTSIX_CONFIG_FILE`, and keep only genuine startup work (envsubst templating).
 - Adopt towncrier for changelog fragment management: add `[tool.towncrier]` config, `changelog/` directory, towncrier CI check, and release procedure in `CONTRIBUTING.md`.
 - Extract `_effective_archive_root` as a `@property` on `_BoardViewMixin`, replacing four identical inline `archive_root` computations (dedup; jscpd clone pair #5).
 - Extract the canonical `MailConfig` field→YAML-path map into `robotsix_auto_mail.config._field_map.FIELD_YAML_MAP`, shared by the config contract and `check_config_sync.py` (eliminates the duplicated 29-entry dict; jscpd clone pairs #471–472).

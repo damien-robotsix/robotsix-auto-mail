@@ -1,0 +1,1 @@
+Simplify `entrypoint.sh` to the robotsix inverted-entrypoint contract: strip config validation (now owned by the Python application), replace `MAIL_CONFIG_PATH` with `ROBOTSIX_CONFIG_FILE`, and keep only genuine startup work (envsubst templating).
