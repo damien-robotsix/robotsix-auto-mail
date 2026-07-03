@@ -186,7 +186,7 @@ def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
 
         return _rc_load(MailAccountsConfig, path=path)
     except Exception:
-        pass
+        logger.debug("robotsix_config load failed for %s — falling back", path)
     # Fallback without robotsix_config: try JSON first, then YAML.
     text = path.read_text()
     try:
