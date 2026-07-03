@@ -242,7 +242,6 @@ jobs:
             --hypothesis-profile=ci \
             -m "not docker" \
             --cov=robotsix_auto_mail \
-            --cov-report= \
             --cov-report=xml:coverage.xml \
             --tb=long
 
