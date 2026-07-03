@@ -7,7 +7,7 @@ name = "robotsix-auto-mail"
 version = "0.0.0"
 description = "Automated mail ingestion, triage, and kanban board — IMAP fetch, SMTP send, LLM triage, SQLite storage"
 readme = "README.md"
-requires-python = ">=3.14,<3.15"
+requires-python = ">=3.14"
 license = "MIT"
 classifiers = [
     "Development Status :: 4 - Beta",

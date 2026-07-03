@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import datetime
 import json
 import logging
-import os
 
 import pytest
 
@@ -41,14 +39,14 @@ def _reset_logging() -> None:
 
 def test_log_level_honoured() -> None:
     """A level=WARNING arg sets the logger level to WARNING."""
-    setup_logging(level="WARNING", log_file_dir="")
+    setup_logging(level="WARNING")
 
     assert logging.getLogger("robotsix_auto_mail").level == logging.WARNING
 
 
 def test_default_log_level_is_info() -> None:
     """With no ``level`` arg, the default level is INFO."""
-    setup_logging(log_file_dir="")
+    setup_logging()
 
     assert logging.getLogger("robotsix_auto_mail").level == logging.INFO
 
@@ -57,7 +55,7 @@ def test_json_format_renders_parseable_json(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """log_format=json renders each event as a single parseable JSON line."""
-    setup_logging(level="INFO", log_format="json", log_file_dir="")
+    setup_logging(level="INFO", log_format="json")
 
     logger = logging.getLogger("robotsix_auto_mail")
     logger.info("hello_event foo=bar")
@@ -84,7 +82,7 @@ def test_trace_id_no_span_renders_dash(
     """With no active recording span, JSON output carries trace_id == \"-\"."""
     monkeypatch.setattr("robotsix_llmio.logging.get_recording_span", lambda: None)
 
-    setup_logging(level="INFO", log_format="json", log_file_dir="")
+    setup_logging(level="INFO", log_format="json")
 
     logger = logging.getLogger("robotsix_auto_mail")
     logger.info("no_span_event")
@@ -110,7 +108,7 @@ def test_trace_id_active_span_renders_hex(
 
     monkeypatch.setattr("robotsix_llmio.logging.get_recording_span", lambda: _Span())
 
-    setup_logging(level="INFO", log_format="json", log_file_dir="")
+    setup_logging(level="INFO", log_format="json")
 
     logger = logging.getLogger("robotsix_auto_mail")
     logger.info("span_event")
@@ -128,71 +126,10 @@ def test_trace_id_present_in_console_format(
     """Console renderer also carries the trace_id key."""
     monkeypatch.setattr("robotsix_llmio.logging.get_recording_span", lambda: None)
 
-    setup_logging(level="INFO", log_format="console", log_file_dir="")
+    setup_logging(level="INFO", log_format="console")
 
     logger = logging.getLogger("robotsix_auto_mail")
     logger.info("console_event")
 
     out = capsys.readouterr().out
     assert "[-]" in out
-
-
-# ---------------------------------------------------------------------------
-# File handler tests
-# ---------------------------------------------------------------------------
-
-
-def test_file_handler_creates_log_file(
-    tmp_path: str,
-) -> None:
-    """With log_file_dir set to a writable tmp_path, a date-stamped log
-    file is created and receives log events."""
-    setup_logging(level="INFO", log_file_dir=str(tmp_path))
-
-    logger = logging.getLogger("robotsix_auto_mail")
-    logger.info("file_log_test extra=value")
-
-    today = datetime.date.today().isoformat()
-    log_path = os.path.join(str(tmp_path), f"mail-{today}.log")
-    assert os.path.isfile(log_path), f"expected {log_path} to exist"
-
-    content = open(log_path).read()
-    assert "file_log_test" in content
-
-
-def test_file_handler_always_debug(
-    tmp_path: str,
-) -> None:
-    """When level=WARNING, the file handler still receives DEBUG events."""
-    setup_logging(level="WARNING", log_file_dir=str(tmp_path))
-
-    logger = logging.getLogger("robotsix_auto_mail")
-    logger.debug("debug_for_file_only")
-
-    today = datetime.date.today().isoformat()
-    log_path = os.path.join(str(tmp_path), f"mail-{today}.log")
-    assert os.path.isfile(log_path)
-
-    content = open(log_path).read()
-    assert "debug_for_file_only" in content
-
-
-def test_file_handler_uncreatable_path_does_not_crash() -> None:
-    """When log_file_dir points to an uncreatable path, setup_logging
-    does not raise and stdout logging still works."""
-    setup_logging(level="INFO", log_file_dir="/dev/null/.mail_log")
-
-    target = logging.getLogger("robotsix_auto_mail")
-    stream_handlers = [
-        h for h in target.handlers if isinstance(h, logging.StreamHandler)
-    ]
-    assert stream_handlers, "expected a stdout StreamHandler to exist"
-
-
-def test_empty_log_file_dir_disables_file_logging() -> None:
-    """Empty log_file_dir (or whitespace-only) means no file handler."""
-    setup_logging(level="INFO", log_file_dir="   ")
-
-    target = logging.getLogger("robotsix_auto_mail")
-    file_handlers = [h for h in target.handlers if isinstance(h, logging.FileHandler)]
-    assert not file_handlers, "expected no FileHandler for empty log_file_dir"

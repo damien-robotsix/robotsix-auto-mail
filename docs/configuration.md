@@ -187,7 +187,6 @@ agent run is traced to the configured Langfuse project.
 |---|---|---|---|---|
 | `logging.level` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` | no | Minimum log level. |
 | `logging.format` | `console` | `json` / `console` | no | Log renderer. `json` for structured production logs; `console` for human-friendly development output. |
-| `logging.file_dir` | `.mail_log` | string | no | Directory for date-stamped debug log files (`mail-YYYY-MM-DD.log`). An empty or whitespace-only value disables file logging. |
 
 ---
 

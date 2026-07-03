@@ -164,8 +164,8 @@ All structured-logging and Langfuse-tracing infrastructure lives in
   traces every LLM call when Langfuse credentials are configured (via the
   config file's `langfuse:` section).  No extra code needed in auto-mail.
 
-The only thing auto-mail adds on top is a date-stamped `FileHandler`
-(always `DEBUG` level, writing to `.mail_log/mail-YYYY-MM-DD.log`).
+All application logs go to stdout/stderr at the configured level
+(via ``robotsix_llmio.logging.setup_logging``).
 Never add another tracing framework, log shipper, or OTel exporter
 directly — extend `robotsix_llmio` instead.
 

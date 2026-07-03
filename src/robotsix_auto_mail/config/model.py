@@ -135,7 +135,6 @@ class MailConfig(BaseModel):
     # Logging configuration — application-wide (global).
     log_level: str = "INFO"
     log_format: str = "console"
-    log_file_dir: str = ".mail_log"
 
     # -- validators --------------------------------------------------------
 

@@ -216,7 +216,6 @@ A one-shot command overrides `command:` at runtime — e.g.
 |---|---|---|
 | `./config:/home/mailbot/config` | Bind-mount | Makes host config files available inside the container without a build. |
 | `./.mail_data:/home/mailbot/.data` | Bind-mount | Persists the SQLite database in the project dir (git-ignored), at the container's default store location. |
-| `./.mail_log:/home/mailbot/.mail_log` | Bind-mount | Persists debug logs in the project dir so they survive container restarts. |
 
 ### `services.board`
 

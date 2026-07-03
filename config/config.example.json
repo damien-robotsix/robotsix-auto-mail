@@ -31,8 +31,7 @@
         "langfuse_secret_key": "",
         "langfuse_base_url": "",
         "log_level": "INFO",
-        "log_format": "console",
-        "log_file_dir": ".mail_log"
+        "log_format": "console"
       }
     }
   ],
