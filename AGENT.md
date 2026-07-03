@@ -9,6 +9,21 @@ This repo follows the [robotsix stack standards](https://github.com/damien-robot
 
 ---
 
+## Tool-use discipline
+
+When exploring the codebase, prefer `read_file` (which returns the full
+file content at once) over repeated single-line `run_command` queries
+(`grep -n`, `sed -n`, `head`, `cat -n`).  Each such command incurs a
+full model-tool round-trip and contributes to observation bloat.
+
+- **For a small number of known files:** use `read_file` directly.
+- **For cross-codebase searches:** a single well-formed `git grep` is
+  acceptable.
+- **Avoid per-line queries:** never chain `sed -n …p`, `head -N`, or
+  `cat -n` to extract content that `read_file` could return in one call.
+
+---
+
 ## Testing conventions
 
 ### The test gate is sacred
