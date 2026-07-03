@@ -92,7 +92,7 @@ def _build_triage_system_prompt(
         'TO_ARCHIVE, archive_subfolder ~ "Finance"\n'
         "- Order / shipping confirmations → TO_ARCHIVE, "
         'archive_subfolder ~ "Orders"\n'
-        "- Calendar invites / event reminders → TO_CALENDAR\n"
+        "- Calendar invites / event reminders → HUMAN_TRIAGE\n"
         "- Automated CI / monitoring alerts (e.g. GitHub Actions, Sentry) → "
         'TO_ARCHIVE, archive_subfolder ~ "Notifications"\n'
         '- Account / security notices (e.g. "Password changed", '
