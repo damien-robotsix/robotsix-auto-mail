@@ -1,0 +1,1 @@
+Remove broker/component-agent integration; rename /healthz→/health (liveness); adopt standard image layout (user app, /home/app, /data)

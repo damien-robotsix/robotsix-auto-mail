@@ -90,7 +90,6 @@ def test_mailconfig_full_fields() -> None:
         archive_enabled=False,
         triage_on_ingest=False,
         triage_rules_path="/path/to/rules.md",
-        component_agent_enabled=True,
         oauth2_provider="microsoft",
         oauth2_tenant="contoso.onmicrosoft.com",
         langfuse_public_key="pk-lf-yaml",

@@ -41,10 +41,10 @@ docker compose run robotsix-auto-mail board
   `imap.host`, `smtp.host`, `auth.username`, and `auth.password`. Any field
   you omit falls back to its built-in default.
 - The `./config` directory is bind-mounted into the container at
-  `/home/mailbot/config`, so editing `config/mail.local.yaml` on the host
+  `/home/app/config`, so editing `config/mail.local.yaml` on the host
   is picked up immediately — no rebuild needed.
 - The `MAIL_CONFIG_PATH` environment variable is set to
-  `/home/mailbot/config/mail.local.yaml` by `docker-compose.yml`.
+  `/home/app/config/config.json` by `docker-compose.yml`.
 - The mail database persists in `./.mail_data` on the host (bind-mounted,
   git-ignored).
 
@@ -273,7 +273,6 @@ accounts:
 | `archive.enabled` | no | `true` | Whether to create/manage the archive folder structure |
 | `triage.on_ingest` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
 | `triage.rules_path` | no | `""` | Path to the human-readable `triage_rules.md` the flash LLM maintains from board actions; empty derives `<db-dir>/triage_rules.md` from `store.path` |
-| `component_agent.enabled` | no | `false` | Whether the HTTP component-agent API is served (allows external agents to monitor status / read or apply configuration over HTTP) |
 | `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing |
 | `llm.provider_model` | no | `""` | LLM provider-model identifier (e.g. `openrouter-deepseek`, `claude-sdk`); see robotsix-llmio README for available backends |
 | `langfuse.public_key` | no | – | Langfuse public key; when set with the secret key, every LLM agent run is traced |
@@ -621,7 +620,7 @@ to seed the MSAL token cache at `.data/office365/msal_cache.json`.
 
 The `llm:` and `langfuse:` sections are application-wide (top-level) — they
 apply to every account. All other sections (`imap` / `smtp` / `auth` / `store`
-/ `ingest` / `archive` / `triage` / `component_agent`) are per-account and live
+/ `ingest` / `archive` / `triage`) are per-account and live
 under each `accounts:` entry.
 
 ### Self-managed archive structure

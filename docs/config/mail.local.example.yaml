@@ -80,10 +80,6 @@ accounts:
     # triage:
     #   on_ingest: true
     #   rules_path: ""
-    # Component agent — HTTP API for external agents to monitor status
-    # and read/apply configuration over HTTP (without the agent-comm broker).
-    # component_agent:
-    #   enabled: false
 
   - id: work
     label: Work mailbox
@@ -96,7 +92,3 @@ accounts:
       password: ""  # set here
     store:
       path: .data/work/mail.db
-    # Component agent — HTTP API for external agents to monitor status
-    # and read/apply configuration over HTTP (without the agent-comm broker).
-    # component_agent:
-    #   enabled: false

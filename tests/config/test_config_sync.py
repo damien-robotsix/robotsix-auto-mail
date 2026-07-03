@@ -84,10 +84,6 @@ accounts:
     # triage:
     #   on_ingest: true
     #   rules_path: ""
-    # Component agent — HTTP API for external agents to monitor status
-    # and read/apply configuration over HTTP (without the agent-comm broker).
-    # component_agent:
-    #   enabled: false
     # Logging configuration — application-wide.
     # logging:
     #   level: INFO
@@ -157,7 +153,6 @@ _DOCS_YAML_TABLE = """\
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
 | `triage.rules_path` | no | `""` | Path to the human-readable triage rules file |
-| `component_agent.enabled` | no | `false` | Whether the component-agent HTTP API is served |
 | `llm.api_key` | no | - | LLM provider API key |
 | `llm.provider_model` | no | `""` | LLM provider-model identifier |
 | `langfuse.public_key` | no | - | Langfuse public key for LLM tracing |
