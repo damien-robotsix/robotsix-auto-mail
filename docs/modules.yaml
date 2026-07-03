@@ -28,11 +28,14 @@ modules:
       - .gitignore
       - .python-version
       - CHANGELOG.md
+      - CONTRIBUTING.md
       - LICENSE
       - AGENT.md
       - README.md
       - SECURITY.md
       - ROADMAP.md
+      - changelog/.gitkeep
+      - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
