@@ -1,0 +1,1 @@
+ci_fix: out-of-scope CI failure — repo-checks (towncrier check shallow clone + zizmor/artipacked) in .github/workflows/ci.yml (add fetch-depth: 0 to the repo-checks checkout step); .github/workflows/pre-commit-autoupdate.yml (add persist-credentials: false to the checkout step)
