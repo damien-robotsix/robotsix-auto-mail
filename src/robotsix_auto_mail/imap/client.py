@@ -98,6 +98,13 @@ class ImapClient(_ProtocolClient):
     """
 
     def __init__(self, config: MailConfig) -> None:
+        """Initialise the IMAP client from a ``MailConfig``.
+
+        Extracts IMAP connection parameters (host, port, TLS mode,
+        credentials) and resolves the OAuth2 token provider (if configured)
+        via the package-level ``build_token_provider`` so that test patches
+        intercept at the package rather than module level.
+        """
         super().__init__(
             host=config.imap_host,
             port=config.imap_port,
@@ -160,6 +167,11 @@ class ImapClient(_ProtocolClient):
     # -- connection helpers ------------------------------------------------
 
     def _connect_direct_tls(self) -> None:
+        """Open an IMAP-over-TLS (port 993) connection via ``IMAP4_SSL``.
+
+        Wraps ``OSError`` / ``IMAP4.error`` in ``ImapConnectionError`` so
+        callers get a uniform exception shape regardless of TLS mode.
+        """
         ctx = ssl.create_default_context()
         try:
             self._imap = imaplib.IMAP4_SSL(
@@ -174,6 +186,14 @@ class ImapClient(_ProtocolClient):
             ) from exc
 
     def _connect_starttls(self) -> None:
+        """Open a plain IMAP connection then upgrade to TLS via ``STARTTLS``.
+
+        The initial plain socket is immediately upgraded — the ``lgtm``
+        suppression acknowledges that this is the intended ``tls_mode ==
+        "starttls"`` path, not an unencrypted session.  Failures during
+        STARTTLS negotiation close the underlying socket and raise
+        ``ImapTlsError``.
+        """
         # 1. Plain connection
         try:
             # Plain socket here is the intended tls_mode == "starttls" path; it
@@ -201,6 +221,12 @@ class ImapClient(_ProtocolClient):
             ) from exc
 
     def _connect_plain(self) -> None:
+        """Open an unencrypted IMAP connection (``tls_mode == "none"``).
+
+        The plaintext socket is operator-selected, not a silent downgrade —
+        the ``lgtm`` suppression documents this.  Connection failures raise
+        ``ImapConnectionError``.
+        """
         try:
             # Plaintext IMAP is the operator-selected tls_mode == "none"
             # configuration (a supported option), not a silent downgrade.
@@ -214,6 +240,15 @@ class ImapClient(_ProtocolClient):
             ) from exc
 
     def _authenticate(self) -> None:
+        """Authenticate to the connected IMAP server.
+
+        Chooses XOAUTH2 (when a token provider is configured or a static
+        token is present) or plain password login.  On XOAUTH2 failure when
+        MSAL manages the token, performs a force-refresh retry: reconnects,
+        refreshes the token, and attempts XOAUTH2 once more.  All failures
+        are wrapped in ``ImapAuthError`` with a Gmail-specific hint appended
+        when appropriate.
+        """
         if self._imap is None:
             raise RuntimeError("_authenticate() called before _connect_*()")
         self._xoauth2_challenge = b""  # reset on each attempt
