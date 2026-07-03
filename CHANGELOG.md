@@ -40,6 +40,7 @@
 - Extract `_effective_archive_root` as a `@property` on `_BoardViewMixin`, replacing four identical inline `archive_root` computations (dedup; jscpd clone pair #5).
 - Extract the canonical `MailConfig` field→YAML-path map into `robotsix_auto_mail.config._field_map.FIELD_YAML_MAP`, shared by the config contract and `check_config_sync.py` (eliminates the duplicated 29-entry dict; jscpd clone pairs #471–472).
 - Split ``tests/server/test_draft_mixin.py`` (841 lines) into two domain-focused modules: ``test_draft_mixin_compute_and_save.py`` and ``test_draft_mixin_send_generate.py``.  The shared ``_DraftMixinFakeHandler`` test helper is now in ``tests/server/_test_helpers.py``.
+- Consolidate the `draft` module into `server` as `_draft_generator.py`, since it is exclusively consumed by `_draft_mixin.py`. Move and merge `tests/draft/test_draft.py` into `tests/server/test_draft_mixin.py`. Remove the `draft` module entry from `docs/modules.yaml`.
 - Add docstrings to five undocumented private connection/authentication methods in ``ImapClient``: ``__init__``, ``_connect_direct_tls``, ``_connect_starttls``, ``_connect_plain``, ``_authenticate``.
 - Add Dependabot auto-merge caller workflow (`.github/workflows/dependabot-auto-merge.yml`) so Dependabot PRs auto-merge once required checks pass.
 - Fix Deno install step in CI: authenticate GitHub API call to avoid anonymous rate-limiting 403 errors on shared runners.

@@ -13,6 +13,7 @@ import json
 import sys
 from unittest import mock
 
+import pytest
 from tests.server._test_helpers import _DraftMixinFakeHandler
 from tests.server.conftest import _populate_db, _seed_draft_record
 
@@ -400,7 +401,7 @@ class TestHandleGenerateDraft:
         return handler
 
     def test_import_error_degradation(self, tmp_db_path: str) -> None:
-        """When robotsix_auto_mail.draft is not importable, redirect gracefully.
+        """When robotsix_auto_mail.server._draft_generator is not importable, redirect gracefully.
 
         Uses ``mock.patch.dict`` to set the module entry to ``None`` in
         ``sys.modules``, which forces Python to raise ``ImportError``
@@ -412,7 +413,9 @@ class TestHandleGenerateDraft:
         handler._redirect_generate_draft = mock.MagicMock()
 
         with (
-            mock.patch.dict(sys.modules, {"robotsix_auto_mail.draft": None}),
+            mock.patch.dict(
+                sys.modules, {"robotsix_auto_mail.server._draft_generator": None}
+            ),
             mock.patch(
                 "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
             ) as mock_set,
@@ -444,11 +447,11 @@ class TestHandleGenerateDraft:
         handler = self._setup_handler(single_db, "gen-err")
         handler._redirect_generate_draft = mock.MagicMock()
 
-        from robotsix_auto_mail.draft import DraftGenerationError
+        from robotsix_auto_mail.server._draft_generator import DraftGenerationError
 
         with (
             mock.patch(
-                "robotsix_auto_mail.draft.generate_draft_reply",
+                "robotsix_auto_mail.server._draft_generator.generate_draft_reply",
                 side_effect=DraftGenerationError("LLM unavailable"),
             ),
             mock.patch(
@@ -480,7 +483,9 @@ class TestHandleGenerateDraft:
         handler._redirect_generate_draft = mock.MagicMock()
 
         with (
-            mock.patch("robotsix_auto_mail.draft.generate_draft_reply"),
+            mock.patch(
+                "robotsix_auto_mail.server._draft_generator.generate_draft_reply"
+            ),
             mock.patch(
                 "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
             ) as mock_set,
@@ -523,3 +528,403 @@ class TestRedirectGenerateDraft:
         handler = _DraftMixinFakeHandler(tmp_db_path)
         handler._redirect_generate_draft("msg-3", "")
         handler._redirect.assert_called_once_with("/board#msg-3", 302)
+
+
+# ===================================================================
+# Draft generator unit tests (merged from tests/draft/test_draft.py)
+# ===================================================================
+
+
+def _patch_llm(
+    result_obj: "DraftResult",
+) -> tuple[mock.MagicMock, mock._patch[mock.MagicMock]]:
+    """Patch get_provider to return *result_obj* from the LLM.
+
+    Returns the mock handle (to assert ``close()``) and the patcher.
+    """
+
+    mock_run_result = mock.MagicMock()
+    mock_run_result.output = result_obj
+    mock_handle = mock.MagicMock()
+    mock_handle.run_sync.return_value = mock_run_result
+
+    mock_provider = mock.MagicMock()
+    mock_provider.build_agent.return_value = mock_handle
+    mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
+
+    patcher = mock.patch(
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
+        return_value=mock_provider,
+    )
+    return mock_handle, patcher
+
+
+def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
+    """Insert an inbox MailRecord with sensible defaults."""
+    from robotsix_auto_mail.db import MailRecord, insert_record
+
+    record = MailRecord(
+        message_id=message_id,
+        sender=overrides.get("sender", "alice@example.com"),
+        subject=overrides.get("subject", "Hello"),
+        date="2025-06-01T12:00:00",
+        status=overrides.get("status", "to_read"),
+        body_plain=overrides.get("body_plain", "Can we meet next week?"),
+        notes=overrides.get("notes", ""),
+    )
+    insert_record(conn, record)  # type: ignore[arg-type]
+
+
+class TestDraftGenerator:
+    """Tests for the draft generator functions."""
+
+    def test_generate_draft_reply_returns_and_persists(self) -> None:
+        """The mocked draft text is returned and persisted to draft_text."""
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            DraftResult,
+            generate_draft_reply,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            _insert_inbox(conn, "mid-1")
+            mock_handle, patcher = _patch_llm(
+                DraftResult(draft_text="Sure, [your availability]. [Your name]")
+            )
+            with patcher:
+                draft = generate_draft_reply(conn, "mid-1", api_key="sk-test")
+
+            assert draft == "Sure, [your availability]. [Your name]"
+            record = get_record_by_message_id(conn, "mid-1")
+            assert record is not None
+            assert record.draft_text == "Sure, [your availability]. [Your name]"
+            mock_handle.close.assert_called_once()
+        finally:
+            conn.close()
+
+    def test_build_draft_user_message_includes_notes(self) -> None:
+        """Non-empty notes are appended under a labelled section."""
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            _build_draft_user_message,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            _insert_inbox(conn, "mid-notes", notes="decline politely")
+            record = get_record_by_message_id(conn, "mid-notes")
+            assert record is not None
+            message = _build_draft_user_message(record)
+            assert "User notes / instructions" in message
+            assert "decline politely" in message
+        finally:
+            conn.close()
+
+    def test_build_draft_user_message_omits_empty_notes(self) -> None:
+        """Empty/whitespace notes produce no notes section."""
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            _build_draft_user_message,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            _insert_inbox(conn, "mid-empty", notes="   ")
+            record = get_record_by_message_id(conn, "mid-empty")
+            assert record is not None
+            message = _build_draft_user_message(record)
+            assert "User notes / instructions" not in message
+        finally:
+            conn.close()
+
+    def test_generate_draft_reply_missing_record_raises(self) -> None:
+        """A missing message_id raises DraftGenerationError."""
+        from robotsix_auto_mail.db import init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            DraftGenerationError,
+            generate_draft_reply,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            with pytest.raises(DraftGenerationError):
+                generate_draft_reply(conn, "does-not-exist", api_key="sk-test")
+        finally:
+            conn.close()
+
+    def test_build_draft_system_prompt_contains_required_keywords(self) -> None:
+        """The system prompt is non-empty and includes key instructions."""
+        from robotsix_auto_mail.server._draft_generator import (
+            _build_draft_system_prompt,
+        )
+
+        prompt = _build_draft_system_prompt()
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
+        # Expected keywords from the prompt rules:
+        for keyword in ("LANGUAGE", "draft_text", "placeholder", "professional"):
+            assert keyword in prompt, f"Missing keyword in system prompt: {keyword}"
+
+    def test_generate_draft_reply_llm_error_propagates(self) -> None:
+        """LLM failure raises DraftGenerationError wrapping the original."""
+        from robotsix_auto_mail.db import init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            DraftGenerationError,
+            DraftResult,
+            generate_draft_reply,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            _insert_inbox(conn, "mid-err")
+            _, patcher = _patch_llm(DraftResult(draft_text="irrelevant"))
+            # Make run_agent raise a non-DraftGenerationError exception
+            run_agent_patch = mock.patch(
+                "robotsix_llmio.core.run_agent",
+                side_effect=ValueError("LLM timeout"),
+            )
+            with patcher, run_agent_patch:
+                with pytest.raises(DraftGenerationError, match="LLM timeout"):
+                    generate_draft_reply(conn, "mid-err", api_key="sk-test")
+        finally:
+            conn.close()
+
+    def test_build_draft_user_message_truncates_long_body(self) -> None:
+        """A body exceeding _BODY_CHAR_LIMIT is truncated in the user message."""
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            _BODY_CHAR_LIMIT,
+            _build_draft_user_message,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            long_body = "x" * (_BODY_CHAR_LIMIT + 500)
+            _insert_inbox(conn, "mid-long", body_plain=long_body)
+            record = get_record_by_message_id(conn, "mid-long")
+            assert record is not None
+            message = _build_draft_user_message(record)
+            # The truncated body should appear in the message, but the full one
+            # should not.
+            expected_truncated = long_body[:_BODY_CHAR_LIMIT]
+            assert expected_truncated in message
+            assert long_body not in message
+            # The message must be shorter than the original body + framing
+            assert len(message) < len(long_body)
+        finally:
+            conn.close()
+
+    def test_draft_result_requires_draft_text(self) -> None:
+        """DraftResult enforces that draft_text is required."""
+        from pydantic import ValidationError
+
+        from robotsix_auto_mail.server._draft_generator import DraftResult
+
+        DraftResult(draft_text="hello")  # valid — should not raise
+
+        with pytest.raises(ValidationError):
+            DraftResult()  # type: ignore[call-arg]
+
+        with pytest.raises(ValidationError):
+            DraftResult(draft_text=123)  # type: ignore[arg-type]
+
+
+# ===================================================================
+# Draft generator unit tests (merged from tests/draft/test_draft.py)
+# ===================================================================
+
+
+def _patch_llm(
+    result_obj: "DraftResult",
+) -> tuple[mock.MagicMock, mock._patch[mock.MagicMock]]:
+    """Patch get_provider to return *result_obj* from the LLM.
+
+    Returns the mock handle (to assert ``close()``) and the patcher.
+    """
+
+    mock_run_result = mock.MagicMock()
+    mock_run_result.output = result_obj
+    mock_handle = mock.MagicMock()
+    mock_handle.run_sync.return_value = mock_run_result
+
+    mock_provider = mock.MagicMock()
+    mock_provider.build_agent.return_value = mock_handle
+    mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
+
+    patcher = mock.patch(
+        "robotsix_llmio.core.factory.get_provider_for_identifier",
+        return_value=mock_provider,
+    )
+    return mock_handle, patcher
+
+
+def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
+    """Insert an inbox MailRecord with sensible defaults."""
+    from robotsix_auto_mail.db import MailRecord, insert_record
+
+    record = MailRecord(
+        message_id=message_id,
+        sender=overrides.get("sender", "alice@example.com"),
+        subject=overrides.get("subject", "Hello"),
+        date="2025-06-01T12:00:00",
+        status=overrides.get("status", "to_read"),
+        body_plain=overrides.get("body_plain", "Can we meet next week?"),
+        notes=overrides.get("notes", ""),
+    )
+    insert_record(conn, record)  # type: ignore[arg-type]
+
+
+class TestDraftGenerator:
+    """Tests for the draft generator functions."""
+
+    def test_generate_draft_reply_returns_and_persists(self) -> None:
+        """The mocked draft text is returned and persisted to draft_text."""
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            DraftResult,
+            generate_draft_reply,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            _insert_inbox(conn, "mid-1")
+            mock_handle, patcher = _patch_llm(
+                DraftResult(draft_text="Sure, [your availability]. [Your name]")
+            )
+            with patcher:
+                draft = generate_draft_reply(conn, "mid-1", api_key="sk-test")
+
+            assert draft == "Sure, [your availability]. [Your name]"
+            record = get_record_by_message_id(conn, "mid-1")
+            assert record is not None
+            assert record.draft_text == "Sure, [your availability]. [Your name]"
+            mock_handle.close.assert_called_once()
+        finally:
+            conn.close()
+
+    def test_build_draft_user_message_includes_notes(self) -> None:
+        """Non-empty notes are appended under a labelled section."""
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            _build_draft_user_message,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            _insert_inbox(conn, "mid-notes", notes="decline politely")
+            record = get_record_by_message_id(conn, "mid-notes")
+            assert record is not None
+            message = _build_draft_user_message(record)
+            assert "User notes / instructions" in message
+            assert "decline politely" in message
+        finally:
+            conn.close()
+
+    def test_build_draft_user_message_omits_empty_notes(self) -> None:
+        """Empty/whitespace notes produce no notes section."""
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            _build_draft_user_message,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            _insert_inbox(conn, "mid-empty", notes="   ")
+            record = get_record_by_message_id(conn, "mid-empty")
+            assert record is not None
+            message = _build_draft_user_message(record)
+            assert "User notes / instructions" not in message
+        finally:
+            conn.close()
+
+    def test_generate_draft_reply_missing_record_raises(self) -> None:
+        """A missing message_id raises DraftGenerationError."""
+        from robotsix_auto_mail.db import init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            DraftGenerationError,
+            generate_draft_reply,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            with pytest.raises(DraftGenerationError):
+                generate_draft_reply(conn, "does-not-exist", api_key="sk-test")
+        finally:
+            conn.close()
+
+    def test_build_draft_system_prompt_contains_required_keywords(self) -> None:
+        """The system prompt is non-empty and includes key instructions."""
+        from robotsix_auto_mail.server._draft_generator import (
+            _build_draft_system_prompt,
+        )
+
+        prompt = _build_draft_system_prompt()
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
+        # Expected keywords from the prompt rules:
+        for keyword in ("LANGUAGE", "draft_text", "placeholder", "professional"):
+            assert keyword in prompt, f"Missing keyword in system prompt: {keyword}"
+
+    def test_generate_draft_reply_llm_error_propagates(self) -> None:
+        """LLM failure raises DraftGenerationError wrapping the original."""
+        from robotsix_auto_mail.db import init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            DraftGenerationError,
+            DraftResult,
+            generate_draft_reply,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            _insert_inbox(conn, "mid-err")
+            _, patcher = _patch_llm(DraftResult(draft_text="irrelevant"))
+            # Make run_agent raise a non-DraftGenerationError exception
+            run_agent_patch = mock.patch(
+                "robotsix_llmio.core.run_agent",
+                side_effect=ValueError("LLM timeout"),
+            )
+            with patcher, run_agent_patch:
+                with pytest.raises(DraftGenerationError, match="LLM timeout"):
+                    generate_draft_reply(conn, "mid-err", api_key="sk-test")
+        finally:
+            conn.close()
+
+    def test_build_draft_user_message_truncates_long_body(self) -> None:
+        """A body exceeding _BODY_CHAR_LIMIT is truncated in the user message."""
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        from robotsix_auto_mail.server._draft_generator import (
+            _BODY_CHAR_LIMIT,
+            _build_draft_user_message,
+        )
+
+        conn = init_db(":memory:")
+        try:
+            long_body = "x" * (_BODY_CHAR_LIMIT + 500)
+            _insert_inbox(conn, "mid-long", body_plain=long_body)
+            record = get_record_by_message_id(conn, "mid-long")
+            assert record is not None
+            message = _build_draft_user_message(record)
+            # The truncated body should appear in the message, but the full one
+            # should not.
+            expected_truncated = long_body[:_BODY_CHAR_LIMIT]
+            assert expected_truncated in message
+            assert long_body not in message
+            # The message must be shorter than the original body + framing
+            assert len(message) < len(long_body)
+        finally:
+            conn.close()
+
+    def test_draft_result_requires_draft_text(self) -> None:
+        """DraftResult enforces that draft_text is required."""
+        from pydantic import ValidationError
+
+        from robotsix_auto_mail.server._draft_generator import DraftResult
+
+        DraftResult(draft_text="hello")  # valid — should not raise
+
+        with pytest.raises(ValidationError):
+            DraftResult()  # type: ignore[call-arg]
+
+        with pytest.raises(ValidationError):
+            DraftResult(draft_text=123)  # type: ignore[arg-type]
