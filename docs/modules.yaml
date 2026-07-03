@@ -36,6 +36,7 @@ modules:
       - ROADMAP.md
       - changelog/.gitkeep
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
+      - changelog/20260703T082456Z-simplify-entrypoint-sh-for-post-config-m-f5e8.removal.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

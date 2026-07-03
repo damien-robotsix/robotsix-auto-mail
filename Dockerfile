@@ -78,7 +78,7 @@ COPY --chown=mailbot:mailbot entrypoint.sh /usr/local/bin/entrypoint.sh
 USER mailbot
 
 # Run from the home directory so relative defaults resolve under it:
-# the config file (config/mail.local.yaml) and the SQLite store
+# the config file (config/config.json) and the SQLite store
 # (.data/mail.db) both land in the bind-mounted / persisted locations.
 WORKDIR /home/mailbot
 
