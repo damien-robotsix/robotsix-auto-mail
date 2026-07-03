@@ -51,6 +51,18 @@ describes, in plain language, how mail matching some sender / topic / content
 should be triaged or archived.  Reword or delete any rule you disagree with —
 the triage agent reads this file on every run.
 -->
+
+<!--
+Example rules — uncomment and customise:
+
+# - Archive newsletters from `newsletter@example.com` to `Newsletters`
+# - Delete all mail from `no-reply@spammy-site.com`
+# - Answer mail from `boss@mycompany.com` (needs personal reply)
+# - Archive receipts and invoices to `Finance`
+# - Archive CI notification emails from `github.com` to `Notifications`
+# - Calendar invites from any sender → TO_CALENDAR
+# - Mark `[email-verification]` subject mails as TO_ANSWER (time-sensitive)
+-->
 """
 
 
