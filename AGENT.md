@@ -78,6 +78,22 @@ When a test file exceeds ~500 lines with clear thematic sections
 domain-focused modules under the same directory — one module per
 endpoint, handler mixin, or logical concern.
 
+### Agent test-edit workflow — batch, target, then run the full suite
+
+When adding or editing multiple test cases in a single test file,
+**batch** all additions into one `edit_file` step rather than looping
+`edit_file` → `pytest` → `edit_file`.  After batching:
+
+1. **Targeted run first** — run `python -m pytest <path/to/changed_test.py>`
+   on only the changed file to catch failures quickly.
+2. **Iterate on failures** — fix and re-run the same targeted file
+   until it passes.
+3. **Full suite last** — run `python -m pytest` once at the end to
+   confirm no regressions across the whole suite.
+
+This avoids N× full-suite runs (one per incremental edit), saving
+significant LLM input-token cost by keeping the context window small.
+
 ---
 
 ## Configuration conventions
