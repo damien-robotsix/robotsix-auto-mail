@@ -106,6 +106,7 @@ modules:
       isolation.
     paths:
       - src/robotsix_auto_mail/config/__init__.py
+      - src/robotsix_auto_mail/config/_field_map.py
       - src/robotsix_auto_mail/config/loader.py
       - src/robotsix_auto_mail/config/model.py
       - src/robotsix_auto_mail/config/schema.py
