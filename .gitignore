@@ -28,6 +28,9 @@ uv.tgz
 # Real mail configuration (may contain credentials)
 config/config.json
 
+# Runtime log files (generated artifacts, never committed).
+.mail_log/
+
 # Runtime SQLite store written by the ingest pipeline. Local runs use
 # ./.data/mail.db; the Docker stack bind-mounts ./.mail_data for it. The
 # .mail_data dir is tracked (via .gitkeep) so Docker doesn't create it as

@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add `.mail_log/` to `.gitignore` to prevent runtime log files from being accidentally committed after file-logging removal.
 - Drop upper bound on ``requires-python`` (``>=3.14`` instead of ``>=3.14,<3.15``) per fleet standard.
 - Remove file-logging support: drop ``log_file_dir`` config field, ``FileHandler`` code, and all ``.mail_log``/``auto-mail-logs`` volume references from Docker/compose/docs.
 - Remove ``bandit`` from pre-commit hooks (CI-only scanner per fleet standard).
