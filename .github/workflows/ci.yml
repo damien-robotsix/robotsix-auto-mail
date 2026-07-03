@@ -62,6 +62,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --extra dev
 
+      - name: Check for missing changelog fragment
+        run: uv run --with towncrier towncrier check --compare-with origin/main
+        if: github.event_name == 'pull_request'
+
       - name: Dependency vulnerability audit
         run: uv audit --frozen
 
