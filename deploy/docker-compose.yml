@@ -64,4 +64,3 @@ volumes:
   auto-mail-data:
     labels:
       robotsix.deploy.stateful: "true"
- "true"
