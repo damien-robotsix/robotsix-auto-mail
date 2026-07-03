@@ -96,4 +96,11 @@ from robotsix_auto_mail.config.model import MailAccountsConfig
 MailAccountsConfig.model_config
 MailAccountsConfig._validate
 
+# ===========================================================================
+# Config field mapping — imported by check_config_sync.py, not used directly
+# in this module, but vulture doesn't trace cross-module imports.
+# ===========================================================================
 
+from robotsix_auto_mail.config._field_map import FIELD_YAML_MAP
+
+FIELD_YAML_MAP
