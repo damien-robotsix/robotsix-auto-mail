@@ -45,6 +45,8 @@ modules:
       - changelog/20260703T110407Z-drop-pre-commit-autoupdate-yml-redundant-a748.misc.md
       - changelog/20260703T151937Z-ci-fix-out-of-scope-ci-failure-shellchec-fbb2.misc.md
       - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-d241.misc.md
+      - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-8ead.misc.md
+      - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-d241.misc.md
       - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-d2d8.misc.md
       - tests/__init__.py
       - tests/conftest.py
@@ -345,6 +347,7 @@ modules:
       - tests/server/test_server_draft.py
       - tests/server/test_server_reconcile.py
       - tests/server/test_server_triage.py
+      - tests/server/test_triage_mixin.py
       - tests/server/test_view_mixin.py
       - tests/server/test_views_detail.py
       - tests/server/test_views_forms.py
