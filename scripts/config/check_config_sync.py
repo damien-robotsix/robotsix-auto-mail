@@ -51,40 +51,16 @@ from robotsix_auto_mail.config import (  # noqa: E402
 _LEGACY_FLAT_DB_PATH = ".data/mail.db"
 
 # ---------------------------------------------------------------------------
-# Hard-coded field mappings (second pair of eyes on the mapping logic).
+# Field mappings — imported from the canonical shared source
+# (``robotsix_auto_mail.config._field_map``) so this checker and the runtime
+# config contract (``_component_agent_config_contract._FIELD_YAML_MAP``) cannot
+# drift. The checker still independently validates this mapping against the
+# live ``MailConfig`` model and the YAML template below.
 # ---------------------------------------------------------------------------
 
-FIELD_TO_YAML: dict[str, str] = {
-    "imap_host": "imap.host",
-    "imap_port": "imap.port",
-    "imap_tls_mode": "imap.tls_mode",
-    "imap_folder": "imap.folder",
-    "smtp_host": "smtp.host",
-    "smtp_port": "smtp.port",
-    "smtp_tls_mode": "smtp.tls_mode",
-    "username": "auth.username",
-    "password": "auth.password",
-    "oauth2_token": "auth.oauth2_token",
-    "oauth2_client_id": "auth.oauth2_client_id",
-    "oauth2_client_secret": "auth.oauth2_client_secret",
-    "oauth2_provider": "auth.oauth2_provider",
-    "oauth2_tenant": "auth.oauth2_tenant",
-    "db_path": "store.path",
-    "llm_api_key": "llm.api_key",
-    "llm_provider_model": "llm.provider_model",
-    "ingest_interval_minutes": "ingest.interval_minutes",
-    "archive_root": "archive.root",
-    "archive_enabled": "archive.enabled",
-    "triage_on_ingest": "triage.on_ingest",
-    "triage_rules_path": "triage.rules_path",
-    "component_agent_enabled": "component_agent.enabled",
-    "langfuse_public_key": "langfuse.public_key",
-    "langfuse_secret_key": "langfuse.secret_key",
-    "langfuse_base_url": "langfuse.base_url",
-    "log_level": "logging.level",
-    "log_format": "logging.format",
-    "log_file_dir": "logging.file_dir",
-}
+from robotsix_auto_mail.config._field_map import (  # noqa: E402
+    FIELD_YAML_MAP as FIELD_TO_YAML,
+)
 
 # ---------------------------------------------------------------------------
 # Placeholder patterns — values that are NOT default-mismatches.
