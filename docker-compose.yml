@@ -14,10 +14,10 @@
 #     docker compose run robotsix-auto-mail detect you@example.com
 #     docker compose run robotsix-auto-mail ingest          # single pass
 #
-# Configuration is delivered via YAML files bind-mounted from the host
-# ./config directory.  The only environment variable set here points the
-# application at the mounted config file.  All secrets live in the
-# git-ignored config/mail.local.yaml.
+# Configuration is delivered via a JSON config file bind-mounted from the
+# host ./config directory.  The only environment variable set here points
+# the application at the mounted config file.  All secrets live in the
+# git-ignored config/config.json.
 # -------------------------------------------------------------------------
 
 services:
@@ -35,8 +35,7 @@ services:
     command: ingest --watch
 
     environment:
-      MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml
-      LLM_API_KEY: ${LLM_API_KEY:-}
+      ROBOTSIX_CONFIG_FILE: /home/mailbot/config/config.json
 
     volumes:
       # Config bind-mount — YAML files available without image rebuild.
@@ -72,7 +71,7 @@ services:
     restart: unless-stopped
 
     environment:
-      MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml
+      ROBOTSIX_CONFIG_FILE: /home/mailbot/config/config.json
 
     ports:
       - "${BOARD_PORT:-8080}:8080"
