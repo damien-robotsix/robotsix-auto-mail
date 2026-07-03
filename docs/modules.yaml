@@ -39,6 +39,7 @@ modules:
       - changelog/20260703T082456Z-simplify-entrypoint-sh-for-post-config-m-f5e8.removal.md
       - changelog/20260703T085156Z-ci-failure-uv-in-update-1446419417-on-ma-171e.misc.md
       - changelog/20260703T092619Z-ci-fix-out-of-scope-ci-failure-repo-chec-e128.misc.md
+      - changelog/20260703T180457Z-migrate-robotsix-auto-mail-to-use-shared-28fc.misc.md
       - changelog/20260703T100000Z-deploy-contract-json-only-config.removal.md
       - changelog/20260703T103000Z-drop-managed-config-artifacts.removal.md
       - changelog/20260703T101218Z-standards-round-2-drop-requires-python-u-a525.removal.md
