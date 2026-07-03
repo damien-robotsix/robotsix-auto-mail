@@ -1,0 +1,1 @@
+Remove the central-deploy managed-config artifacts: the committed `config/config.yaml` template, `config/config.schema.json`, and the CI schema-drift check. The presence of the schema made central-deploy's onboarding preflight demand a `config-target` label; config is now seeded manually as `config.json` and central-deploy config management is fully opted out of.
