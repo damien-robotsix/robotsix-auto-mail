@@ -27,6 +27,7 @@ modules:
       - vulture_whitelist.py
       - .gitignore
       - .python-version
+      - .github/CODE_OF_CONDUCT.md
       - CHANGELOG.md
       - CONTRIBUTING.md
       - LICENSE
