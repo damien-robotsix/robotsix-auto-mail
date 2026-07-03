@@ -104,9 +104,11 @@ jobs:
         run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
 
       - name: Install Deno
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          # Resolve latest v2.x release via GitHub API (no auth needed for public repos)
-          V2_TAG=$(curl -sSf https://api.github.com/repos/denoland/deno/releases?per_page=30 \
+          # Resolve latest v2.x release via GitHub API (authenticated to avoid rate limiting on shared runners)
+          V2_TAG=$(curl -sSf -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/denoland/deno/releases?per_page=30 \
             | python3 -c "import sys,json; [print(r['tag_name']) for r in json.load(sys.stdin) if r['tag_name'].startswith('v2.')]" \
             | head -1)
           echo "Installing Deno ${V2_TAG}"
@@ -247,7 +249,7 @@ jobs:
         uses: py-cov-action/python-coverage-comment-action@50d15ff8768f6d897b04e5a0805bd1a98f7096c4  # v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
-          MERGE_COVERAGE_FILES: true
+          MERGE_COVERAGE_FILES: false
 
       - name: Install coverage for HTML report
         run: pip install coverage
