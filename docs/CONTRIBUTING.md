@@ -101,3 +101,17 @@ Open an issue on the project's tracker. For bug reports, include steps to
 reproduce, the expected and actual behaviour, and relevant configuration
 or log output (with secrets redacted). For feature requests, describe the
 use case and the outcome you want.
+
+## Code of Conduct
+
+This project is governed by a [Code of Conduct](../.github/CODE_OF_CONDUCT.md).
+By participating, you agree to uphold its terms. Report unacceptable behavior
+to damien.robotsix@gmail.com.
+
+## AI/LLM contribution policy
+
+AI-assisted contributions are welcome, but the author must fully understand
+and take responsibility for every line of code. LLM-generated PRs submitted
+without meaningful human review will be closed. See
+[standards.robotsix.net/ai-contributions](https://standards.robotsix.net/ai-contributions)
+for the full policy.
