@@ -2,6 +2,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add Dependabot auto-merge caller workflow (`.github/workflows/dependabot-auto-merge.yml`) so Dependabot PRs auto-merge once required checks pass.
 - Triage system prompt now includes a confidence-level rubric defining `low`, `medium`, and `high` so the LLM can calibrate its confidence scores.
 - Add a catalog of common mail categories with example triage dispositions to the triage agent's system prompt, helping the LLM classify newsletters, receipts, order confirmations, CI alerts, account notices, and other frequent patterns more consistently.
 - Seed new `triage_rules.md` files with commented-out example rules for human users
