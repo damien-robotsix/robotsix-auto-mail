@@ -11,6 +11,7 @@ import pydantic
 import pytest
 import urllib3.exceptions
 
+from robotsix_auto_mail.config.schema import ConfigurationError
 from robotsix_auto_mail.detect import (
     DetectedProvider,
     DetectionError,
@@ -396,9 +397,15 @@ def test_detect_provider_llm_call_error() -> None:
 def test_detect_provider_missing_api_key() -> None:
     """No api_key arg and no LLM_API_KEY env var → DetectionError."""
     with mock.patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(DetectionError) as exc:
-            detect_provider("user@example.com")
-        assert "llm.api_key" in str(exc.value)
+        with mock.patch(
+            "robotsix_auto_mail._llm_agent.resolve_llm_api_key",
+            side_effect=ConfigurationError(
+                "No LLM API key found — add llm_api_key to config/config.json"
+            ),
+        ):
+            with pytest.raises(DetectionError) as exc:
+                detect_provider("user@example.com")
+        assert "llm_api_key" in str(exc.value)
 
 
 def test_detect_provider_level_default() -> None:

@@ -260,7 +260,7 @@ def test_run_triage_agent_missing_api_key(
         ) as cls:
             with pytest.raises(TriageError) as exc:
                 run_triage_agent(conn, api_key=None)
-        assert "llm.api_key" in str(exc.value)
+        assert "llm_api_key" in str(exc.value)
         cls.assert_not_called()
     finally:
         conn.close()

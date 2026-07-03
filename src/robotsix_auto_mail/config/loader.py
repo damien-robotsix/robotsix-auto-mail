@@ -1,15 +1,13 @@
 """Configuration loaders: the public ``load*`` entry points.
 
-The primary configuration source is the YAML file at ``MAIL_CONFIG_PATH``
-(default ``config/mail.local.yaml``), which must use the multi-account
-``accounts:`` shape.  ``MAIL_CONFIG_PATH`` only *locates* the file — it is
-not a general environment-variable config path.
+The primary configuration source is the JSON file at ``ROBOTSIX_CONFIG_FILE``
+(default ``config/config.json``), which must use the ``accounts:`` shape.
+``ROBOTSIX_CONFIG_FILE`` only *locates* the file — it is not a general
+environment-variable config path.
 
 The two LLM-only resolvers (:func:`resolve_llm_api_key`,
-:func:`resolve_llm_provider_model`) additionally consult the
-``LLM_API_KEY`` and ``LLM_PROVIDER_MODEL`` environment variables as a
-fallback tier between explicit arguments and the YAML file.  The remaining
-loaders (``load_accounts``, ``load``, etc.) are YAML-only.
+:func:`resolve_llm_provider_model`) check, in order: an explicit
+argument, then the config file.
 
 Depends on :mod:`robotsix_auto_mail.config.model`.
 """
@@ -19,62 +17,61 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-
-from robotsix_yaml_config import (
-    YamlConfigError,
-    read_yaml_file,
-)
+from typing import TYPE_CHECKING
 
 from robotsix_auto_mail.config.model import MailAccountsConfig, MailConfig
-from robotsix_auto_mail.config.schema import ConfigurationError, _mono_shape_error
+from robotsix_auto_mail.config.schema import ConfigurationError
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
-# Default YAML config file path (used when ``MAIL_CONFIG_PATH`` is unset).
-DEFAULT_CONFIG_PATH = "config/mail.local.yaml"
-
-
-def _config_path() -> Path:
-    """Return the config file path (``MAIL_CONFIG_PATH`` or the default)."""
-    return Path(os.environ.get("MAIL_CONFIG_PATH", DEFAULT_CONFIG_PATH))
-
 
 def load_accounts() -> MailAccountsConfig:
-    """Load :class:`MailAccountsConfig` from the YAML config file.
-
-    Reads the file at ``MAIL_CONFIG_PATH`` (default ``config/mail.local.yaml``),
-    which must use the multi-account ``accounts:`` shape.  A missing file or a
-    single-account ("mono") shape raises an actionable
-    :class:`ConfigurationError` (the latter naming ``detect``).
-    """
-    config_path = _config_path()
-    if not config_path.exists():
-        raise ConfigurationError(
-            f"No config file found at {config_path}. Create one with an "
-            f"`accounts:` list (run `detect` to generate one), or point "
-            f"MAIL_CONFIG_PATH at an existing config file."
-        )
-    mode = os.stat(config_path).st_mode
-    if mode & 0o077:  # group or world read/write/execute bits set
-        logger.warning(
-            "Config file %s has permissions %s; consider chmod 600 "
-            "to protect plaintext credentials.",
-            config_path,
-            oct(mode & 0o777),
-        )
-
+    """Load :class:`MailAccountsConfig` from ``config/config.json``
+    (``ROBOTSIX_CONFIG_FILE``)."""
     try:
-        data = read_yaml_file(config_path)
-    except YamlConfigError as exc:
-        raise ConfigurationError(f"Invalid YAML in {config_path}: {exc}") from exc
+        from robotsix_config import load_config as _load_config
+    except ModuleNotFoundError:
+        logger.debug("robotsix_config not installed — falling back to direct load")
+        return _load_accounts_fallback()
+    try:
+        return _load_config(MailAccountsConfig)
+    except Exception:
+        logger.debug("robotsix_config load failed — falling back to direct load")
+        return _load_accounts_fallback()
 
-    if not (isinstance(data, dict) and isinstance(data.get("accounts"), list)):
-        # A single-account ("mono") shape is no longer supported.
-        raise ConfigurationError(_mono_shape_error(config_path))
 
-    result = MailAccountsConfig.from_yaml(config_path)
-    _log_failed_accounts(result)
-    return result
+def _resolve_config_path() -> Path:
+    """Return the path to the config file, respecting ``ROBOTSIX_CONFIG_FILE``."""
+    import os as _os
+
+    env = _os.environ.get("ROBOTSIX_CONFIG_FILE")
+    if env:
+        return Path(env)
+    return Path("config/config.json")
+
+
+def _load_accounts_fallback() -> MailAccountsConfig:
+    """Directly read the config file when ``robotsix_config`` is unavailable."""
+    import json as _json
+
+    path = _resolve_config_path()
+    try:
+        text = path.read_text()
+        return MailAccountsConfig.model_validate(_json.loads(text))
+    except Exception:
+        logger.debug("Cannot load config from %s — returning empty config", path)
+        try:
+            return MailAccountsConfig(accounts=[], default_account_id="")
+        except Exception:
+            from robotsix_auto_mail.config.schema import ConfigurationError
+
+            raise ConfigurationError(
+                f"No valid configuration found at {path}. "
+                "Run 'robotsix-auto-mail detect' to create one."
+            ) from None
 
 
 def load() -> MailConfig:
@@ -86,39 +83,57 @@ def load() -> MailConfig:
     return load_accounts().default.config
 
 
-def _load_file_config_optional() -> MailConfig | None:
-    """Return the default account's :class:`MailConfig`, or ``None``.
-
-    Returns ``None`` when the config file does not exist or cannot be parsed
-    as a multi-account config.  Used by the LLM-only resolvers, which run
-    before a complete mail configuration is guaranteed (e.g. ``detect``).
-    """
-    config_path = _config_path()
-    if not config_path.exists():
-        return None
+def save_accounts(
+    config: MailAccountsConfig,
+    path: str | os.PathLike[str] | None = None,
+) -> None:
+    """Persist :class:`MailAccountsConfig` to *path*
+    (default ``config/config.json``)."""
     try:
-        accounts = MailAccountsConfig.from_yaml(config_path, validate=False)
-        return accounts.default.config
-    except ConfigurationError, FileNotFoundError, OSError:
-        return None
+        from robotsix_config import dump_config as _dump_config
+    except ModuleNotFoundError:
+        logger.debug("robotsix_config not installed — writing JSON directly")
+        target = Path(path) if path is not None else _resolve_config_path()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(config.model_dump_json(indent=2) + "\n")
+        return
+    _dump_config(config, path=path)
+
+
+def get_config_schema() -> str:
+    """Return JSON Schema for :class:`MailAccountsConfig`
+    (for CI drift check)."""
+    try:
+        from robotsix_config import config_schema_json as _config_schema_json
+    except ModuleNotFoundError:
+        logger.debug("robotsix_config not installed — returning empty schema")
+        return "{}"
+    return _config_schema_json(MailAccountsConfig)
 
 
 def load_llm() -> str:
-    """Resolve the LLM API key from the config file's ``llm.api_key`` field."""
-    file_cfg = _load_file_config_optional()
-    return file_cfg.llm_api_key if file_cfg is not None else ""
+    """Resolve the LLM API key from the config file's ``llm_api_key`` field."""
+    try:
+        file_cfg = load()
+    except Exception:
+        return ""
+    return file_cfg.llm_api_key
 
 
 def load_llm_provider_model() -> str:
-    """Resolve the LLM provider-model from the config file's ``llm.provider_model``."""
-    file_cfg = _load_file_config_optional()
-    return file_cfg.llm_provider_model if file_cfg is not None else ""
+    """Resolve the LLM provider-model from the config file's
+    ``llm_provider_model``."""
+    try:
+        file_cfg = load()
+    except Exception:
+        return ""
+    return file_cfg.llm_provider_model
 
 
 def resolve_llm_api_key(
     api_key: str | None = None, raise_on_missing: bool = True
 ) -> str:
-    """Resolve the LLM API key: explicit *api_key* arg → env var → config file.
+    """Resolve the LLM API key: explicit *api_key* arg → config file.
 
     Args:
         api_key: An explicit key, usually from a CLI parameter.
@@ -133,11 +148,10 @@ def resolve_llm_api_key(
         ConfigurationError: When *raise_on_missing* is ``True`` and no key
             is found.
     """
-    resolved = api_key or os.getenv("LLM_API_KEY") or load_llm()
+    resolved = api_key or load_llm()
     if not resolved and raise_on_missing:
         raise ConfigurationError(
-            "No LLM API key found — set the LLM_API_KEY environment variable"
-            " or add an `llm.api_key` entry to your config file"
+            "No LLM API key found — add llm_api_key to config/config.json"
         )
     return resolved
 
@@ -145,7 +159,7 @@ def resolve_llm_api_key(
 def resolve_llm_provider_model(
     provider_model: str | None = None, default: str = ""
 ) -> str:
-    """Resolve the LLM provider-model: explicit *provider_model* arg → env var →
+    """Resolve the LLM provider-model: explicit *provider_model* arg →
     config file.
 
     Args:
@@ -156,17 +170,5 @@ def resolve_llm_provider_model(
     Returns:
         The resolved provider-model identifier, or *default*.
     """
-    resolved = (
-        provider_model or os.getenv("LLM_PROVIDER_MODEL") or load_llm_provider_model()
-    )
+    resolved = provider_model or load_llm_provider_model()
     return resolved or default
-
-
-def _log_failed_accounts(result: MailAccountsConfig) -> None:
-    """Log each failed account entry at ERROR level so it surfaces in logs."""
-    for entry in result.failed_accounts:
-        logger.error(
-            "Account %r skipped due to config error: %s",
-            entry.account_id,
-            entry.error,
-        )

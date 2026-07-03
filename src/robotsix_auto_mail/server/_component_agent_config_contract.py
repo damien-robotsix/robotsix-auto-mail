@@ -8,16 +8,99 @@ functions operate on the real ``MailConfig``, never on a parallel model.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from robotsix_agent_comm.protocol import ConfigContractError
 
-from robotsix_auto_mail.config.schema import _FIELD_SPECS, _FieldSpec, _parse_bool
+from robotsix_auto_mail.config.model import MailConfig
 
 if TYPE_CHECKING:
-    from robotsix_auto_mail.config.model import MailConfig
+    pass
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Field spec — replaces the deleted robotsix_auto_mail.config.schema._FieldSpec
+# ---------------------------------------------------------------------------
+
+
+class _FieldSpec(NamedTuple):
+    """How to describe one ``MailConfig`` field in the config contract."""
+
+    field_name: str
+    yaml_path: str  # kept as "yaml_path" for backward compat with callers
+    kind: str
+    default: Any
+    required_in_yaml: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Build field specs from the pydantic model
+# ---------------------------------------------------------------------------
+
+# Map of pydantic field name → dotted YAML-style path (preserved for API compat).
+_FIELD_YAML_MAP: dict[str, str] = {
+    "imap_host": "imap.host",
+    "imap_port": "imap.port",
+    "imap_tls_mode": "imap.tls_mode",
+    "imap_folder": "imap.folder",
+    "smtp_host": "smtp.host",
+    "smtp_port": "smtp.port",
+    "smtp_tls_mode": "smtp.tls_mode",
+    "username": "auth.username",
+    "password": "auth.password",  # pragma: allowlist secret
+    "oauth2_token": "auth.oauth2_token",  # pragma: allowlist secret
+    "oauth2_client_id": "auth.oauth2_client_id",
+    "oauth2_client_secret": "auth.oauth2_client_secret",  # pragma: allowlist secret
+    "oauth2_provider": "auth.oauth2_provider",
+    "oauth2_tenant": "auth.oauth2_tenant",
+    "db_path": "store.path",
+    "llm_api_key": "llm.api_key",  # pragma: allowlist secret
+    "llm_provider_model": "llm.provider_model",
+    "ingest_interval_minutes": "ingest.interval_minutes",
+    "archive_root": "archive.root",
+    "archive_enabled": "archive.enabled",
+    "triage_on_ingest": "triage.on_ingest",
+    "triage_rules_path": "triage.rules_path",
+    "component_agent_enabled": "component_agent.enabled",
+    "langfuse_public_key": "langfuse.public_key",
+    "langfuse_secret_key": "langfuse.secret_key",  # pragma: allowlist secret
+    "langfuse_base_url": "langfuse.base_url",
+    "log_level": "logging.level",
+    "log_format": "logging.format",
+    "log_file_dir": "logging.file_dir",
+}
+
+
+def _kind_for_field(field_name: str) -> str:
+    """Determine the 'kind' tag for a field based on its Python type."""
+    annotation = MailConfig.model_fields[field_name].annotation
+    if annotation is int:
+        return "int"
+    elif annotation is bool:
+        return "bool"
+    elif field_name in ("imap_tls_mode", "smtp_tls_mode"):
+        return "tls_mode"
+    elif field_name == "log_level":
+        return "log_level"
+    elif field_name == "log_format":
+        return "log_format"
+    return "str"
+
+
+# Derive field specs from the pydantic model fields
+_FIELD_SPECS: tuple[_FieldSpec, ...] = tuple(
+    _FieldSpec(
+        field_name=name,
+        yaml_path=_FIELD_YAML_MAP[name],
+        kind=_kind_for_field(name),
+        default=field_info.default if field_info.default is not ... else "",
+        required_in_yaml=field_info.is_required(),
+    )
+    for name, field_info in MailConfig.model_fields.items()
+    if name in _FIELD_YAML_MAP
+)
+
 
 # ---------------------------------------------------------------------------
 # Settable keys allowlist
@@ -25,8 +108,6 @@ logger = logging.getLogger(__name__)
 
 # Runtime-safe dotted config keys ONLY.  Excludes startup-only fields:
 # bind host/port, db/store paths, IMAP/SMTP host/credentials.
-# Derived from ``_FIELD_SPECS[*].yaml_path`` so the allowlist references
-# real paths.
 _SETTABLE_YAML_PATHS: frozenset[str] = frozenset(
     {
         "ingest.interval_minutes",
@@ -72,6 +153,19 @@ _SECRET_FIELDS: frozenset[str] = frozenset(
 _REDACTED = "<redacted>"
 
 _yaml_path_to_spec: dict[str, _FieldSpec] = {s.yaml_path: s for s in _FIELD_SPECS}
+
+# Boolean parsing (was in schema.py)
+_BOOL_TRUE = frozenset({"1", "true", "yes", "on"})
+_BOOL_FALSE = frozenset({"0", "false", "no", "off"})
+
+
+def _parse_bool(label: str, raw: str) -> bool:
+    lowered = raw.lower()
+    if lowered in _BOOL_TRUE:
+        return True
+    if lowered in _BOOL_FALSE:
+        return False
+    raise ValueError(f"{label} must be a boolean, got {raw!r}")
 
 
 def _field_value(config: MailConfig, spec: _FieldSpec) -> object:
@@ -122,15 +216,13 @@ def validate_config_update(
     - Rejects unknown or non-settable keys with
       ``ConfigContractError(code="invalid_key")``.
     - Coerces/validates each value per the field's ``kind``.
-    - Builds a candidate ``MailConfig`` via ``dataclasses.replace`` so
-      ``__post_init__`` invariants run.
+    - Builds a candidate ``MailConfig`` via ``model_copy`` so
+      pydantic invariants run.
     - On any failure raises ``ConfigContractError(code="invalid_value")``.
 
     Returns an audit map ``{dotted_key: (old_value, new_value)}`` of the
     changes that **would** apply.
     """
-    import dataclasses
-
     # -- Reject unknown / non-settable keys --------------------------------
 
     for key in updates:
@@ -163,7 +255,7 @@ def validate_config_update(
                 key=key,
             ) from exc
 
-    # -- Build candidate config via dataclasses.replace -------------------
+    # -- Build candidate config via model_copy ---------------------------
 
     replace_kwargs: dict[str, object] = {}
     for key, new_val in coerced.items():
@@ -171,7 +263,7 @@ def validate_config_update(
         replace_kwargs[spec.field_name] = new_val
 
     try:
-        dataclasses.replace(config, **replace_kwargs)  # type: ignore[arg-type]
+        config.model_copy(update=replace_kwargs)
     except Exception as exc:
         raise ConfigContractError(
             code="invalid_value",
@@ -204,13 +296,11 @@ def apply_config_update(
     old_config = holder.config
     audit = validate_config_update(old_config, updates)
 
-    import dataclasses
-
     replace_kwargs: dict[str, object] = {}
     for key, (_, new_val) in audit.items():
         spec = _yaml_path_to_spec[key]
         replace_kwargs[spec.field_name] = new_val
-    new_config = dataclasses.replace(old_config, **replace_kwargs)
+    new_config = old_config.model_copy(update=replace_kwargs)
     holder.config = new_config
 
     # Emit audit log with secrets redacted.

@@ -23,6 +23,7 @@ from robotsix_auto_mail.config.config_sync_agent import (
     run_config_sync_agent,
     set_finding_state,
 )
+from robotsix_auto_mail.config.schema import ConfigurationError
 from robotsix_auto_mail.db import init_db
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -144,12 +145,19 @@ def test_run_config_sync_agent_missing_api_key(
 ) -> None:
     """No api_key, no LLM_API_KEY env, no config key → ConfigSyncError."""
     monkeypatch.delenv("LLM_API_KEY", raising=False)
-    # Point the config loader at a non-existent file so no key is resolved.
-    monkeypatch.setenv("MAIL_CONFIG_PATH", str(tmp_path / "missing.yaml"))
-    with mock.patch("robotsix_llmio.core.factory.get_provider_for_identifier") as cls:
-        with pytest.raises(ConfigSyncError) as exc:
-            run_config_sync_agent(api_key=None)
-    assert "llm.api_key" in str(exc.value)
+    # Mock resolve_llm_api_key to simulate no key configured
+    with mock.patch(
+        "robotsix_auto_mail._llm_agent.resolve_llm_api_key",
+        side_effect=ConfigurationError(
+            "No LLM API key found — add llm_api_key to config/config.json"
+        ),
+    ):
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as cls:
+            with pytest.raises(ConfigSyncError) as exc:
+                run_config_sync_agent(api_key=None)
+    assert "llm_api_key" in str(exc.value)
     cls.assert_not_called()
 
 

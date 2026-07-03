@@ -361,8 +361,7 @@ def test_accounts_example_no_accounts_key(tmp_path: Path) -> None:
     load_errors = [f for f in findings if f["type"] == "accounts-load-error"]
     assert load_errors
     message = load_errors[0]["message"]
-    assert "accounts:" in message
-    assert "detect" in message
+    assert "accounts" in message
 
 
 def test_accounts_example_colliding_db_paths(tmp_path: Path) -> None:
@@ -398,8 +397,12 @@ def test_run_checks_real_repo() -> None:
 
 
 def test_shipped_accounts_example_loads() -> None:
-    """The shipped multi-account example loads as a valid container."""
-    config = MailAccountsConfig.from_yaml("docs/config/mail.local.example.yaml")
+    """The shipped multi-account example loads as a valid container via yaml + model_validate."""
+    import yaml
+    from check_config_sync import _normalise_legacy_yaml
+
+    raw = yaml.safe_load(Path("docs/config/mail.local.example.yaml").read_text())
+    config = MailAccountsConfig.model_validate(_normalise_legacy_yaml(raw))
     assert len(config.accounts) >= 2
     ids = config.ids()
     assert len(set(ids)) == len(ids)

@@ -98,17 +98,16 @@ modules:
 
   - id: config
     description: >-
-      Configuration loading from the YAML config file only, the config
+      Configuration loading from the JSON config file only, the config
       template, the deterministic drift-detection script, and the optional
       LLM-driven drift-advisory agent. Together they keep the MailConfig
-      dataclass, YAML example, and connecting docs in sync. Also covers
+      pydantic model, JSON example, and connecting docs in sync. Also covers
       multi-account loading (MailAccountsConfig) and per-account SQLite DB
       isolation.
     paths:
       - src/robotsix_auto_mail/config/__init__.py
       - src/robotsix_auto_mail/config/loader.py
       - src/robotsix_auto_mail/config/model.py
-      - src/robotsix_auto_mail/config/render.py
       - src/robotsix_auto_mail/config/schema.py
       - src/robotsix_auto_mail/config/config_sync_agent.py
       - tests/config/test_mailconfig_basics.py
@@ -122,6 +121,8 @@ modules:
       - tests/config/test_config_triage.py
       - docs/config/.gitkeep
       - docs/config/mail.local.example.yaml
+      - config/config.example.json
+      - config/config.schema.json
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
       - tests/config/test_config_sync_agent.py
@@ -129,7 +130,6 @@ modules:
       - tests/config/test_accounts_config.py
       - tests/config/test_account_isolation.py
       - tests/config/test_pydantic_utils.py
-      - tests/config/test_render.py
 
   - id: triage
     description: >-

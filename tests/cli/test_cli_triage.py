@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import json
 from pathlib import Path
 from unittest import mock
@@ -282,17 +281,17 @@ def test_clear_stale_triage_state_resets_running_flags(
         accounts=(
             MailAccount(
                 account_id="a",
-                config=dataclasses.replace(cfg, db_path=db_a),
+                config=cfg.model_copy(update={"db_path": db_a}),
                 label=None,
             ),
             MailAccount(
                 account_id="c",
-                config=dataclasses.replace(cfg, db_path=db_c),
+                config=cfg.model_copy(update={"db_path": db_c}),
                 label=None,
             ),
             MailAccount(
                 account_id="b",
-                config=dataclasses.replace(cfg, db_path=db_b),
+                config=cfg.model_copy(update={"db_path": db_b}),
                 label=None,
             ),
         ),
@@ -344,12 +343,12 @@ def test_clear_stale_triage_state_resets_stale_batch_op(
         accounts=(
             MailAccount(
                 account_id="a",
-                config=dataclasses.replace(cfg, db_path=db_a),
+                config=cfg.model_copy(update={"db_path": db_a}),
                 label=None,
             ),
             MailAccount(
                 account_id="b",
-                config=dataclasses.replace(cfg, db_path=db_b),
+                config=cfg.model_copy(update={"db_path": db_b}),
                 label=None,
             ),
         ),

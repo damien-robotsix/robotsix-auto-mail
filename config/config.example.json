@@ -1,0 +1,40 @@
+{
+  "accounts": [
+    {
+      "account_id": "primary",
+      "label": "Primary Account",
+      "config": {
+        "imap_host": "imap.example.com",
+        "smtp_host": "smtp.example.com",
+        "username": "user@example.com",
+        "password": "changeme",
+        "imap_port": 993,
+        "imap_tls_mode": "direct-tls",
+        "smtp_port": 587,
+        "smtp_tls_mode": "starttls",
+        "db_path": "",
+        "imap_folder": "INBOX",
+        "llm_api_key": "",
+        "llm_provider_model": "",
+        "ingest_interval_minutes": 15,
+        "archive_root": "robotsix-mail-archive",
+        "archive_enabled": true,
+        "triage_on_ingest": true,
+        "triage_rules_path": "",
+        "component_agent_enabled": false,
+        "oauth2_token": "",
+        "oauth2_client_id": "",
+        "oauth2_client_secret": "",
+        "oauth2_provider": "",
+        "oauth2_tenant": "organizations",
+        "langfuse_public_key": "",
+        "langfuse_secret_key": "",
+        "langfuse_base_url": "",
+        "log_level": "INFO",
+        "log_format": "console",
+        "log_file_dir": ".mail_log"
+      }
+    }
+  ],
+  "default_account_id": "primary"
+}

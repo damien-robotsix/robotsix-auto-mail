@@ -16,10 +16,11 @@ pytest.importorskip("robotsix_agent_comm")
 from robotsix_agent_comm.protocol import ConfigContractError
 
 from robotsix_auto_mail.config.model import MailConfig
-from robotsix_auto_mail.config.schema import _FIELD_SPECS, _FieldSpec
 from robotsix_auto_mail.server._component_agent_config_contract import (
+    _FIELD_SPECS,
     SETTABLE_KEYS,
     _coerce_value,
+    _FieldSpec,
     apply_config_update,
     describe_config,
     get_config_snapshot,

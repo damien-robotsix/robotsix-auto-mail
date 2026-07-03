@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import dataclasses
-
+import pydantic
 import pytest
 
 from robotsix_auto_mail.config import MailConfig
@@ -48,7 +47,7 @@ def test_mailconfig_is_immutable() -> None:
         username="u",
         password="p",
     )
-    with pytest.raises(dataclasses.FrozenInstanceError):
+    with pytest.raises(pydantic.ValidationError):
         cfg.imap_host = "other"  # type: ignore[misc]
 
 

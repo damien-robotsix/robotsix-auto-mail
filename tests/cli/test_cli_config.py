@@ -121,55 +121,83 @@ def test_account_id_from_email(email: str, expected: str) -> None:
 
 def test_existing_account_ids_missing_file(tmp_path: Path) -> None:
     """A non-existent path returns an empty set."""
-    path = tmp_path / "nonexistent.yaml"
+    path = tmp_path / "nonexistent.json"
     assert _existing_account_ids(path) == set()
 
 
 def test_existing_account_ids_multi_account(tmp_path: Path) -> None:
-    """A multi-account YAML file returns its entry ids."""
-    path = tmp_path / "accounts.yaml"
+    """A multi-account JSON file returns its entry ids."""
+    import json
+
+    path = tmp_path / "accounts.json"
     path.write_text(
-        "accounts:\n"
-        "  - id: alpha\n"
-        "    email: a@a.com\n"
-        "  - id: beta\n"
-        "    email: b@b.com\n"
-        "default_account_id: alpha\n"
+        json.dumps(
+            {
+                "accounts": [
+                    {
+                        "account_id": "alpha",
+                        "config": {
+                            "imap_host": "imap.a.com",
+                            "smtp_host": "smtp.a.com",
+                            "username": "a@a.com",
+                            "password": "",
+                        },
+                    },
+                    {
+                        "account_id": "beta",
+                        "config": {
+                            "imap_host": "imap.b.com",
+                            "smtp_host": "smtp.b.com",
+                            "username": "b@b.com",
+                            "password": "",
+                        },
+                    },
+                ],
+                "default_account_id": "alpha",
+            }
+        )
     )
     assert _existing_account_ids(path) == {"alpha", "beta"}
 
 
-def test_existing_account_ids_empty_yaml(tmp_path: Path) -> None:
-    """An empty YAML file returns an empty set."""
-    path = tmp_path / "empty.yaml"
+def test_existing_account_ids_empty_json(tmp_path: Path) -> None:
+    """An empty JSON file returns an empty set."""
+    path = tmp_path / "empty.json"
     path.write_text("")
     assert _existing_account_ids(path) == set()
 
 
-def test_existing_account_ids_invalid_yaml(tmp_path: Path) -> None:
-    """A corrupt YAML file returns an empty set (graceful degradation)."""
-    path = tmp_path / "corrupt.yaml"
+def test_existing_account_ids_invalid_json(tmp_path: Path) -> None:
+    """A corrupt JSON file returns an empty set (graceful degradation)."""
+    path = tmp_path / "corrupt.json"
     path.write_text("{invalid: [[[")
     assert _existing_account_ids(path) == set()
 
 
 def test_existing_account_ids_accounts_not_list(tmp_path: Path) -> None:
-    """An 'accounts' key that is not a list falls through to mono detection."""
-    path = tmp_path / "bad.yaml"
-    path.write_text("accounts: not-a-list\n")
-    # "accounts" is not a list, but data is a non-empty dict → mono → {"default"}
-    assert _existing_account_ids(path) == {"default"}
+    """An 'accounts' key that is not a list → empty set."""
+    import json
+
+    path = tmp_path / "bad.json"
+    path.write_text(json.dumps({"accounts": "not-a-list"}))
+    assert _existing_account_ids(path) == set()
 
 
 def test_existing_account_ids_entry_missing_id(tmp_path: Path) -> None:
-    """Account entries without an 'id' field are skipped."""
-    path = tmp_path / "partial.yaml"
+    """Account entries without an 'account_id' field are skipped."""
+    import json
+
+    path = tmp_path / "partial.json"
     path.write_text(
-        "accounts:\n"
-        "  - id: ok\n"
-        "    email: a@a.com\n"
-        "  - email: b@b.com\n"  # no id
-        "default_account_id: ok\n"
+        json.dumps(
+            {
+                "accounts": [
+                    {"account_id": "ok"},
+                    {"email": "b@b.com"},  # no account_id
+                ],
+                "default_account_id": "ok",
+            }
+        )
     )
     assert _existing_account_ids(path) == {"ok"}
 
@@ -181,7 +209,7 @@ def test_existing_account_ids_entry_missing_id(tmp_path: Path) -> None:
 
 def test_existing_accounts_for_append_missing_file(tmp_path: Path) -> None:
     """A non-existent path returns empty list and the new id as default."""
-    path = tmp_path / "nonexistent.yaml"
+    path = tmp_path / "nonexistent.json"
     others, default_id = _existing_accounts_for_append(path, "new-id")
     assert others == []
     assert default_id == "new-id"
@@ -189,24 +217,35 @@ def test_existing_accounts_for_append_missing_file(tmp_path: Path) -> None:
 
 def test_existing_accounts_for_append_multi_account(tmp_path: Path) -> None:
     """Multi-account file: existing accounts returned, matching id excluded."""
-    path = tmp_path / "multi.yaml"
+    import json
+
+    path = tmp_path / "multi.json"
     path.write_text(
-        "accounts:\n"
-        "  - id: alpha\n"
-        "    auth:\n"
-        "      username: a@a.com\n"
-        "    imap:\n"
-        "      host: imap.a.com\n"
-        "    smtp:\n"
-        "      host: smtp.a.com\n"
-        "  - id: beta\n"
-        "    auth:\n"
-        "      username: b@b.com\n"
-        "    imap:\n"
-        "      host: imap.b.com\n"
-        "    smtp:\n"
-        "      host: smtp.b.com\n"
-        "default_account_id: alpha\n"
+        json.dumps(
+            {
+                "accounts": [
+                    {
+                        "account_id": "alpha",
+                        "config": {
+                            "imap_host": "imap.a.com",
+                            "smtp_host": "smtp.a.com",
+                            "username": "a@a.com",
+                            "password": "",
+                        },
+                    },
+                    {
+                        "account_id": "beta",
+                        "config": {
+                            "imap_host": "imap.b.com",
+                            "smtp_host": "smtp.b.com",
+                            "username": "b@b.com",
+                            "password": "",
+                        },
+                    },
+                ],
+                "default_account_id": "alpha",
+            }
+        )
     )
     others, default_id = _existing_accounts_for_append(path, "beta")
     assert default_id == "alpha"
@@ -217,17 +256,26 @@ def test_existing_accounts_for_append_multi_account(tmp_path: Path) -> None:
 
 def test_existing_accounts_for_append_new_id(tmp_path: Path) -> None:
     """When the new id is not in the file, all accounts are returned as others."""
-    path = tmp_path / "multi.yaml"
+    import json
+
+    path = tmp_path / "multi.json"
     path.write_text(
-        "accounts:\n"
-        "  - id: alpha\n"
-        "    auth:\n"
-        "      username: a@a.com\n"
-        "    imap:\n"
-        "      host: imap.a.com\n"
-        "    smtp:\n"
-        "      host: smtp.a.com\n"
-        "default_account_id: alpha\n"
+        json.dumps(
+            {
+                "accounts": [
+                    {
+                        "account_id": "alpha",
+                        "config": {
+                            "imap_host": "imap.a.com",
+                            "smtp_host": "smtp.a.com",
+                            "username": "a@a.com",
+                            "password": "",
+                        },
+                    }
+                ],
+                "default_account_id": "alpha",
+            }
+        )
     )
     others, default_id = _existing_accounts_for_append(path, "gamma")
     assert default_id == "alpha"
@@ -237,23 +285,27 @@ def test_existing_accounts_for_append_new_id(tmp_path: Path) -> None:
 
 def test_existing_accounts_for_append_non_accounts_file(tmp_path: Path) -> None:
     """A file without an `accounts:` list is not valid config → start fresh."""
-    path = tmp_path / "mono.yaml"
+    import json
+
+    path = tmp_path / "mono.json"
     path.write_text(
-        "auth:\n"
-        "  username: old@example.com\n"
-        "imap:\n"
-        "  host: imap.old.com\n"
-        "smtp:\n"
-        "  host: smtp.old.com\n"
+        json.dumps(
+            {
+                "imap_host": "imap.old.com",
+                "smtp_host": "smtp.old.com",
+                "username": "old@example.com",
+                "password": "",
+            }
+        )
     )
     others, default_id = _existing_accounts_for_append(path, "new-id")
     assert others == []
     assert default_id == "new-id"
 
 
-def test_existing_accounts_for_append_invalid_yaml(tmp_path: Path) -> None:
-    """Corrupt YAML → graceful fallback."""
-    path = tmp_path / "corrupt.yaml"
+def test_existing_accounts_for_append_invalid_json(tmp_path: Path) -> None:
+    """Corrupt JSON → graceful fallback."""
+    path = tmp_path / "corrupt.json"
     path.write_text("{invalid:")
     others, default_id = _existing_accounts_for_append(path, "myid")
     assert others == []
@@ -556,22 +608,31 @@ def test_get_password_keyboard_interrupt() -> None:
 def test_existing_accounts_for_append_multi_account_validation_error(
     tmp_path: Path,
 ) -> None:
-    """Multi-account YAML that parses but fails schema validation → graceful fallback."""
-    path = tmp_path / "bad_schema.yaml"
+    """Multi-account JSON that parses but fails schema validation → graceful fallback."""
+    import json
+
+    path = tmp_path / "bad_schema.json"
     path.write_text(
-        "accounts:\n"
-        "  - id: ok\n"
-        "    auth:\n"
-        "      username: a@a.com\n"
-        "    imap:\n"
-        "      host: imap.ok.com\n"
-        "    smtp:\n"
-        "      host: smtp.ok.com\n"
-        "default_account_id: ok\n"
+        json.dumps(
+            {
+                "accounts": [
+                    {
+                        "account_id": "ok",
+                        "config": {
+                            "imap_host": "imap.ok.com",
+                            "smtp_host": "smtp.ok.com",
+                            "username": "a@a.com",
+                            "password": "",
+                        },
+                    }
+                ],
+                "default_account_id": "ok",
+            }
+        )
     )
-    # Force MailAccountsConfig.from_yaml to raise to cover the except path.
+    # Force MailAccountsConfig.model_validate to raise to cover the except path.
     with mock.patch(
-        "robotsix_auto_mail.cli.config.MailAccountsConfig.from_yaml",
+        "robotsix_auto_mail.cli.config.MailAccountsConfig.model_validate",
         side_effect=ValueError("schema mismatch"),
     ):
         others, default_id = _existing_accounts_for_append(path, "new-id")

@@ -108,10 +108,10 @@ def test_ingest_all_accounts_isolates_records_and_watermark(
     )
     work = _account_config(username="me@work.com", db_path=str(tmp_path / "work.db"))
     accounts = MailAccountsConfig(
-        accounts=(
+        accounts=[
             MailAccount(account_id="personal", config=personal, label=None),
             MailAccount(account_id="work", config=work, label=None),
-        ),
+        ],
         default_account_id="personal",
     )
 
@@ -237,7 +237,7 @@ def test_single_account_ingest_is_unchanged(
     )
 
     accounts = MailAccountsConfig(
-        accounts=(MailAccount(account_id="default", config=cfg, label=None),),
+        accounts=[MailAccount(account_id="default", config=cfg, label=None)],
         default_account_id="default",
     )
 
@@ -284,7 +284,7 @@ def test_single_account_ingest_is_unchanged(
 def test_per_account_default_folder_layout() -> None:
     """An account omitting store.path defaults to ``.data/<id>/mail.db``."""
     accounts = MailAccountsConfig(
-        accounts=(
+        accounts=[
             MailAccount(
                 account_id="personal",
                 config=MailConfig(
@@ -305,7 +305,7 @@ def test_per_account_default_folder_layout() -> None:
                     db_path=".data/work/mail.db",
                 ),
             ),
-        ),
+        ],
         default_account_id="personal",
     )
     assert accounts.get("personal").config.db_path == ".data/personal/mail.db"

@@ -2,7 +2,7 @@
 """Check that config artifacts are in sync with ``MailConfig``.
 
 Cross-references the canonical ``MailConfig`` field list (obtained via
-``dataclasses.fields()``) against two user-facing artifacts:
+``MailConfig.model_fields``) against two user-facing artifacts:
 
 1. ``docs/config/mail.local.example.yaml`` (the single, canonical multi-account
    example)
@@ -25,6 +25,7 @@ Exits 0 when in sync, 1 when drift is found, 2 on a script-level error.
 from __future__ import annotations
 
 import dataclasses
+import json
 import re
 import sys
 import tempfile
@@ -105,7 +106,7 @@ _PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
 
 def _self_consistency_check() -> None:
     """Verify the YAML mapping dict is 1:1 with ``MailConfig`` fields."""
-    fields = {f.name for f in dataclasses.fields(MailConfig)}
+    fields = set(MailConfig.model_fields.keys())
 
     for field_name in fields:
         if field_name not in FIELD_TO_YAML:
@@ -160,12 +161,16 @@ def _get_nested(data: dict[str, Any], path: str) -> Any:
     return data
 
 
-def _field_default(field: dataclasses.Field[Any]) -> Any:
-    """Return *field*'s default, or ``dataclasses.MISSING``."""
-    if field.default is not dataclasses.MISSING:
-        return field.default
-    if field.default_factory is not dataclasses.MISSING:
-        return field.default_factory()
+def _field_default(field_name: str) -> Any:
+    """Return *field_name*'s default from the pydantic model, or
+    ``dataclasses.MISSING``."""
+    from pydantic.fields import PydanticUndefined
+
+    field_info = MailConfig.model_fields[field_name]
+    if field_info.default not in (None, ..., PydanticUndefined):
+        return field_info.default
+    if field_info.default_factory is not None:
+        return field_info.default_factory()
     return dataclasses.MISSING
 
 
@@ -337,8 +342,8 @@ def check_yaml_example(
 
     # -- check each MailConfig field ----------------------------------------
     field_defaults: dict[str, Any] = {}
-    for f in dataclasses.fields(MailConfig):
-        field_defaults[f.name] = _field_default(f)
+    for f_name in MailConfig.model_fields:
+        field_defaults[f_name] = _field_default(f_name)
 
     for field_name, ypath in FIELD_TO_YAML.items():
         has_structured = ypath in structured
@@ -503,8 +508,8 @@ def check_docs_connecting(
         )
 
     field_defaults: dict[str, Any] = {}
-    for f in dataclasses.fields(MailConfig):
-        field_defaults[f.name] = _field_default(f)
+    for f_name in MailConfig.model_fields:
+        field_defaults[f_name] = _field_default(f_name)
 
     # -- YAML keys table ----------------------------------------------------
 
@@ -587,6 +592,53 @@ def check_docs_connecting(
 _LEGACY_FLAT_DB_PATH_RE = re.compile(r"^\.data/mail-[^/]+\.db$")
 
 
+def _normalise_legacy_yaml(raw: dict[str, Any]) -> dict[str, Any]:
+    """Convert legacy YAML format (``id``, nested sections) to the pydantic
+    model format (``account_id``, flat ``config`` dict)."""
+    result: dict[str, Any] = dict(raw)
+
+    # default_account → default_account_id
+    if "default_account" in result and "default_account_id" not in result:
+        result["default_account_id"] = result.pop("default_account")
+
+    # Build a reverse mapping: dotted YAML path → flat field name.
+    _yaml_to_flat: dict[str, str] = {v: k for k, v in FIELD_TO_YAML.items()}
+
+    accounts: list[dict[str, Any]] = []
+    for account in result.get("accounts", []):
+        if not isinstance(account, dict):
+            accounts.append(account)
+            continue
+        acc: dict[str, Any] = dict(account)
+
+        # id → account_id
+        if "id" in acc and "account_id" not in acc:
+            acc["account_id"] = acc.pop("id")
+
+        # Flatten nested config sections into a single ``config`` dict,
+        # converting dotted paths (``imap.host``) to flat field names
+        # (``imap_host``).
+        config: dict[str, Any] = {}
+        for section in list(acc):
+            if section in ("account_id", "label", "id"):
+                continue
+            if isinstance(acc[section], dict):
+                sub = acc.pop(section)
+                for sub_key, sub_val in sub.items():
+                    ypath = f"{section}.{sub_key}"
+                    flat = _yaml_to_flat.get(ypath, ypath)
+                    config[flat] = sub_val
+        if config and "config" not in acc:
+            acc["config"] = config
+
+        accounts.append(acc)
+
+    if accounts:
+        result["accounts"] = accounts
+
+    return result
+
+
 def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
     """Validate the multi-account example loaded from *load_path*.
 
@@ -595,8 +647,16 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
 
     try:
-        config = MailAccountsConfig.from_yaml(load_path)
-    except (ConfigurationError, FileNotFoundError) as exc:
+        # Support both JSON (.json) and YAML (.yaml / .yml) example files.
+        if load_path.suffix == ".json":
+            data = json.loads(load_path.read_text())
+        else:
+            raw = yaml.safe_load(load_path.read_text())
+            if raw is None:
+                raise FileNotFoundError(f"Empty or unparseable: {load_path}")
+            data = _normalise_legacy_yaml(raw)
+        config = MailAccountsConfig.model_validate(data)
+    except (ConfigurationError, FileNotFoundError, ValueError) as exc:
         findings.append(
             {
                 "artifact": label,
@@ -630,8 +690,10 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
             }
         )
 
-    # Per-account db_paths: unique.
-    db_paths = [account.config.db_path for account in config.accounts]
+    # Per-account db_paths: unique (skip empty defaults).
+    db_paths = [
+        account.config.db_path for account in config.accounts if account.config.db_path
+    ]
     duplicate_paths = sorted({p for p in db_paths if db_paths.count(p) > 1})
     if duplicate_paths:
         findings.append(
@@ -679,7 +741,7 @@ def check_accounts_example(
 
     *text_or_path* may be either a filesystem path to the example file or
     the raw YAML text (which is written to a temporary file so the
-    path-based ``MailAccountsConfig.from_yaml`` loader can read it).  *path*
+    path-based ``MailAccountsConfig.model_validate`` can read it).  *path*
     is the artifact label used in the returned finding dicts.
 
     Returns a list of finding dicts (empty when the example is consistent).
