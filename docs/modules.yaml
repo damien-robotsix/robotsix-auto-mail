@@ -329,6 +329,7 @@ modules:
       - tests/server/test_component_agent_api.py
       - tests/server/test_component_agent_config_contract.py
       - tests/server/test_component_agent_responder.py
+      - tests/server/test_component_agent_mixin.py
       - tests/server/test_draft_mixin_compute_and_save.py
       - tests/server/test_draft_mixin_send_generate.py
       - tests/server/test_auth_mixin.py
