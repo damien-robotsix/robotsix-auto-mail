@@ -50,6 +50,7 @@ modules:
       - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-d241.misc.md
       - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-d2d8.misc.md
       - changelog/20260703T225054Z-optimization-240-observations-12-median-6e9d.misc.md
+      - changelog/20260703T225054Z-agent-limitation-the-agent-made-six-sequ-77d8.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

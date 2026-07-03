@@ -6,6 +6,7 @@
 ## 0.0.0 (unreleased)
 
 - Add tool-use discipline section to AGENT.md: prefer `read_file` over repeated single-line `run_command` queries (`grep -n`, `sed -n`, `head`, `cat -n`) to reduce observation bloat during codebase exploration.
+- Add agent test-edit workflow guidance to AGENT.md: batch test additions, run targeted tests first, full suite last.
 - Suppress shellcheck SC2329 false-positive on `cleanup()` in `scripts/server/smoke_board.sh` (function is invoked indirectly via `trap`).
 - Drop the bespoke ``pre-commit-autoupdate`` scheduled workflow (``.github/workflows/pre-commit-autoupdate.yml``); let Dependabot manage pre-commit hook updates via the new ``pre-commit`` ecosystem entry in ``.github/dependabot.yml``.
 - Add `.mail_log/` to `.gitignore` to prevent runtime log files from being accidentally committed after file-logging removal.
