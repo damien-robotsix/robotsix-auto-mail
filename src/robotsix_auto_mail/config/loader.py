@@ -36,7 +36,11 @@ def load_accounts() -> MailAccountsConfig:
     except ModuleNotFoundError:
         logger.debug("robotsix_config not installed — falling back to direct load")
         return _load_accounts_fallback()
-    return _load_config(MailAccountsConfig)
+    try:
+        return _load_config(MailAccountsConfig)
+    except Exception:
+        logger.debug("robotsix_config load failed — falling back to direct load")
+        return _load_accounts_fallback()
 
 
 def _resolve_config_path() -> Path:
@@ -111,7 +115,7 @@ def load_llm() -> str:
     """Resolve the LLM API key from the config file's ``llm_api_key`` field."""
     try:
         file_cfg = load()
-    except ConfigurationError, ModuleNotFoundError:
+    except Exception:
         return ""
     return file_cfg.llm_api_key
 
@@ -121,7 +125,7 @@ def load_llm_provider_model() -> str:
     ``llm_provider_model``."""
     try:
         file_cfg = load()
-    except ConfigurationError, ModuleNotFoundError:
+    except Exception:
         return ""
     return file_cfg.llm_provider_model
 
