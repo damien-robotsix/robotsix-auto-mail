@@ -1,7 +1,6 @@
 version: 2
 updates:
   - package-ecosystem: "uv"
-  - package-ecosystem: "pre-commit"
     directory: "/"
     schedule:
       interval: weekly
@@ -19,6 +18,11 @@ updates:
       interval: weekly
 
   - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: "pre-commit"
     directory: "/"
     schedule:
       interval: weekly
