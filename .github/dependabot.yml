@@ -4,6 +4,13 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      # hatchling is the build backend; it appears in both [build-system]
+      # requires and [project.optional-dependencies] dev without version
+      # constraints, which causes Dependabot's uv file updater to fail with
+      # "No files have changed!" (RuntimeError).  Ignore it until the
+      # upstream uv updater can handle dual-occurrence unpinned deps.
+      - dependency-name: "hatchling"
 
   - package-ecosystem: "github-actions"
     directory: "/"
