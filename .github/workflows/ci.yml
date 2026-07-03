@@ -246,6 +246,8 @@ jobs:
           MERGE_COVERAGE_FILES: false
 
       - name: Generate HTML coverage report
+        env:
+          UV_PROJECT_ENVIRONMENT: system
         run: uv run coverage html --directory=coverage_html
 
       - name: Upload HTML report
