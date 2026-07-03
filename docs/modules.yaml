@@ -40,6 +40,7 @@ modules:
       - changelog/20260703T085156Z-ci-failure-uv-in-update-1446419417-on-ma-171e.misc.md
       - changelog/20260703T092619Z-ci-fix-out-of-scope-ci-failure-repo-chec-e128.misc.md
       - changelog/20260703T100000Z-deploy-contract-json-only-config.removal.md
+      - changelog/20260703T103000Z-drop-managed-config-artifacts.removal.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -63,7 +64,6 @@ modules:
       in docs/deployment.md.
     paths:
       - deploy/docker-compose.yml
-      - config/config.yaml
 
   - id: dev
     description: >-
@@ -130,7 +130,6 @@ modules:
       - docs/config/.gitkeep
       - docs/config/mail.local.example.yaml
       - config/config.example.json
-      - config/config.schema.json
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
       - tests/config/test_config_sync_agent.py

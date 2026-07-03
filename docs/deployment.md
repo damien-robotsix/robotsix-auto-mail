@@ -303,11 +303,11 @@ ingress are not configured here.
   minutes — so a wedged ingester is detected even though it serves no HTTP.
 - TLS termination and HTTP basic auth are handled by the **central-deploy
   gateway** in front of the board; the board itself has no authentication.
-- Configuration is managed through the Configuration page at
-  `deploy.robotsix.net/mail`, not by editing files on the host. The committed
-  [`config/config.yaml`](../config/config.yaml) is the managed template
-  central-deploy starts from; secret fields are left blank and filled via the
-  UI.
+- Configuration is **not** managed by central-deploy. The app reads the JSON
+  file at `ROBOTSIX_CONFIG_FILE` (`/home/mailbot/config/config.json`), seeded
+  manually into the `auto-mail-config` volume — see
+  [`config/config.example.json`](../config/config.example.json) for the shape,
+  or generate one with `robotsix-auto-mail detect`.
 
 #### `robotsix.deploy.*` labels
 
@@ -317,9 +317,10 @@ wire the stack:
 | Label | Meaning |
 |---|---|
 | `robotsix.deploy.primary: "true"` | Marks `board` as the primary/ingress service the gateway routes to. |
-| `robotsix.deploy.config-target` | In-container path where central-deploy writes the managed config (`/home/mailbot/config/config.yaml`). |
-| `robotsix.deploy.config-assist` | A CLI command template central-deploy runs to auto-detect IMAP/SMTP settings; `{…}` placeholders are filled from the seed values. |
-| `robotsix.deploy.config-assist-seeds` | The config fields the operator must supply (`accounts.0.auth.username`, `accounts.0.auth.password`); central-deploy prompts for these and injects them into the config-assist command. |
+
+There are deliberately **no** `config-target` / `config-assist` labels:
+central-deploy's config writer only produces YAML, while the app reads JSON,
+so central-deploy config management is opted out of entirely.
 
 #### Day-2 operations
 
