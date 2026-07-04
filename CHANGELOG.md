@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Extract duplicated `_launch_background_worker` call in `_TriageMixin` into a shared private `_launch_triage()` helper method.
 - Updated `docs/architecture.md` to enumerate all triage submodules
   (`_constants`, `agent`, `classifier`, `persistence`, `rules`) with
   one-line descriptions, and to call out `pipeline/_parse.py` as the

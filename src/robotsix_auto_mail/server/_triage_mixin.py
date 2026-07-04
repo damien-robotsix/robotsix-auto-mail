@@ -30,15 +30,8 @@ class _TriageMixin:
 
     self: BoardHandlerProtocol
 
-    def _handle_run_triage(self) -> None:
-        """Process POST /run-triage — launch triage agent in a background thread.
-
-        Idempotent: if triage is already running the request is a no-op
-        that redirects to ``/board`` immediately.  Otherwise a watermark
-        is set and a daemon thread is spawned to run the agent; the
-        thread clears the watermark in a ``finally`` block so the board
-        always recovers.
-        """
+    def _launch_triage(self) -> None:
+        """Launch the triage agent in a background thread (shared helper)."""
         self._launch_background_worker(
             _TRIAGE_RUN_STATE_KEY,
             _run_triage_background,
@@ -48,6 +41,17 @@ class _TriageMixin:
                 _rules_path_str(self.mail_config, self.db_path),
             ),
         )
+
+    def _handle_run_triage(self) -> None:
+        """Process POST /run-triage — launch triage agent in a background thread.
+
+        Idempotent: if triage is already running the request is a no-op
+        that redirects to ``/board`` immediately.  Otherwise a watermark
+        is set and a daemon thread is spawned to run the agent; the
+        thread clears the watermark in a ``finally`` block so the board
+        always recovers.
+        """
+        self._launch_triage()
 
     def _handle_force_triage_column(self) -> None:
         """Process POST /force-triage-column — reset triage decisions for
@@ -89,12 +93,4 @@ class _TriageMixin:
             return
 
         # -- launch triage (same pattern as _handle_run_triage) -----------
-        self._launch_background_worker(
-            _TRIAGE_RUN_STATE_KEY,
-            _run_triage_background,
-            (
-                self.db_path,
-                self.mail_config.username if self.mail_config is not None else None,
-                _rules_path_str(self.mail_config, self.db_path),
-            ),
-        )
+        self._launch_triage()
