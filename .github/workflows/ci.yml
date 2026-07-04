@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Reusable Python-CI spine shared across robotsix repos. This single call
   # replaces the inline ruff/mypy/deptry/pytest+coverage/bandit steps that used
@@ -18,9 +22,10 @@ jobs:
     # security-events: write — a caller job must grant at least that or
     # GitHub rejects the call ("nested job 'tests' is requesting
     # 'security-events: write'"). Mirrors mill's own caller.
+    name: Python CI
     permissions:
       contents: read
-      security-events: write
+      security-events: write  # needed for SARIF upload from reusable workflow
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-ci.yml@5cd8c1facb02299da618979e7a55f1953f9c075a  # main
     with:
       python-version: "3.14"
@@ -35,11 +40,12 @@ jobs:
   # auto-mail-specific checks with no equivalent in the reusable spine. They
   # keep their own steps and stay blocking on every push + PR.
   repo-checks:
+    name: Repository checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
-      pull-requests: read
+      security-events: write  # needed for SARIF upload
+      pull-requests: read  # needed to check PR event metadata
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -122,6 +128,7 @@ jobs:
   # call replaces the inline TruffleHog secret-scan / pip-audit steps that
   # used to be hand-rolled here.
   security:
+    name: Security scans
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-security.yml@5cd8c1facb02299da618979e7a55f1953f9c075a  # main
     with:
       python-version: "3.14"
@@ -144,6 +151,7 @@ jobs:
   # tools like Dependency-Track or OWASP Dependency-Check can consume it
   # independently of the container image.
   sbom:
+    name: Generate SBOM
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -165,11 +173,12 @@ jobs:
   # CVEs rated moderate or higher and (b) deny strong-copyleft licenses
   # incompatible with this project's MIT license.
   dependency-review:
+    name: Dependency review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write       # needed for comment-summary-in-pr
+      pull-requests: write  # needed for comment-summary-in-pr
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
@@ -194,12 +203,13 @@ jobs:
   # run.  Running the full suite twice is wasteful but the only way to get
   # per-file diff commentary without modifying the shared reusable workflow.
   coverage-comment:
+    name: Coverage comment
     if: github.event_name == 'pull_request'
     needs: [ci]
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: write  # needed to post PR comment
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:

@@ -5,6 +5,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions: {}
+
 concurrency:
   group: docs-deploy
   cancel-in-progress: true
@@ -16,8 +18,9 @@ jobs:
   # caller (which installs a `docs` group), auto-mail's docs deps live in the
   # `docs` extra, so the install args pull `--extra docs`.
   deploy:
+    name: Deploy docs
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-docs.yml@5cd8c1facb02299da618979e7a55f1953f9c075a  # main
     permissions:
-      contents: write
+      contents: write  # needed to push gh-pages branch
     with:
       docs-install-args: "--extra docs"
