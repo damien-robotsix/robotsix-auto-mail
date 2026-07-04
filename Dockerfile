@@ -50,7 +50,7 @@ COPY src/ src/
 # --system installs into the image's system Python (the same
 # /usr/local/lib/python3.14/site-packages/ path the production
 # stage copies from), matching the previous `pip install` layout.
-RUN uv export --frozen --no-emit-project --no-hashes --extra llm --extra microsoft --extra calendar -o /tmp/requirements.txt && \
+RUN uv export --frozen --no-emit-project --no-hashes --extra llm --extra microsoft -o /tmp/requirements.txt && \
     for attempt in 1 2 3 4 5; do \
       uv pip install --system --no-cache-dir -r /tmp/requirements.txt && \
       uv pip install --system --no-cache-dir --no-deps . && \
@@ -68,21 +68,23 @@ FROM python:3.14-slim@${BASE_DIGEST} AS production
 COPY --from=builder /usr/local/lib/python3.14/site-packages/ /usr/local/lib/python3.14/site-packages/
 COPY --from=builder /usr/local/bin/robotsix-auto-mail /usr/local/bin/robotsix-auto-mail
 
-RUN groupadd --gid 1000 mailbot && \
-    useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash mailbot && \
-    mkdir -p /home/mailbot/.data /home/mailbot/config && \
-    chown mailbot:mailbot /home/mailbot/.data /home/mailbot/config
+RUN groupadd --gid 1000 app && \
+    useradd --uid 1000 --gid 1000 --create-home --home-dir /home/app --shell /bin/bash app && \
+    mkdir -p /data /home/app/config && \
+    chown app:app /data /home/app/config
 
-COPY --chown=mailbot:mailbot entrypoint.sh /usr/local/bin/entrypoint.sh
+VOLUME ["/data"]
 
-USER mailbot
+COPY --chown=app:app entrypoint.sh /usr/local/bin/entrypoint.sh
+
+USER app
 
 # Run from the home directory so relative defaults resolve under it:
 # the config file (config/config.json) and the SQLite store
 # (.data/mail.db) both land in the bind-mounted / persisted locations.
-WORKDIR /home/mailbot
+WORKDIR /home/app
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthz', timeout=3).status == 200 else 1)" || exit 1
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/health', timeout=3).status == 200 else 1)" || exit 1
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

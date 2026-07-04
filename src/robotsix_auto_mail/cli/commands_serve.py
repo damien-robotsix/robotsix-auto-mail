@@ -59,7 +59,7 @@ def _cmd_serve(
 
     The full *accounts* container drives per-request account resolution;
     *default_account_id* names the account whose config is used for
-    server startup (component-agent responder, initial ``db_path``); it
+    server startup (initial ``db_path``); it
     is also the per-request fallback for single-account setups.  For
     multi-account setups the board always defaults to the aggregate
     (``__all__``) view — ``default_account_id`` is not consulted for the
@@ -72,23 +72,11 @@ def _cmd_serve(
 
     default = accounts.get(default_account_id)
 
-    # Create component-agent responder for HTTP API when enabled.
-    from robotsix_auto_mail.server._component_agent_responder import (
-        ComponentAgentResponder,
-    )
-
-    component_responder = (
-        ComponentAgentResponder(default.config)
-        if default.config.component_agent_enabled
-        else None
-    )
-
     handler_class = make_board_handler(
         default.config.db_path,
         mail_config=default.config,
         accounts=accounts,
         default_account_id=default_account_id,
-        component_responder=component_responder,
     )
 
     # Self-heal any orphaned ``triage_run:state == "running"`` watermark left

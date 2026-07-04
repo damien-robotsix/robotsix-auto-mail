@@ -35,18 +35,17 @@ services:
     command: ingest --watch
 
     environment:
-      ROBOTSIX_CONFIG_FILE: /home/mailbot/config/config.json
+      ROBOTSIX_CONFIG_FILE: /home/app/config/config.json
 
     volumes:
       # Config bind-mount — YAML files available without image rebuild.
-      - ./config:/home/mailbot/config
+      - ./config:/home/app/config
       # Data bind-mount — the SQLite database lives in ./.mail_data on the
-      # host (git-ignored), mounted at the default store location
-      # (.data, under WORKDIR) inside the container.
-      - ./.mail_data:/home/mailbot/.data
+      # host (git-ignored), mounted at /data inside the container.
+      - ./.mail_data:/data
 
     # The ingester runs no HTTP server, so the image's HTTP healthcheck
-    # (GET :8080/healthz) can never pass — disable it for this service.
+    # (GET :8080/health) can never pass — disable it for this service.
     healthcheck:
       disable: true
 
@@ -59,7 +58,7 @@ services:
       dockerfile: Dockerfile
     image: ghcr.io/damien-robotsix/robotsix-auto-mail:${IMAGE_TAG:-main}
     # Always serve on 8080 inside the container so the image healthcheck
-    # (GET :8080/healthz) passes; BOARD_PORT only remaps the host side.
+    # (GET :8080/health) passes; BOARD_PORT only remaps the host side.
     # --host 0.0.0.0 is required: `serve` defaults to 127.0.0.1, which is
     # unreachable from other containers (e.g. the central-deploy gateway
     # proxying mail.<domain> → this container) and 502s every request.
@@ -69,11 +68,11 @@ services:
     restart: unless-stopped
 
     environment:
-      ROBOTSIX_CONFIG_FILE: /home/mailbot/config/config.json
+      ROBOTSIX_CONFIG_FILE: /home/app/config/config.json
 
     ports:
       - "${BOARD_PORT:-8080}:8080"
 
     volumes:
-      - ./config:/home/mailbot/config
-      - ./.mail_data:/home/mailbot/.data
+      - ./config:/home/app/config
+      - ./.mail_data:/data

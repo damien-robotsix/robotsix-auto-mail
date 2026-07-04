@@ -37,11 +37,9 @@ Append `?account=<account_id>` (e.g. `?account=main`) to any request.
 | `GET /` | 301 → `/board` | |
 | `GET /board` | HTML | Full board UI |
 | `GET /board-content` | JSON `{"columns_html":"…","triage_running":bool,"batch_op":{"op":…,"done":…,"total":…}\|null,"health":{…}\|null,"health_alerts_html":"…","unsubscribe_suggestions":{…}}` | Board payload (rendered columns + metadata); preferred for machine reads. `batch_op` is an object (verb + progress counts) while a batch op runs, else `null`; `health` carries the account-health watermark and `health_alerts_html` the rendered red-banner markup |
-| `GET /healthz` | JSON `{"status":"healthy"}` 200 / `{"status":"unhealthy","checks":{"database":"unreachable"}}` 503 | Liveness; pings SQLite; `checks` object present on 503 |
+| `GET /health` | JSON `{"status":"ok"}` 200 | Liveness; returns 200 while the process is alive |
 | `GET /probe-health` | JSON `{"accounts":{"<id>":{"status":"…","error":…}}}` | On-demand IMAP+SMTP connectivity probe across all accounts; persists each result to the account's `account_health` watermark |
 | `GET /auth-status` | JSON `{"status":"…",…}` | Polls a running OAuth2 device-code flow; `status` is `idle`/`pending_prompt`/`pending_consent`/`success`/`error`. Cross-account: takes `?account_id=<id>` and ignores the session account |
-| `GET /api/component-agent/monitor` | JSON telemetry | Live component-agent telemetry. 503 when no component responder is configured |
-| `GET /api/component-agent/config` | JSON config snapshot | Redacted component-agent config. 503 when no component responder is configured |
 | `GET /archive-folders` | JSON `{"delimiter":"/","folders":[…]}` | Available IMAP archive subfolders. Returns `{"delimiter":"/","folders":[]}` in aggregate mode |
 | `GET /email/{message_id}/status` | plain text — triage action name | 404 if unknown |
 | `GET /email/{message_id}` | HTML | Detail page; optional `?embed=1` strips chrome, `?draft=1` shows draft panel |
@@ -73,7 +71,6 @@ All POST endpoints accept `Content-Type: application/x-www-form-urlencoded`
 | `POST /send-draft` | `message_id`, `reply_mode`, `forward_to` (required when `reply_mode=forward`), `redirect_to` (opt) | `/board` | Sends the stored draft via SMTP. Valid `reply_mode` values: **`reply`**, **`reply_all`**, **`forward`**. `forward` additionally requires a `forward_to` recipient address. 400 on invalid |
 | `POST /generate-draft` | `message_id`, `redirect_to` (opt) | `/board#<message_id>` | Triggers LLM draft generation in background |
 | `POST /auth-start` | `account_id` | — (returns JSON flow state, not redirect) | Starts the OAuth2 device-code flow for a Microsoft account; blocks up to ~15s for the device prompt then returns the flow state JSON. Cross-account (ignores the session account). 400 for unknown / non-Microsoft accounts |
-| `POST /api/component-agent/config` | JSON body `{"updates":{…}}` (NOT form-encoded) | — (returns JSON result) | Applies a component-agent config update. 400 on missing/invalid body or update error; 503 when no component responder is configured |
 
 > **Redirect-following note**: curl follows redirects with `-L`. Without
 > `-L`, a POST returns the 302 directly. An agent that only needs the
@@ -151,7 +148,7 @@ curl -s -u <user>:<pass> -X POST \
 ### 8. Check liveness
 
 ```bash
-curl -s 'https://deploy.robotsix.net/mail/healthz'
+curl -s 'https://deploy.robotsix.net/mail/health'
 ```
 
 ### 9. Batch-archive all TO_ARCHIVE messages

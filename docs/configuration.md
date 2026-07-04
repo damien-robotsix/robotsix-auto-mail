@@ -76,7 +76,7 @@ accounts:
 ```
 
 - **Per-account sections** — `imap`, `smtp`, `auth`, `store`, `ingest`,
-  `archive`, `triage`, and `component_agent` — live under each `accounts:`
+  `archive`, and `triage` — live under each `accounts:`
   entry.
 - **Application-wide sections** — `llm`, `langfuse`, and `logging` — are
   top-level and apply to every account.
@@ -143,16 +143,6 @@ accounts:
 |---|---|---|---|---|
 | `triage.on_ingest` | `true` | boolean | no | Whether to run the inbox triage agent automatically after each ingest cycle. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
 | `triage.rules_path` | `""` | string | no | Path to the human-readable `triage_rules.md` the flash LLM maintains from board actions. When empty, `<db-dir>/triage_rules.md` is derived from `store.path`. |
-
-### `component_agent`
-
-Optional HTTP API (monitor / config-get / config-set) served on the board
-server, letting external agents inspect status and read/apply configuration
-over HTTP — without the agent-comm broker. This is a **per-account** field.
-
-| Key | Default | Kind | Required | Description |
-|---|---|---|---|---|
-| `component_agent.enabled` | `false` | boolean | no | Whether the component-agent HTTP API is served on the board server. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
 
 ---
 

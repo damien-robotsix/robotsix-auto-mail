@@ -102,10 +102,6 @@ OAuth2 access token presented over SASL XOAUTH2:
 - `draft/` — `generate_draft_reply`, the draft-reply generator tied to the
   `TO_ANSWER` triage action; it persists the draft via `db.update_draft_text`
   (no mail is sent).
-- `server/_component_agent_responder.py` and
-  `server/_component_agent_mixin.py` — the board server's component HTTP
-  API (`monitor` / `config-get` / `config-set`), implemented across two
-  server-package files.
 
 ### Surfaces
 

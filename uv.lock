@@ -1211,11 +1211,6 @@ wheels = [
 ]
 
 [[package]]
-name = "robotsix-agent-comm"
-version = "0.1.dev192+ge5e6d85ef"
-source = { git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=e5e6d85ef51b4e68ad284e1180ced8d396310ce2#e5e6d85ef51b4e68ad284e1180ced8d396310ce2" }
-
-[[package]]
 name = "robotsix-auto-mail"
 version = "0.0.0"
 source = { editable = "." }
@@ -1229,12 +1224,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-broker = [
-    { name = "robotsix-agent-comm" },
-]
-calendar = [
-    { name = "robotsix-agent-comm" },
-]
 dev = [
     { name = "deptry" },
     { name = "hatchling" },
@@ -1244,7 +1233,6 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
     { name = "pyyaml" },
-    { name = "robotsix-agent-comm" },
     { name = "robotsix-llmio", extra = ["openrouter", "tracing"] },
     { name = "robotsix-modules" },
     { name = "ruff" },
@@ -1278,9 +1266,6 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'" },
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.3" },
-    { name = "robotsix-agent-comm", marker = "extra == 'broker'", git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=e5e6d85ef51b4e68ad284e1180ced8d396310ce2" },
-    { name = "robotsix-agent-comm", marker = "extra == 'calendar'", git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=e5e6d85ef51b4e68ad284e1180ced8d396310ce2" },
-    { name = "robotsix-agent-comm", marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-agent-comm.git?rev=e5e6d85ef51b4e68ad284e1180ced8d396310ce2" },
     { name = "robotsix-board", git = "https://github.com/damien-robotsix/robotsix-board.git?rev=a364bf5116dcea5c35b036d158d2f3e47b8caeec" },
     { name = "robotsix-config", git = "https://github.com/damien-robotsix/robotsix-config.git?rev=424f8ec5140e14e9699b92d5c3755d929625b570" },
     { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=3da3c4317f4a" },
@@ -1295,7 +1280,7 @@ requires-dist = [
     { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.16" },
     { name = "zizmor", marker = "extra == 'dev'" },
 ]
-provides-extras = ["dev", "llm", "microsoft", "calendar", "broker", "docs"]
+provides-extras = ["dev", "llm", "microsoft", "docs"]
 
 [[package]]
 name = "robotsix-board"

@@ -72,20 +72,6 @@ BoardAdapter.card_extra_html
 BoardAdapter.column_extra_html
 
 # ===========================================================================
-# Component-agent responder — ``_config_set`` mirrors ``_config_get`` /
-# ``_monitor`` as the broker-style entry point and delegates to
-# ``config_set_direct``. The production HTTP mixin calls ``config_set_direct``
-# directly, so ``_config_set`` is exercised only via tests and is invisible to
-# the src-only vulture scan.
-# ===========================================================================
-
-from robotsix_auto_mail.server._component_agent_responder import (
-    ComponentAgentResponder,
-)
-
-_ = ComponentAgentResponder._config_set  # lgtm[py/ineffectual-statement]
-
-# ===========================================================================
 # Pydantic model fields — accessed via model_dump / model_validate / keyword
 # construction, never read as plain class attributes by application code.
 # ===========================================================================
@@ -111,10 +97,10 @@ MailAccountsConfig.model_config
 MailAccountsConfig._validate
 
 # ===========================================================================
-# NamedTuple fields — accessed by attribute but not recognized as "used" by
-# vulture because they are only default values.
+# Config field mapping — imported by check_config_sync.py, not used directly
+# in this module, but vulture doesn't trace cross-module imports.
 # ===========================================================================
 
-from robotsix_auto_mail.server._component_agent_config_contract import _FieldSpec
+from robotsix_auto_mail.config._field_map import FIELD_YAML_MAP
 
-_FieldSpec.required_in_yaml
+FIELD_YAML_MAP

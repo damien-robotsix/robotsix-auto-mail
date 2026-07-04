@@ -108,10 +108,6 @@ class MailConfig(BaseModel):
     # (``<db-dir>/triage_rules.md``).
     triage_rules_path: str = ""
 
-    # Whether the component-agent HTTP API (monitor / config-get / config-set)
-    # is served on the board server.
-    component_agent_enabled: bool = False
-
     # OAuth2 / XOAUTH2 credentials (Gmail, Microsoft 365, etc.).
     # Optional; when ``oauth2_token`` is set, SASL XOAUTH2 is used
     # instead of password-based ``login()``.

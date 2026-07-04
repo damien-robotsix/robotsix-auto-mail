@@ -4,13 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from typing import TYPE_CHECKING
 from urllib.request import urlopen
-
-import pytest
-
-if TYPE_CHECKING:
-    pass
 
 from tests.server.conftest import (
     _populate_db,
@@ -19,43 +13,36 @@ from tests.server.conftest import (
 )
 
 # ===========================================================================
-# GET /healthz tests
+# GET /health tests
 # ===========================================================================
 
 
-def test_healthz_valid_db_returns_200(single_db: str) -> None:
-    """GET /healthz with a valid DB returns 200 and {"status": "healthy"}."""
+def test_health_valid_db_returns_200(single_db: str) -> None:
+    """GET /health with a valid DB returns 200 and {"status": "ok"}."""
     server, port = _start_test_server(single_db)
     try:
-        resp = urlopen(f"http://127.0.0.1:{port}/healthz")
+        resp = urlopen(f"http://127.0.0.1:{port}/health")
         assert resp.status == 200
         content_type = resp.headers.get("Content-Type", "")
         assert "application/json" in content_type
         body = resp.read().decode("utf-8")
-        import json as _json
-
-        payload = _json.loads(body)
-        assert payload == {"status": "healthy"}
+        payload = json.loads(body)
+        assert payload == {"status": "ok"}
     finally:
         server.shutdown()
 
 
-def test_healthz_missing_db_returns_503() -> None:
-    """GET /healthz with a missing/corrupt DB returns 503 and error payload."""
-    import urllib.error
-
+def test_health_missing_db_returns_200() -> None:
+    """GET /health with a missing/corrupt DB still returns 200 (liveness-only)."""
     server, port = _start_test_server("/dev/null/nonexistent.db")
     try:
-        with pytest.raises(urllib.error.HTTPError) as exc_info:
-            urlopen(f"http://127.0.0.1:{port}/healthz")
-        assert exc_info.value.code == 503
-        content_type = exc_info.value.headers.get("Content-Type", "")
+        resp = urlopen(f"http://127.0.0.1:{port}/health")
+        assert resp.status == 200
+        content_type = resp.headers.get("Content-Type", "")
         assert "application/json" in content_type
-        body = exc_info.value.read().decode("utf-8")
+        body = resp.read().decode("utf-8")
         payload = json.loads(body)
-        assert payload["status"] == "unhealthy"
-        assert "database" in payload["checks"]
-        assert payload["checks"]["database"] == "unreachable"
+        assert payload == {"status": "ok"}
     finally:
         server.shutdown()
 
@@ -130,11 +117,11 @@ def test_move_to_calendar_on_legacy_db_does_not_500(single_db: str) -> None:
         server.shutdown()
 
 
-def test_healthz_content_type_is_json() -> None:
-    """GET /healthz response Content-Type is application/json."""
+def test_health_content_type_is_json() -> None:
+    """GET /health response Content-Type is application/json."""
     server, port = _start_test_server(":memory:")
     try:
-        resp = urlopen(f"http://127.0.0.1:{port}/healthz")
+        resp = urlopen(f"http://127.0.0.1:{port}/health")
         content_type = resp.headers.get("Content-Type", "")
         assert "application/json" in content_type
     finally:

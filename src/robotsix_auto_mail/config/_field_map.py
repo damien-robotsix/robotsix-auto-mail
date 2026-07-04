@@ -1,7 +1,6 @@
 """Canonical MailConfig field-name → dotted-YAML-path mapping.
 
-Single source of truth shared by the component-agent config contract
-(``_component_agent_config_contract._FIELD_YAML_MAP``) and the config-sync
+Single source of truth shared by the config-sync
 checker (``scripts/config/check_config_sync.FIELD_TO_YAML``), so the two
 cannot drift when a config field is added, renamed, or removed.
 """
@@ -31,7 +30,6 @@ FIELD_YAML_MAP: dict[str, str] = {
     "archive_enabled": "archive.enabled",
     "triage_on_ingest": "triage.on_ingest",
     "triage_rules_path": "triage.rules_path",
-    "component_agent_enabled": "component_agent.enabled",
     "langfuse_public_key": "langfuse.public_key",
     "langfuse_secret_key": "langfuse.secret_key",  # pragma: allowlist secret
     "langfuse_base_url": "langfuse.base_url",

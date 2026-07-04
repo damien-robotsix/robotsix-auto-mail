@@ -81,10 +81,10 @@ The [`Dockerfile`](../Dockerfile) has two stages:
 | Stage | What it does |
 |---|---|
 | `builder` | Installs the Python package (wheel) from `pyproject.toml` |
-| `production` | Copies **only** the installed artifacts from `builder`, creates a non-root `mailbot` user (UID 1000), and sets the entrypoint |
+| `production` | Copies **only** the installed artifacts from `builder`, creates a non-root `app` user (UID 1000), and sets the entrypoint |
 
-The final image runs as `mailbot` (UID 1000).  The image ships an HTTP
-healthcheck (`GET :8080/healthz`) that both Compose files rely on for the
+The final image runs as `app` (UID 1000).  The image ships an HTTP
+healthcheck (`GET :8080/health`) that both Compose files rely on for the
 long-running web server — the `board` service maps a port for it, while the
 one-shot ingester disables the healthcheck since it runs no HTTP server.
 
@@ -141,7 +141,7 @@ docker compose up board
 
 The board service runs as a long-lived daemon (restart policy:
 `unless-stopped`).  Inside the container it always serves on **8080** (so the
-image healthcheck `GET :8080/healthz` passes); `BOARD_PORT` remaps only the
+image healthcheck `GET :8080/health` passes); `BOARD_PORT` remaps only the
 host-side port (default: **8080**).  Open the URL in a browser to see the
 four-column kanban board with per-card Move dropdowns.  Press `Ctrl-C` to stop
 the daemon.
@@ -172,7 +172,7 @@ falls back to its built-in default.
 
 | Path | Mechanism | How to use |
 |---|---|---|
-| **YAML file** | A single `config/mail.local.yaml` | Copy `docs/config/mail.local.example.yaml` → `config/mail.local.yaml` and edit. Located via `MAIL_CONFIG_PATH`. |
+| **YAML file** | A single `config/mail.local.yaml` | Copy `docs/config/mail.local.example.yaml` → `config/mail.local.yaml` and edit. Located via `ROBOTSIX_CONFIG_FILE`. |
 
 Full config-key details are documented in
 **[docs/connecting.md](connecting.md)**.  Do not duplicate that reference
@@ -180,8 +180,8 @@ here — the connecting doc is authoritative.
 
 ### How configuration reaches the container
 
-- `docker-compose.yml` sets `MAIL_CONFIG_PATH=/home/mailbot/config/mail.local.yaml`.
-- The `./config:/home/mailbot/config` bind-mount maps the host `config/`
+- `docker-compose.yml` sets `ROBOTSIX_CONFIG_FILE=/home/app/config/config.json`.
+- The `./config:/home/app/config` bind-mount maps the host `config/`
   directory into the container.
 - Editing `config/mail.local.yaml` on the host takes effect on the **next**
   `docker compose run` — no rebuild required.
@@ -203,7 +203,7 @@ The Compose file defines two services that share the same image and data:
 | `stdin_open` | `true` | Keeps stdin open so one-shot interactive commands (e.g. `detect`'s password prompt) work. |
 | `tty` | `false` | No pseudo-TTY allocation; output is plain streams. |
 | `restart` | `unless-stopped` | The default command is a long-running daemon, so it should stay up. |
-| `environment` | `MAIL_CONFIG_PATH` | Points the tool at the mounted config file; all credentials (including LLM keys) live in that file. |
+| `environment` | `ROBOTSIX_CONFIG_FILE` | Points the tool at the mounted config file; all credentials (including LLM keys) live in that file. |
 | `volumes` | Three entries (see below) | Config bind-mount + data bind-mount + log bind-mount. |
 
 `docker compose up -d` runs this service (the ingester) alongside `board`.
@@ -214,8 +214,8 @@ A one-shot command overrides `command:` at runtime — e.g.
 
 | Volume | Type | Purpose |
 |---|---|---|
-| `./config:/home/mailbot/config` | Bind-mount | Makes host config files available inside the container without a build. |
-| `./.mail_data:/home/mailbot/.data` | Bind-mount | Persists the SQLite database in the project dir (git-ignored), at the container's default store location. |
+| `./config:/home/app/config` | Bind-mount | Makes host config files available inside the container without a build. |
+| `./.mail_data:/data` | Bind-mount | Persists the SQLite database in the project dir (git-ignored), mounted at `/data` inside the container. |
 
 ### `services.board`
 
@@ -226,7 +226,7 @@ The `board` service runs the same image but starts the web server:
 | `command` | `serve --port 8080` | Starts the web server as a daemon on the fixed container port 8080. |
 | `restart` | `unless-stopped` | Restarts if the process crashes. |
 | `ports` | `"${BOARD_PORT:-8080}:8080"` | Maps host `BOARD_PORT` (default 8080) to the container's 8080. |
-| `environment` | `MAIL_CONFIG_PATH: /home/mailbot/config/mail.local.yaml` | Same config as the ingester. |
+| `environment` | `ROBOTSIX_CONFIG_FILE: /home/app/config/config.json` | Same config as the ingester. |
 | `volumes` | Same as the ingester | Shares `./.mail_data` so the ingester and board see the same database. |
 
 There is no `stdin_open` or `tty` — the board is a daemon, not an
@@ -296,14 +296,14 @@ ingress are not configured here.
   same image, sharing the named volumes `auto-mail-config`, `auto-mail-data`,
   and `auto-mail-logs`.
 - The `ingester` runs `ingest --watch --heartbeat-file
-  /home/mailbot/.data/ingest.heartbeat`. The `--heartbeat-file` CLI flag
+  /data/ingest.heartbeat`. The `--heartbeat-file` CLI flag
   makes each watch pass touch that file, and the service's healthcheck is a
   small Python probe that fails if the heartbeat is missing or older than 30
   minutes — so a wedged ingester is detected even though it serves no HTTP.
 - TLS termination and HTTP basic auth are handled by the **central-deploy
   gateway** in front of the board; the board itself has no authentication.
 - Configuration is **not** managed by central-deploy. The app reads the JSON
-  file at `ROBOTSIX_CONFIG_FILE` (`/home/mailbot/config/config.json`), seeded
+  file at `ROBOTSIX_CONFIG_FILE` (`/home/app/config/config.json`), seeded
   manually into the `auto-mail-config` volume — see
   [`config/config.example.json`](../config/config.example.json) for the shape,
   or generate one with `robotsix-auto-mail detect`.
@@ -354,9 +354,9 @@ with a plain `docker run`:
 
 ```sh
 docker run --rm \
-  -v "$(pwd)/config:/home/mailbot/config" \
-  -v "$(pwd)/.mail_data:/home/mailbot/.data" \
-  -e MAIL_CONFIG_PATH=/home/mailbot/config/mail.local.yaml \
+  -v "$(pwd)/config:/home/app/config" \
+  -v "$(pwd)/.mail_data:/data" \
+  -e ROBOTSIX_CONFIG_FILE=/home/app/config/config.json \
   registry.example.com/robotsix-auto-mail:v1.0.0 \
   probe
 ```
@@ -365,7 +365,7 @@ docker run --rm \
 
 Before the Python interpreter starts, [`entrypoint.sh`](../entrypoint.sh)
 validates that a readable YAML config file exists at
-`${MAIL_CONFIG_PATH:-config/mail.local.yaml}`.
+`${ROBOTSIX_CONFIG_FILE:-config/config.json}`.
 
 If the file is missing or unreadable, the script prints a clear error message
 to `stderr` (naming the config file and the `detect` command) and exits with
@@ -440,7 +440,7 @@ config file at `${MAIL_CONFIG_PATH:-config/mail.local.yaml}`.
 cat config/mail.local.yaml
 
 # Check that the bind-mount is working
-docker compose run robotsix-auto-mail ls -l /home/mailbot/config/mail.local.yaml
+docker compose run robotsix-auto-mail ls -l /home/app/config/config.json
 ```
 
 **Fix:**  ensure the config file exists and is readable — copy the example
@@ -474,11 +474,11 @@ host running Docker can reach those hosts on the configured ports.
 
 ### Volume permissions
 
-The container runs as `mailbot` (UID 1000) and writes the database into the
+The container runs as `app` (UID 1000) and writes the database into the
 bind-mounted `./.mail_data`.  On the host the files will be owned by UID 1000;
 if your host user is not UID 1000 you may need to adjust ownership, and
 overriding the user (e.g. `docker compose run --user root`) can leave files
-that future runs as `mailbot` cannot read.
+that future runs as `app` cannot read.
 
 **Diagnose:**
 
@@ -487,7 +487,7 @@ that future runs as `mailbot` cannot read.
 docker compose run robotsix-auto-mail whoami
 
 # Inspect data ownership
-docker compose run robotsix-auto-mail ls -la /home/mailbot/.data/
+docker compose run robotsix-auto-mail ls -la /data/
 ls -la ./.mail_data/      # on the host
 ```
 
@@ -497,7 +497,7 @@ the data was created under a different UID, reset it:
 ```sh
 docker compose down
 rm -rf ./.mail_data
-docker compose run robotsix-auto-mail ingest   # re-creates the db as mailbot
+docker compose run robotsix-auto-mail ingest   # re-creates the db as app
 ```
 
 ---
@@ -544,7 +544,7 @@ docker compose run robotsix-auto-mail ingest
 - **[docs/connecting.md](connecting.md)** — full config key reference,
   precedence rules, and the `probe`/`board` commands.
 - **[docs/configuration.md](configuration.md)** — full configuration
-  reference, including the optional per-account component-agent HTTP API.
+  reference.
 - **[docs/ingestion.md](ingestion.md)** — ingestion pipeline, schema,
   idempotency guarantees, and `ingest` CLI usage.
 - **[README.md](../README.md)** — project overview, layout, and status.

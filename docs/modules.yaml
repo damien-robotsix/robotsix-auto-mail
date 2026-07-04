@@ -53,6 +53,7 @@ modules:
       - changelog/20260703T225054Z-optimization-240-observations-12-median-6e9d.misc.md
       - changelog/20260703T225054Z-agent-limitation-the-agent-made-six-sequ-77d8.misc.md
       - changelog/20260703T232718Z-add-code-of-conduct-md-contributor-coven-cbe8.misc.md
+      - changelog/20260703T114033Z-remove-broker-integration-rename-healthz-5ad9.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -291,9 +292,6 @@ modules:
       - src/robotsix_auto_mail/server/_auth_mixin.py
       - src/robotsix_auto_mail/server/_batch_mixin.py
       - src/robotsix_auto_mail/server/_board_handler_protocol.py
-      - src/robotsix_auto_mail/server/_component_agent_config_contract.py
-      - src/robotsix_auto_mail/server/_component_agent_mixin.py
-      - src/robotsix_auto_mail/server/_component_agent_responder.py
       - src/robotsix_auto_mail/server/_config_mixin.py
       - src/robotsix_auto_mail/server/_draft_mixin.py
       - src/robotsix_auto_mail/server/_reconcile_mixin.py
@@ -332,12 +330,9 @@ modules:
       - tests/server/test_board_handler_board.py
       - tests/server/test_board_handler_static.py
       - tests/server/test_board_handler_email_detail.py
-      - tests/server/test_board_handler_healthz.py
+      - tests/server/test_board_handler_health.py
       - tests/server/test_board_views_unit.py
-      - tests/server/test_component_agent_api.py
-      - tests/server/test_component_agent_config_contract.py
-      - tests/server/test_component_agent_responder.py
-      - tests/server/test_component_agent_mixin.py
+
       - tests/server/test_draft_mixin_compute_and_save.py
       - tests/server/test_draft_mixin_send_generate.py
       - tests/server/test_auth_mixin.py

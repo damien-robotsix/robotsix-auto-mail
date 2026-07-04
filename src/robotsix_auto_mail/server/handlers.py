@@ -23,7 +23,6 @@ import json
 from collections.abc import Callable, Mapping
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
-from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlsplit
 
 from robotsix_auto_mail.config import (
@@ -34,18 +33,12 @@ from robotsix_auto_mail.config import (
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
-from robotsix_auto_mail.server._component_agent_mixin import _ComponentAgentApiMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
 from robotsix_auto_mail.server._constants import GLOBAL_VIEW_ACCOUNT_ID, _with_db
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._triage_mixin import _TriageMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
-
-if TYPE_CHECKING:
-    from robotsix_auto_mail.server._component_agent_responder import (
-        ComponentAgentResponder,
-    )
 
 
 class BoardHandler(
@@ -56,7 +49,6 @@ class BoardHandler(
     _TriageMixin,
     _DraftMixin,
     _ConfigMixin,
-    _ComponentAgentApiMixin,
     _BoardAuthMixin,
     BaseHTTPRequestHandler,
 ):
@@ -74,7 +66,6 @@ class BoardHandler(
         mail_config: MailConfig | None = None,
         accounts: MailAccountsConfig | None = None,
         default_account_id: str | None = None,
-        component_responder: ComponentAgentResponder | None = None,
         **kwargs: object,
     ) -> None:
         # Set attributes BEFORE calling ``super().__init__`` because
@@ -84,7 +75,6 @@ class BoardHandler(
         self.mail_config = mail_config
         self.accounts = accounts
         self.default_account_id = default_account_id
-        self._component_responder = component_responder
         # ``Set-Cookie`` value emitted by the response sinks when a
         # request selected an account via ``?account=`` (set by
         # ``_select_account``); ``None`` means no cookie is written.
@@ -115,7 +105,7 @@ class BoardHandler(
             (lambda p: p == "/", lambda: self._redirect("/board")),
             (lambda p: p == "/board", self._serve_board),
             (lambda p: p == "/board-content", self._serve_board_content),
-            (lambda p: p == "/healthz", self._serve_healthz),
+            (lambda p: p == "/health", self._serve_health),
             (
                 lambda p: p == "/probe-health",
                 self._serve_probe_health,
@@ -133,14 +123,6 @@ class BoardHandler(
             (
                 lambda p: p.startswith("/archive-proposal/"),
                 self._serve_archive_proposal,
-            ),
-            (
-                lambda p: p == "/api/component-agent/monitor",
-                self._handle_component_agent_monitor,
-            ),
-            (
-                lambda p: p == "/api/component-agent/config",
-                self._handle_component_agent_config_get,
             ),
         ]
         for matches, handler in routes:
@@ -188,7 +170,6 @@ class BoardHandler(
             "/save-draft": self._handle_save_draft,
             "/send-draft": self._handle_send_draft,
             "/generate-draft": self._handle_generate_draft,
-            "/api/component-agent/config": self._handle_component_agent_config_set,
         }
         # Dispatch on the bare path so ``?account=<id>`` query strings do
         # not defeat exact-match routing.
@@ -355,21 +336,9 @@ class BoardHandler(
             content_type="application/json; charset=utf-8",
         )
 
-    def _serve_healthz(self) -> None:
-        """Serve GET /healthz — liveness/readiness check."""
-        import sqlite3
-
-        try:
-            conn = sqlite3.connect(self.db_path)
-            conn.execute("SELECT 1")
-            conn.close()
-        except Exception:
-            self._serve_json(
-                {"status": "unhealthy", "checks": {"database": "unreachable"}},
-                status=503,
-            )
-        else:
-            self._serve_json({"status": "healthy"}, status=200)
+    def _serve_health(self) -> None:
+        """Serve GET /health — liveness check."""
+        self._serve_json({"status": "ok"}, status=200)
 
     def _serve_probe_health(self) -> None:
         """Serve GET /probe-health — on-demand IMAP + SMTP connectivity probe.
@@ -417,7 +386,6 @@ def make_board_handler(
     *,
     accounts: MailAccountsConfig | None = None,
     default_account_id: str | None = None,
-    component_responder: ComponentAgentResponder | None = None,
 ) -> functools.partial[BoardHandler]:
     """Return a callable that builds a ``BoardHandler`` wired to *db_path*.
 
@@ -433,16 +401,12 @@ def make_board_handler(
     only ``db_path`` and ``mail_config`` so existing callers and tests
     observe an unchanged keyword set.
 
-    When *component_responder* is provided, the handler serves the
-    ``/api/component-agent/*`` HTTP routes (monitor, config-get,
-    config-set).
     """
     if accounts is None:
         return functools.partial(
             BoardHandler,
             db_path=db_path,
             mail_config=mail_config,
-            component_responder=component_responder,
         )
     return functools.partial(
         BoardHandler,
@@ -450,5 +414,4 @@ def make_board_handler(
         mail_config=mail_config,
         accounts=accounts,
         default_account_id=default_account_id,
-        component_responder=component_responder,
     )

@@ -52,10 +52,7 @@ _LEGACY_FLAT_DB_PATH = ".data/mail.db"
 
 # ---------------------------------------------------------------------------
 # Field mappings — imported from the canonical shared source
-# (``robotsix_auto_mail.config._field_map``) so this checker and the runtime
-# config contract (``_component_agent_config_contract._FIELD_YAML_MAP``) cannot
-# drift. The checker still independently validates this mapping against the
-# live ``MailConfig`` model and the YAML template below.
+# (``robotsix_auto_mail.config._field_map``).
 # ---------------------------------------------------------------------------
 
 from robotsix_auto_mail.config._field_map import (  # noqa: E402

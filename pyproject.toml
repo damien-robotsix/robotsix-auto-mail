@@ -57,11 +57,6 @@ dev = [
     "vulture>=2.16",
     # zizmor: GitHub Actions security scanning (CI + pre-commit gate).
     "zizmor",
-    # robotsix-agent-comm: component-agent protocol used by the server
-    # (_component_agent_config_contract, _component_agent_responder) and
-    # their tests.  Declared here so the dev extra (used by CI) can import
-    # ConfigContractError and run the config-contract test suite.
-    "robotsix-agent-comm",
     # towncrier: changelog fragment management (dev/release tooling).
     "towncrier",
 ]
@@ -70,16 +65,6 @@ llm = [
 ]
 microsoft = [
     "msal>=1.28",
-]
-# Calendar (Add to Calendar) integration — talks to the robotsix-calendar
-# agent over the agent-comm broker. Optional so the core mail server has no
-# hard dependency; install with `.[calendar]` (the deployed image does).
-calendar = [
-    "robotsix-agent-comm",
-]
-# Alias for documentation clarity — same package as the calendar extra.
-broker = [
-    "robotsix-agent-comm",
 ]
 docs = [
     "mkdocs>=1.6",
@@ -138,14 +123,6 @@ module = "robotsix_board"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "robotsix_agent_comm"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "robotsix_agent_comm.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
 module = "msal"
 ignore_missing_imports = true
 
@@ -175,11 +152,7 @@ DEP003 = ["pydantic_ai"]
 # structlog is no longer imported directly by this package (logging has been
 # migrated to robotsix_llmio.logging.setup_logging), but it must remain a
 # direct dependency to preserve the uv dependency resolution order.
-# robotsix_agent_comm is declared in the optional [calendar]/[broker] extras
-# but is not imported anywhere in the package today, so it would otherwise be
-# flagged as an unused (DEP002) dependency. The extra is retained for the
-# optional agent-comm integration.
-DEP002 = ["structlog", "robotsix-agent-comm"]
+DEP002 = ["structlog"]
 # pyyaml / yaml is declared as a dev dependency (used by CI helpers and the
 # migrate-config CLI command) but is imported at runtime by cli/config.py
 # for legacy config migration.
@@ -193,10 +166,9 @@ paths = ["src/robotsix_auto_mail"]
 # ``method_name`` is a required positional argument of the structlog
 # processor protocol ``(logger, method_name, event_dict)``; ``_add_trace_id``
 # does not need it but cannot drop it from the signature.
-ignore_names = ["format", "method_name", "on_notification"]
+ignore_names = ["format", "method_name"]
 
 [tool.uv.sources]
-robotsix-agent-comm = { git = "https://github.com/damien-robotsix/robotsix-agent-comm.git", rev = "e5e6d85ef51b4e68ad284e1180ced8d396310ce2" }  # pragma: allowlist secret
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "a364bf5116dcea5c35b036d158d2f3e47b8caeec" }  # pragma: allowlist secret
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "3da3c4317f4a" }  # pragma: allowlist secret
 robotsix-config = { git = "https://github.com/damien-robotsix/robotsix-config.git", rev = "424f8ec5140e14e9699b92d5c3755d929625b570" }  # pragma: allowlist secret
