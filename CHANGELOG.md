@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add `.github/workflows/lint-workflows.yml` delegating to the shared `robotsix-github-workflows` reusable workflow for actionlint and zizmor scanning of all workflow files.
 - Update implement agent prompt (AGENT.md) to require registering new
   changelog fragments in `docs/modules.yaml` under the `core` module's
   `paths` list.  This eliminates a recurring source of CI noise where

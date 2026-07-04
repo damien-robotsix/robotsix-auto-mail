@@ -62,6 +62,7 @@ modules:
       - changelog/20260704T032222Z-split-195-line-card-extra-html-method-in-2cb0.misc.md
       - changelog/20260704T032222Z-extract-shared-force-refresh-method-to-e-6b6e.misc.md
       - changelog/20260704T035854Z-add-codeql-yml-using-shared-reusable-wor-d275.misc.md
+      - changelog/20260704T035854Z-add-lint-workflows-yml-using-shared-reus-1edb.misc.md
       - changelog/20260704T050008Z-implement-agent-auto-register-changelog-dad5.misc.md
       - changelog/20260704T051132Z-config-drift-stale-key-component-agent-e-4d53.misc.md
       - changelog/20260704T051132Z-remove-stale-component-agent-enabled-config-example-4d53.misc.md
@@ -406,6 +407,7 @@ modules:
       - .github/workflows/lockfile.yml
       - .github/workflows/pre-commit.yml
       - .github/workflows/release.yml
+      - .github/workflows/lint-workflows.yml
       - .github/workflows/scan-container.yml
       - .github/ISSUE_TEMPLATE/bug_report.yml
       - .github/ISSUE_TEMPLATE/config.yml
