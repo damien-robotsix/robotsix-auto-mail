@@ -60,6 +60,127 @@ def _account_qs(account_id: str | None) -> str:
     return "?account=" + quote(account_id, safe="")
 
 
+# -- aggregate-mode helpers ---------------------------------------------------
+
+
+def _account_qs_for(card: MailRecord, record_accounts: Mapping[str, str]) -> str:
+    """Return ``"?account=<id>"`` or ``""`` for *card*."""
+    account_id = record_accounts.get(card.message_id)
+    return _account_qs(account_id) if account_id else ""
+
+
+def _aggregate_redirect(card: MailRecord, record_accounts: Mapping[str, str]) -> str:
+    """Return a hidden ``redirect_to`` input, or ``""``."""
+    if record_accounts.get(card.message_id):
+        return '<input type="hidden" name="redirect_to" value="/board?account=__all__">'
+    return ""
+
+
+# -- card_extra_html widget helpers -------------------------------------------
+
+
+def _body_preview_html(card: MailRecord) -> str:
+    """Return the escaped body-preview snippet."""
+    body = _effective_body_plain(card)
+    if not body or not body.strip():
+        return '<span class="no-body">(no body)</span>'
+    if len(body) > _BODY_PREVIEW_LIMIT:
+        return html.escape(body[:_BODY_PREVIEW_LIMIT]) + "…"
+    return html.escape(body)
+
+
+def _move_options_parts(current_action: str) -> list[str]:
+    """Build the ``<option>`` strings for the move-form dropdown."""
+    parts: list[str] = []
+    for action in TRIAGE_ACTION_ORDER:
+        sel = " selected" if action == current_action else ""
+        parts.append(
+            f'<option value="{html.escape(action)}"{sel}>'
+            f"{html.escape(TRIAGE_ACTION_LABELS[action])}</option>"
+        )
+    return parts
+
+
+def _notes_indicator(card: MailRecord) -> str:
+    """Return the notes-indicator HTML snippet, or ``""``."""
+    if not card.notes:
+        return ""
+    escaped_notes = html.escape(card.notes)
+    truncated = escaped_notes[:40] + ("…" if len(escaped_notes) > 40 else "")
+    return (
+        '<span class="card-notes-indicator"'
+        f' title="{escaped_notes}">'
+        f"\U0001f4dd {truncated}</span>"
+    )
+
+
+def _draft_indicator(card: MailRecord, current_action: str) -> str:
+    """Return the draft-indicator HTML snippet, or ``""``."""
+    if current_action != DRAFT_READY or not card.draft_text:
+        return ""
+    escaped_draft = html.escape(card.draft_text)
+    truncated = escaped_draft[:40] + ("…" if len(escaped_draft) > 40 else "")
+    return (
+        '<span class="card-draft-indicator"'
+        f' title="{escaped_draft}">'
+        f"✉️ {truncated}</span>"
+    )
+
+
+def _calendar_indicator(card: MailRecord) -> str:
+    """Return the calendar-indicator HTML snippet, or ``""``."""
+    if not card.calendar_event_ref:
+        return ""
+    event_ref = card.calendar_event_ref
+    if event_ref.startswith("error: "):
+        error_msg = event_ref[len("error: ") :]
+        return (
+            '<span class="card-calendar-indicator card-calendar-error"'
+            f' title="{html.escape(error_msg, quote=True)}">'
+            "\u26a0\ufe0f</span>"
+        )
+    return (
+        '<span class="card-calendar-indicator card-calendar-success"'
+        f' title="{html.escape(event_ref, quote=True)}">'
+        "\u2705</span>"
+    )
+
+
+def _draft_reply_button(current_action: str, account_qs: str, escaped_mid: str) -> str:
+    """Return the draft-reply button HTML snippet, or ``""``."""
+    if current_action != TO_ANSWER:
+        return ""
+    return (
+        '<form class="draft-reply-form" method="post"'
+        f' action="/generate-draft{account_qs}">'
+        f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+        '<button type="submit" class="draft-reply-btn">'
+        "Draft reply</button>"
+        "</form>"
+    )
+
+
+def _delete_form(
+    current_action: str,
+    account_qs: str,
+    escaped_mid: str,
+    aggregate_redirect: str,
+) -> str:
+    """Return the delete-form HTML snippet, or ``""``."""
+    if current_action != TO_DELETE:
+        return ""
+    return (
+        '<form class="delete-form" method="post"'
+        f' action="/delete{account_qs}"'
+        ' onsubmit="return confirm('
+        "'Permanently delete this mail from mailbox and database?')\">"
+        f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+        f"{aggregate_redirect}"
+        '<button type="submit" class="delete-btn">Delete</button>'
+        "</form>"
+    )
+
+
 class MailBoardAdapter:
     """Adapter that presents auto-mail records to the ``robotsix_board`` library.
 
@@ -166,6 +287,121 @@ class MailBoardAdapter:
         """
         return RenderMode.SERVER_FRAGMENTS
 
+    # -- card_extra_html helpers ----------------------------------------------
+
+    def _current_action(self, card: MailRecord) -> str:
+        """Return the triage action for *card* (defaults to INBOX)."""
+        return self._triage_by_mid.get(card.message_id, INBOX)
+
+    def _account_badge(self, card: MailRecord) -> tuple[str, str]:
+        """Return ``(badge_html, data_account_attr)`` for aggregate mode.
+
+        Returns ``("", "")`` when *card* has no owning account.
+        """
+        account_id = self._record_accounts.get(card.message_id)
+        if not account_id:
+            return "", ""
+        data_account_attr = f' data-account="{html.escape(account_id)}"'
+        label = self._account_labels.get(account_id, account_id)
+        account_badge = f'<span class="card-account">{html.escape(label)}</span>'
+        return account_badge, data_account_attr
+
+    def _archive_html(
+        self,
+        current_action: str,
+        card: MailRecord,
+        account_qs: str,
+        aggregate_redirect: str,
+        quoted_mid: str,
+        escaped_mid: str,
+    ) -> tuple[str, str]:
+        """Return ``(archive_html, data_archive_dest_attr)`` for TO_ARCHIVE.
+
+        Returns ``("", "")`` when *card* is not in TO_ARCHIVE or has no
+        subfolder proposal.
+        """
+        if current_action != TO_ARCHIVE:
+            return "", ""
+        arc_subfolder = self.archive_subfolders.get(card.message_id)
+        if arc_subfolder is None:
+            return "", ""
+        data_archive_dest_attr = (
+            f' data-archive-dest="{html.escape(arc_subfolder, quote=True)}"'
+        )
+        escaped_subfolder = html.escape(arc_subfolder)
+        escaped_root = html.escape(self.archive_root)
+        if arc_subfolder:
+            display_path = f"{escaped_root}/{escaped_subfolder}"
+        else:
+            display_path = escaped_root + "/"
+        exists_indicator = ""
+        if self.folder_exists.get(card.message_id):
+            exists_indicator = (
+                '<span class="archive-exists"'
+                ' title="Folder already exists">'
+                "&#x2713;</span>"
+            )
+        archive_html = (
+            '<div class="archive-proposal">'
+            "Archive &rarr; "
+            f'<span class="archive-path">{display_path}</span>'
+            f"{exists_indicator}"
+            '<form class="archive-override-form" method="post"'
+            f' action="/archive-proposal{account_qs}">'
+            f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+            f"{aggregate_redirect}"
+            '<input type="text" name="subfolder"'
+            f' value="{escaped_subfolder}"'
+            ' list="archive-folders"'
+            ' placeholder="subfolder path" size="30">'
+        )
+        # Browse button -- opens the folder-tree popover to select
+        # an existing archive subfolder.  Suppressed when no
+        # archive subfolders exist yet (fresh setup) and in
+        # aggregate mode (the tree is per-account only).
+        if self.archive_folders and not self._record_accounts:
+            archive_html += (
+                '<button type="button" class="archive-browse-btn"'
+                f' data-message-id="{quoted_mid}">'
+                "\U0001f4c1 Browse</button>"
+            )
+        archive_html += (
+            '<button type="submit">Set</button>'
+            "</form>"
+            '<form class="archive-confirm-form" method="post"'
+            f' action="/archive{account_qs}"'
+            ' onsubmit="return confirm('
+            f"'Archive this mail to {display_path}?')\">"
+            f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+            f"{aggregate_redirect}"
+            '<button type="submit" class="archive-btn">Archive</button>'
+            "</form>"
+            "</div>"
+        )
+        return archive_html, data_archive_dest_attr
+
+    def _move_form(
+        self,
+        card: MailRecord,
+        account_qs: str,
+        aggregate_redirect: str,
+        escaped_mid: str,
+        options_parts: list[str],
+    ) -> str:
+        """Return the per-card move-form HTML snippet."""
+        move_url, move_method = self.move_endpoint(card)
+        return (
+            f'<form class="board-card-move"'
+            f' method="{html.escape(move_method)}"'
+            f' action="{html.escape(move_url)}{account_qs}">'
+            f'<input type="hidden" name="message_id" value="{escaped_mid}">'
+            f"{aggregate_redirect}"
+            '<select class="board-move-select" name="triage_action">'
+            f"{''.join(options_parts)}</select>"
+            '<button type="submit" class="board-move-submit">Move</button>'
+            "</form>"
+        )
+
     # -- raw-HTML extra-content hooks (duck-typed, not in the Protocol) --------
 
     def card_extra_html(self, card: MailRecord) -> str:
@@ -187,196 +423,46 @@ class MailBoardAdapter:
         every per-card form ``action`` appends ``?account=<owning id>`` so
         POSTs route to the correct account's DB.
         """
-        current_action = self._triage_by_mid.get(card.message_id, INBOX)
+        current_action = self._current_action(card)
         subject_str = card.subject.strip() or "(no subject)"
         subject_attr = html.escape(subject_str)
         escaped_mid = html.escape(card.message_id)
         quoted_mid = quote(card.message_id, safe="")
 
-        # Aggregate-mode context for this card.
-        account_id = self._record_accounts.get(card.message_id)
-        account_qs = _account_qs(account_id) if account_id else ""
-        # In aggregate ("All mailboxes") mode each form posts to the card's own
-        # ``?account=<id>`` so the write hits the right DB — but that also
-        # switches the account cookie, so a plain redirect to ``/board`` would
-        # land on that single account.  Send actions back to the aggregate
-        # board instead.  (Empty for single-account views, which redirect to
-        # ``/board`` and rely on the existing cookie.)
-        aggregate_redirect = (
-            '<input type="hidden" name="redirect_to" value="/board?account=__all__">'
-            if account_id
-            else ""
+        account_qs = _account_qs_for(card, self._record_accounts)
+        aggregate_redirect = _aggregate_redirect(card, self._record_accounts)
+
+        account_badge, data_account_attr = self._account_badge(card)
+        body_html_render = _body_preview_html(card)
+        options_parts = _move_options_parts(current_action)
+        notes_indicator = _notes_indicator(card)
+        draft_indicator = _draft_indicator(card, current_action)
+        calendar_indicator = _calendar_indicator(card)
+        draft_button = _draft_reply_button(
+            current_action,
+            account_qs,
+            escaped_mid,
         )
-
-        # Account badge (aggregate mode only).
-        account_badge = ""
-        data_account_attr = ""
-        if account_id:
-            data_account_attr = f' data-account="{html.escape(account_id)}"'
-            label = self._account_labels.get(account_id, account_id)
-            account_badge = f'<span class="card-account">{html.escape(label)}</span>'
-
-        # Body preview.
-        body = _effective_body_plain(card)
-        if not body or not body.strip():
-            body_html_render = '<span class="no-body">(no body)</span>'
-        elif len(body) > _BODY_PREVIEW_LIMIT:
-            body_html_render = html.escape(body[:_BODY_PREVIEW_LIMIT]) + "…"
-        else:
-            body_html_render = html.escape(body)
-
-        # Move-form options (all triage actions; the current one selected).
-        options_parts: list[str] = []
-        for opt_action in TRIAGE_ACTION_ORDER:
-            sel = " selected" if opt_action == current_action else ""
-            options_parts.append(
-                f'<option value="{html.escape(opt_action)}"{sel}>'
-                f"{html.escape(TRIAGE_ACTION_LABELS[opt_action])}</option>"
-            )
-
-        # Notes indicator.
-        notes_indicator = ""
-        if card.notes:
-            escaped_notes = html.escape(card.notes)
-            truncated = escaped_notes[:40] + ("…" if len(escaped_notes) > 40 else "")
-            notes_indicator = (
-                '<span class="card-notes-indicator"'
-                f' title="{escaped_notes}">'
-                f"\U0001f4dd {truncated}</span>"
-            )
-
-        # Draft indicator.
-        draft_indicator = ""
-        if current_action == DRAFT_READY and card.draft_text:
-            escaped_draft = html.escape(card.draft_text)
-            truncated = escaped_draft[:40] + ("…" if len(escaped_draft) > 40 else "")
-            draft_indicator = (
-                '<span class="card-draft-indicator"'
-                f' title="{escaped_draft}">'
-                f"✉️ {truncated}</span>"
-            )
-
-        # Calendar indicator (board card).
-        calendar_indicator = ""
-        if card.calendar_event_ref:
-            event_ref = card.calendar_event_ref
-            if event_ref.startswith("error: "):
-                error_msg = event_ref[len("error: ") :]
-                calendar_indicator = (
-                    '<span class="card-calendar-indicator card-calendar-error"'
-                    f' title="{html.escape(error_msg, quote=True)}">'
-                    "\u26a0\ufe0f</span>"
-                )
-            else:
-                calendar_indicator = (
-                    '<span class="card-calendar-indicator card-calendar-success"'
-                    f' title="{html.escape(event_ref, quote=True)}">'
-                    "\u2705</span>"
-                )
-
-        # Draft-reply button (TO_ANSWER only) — a single click POSTs to
-        # /generate-draft so the LLM prepares a draft reply.  No
-        # ``redirect_to`` is sent, so the handler falls back to the trusted
-        # ``/board#{message_id}`` redirect that re-opens the panel showing
-        # the generated draft.
-        draft_button = ""
-        if current_action == TO_ANSWER:
-            draft_button = (
-                '<form class="draft-reply-form" method="post"'
-                f' action="/generate-draft{account_qs}">'
-                f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-                '<button type="submit" class="draft-reply-btn">'
-                "Draft reply</button>"
-                "</form>"
-            )
-
-        # Delete form (TO_DELETE only).
-        delete_form = ""
-        if current_action == TO_DELETE:
-            delete_form = (
-                '<form class="delete-form" method="post"'
-                f' action="/delete{account_qs}"'
-                ' onsubmit="return confirm('
-                "'Permanently delete this mail from mailbox and database?')\">"
-                f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-                f"{aggregate_redirect}"
-                '<button type="submit" class="delete-btn">Delete</button>'
-                "</form>"
-            )
-
-        # Archive proposal section (TO_ARCHIVE only).
-        archive_html = ""
-        # ``data-archive-dest`` lets the board JS group TO_ARCHIVE cards by
-        # destination and offer a per-folder "Archive these" button.  Empty
-        # value means the archive root.
-        data_archive_dest_attr = ""
-        if current_action == TO_ARCHIVE:
-            arc_subfolder = self.archive_subfolders.get(card.message_id)
-            if arc_subfolder is not None:
-                data_archive_dest_attr = (
-                    f' data-archive-dest="{html.escape(arc_subfolder, quote=True)}"'
-                )
-                escaped_subfolder = html.escape(arc_subfolder)
-                escaped_root = html.escape(self.archive_root)
-                if arc_subfolder:
-                    display_path = f"{escaped_root}/{escaped_subfolder}"
-                else:
-                    display_path = escaped_root + "/"
-                exists_indicator = ""
-                if self.folder_exists.get(card.message_id):
-                    exists_indicator = (
-                        '<span class="archive-exists"'
-                        ' title="Folder already exists">'
-                        "&#x2713;</span>"
-                    )
-                archive_html = (
-                    '<div class="archive-proposal">'
-                    "Archive &rarr; "
-                    f'<span class="archive-path">{display_path}</span>'
-                    f"{exists_indicator}"
-                    '<form class="archive-override-form" method="post"'
-                    f' action="/archive-proposal{account_qs}">'
-                    f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-                    f"{aggregate_redirect}"
-                    '<input type="text" name="subfolder"'
-                    f' value="{escaped_subfolder}"'
-                    ' list="archive-folders"'
-                    ' placeholder="subfolder path" size="30">'
-                )
-                # Browse button — opens the folder-tree popover to select
-                # an existing archive subfolder.  Suppressed when no
-                # archive subfolders exist yet (fresh setup) and in
-                # aggregate mode (the tree is per-account only).
-                if self.archive_folders and not self._record_accounts:
-                    archive_html += (
-                        '<button type="button" class="archive-browse-btn"'
-                        f' data-message-id="{quoted_mid}">'
-                        "\U0001f4c1 Browse</button>"
-                    )
-                archive_html += (
-                    '<button type="submit">Set</button>'
-                    "</form>"
-                    '<form class="archive-confirm-form" method="post"'
-                    f' action="/archive{account_qs}"'
-                    ' onsubmit="return confirm('
-                    f"'Archive this mail to {display_path}?')\">"
-                    f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-                    f"{aggregate_redirect}"
-                    '<button type="submit" class="archive-btn">Archive</button>'
-                    "</form>"
-                    "</div>"
-                )
-
-        move_url, move_method = self.move_endpoint(card)
-        move_form = (
-            f'<form class="board-card-move" method="{html.escape(move_method)}"'
-            f' action="{html.escape(move_url)}{account_qs}">'
-            f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-            f"{aggregate_redirect}"
-            '<select class="board-move-select" name="triage_action">'
-            f"{''.join(options_parts)}</select>"
-            '<button type="submit" class="board-move-submit">Move</button>'
-            "</form>"
+        delete_form = _delete_form(
+            current_action,
+            account_qs,
+            escaped_mid,
+            aggregate_redirect,
+        )
+        archive_html, data_archive_dest_attr = self._archive_html(
+            current_action,
+            card,
+            account_qs,
+            aggregate_redirect,
+            quoted_mid,
+            escaped_mid,
+        )
+        move_form = self._move_form(
+            card,
+            account_qs,
+            aggregate_redirect,
+            escaped_mid,
+            options_parts,
         )
 
         return (

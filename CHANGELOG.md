@@ -6,6 +6,7 @@
 ## 0.0.0 (unreleased)
 
 - Extract duplicated `_launch_background_worker` call in `_TriageMixin` into a shared private `_launch_triage()` helper method.
+- Refactor `card_extra_html` in `MailBoardAdapter`: extract each HTML widget block into its own helper function (`_body_preview_html`, `_notes_indicator`, `_draft_indicator`, `_calendar_indicator`, `_draft_reply_button`, `_delete_form`, `_account_badge`, `_archive_html`, `_move_form`), reducing the method from ~225 lines to a ~40-line flat assembler.
 - Updated `docs/architecture.md` to enumerate all triage submodules
   (`_constants`, `agent`, `classifier`, `persistence`, `rules`) with
   one-line descriptions, and to call out `pipeline/_parse.py` as the
