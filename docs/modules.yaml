@@ -137,6 +137,7 @@ modules:
       - src/robotsix_auto_mail/cli/commands_serve.py
       - src/robotsix_auto_mail/cli/commands_triage.py
       - src/robotsix_auto_mail/cli/config.py
+      - tests/cli/__init__.py
       - tests/cli/test_cli.py
       - tests/cli/test_commands_auth.py
       - tests/cli/test_commands_serve.py
@@ -200,6 +201,7 @@ modules:
       - src/robotsix_auto_mail/triage/classifier.py
       - src/robotsix_auto_mail/triage/persistence.py
       - src/robotsix_auto_mail/triage/rules.py
+      - tests/triage/__init__.py
       - tests/triage/test_triage_agent.py
       - tests/triage/test_triage_archive_hints.py
       - tests/triage/test_triage_archive_llm.py
@@ -222,6 +224,7 @@ modules:
       - src/robotsix_auto_mail/db/archive.py
       - src/robotsix_auto_mail/db/models.py
       - src/robotsix_auto_mail/db/queries.py
+      - tests/db/__init__.py
       - tests/db/test_archive.py
       - tests/db/test_db.py
       - tests/db/test_migrate.py
@@ -275,6 +278,7 @@ modules:
       - src/robotsix_auto_mail/pipeline/__init__.py
       - src/robotsix_auto_mail/pipeline/_parse.py
       - src/robotsix_auto_mail/pipeline/reconcile.py
+      - tests/pipeline/__init__.py
       - tests/pipeline/_helpers.py
       - tests/pipeline/test_pipeline_cli_ingest.py
       - tests/pipeline/test_fetch.py
@@ -297,6 +301,7 @@ modules:
       SMTP sending client.
     paths:
       - src/robotsix_auto_mail/smtp/__init__.py
+      - tests/smtp/__init__.py
       - tests/smtp/test_smtp_client.py
 
   - id: server
@@ -449,3 +454,6 @@ modules:
       - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/changelog_autofill.yaml
       - .robotsix-mill/periodic/triage_boilerplate.yaml
+
+ml
+
