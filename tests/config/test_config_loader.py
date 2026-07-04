@@ -188,17 +188,17 @@ def test_resolve_llm_api_key_explicit_empty_string_falls_through() -> None:
         assert resolve_llm_api_key("") == "sk-from-file"
 
 
-def test_resolve_llm_api_key_env_var_no_longer_falls_back(
+def test_resolve_llm_api_key_env_var_falls_back(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """LLM_API_KEY env var is NOT picked up (removed from resolve_llm_api_key)."""
+    """LLM_API_KEY env var is consulted between explicit arg and config file."""
     monkeypatch.setenv("LLM_API_KEY", "env-key")
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts",
         return_value=_default_accounts(),
     ):
-        # LLM_API_KEY env var is not consulted → no key found
-        assert resolve_llm_api_key(raise_on_missing=False) == ""
+        # LLM_API_KEY env var is consulted → resolves to env-key
+        assert resolve_llm_api_key(raise_on_missing=False) == "env-key"
 
 
 def test_resolve_llm_api_key_explicit_wins_over_env(
@@ -246,17 +246,17 @@ def test_resolve_llm_provider_model_explicit_empty_falls_through() -> None:
         assert resolve_llm_provider_model("") == "yaml-model"
 
 
-def test_resolve_llm_provider_model_env_var_no_longer_falls_back(
+def test_resolve_llm_provider_model_env_var_falls_back(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """LLM_PROVIDER_MODEL env var is NOT picked up (removed)."""
+    """LLM_PROVIDER_MODEL env var is consulted between explicit arg and config file."""
     monkeypatch.setenv("LLM_PROVIDER_MODEL", "env-model")
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts",
         return_value=_default_accounts(),
     ):
-        # LLM_PROVIDER_MODEL env var is not consulted → uses default
-        assert resolve_llm_provider_model() == ""
+        # LLM_PROVIDER_MODEL env var is consulted → resolves to env-model
+        assert resolve_llm_provider_model() == "env-model"
 
 
 def test_resolve_llm_provider_model_explicit_wins_over_env(
