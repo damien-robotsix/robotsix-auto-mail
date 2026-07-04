@@ -446,16 +446,159 @@ def _strip_backticks(s: str) -> str:
 def _normalise_doc_default(raw: str) -> Any:
     """Convert a documented default value to a Python object.
 
-    Returns ``dataclasses.MISSING`` when the doc says "-" (none).
+    Returns ``dataclasses.MISSING`` when the doc says "-" or "*(none)*"
+    (none).
     """
     stripped = _strip_backticks(raw.strip())
-    if stripped in ("–", "—", "-", "N/A", ""):  # noqa: RUF001
+    if stripped in ("–", "—", "-", "N/A", "", "*(none)*"):  # noqa: RUF001
         return dataclasses.MISSING
     # YAML-parse: bare numbers, quoted strings, etc.
     try:
         return yaml.safe_load(stripped)
     except yaml.YAMLError:
         return stripped
+
+
+def _parse_all_md_tables(text: str) -> list[dict[str, str]]:
+    """Parse ALL pipe tables in *text*, returning a flat list of row dicts.
+
+    Unlike ``_parse_md_table``, which finds only the first table after a
+    specific heading, this scans the entire text and collects every pipe
+    table it encounters.  Each row is a dict keyed by the column headers
+    of its table.
+    """
+    rows: list[dict[str, str]] = []
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.strip().startswith("|") and "---" not in line:
+            # Potential header row — check next line is a separator.
+            if i + 1 < len(lines) and re.match(r"^\s*\|[\s\-:|]+\|\s*$", lines[i + 1]):
+                header_line = lines[i]
+                headers = [h.strip() for h in header_line.split("|")[1:-1]]
+                i += 2  # skip header and separator
+                while i < len(lines):
+                    row_line = lines[i].strip()
+                    if not row_line.startswith("|"):
+                        break
+                    cells = [c.strip() for c in row_line.split("|")[1:-1]]
+                    if len(cells) == len(headers):
+                        row = dict(zip(headers, cells, strict=True))
+                        rows.append(row)
+                    i += 1
+                continue
+        i += 1
+    return rows
+
+
+# Container-level keys in ``docs/configuration.md`` that are NOT individual
+# ``MailConfig`` fields (they describe the ``accounts`` list shape itself).
+_CONFIGURATION_MD_CONTAINER_KEYS: frozenset[str] = frozenset(
+    {"accounts", "accounts[].id", "accounts[].label", "default_account"}
+)
+
+
+def check_docs_configuration(
+    text: str,
+    path: str = "docs/configuration.md",
+) -> list[dict[str, Any]]:
+    """Check *text* (``docs/configuration.md``) against ``MailConfig``.
+
+    Parses every pipe table in the file (the config-key tables are split
+    across multiple per-section headings) and cross-references them
+    against ``FIELD_TO_YAML``.
+
+    Returns a list of finding dicts.
+    """
+    findings: list[dict[str, Any]] = []
+
+    yaml_rows = _parse_all_md_tables(text)
+
+    if not yaml_rows:
+        findings.append(
+            {
+                "artifact": path,
+                "type": "doc-parse-error",
+                "message": "Could not parse any YAML keys tables",
+            }
+        )
+
+    field_defaults: dict[str, Any] = {}
+    for f_name in MailConfig.model_fields:
+        field_defaults[f_name] = _field_default(f_name)
+
+    # -- YAML keys tables ---------------------------------------------------
+
+    # Map YAML path → row data.
+    yaml_table: dict[str, dict[str, str]] = {}
+    for row in yaml_rows:
+        key_cell = row.get("Key", "")
+        ypath = _strip_backticks(key_cell)
+        if ypath:
+            yaml_table[ypath] = row
+
+    for field_name, ypath in FIELD_TO_YAML.items():
+        if ypath not in yaml_table:
+            findings.append(
+                {
+                    "artifact": path,
+                    "type": "doc-missing-yaml-key",
+                    "key": ypath,
+                    "field": field_name,
+                }
+            )
+            continue
+
+        default = field_defaults[field_name]
+        if default is dataclasses.MISSING:
+            continue
+
+        row = yaml_table[ypath]
+        doc_default_raw = row.get("Default", "")
+        doc_default = _normalise_doc_default(doc_default_raw)
+
+        if doc_default is dataclasses.MISSING:
+            # Doc says "-" / "*(none)*" → no default documented.  Treat an
+            # empty-string MailConfig default as equivalent ("no value").
+            if default == "":
+                continue
+            findings.append(
+                {
+                    "artifact": path,
+                    "type": "doc-default-mismatch",
+                    "key": ypath,
+                    "expected": default,
+                    "actual": "(none documented)",
+                }
+            )
+            continue
+
+        if doc_default != default:
+            findings.append(
+                {
+                    "artifact": path,
+                    "type": "doc-default-mismatch",
+                    "key": ypath,
+                    "expected": default,
+                    "actual": doc_default_raw,
+                }
+            )
+
+    # Stale YAML rows — skip container-level keys.
+    for ypath in yaml_table:
+        if ypath in _CONFIGURATION_MD_CONTAINER_KEYS:
+            continue
+        if ypath not in FIELD_TO_YAML.values():
+            findings.append(
+                {
+                    "artifact": path,
+                    "type": "doc-stale-yaml-key",
+                    "key": ypath,
+                }
+            )
+
+    return findings
 
 
 def check_docs_connecting(
@@ -759,7 +902,7 @@ def run_checks(
 
     # -- load artifact files ------------------------------------------------
     yaml_path = repo_root / "docs/config" / "mail.local.example.yaml"
-    docs_path = repo_root / "docs" / "connecting.md"
+    docs_cfg_path = repo_root / "docs" / "configuration.md"
 
     try:
         yaml_text = yaml_path.read_text()
@@ -774,21 +917,21 @@ def run_checks(
         return 2
 
     try:
-        docs_text = docs_path.read_text()
+        docs_cfg_text = docs_cfg_path.read_text()
     except FileNotFoundError:
         print(
-            f"ERROR: {docs_path} not found — cannot run docs check",
+            f"ERROR: {docs_cfg_path} not found — cannot run docs check",
             file=sys.stderr,
         )
         return 2
     except OSError as exc:
-        print(f"ERROR: cannot read {docs_path}: {exc}", file=sys.stderr)
+        print(f"ERROR: cannot read {docs_cfg_path}: {exc}", file=sys.stderr)
         return 2
 
     # -- run checks ---------------------------------------------------------
     findings: list[dict[str, Any]] = []
     findings.extend(check_yaml_example(yaml_text, str(yaml_path)))
-    findings.extend(check_docs_connecting(docs_text, str(docs_path)))
+    findings.extend(check_docs_configuration(docs_cfg_text, str(docs_cfg_path)))
     findings.extend(check_accounts_example(yaml_path, str(yaml_path)))
 
     # -- report -------------------------------------------------------------
