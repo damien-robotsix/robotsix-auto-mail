@@ -106,6 +106,7 @@ class BoardHandler(
             (lambda p: p == "/board", self._serve_board),
             (lambda p: p == "/board-content", self._serve_board_content),
             (lambda p: p == "/health", self._serve_health),
+            (lambda p: p == "/healthz", self._serve_health),
             (
                 lambda p: p == "/probe-health",
                 self._serve_probe_health,

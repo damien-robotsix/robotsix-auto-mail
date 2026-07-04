@@ -126,3 +126,34 @@ def test_health_content_type_is_json() -> None:
         assert "application/json" in content_type
     finally:
         server.shutdown()
+
+
+# ===========================================================================
+# GET /healthz tests
+# ===========================================================================
+
+
+def test_healthz_returns_200(single_db: str) -> None:
+    """GET /healthz returns 200 and {"status": "ok"}."""
+    server, port = _start_test_server(single_db)
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/healthz")
+        assert resp.status == 200
+        content_type = resp.headers.get("Content-Type", "")
+        assert "application/json" in content_type
+        body = resp.read().decode("utf-8")
+        payload = json.loads(body)
+        assert payload == {"status": "ok"}
+    finally:
+        server.shutdown()
+
+
+def test_healthz_content_type_is_json() -> None:
+    """GET /healthz response Content-Type is application/json."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/healthz")
+        content_type = resp.headers.get("Content-Type", "")
+        assert "application/json" in content_type
+    finally:
+        server.shutdown()
