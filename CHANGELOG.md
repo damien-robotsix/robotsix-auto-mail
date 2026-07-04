@@ -5,6 +5,12 @@
 
 ## 0.0.0 (unreleased)
 
+- Update implement agent prompt (AGENT.md) to require registering new
+  changelog fragments in `docs/modules.yaml` under the `core` module's
+  `paths` list.  This eliminates a recurring source of CI noise where
+  the implement agent creates a fragment but forgets to register it,
+  triggering a `robotsix-modules check-registration` failure and a
+  follow-up CI-fix commit.
 - Added a three-tier CSS custom property system (`:root` palette → semantic → component tokens) to `board.css`, replacing all 51 hardcoded hex colour literals with `var(--…)` references. No visual change.
 - Add `stylelint-declaration-strict-value` plugin to pre-commit stylelint hook, with a rule that requires CSS custom properties (`var(--...)`) for all colour-related declarations (properties ending in `color`, plus `fill` and `stroke`). Board.css is temporarily excluded from this rule until the CSS variable migration is complete.
 - Extract shared `force_refresh_token` into `robotsix_auto_mail.oauth2`, removing a 16-line clone between `_imap_force_refresh` and `_smtp_force_refresh`.

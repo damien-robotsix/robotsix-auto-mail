@@ -231,6 +231,13 @@ must be a ``.md`` file whose name follows the towncrier convention
 categories: ``feature``, ``bugfix``, ``removal``, or ``misc``.  The
 `towncrier check` CI gate in `ci.yml` verifies this on pull requests.
 
+When you create a new changelog fragment file under `changelog/`, you
+MUST also register its path in `docs/modules.yaml` under the `core`
+module's `paths` list.  This prevents the `robotsix-modules
+check-registration` pre-commit gate from failing on the new file.
+Insert the entry alphabetically among the existing `changelog/` entries
+in the `core` module's `paths` block.
+
 ---
 
 ## Documentation conventions
