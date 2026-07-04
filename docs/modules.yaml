@@ -56,6 +56,7 @@ modules:
       - changelog/20260703T114033Z-remove-broker-integration-rename-healthz-5ad9.misc.md
       - changelog/20260704T005011Z-replace-duplicate-config-key-table-in-do-8d05.misc.md
       - changelog/20260704T005011Z-update-docs-architecture-md-to-reflect-c-66b4.misc.md
+      - changelog/20260704T032222Z-extract-duplicated-launch-background-wor-61ca.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
