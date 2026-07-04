@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Updated `docs/architecture.md` to enumerate all triage submodules
+  (`_constants`, `agent`, `classifier`, `persistence`, `rules`) with
+  one-line descriptions, and to call out `pipeline/_parse.py` as the
+  MIME-to-MailRecord converter.
 - Replace the duplicated config-key table and YAML example in `docs/connecting.md` with a short link to `docs/configuration.md`, retaining the Trace-ID injection paragraph as its own section.
 - Add Contributor Covenant v2.1 Code of Conduct (`.github/CODE_OF_CONDUCT.md`) with enforcement contact matching `SECURITY.md`. Rewrite root `CONTRIBUTING.md` as a gateway document linking to the full development guide, and add Code of Conduct and AI/LLM contribution policy sections to `docs/CONTRIBUTING.md`.
 - Add tool-use discipline section to AGENT.md: prefer `read_file` over repeated single-line `run_command` queries (`grep -n`, `sed -n`, `head`, `cat -n`) to reduce observation bloat during codebase exploration.

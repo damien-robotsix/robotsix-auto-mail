@@ -1,0 +1,1 @@
+Update docs/architecture.md to reflect current module layout (triage/rules.py, pipeline/_parse.py)
