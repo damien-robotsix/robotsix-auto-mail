@@ -6,6 +6,7 @@
 ## 0.0.0 (unreleased)
 
 - Restore ``GET /healthz`` as alias for the liveness endpoint (returns ``{"status":"ok"}``, HTTP 200) — the fleet standard mandates this path and the caretaker HEALTHCHECK probes it.
+- Remove `VOLUME /data` directive from Dockerfile (the app writes under `/home/mailbot`, and the anonymous volume created by this directive accumulated orphans on every container recreate).
 - Add `.github/workflows/lint-workflows.yml` delegating to the shared `robotsix-github-workflows` reusable workflow for actionlint and zizmor scanning of all workflow files.
 - Update implement agent prompt (AGENT.md) to require registering new
   changelog fragments in `docs/modules.yaml` under the `core` module's

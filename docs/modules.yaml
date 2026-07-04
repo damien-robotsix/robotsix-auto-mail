@@ -71,6 +71,7 @@ modules:
       - changelog/20260704T073043Z-ci-fix-out-of-scope-ci-failure-lint-work-d14b.misc.md
       - changelog/20260704T074502Z-ci-skip-python-specific-jobs-when-no-py-8cb9.misc.md
       - changelog/20260704T082208Z-get-healthz-returns-404-container-perman-4432.misc.md
+      - changelog/20260704T082208Z-vestigial-volume-data-in-dockerfile-spaw-a319.removal.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

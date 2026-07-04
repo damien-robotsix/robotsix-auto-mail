@@ -73,8 +73,6 @@ RUN groupadd --gid 1000 app && \
     mkdir -p /data /home/app/config && \
     chown app:app /data /home/app/config
 
-VOLUME ["/data"]
-
 COPY --chown=app:app entrypoint.sh /usr/local/bin/entrypoint.sh
 
 USER app
