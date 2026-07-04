@@ -1,7 +1,26 @@
 module.exports = {
+  plugins: [require("stylelint-declaration-strict-value")],
+  overrides: [
+    {
+      // Temporary exclusion — remove once board.css uses CSS custom
+      // properties for all colour values (see ticket
+      // @add-css-custom-properties-layer-to-board).
+      files: ["src/robotsix_auto_mail/server/static/board.css"],
+      rules: {
+        "scale-unlimited/declaration-strict-value": null,
+      },
+    },
+  ],
   rules: {
     // Color
     "color-no-invalid-hex": true,
+    "scale-unlimited/declaration-strict-value": [
+      ["/color$/", "fill", "stroke"],
+      {
+        ignoreValues: ["/^(inherit|currentColor|transparent)$/"],
+        ignoreFunctions: false,
+      },
+    ],
 
     // Font family
     "font-family-no-duplicate-names": true,
