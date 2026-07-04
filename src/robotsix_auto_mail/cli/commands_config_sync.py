@@ -10,6 +10,56 @@ from robotsix_auto_mail.cli.commands import _load_config_or_exit, _print_header
 from robotsix_auto_mail.db import init_db
 
 
+def register_subparser(subparsers: argparse._SubParsersAction) -> None:
+    from robotsix_auto_mail.cli import _add_account_arg
+
+    config_sync_parser = subparsers.add_parser(
+        "config-sync",
+        help="Run the LLM config-drift advisory agent (advisory only; "
+        "does not replace the deterministic check_config_sync.py CI gate)",
+    )
+    _add_account_arg(config_sync_parser)
+    config_sync_parser.add_argument(
+        "--api-key",
+        default=None,
+        help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
+    )
+    config_sync_parser.add_argument(
+        "--provider-model",
+        default=None,
+        help="LLM provider-model identifier (e.g. openrouter-deepseek). Overrides "
+        "LLM_PROVIDER_MODEL env and config file.",
+    )
+    config_sync_parser.add_argument(
+        "--output-format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format for drift findings (default: %(default)s).",
+    )
+    config_sync_parser.add_argument(
+        "--dedup",
+        action="store_true",
+        default=False,
+        help="Consult/update the dedup memory ledger so previously-seen "
+        "findings are suppressed. Requires a loadable config (for db_path).",
+    )
+
+    config_sync_set_parser = subparsers.add_parser(
+        "config-sync-set",
+        help="Mark a config-drift finding accepted or rejected so it is "
+        "suppressed by the dedup memory ledger",
+    )
+    _add_account_arg(config_sync_set_parser)
+    config_sync_set_parser.add_argument(
+        "fingerprint",
+        help="Fingerprint of the config-drift finding.",
+    )
+    config_sync_set_parser.add_argument(
+        "state",
+        help="Ledger state: pending, accepted, or rejected.",
+    )
+
+
 def _cmd_config_sync(args: argparse.Namespace) -> int:
     """Run the config-drift advisory agent and render its proposals.
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import contextlib
 import pathlib
 import sys
@@ -15,6 +16,51 @@ from robotsix_auto_mail.config import (
 from robotsix_auto_mail.db.queries import write_account_health
 from robotsix_auto_mail.health import probe_account, utcnow
 from robotsix_auto_mail.pipeline import IngestResult, reconcile_records
+
+
+def register_subparser(subparsers: argparse._SubParsersAction) -> None:
+    parser = subparsers.add_parser("ingest", help="Fetch new mail and store it locally")
+    ingest_account_group = parser.add_mutually_exclusive_group()
+    ingest_account_group.add_argument(
+        "--account",
+        metavar="ID",
+        default=None,
+        help=(
+            "Account id to ingest. Optional when only one account is "
+            "configured; without it every configured account is ingested."
+        ),
+    )
+    ingest_account_group.add_argument(
+        "--all-accounts",
+        action="store_true",
+        default=False,
+        help="Ingest every configured account (the default when --account is omitted).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Fetch and parse messages without storing or advancing watermark",
+    )
+    parser.add_argument(
+        "--watch",
+        action="store_true",
+        default=False,
+        help=(
+            "Keep running, ingesting on an interval (minutes) set by "
+            "ingest.interval_minutes in the config (default 15)"
+        ),
+    )
+    parser.add_argument(
+        "--heartbeat-file",
+        default=None,
+        metavar="PATH",
+        help=(
+            "In --watch mode, touch this file at the end of each poll cycle "
+            "so a Docker HEALTHCHECK can verify the loop is alive. "
+            "No file is written when omitted."
+        ),
+    )
 
 
 def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 from typing import TextIO
 
@@ -13,6 +14,15 @@ from robotsix_auto_mail.format import (
     _effective_body_plain,
     _format_date,
 )
+
+
+def register_subparser(subparsers: argparse._SubParsersAction) -> None:
+    from robotsix_auto_mail.cli import _add_account_arg
+
+    parser = subparsers.add_parser(
+        "board", help="Display ingested mail in a read-only board view"
+    )
+    _add_account_arg(parser)
 
 _SEPARATOR = "-" * 60 + "\n"
 

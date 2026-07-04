@@ -86,6 +86,7 @@ modules:
       - changelog/20260704T192757Z-robotsix-autoupdate-cli-entry-point-remo-6151.misc.md
       - changelog/20260704T193857Z-copy-paste-32-line-clone-in-check-config-ce23.misc.md
       - changelog/20260704T195609Z-remove-observability-deprecation-shim-ro-a0f0.misc.md
+      - changelog/20260704T202047Z-decompose-build-parser-by-delegating-sub-61d1.misc.md
       - changelog/20260704T202047Z-refactor-archive-and-delete-in-server-ac-45c4.misc.md
       - changelog/20260704T202047Z-refactor-gather-account-board-data-in-se-3cf2.misc.md
       - changelog/20260704T202325Z-remove-dependabot-for-ecosystems-already-f7af.misc.md

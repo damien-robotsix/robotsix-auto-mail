@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import errno
 import sys
 import threading
@@ -10,6 +11,28 @@ import time
 from robotsix_auto_mail._constants import _RECONCILE_STATE_KEY
 from robotsix_auto_mail.cli.commands_triage import _clear_stale_triage_state
 from robotsix_auto_mail.config import MailAccountsConfig
+
+
+def register_subparser(subparsers: argparse._SubParsersAction) -> None:
+    from robotsix_auto_mail.cli import _add_account_arg
+
+    parser = subparsers.add_parser("serve", help="Start the web board server")
+    _add_account_arg(parser)
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Port to listen on (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help=(
+            "Address to bind the board server to (default: %(default)s). "
+            "Use 0.0.0.0 to listen on all interfaces (e.g. inside Docker "
+            "with host-level network isolation)."
+        ),
+    )
 
 
 def _reconcile_loop(accounts: MailAccountsConfig) -> None:
