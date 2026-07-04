@@ -5,8 +5,8 @@ resolved from **built-in defaults overlaid by a single YAML config file** —
 any field you omit falls back to its built-in default.
 
 > **Configuration is provided ONLY via the YAML config file.** The
-> `MAIL_CONFIG_PATH` environment variable *locates* the file (default
-> `config/mail.local.yaml`); it does not itself carry configuration. Individual
+> `ROBOTSIX_CONFIG_FILE` environment variable *locates* the file (default
+> `config/config.json`); it does not itself carry configuration. Individual
 > settings are **no longer read from environment variables** — put every value
 > (hosts, username, password, OAuth2, LLM, logging, …) in the YAML file.
 
@@ -43,7 +43,7 @@ docker compose run robotsix-auto-mail board
 - The `./config` directory is bind-mounted into the container at
   `/home/app/config`, so editing `config/mail.local.yaml` on the host
   is picked up immediately — no rebuild needed.
-- The `MAIL_CONFIG_PATH` environment variable is set to
+- The `ROBOTSIX_CONFIG_FILE` environment variable is set to
   `/home/app/config/config.json` by `docker-compose.yml`.
 - The mail database persists in `./.mail_data` on the host (bind-mounted,
   git-ignored).
@@ -566,10 +566,10 @@ root only takes effect on a fresh run that has no watermark yet.
 ## Precedence rules
 
 Configuration resolves from **built-in defaults overlaid by the YAML config
-file** at `MAIL_CONFIG_PATH` (default `config/mail.local.yaml`). Each field the
+file** at `ROBOTSIX_CONFIG_FILE` (default `config/config.json`). Each field the
 file supplies overrides its built-in default; any field the file omits keeps
 its default. Environment variables are **not** consulted for configuration —
-only `MAIL_CONFIG_PATH` (which locates the file) is read from the environment.
+only `ROBOTSIX_CONFIG_FILE` (which locates the file) is read from the environment.
 
 If the config file has an *invalid* value (e.g. a non-integer port), the error
 is raised immediately so your typo is not silently swallowed.

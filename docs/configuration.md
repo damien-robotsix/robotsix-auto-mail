@@ -7,8 +7,8 @@ built-in default; any field you omit keeps its default.
 > **Configuration is provided primarily via the YAML config file.** Three
 > environment variables are consulted:
 >
-> - `MAIL_CONFIG_PATH` — locates the YAML config file (default
->   `config/mail.local.yaml`).
+> - `ROBOTSIX_CONFIG_FILE` — locates the YAML config file (default
+>   `config/config.json`).
 > - `LLM_API_KEY` — LLM API key fallback (read by `resolve_llm_api_key` in
 >   `config/loader.py`).
 > - `LLM_PROVIDER_MODEL` — LLM model/provider fallback.
@@ -21,13 +21,13 @@ For a guided setup and the `detect` auto-configuration command, see
 
 ## Config file location
 
-The loader reads the YAML file at the path given by `MAIL_CONFIG_PATH`
-(default `config/mail.local.yaml`). `MAIL_CONFIG_PATH` only *points at* the
+The loader reads the YAML file at the path given by `ROBOTSIX_CONFIG_FILE`
+(default `config/config.json`). `ROBOTSIX_CONFIG_FILE` only *points at* the
 file — it carries no configuration values itself.
 
 | Environment variable | Default | Purpose |
 |---|---|---|
-| `MAIL_CONFIG_PATH` | `config/mail.local.yaml` | Filesystem path used to locate the YAML config file. |
+| `ROBOTSIX_CONFIG_FILE` | `config/config.json` | Filesystem path used to locate the YAML config file. |
 
 ---
 
