@@ -406,6 +406,7 @@ modules:
       - .github/workflows/lockfile.yml
       - .github/workflows/pre-commit.yml
       - .github/workflows/release.yml
+      - .github/workflows/lint-workflows.yml
       - .github/workflows/scan-container.yml
       - .github/ISSUE_TEMPLATE/bug_report.yml
       - .github/ISSUE_TEMPLATE/config.yml
