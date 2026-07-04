@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)" || e
 REPO="$(dirname "$(dirname "$SCRIPT_DIR")")"
 STATE_DIR="$(dirname "$REPO")"          # runtime files live outside the repo
 
-exec "$REPO/.venv/bin/robotsix-autoupdate" \
+exec "$REPO/.venv/bin/python" -m robotsix_auto_mail.dev.autoupdate \
   --repo "$REPO" \
   --state-dir "$STATE_DIR" \
   --state-prefix auto-mail-autoupdate \

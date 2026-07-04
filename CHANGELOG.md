@@ -17,6 +17,7 @@
   ``ignore_missing_imports=true``), catching API contract mismatches in tests
   at type-check time without noise from mocks, fixtures, and parametrize
   decorators.
+- Fix `scripts/dev/auto-mail-autoupdate.sh` to invoke the autoupdate module via `python -m robotsix_auto_mail.dev.autoupdate` instead of the removed `robotsix-autoupdate` entry point. (mill: `robotsix-autoupdate` CLI entry point removed from pyproject.toml but shell script still calls it (20260704T192757Z-robotsix-autoupdate-cli-entry-point-remo-6151) [WIP])
 - Restore ``LLM_API_KEY`` / ``LLM_PROVIDER_MODEL`` env var resolution in ``resolve_llm_api_key()`` and ``resolve_llm_provider_model()`` (the docstrings always claimed ``arg → env_var → config_file`` but the env var step was missing from the implementation).
 - Restore ``GET /healthz`` as alias for the liveness endpoint (returns ``{"status":"ok"}``, HTTP 200) — the fleet standard mandates this path and the caretaker HEALTHCHECK probes it.
 - Remove `VOLUME /data` directive from Dockerfile (the app writes under `/home/mailbot`, and the anonymous volume created by this directive accumulated orphans on every container recreate).
