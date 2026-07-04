@@ -21,6 +21,7 @@ modules:
       - src/robotsix_auto_mail/_observability.py
       - src/robotsix_auto_mail/format.py
       - src/robotsix_auto_mail/health.py
+      - tests/core/__init__.py
       - tests/core/test_format.py
       - tests/core/test_health.py
       - tests/core/test_llm_agent.py
@@ -118,6 +119,7 @@ modules:
       - scripts/dev/auto-mail-autoupdate.sh
       - src/robotsix_auto_mail/dev/__init__.py
       - src/robotsix_auto_mail/dev/autoupdate.py
+      - tests/dev/__init__.py
       - tests/dev/test_autoupdate.py
 
   - id: cli
@@ -165,6 +167,7 @@ modules:
       - src/robotsix_auto_mail/config/model.py
       - src/robotsix_auto_mail/config/schema.py
       - src/robotsix_auto_mail/config/config_sync_agent.py
+      - tests/config/__init__.py
       - tests/config/test_mailconfig_basics.py
       - tests/config/test_schema.py
       - tests/config/test_config_from_yaml.py
@@ -237,6 +240,7 @@ modules:
       - src/robotsix_auto_mail/detect/__init__.py
       - src/robotsix_auto_mail/detect/detector.py
       - src/robotsix_auto_mail/detect/models.py
+      - tests/detect/__init__.py
       - tests/detect/test_detect.py
 
   - id: imap
@@ -249,6 +253,7 @@ modules:
       - src/robotsix_auto_mail/imap/errors.py
       - src/robotsix_auto_mail/imap/mailbox.py
       - src/robotsix_auto_mail/imap/utils.py
+      - tests/imap/__init__.py
       - tests/imap/test_protocol.py
       - tests/imap/conftest.py
       - tests/imap/test_imap_auth.py
@@ -269,6 +274,7 @@ modules:
       behind the [microsoft] extra, imported lazily.
     paths:
       - src/robotsix_auto_mail/oauth2/__init__.py
+      - tests/oauth2/__init__.py
       - tests/oauth2/test_msal_provider.py
 
   - id: pipeline
@@ -331,6 +337,7 @@ modules:
       - src/robotsix_auto_mail/server/static/board.css
       - src/robotsix_auto_mail/server/static/board-auto-mail.js
       - src/robotsix_auto_mail/server/board_adapter.py
+      - tests/server/__init__.py
       - tests/server/conftest.py
       - tests/server/test_csrf.py
       - tests/server/test_action_mixin.py
@@ -454,6 +461,4 @@ modules:
       - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/changelog_autofill.yaml
       - .robotsix-mill/periodic/triage_boilerplate.yaml
-
-ml
 
