@@ -1,0 +1,1 @@
+ci: skip Python-specific jobs when no .py files change
