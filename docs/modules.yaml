@@ -56,6 +56,7 @@ modules:
       - changelog/20260703T114033Z-remove-broker-integration-rename-healthz-5ad9.misc.md
       - changelog/20260704T005011Z-replace-duplicate-config-key-table-in-do-8d05.misc.md
       - changelog/20260704T005011Z-update-docs-architecture-md-to-reflect-c-66b4.misc.md
+      - changelog/20260704T032222Z-add-css-custom-properties-layer-to-board-12dc.misc.md
       - changelog/20260704T032222Z-extract-duplicated-launch-background-wor-61ca.misc.md
       - changelog/20260704T032222Z-split-195-line-card-extra-html-method-in-2cb0.misc.md
       - changelog/20260704T032222Z-extract-shared-force-refresh-method-to-e-6b6e.misc.md

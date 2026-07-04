@@ -67,12 +67,14 @@ def test_handler_static_automail_board_css_returns_200() -> None:
         assert ".side-panel" in body
         assert ".side-panel.open" in body
         assert ".board-wrapper" in body
-        # The UI background is a dark shade harmonizing with the board palette.
-        assert "background: #121626" in body
-        # Buttons get a dark default background so none render white on the
-        # dark theme.
+        # Palette token and semantic variable for page background.
+        assert "--palette-blue-950: #121626" in body
+        assert "background: var(--color-bg-page)" in body
+        # Palette token and semantic variable for the default button
+        # background.
         assert "button {" in body
-        assert "background: #0f3460" in body
+        assert "--palette-blue-800: #0f3460" in body
+        assert "background: var(--color-bg-button)" in body
     finally:
         server.shutdown()
 
