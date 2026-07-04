@@ -45,6 +45,8 @@
 - Add Dependabot auto-merge caller workflow (`.github/workflows/dependabot-auto-merge.yml`) so Dependabot PRs auto-merge once required checks pass.
 - Fix Deno install step in CI: authenticate GitHub API call to avoid anonymous rate-limiting 403 errors on shared runners.
 - Fix coverage-comment job: produce `.coverage` SQLite data alongside XML so `MERGE_COVERAGE_FILES` has data to combine.
+- Fix `scripts/server/smoke_board.sh` to use `ROBOTSIX_CONFIG_FILE` with JSON config (matching `MailAccountsConfig` shape) instead of the deprecated `MAIL_CONFIG_PATH`/YAML format.
+- Consolidate `observability` module into `core`: move `src/robotsix_auto_mail/observability/__init__.py` → `src/robotsix_auto_mail/_observability.py` (private module), re-export `setup_logging`, `init_langfuse_tracing`, `setup_observability` from the package root with a deprecation shim for `robotsix_auto_mail.observability`, and move tests to `tests/core/test_observability_{logging,tracing}.py`.
 - Triage system prompt now includes a confidence-level rubric defining `low`, `medium`, and `high` so the LLM can calibrate its confidence scores.
 - Add a catalog of common mail categories with example triage dispositions to the triage agent's system prompt, helping the LLM classify newsletters, receipts, order confirmations, CI alerts, account notices, and other frequent patterns more consistently.
 - Seed new `triage_rules.md` files with commented-out example rules for human users

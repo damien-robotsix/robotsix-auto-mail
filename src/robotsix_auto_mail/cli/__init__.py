@@ -9,7 +9,7 @@ import argparse
 import sys
 import time as time
 
-from robotsix_auto_mail import __version__
+from robotsix_auto_mail import __version__, setup_observability
 from robotsix_auto_mail.cli.commands import (  # lgtm[py/unsafe-cyclic-import]
     _load_accounts_or_exit,
     _load_config_or_exit,
@@ -64,7 +64,6 @@ from robotsix_auto_mail.cli.config import (
 from robotsix_auto_mail.config import load_accounts as load_accounts
 from robotsix_auto_mail.db import init_db as init_db
 from robotsix_auto_mail.imap import ImapClient as ImapClient
-from robotsix_auto_mail.observability import setup_observability
 from robotsix_auto_mail.pipeline import ingest_mail as ingest_mail
 
 __all__ = [

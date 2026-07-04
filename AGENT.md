@@ -190,7 +190,7 @@ All structured-logging and Langfuse-tracing infrastructure lives in
 
 - **Stream handler + formatter + OTel trace-id injection**: via
   `robotsix_llmio.logging.setup_logging()` (called from
-  `src/robotsix_auto_mail/observability/__init__.py`).
+  `src/robotsix_auto_mail/_observability.py`).
 - **Langfuse tracing**: `robotsix_llmio.core.run_agent` automatically
   traces every LLM call when Langfuse credentials are configured (via the
   config file's `langfuse:` section).  No extra code needed in auto-mail.
