@@ -201,7 +201,7 @@ class _DraftMixin:
             return
 
         try:
-            from robotsix_auto_mail.draft import (
+            from robotsix_auto_mail.server._draft_generator import (
                 DraftGenerationError,
                 generate_draft_reply,
             )

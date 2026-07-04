@@ -197,15 +197,6 @@ modules:
       - tests/triage/test_triage_unsubscribe.py
       - tests/triage/test_classifier.py
 
-  - id: draft
-    description: >-
-      LLM-driven draft-reply generation for a single ingested mail:
-      prepares a concise reply in the incoming mail's language and
-      persists it for board review without ever sending email.
-    paths:
-      - src/robotsix_auto_mail/draft/__init__.py
-      - tests/draft/test_draft.py
-
   - id: db
     description: >-
       SQLite datastore: schema, MailRecord, insert, watermark, and
@@ -311,6 +302,7 @@ modules:
       - src/robotsix_auto_mail/server/_batch_mixin.py
       - src/robotsix_auto_mail/server/_board_handler_protocol.py
       - src/robotsix_auto_mail/server/_config_mixin.py
+      - src/robotsix_auto_mail/server/_draft_generator.py
       - src/robotsix_auto_mail/server/_draft_mixin.py
       - src/robotsix_auto_mail/server/_reconcile_mixin.py
       - src/robotsix_auto_mail/server/_triage_mixin.py
