@@ -207,101 +207,21 @@ scratch with provider auto-detection.
 
 ## Configuration keys
 
-### YAML config file (`config/mail.local.yaml`)
+For the full configuration-key reference — including every key, its type,
+default value, and detailed descriptions — see the
+[Configuration Reference](configuration.md).  The canonical template file
+ships at [`docs/config/mail.local.example.yaml`](config/mail.local.example.yaml).
 
-Copy `docs/config/mail.local.example.yaml` and fill in your values. Any field you
-omit falls back to its built-in default.
+## Trace ID injection
 
-```yaml
-accounts:
-  - id: default
-    label: Personal
-    imap:
-      host: imap.example.com
-      # port: 993
-      # tls_mode: direct-tls
-      # folder: INBOX
-    smtp:
-      host: smtp.example.com
-      # port: 587
-      # tls_mode: starttls
-    auth:
-      username: user@example.com
-      password: ""  # set your password here
-      # OAuth2 / XOAUTH2 — for Gmail, Microsoft 365, or any provider that
-      # requires modern SASL XOAUTH2.  When oauth2_token is set, password
-      # auth is not used.  See "OAuth2 (XOAUTH2)" section below.
-      # oauth2_token: ""
-      # oauth2_client_id: ""
-      # oauth2_client_secret: ""
-    # store:
-    #   path: ""   # empty derives the per-account default .data/<id>/mail.db
-    # archive:
-    #   root: robotsix-mail-archive
-    #   namespace: ""
-    #   enabled: true
-
-# Application-wide settings (outside the accounts: list):
-# llm:
-#   api_key: sk-or-v1-…
-#   provider_model: ""  # escape-hatch: override llmio tier default (leave blank to use tier default)
-# langfuse:
-#   public_key: ""
-#   secret_key: ""
-#   base_url: ""
-```
-
-| Key | Required | Default | Purpose |
-|---|---|---|---|
-| `imap.host` | yes | – | IMAP server hostname |
-| `imap.port` | no | `993` | IMAP server port |
-| `imap.tls_mode` | no | `"direct-tls"` | IMAP TLS mode |
-| `imap.folder` | no | `"INBOX"` | IMAP mailbox folder name |
-| `smtp.host` | yes | – | SMTP server hostname |
-| `smtp.port` | no | `587` | SMTP server port |
-| `smtp.tls_mode` | no | `"starttls"` | SMTP TLS mode |
-| `auth.username` | yes | – | Login username (typically the full email address) |
-| `auth.password` | no | – | Login password |
-| `auth.oauth2_token` | no | – | OAuth2 access token for SASL XOAUTH2 (overrides password auth when set) |
-| `auth.oauth2_client_id` | no | – | OAuth2 client ID (required by some providers alongside the token) |
-| `auth.oauth2_client_secret` | no | – | OAuth2 client secret (required by some providers alongside the token) |
-| `auth.oauth2_provider` | no | – | MSAL OAuth2 provider; set to `microsoft` to acquire/refresh tokens via MSAL instead of a password |
-| `auth.oauth2_tenant` | no | `"organizations"` | Azure AD tenant for MSAL-managed OAuth2 |
-| `store.path` | no | `""` | Filesystem path for the SQLite database; empty derives the per-account default `.data/<id>/mail.db` |
-| `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles (`ingest --watch`) |
-| `archive.root` | no | `"robotsix-mail-archive"` | Root folder for the self-managed archive structure |
-| `archive.enabled` | no | `true` | Whether to create/manage the archive folder structure |
-| `triage.on_ingest` | no | `true` | Whether to run the inbox triage agent automatically after each ingest |
-| `triage.rules_path` | no | `""` | Path to the human-readable `triage_rules.md` the flash LLM maintains from board actions; empty derives `<db-dir>/triage_rules.md` from `store.path` |
-| `llm.api_key` | no | – | LLM provider API key for `detect` / mail processing |
-| `llm.provider_model` | no | `""` | LLM provider-model identifier (e.g. `openrouter-deepseek`, `claude-sdk`); see robotsix-llmio README for available backends |
-| `langfuse.public_key` | no | – | Langfuse public key; when set with the secret key, every LLM agent run is traced |
-| `langfuse.secret_key` | no | – | Langfuse secret key (redacted in logs/repr) |
-| `langfuse.base_url` | no | – | Langfuse host URL (falls back to llmio's own default when unset) |
-| `logging.level` | no | `INFO` | Minimum log level — one of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `logging.format` | no | `console` | Log renderer — `json` for structured logs, `console` for human-friendly dev output |
-
-**Trace ID injection.** Every log event automatically includes a `trace_id` field that correlates logs with OpenTelemetry / Langfuse recordings. When a Langfuse trace is active (see `langfuse.public_key` / `langfuse.secret_key` above), the `trace_id` is stamped as a 32-character lowercase hexadecimal string; when no trace is active (or OpenTelemetry is absent), it is set to `"-"`. This is transparent — no configuration is needed — and applies to both `json` and `console` log formats.
-
-> **No environment-variable configuration.** Every setting above lives in the
-> YAML config file. Configuration values are not read from the environment;
-> the application consults only three environment variables, which provide
-> boot-level inputs rather than per-field overrides:
->
-> - **`MAIL_CONFIG_PATH`** — locates the YAML config file (default
->   `config/mail.local.yaml`).
-> - **`LLM_API_KEY`** — fallback LLM API key; used when the config file does
->   not supply `llm.api_key`.
-> - **`LLM_PROVIDER_MODEL`** — fallback LLM provider-model identifier; used
->   when the config file does not supply `llm.provider_model`.
-
-**TLS modes**
-
-| Mode | Behaviour |
-|---|---|
-| `direct-tls` | TLS from the first byte, no plaintext negotiation (IMAP port 993, SMTP port 465) |
-| `starttls` | Plain connection upgraded to TLS via STARTTLS (IMAP port 143, SMTP port 587) |
-| `none` | No TLS at all — **insecure, for local development only** |
+**Trace ID injection.** Every log event automatically includes a `trace_id`
+field that correlates logs with OpenTelemetry / Langfuse recordings.  When a
+Langfuse trace is active (see the `langfuse.public_key` / `langfuse.secret_key`
+keys in the [Configuration Reference](configuration.md)), the `trace_id` is
+stamped as a 32-character lowercase hexadecimal string; when no trace is active
+(or OpenTelemetry is absent), it is set to `"-"`.  This is transparent — no
+configuration is needed — and applies to both `json` and `console` log
+formats.
 
 ### Gmail (app password — simplest)
 

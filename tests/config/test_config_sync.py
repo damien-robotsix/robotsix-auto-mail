@@ -168,6 +168,11 @@ def _full_docs(yaml_table: str) -> str:
     return "# Connecting\n\n## Configuration keys\n\n" + yaml_table + "\n"
 
 
+def _full_config_docs(yaml_table: str) -> str:
+    """Wrap the YAML-key table for docs/configuration.md format."""
+    return "# Configuration Reference\n\n" + yaml_table + "\n"
+
+
 # ====================================================================
 # Happy path
 # ====================================================================
@@ -191,7 +196,7 @@ def test_run_checks_happy(tmp_path: Path) -> None:
     repo = tmp_path
     (repo / "docs/config").mkdir(parents=True)
     (repo / "docs/config" / "mail.local.example.yaml").write_text(_YAML_EXAMPLE)
-    (repo / "docs" / "connecting.md").write_text(_full_docs(_DOCS_YAML_TABLE))
+    (repo / "docs" / "configuration.md").write_text(_full_config_docs(_DOCS_YAML_TABLE))
     assert run_checks(repo) == 0
 
 
@@ -309,7 +314,7 @@ def test_run_checks_missing_file(tmp_path: Path) -> None:
     repo = tmp_path
     (repo / "docs/config").mkdir(parents=True)
     # intentionally skip mail.local.example.yaml
-    (repo / "docs" / "connecting.md").write_text(_full_docs(_DOCS_YAML_TABLE))
+    (repo / "docs" / "configuration.md").write_text(_full_config_docs(_DOCS_YAML_TABLE))
     assert run_checks(repo) == 2
 
 
