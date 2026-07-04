@@ -63,6 +63,7 @@ modules:
       - changelog/20260704T032222Z-extract-shared-force-refresh-method-to-e-6b6e.misc.md
       - changelog/20260704T035854Z-add-codeql-yml-using-shared-reusable-wor-d275.misc.md
       - changelog/20260704T050008Z-implement-agent-auto-register-changelog-dad5.misc.md
+      - changelog/20260704T060804Z-ci-fix-out-of-scope-ci-failure-lint-work-34df.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

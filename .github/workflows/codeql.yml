@@ -11,8 +11,13 @@ on:
     - cron: "0 3 * * 1"
 
 permissions:
+  actions: read  # needed to read workflow run data
   contents: read
-  security-events: write
+  security-events: write  # needed for SARIF upload
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   codeql:

@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write  # needed to push updated uv.lock to the repository
 
 # Avoid overlapping runs racing to push the lockfile.
 concurrency:
@@ -21,6 +21,7 @@ concurrency:
 
 jobs:
   update-lock:
+    name: Update lockfile
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -34,6 +35,7 @@ jobs:
       - name: Commit updated lockfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           if git diff --quiet -- uv.lock; then
             echo "uv.lock already up to date — nothing to commit."
@@ -41,7 +43,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPOSITORY}.git"
           git add uv.lock
           git commit -m "chore: refresh uv.lock after pyproject.toml change"
           git push

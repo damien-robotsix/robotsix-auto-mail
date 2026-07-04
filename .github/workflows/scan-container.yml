@@ -5,7 +5,13 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  security-events: write
+  security-events: write  # needed for SARIF upload
+
+concurrency:
+  group: scan-container-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   rescan:
+    name: Rescan container
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/scan-container.yml@5fdc956e980cfb70ea36e33bc670a0376750dec6
