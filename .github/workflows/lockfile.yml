@@ -11,6 +11,8 @@ on:
       - "pyproject.toml"
   workflow_dispatch:
 
+permissions: {}
+
 # Avoid overlapping runs racing to push the lockfile.
 concurrency:
   group: update-uv-lock
