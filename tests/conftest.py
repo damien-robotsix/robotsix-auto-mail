@@ -34,8 +34,8 @@ def _reset_logging_state() -> None:
     """Reset ``robotsix_auto_mail`` / ``robotsix_llmio`` logger state so
     ``caplog`` (and other handlers) work reliably across test modules.
 
-    The logging tests in ``tests/observability/test_logging.py`` call
-    :func:`robotsix_auto_mail.observability.setup_logging`, which may set
+    The logging tests in ``tests/core/test_observability_logging.py`` call
+    :func:`robotsix_auto_mail.setup_logging`, which may set
     ``propagate = False`` and install custom handlers.  Without this reset,
     subsequent tests that rely on ``caplog`` (stdlib log capture) may see
     empty ``caplog.records`` even though log lines appear on stdout.
