@@ -54,6 +54,7 @@
   --palette-gray-300: #e0e0e0;
   --palette-gray-350: #e0e0f0;
   --palette-gray-400: #d0d0e0;
+  --palette-gray-450: #c0d0f0;
   --palette-gray-500: #c0c0e0;
   --palette-gray-600: #a0a0c0;
   --palette-gray-700: #a0b0d0;
@@ -65,6 +66,7 @@
   --palette-muted-dark: #555;
   --palette-muted-light: #333;
   --palette-shadow-light: rgba(0, 0, 0, 0.15);
+  --palette-shadow-medium: rgba(0, 0, 0, 0.3);
   --palette-shadow-heavy: rgba(0, 0, 0, 0.5);
 
   /* -- semantic tokens (purpose-based) ----------------------------------- */
@@ -122,7 +124,7 @@
   --color-text-health: var(--palette-red-800);
 
   /* Text – archive */
-  --color-text-archive-browse: var(--palette-gray-400);
+  --color-text-archive-browse: var(--palette-gray-450);
   --color-text-archive-browse-hover: var(--palette-gray-350);
   --color-text-archive-group-label: var(--palette-green-800);
   --color-text-archive-exists: var(--palette-green-700);
@@ -131,9 +133,9 @@
 
   /* Text – tree */
   --color-text-tree-toggle: var(--palette-gray-800);
-  --color-text-tree-toggle-hover: var(--palette-gray-400);
+  --color-text-tree-toggle-hover: var(--palette-gray-450);
   --color-text-tree-branch: var(--palette-gray-700);
-  --color-text-tree-leaf: var(--palette-gray-400);
+  --color-text-tree-leaf: var(--palette-gray-450);
   --color-text-tree-leaf-hover: var(--palette-white);
   --color-text-tree-empty: var(--palette-gray-900);
 
@@ -153,6 +155,7 @@
 
   /* Shadows */
   --color-shadow-light: var(--palette-shadow-light);
+  --color-shadow-medium: var(--palette-shadow-medium);
   --color-shadow-heavy: var(--palette-shadow-heavy);
 
   /* -- component tokens (widget-specific) --------------------------------- */
@@ -769,7 +772,7 @@ button:hover {
   padding: 1.5em 2em;
   max-width: 520px;
   width: 90%;
-  box-shadow: 0 4px 24px var(--color-shadow-heavy);
+  box-shadow: 0 4px 24px var(--color-shadow-medium);
   color: var(--color-text-on-modal);
 }
 .auth-modal h3 {
