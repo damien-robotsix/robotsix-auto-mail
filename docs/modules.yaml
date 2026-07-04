@@ -79,6 +79,7 @@ modules:
       - changelog/20260704T082208Z-get-healthz-returns-404-container-perman-4432.misc.md
       - changelog/20260704T082208Z-vestigial-volume-data-in-dockerfile-spaw-a319.removal.md
       - changelog/20260704T150328Z-consolidate-duplicated-css-property-bloc-b341.misc.md
+      - changelog/20260704T150328Z-extract-mime-message-composition-from-sm-19a6.feature.md
       - changelog/20260704T192757Z-docs-reference-obsolete-mail-config-path-ac4c.misc.md
       - changelog/20260704T202325Z-remove-dependabot-for-ecosystems-already-f7af.misc.md
       - changelog/20260705T091322Z-extract-shared-plain-socket-helper-from-5d24.misc.md
@@ -282,6 +283,14 @@ modules:
       - tests/pipeline/test_parser_properties.py
       - tests/pipeline/test_reconcile.py
       - tests/pipeline/test_uidvalidity.py
+
+  - id: mime
+    description: >-
+      Pure functions for constructing plain-text MIME email messages,
+      decoupled from SMTP transport.
+    paths:
+      - src/robotsix_auto_mail/mime.py
+      - tests/mime/test_mime.py
 
   - id: smtp
     description: >-

@@ -1,0 +1,1 @@
+Extract MIME message construction from `SmtpClient.send()` into a pure `build_plain_text_message()` function in a new `mime` module, making MIME building testable without an SMTP client and reusable by other callers.

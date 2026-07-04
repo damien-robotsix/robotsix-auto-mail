@@ -12,12 +12,11 @@ from __future__ import annotations
 import contextlib
 import smtplib
 import ssl
-from email.mime.text import MIMEText
-from email.utils import formatdate
 from typing import Any
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response
+from robotsix_auto_mail.mime import build_plain_text_message
 from robotsix_auto_mail.oauth2 import build_token_provider
 
 # Socket timeout (seconds) for SMTP connections, mirroring the IMAP client's
@@ -174,17 +173,15 @@ class SmtpClient(_ProtocolClient):
         if self._smtp is None:
             raise SmtpError("Not connected")
 
-        msg = MIMEText(body, _charset="utf-8")
-        msg["From"] = from_addr
-        msg["To"] = to_addr
-        msg["Subject"] = subject
-        msg["Date"] = formatdate(localtime=True)
-        if cc:
-            msg["Cc"] = ", ".join(cc)
-        if in_reply_to is not None:
-            msg["In-Reply-To"] = in_reply_to
-        if references is not None:
-            msg["References"] = references
+        msg = build_plain_text_message(
+            from_addr=from_addr,
+            to_addr=to_addr,
+            subject=subject,
+            body=body,
+            cc=cc,
+            in_reply_to=in_reply_to,
+            references=references,
+        )
 
         to_addrs = [to_addr, *cc] if cc else [to_addr]
 
