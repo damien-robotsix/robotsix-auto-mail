@@ -1,0 +1,1 @@
+ci_fix: out-of-scope CI failure — lint-workflows / zizmor (excessive-permissions) in .github/workflows/codeql.yml, .github/workflows/lockfile.yml, and .github/workflows/scan-container.yml — each needs permissions tightened to job level or a minimum permissions block added.

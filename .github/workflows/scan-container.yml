@@ -3,9 +3,7 @@ on:
   schedule:
     - cron: '0 6 * * 1'
   workflow_dispatch:
-permissions:
-  contents: read
-  security-events: write  # needed for SARIF upload
+permissions: {}
 
 concurrency:
   group: scan-container-${{ github.workflow }}-${{ github.ref }}
@@ -14,4 +12,7 @@ concurrency:
 jobs:
   rescan:
     name: Rescan container
+    permissions:
+      contents: read
+      security-events: write  # needed for SARIF upload
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/scan-container.yml@5fdc956e980cfb70ea36e33bc670a0376750dec6

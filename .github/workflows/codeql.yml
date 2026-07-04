@@ -10,10 +10,7 @@ on:
   schedule:
     - cron: "0 3 * * 1"
 
-permissions:
-  actions: read  # needed to read workflow run data
-  contents: read
-  security-events: write  # needed for SARIF upload
+permissions: {}
 
 concurrency:
   group: codeql-${{ github.workflow }}-${{ github.ref }}
@@ -21,6 +18,10 @@ concurrency:
 
 jobs:
   codeql:
+    permissions:
+      actions: read  # needed to read workflow run data
+      contents: read
+      security-events: write  # needed for SARIF upload
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/codeql.yml@7314c9b6c2b536ca81023e8841f272b72733262e  # main
     with:
       languages: python
