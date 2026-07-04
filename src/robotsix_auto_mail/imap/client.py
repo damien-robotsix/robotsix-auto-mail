@@ -308,15 +308,9 @@ class ImapClient(_ProtocolClient):
         from the server's XOAUTH2 challenge.  Only called when
         ``self._msal_config`` is set.
         """
-        from robotsix_auto_mail.oauth2 import (
-            acquire_fresh_token,
-            extract_cae_claims,
-            parse_xoauth2_error,
-        )
+        from robotsix_auto_mail.oauth2 import force_refresh_token
 
-        error_info = parse_xoauth2_error(self._xoauth2_challenge)
-        claims = extract_cae_claims(error_info)
-        return acquire_fresh_token(self._msal_config, claims_challenge=claims)  # type: ignore[arg-type]
+        return force_refresh_token(self._msal_config, self._xoauth2_challenge)  # type: ignore[arg-type]
 
     def _imap_xoauth2_cb(self, challenge: bytes) -> bytes | None:
         """SASL XOAUTH2 callback for ``imaplib.IMAP4.authenticate()``.
