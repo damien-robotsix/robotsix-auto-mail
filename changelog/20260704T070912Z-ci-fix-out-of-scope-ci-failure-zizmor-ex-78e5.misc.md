@@ -1,0 +1,1 @@
+ci_fix: out-of-scope CI failure — zizmor / excessive-permissions (lockfile.yml) and CodeQL py/ineffectual-statement (vulture_whitelist.py) in .github/workflows/lockfile.yml (move contents: write from workflow level to job level) and vulture_whitelist.py:106 (fix ineffectual statement)

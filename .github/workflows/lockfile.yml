@@ -11,9 +11,6 @@ on:
       - "pyproject.toml"
   workflow_dispatch:
 
-permissions:
-  contents: write  # needed to push updated uv.lock to the repository
-
 # Avoid overlapping runs racing to push the lockfile.
 concurrency:
   group: update-uv-lock
@@ -21,6 +18,8 @@ concurrency:
 
 jobs:
   update-lock:
+    permissions:
+      contents: write  # needed to push updated uv.lock to the repository
     name: Update lockfile
     runs-on: ubuntu-latest
     steps:
