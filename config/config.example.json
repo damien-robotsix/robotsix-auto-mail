@@ -21,7 +21,6 @@
         "archive_enabled": true,
         "triage_on_ingest": true,
         "triage_rules_path": "",
-        "component_agent_enabled": false,
         "oauth2_token": "",
         "oauth2_client_id": "",
         "oauth2_client_secret": "",
