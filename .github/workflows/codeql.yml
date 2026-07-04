@@ -10,68 +10,13 @@ on:
   schedule:
     - cron: "0 3 * * 1"
 
-# Least-privilege: CodeQL needs to read the repo/workflow runs and upload
-# its SARIF results to the code-scanning (security-events) API. Nothing more.
 permissions:
-  actions: read
   contents: read
   security-events: write
 
 jobs:
-  analyze:
-    name: Analyze
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        language: ["python"]
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-project
-
-      # NOTE: GitHub Actions `needs:` only links jobs WITHIN the same
-      # workflow file, so this standalone codeql.yml cannot `needs: verify`
-      # from ci.yml. The draft's real goal — analyze with the full
-      # dependency graph available so the extractor can resolve third-party
-      # imports — is achieved by installing dependencies in-job below
-      # (uv sync) before CodeQL init. Do NOT "fix" this into a cross-workflow
-      # `needs: verify`; that is not a thing GitHub Actions supports.
-
-      # Install the full dependency graph the same way ci.yml does so the
-      # CodeQL Python extractor can resolve third-party imports.
-      - name: Install dependencies
-        run: uv sync --frozen --extra dev
-
-      # Point CodeQL at the uv-managed interpreter (which has the deps
-      # installed) instead of letting the action provision its own.
-      - name: Expose uv interpreter to CodeQL
-        run: echo "CODEQL_PYTHON=$(uv run python -c 'import sys;print(sys.executable)')" >> "$GITHUB_ENV"
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a  # v3
-        with:
-          languages: ${{ matrix.language }}
-          queries: security-and-quality
-          config-file: ./.github/codeql/codeql-config.yml
-          # We install dependencies ourselves via uv (above); disable the
-          # action's own pip-based install so it does not re-resolve them.
-          setup-python-dependencies: false
-        env:
-          CODEQL_PYTHON: ${{ env.CODEQL_PYTHON }}
-
-      # No autobuild step: Python is interpreted, not compiled, so CodeQL
-      # needs no build to extract it.
-
-      # Code scanning is not yet enabled in this repository's settings, so
-      # the SARIF upload returns a configuration error. Keep running the
-      # analysis (it is cheap and validates the workflow) but do not fail
-      # CI on the upload rejection. Once an operator enables code scanning
-      # in repo settings, the upload succeeds and this can be removed.
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@dd903d2e4f5405488e5ef1422510ee31c8b32357  # v3
-        continue-on-error: true
-        with:
-          category: "/language:${{ matrix.language }}"
+  codeql:
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/codeql.yml@7314c9b6c2b536ca81023e8841f272b72733262e  # main
+    with:
+      languages: python
+      config-file: ./.github/codeql/codeql-config.yml
