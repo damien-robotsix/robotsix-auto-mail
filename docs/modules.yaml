@@ -40,6 +40,7 @@ modules:
       - SECURITY.md
       - ROADMAP.md
       - changelog/.gitkeep
+      - changelog/20260702T221229Z-consolidate-modules-observability-core-l-7593.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T082456Z-simplify-entrypoint-sh-for-post-config-m-f5e8.removal.md
       - changelog/20260703T085156Z-ci-failure-uv-in-update-1446419417-on-ma-171e.misc.md
