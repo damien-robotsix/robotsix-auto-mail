@@ -499,38 +499,19 @@ _CONFIGURATION_MD_CONTAINER_KEYS: frozenset[str] = frozenset(
 )
 
 
-def check_docs_configuration(
-    text: str,
-    path: str = "docs/configuration.md",
+def _validate_yaml_keys_against_mailconfig(
+    yaml_rows: list[dict[str, str]],
+    path: str,
+    *,
+    container_keys_to_skip: frozenset[str] = frozenset(),
 ) -> list[dict[str, Any]]:
-    """Check *text* (``docs/configuration.md``) against ``MailConfig``.
-
-    Parses every pipe table in the file (the config-key tables are split
-    across multiple per-section headings) and cross-references them
-    against ``FIELD_TO_YAML``.
-
-    Returns a list of finding dicts.
-    """
+    """Cross-reference parsed YAML-key table rows against FIELD_TO_YAML."""
     findings: list[dict[str, Any]] = []
-
-    yaml_rows = _parse_all_md_tables(text)
-
-    if not yaml_rows:
-        findings.append(
-            {
-                "artifact": path,
-                "type": "doc-parse-error",
-                "message": "Could not parse any YAML keys tables",
-            }
-        )
 
     field_defaults: dict[str, Any] = {}
     for f_name in MailConfig.model_fields:
         field_defaults[f_name] = _field_default(f_name)
 
-    # -- YAML keys tables ---------------------------------------------------
-
-    # Map YAML path → row data.
     yaml_table: dict[str, dict[str, str]] = {}
     for row in yaml_rows:
         key_cell = row.get("Key", "")
@@ -585,9 +566,8 @@ def check_docs_configuration(
                 }
             )
 
-    # Stale YAML rows — skip container-level keys.
     for ypath in yaml_table:
-        if ypath in _CONFIGURATION_MD_CONTAINER_KEYS:
+        if ypath in container_keys_to_skip:
             continue
         if ypath not in FIELD_TO_YAML.values():
             findings.append(
@@ -597,6 +577,42 @@ def check_docs_configuration(
                     "key": ypath,
                 }
             )
+
+    return findings
+
+
+def check_docs_configuration(
+    text: str,
+    path: str = "docs/configuration.md",
+) -> list[dict[str, Any]]:
+    """Check *text* (``docs/configuration.md``) against ``MailConfig``.
+
+    Parses every pipe table in the file (the config-key tables are split
+    across multiple per-section headings) and cross-references them
+    against ``FIELD_TO_YAML``.
+
+    Returns a list of finding dicts.
+    """
+    findings: list[dict[str, Any]] = []
+
+    yaml_rows = _parse_all_md_tables(text)
+
+    if not yaml_rows:
+        findings.append(
+            {
+                "artifact": path,
+                "type": "doc-parse-error",
+                "message": "Could not parse any YAML keys tables",
+            }
+        )
+
+    findings.extend(
+        _validate_yaml_keys_against_mailconfig(
+            yaml_rows,
+            path,
+            container_keys_to_skip=_CONFIGURATION_MD_CONTAINER_KEYS,
+        )
+    )
 
     return findings
 
@@ -623,77 +639,9 @@ def check_docs_connecting(
             }
         )
 
-    field_defaults: dict[str, Any] = {}
-    for f_name in MailConfig.model_fields:
-        field_defaults[f_name] = _field_default(f_name)
-
-    # -- YAML keys table ----------------------------------------------------
-
-    # Map YAML path → row data.
-    yaml_table: dict[str, dict[str, str]] = {}
-    for row in yaml_rows:
-        key_cell = row.get("Key", "")
-        ypath = _strip_backticks(key_cell)
-        if ypath:
-            yaml_table[ypath] = row
-
-    for field_name, ypath in FIELD_TO_YAML.items():
-        if ypath not in yaml_table:
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "doc-missing-yaml-key",
-                    "key": ypath,
-                    "field": field_name,
-                }
-            )
-            continue
-
-        default = field_defaults[field_name]
-        if default is dataclasses.MISSING:
-            continue
-
-        row = yaml_table[ypath]
-        doc_default_raw = row.get("Default", "")
-        doc_default = _normalise_doc_default(doc_default_raw)
-
-        if doc_default is dataclasses.MISSING:
-            # Doc says "-" → no default documented.  Treat an
-            # empty-string MailConfig default as equivalent ("no value").
-            if default == "":
-                continue
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "doc-default-mismatch",
-                    "key": ypath,
-                    "expected": default,
-                    "actual": "(none documented)",
-                }
-            )
-            continue
-
-        if doc_default != default:
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "doc-default-mismatch",
-                    "key": ypath,
-                    "expected": default,
-                    "actual": doc_default_raw,
-                }
-            )
-
-    # Stale YAML rows.
-    for ypath in yaml_table:
-        if ypath not in FIELD_TO_YAML.values():
-            findings.append(
-                {
-                    "artifact": path,
-                    "type": "doc-stale-yaml-key",
-                    "key": ypath,
-                }
-            )
+    findings.extend(
+        _validate_yaml_keys_against_mailconfig(yaml_rows, path)
+    )
 
     return findings
 
