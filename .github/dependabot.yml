@@ -1,5 +1,12 @@
+# Dependabot is intentionally disabled for most ecosystems because
+# Renovate (renovate.json) covers them with richer functionality
+# (digest pinning, grouping, scheduling). Keeping Dependabot enabled
+# for the same ecosystems causes duplicate PRs and merge conflicts.
+# See renovate.json for the canonical dependency-update config.
 version: 2
 updates:
+  # No active ecosystems — Renovate handles uv, GitHub Actions,
+  # Dockerfile, and pre-commit updates.
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
