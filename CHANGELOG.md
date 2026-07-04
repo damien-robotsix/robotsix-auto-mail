@@ -12,6 +12,7 @@
 - Extract MIME message construction from `SmtpClient.send()` into a pure `build_plain_text_message()` function in `src/robotsix_auto_mail/mime.py`, making MIME building testable without an SMTP client and reusable by other callers.
 - Extract `_validate_yaml_keys_against_mailconfig` shared helper from duplicated logic in `check_docs_configuration` and `check_docs_connecting` (eliminates 32-line clone detected by jscpd).
 - Fix: register missing changelog fragment in `docs/modules.yaml` and fix trailing newline
+- Refactor ``_gather_account_board_data`` into six focused helpers: ``_read_account_health``, ``_parse_batch_op``, ``_load_triage_state``, ``_load_archive_context``, ``_load_unsubscribe_suggestions``, and ``_build_record_notes_map``. The main function is now a simple assembly of these calls.
 - Removed the observability deprecation shim (`_DeprecatedObservability`, `_ObservabilityLoader`, `_ObservabilityFinder`, and the module-level `__getattr__`) from `robotsix_auto_mail.__init__`. All internal callers now import directly from `robotsix_auto_mail._observability` or the top-level re-exports.
 - Update all documentation references from `MAIL_CONFIG_PATH` to `ROBOTSIX_CONFIG_FILE` and update documented default from `config/mail.local.yaml` to `config/config.json`, matching the actual env var name in the code.
 - Extend mypy strict checking to cover the test tree with a relaxed override
