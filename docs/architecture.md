@@ -55,7 +55,8 @@ OAuth2 access token presented over SASL XOAUTH2:
 ### Ingestion
 
 - `pipeline/` — orchestrates fetch → parse → store → watermark; includes
-  watermark-aware IMAP fetch logic and MIME-to-`MailRecord` parsing.
+  watermark-aware IMAP fetch logic and MIME-to-`MailRecord` parsing
+  (`_parse.py`).
 
 ### Datastore
 
@@ -96,7 +97,19 @@ OAuth2 access token presented over SASL XOAUTH2:
 
 ### LLM-driven agents
 
-- `triage/` — the inbox triage classifier.
+- `triage/` — the inbox triage classifier:
+  - `triage/_constants.py` — triage action constants (`INBOX`, `TO_ARCHIVE`,
+    `TO_CALENDAR`, …), canonical board order, and watermark keys.
+  - `triage/agent.py` — `run_triage_agent`: builds LLM prompts, drives inbox
+    classification, persists results, and runs post-classification tasks
+    (archive subfolder hints, unsubscribe detection).
+  - `triage/classifier.py` — deterministic and LLM-based archive subfolder
+    proposals, with user-override storage via watermarks.
+  - `triage/persistence.py` — Pydantic output-contract models and SQLite CRUD
+    helpers for the `triage_decisions` table.
+  - `triage/rules.py` — LLM-driven rule-learning from board actions: loads a
+    human-readable `triage_rules.md` file into the triage prompt, and
+    updates it via flash LLM on each user action.
 - `config/config_sync_agent.py` — the config-drift advisory agent (also listed
   above).
 - `draft/` — `generate_draft_reply`, the draft-reply generator tied to the
