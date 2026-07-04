@@ -1,0 +1,1 @@
+Add codeql.yml using shared reusable workflow to robotsix-auto-mail
