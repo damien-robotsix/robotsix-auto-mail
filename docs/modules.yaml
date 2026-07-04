@@ -68,6 +68,7 @@ modules:
       - changelog/20260704T060804Z-ci-fix-out-of-scope-ci-failure-lint-work-34df.misc.md
       - changelog/20260704T070912Z-ci-fix-out-of-scope-ci-failure-zizmor-ex-78e5.misc.md
       - changelog/20260704T073043Z-ci-fix-out-of-scope-ci-failure-lint-work-d14b.misc.md
+      - changelog/20260704T074502Z-ci-skip-python-specific-jobs-when-no-py-8cb9.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
