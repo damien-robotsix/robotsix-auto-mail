@@ -58,6 +58,7 @@ modules:
       - changelog/20260704T005011Z-update-docs-architecture-md-to-reflect-c-66b4.misc.md
       - changelog/20260704T032222Z-extract-duplicated-launch-background-wor-61ca.misc.md
       - changelog/20260704T032222Z-split-195-line-card-extra-html-method-in-2cb0.misc.md
+      - changelog/20260704T032222Z-extract-shared-force-refresh-method-to-e-6b6e.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

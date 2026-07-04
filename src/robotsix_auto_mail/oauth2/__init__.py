@@ -223,6 +223,23 @@ def extract_cae_claims(error_info: dict[str, Any]) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+def force_refresh_token(
+    msal_config: MailConfig,
+    xoauth2_challenge: bytes,
+) -> str:
+    """Force-refresh the MSAL token, passing any CAE claims extracted
+    from the server's XOAUTH2 challenge.
+
+    This is the shared logic extracted from the IMAP and SMTP
+    ``_force_refresh`` helpers — both callers pass their
+    ``_msal_config`` and ``_xoauth2_challenge`` and receive a fresh
+    access token.
+    """
+    error_info = parse_xoauth2_error(xoauth2_challenge)
+    claims = extract_cae_claims(error_info)
+    return acquire_fresh_token(msal_config, claims_challenge=claims)
+
+
 def acquire_fresh_token(
     config: MailConfig,
     *,
