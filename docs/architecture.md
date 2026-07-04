@@ -77,7 +77,7 @@ OAuth2 access token presented over SASL XOAUTH2:
   and schema) for callers.
 - `config/loader.py` — the actual load cascade (`load` / `load_accounts`)
   that builds `MailConfig` from built-in defaults and the YAML file.
-  The `MAIL_CONFIG_PATH` env var locates the config file;
+  The `ROBOTSIX_CONFIG_FILE` env var locates the config file;
   `LLM_API_KEY`/`LLM_PROVIDER_MODEL` serve as env-var fallbacks for LLM
   calls specifically (not a general config override tier).
 - `config/model.py` — the config dataclasses (`MailConfig` and friends).
@@ -177,7 +177,7 @@ hierarchy and how to diagnose each failure.
 ## Configuration resolution
 
 `MailConfig` is loaded from a single YAML config file (located via
-`MAIL_CONFIG_PATH`, default `config/mail.local.yaml`), with any omitted
+`ROBOTSIX_CONFIG_FILE`, default `config/config.json`), with any omitted
 field falling back to its built-in default.  The complete key table is
 documented in [docs/connecting.md](connecting.md); this document does not
 restate it.

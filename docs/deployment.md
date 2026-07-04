@@ -431,7 +431,7 @@ Missing configuration file: config/mail.local.yaml
 ```
 
 The entrypoint validated config before launching Python and could not read a
-config file at `${MAIL_CONFIG_PATH:-config/mail.local.yaml}`.
+config file at `${ROBOTSIX_CONFIG_FILE:-config/config.json}`.
 
 **Diagnose:**
 
