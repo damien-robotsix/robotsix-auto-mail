@@ -107,6 +107,7 @@ repos:
         additional_dependencies:
           - stylelint@17.14.0
           - stylelint-config-standard
+          - stylelint-declaration-strict-value
 
   - repo: local
     hooks:

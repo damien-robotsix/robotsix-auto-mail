@@ -6,6 +6,7 @@
 ## 0.0.0 (unreleased)
 
 - Added a three-tier CSS custom property system (`:root` palette → semantic → component tokens) to `board.css`, replacing all 51 hardcoded hex colour literals with `var(--…)` references. No visual change.
+- Add `stylelint-declaration-strict-value` plugin to pre-commit stylelint hook, with a rule that requires CSS custom properties (`var(--...)`) for all colour-related declarations (properties ending in `color`, plus `fill` and `stroke`). Board.css is temporarily excluded from this rule until the CSS variable migration is complete.
 - Extract shared `force_refresh_token` into `robotsix_auto_mail.oauth2`, removing a 16-line clone between `_imap_force_refresh` and `_smtp_force_refresh`.
 - Extract duplicated `_launch_background_worker` call in `_TriageMixin` into a shared private `_launch_triage()` helper method.
 - Refactor `card_extra_html` in `MailBoardAdapter`: extract each HTML widget block into its own helper function (`_body_preview_html`, `_notes_indicator`, `_draft_indicator`, `_calendar_indicator`, `_draft_reply_button`, `_delete_form`, `_account_badge`, `_archive_html`, `_move_form`), reducing the method from ~225 lines to a ~40-line flat assembler.
