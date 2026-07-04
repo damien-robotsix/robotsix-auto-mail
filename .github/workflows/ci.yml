@@ -3,6 +3,13 @@ name: CI
 on:
   push:
     branches: ["**"]
+    paths:
+      - '**.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'requirements*.txt'
+      - 'src/**'
+      - 'tests/**'
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
