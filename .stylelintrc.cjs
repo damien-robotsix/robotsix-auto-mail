@@ -1,4 +1,5 @@
 module.exports = {
+  plugins: ["stylelint-declaration-strict-value"],
   overrides: [
     {
       // Temporary exclusion — remove once board.css uses CSS custom
