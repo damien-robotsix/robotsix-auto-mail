@@ -203,6 +203,7 @@ class ImapClient(_ProtocolClient):
         """
         # 1. Plain connection
         self._connect_plain_socket()
+        assert self._imap is not None  # noqa: S101  # _connect_plain_socket always assigns
 
         # 2. Upgrade to TLS
         ctx = ssl.create_default_context()
