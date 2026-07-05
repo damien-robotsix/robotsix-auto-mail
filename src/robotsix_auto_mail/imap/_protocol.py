@@ -10,6 +10,10 @@ from __future__ import annotations
 
 import abc
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailConfig
 
 
 def build_xoauth2_response(username: str, token: str) -> str:
@@ -39,6 +43,8 @@ class _ProtocolClient(abc.ABC):
         username: str,
         password: str,
         oauth2_token: str = "",
+        config: MailConfig | None = None,
+        build_token_provider_fn: Callable[..., Any] | None = None,
     ) -> None:
         self._host = host
         self._port = port
@@ -46,10 +52,23 @@ class _ProtocolClient(abc.ABC):
         self._username = username
         self._password = password
         self._oauth2_token = oauth2_token
-        # A dynamic token provider (e.g. MSAL) is wired in by subclasses
-        # after ``super().__init__``; ``None`` for static-token / password
-        # setups.
+
+        # Resolve the dynamic token provider (e.g. MSAL) through the
+        # callable supplied by the subclass.  Each subclass chooses the
+        # appropriate import site so that tests can patch the right name
+        # (IMAP patches the package-level re-export, SMTP patches the
+        # module-level import).
         self._token_provider: Callable[[], str] | None = None
+        if build_token_provider_fn is not None and config is not None:
+            self._token_provider = build_token_provider_fn(config)
+
+        # Store config for force-refresh retry when MSAL manages the token.
+        # Only set when build_token_provider returned a provider (i.e. the
+        # oauth2_provider is "microsoft" and MSAL is available).
+        self._msal_config: MailConfig | None = (
+            config if self._token_provider is not None else None
+        )
+        self._xoauth2_challenge: bytes = b""
 
     # -- repr --------------------------------------------------------------
 

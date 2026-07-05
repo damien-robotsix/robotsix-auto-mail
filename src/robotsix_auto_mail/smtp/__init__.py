@@ -106,17 +106,9 @@ class SmtpClient(_ProtocolClient):
             username=config.username,
             password=config.password,
             oauth2_token=config.oauth2_token,
+            config=config,
+            build_token_provider_fn=build_token_provider,
         )
-        self._token_provider = build_token_provider(config)
-
-        # Store config for force-refresh retry when MSAL manages the token.
-        # Only set when build_token_provider returned a provider (i.e. the
-        # oauth2_provider is "microsoft" and MSAL is available).
-        self._msal_config: MailConfig | None = (
-            config if self._token_provider is not None else None
-        )
-        self._xoauth2_challenge: bytes = b""
-
         self._smtp: smtplib.SMTP | None = None
 
     # -- read-only server metadata ---------------------------------------

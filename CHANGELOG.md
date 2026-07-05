@@ -5,6 +5,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Extracted shared OAuth2 setup logic from ``ImapClient`` and ``SmtpClient``
+  constructors into the ``_ProtocolClient`` base class, removing 12 lines of
+  duplicate boilerplate.
 - Update all documentation references from `MAIL_CONFIG_PATH` to `ROBOTSIX_CONFIG_FILE` and update documented default from `config/mail.local.yaml` to `config/config.json`, matching the actual env var name in the code.
 - Restore ``LLM_API_KEY`` / ``LLM_PROVIDER_MODEL`` env var resolution in ``resolve_llm_api_key()`` and ``resolve_llm_provider_model()`` (the docstrings always claimed ``arg → env_var → config_file`` but the env var step was missing from the implementation).
 - Restore ``GET /healthz`` as alias for the liveness endpoint (returns ``{"status":"ok"}``, HTTP 200) — the fleet standard mandates this path and the caretaker HEALTHCHECK probes it.
