@@ -177,6 +177,21 @@ class ImapClient(_ProtocolClient):
                 f"Direct-TLS connection to {self._host}:{self._port} failed: {exc}"
             ) from exc
 
+    def _connect_plain_socket(self) -> None:
+        """Create an ``imaplib.IMAP4`` socket and assign to ``self._imap``.
+
+        Wraps ``(OSError, _IMAP4_ERROR)`` in ``ImapConnectionError``.
+        """
+        try:
+            # lgtm[py/clear-text-transmission-sensitive-data]
+            self._imap = imaplib.IMAP4(
+                self._host, self._port, timeout=_IMAP_TIMEOUT_SECONDS
+            )
+        except (OSError, _IMAP4_ERROR) as exc:
+            raise ImapConnectionError(
+                f"IMAP4 connection to {self._host}:{self._port} failed: {exc}"
+            ) from exc
+
     def _connect_starttls(self) -> None:
         """Open a plain IMAP connection then upgrade to TLS via ``STARTTLS``.
 
@@ -187,18 +202,8 @@ class ImapClient(_ProtocolClient):
         ``ImapTlsError``.
         """
         # 1. Plain connection
-        try:
-            # Plain socket here is the intended tls_mode == "starttls" path; it
-            # is immediately upgraded via starttls() below, not an unencrypted
-            # session.
-            # lgtm[py/clear-text-transmission-sensitive-data]
-            self._imap = imaplib.IMAP4(
-                self._host, self._port, timeout=_IMAP_TIMEOUT_SECONDS
-            )
-        except (OSError, _IMAP4_ERROR) as exc:
-            raise ImapConnectionError(
-                f"Plain connection to {self._host}:{self._port} failed: {exc}"
-            ) from exc
+        self._connect_plain_socket()
+        assert self._imap is not None  # noqa: S101  # _connect_plain_socket always assigns
 
         # 2. Upgrade to TLS
         ctx = ssl.create_default_context()
@@ -219,17 +224,7 @@ class ImapClient(_ProtocolClient):
         the ``lgtm`` suppression documents this.  Connection failures raise
         ``ImapConnectionError``.
         """
-        try:
-            # Plaintext IMAP is the operator-selected tls_mode == "none"
-            # configuration (a supported option), not a silent downgrade.
-            # lgtm[py/clear-text-transmission-sensitive-data]
-            self._imap = imaplib.IMAP4(
-                self._host, self._port, timeout=_IMAP_TIMEOUT_SECONDS
-            )
-        except (OSError, _IMAP4_ERROR) as exc:
-            raise ImapConnectionError(
-                f"Plain (no-TLS) connection to {self._host}:{self._port} failed: {exc}"
-            ) from exc
+        self._connect_plain_socket()
 
     def _authenticate(self) -> None:
         """Authenticate to the connected IMAP server.

@@ -81,6 +81,7 @@ modules:
       - changelog/20260704T150328Z-consolidate-duplicated-css-property-bloc-b341.misc.md
       - changelog/20260704T192757Z-docs-reference-obsolete-mail-config-path-ac4c.misc.md
       - changelog/20260704T202325Z-remove-dependabot-for-ecosystems-already-f7af.misc.md
+      - changelog/20260705T091322Z-extract-shared-plain-socket-helper-from-5d24.misc.md
       - changelog/20260705T091322Z-factor-out-shared-oauth2-constructor-boi-de1a.misc.md
       - tests/__init__.py
       - tests/conftest.py
