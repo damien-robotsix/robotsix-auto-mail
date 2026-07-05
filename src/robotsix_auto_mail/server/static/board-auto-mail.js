@@ -535,7 +535,7 @@
         if (tc) {
           if (data.triage_running) {
             tc.innerHTML =
-              '<div class="triage-banner">Triage is currently running. ' +
+              '<div class="triage-banner banner-base">Triage is currently running. ' +
               "The board will refresh automatically.</div>";
           } else {
             tc.innerHTML = "";
@@ -552,7 +552,7 @@
               typeof op.done === "number" && typeof op.total === "number"
                 ? ": " + op.done + "/" + op.total
                 : "";
-            bc.innerHTML = '<div class="batch-banner">' +
+            bc.innerHTML = '<div class="batch-banner banner-base">' +
               verb +
               " mail" +
               prog +

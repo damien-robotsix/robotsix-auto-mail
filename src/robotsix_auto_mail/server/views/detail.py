@@ -229,7 +229,7 @@ def _render_notes_section(record: MailRecord, redirect_input: str) -> str:
         f'<input type="hidden" name="message_id"'
         f' value="{html.escape(record.message_id)}">'
         f"{redirect_input}"
-        '<textarea class="detail-notes" name="notes" rows="4"'
+        '<textarea class="detail-notes detail-text-area" name="notes" rows="4"'
         f' style="width:100%;box-sizing:border-box;">{escaped_notes}</textarea>'
         '<button type="submit">Save</button>'
         "</form>"
@@ -311,7 +311,7 @@ def _render_draft_section(
         f'<input type="hidden" name="message_id"'
         f' value="{html.escape(record.message_id)}">'
         f"{redirect_input}"
-        '<textarea class="detail-draft" name="draft_text" rows="8"'
+        '<textarea class="detail-draft detail-text-area" name="draft_text" rows="8"'
         f' style="width:100%;box-sizing:border-box;">{escaped_draft}</textarea>'
         f'<button type="submit">{button_label}</button>'
         "</form>"

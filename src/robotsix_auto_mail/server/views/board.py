@@ -452,7 +452,7 @@ def _batch_banner_html(batch_op: dict[str, Any] | None) -> str:
     else:
         progress = ""
     return (
-        '<div class="batch-banner">'
+        '<div class="batch-banner banner-base">'
         f"{verb} mail{progress}. The board will refresh automatically."
         "</div>"
     )
@@ -538,7 +538,7 @@ def _render_board_page_shell(
     triage_control_html: str
     if triage_running:
         triage_control_html = (
-            '<div class="triage-banner">'
+            '<div class="triage-banner banner-base">'
             "Triage is currently running. The board will refresh automatically."
             "</div>"
         )
