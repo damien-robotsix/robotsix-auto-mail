@@ -1,0 +1,1 @@
+config_sync: `_load_ledger` missing JSON-decode error handling (crash on corrupted watermark)

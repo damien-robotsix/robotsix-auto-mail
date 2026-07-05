@@ -14,17 +14,19 @@ import pydantic
 import pytest
 
 from robotsix_auto_mail.config.config_sync_agent import (
+    _LEDGER_WATERMARK_KEY,
     ConfigSyncError,
     ConfigSyncResult,
     DriftProposal,
     LedgerEntry,
+    _load_ledger,
     _proposal_fingerprint,
     record_and_filter_proposals,
     run_config_sync_agent,
     set_finding_state,
 )
 from robotsix_auto_mail.config.schema import ConfigurationError
-from robotsix_auto_mail.db import init_db
+from robotsix_auto_mail.db import init_db, set_watermark
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -250,6 +252,64 @@ def test_ledger_entry_rejects_unknown_state() -> None:
     """An out-of-set state raises a pydantic ValidationError."""
     with pytest.raises(pydantic.ValidationError):
         LedgerEntry(title="t", state="bogus")
+
+
+# ---------------------------------------------------------------------------
+# _load_ledger error handling
+# ---------------------------------------------------------------------------
+
+
+def test_load_ledger_corrupt_json_returns_empty() -> None:
+    """Corrupt JSON (not valid JSON) returns an empty dict."""
+    conn = init_db(":memory:")
+    try:
+        set_watermark(conn, _LEDGER_WATERMARK_KEY, "not valid json {{{")
+        ledger = _load_ledger(conn)
+        assert ledger == {}
+    finally:
+        conn.close()
+
+
+def test_load_ledger_non_dict_json_returns_empty() -> None:
+    """Valid JSON that is not a dict (e.g. a list) returns an empty dict."""
+    conn = init_db(":memory:")
+    try:
+        set_watermark(conn, _LEDGER_WATERMARK_KEY, '[1, 2, 3]')
+        ledger = _load_ledger(conn)
+        assert ledger == {}
+    finally:
+        conn.close()
+
+
+def test_load_ledger_malformed_entry_skipped() -> None:
+    """A dict with one valid and one malformed entry skips the bad one."""
+    conn = init_db(":memory:")
+    try:
+        import json
+
+        payload = json.dumps(
+            {
+                "aaaaaaaaaaaaaaaa": {"title": "good", "state": "pending"},
+                "bbbbbbbbbbbbbbbb": "not-a-dict",
+            }
+        )
+        set_watermark(conn, _LEDGER_WATERMARK_KEY, payload)
+        ledger = _load_ledger(conn)
+        assert len(ledger) == 1
+        assert "aaaaaaaaaaaaaaaa" in ledger
+        assert ledger["aaaaaaaaaaaaaaaa"].title == "good"
+    finally:
+        conn.close()
+
+
+def test_load_ledger_no_watermark_returns_empty() -> None:
+    """When the watermark key has never been written, returns {}."""
+    conn = init_db(":memory:")
+    try:
+        ledger = _load_ledger(conn)
+        assert ledger == {}
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
