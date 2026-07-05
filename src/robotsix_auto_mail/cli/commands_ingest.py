@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import pathlib
+import signal
 import sys
 
 import robotsix_auto_mail.cli as _cli  # lgtm[py/unsafe-cyclic-import]
@@ -101,7 +102,7 @@ def _cmd_ingest(
 
     In watch mode it loops forever, running an ingest cycle for each selected
     account every interval.  A failed cycle is logged and the loop continues;
-    Ctrl-C exits cleanly with 0.
+    Ctrl-C or SIGTERM exits cleanly with 0.
     """
     if account_id is not None:
         try:
@@ -146,6 +147,12 @@ def _cmd_ingest(
         f"Watch mode: ingesting every {interval_minutes} min (Ctrl-C to stop).\n"
     )
     sys.stdout.flush()
+
+    def _handle_sigterm(sig: int, frame: object) -> None:
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGTERM, _handle_sigterm)
+
     try:
         while True:
             for account in selected:
@@ -165,6 +172,6 @@ def _cmd_ingest(
             sys.stdout.write(f"Next ingest in {interval_minutes} min.\n")
             sys.stdout.flush()
             _cli.time.sleep(interval_minutes * 60)
-    except KeyboardInterrupt:
+    except KeyboardInterrupt, SystemExit:
         sys.stdout.write("\nWatch stopped.\n")
         return 0
