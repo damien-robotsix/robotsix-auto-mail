@@ -83,6 +83,7 @@ modules:
       - changelog/20260704T202325Z-remove-dependabot-for-ecosystems-already-f7af.misc.md
       - changelog/20260705T091322Z-extract-shared-plain-socket-helper-from-5d24.misc.md
       - changelog/20260705T091322Z-factor-out-shared-oauth2-constructor-boi-de1a.misc.md
+      - changelog/20260705T185306Z-add-method-field-validator-to-unsubscribe-detection.bugfix.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add field_validator for method on UnsubscribeDetection model to reject unrecognised values
 - Extracted shared OAuth2 setup logic from ``ImapClient`` and ``SmtpClient``
   constructors into the ``_ProtocolClient`` base class, removing 12 lines of
   duplicate boilerplate.
