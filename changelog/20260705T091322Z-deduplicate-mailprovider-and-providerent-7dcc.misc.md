@@ -1,0 +1,1 @@
+Deduplicate MailProvider and ProviderEntry field definitions in detect/models.py

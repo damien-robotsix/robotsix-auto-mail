@@ -67,17 +67,11 @@ class MailProvider:
     smtp_tls_mode: str = DEFAULT_SMTP_TLS_MODE
 
 
-@dataclasses.dataclass(frozen=True)
-class ProviderEntry:
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class ProviderEntry(MailProvider):
     """Single source of truth for a known email provider."""
 
     label: str
-    imap_host: str
-    smtp_host: str
-    imap_port: int = 993
-    imap_tls_mode: str = DEFAULT_IMAP_TLS_MODE
-    smtp_port: int = 587
-    smtp_tls_mode: str = DEFAULT_SMTP_TLS_MODE
     mx_needles: tuple[str, ...] = ()
     domain_patterns: tuple[str, ...] = ()
     in_prompt_table: bool = True
