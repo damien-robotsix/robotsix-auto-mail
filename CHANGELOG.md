@@ -10,6 +10,7 @@
   constructors into the ``_ProtocolClient`` base class, removing 12 lines of
   duplicate boilerplate.
 - Extract MIME message construction from `SmtpClient.send()` into a pure `build_plain_text_message()` function in `src/robotsix_auto_mail/mime.py`, making MIME building testable without an SMTP client and reusable by other callers.
+- Fix: register missing changelog fragment in `docs/modules.yaml` and fix trailing newline
 - Update all documentation references from `MAIL_CONFIG_PATH` to `ROBOTSIX_CONFIG_FILE` and update documented default from `config/mail.local.yaml` to `config/config.json`, matching the actual env var name in the code.
 - Extend mypy strict checking to cover the test tree with a relaxed override
   (``check_untyped_defs=false``, ``disallow_untyped_defs=false``,
