@@ -102,6 +102,9 @@ class TriageDecision(pydantic.BaseModel):
         return v
 
 
+_VALID_UNSUBSCRIBE_METHODS = frozenset({"body_link", "mailto", "none", "header", ""})
+
+
 class UnsubscribeDetection(pydantic.BaseModel):
     """LLM-detected unsubscribe mechanism for a sender.
 
@@ -123,6 +126,16 @@ class UnsubscribeDetection(pydantic.BaseModel):
     @classmethod
     def _validate_confidence(cls, v: str) -> str:
         return validate_confidence(v)
+
+    @pydantic.field_validator("method")
+    @classmethod
+    def _validate_method(cls, v: str) -> str:
+        if v not in _VALID_UNSUBSCRIBE_METHODS:
+            raise ValueError(
+                f"method must be one of {sorted(_VALID_UNSUBSCRIBE_METHODS)!r}; "
+                f"got {v!r}"
+            )
+        return v
 
 
 class ArchiveSubfolderProposal(pydantic.BaseModel):

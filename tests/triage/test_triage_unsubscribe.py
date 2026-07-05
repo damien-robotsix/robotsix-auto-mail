@@ -48,6 +48,13 @@ def test_unsubscribe_detection_requires_has_unsubscribe() -> None:
         UnsubscribeDetection()  # type: ignore[call-arg]
 
 
+def test_unsubscribe_detection_rejects_invalid_method() -> None:
+    """method field rejects values outside the known set."""
+
+    with pytest.raises(pydantic.ValidationError):
+        UnsubscribeDetection(has_unsubscribe=True, method="banana")
+
+
 # ---------------------------------------------------------------------------
 # _detect_unsubscribe_for_sender — fast path (header present)
 # ---------------------------------------------------------------------------
