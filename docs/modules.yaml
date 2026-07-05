@@ -79,6 +79,7 @@ modules:
       - changelog/20260704T082208Z-get-healthz-returns-404-container-perman-4432.misc.md
       - changelog/20260704T082208Z-vestigial-volume-data-in-dockerfile-spaw-a319.removal.md
       - changelog/20260704T192757Z-docs-reference-obsolete-mail-config-path-ac4c.misc.md
+      - changelog/20260704T202325Z-remove-dependabot-for-ecosystems-already-f7af.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
