@@ -105,6 +105,12 @@ class ImapClient(_ProtocolClient):
         via the package-level ``build_token_provider`` so that test patches
         intercept at the package rather than module level.
         """
+        # Resolve ``build_token_provider`` through the package at call time so
+        # that ``mock.patch("robotsix_auto_mail.imap.build_token_provider")``
+        # intercepts this construction.  A module-level import here would bind
+        # the function on ``client`` and bypass the package-level patch.
+        from robotsix_auto_mail.imap import build_token_provider
+
         super().__init__(
             host=config.imap_host,
             port=config.imap_port,
@@ -112,23 +118,9 @@ class ImapClient(_ProtocolClient):
             username=config.username,
             password=config.password,
             oauth2_token=config.oauth2_token,
+            config=config,
+            build_token_provider_fn=build_token_provider,
         )
-        # Resolve ``build_token_provider`` through the package at call time so
-        # that ``mock.patch("robotsix_auto_mail.imap.build_token_provider")``
-        # intercepts this construction.  A module-level import here would bind
-        # the function on ``client`` and bypass the package-level patch.
-        from robotsix_auto_mail.imap import build_token_provider
-
-        self._token_provider = build_token_provider(config)
-
-        # Store config for force-refresh retry when MSAL manages the token.
-        # Only set when build_token_provider returned a provider (i.e. the
-        # oauth2_provider is "microsoft" and MSAL is available).
-        self._msal_config: MailConfig | None = (
-            config if self._token_provider is not None else None
-        )
-        self._xoauth2_challenge: bytes = b""
-
         self._imap: imaplib.IMAP4 | None = None
 
     # -- read-only server metadata ---------------------------------------
