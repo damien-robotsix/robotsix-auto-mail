@@ -132,7 +132,8 @@ class UnsubscribeDetection(pydantic.BaseModel):
     def _validate_method(cls, v: str) -> str:
         if v not in _VALID_UNSUBSCRIBE_METHODS:
             raise ValueError(
-                f"method must be one of {sorted(_VALID_UNSUBSCRIBE_METHODS)!r}; got {v!r}"
+                f"method must be one of {sorted(_VALID_UNSUBSCRIBE_METHODS)!r}; "
+                f"got {v!r}"
             )
         return v
 
