@@ -9,9 +9,8 @@ from __future__ import annotations
 
 from unittest import mock
 
-from tests.server._test_helpers import _FakeHandler, _SyncThread
-
 from robotsix_auto_mail.db import init_db
+from tests.server._test_helpers import _FakeHandler, _SyncThread
 
 
 class TestLaunchBackgroundWorker:

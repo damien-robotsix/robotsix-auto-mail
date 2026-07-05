@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from urllib.request import Request, urlopen
 
+from robotsix_auto_mail.config import MailAccountsConfig
+from robotsix_auto_mail.db import init_db, set_watermark
+from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from tests.conftest import _make_record
 from tests.server.conftest import (
     _get,
@@ -15,10 +18,6 @@ from tests.server.conftest import (
     _triage_action,
     _wait_for_batch_idle,
 )
-
-from robotsix_auto_mail.config import MailAccountsConfig
-from robotsix_auto_mail.db import init_db, set_watermark
-from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 
 
 def test_global_content_builder_aggregation(

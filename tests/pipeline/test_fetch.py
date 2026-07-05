@@ -5,11 +5,10 @@ from __future__ import annotations
 import sqlite3
 from unittest import mock
 
-from tests.pipeline._helpers import _mock_imap_client
-
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.pipeline import fetch_new_messages, update_watermark
+from tests.pipeline._helpers import _mock_imap_client
 
 # ---------------------------------------------------------------------------
 # Inlined fetch tests — fetch_new_messages / update_watermark (from former

@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest import mock
 
 import pytest
-from tests.conftest import _make_mock_imap_ssl
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import (
@@ -13,6 +12,7 @@ from robotsix_auto_mail.imap import (
     ImapError,
     ImapMessageNotFoundError,
 )
+from tests.conftest import _make_mock_imap_ssl
 
 
 def _uid_side_effect(

@@ -7,7 +7,6 @@ import tempfile
 from unittest import mock
 
 import pytest
-from tests.conftest import _make_record
 
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -23,6 +22,7 @@ from robotsix_auto_mail.triage import (
 )
 from robotsix_auto_mail.triage.agent import _fill_missing_archive_hints
 from robotsix_auto_mail.triage.classifier import normalize_archive_subfolder
+from tests.conftest import _make_record
 
 
 def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:

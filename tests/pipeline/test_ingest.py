@@ -8,7 +8,6 @@ from dataclasses import FrozenInstanceError
 from unittest import mock
 
 import pytest
-from tests.pipeline._helpers import _make_raw_message, _mock_imap_client
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
@@ -22,6 +21,7 @@ from robotsix_auto_mail.pipeline import (
     update_watermark,
 )
 from robotsix_auto_mail.pipeline._parse import ParseError
+from tests.pipeline._helpers import _make_raw_message, _mock_imap_client
 
 # ---------------------------------------------------------------------------
 # IngestError / IngestResult dataclass tests

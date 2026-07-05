@@ -13,13 +13,13 @@ from __future__ import annotations
 from urllib.request import urlopen
 
 from robotsix_board import RenderMode
+
+from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from tests.conftest import _make_record
 from tests.server.conftest import (
     _make_extra_html_adapter,
     _start_test_server,
 )
-
-from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 
 
 def _make_adapter(triage_by_mid: dict[str, str] | None = None) -> MailBoardAdapter:

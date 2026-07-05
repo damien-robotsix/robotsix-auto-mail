@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest import mock
 
 import pytest
-from tests.conftest import _make_mock_imap_ssl
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import (
@@ -16,6 +15,7 @@ from robotsix_auto_mail.imap import (
     is_special_use,
 )
 from robotsix_auto_mail.imap.mailbox import _parse_list_line
+from tests.conftest import _make_mock_imap_ssl
 
 # ---------------------------------------------------------------------------
 # Special-use detection (Gmail labels / RFC 6154)

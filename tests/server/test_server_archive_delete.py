@@ -7,6 +7,9 @@ from unittest import mock
 from urllib.request import urlopen
 
 import pytest
+
+from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.db import init_db
 from tests.server.conftest import (
     _populate_db,
     _post_form,
@@ -18,9 +21,6 @@ from tests.server.conftest import (
     _start_test_server_with_mail_config,
     _wait_for_batch_idle,
 )
-
-from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.db import init_db
 
 # ---------------------------------------------------------------------------
 # Delete button on TO_DELETE cards

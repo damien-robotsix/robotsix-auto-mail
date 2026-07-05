@@ -14,14 +14,6 @@ import textwrap
 from typing import Any
 from unittest import mock
 
-from tests.conftest import _make_record
-from tests.server.conftest import (
-    _populate_db,
-    _seed_archive_override,
-    _seed_archive_structure,
-    _seed_triage_decision,
-)
-
 from robotsix_auto_mail.config import (
     DEFAULT_ARCHIVE_ROOT,
     MailAccount,
@@ -29,6 +21,13 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
+from tests.conftest import _make_record
+from tests.server.conftest import (
+    _populate_db,
+    _seed_archive_override,
+    _seed_archive_structure,
+    _seed_triage_decision,
+)
 
 # ---------------------------------------------------------------------------
 # _render_board_columns

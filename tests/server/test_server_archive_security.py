@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest import mock
 
+from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.db import init_db
 from tests.server.conftest import (
     _populate_db,
     _post_to_path,
@@ -11,9 +13,6 @@ from tests.server.conftest import (
     _seed_triage_decision,
     _start_test_server_with_mail_config,
 )
-
-from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.db import init_db
 
 # ---------------------------------------------------------------------------
 # Board integration — archive proposal / path traversal / folder creation

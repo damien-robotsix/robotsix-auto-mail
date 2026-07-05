@@ -8,6 +8,8 @@ from contextlib import contextmanager
 from unittest import mock
 from urllib.request import urlopen
 
+from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.db import init_db
 from tests.server.conftest import (
     _dummy_send_mail_config,
     _populate_db,
@@ -18,9 +20,6 @@ from tests.server.conftest import (
     _start_test_server,
     _start_test_server_with_mail_config,
 )
-
-from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.db import init_db
 
 
 @contextmanager

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from robotsix_auto_mail.db import set_watermark
 from tests.server.conftest import (
     _populate_db,
     _post_form,
@@ -9,8 +10,6 @@ from tests.server.conftest import (
     _seed_triage_decision,
     _start_test_server,
 )
-
-from robotsix_auto_mail.db import set_watermark
 
 # ---------------------------------------------------------------------------
 # POST /run-triage tests

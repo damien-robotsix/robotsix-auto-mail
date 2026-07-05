@@ -11,13 +11,13 @@ from collections.abc import Iterator
 from unittest import mock
 
 import pytest
-from tests.server._test_helpers import _FakeHandler
-from tests.server.conftest import _populate_db, _seed_archive_override
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 from robotsix_auto_mail.imap import ImapError
 from robotsix_auto_mail.triage import TO_ARCHIVE
+from tests.server._test_helpers import _FakeHandler
+from tests.server.conftest import _populate_db, _seed_archive_override
 
 
 @pytest.fixture(autouse=True)

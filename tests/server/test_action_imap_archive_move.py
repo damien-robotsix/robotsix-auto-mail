@@ -10,9 +10,9 @@ from __future__ import annotations
 from unittest import mock
 
 import pytest
-from tests.server._test_helpers import _FakeHandler
 
 from robotsix_auto_mail.config import MailConfig
+from tests.server._test_helpers import _FakeHandler
 
 
 class TestImapArchiveMove:

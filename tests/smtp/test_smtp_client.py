@@ -10,7 +10,6 @@ from typing import Any
 from unittest import mock
 
 import pytest
-from tests.conftest import _make_mock_smtp, _make_mock_smtp_ssl
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.smtp import (
@@ -21,6 +20,7 @@ from robotsix_auto_mail.smtp import (
     SmtpSendError,
     SmtpTlsError,
 )
+from tests.conftest import _make_mock_smtp, _make_mock_smtp_ssl
 
 # ---------------------------------------------------------------------------
 # Exception hierarchy

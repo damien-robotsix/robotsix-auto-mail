@@ -6,10 +6,9 @@ Verifies that notes are persisted to the database with whitespace preserved
 
 from __future__ import annotations
 
+from robotsix_auto_mail.db import get_record_by_message_id, init_db
 from tests.server._test_helpers import _FakeHandler
 from tests.server.conftest import _populate_db
-
-from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
 
 class TestHandleSaveNotes:

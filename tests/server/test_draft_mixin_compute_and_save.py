@@ -9,12 +9,11 @@ from __future__ import annotations
 import json
 from unittest import mock
 
-from tests.server._test_helpers import _DraftMixinFakeHandler
-from tests.server.conftest import _populate_db, _seed_triage_decision
-
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._draft_mixin import _compute_reply_all_cc
+from tests.server._test_helpers import _DraftMixinFakeHandler
+from tests.server.conftest import _populate_db, _seed_triage_decision
 
 # ===================================================================
 # _compute_reply_all_cc

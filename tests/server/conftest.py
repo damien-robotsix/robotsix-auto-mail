@@ -17,11 +17,10 @@ if TYPE_CHECKING:
     from http.client import HTTPResponse
     from http.server import HTTPServer
 
-from tests.conftest import _make_record
-
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
+from tests.conftest import _make_record
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from tests.conftest import _make_record
-
 from robotsix_auto_mail.triage import propose_archive_subfolder
+from tests.conftest import _make_record
 
 
 def test_propose_mailing_list_prefix() -> None:

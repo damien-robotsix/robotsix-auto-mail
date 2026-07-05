@@ -7,10 +7,10 @@ from typing import Any
 from unittest import mock
 
 import pytest
-from tests.conftest import _make_mock_imap_ssl
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient
+from tests.conftest import _make_mock_imap_ssl
 
 # ---------------------------------------------------------------------------
 # Gmail app-password auth hint

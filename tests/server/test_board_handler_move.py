@@ -8,14 +8,14 @@ from unittest import mock
 from urllib.request import urlopen
 
 import pytest
+
+from robotsix_auto_mail.config import MailConfig
 from tests.server.conftest import (
     _populate_db,
     _post_form,
     _start_test_server,
     _start_test_server_with_mail_config,
 )
-
-from robotsix_auto_mail.config import MailConfig
 
 
 @pytest.fixture(autouse=True)
