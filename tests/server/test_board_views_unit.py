@@ -118,7 +118,7 @@ def test_batch_banner_html_known_verb_with_progress() -> None:
     from robotsix_auto_mail.server.views.board import _batch_banner_html
 
     result = _batch_banner_html({"op": "delete", "done": 120, "total": 518})
-    assert 'class="batch-banner"' in result
+    assert 'class="batch-banner banner-base"' in result
     assert "Deleting mail: 120/518" in result
     assert "The board will refresh automatically." in result
 
@@ -163,7 +163,7 @@ def test_batch_banner_html_bare_running_sentinel() -> None:
     from robotsix_auto_mail.server.views.board import _batch_banner_html
 
     result = _batch_banner_html({"op": None, "done": None, "total": None})
-    assert 'class="batch-banner"' in result
+    assert 'class="batch-banner banner-base"' in result
     assert "Processing mail" in result
     assert ": " not in result
     assert "The board will refresh automatically." in result
@@ -579,7 +579,7 @@ def test_page_shell_injects_batch_control_html() -> None:
 def test_page_shell_triage_running_true() -> None:
     """When triage_running is True a triage banner is rendered."""
     result = _page_shell_sentinels(triage_running=True)
-    assert 'class="triage-banner"' in result
+    assert 'class="triage-banner banner-base"' in result
     assert "Triage is currently running" in result
 
 
