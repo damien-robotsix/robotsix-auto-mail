@@ -126,9 +126,8 @@ OAuth2 access token presented over SASL XOAUTH2:
 - `TO_CALENDAR` is one of the triage actions (`triage/_constants.py`),
   rendered as the "To calendar" board column.
 - Each `mail_records` row carries two calendar columns,
-  `calendar_event_ref` and `calendar_correlation_id`, written by
-  `update_calendar_event_ref` and `update_calendar_correlation_id` in
-  `db/queries.py`.
+  `calendar_event_ref` and `calendar_correlation_id`, reserved for
+  future calendar-automation use.  No write path is currently wired.
 - `server/views/detail.py` reads `calendar_event_ref` in
   `_render_calendar_feedback` to show, in the mail detail view, whether a
   calendar event has been recorded for the message.

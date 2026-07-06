@@ -57,12 +57,6 @@ from .queries import (
     set_watermark as set_watermark,
 )
 from .queries import (
-    update_calendar_correlation_id as update_calendar_correlation_id,
-)
-from .queries import (
-    update_calendar_event_ref as update_calendar_event_ref,
-)
-from .queries import (
     update_draft_text as update_draft_text,
 )
 from .queries import (
@@ -88,8 +82,6 @@ __all__ = [
     "list_untriaged_records",
     "record_exists",
     "set_watermark",
-    "update_calendar_correlation_id",
-    "update_calendar_event_ref",
     "update_draft_text",
     "update_notes",
     "update_record_source",
