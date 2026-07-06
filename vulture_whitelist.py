@@ -106,7 +106,7 @@ _ = FIELD_YAML_MAP
 
 import robotsix_auto_mail
 
-robotsix_auto_mail._ObservabilityLoader.create_module
-robotsix_auto_mail._ObservabilityLoader.exec_module
-robotsix_auto_mail._ObservabilityFinder.find_spec
-robotsix_auto_mail.__getattr__
+_ = robotsix_auto_mail._ObservabilityLoader.create_module
+_ = robotsix_auto_mail._ObservabilityLoader.exec_module
+_ = robotsix_auto_mail._ObservabilityFinder.find_spec
+_ = robotsix_auto_mail.__getattr__

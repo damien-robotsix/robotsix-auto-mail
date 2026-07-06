@@ -396,5 +396,3 @@ def write_account_health(
 
     payload = _json.dumps({"status": status, "error": error, "checked_at": checked_at})
     set_watermark(conn, "account_health", payload)
-
-
