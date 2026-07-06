@@ -639,9 +639,7 @@ def check_docs_connecting(
             }
         )
 
-    findings.extend(
-        _validate_yaml_keys_against_mailconfig(yaml_rows, path)
-    )
+    findings.extend(_validate_yaml_keys_against_mailconfig(yaml_rows, path))
 
     return findings
 
