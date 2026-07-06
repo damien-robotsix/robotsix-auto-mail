@@ -382,9 +382,7 @@ class _BoardActionMixin:
                 )
 
                 try:
-                    result = _imap_cross_folder_fallback(
-                        self.mail_config, record, conn
-                    )
+                    result = _imap_cross_folder_fallback(self.mail_config, record, conn)
                 except (ImapError, OSError) as exc:
                     self._send_response(
                         f"IMAP cross-folder resolution failed: {exc}",
@@ -412,9 +410,7 @@ class _BoardActionMixin:
                                 raise ValueError(
                                     "Archive destination escapes archive root"
                                 )
-                            _ensure_folder_hierarchy(
-                                client2, dest_folder, delimiter
-                            )
+                            _ensure_folder_hierarchy(client2, dest_folder, delimiter)
                             client2.move_message(new_uid, dest_folder)
                     except ValueError as exc:
                         self._bad_request(str(exc))

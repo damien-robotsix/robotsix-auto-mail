@@ -153,9 +153,7 @@ def _archive_dest_folder(
     return dest
 
 
-def _ensure_folder_hierarchy(
-    client: Any, dest_folder: str, delimiter: str
-) -> None:
+def _ensure_folder_hierarchy(client: Any, dest_folder: str, delimiter: str) -> None:
     """Ensure the IMAP folder hierarchy for *dest_folder* exists.
 
     Creates each ancestor folder from the top down (e.g. ``Archive``,
@@ -446,9 +444,7 @@ def _run_batch_archive_background(
                                 )
                                 if result is not None:
                                     new_folder, new_uid = result
-                                    _ensure_folder_hierarchy(
-                                        client, dest, delimiter
-                                    )
+                                    _ensure_folder_hierarchy(client, dest, delimiter)
                                     client.select_folder(new_folder)
                                     client.move_message(new_uid, dest)
                                 # else: UID truly gone — skip IMAP,
