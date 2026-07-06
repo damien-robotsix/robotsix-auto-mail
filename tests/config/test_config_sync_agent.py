@@ -274,7 +274,7 @@ def test_load_ledger_non_dict_json_returns_empty() -> None:
     """Valid JSON that is not a dict (e.g. a list) returns an empty dict."""
     conn = init_db(":memory:")
     try:
-        set_watermark(conn, _LEDGER_WATERMARK_KEY, '[1, 2, 3]')
+        set_watermark(conn, _LEDGER_WATERMARK_KEY, "[1, 2, 3]")
         ledger = _load_ledger(conn)
         assert ledger == {}
     finally:
