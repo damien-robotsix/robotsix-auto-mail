@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+from robotsix_auto_mail.db import set_watermark
 from tests.server.conftest import (
     _populate_db,
     _post_to_path,
     _start_test_server,
 )
-
-from robotsix_auto_mail.db import set_watermark
 
 # ---------------------------------------------------------------------------
 # POST /reconcile tests

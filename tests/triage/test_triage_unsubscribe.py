@@ -7,7 +7,6 @@ from unittest import mock
 
 import pydantic
 import pytest
-from tests.conftest import _make_record
 
 from robotsix_auto_mail.db import (
     get_watermark,
@@ -24,6 +23,7 @@ from robotsix_auto_mail.triage import (
 from robotsix_auto_mail.triage._constants import (
     _UNSUBSCRIBE_SUGGESTIONS_KEY,
 )
+from tests.conftest import _make_record
 
 # ---------------------------------------------------------------------------
 # UnsubscribeDetection model

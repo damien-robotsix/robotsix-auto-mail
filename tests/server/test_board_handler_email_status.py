@@ -11,6 +11,7 @@ import pytest
 if TYPE_CHECKING:
     pass
 
+from robotsix_auto_mail.db import init_db
 from tests.server.conftest import (
     _move_and_get_location,
     _populate_db,
@@ -18,8 +19,6 @@ from tests.server.conftest import (
     _seed_triage_decision,
     _start_test_server,
 )
-
-from robotsix_auto_mail.db import init_db
 
 # ---------------------------------------------------------------------------
 # GET /email/{message_id}/status tests

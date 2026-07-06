@@ -21,6 +21,7 @@ modules:
       - src/robotsix_auto_mail/_observability.py
       - src/robotsix_auto_mail/format.py
       - src/robotsix_auto_mail/health.py
+      - tests/core/__init__.py
       - tests/core/test_format.py
       - tests/core/test_health.py
       - tests/core/test_llm_agent.py
@@ -79,6 +80,7 @@ modules:
       - changelog/20260704T082208Z-get-healthz-returns-404-container-perman-4432.misc.md
       - changelog/20260704T082208Z-vestigial-volume-data-in-dockerfile-spaw-a319.removal.md
       - changelog/20260704T150328Z-consolidate-duplicated-css-property-bloc-b341.misc.md
+      - changelog/20260704T150328Z-extend-mypy-strict-checking-to-cover-tes-7bf1.misc.md
       - changelog/20260704T150328Z-extract-mime-message-composition-from-sm-19a6.feature.md
       - changelog/20260704T192757Z-docs-reference-obsolete-mail-config-path-ac4c.misc.md
       - changelog/20260704T202325Z-remove-dependabot-for-ecosystems-already-f7af.misc.md
@@ -118,6 +120,7 @@ modules:
       - scripts/dev/auto-mail-autoupdate.sh
       - src/robotsix_auto_mail/dev/__init__.py
       - src/robotsix_auto_mail/dev/autoupdate.py
+      - tests/dev/__init__.py
       - tests/dev/test_autoupdate.py
 
   - id: cli
@@ -137,6 +140,7 @@ modules:
       - src/robotsix_auto_mail/cli/commands_serve.py
       - src/robotsix_auto_mail/cli/commands_triage.py
       - src/robotsix_auto_mail/cli/config.py
+      - tests/cli/__init__.py
       - tests/cli/test_cli.py
       - tests/cli/test_commands_auth.py
       - tests/cli/test_commands_serve.py
@@ -164,6 +168,7 @@ modules:
       - src/robotsix_auto_mail/config/model.py
       - src/robotsix_auto_mail/config/schema.py
       - src/robotsix_auto_mail/config/config_sync_agent.py
+      - tests/config/__init__.py
       - tests/config/test_mailconfig_basics.py
       - tests/config/test_schema.py
       - tests/config/test_config_from_yaml.py
@@ -200,6 +205,7 @@ modules:
       - src/robotsix_auto_mail/triage/classifier.py
       - src/robotsix_auto_mail/triage/persistence.py
       - src/robotsix_auto_mail/triage/rules.py
+      - tests/triage/__init__.py
       - tests/triage/test_triage_agent.py
       - tests/triage/test_triage_archive_hints.py
       - tests/triage/test_triage_archive_llm.py
@@ -222,6 +228,7 @@ modules:
       - src/robotsix_auto_mail/db/archive.py
       - src/robotsix_auto_mail/db/models.py
       - src/robotsix_auto_mail/db/queries.py
+      - tests/db/__init__.py
       - tests/db/test_archive.py
       - tests/db/test_db.py
       - tests/db/test_migrate.py
@@ -234,6 +241,7 @@ modules:
       - src/robotsix_auto_mail/detect/__init__.py
       - src/robotsix_auto_mail/detect/detector.py
       - src/robotsix_auto_mail/detect/models.py
+      - tests/detect/__init__.py
       - tests/detect/test_detect.py
 
   - id: imap
@@ -246,6 +254,7 @@ modules:
       - src/robotsix_auto_mail/imap/errors.py
       - src/robotsix_auto_mail/imap/mailbox.py
       - src/robotsix_auto_mail/imap/utils.py
+      - tests/imap/__init__.py
       - tests/imap/test_protocol.py
       - tests/imap/conftest.py
       - tests/imap/test_imap_auth.py
@@ -266,6 +275,7 @@ modules:
       behind the [microsoft] extra, imported lazily.
     paths:
       - src/robotsix_auto_mail/oauth2/__init__.py
+      - tests/oauth2/__init__.py
       - tests/oauth2/test_msal_provider.py
 
   - id: pipeline
@@ -275,6 +285,7 @@ modules:
       - src/robotsix_auto_mail/pipeline/__init__.py
       - src/robotsix_auto_mail/pipeline/_parse.py
       - src/robotsix_auto_mail/pipeline/reconcile.py
+      - tests/pipeline/__init__.py
       - tests/pipeline/_helpers.py
       - tests/pipeline/test_pipeline_cli_ingest.py
       - tests/pipeline/test_fetch.py
@@ -297,6 +308,7 @@ modules:
       SMTP sending client.
     paths:
       - src/robotsix_auto_mail/smtp/__init__.py
+      - tests/smtp/__init__.py
       - tests/smtp/test_smtp_client.py
 
   - id: server
@@ -326,6 +338,7 @@ modules:
       - src/robotsix_auto_mail/server/static/board.css
       - src/robotsix_auto_mail/server/static/board-auto-mail.js
       - src/robotsix_auto_mail/server/board_adapter.py
+      - tests/server/__init__.py
       - tests/server/conftest.py
       - tests/server/test_csrf.py
       - tests/server/test_action_mixin.py

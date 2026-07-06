@@ -12,11 +12,10 @@ from __future__ import annotations
 import sqlite3
 from unittest import mock
 
-from tests.pipeline._helpers import _make_raw_message, _mock_imap_client
-
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.pipeline import _reconcile_uidvalidity, ingest_mail
+from tests.pipeline._helpers import _make_raw_message, _mock_imap_client
 
 _UIDV = "imap_uidvalidity"
 _UID = "imap_uid"

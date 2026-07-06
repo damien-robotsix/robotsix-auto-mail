@@ -10,6 +10,7 @@ import pytest
 if TYPE_CHECKING:
     pass
 
+from robotsix_auto_mail.config import MailAccount, MailAccountsConfig
 from tests.server.conftest import (
     _account_config,
     _get,
@@ -18,8 +19,6 @@ from tests.server.conftest import (
     _start_test_server_with_accounts,
     _triage_action,
 )
-
-from robotsix_auto_mail.config import MailAccount, MailAccountsConfig
 
 # ===========================================================================
 # Email detail page tests (new patterns)

@@ -6,6 +6,9 @@ import json
 from urllib.request import urlopen
 
 import pytest
+
+from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.db import init_db
 from tests.server.conftest import (
     _populate_db,
     _post_to_path,
@@ -14,9 +17,6 @@ from tests.server.conftest import (
     _start_test_server,
     _wait_for_batch_idle,
 )
-
-from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.db import init_db
 
 
 def test_batch_delete_single_flight_does_not_spawn_second_worker(

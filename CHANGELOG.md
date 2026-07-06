@@ -10,7 +10,13 @@
   constructors into the ``_ProtocolClient`` base class, removing 12 lines of
   duplicate boilerplate.
 - Extract MIME message construction from `SmtpClient.send()` into a pure `build_plain_text_message()` function in `src/robotsix_auto_mail/mime.py`, making MIME building testable without an SMTP client and reusable by other callers.
+- Fix: register missing changelog fragment in `docs/modules.yaml` and fix trailing newline
 - Update all documentation references from `MAIL_CONFIG_PATH` to `ROBOTSIX_CONFIG_FILE` and update documented default from `config/mail.local.yaml` to `config/config.json`, matching the actual env var name in the code.
+- Extend mypy strict checking to cover the test tree with a relaxed override
+  (``check_untyped_defs=false``, ``disallow_untyped_defs=false``,
+  ``ignore_missing_imports=true``), catching API contract mismatches in tests
+  at type-check time without noise from mocks, fixtures, and parametrize
+  decorators.
 - Restore ``LLM_API_KEY`` / ``LLM_PROVIDER_MODEL`` env var resolution in ``resolve_llm_api_key()`` and ``resolve_llm_provider_model()`` (the docstrings always claimed ``arg → env_var → config_file`` but the env var step was missing from the implementation).
 - Restore ``GET /healthz`` as alias for the liveness endpoint (returns ``{"status":"ok"}``, HTTP 200) — the fleet standard mandates this path and the caretaker HEALTHCHECK probes it.
 - Remove `VOLUME /data` directive from Dockerfile (the app writes under `/home/mailbot`, and the anonymous volume created by this directive accumulated orphans on every container recreate).

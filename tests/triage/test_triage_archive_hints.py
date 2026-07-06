@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest import mock
 
 import pytest
-from tests.conftest import _make_record
 
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -21,6 +20,7 @@ from robotsix_auto_mail.triage import (
     propose_archive_subfolder_llm,
     run_triage_agent,
 )
+from tests.conftest import _make_record
 
 
 def _patch_llm(

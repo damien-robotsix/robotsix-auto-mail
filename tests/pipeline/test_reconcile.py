@@ -5,8 +5,6 @@ from __future__ import annotations
 import sqlite3
 from unittest import mock
 
-from tests.pipeline._helpers import _mock_imap_client
-
 from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
@@ -14,6 +12,7 @@ from robotsix_auto_mail.db import (
 )
 from robotsix_auto_mail.imap import ImapError
 from robotsix_auto_mail.pipeline import reconcile_records
+from tests.pipeline._helpers import _mock_imap_client
 
 # reconcile_records tests
 # ---------------------------------------------------------------------------

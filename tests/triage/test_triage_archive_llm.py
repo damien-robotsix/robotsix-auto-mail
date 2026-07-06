@@ -6,7 +6,6 @@ import json
 from unittest import mock
 
 import pytest
-from tests.conftest import _make_record
 
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -20,6 +19,7 @@ from robotsix_auto_mail.triage import (
     get_archive_subfolder,
     propose_archive_subfolder_llm,
 )
+from tests.conftest import _make_record
 
 
 def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:

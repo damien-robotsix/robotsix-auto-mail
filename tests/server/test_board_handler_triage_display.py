@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass
 
+from robotsix_auto_mail.db import init_db
 from tests.server.conftest import (
     _populate_db,
     _post_form,
     _start_test_server,
 )
-
-from robotsix_auto_mail.db import init_db
 
 # ---------------------------------------------------------------------------
 # Triage decision display (read-only badge + detail field)

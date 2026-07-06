@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from tests.conftest import _make_record
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.triage import rules as rules_mod
@@ -17,6 +16,7 @@ from robotsix_auto_mail.triage.rules import (
     rules_text_for,
     update_rules_for_action,
 )
+from tests.conftest import _make_record
 
 
 def _config(tmp_path: Path, **overrides: str) -> MailConfig:

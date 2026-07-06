@@ -116,7 +116,21 @@ robotsix-auto-mail = "robotsix_auto_mail.cli:main"
 [tool.mypy]
 strict = true
 python_version = "3.14"
-packages = ["src/robotsix_auto_mail"]
+packages = ["src/robotsix_auto_mail", "tests"]
+
+[[tool.mypy.overrides]]
+module = "tests"
+strict = false
+check_untyped_defs = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+strict = false
+check_untyped_defs = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "robotsix_board"

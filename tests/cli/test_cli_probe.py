@@ -8,10 +8,10 @@ import ssl
 from unittest import mock
 
 import pytest
-from tests.conftest import _make_mock_imap_ssl, _make_mock_smtp
 
 from robotsix_auto_mail.cli import main
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
+from tests.conftest import _make_mock_imap_ssl, _make_mock_smtp
 
 
 def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfig:

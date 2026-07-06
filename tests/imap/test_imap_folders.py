@@ -6,7 +6,6 @@ import imaplib
 from unittest import mock
 
 import pytest
-from tests.conftest import _make_mock_imap_ssl
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import (
@@ -14,6 +13,7 @@ from robotsix_auto_mail.imap import (
     ImapError,
 )
 from robotsix_auto_mail.imap.mailbox import _is_waste_folder
+from tests.conftest import _make_mock_imap_ssl
 
 # ---------------------------------------------------------------------------
 # list_folders parsing

@@ -9,11 +9,10 @@ from __future__ import annotations
 import sqlite3
 from unittest import mock
 
-from tests.server._test_helpers import _FakeHandler
-from tests.server.conftest import _populate_db
-
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import init_db
+from tests.server._test_helpers import _FakeHandler
+from tests.server.conftest import _populate_db
 
 
 class TestHandleMove:
