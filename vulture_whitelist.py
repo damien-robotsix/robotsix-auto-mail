@@ -108,5 +108,3 @@ MailAccountsConfig._validate
 from robotsix_auto_mail.config._field_map import FIELD_YAML_MAP
 
 _ = FIELD_YAML_MAP
-
-
