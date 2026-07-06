@@ -108,15 +108,3 @@ MailAccountsConfig._validate
 from robotsix_auto_mail.config._field_map import FIELD_YAML_MAP
 
 _ = FIELD_YAML_MAP
-
-# ===========================================================================
-# Import machinery hooks — called by Python's import system (sys.meta_path /
-# sys.modules), never invoked directly by application code.
-# ===========================================================================
-
-import robotsix_auto_mail
-
-robotsix_auto_mail._ObservabilityLoader.create_module
-robotsix_auto_mail._ObservabilityLoader.exec_module
-robotsix_auto_mail._ObservabilityFinder.find_spec
-robotsix_auto_mail.__getattr__

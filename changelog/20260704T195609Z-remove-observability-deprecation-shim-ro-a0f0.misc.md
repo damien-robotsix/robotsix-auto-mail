@@ -1,0 +1,1 @@
+Remove observability deprecation shim (robotsix_auto_mail.observability → _observability)
