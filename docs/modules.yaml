@@ -98,6 +98,7 @@ modules:
       - changelog/20260705T185306Z-unsubscribedetection-method-field-missin-51c9.misc.md
       - changelog/20260705T230424Z-update-pr-template-and-contributing-guid-eea1.misc.md
       - changelog/20260706T100734Z-extract-private-helpers-from-tests-serve-10f9.misc.md
+      - changelog/20260706T100734Z-split-server-views-board-py-extract-data-6558.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
