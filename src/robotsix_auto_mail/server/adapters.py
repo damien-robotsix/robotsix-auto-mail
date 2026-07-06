@@ -180,22 +180,19 @@ def _imap_cross_folder_fallback(
     Returns ``None`` when the message cannot be found in any folder.
     """
     from robotsix_auto_mail.db import update_record_source
-    from robotsix_auto_mail.imap import ImapClient, ImapError, cross_folder_resolve
+    from robotsix_auto_mail.imap import ImapClient, cross_folder_resolve
 
-    try:
-        with ImapClient(mail_config) as client:
-            cross = cross_folder_resolve(client, record.message_id)
-            if cross is not None:
-                new_folder, new_uid = cross
-                update_record_source(
-                    conn,
-                    record.message_id,
-                    source_folder=new_folder,
-                    imap_uid=new_uid,
-                )
-                return new_folder, new_uid
-    except (ImapError, OSError):
-        pass
+    with ImapClient(mail_config) as client:
+        cross = cross_folder_resolve(client, record.message_id)
+        if cross is not None:
+            new_folder, new_uid = cross
+            update_record_source(
+                conn,
+                record.message_id,
+                source_folder=new_folder,
+                imap_uid=new_uid,
+            )
+            return new_folder, new_uid
     return None
 
 

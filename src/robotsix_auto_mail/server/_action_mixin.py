@@ -237,9 +237,16 @@ class _BoardActionMixin:
                         _imap_cross_folder_fallback,
                     )
 
-                    result = _imap_cross_folder_fallback(
-                        self.mail_config, record, conn
-                    )
+                    try:
+                        result = _imap_cross_folder_fallback(
+                            self.mail_config, record, conn
+                        )
+                    except (ImapError, OSError) as exc:
+                        self._send_response(
+                            f"IMAP cross-folder resolution failed: {exc}",
+                            status=502,
+                        )
+                        return False
                     if result is not None:
                         new_folder, new_uid = result
                         try:
@@ -373,9 +380,16 @@ class _BoardActionMixin:
                     _imap_cross_folder_fallback,
                 )
 
-                result = _imap_cross_folder_fallback(
-                    self.mail_config, record, conn
-                )
+                try:
+                    result = _imap_cross_folder_fallback(
+                        self.mail_config, record, conn
+                    )
+                except (ImapError, OSError) as exc:
+                    self._send_response(
+                        f"IMAP cross-folder resolution failed: {exc}",
+                        status=502,
+                    )
+                    return False
                 if result is not None:
                     new_folder, new_uid = result
                     try:

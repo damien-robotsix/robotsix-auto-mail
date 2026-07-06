@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Fix: propagate transient IMAP errors from `_imap_cross_folder_fallback` so callers send 502 instead of silently deleting the local record.
 - Add field_validator for method on UnsubscribeDetection model to reject unrecognised values
 - Extracted shared OAuth2 setup logic from ``ImapClient`` and ``SmtpClient``
   constructors into the ``_ProtocolClient`` base class, removing 12 lines of
