@@ -36,17 +36,8 @@ def build_plain_text_message(
     Returns:
         A ``MIMEText`` ready for ``send_message()``.
     """
-# mime.py
-def build_plain_text_message(...) -> MIMEText:
     msg = MIMEText(body, _charset="utf-8")
     msg["From"] = from_addr
-    ...
-    return msg
-
-# smtp/__init__.py — send() becomes:
-def send(self, ...) -> None:
-    msg = build_plain_text_message(...)
-    self._smtp.send_message(msg, from_addr=from_addr, to_addrs=to_addrs)
     msg["To"] = to_addr
     msg["Subject"] = subject
     msg["Date"] = formatdate(localtime=True)
