@@ -5,6 +5,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Extract ``_gather_account_board_data`` and its helpers from ``board.py``
+  into a dedicated ``board_data.py`` module, reducing ``board.py`` from 777
+  to ~615 lines.
 - Fix: propagate transient IMAP errors from `_imap_cross_folder_fallback` so callers send 502 instead of silently deleting the local record.
 - Add field_validator for method on UnsubscribeDetection model to reject unrecognised values
 - Extracted shared OAuth2 setup logic from ``ImapClient`` and ``SmtpClient``

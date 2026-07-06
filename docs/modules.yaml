@@ -98,6 +98,7 @@ modules:
       - changelog/20260705T185306Z-unsubscribedetection-method-field-missin-51c9.misc.md
       - changelog/20260705T230424Z-update-pr-template-and-contributing-guid-eea1.misc.md
       - changelog/20260706T100734Z-extract-private-helpers-from-tests-serve-10f9.misc.md
+      - changelog/20260706T100734Z-split-server-views-board-py-extract-data-6558.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -342,6 +343,7 @@ modules:
       - src/robotsix_auto_mail/server/_view_mixin.py
       - src/robotsix_auto_mail/server/views/__init__.py
       - src/robotsix_auto_mail/server/views/board.py
+      - src/robotsix_auto_mail/server/views/board_data.py
       - src/robotsix_auto_mail/server/views/detail.py
       - src/robotsix_auto_mail/server/views/forms.py
       - src/robotsix_auto_mail/server/static/board.css
