@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import html
 import json
+import sqlite3
 from collections.abc import Mapping
 from typing import Any, cast
 from urllib.parse import quote
@@ -77,7 +78,7 @@ def _render_board_columns(
     return inner.strip("\n")
 
 
-def _read_account_health(conn):
+def _read_account_health(conn: sqlite3.Connection) -> tuple[dict[str, Any] | None, bool]:
     """Read account health and triage-running watermarks.
 
     Returns a ``(health, triage_running)`` pair.
@@ -87,7 +88,7 @@ def _read_account_health(conn):
     return health, triage_running
 
 
-def _parse_batch_op(conn):
+def _parse_batch_op(conn: sqlite3.Connection) -> dict[str, Any] | None:
     """Parse the batch-op watermark; return the progress dict or ``None``.
 
     The watermark value is ``"idle"`` / ``None`` when no batch op is
@@ -113,7 +114,9 @@ def _parse_batch_op(conn):
     return {"op": None, "done": None, "total": None}
 
 
-def _load_triage_state(conn):
+def _load_triage_state(
+    conn: sqlite3.Connection,
+) -> tuple[list[MailRecord], dict[str, TriageDecision], dict[str, list[MailRecord]]]:
     """Load every record and triage decision; bucket records by action.
 
     Returns ``(all_records, triage_by_mid, column_buckets)``.
@@ -140,7 +143,11 @@ def _load_triage_state(conn):
     return all_records, triage_by_mid, column_buckets
 
 
-def _load_archive_context(conn, archive_root, column_buckets):
+def _load_archive_context(
+    conn: sqlite3.Connection,
+    archive_root: str,
+    column_buckets: dict[str, list[MailRecord]],
+) -> dict[str, Any]:
     """Read archive-structure watermark, compute per-record subfolders,
     and return archive-related context.
 
@@ -214,7 +221,7 @@ def _load_archive_context(conn, archive_root, column_buckets):
     }
 
 
-def _load_unsubscribe_suggestions(conn):
+def _load_unsubscribe_suggestions(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
     """Read the unsubscribe-suggestions watermark.
 
     Returns a ``dict[str, dict[str, Any]]`` (empty dict if none present
@@ -228,7 +235,7 @@ def _load_unsubscribe_suggestions(conn):
     return {}
 
 
-def _build_record_notes_map(all_records):
+def _build_record_notes_map(all_records: list[MailRecord]) -> dict[str, str]:
     """Build a ``{message_id: notes}`` map for records that have notes."""
     return {r.message_id: r.notes for r in all_records if r.notes}
 
