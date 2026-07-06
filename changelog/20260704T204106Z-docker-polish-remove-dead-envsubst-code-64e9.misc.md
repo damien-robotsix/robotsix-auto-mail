@@ -1,0 +1,1 @@
+Docker polish: remove dead envsubst code from ``entrypoint.sh``, add SIGTERM handler to ``ingest --watch``, align dev ``docker-compose.yml`` with deploy (drop stray board label, add ``--heartbeat-file``, document config filename difference).
