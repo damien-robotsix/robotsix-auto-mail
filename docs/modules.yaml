@@ -98,6 +98,7 @@ modules:
       - changelog/20260705T185306Z-unsubscribedetection-method-field-missin-51c9.misc.md
       - changelog/20260705T230424Z-update-pr-template-and-contributing-guid-eea1.misc.md
       - changelog/20260706T093140Z-deactivate-all-periodic-mill-workflows-k-4789.misc.md
+      - changelog/20260706T100734Z-consolidate-near-identical-single-column-749d.misc.md
       - changelog/20260706T100734Z-consolidate-update-column-queries-749d.misc.md
       - changelog/20260706T100734Z-extract-private-helpers-from-tests-serve-10f9.misc.md
       - changelog/20260706T100734Z-split-server-views-board-py-extract-data-6558.misc.md
