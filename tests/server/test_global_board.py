@@ -9,7 +9,7 @@ from robotsix_auto_mail.config import MailAccountsConfig
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from tests.conftest import _make_record
-from tests.server.conftest import (
+from tests.server.conftest_helpers import (
     _get,
     _populate_db,
     _post_to_path,

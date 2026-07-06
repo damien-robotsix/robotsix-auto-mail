@@ -41,7 +41,7 @@ def _post_with_origin(
 
     # Same opener that the rest of the server tests use: no redirect
     # following, error responses returned as normal responses.
-    from tests.server.conftest import CaptureError, NoRedirect
+    from tests.server.conftest_helpers import CaptureError, NoRedirect
 
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -73,7 +73,7 @@ def _account_config(db_path: str) -> MailConfig:
 
 def _start_csrf_server(db_path: str) -> tuple[object, int]:
     """Start a test server wired to *db_path*; return ``(server, port)``."""
-    from tests.server.conftest import _start_test_server
+    from tests.server.conftest_helpers import _start_test_server
 
     return _start_test_server(db_path)
 

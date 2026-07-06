@@ -18,7 +18,7 @@ import pytest
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.server._draft_generator import DraftResult
 from tests.server._test_helpers import _DraftMixinFakeHandler
-from tests.server.conftest import _populate_db, _seed_draft_record
+from tests.server.conftest_helpers import _populate_db, _seed_draft_record
 
 # ===================================================================
 # _handle_send_draft

@@ -97,6 +97,7 @@ modules:
       - changelog/20260705T185306Z-add-method-field-validator-to-unsubscribe-detection.bugfix.md
       - changelog/20260705T185306Z-unsubscribedetection-method-field-missin-51c9.misc.md
       - changelog/20260705T230424Z-update-pr-template-and-contributing-guid-eea1.misc.md
+      - changelog/20260706T100734Z-extract-private-helpers-from-tests-serve-10f9.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -348,6 +349,7 @@ modules:
       - src/robotsix_auto_mail/server/board_adapter.py
       - tests/server/__init__.py
       - tests/server/conftest.py
+      - tests/server/conftest_helpers.py
       - tests/server/test_csrf.py
       - tests/server/test_action_mixin.py
       - tests/server/_test_helpers.py

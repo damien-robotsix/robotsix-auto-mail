@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     pass
 
 from robotsix_auto_mail.db import init_db
-from tests.server.conftest import (
+from tests.server.conftest_helpers import (
     _populate_db,
     _post_form,
     _start_test_server,

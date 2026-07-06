@@ -13,7 +13,7 @@ from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 from robotsix_auto_mail.imap import ImapError
 from tests.server._test_helpers import _FakeHandler
-from tests.server.conftest import _populate_db
+from tests.server.conftest_helpers import _populate_db
 
 
 class TestHandleDelete:
