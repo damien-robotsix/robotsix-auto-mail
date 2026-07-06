@@ -192,7 +192,7 @@ def _update_column(
     ``message_id`` exists.
     """
     cur = conn.execute(
-        f"UPDATE mail_records SET {column} = ? WHERE message_id = ?",  # noqa: S608
+        f"UPDATE mail_records SET {column} = ? WHERE message_id = ?",  # noqa: S608  # nosec B608
         (value, message_id),
     )
     conn.commit()
