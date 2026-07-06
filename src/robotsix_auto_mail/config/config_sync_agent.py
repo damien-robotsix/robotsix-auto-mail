@@ -139,16 +139,25 @@ def _proposal_fingerprint(proposal: DriftProposal) -> str:
 def _load_ledger(conn: sqlite3.Connection) -> dict[str, LedgerEntry]:
     """Load the dedup ledger from the watermark table.
 
-    Returns an empty dict when the ledger has never been written.
+    Returns an empty dict when the ledger has never been written or
+    when the persisted JSON is corrupt.
     """
     raw = get_watermark(conn, _LEDGER_WATERMARK_KEY)
     if raw is None:
         return {}
-    data: dict[str, object] = json.loads(raw)
-    return {
-        fingerprint: LedgerEntry.model_validate(entry)
-        for fingerprint, entry in data.items()
-    }
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    ledger: dict[str, LedgerEntry] = {}
+    for fingerprint, entry in data.items():
+        try:
+            ledger[fingerprint] = LedgerEntry.model_validate(entry)
+        except pydantic.ValidationError:
+            continue
+    return ledger
 
 
 def _save_ledger(conn: sqlite3.Connection, ledger: dict[str, LedgerEntry]) -> None:

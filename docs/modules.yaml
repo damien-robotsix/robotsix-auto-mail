@@ -86,6 +86,8 @@ modules:
       - changelog/20260704T202325Z-remove-dependabot-for-ecosystems-already-f7af.misc.md
       - changelog/20260705T091322Z-extract-shared-plain-socket-helper-from-5d24.misc.md
       - changelog/20260705T091322Z-factor-out-shared-oauth2-constructor-boi-de1a.misc.md
+      - changelog/20260705T185305Z-config-sync-load-ledger-graceful-json-error-handling-9848.misc.md
+      - changelog/20260705T185305Z-config-sync-load-ledger-missing-json-dec-9848.misc.md
       - changelog/20260705T185306Z-add-method-field-validator-to-unsubscribe-detection.bugfix.md
       - changelog/20260705T185306Z-unsubscribedetection-method-field-missin-51c9.misc.md
       - changelog/20260705T230424Z-update-pr-template-and-contributing-guid-eea1.misc.md
