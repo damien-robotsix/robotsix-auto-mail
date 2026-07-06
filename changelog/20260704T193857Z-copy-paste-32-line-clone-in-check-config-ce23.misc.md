@@ -1,0 +1,1 @@
+copy-paste: 32-line clone in check_config_sync.py — extract shared YAML-doc validation helper
