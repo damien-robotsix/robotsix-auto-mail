@@ -78,7 +78,9 @@ def _render_board_columns(
     return inner.strip("\n")
 
 
-def _read_account_health(conn: sqlite3.Connection) -> tuple[dict[str, Any] | None, bool]:
+def _read_account_health(
+    conn: sqlite3.Connection,
+) -> tuple[dict[str, Any] | None, bool]:
     """Read account health and triage-running watermarks.
 
     Returns a ``(health, triage_running)`` pair.
@@ -221,7 +223,9 @@ def _load_archive_context(
     }
 
 
-def _load_unsubscribe_suggestions(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
+def _load_unsubscribe_suggestions(
+    conn: sqlite3.Connection,
+) -> dict[str, dict[str, Any]]:
     """Read the unsubscribe-suggestions watermark.
 
     Returns a ``dict[str, dict[str, Any]]`` (empty dict if none present
