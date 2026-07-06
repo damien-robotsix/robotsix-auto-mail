@@ -19,7 +19,9 @@ from robotsix_auto_mail.config import (
 )
 
 
-def register_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def register_subparser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     parser = subparsers.add_parser(
         "detect",
         help="Auto-detect email provider settings via LLM and write config",

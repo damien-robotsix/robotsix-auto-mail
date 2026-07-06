@@ -10,7 +10,9 @@ from robotsix_auto_mail.cli.commands import _load_config_or_exit, _print_header
 from robotsix_auto_mail.db import init_db
 
 
-def register_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def register_subparser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     from robotsix_auto_mail.cli import _add_account_arg
 
     config_sync_parser = subparsers.add_parser(
