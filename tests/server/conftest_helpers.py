@@ -11,7 +11,6 @@ import os
 import tempfile
 import urllib.parse
 import urllib.request
-from collections.abc import Generator
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
