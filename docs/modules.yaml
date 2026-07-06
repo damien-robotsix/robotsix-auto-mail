@@ -342,6 +342,7 @@ modules:
       - src/robotsix_auto_mail/server/_view_mixin.py
       - src/robotsix_auto_mail/server/views/__init__.py
       - src/robotsix_auto_mail/server/views/board.py
+      - src/robotsix_auto_mail/server/views/board_data.py
       - src/robotsix_auto_mail/server/views/detail.py
       - src/robotsix_auto_mail/server/views/forms.py
       - src/robotsix_auto_mail/server/static/board.css
