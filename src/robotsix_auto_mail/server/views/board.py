@@ -176,9 +176,7 @@ def _load_archive_context(
                 # New format: {"delimiter": ..., "folders": [...]}.
                 existing_folders = set(data["folders"])
                 delimiter = data.get("delimiter", "/")
-                effective_root = (
-                    data["folders"][0] if data["folders"] else archive_root
-                )
+                effective_root = data["folders"][0] if data["folders"] else archive_root
         except json.JSONDecodeError, TypeError, KeyError:
             # Malformed archive_structure watermark — keep the empty
             # folder set / "/" delimiter / archive_root defaults set above.
@@ -202,9 +200,7 @@ def _load_archive_context(
     # ``list.sort`` is stable, so the prior within-folder order is kept.
     to_archive_bucket = column_buckets.get(TO_ARCHIVE)
     if to_archive_bucket:
-        to_archive_bucket.sort(
-            key=lambda r: archive_subfolders.get(r.message_id, "")
-        )
+        to_archive_bucket.sort(key=lambda r: archive_subfolders.get(r.message_id, ""))
 
     # Existing archive subfolders (relative to the root) for the per-card
     # override dropdown — strip the ``<effective_root><delimiter>`` prefix
