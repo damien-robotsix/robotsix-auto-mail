@@ -231,7 +231,7 @@ def _load_unsubscribe_suggestions(
     if suggestions_raw is None:
         return {}
     with contextlib.suppress(json.JSONDecodeError, TypeError):
-        return json.loads(suggestions_raw)
+        return cast("dict[str, dict[str, Any]]", json.loads(suggestions_raw))
     return {}
 
 
