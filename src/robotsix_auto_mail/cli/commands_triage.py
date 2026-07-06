@@ -16,7 +16,7 @@ from robotsix_auto_mail.config import MailAccountsConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
 
-def register_subparser(subparsers: argparse._SubParsersAction) -> None:
+def register_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     from robotsix_auto_mail.cli import _add_account_arg
 
     triage_parser = subparsers.add_parser(

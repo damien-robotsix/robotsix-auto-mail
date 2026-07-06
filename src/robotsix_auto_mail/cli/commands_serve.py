@@ -13,7 +13,7 @@ from robotsix_auto_mail.cli.commands_triage import _clear_stale_triage_state
 from robotsix_auto_mail.config import MailAccountsConfig
 
 
-def register_subparser(subparsers: argparse._SubParsersAction) -> None:
+def register_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     from robotsix_auto_mail.cli import _add_account_arg
 
     parser = subparsers.add_parser("serve", help="Start the web board server")

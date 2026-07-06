@@ -18,7 +18,7 @@ from robotsix_auto_mail.health import probe_account, utcnow
 from robotsix_auto_mail.pipeline import IngestResult, reconcile_records
 
 
-def register_subparser(subparsers: argparse._SubParsersAction) -> None:
+def register_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = subparsers.add_parser("ingest", help="Fetch new mail and store it locally")
     ingest_account_group = parser.add_mutually_exclusive_group()
     ingest_account_group.add_argument(

@@ -12,7 +12,7 @@ from robotsix_auto_mail.imap import ImapClient, ImapError
 from robotsix_auto_mail.smtp import SmtpClient, SmtpError
 
 
-def register_subparser(subparsers: argparse._SubParsersAction) -> None:
+def register_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     from robotsix_auto_mail.cli import _add_account_arg
 
     parser = subparsers.add_parser(

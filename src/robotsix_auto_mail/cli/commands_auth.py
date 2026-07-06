@@ -9,7 +9,7 @@ from robotsix_auto_mail.cli.commands import _load_accounts_or_exit
 from robotsix_auto_mail.config import ConfigurationError
 
 
-def register_subparser(subparsers: argparse._SubParsersAction) -> None:
+def register_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     auth_parser = subparsers.add_parser(
         "auth", help="Authenticate accounts (OAuth2 device-code login)"
     )
