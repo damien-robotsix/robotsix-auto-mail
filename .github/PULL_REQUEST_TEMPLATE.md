@@ -12,9 +12,11 @@ document the migration path.
 
 ## Checklist
 
-- [ ] **Changelog entry**: I have added or updated a changelog entry
-      in `CHANGELOG.md` under the `## 0.0.0 (unreleased)` heading,
-      or this PR is labelled `Skip-Changelog`.
+- [ ] **Changelog fragment**: I have added a changelog fragment file
+      in `changelog/` with the naming convention
+      `YYYYMMDDTHHMMSSZ-description-XXXX.<type>.md` (types: `feature`,
+      `bugfix`, `removal`, `misc`), or this PR is labelled
+      `Skip-Changelog`.
 - [ ] **Tests added or updated**: New and existing test suites pass
       locally. For bug fixes, I added a test that reproduces the
       issue and fails before this change.
