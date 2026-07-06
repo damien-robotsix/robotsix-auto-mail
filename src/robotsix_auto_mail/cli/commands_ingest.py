@@ -148,7 +148,7 @@ def _cmd_ingest(
     )
     sys.stdout.flush()
 
-    def _handle_sigterm(sig: int, frame: object) -> None:
+    def _handle_sigterm(_sig: int, _frame: object) -> None:
         raise SystemExit(0)
 
     signal.signal(signal.SIGTERM, _handle_sigterm)
