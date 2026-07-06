@@ -24,6 +24,7 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     _add_account_arg(parser)
 
+
 _SEPARATOR = "-" * 60 + "\n"
 
 

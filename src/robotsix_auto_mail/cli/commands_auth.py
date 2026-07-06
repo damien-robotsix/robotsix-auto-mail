@@ -13,9 +13,7 @@ def register_subparser(subparsers: argparse._SubParsersAction) -> None:
     auth_parser = subparsers.add_parser(
         "auth", help="Authenticate accounts (OAuth2 device-code login)"
     )
-    auth_sub = auth_parser.add_subparsers(
-        dest="auth_command", title="auth subcommands"
-    )
+    auth_sub = auth_parser.add_subparsers(dest="auth_command", title="auth subcommands")
     login_parser = auth_sub.add_parser(
         "login", help="Run the OAuth2 device-code login for an account"
     )
