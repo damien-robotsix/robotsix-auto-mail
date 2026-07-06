@@ -251,6 +251,7 @@ class _BoardActionMixin:
                         new_folder, new_uid = result
                         try:
                             with ImapClient(self.mail_config) as client2:
+                                client2.select_folder(new_folder)
                                 client2.delete_message(new_uid)
                         except (ImapError, OSError) as exc:
                             self._send_response(
@@ -394,6 +395,7 @@ class _BoardActionMixin:
                     new_folder, new_uid = result
                     try:
                         with ImapClient(self.mail_config) as client2:
+                            client2.select_folder(new_folder)
                             # Compute the archive destination.
                             delimiter = next(
                                 (

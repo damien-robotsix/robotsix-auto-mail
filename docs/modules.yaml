@@ -83,7 +83,6 @@ modules:
       - changelog/20260704T150328Z-extend-mypy-strict-checking-to-cover-tes-7bf1.misc.md
       - changelog/20260704T150328Z-extract-mime-message-composition-from-sm-19a6.feature.md
       - changelog/20260704T192757Z-docs-reference-obsolete-mail-config-path-ac4c.misc.md
-<<<<<<< HEAD
       - changelog/20260704T192757Z-robotsix-autoupdate-cli-entry-point-remo-6151.misc.md
       - changelog/20260704T193857Z-copy-paste-32-line-clone-in-check-config-ce23.misc.md
       - changelog/20260704T195609Z-remove-observability-deprecation-shim-ro-a0f0.misc.md
