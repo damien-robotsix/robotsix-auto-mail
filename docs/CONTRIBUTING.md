@@ -83,6 +83,21 @@ A few conventions worth knowing up front:
   [docs/modules.yaml](modules.yaml) under exactly one module's `paths`
   list, or the module-classification drift check will fail CI.
 
+## Changelog fragments
+
+Every pull request that changes user-facing behaviour must include a
+changelog fragment — a single-line Markdown file in `changelog/`
+named `<timestamp>-<short-description>-<4hex>.<type>.md`.  The
+available types are:
+
+- `feature` — new capabilities
+- `bugfix` — behaviour corrections
+- `removal` — breaking changes or deprecations
+- `misc` — CI, docs, refactoring, or other internal changes
+
+The fragment body is a free-form sentence describing the change.
+CI enforces the presence of a fragment via `towncrier check`.
+
 ## Pull request process
 
 1. Create a branch for your change.
