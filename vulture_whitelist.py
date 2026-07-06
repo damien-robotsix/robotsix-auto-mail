@@ -36,19 +36,9 @@ from robotsix_auto_mail.triage.persistence import TriageDecision
 TriageDecision._validate_action
 TriageDecision._validate_source
 
-from robotsix_auto_mail.triage.persistence import SenderMemory
-
-SenderMemory._validate_action
-SenderMemory.last_action
-SenderMemory.updated_at
-
 from robotsix_auto_mail.triage.persistence import UnsubscribeDetection
 
 UnsubscribeDetection._validate_method
-
-from robotsix_auto_mail.triage.persistence import ArchiveFolderMemory
-
-ArchiveFolderMemory.updated_at
 
 # ===========================================================================
 # Framework overrides — called by the parent class / stdlib framework.
@@ -116,7 +106,7 @@ _ = FIELD_YAML_MAP
 
 import robotsix_auto_mail
 
-robotsix_auto_mail._ObservabilityLoader.create_module
-robotsix_auto_mail._ObservabilityLoader.exec_module
-robotsix_auto_mail._ObservabilityFinder.find_spec
-robotsix_auto_mail.__getattr__
+_ = robotsix_auto_mail._ObservabilityLoader.create_module
+_ = robotsix_auto_mail._ObservabilityLoader.exec_module
+_ = robotsix_auto_mail._ObservabilityFinder.find_spec
+_ = robotsix_auto_mail.__getattr__

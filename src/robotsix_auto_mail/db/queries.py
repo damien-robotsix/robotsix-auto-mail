@@ -364,11 +364,6 @@ def delete_watermark(conn: sqlite3.Connection, key: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Calendar helpers
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
 # Account health (watermark key ``"account_health"``)
 # ---------------------------------------------------------------------------
 
@@ -401,39 +396,3 @@ def write_account_health(
 
     payload = _json.dumps({"status": status, "error": error, "checked_at": checked_at})
     set_watermark(conn, "account_health", payload)
-
-
-def update_calendar_event_ref(
-    conn: sqlite3.Connection,
-    message_id: str,
-    event_ref: str,
-) -> bool:
-    """Update ``mail_records.calendar_event_ref`` for *message_id*.
-
-    Returns ``True`` if a row was updated, ``False`` if no matching
-    ``message_id`` exists.
-    """
-    cur = conn.execute(
-        "UPDATE mail_records SET calendar_event_ref = ? WHERE message_id = ?",
-        (event_ref, message_id),
-    )
-    conn.commit()
-    return cur.rowcount > 0
-
-
-def update_calendar_correlation_id(
-    conn: sqlite3.Connection,
-    message_id: str,
-    correlation_id: str,
-) -> bool:
-    """Update ``mail_records.calendar_correlation_id`` for *message_id*.
-
-    Returns ``True`` if a row was updated, ``False`` if no matching
-    ``message_id`` exists.
-    """
-    cur = conn.execute(
-        "UPDATE mail_records SET calendar_correlation_id = ? WHERE message_id = ?",
-        (correlation_id, message_id),
-    )
-    conn.commit()
-    return cur.rowcount > 0
