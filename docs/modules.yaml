@@ -96,7 +96,7 @@ modules:
       - changelog/20260705T185305Z-config-sync-load-ledger-missing-json-dec-9848.misc.md
       - changelog/20260705T185306Z-add-method-field-validator-to-unsubscribe-detection.bugfix.md
       - changelog/20260705T185306Z-unsubscribedetection-method-field-missin-51c9.misc.md
-      - changelog/20260705T230424Z-update-pr-template-and-contributing-guid-eea1.misc.md (mill: Docker polish: remove dead envsubst code, add SIGTERM handler, align dev/deploy compose (20260704T204106Z-docker-polish-remove-dead-envsubst-code-64e9) [WIP])
+      - changelog/20260705T230424Z-update-pr-template-and-contributing-guid-eea1.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
