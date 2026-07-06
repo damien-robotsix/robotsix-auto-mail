@@ -16,7 +16,7 @@ from robotsix_board import RenderMode
 
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from tests.conftest import _make_record
-from tests.server.conftest import (
+from tests.server.conftest_helpers import (
     _make_extra_html_adapter,
     _start_test_server,
 )

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     pass
 
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig
-from tests.server.conftest import (
+from tests.server.conftest_helpers import (
     _account_config,
     _get,
     _populate_db,

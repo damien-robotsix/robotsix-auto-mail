@@ -200,7 +200,7 @@ class TestHandleBatchDelete:
     def test_precheck_populated_column_spawns_worker(self, tmp_db_path: str) -> None:
         """When at least one record has a ``TO_DELETE`` triage decision
         the precheck passes and the background worker is spawned."""
-        from tests.server.conftest import _populate_db, _seed_triage_decision
+        from tests.server.conftest_helpers import _populate_db, _seed_triage_decision
 
         _populate_db(
             tmp_db_path,
