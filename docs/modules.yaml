@@ -97,6 +97,7 @@ modules:
       - changelog/20260705T185306Z-add-method-field-validator-to-unsubscribe-detection.bugfix.md
       - changelog/20260705T185306Z-unsubscribedetection-method-field-missin-51c9.misc.md
       - changelog/20260705T230424Z-update-pr-template-and-contributing-guid-eea1.misc.md
+      - changelog/20260706T093140Z-deactivate-all-periodic-mill-workflows-k-4789.misc.md
       - changelog/20260706T100734Z-extract-private-helpers-from-tests-serve-10f9.misc.md
       - changelog/20260706T100734Z-split-server-views-board-py-extract-data-6558.misc.md
       - tests/__init__.py
@@ -453,24 +454,6 @@ modules:
 
   - id: mill
     description: >-
-      Robotsix-mill board orchestration configuration: board settings
-      and the periodic scheduled-agent task definitions that drive the
-      autonomous workflow.
+      Robotsix-mill board orchestration configuration.
     paths:
       - .robotsix-mill/config.yaml
-      - .robotsix-mill/periodic/agent_check.yaml
-      - .robotsix-mill/periodic/audit.yaml
-      - .robotsix-mill/periodic/bc_check.yaml
-      - .robotsix-mill/periodic/config_sync.yaml
-      - .robotsix-mill/periodic/data_dir_gc.yaml
-      - .robotsix-mill/periodic/env_doc_sync.yaml
-      - .robotsix-mill/periodic/completeness_check.yaml
-      - .robotsix-mill/periodic/copy_paste.yaml
-      - .robotsix-mill/periodic/health.yaml
-      - .robotsix-mill/periodic/module_curator.yaml
-      - .robotsix-mill/periodic/survey.yaml
-      - .robotsix-mill/periodic/test_gap.yaml
-      - .robotsix-mill/periodic/trace_review.yaml
-      - .robotsix-mill/periodic/security_posture.yaml
-      - .robotsix-mill/periodic/changelog_autofill.yaml
-      - .robotsix-mill/periodic/triage_boilerplate.yaml
