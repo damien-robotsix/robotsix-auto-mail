@@ -108,14 +108,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     sub = parser.add_subparsers(dest="command", title="subcommands")
-    from .commands_probe import register_subparser as _r1; _r1(sub)
-    from .commands_ingest import register_subparser as _r2; _r2(sub)
-    from .commands_board import register_subparser as _r3; _r3(sub)
-    from .commands_serve import register_subparser as _r4; _r4(sub)
-    from .commands_detect import register_subparser as _r5; _r5(sub)
-    from .commands_config_sync import register_subparser as _r6; _r6(sub)
-    from .commands_triage import register_subparser as _r7; _r7(sub)
-    from .commands_auth import register_subparser as _r8; _r8(sub)
+    from .commands_probe import register_subparser as _r1
+    _r1(sub)
+    from .commands_ingest import register_subparser as _r2
+    _r2(sub)
+    from .commands_board import register_subparser as _r3
+    _r3(sub)
+    from .commands_serve import register_subparser as _r4
+    _r4(sub)
+    from .commands_detect import register_subparser as _r5
+    _r5(sub)
+    from .commands_config_sync import register_subparser as _r6
+    _r6(sub)
+    from .commands_triage import register_subparser as _r7
+    _r7(sub)
+    from .commands_auth import register_subparser as _r8
+    _r8(sub)
     return parser
 
 
