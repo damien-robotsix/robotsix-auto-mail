@@ -5,11 +5,13 @@
 
 ## 0.0.0 (unreleased)
 
+- Fix: propagate transient IMAP errors from `_imap_cross_folder_fallback` so callers send 502 instead of silently deleting the local record.
 - Add field_validator for method on UnsubscribeDetection model to reject unrecognised values
 - Extracted shared OAuth2 setup logic from ``ImapClient`` and ``SmtpClient``
   constructors into the ``_ProtocolClient`` base class, removing 12 lines of
   duplicate boilerplate.
 - Extract MIME message construction from `SmtpClient.send()` into a pure `build_plain_text_message()` function in `src/robotsix_auto_mail/mime.py`, making MIME building testable without an SMTP client and reusable by other callers.
+- Extract ``_imap_cross_folder_fallback`` and ``_ensure_folder_hierarchy`` shared helpers in ``server/adapters.py``, refactoring the cross-folder IMAP resolution fallback duplicated across ``_handle_delete``, ``_archive_and_delete``, ``_run_batch_delete_background``, and ``_run_batch_archive_background``.
 - Extract `_validate_yaml_keys_against_mailconfig` shared helper from duplicated logic in `check_docs_configuration` and `check_docs_connecting` (eliminates 32-line clone detected by jscpd).
 - Fix: register missing changelog fragment in `docs/modules.yaml` and fix trailing newline
 - Refactor ``_gather_account_board_data`` into six focused helpers: ``_read_account_health``, ``_parse_batch_op``, ``_load_triage_state``, ``_load_archive_context``, ``_load_unsubscribe_suggestions``, and ``_build_record_notes_map``. The main function is now a simple assembly of these calls.

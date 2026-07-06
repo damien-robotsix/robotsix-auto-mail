@@ -1,0 +1,1 @@
+Extract ``_imap_cross_folder_fallback`` and ``_ensure_folder_hierarchy`` shared helpers in ``server/adapters.py``, refactoring the cross-folder IMAP resolution fallback duplicated across ``_handle_delete``, ``_archive_and_delete``, ``_run_batch_delete_background``, and ``_run_batch_archive_background``.

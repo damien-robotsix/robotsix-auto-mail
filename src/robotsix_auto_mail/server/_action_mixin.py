@@ -233,27 +233,32 @@ class _BoardActionMixin:
                         )
                         client.delete_message(resolved_uid)
                 except ImapMessageNotFoundError:
-                    from robotsix_auto_mail.db import update_record_source
-                    from robotsix_auto_mail.imap import cross_folder_resolve
+                    from robotsix_auto_mail.server.adapters import (
+                        _imap_cross_folder_fallback,
+                    )
 
                     try:
-                        with ImapClient(self.mail_config) as client2:
-                            cross = cross_folder_resolve(client2, record.message_id)
-                            if cross is not None:
-                                new_folder, new_uid = cross
-                                update_record_source(
-                                    conn,
-                                    record.message_id,
-                                    source_folder=new_folder,
-                                    imap_uid=new_uid,
-                                )
-                                client2.delete_message(new_uid)
+                        result = _imap_cross_folder_fallback(
+                            self.mail_config, record, conn
+                        )
                     except (ImapError, OSError) as exc:
                         self._send_response(
                             f"IMAP cross-folder resolution failed: {exc}",
                             status=502,
                         )
                         return False
+                    if result is not None:
+                        new_folder, new_uid = result
+                        try:
+                            with ImapClient(self.mail_config) as client2:
+                                client2.select_folder(new_folder)
+                                client2.delete_message(new_uid)
+                        except (ImapError, OSError) as exc:
+                            self._send_response(
+                                f"IMAP cross-folder resolution failed: {exc}",
+                                status=502,
+                            )
+                            return False
                 except (ImapError, OSError) as exc:
                     self._send_response(
                         f"IMAP deletion failed: {exc}",
@@ -312,9 +317,9 @@ class _BoardActionMixin:
                 raise ValueError("Archive destination escapes archive root")
 
             # -- ensure destination folder hierarchy exists ----
-            parts = dest_folder.split(delimiter)
-            for i in range(1, len(parts) + 1):
-                client.create_folder(delimiter.join(parts[:i]))
+            from robotsix_auto_mail.server.adapters import _ensure_folder_hierarchy
+
+            _ensure_folder_hierarchy(client, dest_folder, delimiter)
 
             client.move_message(resolved_uid, dest_folder)
 
@@ -369,24 +374,26 @@ class _BoardActionMixin:
                 self._bad_request(str(exc))
                 return False
             except ImapMessageNotFoundError:
-                from robotsix_auto_mail.db import update_record_source
-                from robotsix_auto_mail.imap import (
-                    ImapClient,
-                    cross_folder_resolve,
+                from robotsix_auto_mail.imap import ImapClient, ImapError
+                from robotsix_auto_mail.server.adapters import (
+                    _archive_dest_folder,
+                    _ensure_folder_hierarchy,
+                    _imap_cross_folder_fallback,
                 )
-                from robotsix_auto_mail.server.adapters import _archive_dest_folder
 
                 try:
-                    with ImapClient(self.mail_config) as client2:
-                        cross = cross_folder_resolve(client2, record.message_id)
-                        if cross is not None:
-                            new_folder, new_uid = cross
-                            update_record_source(
-                                conn,
-                                record.message_id,
-                                source_folder=new_folder,
-                                imap_uid=new_uid,
-                            )
+                    result = _imap_cross_folder_fallback(self.mail_config, record, conn)
+                except (ImapError, OSError) as exc:
+                    self._send_response(
+                        f"IMAP cross-folder resolution failed: {exc}",
+                        status=502,
+                    )
+                    return False
+                if result is not None:
+                    new_folder, new_uid = result
+                    try:
+                        with ImapClient(self.mail_config) as client2:
+                            client2.select_folder(new_folder)
                             # Compute the archive destination.
                             delimiter = next(
                                 (
@@ -403,24 +410,21 @@ class _BoardActionMixin:
                                 raise ValueError(
                                     "Archive destination escapes archive root"
                                 )
-                            # Ensure destination hierarchy exists.
-                            parts = dest_folder.split(delimiter)
-                            for i in range(1, len(parts) + 1):
-                                client2.create_folder(delimiter.join(parts[:i]))
+                            _ensure_folder_hierarchy(client2, dest_folder, delimiter)
                             client2.move_message(new_uid, dest_folder)
-                        # Mail gone or healed — delete the local record
-                        # in both cases.
-                        delete_record_by_message_id(conn, record.message_id)
-                        return True
-                except ValueError as exc:
-                    self._bad_request(str(exc))
-                    return False
-                except (ImapError, OSError) as exc:
-                    self._send_response(
-                        f"IMAP cross-folder resolution failed: {exc}",
-                        status=502,
-                    )
-                    return False
+                    except ValueError as exc:
+                        self._bad_request(str(exc))
+                        return False
+                    except (ImapError, OSError) as exc:
+                        self._send_response(
+                            f"IMAP cross-folder resolution failed: {exc}",
+                            status=502,
+                        )
+                        return False
+                # Mail gone or healed — delete the local record
+                # in both cases.
+                delete_record_by_message_id(conn, record.message_id)
+                return True
             except (ImapError, OSError) as exc:
                 self._send_response(
                     f"IMAP archive failed: {exc}",

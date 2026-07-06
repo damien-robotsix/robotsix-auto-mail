@@ -153,6 +153,47 @@ def _archive_dest_folder(
     return dest
 
 
+def _ensure_folder_hierarchy(client: Any, dest_folder: str, delimiter: str) -> None:
+    """Ensure the IMAP folder hierarchy for *dest_folder* exists.
+
+    Creates each ancestor folder from the top down (e.g. ``Archive``,
+    ``Archive/2024``, ``Archive/2024/02``) so the final destination is
+    guaranteed to exist before a move or copy.
+    """
+    parts = dest_folder.split(delimiter)
+    for i in range(1, len(parts) + 1):
+        client.create_folder(delimiter.join(parts[:i]))
+
+
+def _imap_cross_folder_fallback(
+    mail_config: MailConfig,
+    record: MailRecord,
+    conn: Any,
+) -> tuple[str, int] | None:
+    """Resolve a stale-UID message across IMAP folders.
+
+    Opens a new :class:`~robotsix_auto_mail.imap.ImapClient`, calls
+    :func:`~robotsix_auto_mail.imap.cross_folder_resolve`, updates the
+    local DB source, and returns ``(new_folder, new_uid)`` on success.
+    Returns ``None`` when the message cannot be found in any folder.
+    """
+    from robotsix_auto_mail.db import update_record_source
+    from robotsix_auto_mail.imap import ImapClient, cross_folder_resolve
+
+    with ImapClient(mail_config) as client:
+        cross = cross_folder_resolve(client, record.message_id)
+        if cross is not None:
+            new_folder, new_uid = cross
+            update_record_source(
+                conn,
+                record.message_id,
+                source_folder=new_folder,
+                imap_uid=new_uid,
+            )
+            return new_folder, new_uid
+    return None
+
+
 def _collect_records_for_action(conn: Any, action: str) -> list[MailRecord]:
     """Return the ``MailRecord``s whose current triage decision is *action*."""
     from robotsix_auto_mail.db import get_record_by_message_id
@@ -204,13 +245,11 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
     from robotsix_auto_mail.db import (
         delete_record_by_message_id,
         set_watermark,
-        update_record_source,
     )
     from robotsix_auto_mail.imap import (
         _BATCH_UID_CHUNK,
         ImapClient,
         ImapMessageNotFoundError,
-        cross_folder_resolve,
         resolve_uid_with_fallback,
     )
 
@@ -253,22 +292,14 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
                                         r.message_id,
                                     )
                                 except ImapMessageNotFoundError:
-                                    cross = cross_folder_resolve(client, r.message_id)
-                                    if cross is not None:
-                                        new_folder, new_uid = cross
-                                        update_record_source(
-                                            conn,
-                                            r.message_id,
-                                            source_folder=new_folder,
-                                            imap_uid=new_uid,
-                                        )
-                                        # Immediately delete individually —
-                                        # client is still selected on new_folder
-                                        # and the UID won't exist in folder.
+                                    result = _imap_cross_folder_fallback(
+                                        mail_config, r, conn
+                                    )
+                                    if result is not None:
+                                        new_folder, new_uid = result
+                                        client.select_folder(new_folder)
                                         client.delete_message(new_uid)
-                                        resolved.append((r, 0))
-                                    else:
-                                        resolved.append((r, 0))
+                                    resolved.append((r, 0))
                                 else:
                                     resolved.append((r, new_uid))
 
@@ -328,12 +359,10 @@ def _run_batch_archive_background(
     from robotsix_auto_mail.db import (
         delete_record_by_message_id,
         set_watermark,
-        update_record_source,
     )
     from robotsix_auto_mail.imap import (
         ImapClient,
         ImapMessageNotFoundError,
-        cross_folder_resolve,
         resolve_uid_with_fallback,
     )
     from robotsix_auto_mail.triage import get_archive_subfolder, rules_text_for
@@ -410,21 +439,13 @@ def _run_batch_archive_background(
                                     r.message_id,
                                 )
                             except ImapMessageNotFoundError:
-                                cross = cross_folder_resolve(client, r.message_id)
-                                if cross is not None:
-                                    new_folder, new_uid = cross
-                                    update_record_source(
-                                        conn,
-                                        r.message_id,
-                                        source_folder=new_folder,
-                                        imap_uid=new_uid,
-                                    )
-                                    # Immediately move individually — client is
-                                    # still selected on new_folder and the UID
-                                    # won't exist in source_folder.
-                                    parts = dest.split(delimiter)
-                                    for i in range(1, len(parts) + 1):
-                                        client.create_folder(delimiter.join(parts[:i]))
+                                result = _imap_cross_folder_fallback(
+                                    mail_config, r, conn
+                                )
+                                if result is not None:
+                                    new_folder, new_uid = result
+                                    _ensure_folder_hierarchy(client, dest, delimiter)
+                                    client.select_folder(new_folder)
                                     client.move_message(new_uid, dest)
                                 # else: UID truly gone — skip IMAP,
                                 # still delete DB row.
@@ -436,9 +457,7 @@ def _run_batch_archive_background(
                             # may have left us on a different folder).
                             client.select_folder(source_folder)
                             # Ensure the destination hierarchy exists.
-                            parts = dest.split(delimiter)
-                            for i in range(1, len(parts) + 1):
-                                client.create_folder(delimiter.join(parts[:i]))
+                            _ensure_folder_hierarchy(client, dest, delimiter)
                             client.move_messages(resolved_uids, dest)
 
                         for record in group:
