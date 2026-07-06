@@ -183,50 +183,39 @@ def update_record_source(
     return cur.rowcount > 0
 
 
-def update_notes(conn: sqlite3.Connection, message_id: str, notes: str) -> bool:
-    """Update ``mail_records.notes`` for *message_id*.
+def _update_column(
+    conn: sqlite3.Connection, message_id: str, column: str, value: str
+) -> bool:
+    """Update ``mail_records.<column>`` for *message_id*.
 
     Returns ``True`` if a row was updated, ``False`` if no matching
     ``message_id`` exists.
     """
     cur = conn.execute(
-        "UPDATE mail_records SET notes = ? WHERE message_id = ?",
-        (notes, message_id),
+        f"UPDATE mail_records SET {column} = ? WHERE message_id = ?",
+        (value, message_id),
     )
     conn.commit()
     return cur.rowcount > 0
+
+
+def update_notes(conn: sqlite3.Connection, message_id: str, notes: str) -> bool:
+    """Update ``mail_records.notes`` for *message_id*."""
+    return _update_column(conn, message_id, "notes", notes)
 
 
 def update_draft_text(
     conn: sqlite3.Connection, message_id: str, draft_text: str
 ) -> bool:
-    """Update ``mail_records.draft_text`` for *message_id*.
-
-    Returns ``True`` if a row was updated, ``False`` if no matching
-    ``message_id`` exists.
-    """
-    cur = conn.execute(
-        "UPDATE mail_records SET draft_text = ? WHERE message_id = ?",
-        (draft_text, message_id),
-    )
-    conn.commit()
-    return cur.rowcount > 0
+    """Update ``mail_records.draft_text`` for *message_id*."""
+    return _update_column(conn, message_id, "draft_text", draft_text)
 
 
 def update_sent_reply_text(
     conn: sqlite3.Connection, message_id: str, text: str
 ) -> bool:
-    """Update ``mail_records.sent_reply_text`` for *message_id*.
-
-    Returns ``True`` if a row was updated, ``False`` if no matching
-    ``message_id`` exists.
-    """
-    cur = conn.execute(
-        "UPDATE mail_records SET sent_reply_text = ? WHERE message_id = ?",
-        (text, message_id),
-    )
-    conn.commit()
-    return cur.rowcount > 0
+    """Update ``mail_records.sent_reply_text`` for *message_id*."""
+    return _update_column(conn, message_id, "sent_reply_text", text)
 
 
 def delete_record_by_message_id(conn: sqlite3.Connection, message_id: str) -> bool:
@@ -408,17 +397,8 @@ def update_calendar_event_ref(
     message_id: str,
     event_ref: str,
 ) -> bool:
-    """Update ``mail_records.calendar_event_ref`` for *message_id*.
-
-    Returns ``True`` if a row was updated, ``False`` if no matching
-    ``message_id`` exists.
-    """
-    cur = conn.execute(
-        "UPDATE mail_records SET calendar_event_ref = ? WHERE message_id = ?",
-        (event_ref, message_id),
-    )
-    conn.commit()
-    return cur.rowcount > 0
+    """Update ``mail_records.calendar_event_ref`` for *message_id*."""
+    return _update_column(conn, message_id, "calendar_event_ref", event_ref)
 
 
 def update_calendar_correlation_id(
@@ -426,14 +406,5 @@ def update_calendar_correlation_id(
     message_id: str,
     correlation_id: str,
 ) -> bool:
-    """Update ``mail_records.calendar_correlation_id`` for *message_id*.
-
-    Returns ``True`` if a row was updated, ``False`` if no matching
-    ``message_id`` exists.
-    """
-    cur = conn.execute(
-        "UPDATE mail_records SET calendar_correlation_id = ? WHERE message_id = ?",
-        (correlation_id, message_id),
-    )
-    conn.commit()
-    return cur.rowcount > 0
+    """Update ``mail_records.calendar_correlation_id`` for *message_id*."""
+    return _update_column(conn, message_id, "calendar_correlation_id", correlation_id)
