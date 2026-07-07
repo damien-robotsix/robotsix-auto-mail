@@ -16,7 +16,7 @@ repos:
         pass_filenames: false
         additional_dependencies:
           - pyyaml>=6.0
-          - pydantic>=2.0
+          - pydantic>=2.13.4
           - urllib3>=2.0
           - types-PyYAML
 
