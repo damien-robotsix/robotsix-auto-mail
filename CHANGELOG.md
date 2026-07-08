@@ -8,6 +8,9 @@
 - Extract ``_gather_account_board_data`` and its helpers from ``board.py``
   into a dedicated ``board_data.py`` module, reducing ``board.py`` from 777
   to ~615 lines.
+- Consolidate five near-identical single-column UPDATE functions in
+  ``db.queries`` into a shared ``_update_column`` helper, reducing ~100
+  lines of copy-paste to ~32 while preserving the public API.
 - Fix: propagate transient IMAP errors from `_imap_cross_folder_fallback` so callers send 502 instead of silently deleting the local record.
 - Add field_validator for method on UnsubscribeDetection model to reject unrecognised values
 - Extracted shared OAuth2 setup logic from ``ImapClient`` and ``SmtpClient``
