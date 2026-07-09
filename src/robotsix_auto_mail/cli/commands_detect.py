@@ -19,6 +19,101 @@ from robotsix_auto_mail.config import (
 )
 
 
+def register_subparser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    parser = subparsers.add_parser(
+        "detect",
+        help="Auto-detect email provider settings via LLM and write config",
+    )
+    parser.add_argument(
+        "email",
+        help="Email address to detect provider settings for",
+    )
+    parser.add_argument(
+        "--id",
+        dest="id",
+        default=None,
+        metavar="ID",
+        help=(
+            "Account id for the detected account. Defaults to a sanitised id "
+            "derived from the email address. Used as the multi-account "
+            "`accounts:` entry id and the `.data/<id>/mail.db` store folder."
+        ),
+    )
+    parser.add_argument(
+        "--password",
+        default=None,
+        help=(
+            "Password to write into the config file. "
+            "When omitted, prompts interactively."
+        ),
+    )
+    parser.add_argument(
+        "--output",
+        default="config/mail.local.yaml",
+        help="Write mail config to this file path (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--stdout",
+        action="store_true",
+        default=False,
+        help="Print mail config to stdout instead of writing to file",
+    )
+    parser.add_argument(
+        "--no-verify",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip the post-write IMAP/SMTP connection check. "
+            "By default detect verifies the settings once a password is known."
+        ),
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help=(
+            "When the account id already exists in the output file, update its "
+            "transport settings (imap/smtp host, port, tls_mode) in place instead "
+            "of erroring. Other account fields (label, username, password, "
+            "db_path, archive, triage, calendar, oauth2 settings) are preserved "
+            "from the existing entry unless explicitly supplied on the command line."
+        ),
+    )
+    parser.add_argument(
+        "--app-password",
+        action="store_true",
+        default=False,
+        help=(
+            "Use password/basic auth even for Microsoft-hosted accounts. "
+            "Mutually exclusive with --oauth2-client-id / --oauth2-tenant. "
+            "WARNING: OAuth2 is strongly preferred; basic auth may be disabled "
+            "for your tenant."
+        ),
+    )
+    parser.add_argument(
+        "--oauth2-client-id",
+        dest="oauth2_client_id",
+        default="",
+        metavar="UUID",
+        help=(
+            "Azure app-registration client ID for Microsoft 365 OAuth2. "
+            "Defaults to the Thunderbird public client when omitted."
+        ),
+    )
+    parser.add_argument(
+        "--oauth2-tenant",
+        dest="oauth2_tenant",
+        default="",
+        metavar="TENANT",
+        help=(
+            "Azure AD tenant for Microsoft 365 OAuth2: 'organizations', "
+            "'common', or a tenant GUID/domain (default: 'organizations')."
+        ),
+    )
+
+
 def _cmd_detect(args: argparse.Namespace) -> int:
     """Run the detect subcommand: auto-detect provider settings, write the
     config, and verify it by connecting — refining with autoconfig, the LLM,

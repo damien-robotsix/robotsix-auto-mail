@@ -16,6 +16,46 @@ from robotsix_auto_mail.config import MailAccountsConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
 
+def register_subparser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    from robotsix_auto_mail.cli import _add_account_arg
+
+    triage_parser = subparsers.add_parser(
+        "triage",
+        help="Run the LLM inbox-triage agent and record advisory action "
+        "statuses (does not move mail in the mailbox)",
+    )
+    _add_account_arg(triage_parser)
+    triage_parser.add_argument(
+        "--api-key",
+        default=None,
+        help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
+    )
+    triage_parser.add_argument(
+        "--output-format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format for triage decisions (default: %(default)s).",
+    )
+
+    triage_set_parser = subparsers.add_parser(
+        "triage-set",
+        help="Record a user triage decision for a single message "
+        "(advisory; does not move mail in the mailbox)",
+    )
+    _add_account_arg(triage_set_parser)
+    triage_set_parser.add_argument(
+        "message_id",
+        help="Message-ID of the mail to triage.",
+    )
+    triage_set_parser.add_argument(
+        "action",
+        help="Triage action: INBOX, HUMAN_TRIAGE, PENDING_ACTION, TO_ARCHIVE, "
+        "TO_DELETE, TO_CALENDAR, TO_ANSWER, or DRAFT_READY.",
+    )
+
+
 def _cmd_triage(args: argparse.Namespace) -> int:
     """Run the inbox-triage agent and render the recorded decisions.
 

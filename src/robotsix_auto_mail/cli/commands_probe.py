@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 
 from robotsix_auto_mail.cli.commands import _print_header
@@ -9,6 +10,17 @@ from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.health import probe_account
 from robotsix_auto_mail.imap import ImapClient, ImapError
 from robotsix_auto_mail.smtp import SmtpClient, SmtpError
+
+
+def register_subparser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    from robotsix_auto_mail.cli import _add_account_arg
+
+    parser = subparsers.add_parser(
+        "probe", help="Probe IMAP and SMTP servers for diagnostics"
+    )
+    _add_account_arg(parser)
 
 
 def _cmd_probe(config: MailConfig) -> int:

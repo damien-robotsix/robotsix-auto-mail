@@ -22,6 +22,7 @@
 - Fix: register missing changelog fragment in `docs/modules.yaml` and fix trailing newline
 - Refactor ``_gather_account_board_data`` into six focused helpers: ``_read_account_health``, ``_parse_batch_op``, ``_load_triage_state``, ``_load_archive_context``, ``_load_unsubscribe_suggestions``, and ``_build_record_notes_map``. The main function is now a simple assembly of these calls.
 - Removed the observability deprecation shim (`_DeprecatedObservability`, `_ObservabilityLoader`, `_ObservabilityFinder`, and the module-level `__getattr__`) from `robotsix_auto_mail.__init__`. All internal callers now import directly from `robotsix_auto_mail._observability` or the top-level re-exports.
+- Decomposed `build_parser()` into per-module `register_subparser()` functions so each subcommand's argument definitions live alongside their handlers in the corresponding `commands_*.py` module.
 - Update all documentation references from `MAIL_CONFIG_PATH` to `ROBOTSIX_CONFIG_FILE` and update documented default from `config/mail.local.yaml` to `config/config.json`, matching the actual env var name in the code.
 - Extend mypy strict checking to cover the test tree with a relaxed override
   (``check_untyped_defs=false``, ``disallow_untyped_defs=false``,

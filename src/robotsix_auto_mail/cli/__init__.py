@@ -91,7 +91,12 @@ def _add_account_arg(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the top-level argument parser with subcommands."""
+    """Build the top-level argument parser with subcommands.
+
+    Each subcommand's arguments are registered by a ``register_subparser``
+    function in the corresponding ``commands_*.py`` module so the argument
+    definitions live alongside their handlers.
+    """
     parser = argparse.ArgumentParser(
         prog="robotsix-auto-mail",
         description="Diagnose and operate on mail servers.",
@@ -103,261 +108,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     sub = parser.add_subparsers(dest="command", title="subcommands")
-    probe_parser = sub.add_parser(
-        "probe", help="Probe IMAP and SMTP servers for diagnostics"
-    )
-    _add_account_arg(probe_parser)
-    ingest_parser = sub.add_parser("ingest", help="Fetch new mail and store it locally")
-    ingest_account_group = ingest_parser.add_mutually_exclusive_group()
-    ingest_account_group.add_argument(
-        "--account",
-        metavar="ID",
-        default=None,
-        help=(
-            "Account id to ingest. Optional when only one account is "
-            "configured; without it every configured account is ingested."
-        ),
-    )
-    ingest_account_group.add_argument(
-        "--all-accounts",
-        action="store_true",
-        default=False,
-        help="Ingest every configured account (the default when --account is omitted).",
-    )
-    ingest_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        default=False,
-        help="Fetch and parse messages without storing or advancing watermark",
-    )
-    ingest_parser.add_argument(
-        "--watch",
-        action="store_true",
-        default=False,
-        help=(
-            "Keep running, ingesting on an interval (minutes) set by "
-            "ingest.interval_minutes in the config (default 15)"
-        ),
-    )
-    ingest_parser.add_argument(
-        "--heartbeat-file",
-        default=None,
-        metavar="PATH",
-        help=(
-            "In --watch mode, touch this file at the end of each poll cycle "
-            "so a Docker HEALTHCHECK can verify the loop is alive. "
-            "No file is written when omitted."
-        ),
-    )
+    from .commands_probe import register_subparser as _r1
 
-    board_parser = sub.add_parser(
-        "board", help="Display ingested mail in a read-only board view"
-    )
-    _add_account_arg(board_parser)
+    _r1(sub)
+    from .commands_ingest import register_subparser as _r2
 
-    serve_parser = sub.add_parser("serve", help="Start the web board server")
-    _add_account_arg(serve_parser)
-    serve_parser.add_argument(
-        "--port",
-        type=int,
-        default=8080,
-        help="Port to listen on (default: %(default)s)",
-    )
-    serve_parser.add_argument(
-        "--host",
-        default="127.0.0.1",
-        help=(
-            "Address to bind the board server to (default: %(default)s). "
-            "Use 0.0.0.0 to listen on all interfaces (e.g. inside Docker "
-            "with host-level network isolation)."
-        ),
-    )
+    _r2(sub)
+    from .commands_board import register_subparser as _r3
 
-    detect_parser = sub.add_parser(
-        "detect",
-        help="Auto-detect email provider settings via LLM and write config",
-    )
-    detect_parser.add_argument(
-        "email",
-        help="Email address to detect provider settings for",
-    )
-    detect_parser.add_argument(
-        "--id",
-        dest="id",
-        default=None,
-        metavar="ID",
-        help=(
-            "Account id for the detected account. Defaults to a sanitised id "
-            "derived from the email address. Used as the multi-account "
-            "`accounts:` entry id and the `.data/<id>/mail.db` store folder."
-        ),
-    )
-    detect_parser.add_argument(
-        "--password",
-        default=None,
-        help=(
-            "Password to write into the config file. "
-            "When omitted, prompts interactively."
-        ),
-    )
-    detect_parser.add_argument(
-        "--output",
-        default="config/mail.local.yaml",
-        help="Write mail config to this file path (default: %(default)s)",
-    )
-    detect_parser.add_argument(
-        "--stdout",
-        action="store_true",
-        default=False,
-        help="Print mail config to stdout instead of writing to file",
-    )
-    detect_parser.add_argument(
-        "--no-verify",
-        action="store_true",
-        default=False,
-        help=(
-            "Skip the post-write IMAP/SMTP connection check. "
-            "By default detect verifies the settings once a password is known."
-        ),
-    )
-    detect_parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        default=False,
-        help=(
-            "When the account id already exists in the output file, update its "
-            "transport settings (imap/smtp host, port, tls_mode) in place instead "
-            "of erroring. Other account fields (label, username, password, "
-            "db_path, archive, triage, calendar, oauth2 settings) are preserved "
-            "from the existing entry unless explicitly supplied on the command line."
-        ),
-    )
-    detect_parser.add_argument(
-        "--app-password",
-        action="store_true",
-        default=False,
-        help=(
-            "Use password/basic auth even for Microsoft-hosted accounts. "
-            "Mutually exclusive with --oauth2-client-id / --oauth2-tenant. "
-            "WARNING: OAuth2 is strongly preferred; basic auth may be disabled "
-            "for your tenant."
-        ),
-    )
-    detect_parser.add_argument(
-        "--oauth2-client-id",
-        dest="oauth2_client_id",
-        default="",
-        metavar="UUID",
-        help=(
-            "Azure app-registration client ID for Microsoft 365 OAuth2. "
-            "Defaults to the Thunderbird public client when omitted."
-        ),
-    )
-    detect_parser.add_argument(
-        "--oauth2-tenant",
-        dest="oauth2_tenant",
-        default="",
-        metavar="TENANT",
-        help=(
-            "Azure AD tenant for Microsoft 365 OAuth2: 'organizations', "
-            "'common', or a tenant GUID/domain (default: 'organizations')."
-        ),
-    )
+    _r3(sub)
+    from .commands_serve import register_subparser as _r4
 
-    config_sync_parser = sub.add_parser(
-        "config-sync",
-        help="Run the LLM config-drift advisory agent (advisory only; "
-        "does not replace the deterministic check_config_sync.py CI gate)",
-    )
-    _add_account_arg(config_sync_parser)
-    config_sync_parser.add_argument(
-        "--api-key",
-        default=None,
-        help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
-    )
-    config_sync_parser.add_argument(
-        "--provider-model",
-        default=None,
-        help="LLM provider-model identifier (e.g. openrouter-deepseek). Overrides "
-        "LLM_PROVIDER_MODEL env and config file.",
-    )
-    config_sync_parser.add_argument(
-        "--output-format",
-        choices=["text", "json"],
-        default="text",
-        help="Output format for drift findings (default: %(default)s).",
-    )
-    config_sync_parser.add_argument(
-        "--dedup",
-        action="store_true",
-        default=False,
-        help="Consult/update the dedup memory ledger so previously-seen "
-        "findings are suppressed. Requires a loadable config (for db_path).",
-    )
+    _r4(sub)
+    from .commands_detect import register_subparser as _r5
 
-    triage_parser = sub.add_parser(
-        "triage",
-        help="Run the LLM inbox-triage agent and record advisory action "
-        "statuses (does not move mail in the mailbox)",
-    )
-    _add_account_arg(triage_parser)
-    triage_parser.add_argument(
-        "--api-key",
-        default=None,
-        help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
-    )
-    triage_parser.add_argument(
-        "--output-format",
-        choices=["text", "json"],
-        default="text",
-        help="Output format for triage decisions (default: %(default)s).",
-    )
+    _r5(sub)
+    from .commands_config_sync import register_subparser as _r6
 
-    triage_set_parser = sub.add_parser(
-        "triage-set",
-        help="Record a user triage decision for a single message "
-        "(advisory; does not move mail in the mailbox)",
-    )
-    _add_account_arg(triage_set_parser)
-    triage_set_parser.add_argument(
-        "message_id",
-        help="Message-ID of the mail to triage.",
-    )
-    triage_set_parser.add_argument(
-        "action",
-        help="Triage action: INBOX, HUMAN_TRIAGE, PENDING_ACTION, TO_ARCHIVE, "
-        "TO_DELETE, TO_CALENDAR, TO_ANSWER, or DRAFT_READY.",
-    )
+    _r6(sub)
+    from .commands_triage import register_subparser as _r7
 
-    config_sync_set_parser = sub.add_parser(
-        "config-sync-set",
-        help="Mark a config-drift finding accepted or rejected so it is "
-        "suppressed by the dedup memory ledger",
-    )
-    _add_account_arg(config_sync_set_parser)
-    config_sync_set_parser.add_argument(
-        "fingerprint",
-        help="Fingerprint of the config-drift finding.",
-    )
-    config_sync_set_parser.add_argument(
-        "state",
-        help="Ledger state: pending, accepted, or rejected.",
-    )
+    _r7(sub)
+    from .commands_auth import register_subparser as _r8
 
-    auth_parser = sub.add_parser(
-        "auth", help="Authenticate accounts (OAuth2 device-code login)"
-    )
-    auth_sub = auth_parser.add_subparsers(dest="auth_command", title="auth subcommands")
-    login_parser = auth_sub.add_parser(
-        "login", help="Run the OAuth2 device-code login for an account"
-    )
-    login_parser.add_argument(
-        "--account",
-        metavar="ID",
-        default=None,
-        help="Account id to authenticate.",
-    )
-
+    _r8(sub)
     return parser
 
 
