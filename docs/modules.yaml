@@ -104,6 +104,7 @@ modules:
       - changelog/20260706T100734Z-extract-private-helpers-from-tests-serve-10f9.misc.md
       - changelog/20260706T100734Z-split-server-views-board-py-extract-data-6558.misc.md
       - changelog/20260714T153350Z-robotsix-auto-mail-enable-baseline-perio-47b4.misc.md
+      - changelog/20260714T165938Z-reorganize-module-mime-align-to-per-modu-4fc4.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -315,7 +316,7 @@ modules:
       Pure functions for constructing plain-text MIME email messages,
       decoupled from SMTP transport.
     paths:
-      - src/robotsix_auto_mail/mime.py
+      - src/robotsix_auto_mail/mime/__init__.py
       - tests/mime/test_mime.py
 
   - id: smtp

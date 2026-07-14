@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Reorganize `mime` module into a per-module package layout (`src/robotsix_auto_mail/mime/__init__.py`) with no import or API breakage.
 - Enable baseline periodic mill agents: `test_gap`, `security_posture`, and `module_curator`, via minimal presence files in `.robotsix-mill/periodic/`.
 - Extract ``_gather_account_board_data`` and its helpers from ``board.py``
   into a dedicated ``board_data.py`` module, reducing ``board.py`` from 777
