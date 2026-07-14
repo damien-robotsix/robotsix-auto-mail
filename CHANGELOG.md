@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Enable baseline periodic mill agents: `test_gap`, `security_posture`, and `module_curator`, via minimal presence files in `.robotsix-mill/periodic/`.
 - Extract ``_gather_account_board_data`` and its helpers from ``board.py``
   into a dedicated ``board_data.py`` module, reducing ``board.py`` from 777
   to ~615 lines.
