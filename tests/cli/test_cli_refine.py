@@ -24,7 +24,7 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
 )
-from robotsix_auto_mail.detect import DetectionError, MailProvider
+from robotsix_auto_mail.config.detect import DetectionError, MailProvider
 
 # ---------------------------------------------------------------------------
 # shared helpers

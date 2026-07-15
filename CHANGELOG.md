@@ -6,6 +6,7 @@
 ## 0.0.0 (unreleased)
 
 - Reorganized the `core` module: moved `_constants.py`, `_llm_agent.py`, `_observability.py`, `format.py`, and `health.py` from the package root into a new `src/robotsix_auto_mail/core/` sub-package, aligning with the per-module directory convention used by all other modules. All imports updated accordingly across 32 files.
+- Move `detect` module under `config/` as `config/detect/` to reflect the conceptual hierarchy (config → auto-discovery). All imports updated: `from robotsix_auto_mail.detect` → `from robotsix_auto_mail.config.detect`.
 - Reorganize `mime` module into a per-module package layout (`src/robotsix_auto_mail/mime/__init__.py`) with no import or API breakage.
 - Enable baseline periodic mill agents: `test_gap`, `security_posture`, and `module_curator`, via minimal presence files in `.robotsix-mill/periodic/`.
 - Extract ``_gather_account_board_data`` and its helpers from ``board.py``

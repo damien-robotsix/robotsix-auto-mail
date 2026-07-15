@@ -1,0 +1,1 @@
+Consolidate modules config, detect: move detect under config as config/detect/

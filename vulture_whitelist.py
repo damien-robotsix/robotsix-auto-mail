@@ -22,7 +22,7 @@ from robotsix_auto_mail.config.config_sync_agent import LedgerEntry
 
 LedgerEntry._validate_state
 
-from robotsix_auto_mail.detect import DetectedProvider
+from robotsix_auto_mail.config.detect import DetectedProvider
 
 DetectedProvider._validate_tls_mode
 

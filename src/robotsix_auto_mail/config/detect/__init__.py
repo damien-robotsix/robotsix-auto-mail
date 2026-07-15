@@ -17,45 +17,45 @@ The implementation is split across internal submodules:
   ``provider_to_config``, plus the provider database and prompt builders.
 
 This module re-exports the public and previously-importable symbols so
-``from robotsix_auto_mail.detect import ...`` keeps working unchanged.
+``from robotsix_auto_mail.config.detect import ...`` keeps working unchanged.
 """
 
 from __future__ import annotations
 
-from robotsix_auto_mail.detect.detector import (
+from robotsix_auto_mail.config.detect.detector import (
     _DETECT_SYSTEM_PROMPT as _DETECT_SYSTEM_PROMPT,
 )
-from robotsix_auto_mail.detect.detector import (
+from robotsix_auto_mail.config.detect.detector import (
     _MX_PROVIDERS as _MX_PROVIDERS,
 )
-from robotsix_auto_mail.detect.detector import (
+from robotsix_auto_mail.config.detect.detector import (
     _PROVIDER_DB as _PROVIDER_DB,
 )
-from robotsix_auto_mail.detect.detector import (
+from robotsix_auto_mail.config.detect.detector import (
     autoconfig_lookup as autoconfig_lookup,
 )
-from robotsix_auto_mail.detect.detector import (
+from robotsix_auto_mail.config.detect.detector import (
     detect_provider as detect_provider,
 )
-from robotsix_auto_mail.detect.detector import (
+from robotsix_auto_mail.config.detect.detector import (
     is_microsoft_provider as is_microsoft_provider,
 )
-from robotsix_auto_mail.detect.detector import (
+from robotsix_auto_mail.config.detect.detector import (
     mx_lookup as mx_lookup,
 )
-from robotsix_auto_mail.detect.detector import (
+from robotsix_auto_mail.config.detect.detector import (
     provider_from_mx as provider_from_mx,
 )
-from robotsix_auto_mail.detect.detector import (
+from robotsix_auto_mail.config.detect.detector import (
     provider_to_config as provider_to_config,
 )
-from robotsix_auto_mail.detect.models import (
+from robotsix_auto_mail.config.detect.models import (
     DetectedProvider as DetectedProvider,
 )
-from robotsix_auto_mail.detect.models import (
+from robotsix_auto_mail.config.detect.models import (
     DetectionError as DetectionError,
 )
-from robotsix_auto_mail.detect.models import (
+from robotsix_auto_mail.config.detect.models import (
     MailProvider as MailProvider,
 )
 

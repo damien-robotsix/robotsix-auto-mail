@@ -256,11 +256,11 @@ modules:
       MX-record provider detection and auto-configuration lookup
       (Mozilla ISPDB, autoconfig XML, LLM fallback).
     paths:
-      - src/robotsix_auto_mail/detect/__init__.py
-      - src/robotsix_auto_mail/detect/detector.py
-      - src/robotsix_auto_mail/detect/models.py
-      - tests/detect/__init__.py
-      - tests/detect/test_detect.py
+      - src/robotsix_auto_mail/config/detect/__init__.py
+      - src/robotsix_auto_mail/config/detect/detector.py
+      - src/robotsix_auto_mail/config/detect/models.py
+      - tests/config/detect/__init__.py
+      - tests/config/detect/test_detect.py
 
   - id: imap
     description: >-
