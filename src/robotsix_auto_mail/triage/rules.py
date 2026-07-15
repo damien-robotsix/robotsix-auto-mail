@@ -25,14 +25,14 @@ from pathlib import Path
 
 import pydantic
 
-from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     MailConfig,
     resolve_llm_api_key,
     resolve_llm_provider_model,
 )
-from robotsix_auto_mail.db.models import MailRecord
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.core.format import _effective_body_plain
+from robotsix_auto_mail.db.models import MailRecord
 from robotsix_auto_mail.triage.persistence import TriageError
 
 _RULES_FILENAME = "triage_rules.md"

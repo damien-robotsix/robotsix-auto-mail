@@ -13,10 +13,10 @@ from xml.etree import ElementTree  # nosec B405
 import urllib3
 import urllib3.exceptions
 
-from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     MailConfig,
 )
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.detect.models import (
     DetectedProvider,
     DetectionError,

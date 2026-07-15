@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest import mock
 
-from robotsix_auto_mail.core._observability import init_langfuse_tracing
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.core._observability import init_langfuse_tracing
 
 
 def _make_config(

@@ -14,8 +14,8 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
 )
-from robotsix_auto_mail.db.queries import write_account_health
 from robotsix_auto_mail.core.health import probe_account, utcnow
+from robotsix_auto_mail.db.queries import write_account_health
 from robotsix_auto_mail.pipeline import IngestResult, reconcile_records
 
 

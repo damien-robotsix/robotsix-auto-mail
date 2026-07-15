@@ -25,9 +25,9 @@ from pathlib import Path
 
 import pydantic
 
-from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.config.pydantic_utils import validate_confidence
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.db import get_watermark, set_watermark
 
 # ---------------------------------------------------------------------------

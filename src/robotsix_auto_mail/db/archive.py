@@ -20,14 +20,14 @@ import typing
 
 import pydantic
 
+from robotsix_auto_mail.config import (
+    resolve_llm_api_key,
+)
 from robotsix_auto_mail.core._constants import (
     _ARCHIVE_ROOT,
     _ARCHIVE_TAXONOMY_GUIDANCE,
 )
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
-from robotsix_auto_mail.config import (
-    resolve_llm_api_key,
-)
 from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.imap import ImapClient, is_special_use
 

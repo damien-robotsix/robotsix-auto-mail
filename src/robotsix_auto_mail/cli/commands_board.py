@@ -8,12 +8,12 @@ from typing import TextIO
 
 from robotsix_auto_mail.cli.commands import _print_header
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.db import MailRecord, init_db, list_records
 from robotsix_auto_mail.core.format import (
     _BODY_PREVIEW_LIMIT,
     _effective_body_plain,
     _format_date,
 )
+from robotsix_auto_mail.db import MailRecord, init_db, list_records
 
 
 def register_subparser(

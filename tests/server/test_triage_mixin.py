@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 from unittest import mock
 
-from robotsix_auto_mail.core._constants import _TRIAGE_RUN_STATE_KEY
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.core._constants import _TRIAGE_RUN_STATE_KEY
 from robotsix_auto_mail.server._triage_mixin import _rules_path_str, _TriageMixin
 from robotsix_auto_mail.server.adapters import _run_triage_background
 from robotsix_auto_mail.triage.persistence import TriageError
