@@ -464,6 +464,7 @@ modules:
       Robotsix-mill board orchestration configuration.
     paths:
       - .robotsix-mill/config.yaml
+      - .robotsix-mill/periodic/bc_check.yaml
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/test_gap.yaml
