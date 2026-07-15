@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Enable `bc_check` periodic agent (`.robotsix-mill/periodic/bc_check.yaml`).
 - Reorganized the `core` module: moved `_constants.py`, `_llm_agent.py`, `_observability.py`, `format.py`, and `health.py` from the package root into a new `src/robotsix_auto_mail/core/` sub-package, aligning with the per-module directory convention used by all other modules. All imports updated accordingly across 32 files.
 - Move `detect` module under `config/` as `config/detect/` to reflect the conceptual hierarchy (config → auto-discovery). All imports updated: `from robotsix_auto_mail.detect` → `from robotsix_auto_mail.config.detect`.
 - Reorganize `mime` module into a per-module package layout (`src/robotsix_auto_mail/mime/__init__.py`) with no import or API breakage.
