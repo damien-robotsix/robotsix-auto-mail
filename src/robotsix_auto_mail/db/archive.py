@@ -20,14 +20,14 @@ import typing
 
 import pydantic
 
-from robotsix_auto_mail._constants import (
-    _ARCHIVE_ROOT,
-    _ARCHIVE_TAXONOMY_GUIDANCE,
-)
-from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     resolve_llm_api_key,
 )
+from robotsix_auto_mail.core._constants import (
+    _ARCHIVE_ROOT,
+    _ARCHIVE_TAXONOMY_GUIDANCE,
+)
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.imap import ImapClient, is_special_use
 
@@ -119,7 +119,7 @@ def determine_archive_structure(
             to anchor the proposed layout.
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
-            :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
+            :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
             back to the tier-level default model.

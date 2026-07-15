@@ -17,11 +17,11 @@ import sqlite3
 from email.utils import parseaddr
 from typing import cast
 
-from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
-from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     resolve_llm_api_key,
 )
+from robotsix_auto_mail.core._constants import _ARCHIVE_TAXONOMY_GUIDANCE
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS,
     MailRecord,

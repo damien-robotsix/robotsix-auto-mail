@@ -13,11 +13,11 @@ import json
 import sqlite3
 from typing import Any, cast
 
-from robotsix_auto_mail._constants import (
+from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
+from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
     _TRIAGE_RUN_STATE_KEY,
 )
-from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
 from robotsix_auto_mail.db import MailRecord, get_watermark, list_records
 from robotsix_auto_mail.db.queries import get_account_health
 from robotsix_auto_mail.server._constants import (

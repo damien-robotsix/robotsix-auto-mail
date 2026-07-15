@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest import mock
 
-from robotsix_auto_mail.health import probe_account, utcnow
+from robotsix_auto_mail.core.health import probe_account, utcnow
 
 
 def test_utcnow_returns_iso_format_no_microseconds() -> None:
@@ -21,8 +21,8 @@ def test_utcnow_returns_iso_format_no_microseconds() -> None:
 def test_probe_account_both_succeed() -> None:
     """When both IMAP and SMTP connect without error, returns ``("ok", None)``."""
     with (
-        mock.patch("robotsix_auto_mail.health.ImapClient") as mock_imap,
-        mock.patch("robotsix_auto_mail.health.SmtpClient") as mock_smtp,
+        mock.patch("robotsix_auto_mail.core.health.ImapClient") as mock_imap,
+        mock.patch("robotsix_auto_mail.core.health.SmtpClient") as mock_smtp,
     ):
         config = mock.MagicMock()  # MailConfig -- don't need real fields
         status, error = probe_account(config)
@@ -34,11 +34,11 @@ def test_probe_account_both_succeed() -> None:
 
 def test_probe_account_imap_fails_smtp_succeeds() -> None:
     """IMAP raises ``ImapError``; SMTP succeeds — returns ``("failed", "IMAP: ...")``."""
-    from robotsix_auto_mail.health import ImapError
+    from robotsix_auto_mail.core.health import ImapError
 
     with (
-        mock.patch("robotsix_auto_mail.health.ImapClient") as mock_imap,
-        mock.patch("robotsix_auto_mail.health.SmtpClient") as mock_smtp,
+        mock.patch("robotsix_auto_mail.core.health.ImapClient") as mock_imap,
+        mock.patch("robotsix_auto_mail.core.health.SmtpClient") as mock_smtp,
     ):
         mock_imap.side_effect = ImapError("connection refused")
         config = mock.MagicMock()
@@ -51,11 +51,11 @@ def test_probe_account_imap_fails_smtp_succeeds() -> None:
 
 def test_probe_account_smtp_fails_imap_succeeds() -> None:
     """SMTP raises ``SmtpError``; IMAP succeeds — returns ``("failed", "SMTP: ...")``."""
-    from robotsix_auto_mail.health import SmtpError
+    from robotsix_auto_mail.core.health import SmtpError
 
     with (
-        mock.patch("robotsix_auto_mail.health.ImapClient") as mock_imap,
-        mock.patch("robotsix_auto_mail.health.SmtpClient") as mock_smtp,
+        mock.patch("robotsix_auto_mail.core.health.ImapClient") as mock_imap,
+        mock.patch("robotsix_auto_mail.core.health.SmtpClient") as mock_smtp,
     ):
         mock_smtp.side_effect = SmtpError("auth failure")
         config = mock.MagicMock()
@@ -68,11 +68,11 @@ def test_probe_account_smtp_fails_imap_succeeds() -> None:
 
 def test_probe_account_both_fail() -> None:
     """Both IMAP and SMTP raise — error message aggregates both protocols."""
-    from robotsix_auto_mail.health import ImapError, SmtpError
+    from robotsix_auto_mail.core.health import ImapError, SmtpError
 
     with (
-        mock.patch("robotsix_auto_mail.health.ImapClient") as mock_imap,
-        mock.patch("robotsix_auto_mail.health.SmtpClient") as mock_smtp,
+        mock.patch("robotsix_auto_mail.core.health.ImapClient") as mock_imap,
+        mock.patch("robotsix_auto_mail.core.health.SmtpClient") as mock_smtp,
     ):
         mock_imap.side_effect = ImapError("timeout")
         mock_smtp.side_effect = SmtpError("connection refused")

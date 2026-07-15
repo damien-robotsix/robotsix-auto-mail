@@ -7,7 +7,7 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING
 
-from robotsix_auto_mail._constants import _RECONCILE_STATE_KEY
+from robotsix_auto_mail.core._constants import _RECONCILE_STATE_KEY
 from robotsix_auto_mail.server.adapters import (
     _run_reconcile_background,
 )

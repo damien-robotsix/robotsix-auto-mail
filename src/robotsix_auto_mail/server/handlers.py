@@ -348,8 +348,8 @@ class BoardHandler(
         in each account's ``account_health`` watermark, and returns a JSON
         summary.
         """
+        from robotsix_auto_mail.core.health import probe_account, utcnow
         from robotsix_auto_mail.db.queries import write_account_health
-        from robotsix_auto_mail.health import probe_account, utcnow
 
         accounts = self.accounts
         if accounts is None:

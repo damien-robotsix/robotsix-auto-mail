@@ -7,8 +7,8 @@ import json
 from typing import Any
 from urllib.parse import quote
 
+from robotsix_auto_mail.core.format import _effective_body_plain, _format_date
 from robotsix_auto_mail.db import MailRecord
-from robotsix_auto_mail.format import _effective_body_plain, _format_date
 from robotsix_auto_mail.server.views.forms import _render_move_form
 from robotsix_auto_mail.triage import (
     DRAFT_READY,

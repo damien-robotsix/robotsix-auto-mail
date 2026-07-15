@@ -12,8 +12,8 @@ from unittest import mock
 import pydantic
 import pytest
 
-from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import ConfigurationError
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 
 # ---------------------------------------------------------------------------
 # Test output model
@@ -39,7 +39,9 @@ def mock_deps():
     individual tests can adjust side effects / return values.
     """
     with (
-        mock.patch("robotsix_auto_mail._llm_agent.resolve_llm_api_key") as mock_key,
+        mock.patch(
+            "robotsix_auto_mail.core._llm_agent.resolve_llm_api_key"
+        ) as mock_key,
         mock.patch("robotsix_llmio.core.get_provider_for_identifier") as mock_get_prov,
         mock.patch("robotsix_llmio.core.run_agent") as mock_run,
     ):

@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from robotsix_auto_mail._constants import _BATCH_OP_STATE_KEY
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
+from robotsix_auto_mail.core._constants import _BATCH_OP_STATE_KEY
 from robotsix_auto_mail.db import init_db, set_watermark
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin

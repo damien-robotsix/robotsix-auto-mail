@@ -9,7 +9,7 @@ from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
+from robotsix_auto_mail.core._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
 from robotsix_auto_mail.db.archive import (
     _ARCHIVE_WATERMARK_KEY,

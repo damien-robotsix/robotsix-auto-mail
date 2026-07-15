@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from robotsix_auto_mail.format import _format_date
+from robotsix_auto_mail.core.format import _format_date
 
 
 def test_format_date_with_time() -> None:

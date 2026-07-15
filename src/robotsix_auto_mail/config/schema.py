@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from robotsix_auto_mail._constants import _ARCHIVE_ROOT
+from robotsix_auto_mail.core._constants import _ARCHIVE_ROOT
 
 # ---------------------------------------------------------------------------
 # Exceptions

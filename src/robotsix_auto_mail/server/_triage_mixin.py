@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from robotsix_auto_mail._constants import _TRIAGE_RUN_STATE_KEY
+from robotsix_auto_mail.core._constants import _TRIAGE_RUN_STATE_KEY
 from robotsix_auto_mail.server._constants import _with_db
 from robotsix_auto_mail.server.adapters import (
     _run_triage_background,

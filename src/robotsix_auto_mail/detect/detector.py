@@ -13,10 +13,10 @@ from xml.etree import ElementTree  # nosec B405
 import urllib3
 import urllib3.exceptions
 
-from robotsix_auto_mail._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     MailConfig,
 )
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.detect.models import (
     DetectedProvider,
     DetectionError,
@@ -373,7 +373,7 @@ def detect_provider(
         level: LLM integer tier to use.  ``1`` (cheap, default).
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
-            :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
+            :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
         provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
             When ``None`` or empty, the tier-level default model is used
             (resolved from :class:`~robotsix_llmio.config.tier.TierConfig`).
