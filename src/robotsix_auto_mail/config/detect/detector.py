@@ -16,13 +16,13 @@ import urllib3.exceptions
 from robotsix_auto_mail.config import (
     MailConfig,
 )
-from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config.detect.models import (
     DetectedProvider,
     DetectionError,
     MailProvider,
     ProviderEntry,
 )
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 
 # ---------------------------------------------------------------------------
 # Shared connection pool
