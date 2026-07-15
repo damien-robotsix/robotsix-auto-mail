@@ -11,7 +11,6 @@ import pydantic
 import pytest
 import urllib3.exceptions
 
-from robotsix_auto_mail.config.schema import ConfigurationError
 from robotsix_auto_mail.config.detect import (
     DetectedProvider,
     DetectionError,
@@ -23,6 +22,8 @@ from robotsix_auto_mail.config.detect import (
     provider_from_mx,
     provider_to_config,
 )
+
+from robotsix_auto_mail.config.schema import ConfigurationError
 
 
 class _FakeResp:

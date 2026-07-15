@@ -106,6 +106,7 @@ modules:
       - changelog/20260706T100734Z-split-server-views-board-py-extract-data-6558.misc.md
       - changelog/20260714T153350Z-robotsix-auto-mail-enable-baseline-perio-47b4.misc.md
       - changelog/20260714T165938Z-reorganize-module-mime-align-to-per-modu-4fc4.misc.md
+      - changelog/20260715T191710Z-consolidate-modules-config-detect-move-d-9178.misc.md
       - changelog/20260715T191710Z-reorganize-module-core-align-to-per-modu-8b73.misc.md
       - tests/__init__.py
       - tests/conftest.py
