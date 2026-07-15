@@ -76,9 +76,13 @@ def test_detect_missing_pydantic_ai(capsys: pytest.CaptureFixture[str]) -> None:
 def no_autoconfig() -> object:
     """Force autoconfig + MX detection to miss so tests reach the LLM path."""
     with (
-        mock.patch("robotsix_auto_mail.config.detect.autoconfig_lookup", return_value=None),
+        mock.patch(
+            "robotsix_auto_mail.config.detect.autoconfig_lookup", return_value=None
+        ),
         mock.patch("robotsix_auto_mail.config.detect.mx_lookup", return_value=[]),
-        mock.patch("robotsix_auto_mail.config.detect.provider_from_mx", return_value=None),
+        mock.patch(
+            "robotsix_auto_mail.config.detect.provider_from_mx", return_value=None
+        ),
     ):
         yield
 
@@ -125,7 +129,8 @@ def test_detect_happy_path(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="testpass"),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
@@ -157,7 +162,8 @@ def test_detect_password_supplied(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
@@ -194,7 +200,8 @@ def test_detect_empty_password(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value=""),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
@@ -220,7 +227,8 @@ def test_detect_stdout(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
@@ -249,7 +257,8 @@ def test_detect_stdout_redacts_password(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
@@ -356,7 +365,8 @@ def test_detect_verifies_connection_on_success(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
@@ -391,7 +401,8 @@ def test_detect_verify_failure_returns_1(
     # failure ends the loop immediately.
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.cli._verify_config",
@@ -422,7 +433,8 @@ def test_detect_no_verify_skips_check(tmp_path: Path, no_autoconfig: object) -> 
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("robotsix_auto_mail.cli._verify_config") as mock_verify,
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
@@ -455,7 +467,8 @@ def test_detect_microsoft_runs_device_code_and_verifies(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
@@ -487,7 +500,8 @@ def test_detect_microsoft_stdout_instructs_auth_login(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
@@ -514,7 +528,8 @@ def test_detect_stdout_app_password_clears_oauth2_provider(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
@@ -541,7 +556,8 @@ def test_detect_microsoft_auth_failure_points_at_auth_login(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login"),
@@ -571,7 +587,8 @@ def test_detect_microsoft_custom_oauth2_client_id_and_tenant(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
@@ -618,7 +635,8 @@ def test_detect_microsoft_app_password_writes_password_config(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="app-pw-123") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
@@ -660,7 +678,8 @@ def test_detect_app_password_mutually_exclusive_with_oauth2_flags(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass"),
         mock.patch("robotsix_auto_mail.oauth2.device_code_login"),
@@ -693,7 +712,8 @@ def test_detect_app_password_noop_for_non_microsoft(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="gm-pw") as mock_getpass,
         mock.patch(
@@ -733,7 +753,8 @@ def test_detect_app_password_noop_for_generic_imap_host(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="example-pw") as mock_getpass,
         mock.patch(
@@ -864,7 +885,8 @@ def test_detect_preserves_existing_llm_section(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
@@ -896,7 +918,8 @@ def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
@@ -930,7 +953,9 @@ def test_detect_appends_second_account(tmp_path: Path, no_autoconfig: object) ->
     p2 = MailProvider(imap_host="imap.work.com", smtp_host="smtp.work.com")
 
     with (
-        mock.patch("robotsix_auto_mail.config.detect.detect_provider", side_effect=[p1, p2]),
+        mock.patch(
+            "robotsix_auto_mail.config.detect.detect_provider", side_effect=[p1, p2]
+        ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc1 = main(
@@ -977,7 +1002,9 @@ def test_detect_refuses_duplicate_id(
     provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
-        mock.patch("robotsix_auto_mail.config.detect.detect_provider", return_value=provider),
+        mock.patch(
+            "robotsix_auto_mail.config.detect.detect_provider", return_value=provider
+        ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc1 = main(
@@ -1037,7 +1064,9 @@ def test_detect_overwrite_existing_account(
     provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
-        mock.patch("robotsix_auto_mail.config.detect.detect_provider", return_value=provider),
+        mock.patch(
+            "robotsix_auto_mail.config.detect.detect_provider", return_value=provider
+        ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
@@ -1095,7 +1124,9 @@ def test_detect_overwrite_not_set_still_errors_on_duplicate(
     provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
-        mock.patch("robotsix_auto_mail.config.detect.detect_provider", return_value=provider),
+        mock.patch(
+            "robotsix_auto_mail.config.detect.detect_provider", return_value=provider
+        ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
@@ -1144,7 +1175,8 @@ def test_detect_overwrite_with_oauth2_flags(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
@@ -1213,7 +1245,8 @@ def test_detect_overwrite_app_password_clears_oauth2_provider(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="app-pw-789") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
@@ -1274,7 +1307,8 @@ def test_detect_overwrite_preserves_llm_api_key(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-env"}),
     ):
@@ -1322,7 +1356,8 @@ def test_detect_writes_llm_api_key_from_env(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=mock_provider
+            "robotsix_auto_mail.config.detect.detect_provider",
+            return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="pw"),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-env"}),
