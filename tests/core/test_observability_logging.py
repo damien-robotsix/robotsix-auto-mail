@@ -5,7 +5,7 @@ import logging
 
 import pytest
 
-from robotsix_auto_mail._observability import setup_logging
+from robotsix_auto_mail.core._observability import setup_logging
 
 # ---------------------------------------------------------------------------
 # Helpers

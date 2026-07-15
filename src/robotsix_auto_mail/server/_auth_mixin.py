@@ -98,7 +98,7 @@ class _BoardAuthMixin:
                     import logging
 
                     from robotsix_auto_mail.db.queries import write_account_health
-                    from robotsix_auto_mail.health import probe_account, utcnow
+                    from robotsix_auto_mail.core.health import probe_account, utcnow
                     from robotsix_auto_mail.server._constants import _with_db
 
                     status_val, error_val = probe_account(config)

@@ -144,7 +144,7 @@ class TestPostAuthAutoProbe:
                 return_value=mock_conn,
             ),
             mock.patch(
-                "robotsix_auto_mail.health.probe_account",
+                "robotsix_auto_mail.core.health.probe_account",
                 return_value=("ok", None),
             ),
             mock.patch(
@@ -178,7 +178,7 @@ class TestPostAuthAutoProbe:
                 side_effect=_patch_device_code_login(),
             ),
             mock.patch(
-                "robotsix_auto_mail.health.probe_account",
+                "robotsix_auto_mail.core.health.probe_account",
                 side_effect=RuntimeError("IMAP timeout"),
             ),
             mock.patch(

@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 
-from robotsix_auto_mail._constants import _RECONCILE_STATE_KEY
+from robotsix_auto_mail.core._constants import _RECONCILE_STATE_KEY
 from robotsix_auto_mail.cli.commands_triage import _clear_stale_triage_state
 from robotsix_auto_mail.config import MailAccountsConfig
 

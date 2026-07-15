@@ -1,0 +1,1 @@
+Reorganized the `core` module: moved `_constants.py`, `_llm_agent.py`, `_observability.py`, `format.py`, and `health.py` from the package root into a new `src/robotsix_auto_mail/core/` sub-package, aligning with the per-module directory convention used by all other modules. All imports updated accordingly across 32 files.

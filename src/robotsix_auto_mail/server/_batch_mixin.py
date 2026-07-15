@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from robotsix_auto_mail._constants import _BATCH_OP_STATE_KEY
+from robotsix_auto_mail.core._constants import _BATCH_OP_STATE_KEY
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
 from robotsix_auto_mail.server.adapters import (
     _batch_op_running,

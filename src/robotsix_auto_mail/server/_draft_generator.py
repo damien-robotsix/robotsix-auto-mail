@@ -17,7 +17,7 @@ import sqlite3
 
 from pydantic import BaseModel
 
-from robotsix_auto_mail._llm_agent import _run_llm_agent
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.db import (
     MailRecord,
     get_record_by_message_id,
@@ -110,10 +110,10 @@ def generate_draft_reply(
         message_id: The ``mail_records`` message id to draft a reply for.
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
-            :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
+            :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
         provider_model: LLM provider-model identifier (e.g. ``openrouter-deepseek``).
             ``None`` falls back to the tier-level default model (via
-            :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
+            :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
         level: LLM integer tier to use.  ``1`` (cheap, default).
 
     Raises:

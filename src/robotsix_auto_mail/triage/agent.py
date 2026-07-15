@@ -13,8 +13,8 @@ import json
 import sqlite3
 from pathlib import Path
 
-from robotsix_auto_mail._constants import _ARCHIVE_TAXONOMY_GUIDANCE
-from robotsix_auto_mail._llm_agent import _run_llm_agent
+from robotsix_auto_mail.core._constants import _ARCHIVE_TAXONOMY_GUIDANCE
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import (
     ConfigurationError,
     resolve_llm_api_key,
@@ -27,7 +27,7 @@ from robotsix_auto_mail.db import (
     list_untriaged_records,
     set_watermark,
 )
-from robotsix_auto_mail.format import _BODY_PREVIEW_LIMIT, _effective_body_plain
+from robotsix_auto_mail.core.format import _BODY_PREVIEW_LIMIT, _effective_body_plain
 from robotsix_auto_mail.triage._constants import (
     _AGENT_SELECTABLE_ACTIONS,
     _UNSUBSCRIBE_SUGGESTIONS_KEY,

@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from robotsix_auto_mail._constants import (
+from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
     _RECONCILE_STATE_KEY,
     _TRIAGE_RUN_STATE_KEY,

@@ -398,7 +398,7 @@ def test_detect_provider_missing_api_key() -> None:
     """No api_key arg and no LLM_API_KEY env var → DetectionError."""
     with mock.patch.dict(os.environ, {}, clear=True):
         with mock.patch(
-            "robotsix_auto_mail._llm_agent.resolve_llm_api_key",
+            "robotsix_auto_mail.core._llm_agent.resolve_llm_api_key",
             side_effect=ConfigurationError(
                 "No LLM API key found — add llm_api_key to config/config.json"
             ),

@@ -36,7 +36,7 @@ from urllib.parse import quote
 from robotsix_board import BoardAdapter, RenderMode
 
 from robotsix_auto_mail.db import MailRecord
-from robotsix_auto_mail.format import (
+from robotsix_auto_mail.core.format import (
     _BODY_PREVIEW_LIMIT,
     _effective_body_plain,
     _format_date,

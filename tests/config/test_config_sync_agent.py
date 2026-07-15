@@ -149,7 +149,7 @@ def test_run_config_sync_agent_missing_api_key(
     monkeypatch.delenv("LLM_API_KEY", raising=False)
     # Mock resolve_llm_api_key to simulate no key configured
     with mock.patch(
-        "robotsix_auto_mail._llm_agent.resolve_llm_api_key",
+        "robotsix_auto_mail.core._llm_agent.resolve_llm_api_key",
         side_effect=ConfigurationError(
             "No LLM API key found — add llm_api_key to config/config.json"
         ),

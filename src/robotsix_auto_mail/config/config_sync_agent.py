@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pydantic
 
-from robotsix_auto_mail._llm_agent import _run_llm_agent
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.config.pydantic_utils import validate_confidence
 from robotsix_auto_mail.db import get_watermark, set_watermark
@@ -349,7 +349,7 @@ def run_config_sync_agent(
             :func:`~robotsix_auto_mail.config.resolve_llm_api_key`).
         provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
             ``None`` falls back to the tier-level default model (via
-            :func:`~robotsix_auto_mail._llm_agent._run_llm_agent`).
+            :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
         level: LLM integer tier to use.  ``1`` (cheap, default).
         conn: Optional open SQLite connection.  When provided, the result
             is passed through the dedup memory ledger
