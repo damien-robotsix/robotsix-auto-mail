@@ -11,7 +11,7 @@ human-readable drift proposals — catching *unanticipated* patterns the
 deterministic rules cannot express.
 
 The ``pydantic_ai`` import is lazy to keep module-load time low, mirroring
-:mod:`robotsix_auto_mail.detect` and :mod:`robotsix_auto_mail.archive`.
+:mod:`robotsix_auto_mail.config.detect` and :mod:`robotsix_auto_mail.archive`.
 """
 
 from __future__ import annotations

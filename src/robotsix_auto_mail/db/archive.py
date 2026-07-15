@@ -9,7 +9,7 @@ recreating folders.
 
 The ``pydantic_ai`` and LLM-provider imports are lazy to keep module-load
 time low and to avoid requiring the optional provider extra for the
-deterministic import path, mirroring :mod:`robotsix_auto_mail.detect`.
+deterministic import path, mirroring :mod:`robotsix_auto_mail.config.detect`.
 """
 
 from __future__ import annotations

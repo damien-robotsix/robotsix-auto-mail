@@ -106,6 +106,7 @@ modules:
       - changelog/20260706T100734Z-split-server-views-board-py-extract-data-6558.misc.md
       - changelog/20260714T153350Z-robotsix-auto-mail-enable-baseline-perio-47b4.misc.md
       - changelog/20260714T165938Z-reorganize-module-mime-align-to-per-modu-4fc4.misc.md
+      - changelog/20260715T191710Z-consolidate-modules-config-detect-move-d-9178.misc.md
       - changelog/20260715T191710Z-reorganize-module-core-align-to-per-modu-8b73.misc.md
       - tests/__init__.py
       - tests/conftest.py
@@ -256,11 +257,11 @@ modules:
       MX-record provider detection and auto-configuration lookup
       (Mozilla ISPDB, autoconfig XML, LLM fallback).
     paths:
-      - src/robotsix_auto_mail/detect/__init__.py
-      - src/robotsix_auto_mail/detect/detector.py
-      - src/robotsix_auto_mail/detect/models.py
-      - tests/detect/__init__.py
-      - tests/detect/test_detect.py
+      - src/robotsix_auto_mail/config/detect/__init__.py
+      - src/robotsix_auto_mail/config/detect/detector.py
+      - src/robotsix_auto_mail/config/detect/models.py
+      - tests/config/detect/__init__.py
+      - tests/config/detect/test_detect.py
 
   - id: imap
     description: >-
