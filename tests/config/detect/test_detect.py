@@ -22,7 +22,6 @@ from robotsix_auto_mail.config.detect import (
     provider_from_mx,
     provider_to_config,
 )
-
 from robotsix_auto_mail.config.schema import ConfigurationError
 
 
