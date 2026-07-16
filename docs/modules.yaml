@@ -109,6 +109,7 @@ modules:
       - changelog/20260715T191710Z-consolidate-modules-config-detect-move-d-9178.misc.md
       - changelog/20260715T191710Z-reorganize-module-core-align-to-per-modu-8b73.misc.md
       - changelog/20260715T192538Z-robotsix-auto-mail-enable-bc-check-perio-186f.misc.md
+      - changelog/20260716T040733Z-robotsix-auto-mail-enable-completeness-c-3fac.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -467,6 +468,7 @@ modules:
     paths:
       - .robotsix-mill/config.yaml
       - .robotsix-mill/periodic/bc_check.yaml
+      - .robotsix-mill/periodic/completeness_check.yaml
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/test_gap.yaml
