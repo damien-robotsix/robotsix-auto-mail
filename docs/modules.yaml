@@ -112,6 +112,7 @@ modules:
       - changelog/20260716T040733Z-robotsix-auto-mail-enable-completeness-c-3fac.misc.md
       - changelog/20260716T045127Z-missing-re-export-get-account-health-and-70a6.misc.md
       - changelog/20260716T192336Z-robotsix-auto-mail-enable-audit-periodic-bbeb.misc.md
+      - changelog/20260716T192337Z-robotsix-auto-mail-enable-copy-paste-per-3ddd.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -472,6 +473,7 @@ modules:
       - .robotsix-mill/periodic/audit.yaml
       - .robotsix-mill/periodic/bc_check.yaml
       - .robotsix-mill/periodic/completeness_check.yaml
+      - .robotsix-mill/periodic/copy_paste.yaml
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/test_gap.yaml
