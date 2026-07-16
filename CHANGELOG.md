@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Re-export ``get_account_health`` and ``write_account_health`` from ``robotsix_auto_mail.db`` so they are available via the package's public API surface, consistent with all other public functions in ``db.queries``.
 - Enable `completeness_check` periodic agent (`.robotsix-mill/periodic/completeness_check.yaml`).
 - Enable `bc_check` periodic agent (`.robotsix-mill/periodic/bc_check.yaml`).
 - Reorganized the `core` module: moved `_constants.py`, `_llm_agent.py`, `_observability.py`, `format.py`, and `health.py` from the package root into a new `src/robotsix_auto_mail/core/` sub-package, aligning with the per-module directory convention used by all other modules. All imports updated accordingly across 32 files.
