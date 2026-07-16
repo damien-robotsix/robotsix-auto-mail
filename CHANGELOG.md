@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Enable audit periodic agent in robotsix-mill.
 - Re-export ``get_account_health`` and ``write_account_health`` from ``robotsix_auto_mail.db`` so they are available via the package's public API surface, consistent with all other public functions in ``db.queries``.
 - Enable `completeness_check` periodic agent (`.robotsix-mill/periodic/completeness_check.yaml`).
 - Enable `bc_check` periodic agent (`.robotsix-mill/periodic/bc_check.yaml`).
