@@ -112,6 +112,7 @@ modules:
       - changelog/20260716T040733Z-robotsix-auto-mail-enable-completeness-c-3fac.misc.md
       - changelog/20260716T045127Z-missing-re-export-get-account-health-and-70a6.misc.md
       - changelog/20260716T192336Z-robotsix-auto-mail-enable-audit-periodic-bbeb.misc.md
+      - changelog/20260716T192337Z-robotsix-auto-mail-enable-copy-paste-per-3ddd.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
