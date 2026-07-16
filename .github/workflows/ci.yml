@@ -74,6 +74,8 @@ jobs:
       # in [project.optional-dependencies]; uv does not install extras by
       # default.
       - name: Install dependencies
+        env:
+          UV_MALWARE_CHECK: 1
         run: uv sync --frozen --extra dev
 
       - name: Check for missing changelog fragment
@@ -228,6 +230,7 @@ jobs:
       - name: Install dev deps
         env:
           UV_PROJECT_ENVIRONMENT: system
+          UV_MALWARE_CHECK: 1
         run: uv sync --frozen --extra dev
 
       - name: Generate coverage data

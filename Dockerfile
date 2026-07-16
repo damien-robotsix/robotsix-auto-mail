@@ -25,6 +25,8 @@ RUN apt-get update && \
 # only non-PyPI dep (robotsix-llmio) is declared there.
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
 
+ENV UV_MALWARE_CHECK=1
+
 # uv.lock is the committed single source of truth for resolved git
 # revs; it MUST be in the build context so the export step below reads
 # the pinned commits instead of re-resolving `@main` at build time.
