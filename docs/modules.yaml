@@ -113,6 +113,7 @@ modules:
       - changelog/20260716T045127Z-missing-re-export-get-account-health-and-70a6.misc.md
       - changelog/20260716T192336Z-robotsix-auto-mail-enable-audit-periodic-bbeb.misc.md
       - changelog/20260716T192337Z-robotsix-auto-mail-enable-copy-paste-per-3ddd.misc.md
+      - changelog/20260716T200417Z-deduplicate-archive-structure-watermark-cbc2.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

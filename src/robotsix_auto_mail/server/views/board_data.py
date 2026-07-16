@@ -22,6 +22,7 @@ from robotsix_auto_mail.db import MailRecord, get_watermark, list_records
 from robotsix_auto_mail.db.queries import get_account_health
 from robotsix_auto_mail.server._constants import (
     _BOARD_COLUMNS,
+    _parse_archive_structure,
     _with_db,
 )
 from robotsix_auto_mail.triage import (
@@ -117,26 +118,9 @@ def _load_archive_context(
     """
     # Read the archive_structure watermark to know which folders exist.
     archive_raw = get_watermark(conn, "archive_structure")
-    existing_folders: set[str] = set()
-    delimiter: str = "/"
-    effective_root: str = archive_root
-    if archive_raw is not None:
-        try:
-            data = json.loads(archive_raw)
-            if isinstance(data, list):
-                # Old format: bare list of folder names.
-                existing_folders = set(data)
-                delimiter = "/"
-                effective_root = data[0] if data else archive_root
-            else:
-                # New format: {"delimiter": ..., "folders": [...]}.
-                existing_folders = set(data["folders"])
-                delimiter = data.get("delimiter", "/")
-                effective_root = data["folders"][0] if data["folders"] else archive_root
-        except json.JSONDecodeError, TypeError, KeyError:
-            # Malformed archive_structure watermark — keep the empty
-            # folder set / "/" delimiter / archive_root defaults set above.
-            pass
+    existing_folders, delimiter, effective_root = _parse_archive_structure(
+        archive_raw, archive_root
+    )
 
     # Compute effective subfolder for each TO_ARCHIVE record.
     archive_subfolders: dict[str, str] = {}
