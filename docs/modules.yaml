@@ -110,6 +110,7 @@ modules:
       - changelog/20260715T191710Z-reorganize-module-core-align-to-per-modu-8b73.misc.md
       - changelog/20260715T192538Z-robotsix-auto-mail-enable-bc-check-perio-186f.misc.md
       - changelog/20260716T040733Z-robotsix-auto-mail-enable-completeness-c-3fac.misc.md
+      - changelog/20260716T045127Z-missing-re-export-get-account-health-and-70a6.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
