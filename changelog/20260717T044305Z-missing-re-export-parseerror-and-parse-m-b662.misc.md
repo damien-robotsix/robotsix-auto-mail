@@ -1,0 +1,1 @@
+Missing re-export: `ParseError` and `parse_message` not exposed through `pipeline/__init__.py`
