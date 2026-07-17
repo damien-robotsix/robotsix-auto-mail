@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Remove `tests/server/test_action_mixin.py` (1489 lines) now that all test classes have been extracted into individual per-method modules under `tests/server/`.
 - Add dedicated unit tests for ``MailConfig``, ``MailAccount``, and ``MailAccountsConfig``
   model validators (``tests/config/test_model.py``), covering template-literal
   detection, TLS mode / log level / log format validation, account-id format

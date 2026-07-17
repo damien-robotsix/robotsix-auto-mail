@@ -118,6 +118,7 @@ modules:
       - changelog/20260717T044305Z-missing-re-export-normalize-archive-subf-33d3.misc.md
       - changelog/20260717T044305Z-missing-re-export-parseerror-and-parse-m-b662.misc.md
       - changelog/20260717T183958Z-test-gap-add-unit-tests-for-src-robotsix-47ec.misc.md
+      - changelog/20260717T201911Z-split-tests-server-test-action-mixin-py-60b7.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -373,7 +374,6 @@ modules:
       - tests/server/conftest.py
       - tests/server/conftest_helpers.py
       - tests/server/test_csrf.py
-      - tests/server/test_action_mixin.py
       - tests/server/_test_helpers.py
       - tests/server/test_action_archive_and_delete.py
       - tests/server/test_action_background_worker.py
