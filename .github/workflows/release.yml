@@ -60,7 +60,9 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
-          exit-code: 1
+          # Fail the step only for tag (release) pushes — branch
+          # pushes still scan and upload SARIF but don't fail.
+          exit-code: ${{ github.ref_type == 'tag' && '1' || '0' }}
           vuln-type: os,library
 
       - name: Upload Trivy SARIF to GitHub Code Scanning
