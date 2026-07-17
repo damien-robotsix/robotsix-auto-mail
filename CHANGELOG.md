@@ -6,6 +6,7 @@
 ## 0.0.0 (unreleased)
 
 - Re-export `normalize_archive_subfolder` from `robotsix_auto_mail.triage` so it can be imported from the public package without reaching into the `classifier` submodule.
+- Re-export ``ParseError`` and ``parse_message`` from ``robotsix_auto_mail.pipeline`` so consumers can import them from the public API instead of the private ``_parse`` module.
 - De-duplicate archive-structure watermark parsing: `board_data.py` now calls the shared `_parse_archive_structure` helper instead of inlining ~18 lines of identical JSON parsing logic.
 - Enable `UV_MALWARE_CHECK=1` in CI `uv sync` steps and Dockerfile builder stage to consult the OpenSSF Malicious Packages database before installing packages.
 - Enable audit periodic agent in robotsix-mill.

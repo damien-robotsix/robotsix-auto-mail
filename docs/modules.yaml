@@ -116,6 +116,7 @@ modules:
       - changelog/20260716T200417Z-deduplicate-archive-structure-watermark-cbc2.misc.md
       - changelog/20260716T200418Z-enable-uv-malware-check-1-in-ci-to-block-31fb.misc.md
       - changelog/20260717T044305Z-missing-re-export-normalize-archive-subf-33d3.misc.md
+      - changelog/20260717T044305Z-missing-re-export-parseerror-and-parse-m-b662.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
