@@ -119,6 +119,7 @@ modules:
       - changelog/20260717T044305Z-missing-re-export-parseerror-and-parse-m-b662.misc.md
       - changelog/20260717T183958Z-test-gap-add-unit-tests-for-src-robotsix-47ec.misc.md
       - changelog/20260717T201911Z-split-tests-server-test-action-mixin-py-60b7.misc.md
+      - changelog/20260717T201912Z-make-trivy-container-scan-blocking-on-cr-94a9.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
