@@ -373,7 +373,6 @@ modules:
       - tests/server/conftest.py
       - tests/server/conftest_helpers.py
       - tests/server/test_csrf.py
-      - tests/server/test_action_mixin.py
       - tests/server/_test_helpers.py
       - tests/server/test_action_archive_and_delete.py
       - tests/server/test_action_background_worker.py
