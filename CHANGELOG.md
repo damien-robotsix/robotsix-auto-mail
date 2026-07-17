@@ -5,6 +5,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Add dedicated unit tests for ``MailConfig``, ``MailAccount``, and ``MailAccountsConfig``
+  model validators (``tests/config/test_model.py``), covering template-literal
+  detection, TLS mode / log level / log format validation, account-id format
+  enforcement, multi-account uniqueness checks, and secret-field masking in
+  ``__repr__`` / ``__str__``.
 - Re-export `normalize_archive_subfolder` from `robotsix_auto_mail.triage` so it can be imported from the public package without reaching into the `classifier` submodule.
 - Re-export ``ParseError`` and ``parse_message`` from ``robotsix_auto_mail.pipeline`` so consumers can import them from the public API instead of the private ``_parse`` module.
 - De-duplicate archive-structure watermark parsing: `board_data.py` now calls the shared `_parse_archive_structure` helper instead of inlining ~18 lines of identical JSON parsing logic.

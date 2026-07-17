@@ -198,6 +198,7 @@ modules:
       - src/robotsix_auto_mail/config/config_sync_agent.py
       - tests/config/__init__.py
       - tests/config/test_mailconfig_basics.py
+      - tests/config/test_model.py
       - tests/config/test_schema.py
       - tests/config/test_config_from_yaml.py
       - tests/config/test_config_load.py
