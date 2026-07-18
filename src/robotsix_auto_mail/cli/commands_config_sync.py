@@ -13,6 +13,15 @@ from robotsix_auto_mail.db import init_db
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the ``config-sync`` and ``config-sync-set`` subcommands.
+
+    ``config-sync`` runs the LLM config-drift advisory agent and renders
+    proposals; ``config-sync-set`` records a user accept/reject decision
+    for a drift finding fingerprint in the dedup ledger.
+
+    Args:
+        subparsers: The argparse subparsers group to attach parsers to.
+    """
     from robotsix_auto_mail.cli import _add_account_arg
 
     config_sync_parser = subparsers.add_parser(
