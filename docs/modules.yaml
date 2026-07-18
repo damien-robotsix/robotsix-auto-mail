@@ -123,6 +123,7 @@ modules:
       - changelog/20260717T210820Z-ci-failure-release-image-on-main-ed22.misc.md
       - changelog/20260718T002044Z-robotsix-auto-mail-enable-repo-descripti-f04d.misc.md
       - changelog/20260718T184436Z-robotsix-auto-mail-enable-health-periodi-fbdb.misc.md
+      - changelog/20260718T184436Z-robotsix-auto-mail-enable-survey-periodi-c635.feature.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -488,4 +489,5 @@ modules:
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/repo_description_sync.yaml
       - .robotsix-mill/periodic/security_posture.yaml
+      - .robotsix-mill/periodic/survey.yaml
       - .robotsix-mill/periodic/test_gap.yaml
