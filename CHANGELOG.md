@@ -9,6 +9,7 @@
   modules — `test_cli_detect_basic.py`, `test_cli_detect_microsoft.py`,
   `test_cli_detect_accounts.py`, and `test_cli_detect_settings.py` — with
   shared helpers extracted into `tests/cli/conftest.py`.
+- Extracted shared LLM parameter documentation in ``db/archive.py`` into a module-level ``_LLM_PARAM_DOCS`` constant, referenced from both ``determine_archive_structure`` and ``setup_archive`` docstrings to prevent drift.
 - Add docstring to ``register_subparser`` in ``commands_ingest.py``
 - Add docstring to ``register_subparser`` in ``commands_triage.py``.
 - Add docstring to `register_subparser` in `commands_detect.py`.

@@ -42,6 +42,23 @@ ARCHIVE_ROOT: str = _ARCHIVE_ROOT
 #: ``"imap_uid"``).
 _ARCHIVE_WATERMARK_KEY = "archive_structure"
 
+#: Shared LLM parameter documentation referenced by
+#: :func:`determine_archive_structure` and :func:`setup_archive`.
+#:
+#: The ``api_key`` resolver differs between the two call sites — each
+#: docstring notes the specific resolver used.
+_LLM_PARAM_DOCS = """\
+        api_key: OpenRouter API key.  Resolves with the precedence
+            ``api_key`` argument → ``LLM_API_KEY`` env var → config file.
+        provider_model: LLM provider-model identifier
+            (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
+            back to the tier-level default model.
+        level: LLM integer tier to use.  ``1`` (cheap, default)."""
+
+# Referenced by docstrings via :data:`_LLM_PARAM_DOCS` cross-references;
+# the assignment below keeps CodeQL's py/unused-global-variable quiet.
+_ = _LLM_PARAM_DOCS
+
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -117,13 +134,10 @@ def determine_archive_structure(
         archive_root: Logical root folder name (e.g.
             ``"robotsix-mail-archive"``).  Used in the system prompt
             to anchor the proposed layout.
-        api_key: OpenRouter API key.  Resolves with the precedence
-            ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
-            :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
-        provider_model: LLM provider-model identifier
-            (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
-            back to the tier-level default model.
-        level: LLM integer tier to use.  ``1`` (cheap, default).
+        api_key: See :data:`_LLM_PARAM_DOCS`.  Resolved by
+            :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`.
+        provider_model: See :data:`_LLM_PARAM_DOCS`.
+        level: See :data:`_LLM_PARAM_DOCS`.
 
     Returns:
         A list of sub-paths relative to the archive root (``/``-separated).
@@ -181,13 +195,10 @@ def setup_archive(
         client: Connected IMAP client.
         archive_root: Logical root folder name (e.g.
             ``"robotsix-mail-archive"``).
-        api_key: OpenRouter API key.  Resolves with the precedence
-            ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
-            :func:`~robotsix_auto_mail.config.resolve_llm_api_key`).
-        provider_model: LLM provider-model identifier
-            (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
-            back to the tier-level default model.
-        level: LLM integer tier to use.  ``1`` (cheap, default).
+        api_key: See :data:`_LLM_PARAM_DOCS`.  Resolved by
+            :func:`~robotsix_auto_mail.config.resolve_llm_api_key`.
+        provider_model: See :data:`_LLM_PARAM_DOCS`.
+        level: See :data:`_LLM_PARAM_DOCS`.
 
     Returns:
         The list of full archive folder names that exist after setup.
