@@ -26,7 +26,8 @@ from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS,
     MailRecord,
     get_watermark,
-    set_watermark,
+    load_json_watermark,
+    save_json_watermark,
 )
 from robotsix_auto_mail.triage._constants import (
     _ARCHIVE_LLM_HINTS_WATERMARK_KEY,
@@ -113,27 +114,6 @@ def _sanitise_subfolder(raw: str) -> str:
     return sanitised
 
 
-def _load_json_watermark(conn: sqlite3.Connection, key: str) -> dict[str, object]:
-    """Read a JSON-serialised dict watermark, returning {} when absent or corrupt."""
-    raw = get_watermark(conn, key)
-    if raw is None:
-        return {}
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-    if not isinstance(data, dict):
-        return {}
-    return data
-
-
-def _save_json_watermark(
-    conn: sqlite3.Connection, key: str, data: dict[str, object]
-) -> None:
-    """Persist *data* as a JSON-serialised watermark."""
-    set_watermark(conn, key, json.dumps(data))
-
-
 def _load_archive_overrides(conn: sqlite3.Connection) -> dict[str, str]:
     """Load user overrides from the watermark table.
 
@@ -141,7 +121,7 @@ def _load_archive_overrides(conn: sqlite3.Connection) -> dict[str, str]:
     """
     return {
         k: str(v)
-        for k, v in _load_json_watermark(conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY).items()
+        for k, v in load_json_watermark(conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY).items()
     }
 
 
@@ -149,7 +129,7 @@ def _save_archive_overrides(
     conn: sqlite3.Connection, overrides: dict[str, str]
 ) -> None:
     """Persist *overrides* to the watermark table (json round-trip)."""
-    _save_json_watermark(
+    save_json_watermark(
         conn, _ARCHIVE_OVERRIDES_WATERMARK_KEY, cast("dict[str, object]", overrides)
     )
 
@@ -161,13 +141,13 @@ def _load_llm_archive_hints(conn: sqlite3.Connection) -> dict[str, str]:
     """
     return {
         k: str(v)
-        for k, v in _load_json_watermark(conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY).items()
+        for k, v in load_json_watermark(conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY).items()
     }
 
 
 def _save_llm_archive_hints(conn: sqlite3.Connection, hints: dict[str, str]) -> None:
     """Persist *hints* to the watermark table (json round-trip)."""
-    _save_json_watermark(
+    save_json_watermark(
         conn, _ARCHIVE_LLM_HINTS_WATERMARK_KEY, cast("dict[str, object]", hints)
     )
 

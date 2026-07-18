@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Extract shared `load_json_watermark` / `save_json_watermark` helpers into `db.queries`, deduplicating watermark loading logic between `config_sync_agent` and `triage.classifier`.
 - Split `tests/cli/test_cli_detect.py` (1523 lines) into four focused test
   modules — `test_cli_detect_basic.py`, `test_cli_detect_microsoft.py`,
   `test_cli_detect_accounts.py`, and `test_cli_detect_settings.py` — with

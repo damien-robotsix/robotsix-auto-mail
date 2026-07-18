@@ -54,7 +54,13 @@ from .queries import (
     list_untriaged_records as list_untriaged_records,
 )
 from .queries import (
+    load_json_watermark as load_json_watermark,
+)
+from .queries import (
     record_exists as record_exists,
+)
+from .queries import (
+    save_json_watermark as save_json_watermark,
 )
 from .queries import (
     set_watermark as set_watermark,
@@ -93,7 +99,9 @@ __all__ = [
     "insert_record",
     "list_records",
     "list_untriaged_records",
+    "load_json_watermark",
     "record_exists",
+    "save_json_watermark",
     "set_watermark",
     "update_calendar_correlation_id",
     "update_calendar_event_ref",

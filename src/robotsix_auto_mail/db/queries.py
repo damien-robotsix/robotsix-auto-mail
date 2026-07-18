@@ -8,6 +8,7 @@ instances.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -337,6 +338,27 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value
         (key, value),
     )
     conn.commit()
+
+
+def load_json_watermark(conn: sqlite3.Connection, key: str) -> dict[str, object]:
+    """Read a JSON-serialised dict watermark, returning {} when absent or corrupt."""
+    raw = get_watermark(conn, key)
+    if raw is None:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return data
+
+
+def save_json_watermark(
+    conn: sqlite3.Connection, key: str, data: dict[str, object]
+) -> None:
+    """Persist *data* as a JSON-serialised watermark."""
+    set_watermark(conn, key, json.dumps(data))
 
 
 def delete_watermark(conn: sqlite3.Connection, key: str) -> None:
