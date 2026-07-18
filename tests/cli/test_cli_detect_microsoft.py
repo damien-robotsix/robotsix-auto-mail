@@ -9,12 +9,8 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.cli import main
-from robotsix_auto_mail.config import (
-    MailAccount,
-    MailAccountsConfig,
-    MailConfig,
-)
-from robotsix_auto_mail.config.detect import DetectionError, MailProvider
+from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config.detect import MailProvider
 from tests.cli.conftest import _ok_result, _auth_fail_result
 
 

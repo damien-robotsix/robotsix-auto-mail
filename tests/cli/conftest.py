@@ -7,20 +7,7 @@ from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail.config import (
-    MailAccount,
-    MailAccountsConfig,
-    MailConfig,
-)
 from robotsix_auto_mail.config.detect import DetectionError, MailProvider
-
-
-def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfig:
-    """Wrap a single ``MailConfig`` in a one-element accounts container."""
-    return MailAccountsConfig(
-        accounts=(MailAccount(account_id=account_id, config=cfg, label=None),),
-        default_account_id=account_id,
-    )
 
 
 @pytest.fixture

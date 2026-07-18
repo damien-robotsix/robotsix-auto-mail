@@ -15,8 +15,8 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
 )
-from robotsix_auto_mail.config.detect import DetectionError, MailProvider
-from tests.cli.conftest import _ok_result, _auth_fail_result, _host_fail_result
+from robotsix_auto_mail.config.detect import MailProvider
+from tests.cli.conftest import _ok_result
 
 
 def test_detect_preserves_existing_llm_section(

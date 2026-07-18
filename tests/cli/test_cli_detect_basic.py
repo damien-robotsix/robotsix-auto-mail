@@ -5,19 +5,13 @@ from __future__ import annotations
 import builtins
 import os
 from pathlib import Path
-from typing import Any
 from unittest import mock
 
 import pytest
 
 from robotsix_auto_mail.cli import build_parser, main
-from robotsix_auto_mail.config import (
-    MailAccount,
-    MailAccountsConfig,
-    MailConfig,
-)
 from robotsix_auto_mail.config.detect import DetectionError, MailProvider
-from tests.cli.conftest import _accounts, _ok_result, _auth_fail_result, _host_fail_result
+from tests.cli.conftest import _ok_result, _auth_fail_result
 
 
 def test_parser_has_detect_subcommand() -> None:

@@ -4,18 +4,12 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
 from unittest import mock
 
 import pytest
 
 from robotsix_auto_mail.cli import main
 from robotsix_auto_mail.cli.config import _detect_settings
-from robotsix_auto_mail.config import (
-    MailAccount,
-    MailAccountsConfig,
-    MailConfig,
-)
 from robotsix_auto_mail.config.detect import DetectionError, MailProvider
 
 from tests.cli.conftest import (
