@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-import json
 import sqlite3
 import sys
 from pathlib import Path
@@ -28,7 +27,7 @@ import pydantic
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.config.pydantic_utils import validate_confidence
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
-from robotsix_auto_mail.db import get_watermark, set_watermark
+from robotsix_auto_mail.db import load_json_watermark, save_json_watermark
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -142,15 +141,7 @@ def _load_ledger(conn: sqlite3.Connection) -> dict[str, LedgerEntry]:
     Returns an empty dict when the ledger has never been written or
     when the persisted JSON is corrupt.
     """
-    raw = get_watermark(conn, _LEDGER_WATERMARK_KEY)
-    if raw is None:
-        return {}
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-    if not isinstance(data, dict):
-        return {}
+    data = load_json_watermark(conn, _LEDGER_WATERMARK_KEY)
     ledger: dict[str, LedgerEntry] = {}
     for fingerprint, entry in data.items():
         try:
@@ -162,8 +153,10 @@ def _load_ledger(conn: sqlite3.Connection) -> dict[str, LedgerEntry]:
 
 def _save_ledger(conn: sqlite3.Connection, ledger: dict[str, LedgerEntry]) -> None:
     """Persist *ledger* to the watermark table (json round-trip)."""
-    payload = {fingerprint: entry.model_dump() for fingerprint, entry in ledger.items()}
-    set_watermark(conn, _LEDGER_WATERMARK_KEY, json.dumps(payload))
+    payload: dict[str, object] = {
+        fingerprint: entry.model_dump() for fingerprint, entry in ledger.items()
+    }
+    save_json_watermark(conn, _LEDGER_WATERMARK_KEY, payload)
 
 
 def record_and_filter_proposals(

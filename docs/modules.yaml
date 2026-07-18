@@ -132,6 +132,7 @@ modules:
       - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-7a9c.misc.md
       - changelog/20260718T203603Z-split-tests-cli-test-cli-detect-py-1523-d05d.misc.md
       - changelog/20260718T203605Z-extract-shared-llm-parameter-docstrings-599a.misc.md
+      - changelog/20260718T203605Z-unify-json-watermark-loading-helpers-acr-9c2f.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
