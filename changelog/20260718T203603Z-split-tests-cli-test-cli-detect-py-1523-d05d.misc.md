@@ -1,0 +1,1 @@
+Split tests/cli/test_cli_detect.py (1523 lines) into per-theme test modules
