@@ -55,6 +55,10 @@ _LLM_PARAM_DOCS = """\
             back to the tier-level default model.
         level: LLM integer tier to use.  ``1`` (cheap, default)."""
 
+# Referenced by docstrings via :data:`_LLM_PARAM_DOCS` cross-references;
+# the assignment below keeps CodeQL's py/unused-global-variable quiet.
+_ = _LLM_PARAM_DOCS
+
 
 # ---------------------------------------------------------------------------
 # Exceptions
