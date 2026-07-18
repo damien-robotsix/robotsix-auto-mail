@@ -1,0 +1,1 @@
+robotsix-auto-mail: Enable repo_description_sync periodic workflow

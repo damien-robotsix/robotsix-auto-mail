@@ -483,5 +483,6 @@ modules:
       - .robotsix-mill/periodic/completeness_check.yaml
       - .robotsix-mill/periodic/copy_paste.yaml
       - .robotsix-mill/periodic/module_curator.yaml
+      - .robotsix-mill/periodic/repo_description_sync.yaml
       - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/test_gap.yaml
