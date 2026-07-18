@@ -34,6 +34,11 @@ from typing import Any
 
 import yaml
 
+try:
+    from pydantic import SecretStr
+except ImportError:
+    SecretStr = None  # type: ignore[assignment]
+
 # ---------------------------------------------------------------------------
 # Make src/ importable both when run directly and when imported by tests.
 # ---------------------------------------------------------------------------
@@ -184,11 +189,41 @@ def _values_match(
             return False
         if parsed == mailconfig_default:
             return True
+        # SecretStr: compare the parsed raw value against the secret.
+        if SecretStr is not None and isinstance(mailconfig_default, SecretStr):
+            if parsed == mailconfig_default.get_secret_value():
+                return True
         # Handle "993" → "993" (str) vs 993 (int) — already caught
         # by safe_load giving int 993.  Quoted-string values (e.g.
         # '"direct-tls"') are already handled by the parsed == default
         # check above.
 
+    return False
+
+
+def _is_empty_default(default: Any) -> bool:
+    """Return True when *default* represents an empty/no-value default.
+
+    Handles plain ``""`` strings as well as :class:`SecretStr` wrapping an
+    empty string.
+    """
+    if default == "":
+        return True
+    if SecretStr is not None and isinstance(default, SecretStr):
+        return default.get_secret_value() == ""
+    return False
+
+
+def _values_match_doc(doc_value: Any, model_default: Any) -> bool:
+    """Return True when *doc_value* matches the pydantic model default.
+
+    Like :func:`_values_match` but for the docs-table comparison, where
+    *doc_value* has already been normalised by ``_normalise_doc_default``.
+    """
+    if doc_value == model_default:
+        return True
+    if SecretStr is not None and isinstance(model_default, SecretStr):
+        return doc_value == model_default.get_secret_value()
     return False
 
 
@@ -542,7 +577,7 @@ def _validate_yaml_keys_against_mailconfig(
         if doc_default is dataclasses.MISSING:
             # Doc says "-" / "*(none)*" → no default documented.  Treat an
             # empty-string MailConfig default as equivalent ("no value").
-            if default == "":
+            if _is_empty_default(default):
                 continue
             findings.append(
                 {
@@ -555,7 +590,7 @@ def _validate_yaml_keys_against_mailconfig(
             )
             continue
 
-        if doc_default != default:
+        if not _values_match_doc(doc_default, default):
             findings.append(
                 {
                     "artifact": path,

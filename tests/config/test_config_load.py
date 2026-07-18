@@ -57,7 +57,7 @@ def test_load_returns_default_account_config() -> None:
     assert cfg.imap_host == "imap.file.com"
     assert cfg.smtp_host == "smtp.file.com"
     assert cfg.username == "file_user"
-    assert cfg.password == "file_pass"
+    assert cfg.password.get_secret_value() == "file_pass"
 
 
 def test_load_when_load_accounts_fails() -> None:
@@ -108,5 +108,5 @@ def test_mailconfig_password_missing_ok() -> None:
         username="user@example.com",
         password="",
     )
-    assert cfg.password == ""
+    assert cfg.password.get_secret_value() == ""
     assert cfg.username == "user@example.com"

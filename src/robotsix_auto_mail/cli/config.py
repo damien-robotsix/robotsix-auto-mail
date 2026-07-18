@@ -13,7 +13,10 @@ import logging
 import re
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from pydantic import SecretStr
 
 from robotsix_auto_mail.config import (
     MailConfig,
@@ -149,7 +152,7 @@ def _prompt_hosts(config: MailConfig, result: _VerifyResult) -> MailConfig | Non
             ans = input(f"Enter SMTP host [{config.smtp_host}]: ").strip()
             if ans:
                 smtp_host, changed = ans, True
-    except EOFError, KeyboardInterrupt:
+    except (EOFError, KeyboardInterrupt):
         return None
     if not changed:
         return None
@@ -170,6 +173,151 @@ def _account_id_from_email(email: str) -> str:
     return cleaned or "default"
 
 
+def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
+    """Load :class:`MailAccountsConfig` from *path* (JSON only).
+
+    Returns ``None`` when the file is missing or unparseable.
+    """
+    if not path.exists():
+        return None
+    try:
+        from robotsix_config import load_config as _rc_load
+
+        return _rc_load(MailAccountsConfig, path=path)
+    except Exception:
+        logger.debug("robotsix_config load failed for %s — falling back", path)
+    # Fallback without robotsix_config: plain JSON only.
+    try:
+        import json
+
+        return MailAccountsConfig.model_validate(json.loads(path.read_text()))
+    except Exception:
+        logger.debug("JSON parse failed for %s", path)
+        return None
+
+
+def _normalise_legacy_account(entry: dict[str, object]) -> dict[str, object]:
+    """Convert a single legacy YAML account entry to modern shape.
+
+    .. deprecated::
+        The YAML config format is no longer supported.  This function is
+        retained only for one-shot migration of existing ``mail.local.yaml``
+        files to ``config.json``.  It will be removed in a future release.
+
+    Legacy shape (robotsix-yaml-config)::
+
+        id: myid
+        auth: {username: ..., password: ...}
+        imap: {host: ..., port: ...}
+        smtp: {host: ..., port: ...}
+        label: ...
+
+    Modern shape::
+
+        account_id: myid
+        config: {imap_host: ..., smtp_host: ..., username: ..., ...}
+        label: ...
+    """
+    account_id = entry.get("id", entry.get("account_id", "default"))
+    auth = entry.get("auth", {})
+    imap = entry.get("imap", {})
+    smtp = entry.get("smtp", {})
+    label = entry.get("label")
+
+    if not isinstance(auth, dict):
+        auth = {}
+    if not isinstance(imap, dict):
+        imap = {}
+    if not isinstance(smtp, dict):
+        smtp = {}
+
+    config: dict[str, object] = {}
+    # Transport
+    if "host" in imap:
+        config["imap_host"] = imap["host"]
+    if "port" in imap:
+        config["imap_port"] = imap["port"]
+    if "host" in smtp:
+        config["smtp_host"] = smtp["host"]
+    if "port" in smtp:
+        config["smtp_port"] = smtp["port"]
+    # Auth
+    if "username" in auth:
+        config["username"] = auth["username"]
+    config["password"] = auth.get("password", "")
+
+    result: dict[str, object] = {"account_id": account_id, "config": config}
+    if label is not None:
+        result["label"] = label
+    return result
+
+
+def _existing_account_ids(path: Path) -> set[str]:
+    """Return the account ids already present in the config file at *path*.
+
+    A multi-account file yields its entry ids; a missing/empty file yields
+    an empty set.  Reads JSON only — legacy YAML is no longer supported.
+    """
+    if not path.exists():
+        return set()
+    # Try the full loader first.
+    container = _load_accounts_from_file(path)
+    if container is not None:
+        return {a.account_id for a in container.accounts}
+    # Fallback: parse raw JSON to extract ids from partial data.
+    try:
+        import json
+
+        data = json.loads(path.read_text())
+    except Exception:
+        return set()
+    if not isinstance(data, dict):
+        return set()
+    raw_accounts = data.get("accounts")
+    if not isinstance(raw_accounts, list):
+        return set()
+    ids: set[str] = set()
+    for entry in raw_accounts:
+        if isinstance(entry, dict):
+            account_id = entry.get("account_id")
+            if isinstance(account_id, str):
+                ids.add(account_id)
+    return ids
+
+
+def _existing_accounts_for_append(
+    path: Path, new_account_id: str
+) -> tuple[list[MailAccount], str]:
+    """Return ``(other_accounts, default_account_id)`` for appending to *path*.
+
+    ``other_accounts`` are the accounts already in the file *excluding* one
+    matching ``new_account_id``.  A deprecated mono file is converted: its
+    single config becomes a ``"default"`` account.  ``default_account_id`` is
+    the file's existing default (or ``new_account_id`` when the file is new).
+    """
+    container = _load_accounts_from_file(path)
+    if container is None:
+        return [], new_account_id
+
+    others = [a for a in container.accounts if a.account_id != new_account_id]
+    return others, container.default_account_id
+
+
+def _find_existing_account(path: Path, account_id: str) -> MailAccount | None:
+    """Return the ``MailAccount`` matching *account_id* from *path*, or ``None``.
+
+    Used by the overwrite path to load the existing account's config before
+    merging freshly-detected transport fields into it.
+    """
+    container = _load_accounts_from_file(path)
+    if container is None:
+        return None
+    for account in container.accounts:
+        if account.account_id == account_id:
+            return account
+    return None
+
+
 def _get_password(args: argparse.Namespace) -> str | None:
     """Get password from args or interactive prompt.
 
@@ -179,7 +327,7 @@ def _get_password(args: argparse.Namespace) -> str | None:
     if password is None:
         try:
             password = getpass.getpass("Email password: ")
-        except EOFError, KeyboardInterrupt:
+        except (EOFError, KeyboardInterrupt):
             sys.stderr.write("\nDetection cancelled.\n")
             return None
     return password
@@ -268,7 +416,7 @@ def _refine_password(
     sys.stderr.write("The server is reachable but the password was rejected.\n")
     try:
         new_pw = getpass.getpass("Re-enter email password: ")
-    except EOFError, KeyboardInterrupt:
+    except (EOFError, KeyboardInterrupt):
         return _RefineOutcome()
     if not new_pw:
         return _RefineOutcome()
@@ -304,7 +452,7 @@ def _refine_with_llm(
     if refined is None:
         return _RefineOutcome()
     sys.stderr.write(f"  LLM: imap={refined.imap_host} smtp={refined.smtp_host}\n")
-    return _RefineOutcome(config=build(refined, config.password), provider=refined)
+    return _RefineOutcome(config=build(refined, config.password.get_secret_value()), provider=refined)
 
 
 def _refine_manual(config: MailConfig, result: _VerifyResult) -> _RefineOutcome:
@@ -361,7 +509,7 @@ def _verify_and_refine(
         if app_password and detected.oauth2_provider:
             # Clear MSAL provider so IMAP/SMTP use plain password auth.
             detected = detected.model_copy(
-                update={"oauth2_provider": "", "password": pw or ""}
+                update={"oauth2_provider": "", "password": SecretStr(pw or "")}
             )
         if app_password:
             # Ensure oauth2_provider is cleared.
@@ -374,7 +522,28 @@ def _verify_and_refine(
                     "oauth2_tenant": oauth2_tenant or detected.oauth2_tenant,
                 }
             )
+
+        # Persist the resolved LLM key and model into the written config so
+        # the file is self-contained.  In overwrite mode, existing_account.config
+        # already carries the file's values; or fills in when the file was
+        # sparse/new.
+        if api_key and not detected.llm_api_key.get_secret_value():
+            detected = detected.model_copy(update={"llm_api_key": SecretStr(api_key)})
+        if llm_provider_model and not detected.llm_provider_model:
+            detected = detected.model_copy(
+                update={"llm_provider_model": llm_provider_model}
+            )
+
         return detected
+
+    def _write(cfg: MailConfig) -> None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        account = MailAccount(account_id=account_id, config=cfg, label=effective_label)
+        container = MailAccountsConfig(
+            accounts=[*other_accounts, account],
+            default_account_id=default_account_id,
+        )
+        save_accounts(container, path=output_path)
 
     config = _build(provider, password)
 
@@ -396,10 +565,10 @@ def _verify_and_refine(
             sys.stderr.write(f"Error: device-code login failed: {exc}\n")
             return 1, None
     else:
-        if not config.password:
+        if not config.password.get_secret_value():
             sys.stderr.write(
-                "No password provided — pass --password or enter one "
-                "interactively, then re-run detect to verify.\n"
+                f"No password provided — add it to {output_path} "
+                "(or set it via the Configure panel), then run `probe` to verify.\n"
             )
             return 0, config
         if no_verify:

@@ -367,7 +367,7 @@ def ingest_mail(
                 db_conn,
                 imap_client,
                 archive_root=config.archive_root,
-                api_key=config.llm_api_key,
+                api_key=config.llm_api_key.get_secret_value(),
                 provider_model=config.llm_provider_model,
             )
             _logger.info("archive_setup_done")
@@ -416,7 +416,7 @@ def ingest_mail(
         try:
             decisions = run_triage_agent(
                 db_conn,
-                api_key=config.llm_api_key,
+                api_key=config.llm_api_key.get_secret_value(),
                 provider_model=config.llm_provider_model,
                 only_undecided=True,
                 user_email=config.username,

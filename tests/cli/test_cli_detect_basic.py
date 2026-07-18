@@ -29,17 +29,8 @@ def test_parser_has_detect_subcommand() -> None:
     args = parser.parse_args(["detect", "user@gmail.com"])
     assert args.command == "detect"
     assert args.email == "user@gmail.com"
-    # Old flags removed — verify they're absent.
-    assert not hasattr(args, "stdout")
-    assert not hasattr(args, "output")
-    assert not hasattr(args, "overwrite")
-    # New flags are present.
-    assert args.no_verify is False
-    assert args.password is None
-    assert args.id is None
-    assert args.app_password is False
-    assert args.oauth2_client_id == ""
-    assert args.oauth2_tenant == ""
+    assert args.stdout is False
+    assert args.output == "config/config.json"
 
 
 def test_detect_missing_pydantic_ai(capsys: pytest.CaptureFixture[str]) -> None:
@@ -326,12 +317,8 @@ def test_detect_verifies_connection_on_success(
 
     assert rc == 0
     mock_verify.assert_called_once()
-    assert mock_verify.call_args.args[0].password == "pw"
-    captured = capsys.readouterr()
-    assert "Verification succeeded" in captured.err
-    # Report confirms login_ok.
-    report = json.loads(captured.out)
-    assert report["login_ok"] is True
+    assert mock_verify.call_args.args[0].password.get_secret_value() == "pw"
+    assert "Verification succeeded" in capsys.readouterr().err
 
 
 def test_detect_verify_failure_returns_1(

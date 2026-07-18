@@ -20,6 +20,15 @@
   ``_find_existing_account``, ``_load_accounts_from_file``,
   ``_normalise_legacy_account``, and ``_report_failure`` from
   ``cli.config`` (all served the now-removed file-write path).
+- Type `password`, `llm_api_key`, `oauth2_token`, `oauth2_client_secret`,
+  and `langfuse_secret_key` as `pydantic.SecretStr` so the JSON Schema
+  emits `writeOnly` for the Configure panel.  Secrets are now masked in
+  `model_dump_json()`; use `_dump_config_json()` for file persistence.
+- Drop `mail.local.yaml` as a runtime config source: the YAML fallback
+  in `_load_accounts_from_file` is removed; the `detect` default output
+  path is now `config/config.json`.
+- Commit `config/config.schema.json` for the central-deploy Configure
+  panel form rendering.
 - Extract shared `load_json_watermark` / `save_json_watermark` helpers into `db.queries`, deduplicating watermark loading logic between `config_sync_agent` and `triage.classifier`.
 - Split `tests/cli/test_cli_detect.py` (1523 lines) into four focused test
   modules — `test_cli_detect_basic.py`, `test_cli_detect_microsoft.py`,

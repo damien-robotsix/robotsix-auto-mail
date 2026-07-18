@@ -312,4 +312,4 @@ def test_imap_client_only_uses_imap_fields(cfg: MailConfig) -> None:
             pass
 
     # Verify the connection used only IMAP fields — SMTP fields are not touched.
-    mock_ssl.login.assert_called_once_with(cfg.username, cfg.password)
+    mock_ssl.login.assert_called_once_with(cfg.username, cfg.password.get_secret_value())

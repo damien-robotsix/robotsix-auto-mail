@@ -106,15 +106,15 @@ def test_mailconfig_full_fields() -> None:
     assert cfg.smtp_port == 465
     assert cfg.smtp_tls_mode == "direct-tls"
     assert cfg.username == "user@example.com"
-    assert cfg.password == "s3cret"
+    assert cfg.password.get_secret_value() == "s3cret"
     assert cfg.oauth2_provider == "microsoft"
     assert cfg.oauth2_tenant == "contoso.onmicrosoft.com"
     assert cfg.db_path == ".data/custom/db.db"
     assert cfg.triage_on_ingest is False
-    assert cfg.llm_api_key == "sk-top-level"
+    assert cfg.llm_api_key.get_secret_value() == "sk-top-level"
     assert cfg.llm_provider_model == "openrouter-deepseek"
     assert cfg.langfuse_public_key == "pk-lf-yaml"
-    assert cfg.langfuse_secret_key == "sk-lf-yaml"
+    assert cfg.langfuse_secret_key.get_secret_value() == "sk-lf-yaml"
     assert cfg.langfuse_base_url == "https://langfuse.example.net"
 
 
@@ -165,7 +165,7 @@ def test_mailconfig_langfuse_defaults_when_absent() -> None:
         password="p",
     )
     assert cfg.langfuse_public_key == ""
-    assert cfg.langfuse_secret_key == ""
+    assert cfg.langfuse_secret_key.get_secret_value() == ""
     assert cfg.langfuse_base_url == ""
 
 
@@ -177,7 +177,7 @@ def test_mailconfig_llm_defaults_when_absent() -> None:
         username="u",
         password="p",
     )
-    assert cfg.llm_api_key == ""
+    assert cfg.llm_api_key.get_secret_value() == ""
     assert cfg.llm_provider_model == ""
 
 
@@ -222,7 +222,7 @@ def test_mailconfig_missing_password_ok_if_empty() -> None:
         username="user@example.com",
         password="",
     )
-    assert cfg.password == ""
+    assert cfg.password.get_secret_value() == ""
     assert cfg.username == "user@example.com"
 
 
@@ -388,7 +388,7 @@ def test_model_validate_default_top_level_fields() -> None:
     }
     cfg = MailAccountsConfig.model_validate(data)
     c = cfg.default.config
-    assert c.llm_api_key == ""
+    assert c.llm_api_key.get_secret_value() == ""
     assert c.llm_provider_model == ""
     assert c.ingest_interval_minutes == 15
     assert c.archive_root == "robotsix-mail-archive"

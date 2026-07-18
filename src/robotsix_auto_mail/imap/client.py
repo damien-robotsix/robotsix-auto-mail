@@ -116,8 +116,8 @@ class ImapClient(_ProtocolClient):
             port=config.imap_port,
             tls_mode=config.imap_tls_mode,
             username=config.username,
-            password=config.password,
-            oauth2_token=config.oauth2_token,
+            password=config.password.get_secret_value(),
+            oauth2_token=config.oauth2_token.get_secret_value(),
             config=config,
             build_token_provider_fn=build_token_provider,
         )

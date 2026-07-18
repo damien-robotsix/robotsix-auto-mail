@@ -234,6 +234,7 @@ modules:
       - docs/config/.gitkeep
       - docs/config/mail.local.example.yaml
       - config/config.example.json
+      - config/config.schema.json
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
       - tests/config/test_config_sync_agent.py

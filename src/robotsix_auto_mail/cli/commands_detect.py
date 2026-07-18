@@ -51,7 +51,21 @@ def register_subparser(
     parser.add_argument(
         "--password",
         default=None,
-        help=("Password to use for verification. When omitted, prompts interactively."),
+        help=(
+            "Password to write into the config file. "
+            "When omitted, prompts interactively."
+        ),
+    )
+    parser.add_argument(
+        "--output",
+        default="config/config.json",
+        help="Write mail config to this file path (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--stdout",
+        action="store_true",
+        default=False,
+        help="Print mail config to stdout instead of writing to file",
     )
     parser.add_argument(
         "--no-verify",
@@ -169,6 +183,43 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         password = _get_password(args)
         if password is None:
             return 1
+    if args.stdout:
+        config = provider_to_config(
+            provider,
+            args.email,
+            # lgtm[py/clear-text-storage-sensitive-data]
+            password="",  # nosec B106 - intentionally omitted from stdout
+        ).model_copy(update={"db_path": f".data/{account_id}/mail.db"})
+        if args.app_password and config.oauth2_provider:
+            # provider_to_config sets oauth2_provider="microsoft" for
+            # Microsoft hosts unconditionally; --app-password must clear it
+            # in the stdout path because _build() is never reached here.
+            config = config.model_copy(update={"oauth2_provider": ""})
+        if microsoft:
+            sys.stderr.write(
+                f"# Detected Microsoft 365 settings for {args.email} — "
+                "OAuth2 (XOAUTH2); no password is used.\n"
+                "# Save this as config/config.json, then run:\n"
+                f"#   robotsix-auto-mail auth login --account {account_id}\n"
+                "# to complete the device-code consent and seed the token "
+                "cache.\n"
+            )
+        else:
+            sys.stderr.write(
+                f"# Detected settings for {args.email} — verify before using.\n"
+                "# The password was intentionally omitted: fill in auth.password "
+                "before use.\n"
+                "# Save this as config/config.json.\n"
+            )
+        account = MailAccount(account_id=account_id, config=config, label=label)
+        container = MailAccountsConfig(
+            accounts=[account], default_account_id=account_id
+        )
+        # lgtm[py/clear-text-storage-sensitive-data]
+        from robotsix_auto_mail.config.loader import _dump_config_json
+
+        sys.stdout.write(_dump_config_json(container))
+        return 0
 
     rc, config = _verify_and_refine(
         provider,
