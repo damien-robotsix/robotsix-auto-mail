@@ -22,6 +22,16 @@ from robotsix_auto_mail.pipeline import IngestResult, reconcile_records
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the ``ingest`` subcommand and its arguments.
+
+    The subcommand fetches new mail from IMAP, parses it, stores it in the
+    local database, and updates the watermark.  Supports single-account or
+    all-accounts operation, dry-run mode, and a watch loop with liveness
+    heartbeat file.
+
+    Args:
+        subparsers: The argparse subparsers group to attach the parser to.
+    """
     parser = subparsers.add_parser("ingest", help="Fetch new mail and store it locally")
     ingest_account_group = parser.add_mutually_exclusive_group()
     ingest_account_group.add_argument(
