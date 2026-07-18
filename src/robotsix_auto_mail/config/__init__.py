@@ -62,6 +62,9 @@ from robotsix_auto_mail.config.schema import (
     DEFAULT_IMAP_TLS_MODE as DEFAULT_IMAP_TLS_MODE,
 )
 from robotsix_auto_mail.config.schema import (
+    DEFAULT_INGEST_INTERVAL_MINUTES as DEFAULT_INGEST_INTERVAL_MINUTES,
+)
+from robotsix_auto_mail.config.schema import (
     DEFAULT_SMTP_TLS_MODE as DEFAULT_SMTP_TLS_MODE,
 )
 from robotsix_auto_mail.config.schema import (
@@ -71,6 +74,7 @@ from robotsix_auto_mail.config.schema import (
 __all__ = [
     "DEFAULT_ARCHIVE_ROOT",
     "DEFAULT_IMAP_TLS_MODE",
+    "DEFAULT_INGEST_INTERVAL_MINUTES",
     "DEFAULT_SMTP_TLS_MODE",
     "_VALID_TLS_MODES",
     "ConfigurationError",
