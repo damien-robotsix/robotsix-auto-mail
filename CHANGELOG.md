@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added `repo_description_sync` periodic agent config (`.robotsix-mill/periodic/repo_description_sync.yaml`).
 - Remove `tests/server/test_action_mixin.py` (1489 lines) now that all test classes have been extracted into individual per-method modules under `tests/server/`.
 - Add dedicated unit tests for ``MailConfig``, ``MailAccount``, and ``MailAccountsConfig``
   model validators (``tests/config/test_model.py``), covering template-literal

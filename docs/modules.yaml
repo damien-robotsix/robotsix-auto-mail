@@ -121,6 +121,7 @@ modules:
       - changelog/20260717T201911Z-split-tests-server-test-action-mixin-py-60b7.misc.md
       - changelog/20260717T201912Z-make-trivy-container-scan-blocking-on-cr-94a9.misc.md
       - changelog/20260717T210820Z-ci-failure-release-image-on-main-ed22.misc.md
+      - changelog/20260718T002044Z-robotsix-auto-mail-enable-repo-descripti-f04d.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -483,5 +484,6 @@ modules:
       - .robotsix-mill/periodic/completeness_check.yaml
       - .robotsix-mill/periodic/copy_paste.yaml
       - .robotsix-mill/periodic/module_curator.yaml
+      - .robotsix-mill/periodic/repo_description_sync.yaml
       - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/test_gap.yaml
