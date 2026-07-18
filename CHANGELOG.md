@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Enable `docstring_coverage` periodic agent to scan for undocumented public API and propose draft tickets.
 - Enable `health` periodic agent to inspect the repository across eight dimensions (testing, typing, linting, security, documentation, dependency freshness, code complexity, CI coverage) and file draft tickets for gaps.
 - Added `repo_description_sync` periodic agent config (`.robotsix-mill/periodic/repo_description_sync.yaml`).
 - Remove `tests/server/test_action_mixin.py` (1489 lines) now that all test classes have been extracted into individual per-method modules under `tests/server/`.
