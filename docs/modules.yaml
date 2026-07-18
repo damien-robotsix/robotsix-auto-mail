@@ -130,6 +130,7 @@ modules:
       - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-0c44.misc.md
       - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-69fb.misc.md
       - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-7a9c.misc.md
+      - changelog/20260718T203603Z-split-tests-cli-test-cli-detect-py-1523-d05d.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -182,13 +183,17 @@ modules:
       - src/robotsix_auto_mail/cli/commands_triage.py
       - src/robotsix_auto_mail/cli/config.py
       - tests/cli/__init__.py
+      - tests/cli/conftest.py
       - tests/cli/test_cli.py
       - tests/cli/test_commands_auth.py
       - tests/cli/test_commands_serve.py
       - tests/cli/test_cli_board.py
       - tests/cli/test_cli_config.py
       - tests/cli/test_cli_config_sync.py
-      - tests/cli/test_cli_detect.py
+      - tests/cli/test_cli_detect_accounts.py
+      - tests/cli/test_cli_detect_basic.py
+      - tests/cli/test_cli_detect_microsoft.py
+      - tests/cli/test_cli_detect_settings.py
       - tests/cli/test_cli_ingest.py
       - tests/cli/test_cli_probe.py
       - tests/cli/test_cli_refine.py

@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Split `tests/cli/test_cli_detect.py` (1523 lines) into four focused test
+  modules — `test_cli_detect_basic.py`, `test_cli_detect_microsoft.py`,
+  `test_cli_detect_accounts.py`, and `test_cli_detect_settings.py` — with
+  shared helpers extracted into `tests/cli/conftest.py`.
 - Add docstring to ``register_subparser`` in ``commands_ingest.py``
 - Add docstring to ``register_subparser`` in ``commands_triage.py``.
 - Add docstring to `register_subparser` in `commands_detect.py`.
