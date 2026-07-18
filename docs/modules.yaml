@@ -129,6 +129,7 @@ modules:
       - changelog/20260718T194950Z-docstring-gap-add-docstring-to-register-1642.misc.md
       - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-0c44.misc.md
       - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-69fb.misc.md
+      - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-7a9c.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
