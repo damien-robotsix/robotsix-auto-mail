@@ -153,7 +153,9 @@ def _load_ledger(conn: sqlite3.Connection) -> dict[str, LedgerEntry]:
 
 def _save_ledger(conn: sqlite3.Connection, ledger: dict[str, LedgerEntry]) -> None:
     """Persist *ledger* to the watermark table (json round-trip)."""
-    payload: dict[str, object] = {fingerprint: entry.model_dump() for fingerprint, entry in ledger.items()}
+    payload: dict[str, object] = {
+        fingerprint: entry.model_dump() for fingerprint, entry in ledger.items()
+    }
     save_json_watermark(conn, _LEDGER_WATERMARK_KEY, payload)
 
 
