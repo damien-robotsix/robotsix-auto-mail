@@ -122,6 +122,7 @@ modules:
       - changelog/20260717T201912Z-make-trivy-container-scan-blocking-on-cr-94a9.misc.md
       - changelog/20260717T210820Z-ci-failure-release-image-on-main-ed22.misc.md
       - changelog/20260718T002044Z-robotsix-auto-mail-enable-repo-descripti-f04d.misc.md
+      - changelog/20260718T184436Z-robotsix-auto-mail-enable-docstring-cove-d6c6.misc.md
       - changelog/20260718T184436Z-robotsix-auto-mail-enable-health-periodi-fbdb.misc.md
       - changelog/20260718T184436Z-robotsix-auto-mail-enable-survey-periodi-c635.feature.md
       - tests/__init__.py
@@ -485,6 +486,7 @@ modules:
       - .robotsix-mill/periodic/bc_check.yaml
       - .robotsix-mill/periodic/completeness_check.yaml
       - .robotsix-mill/periodic/copy_paste.yaml
+      - .robotsix-mill/periodic/docstring_coverage.yaml
       - .robotsix-mill/periodic/health.yaml
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/repo_description_sync.yaml
