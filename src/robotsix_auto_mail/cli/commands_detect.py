@@ -22,6 +22,16 @@ from robotsix_auto_mail.config import (
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the ``detect`` subcommand and its arguments.
+
+    The subcommand auto-detects email provider settings via LLM and writes
+    the configuration to a YAML/JSON file.  Arguments include provider
+    override flags (--app-password, --oauth2-client-id/--oauth2-tenant) and
+    output options (--output, --stdout, --overwrite).
+
+    Args:
+        subparsers: The argparse subparsers group to attach the parser to.
+    """
     parser = subparsers.add_parser(
         "detect",
         help="Auto-detect email provider settings via LLM and write config",
