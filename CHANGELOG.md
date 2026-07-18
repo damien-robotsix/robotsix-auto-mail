@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add docstring to `register_subparser` in `commands_detect.py`.
 - Add docstring to ``main()`` entry point in ``src/robotsix_auto_mail/dev/autoupdate.py``.
 - Enable `docstring_coverage` periodic agent to scan for undocumented public API and propose draft tickets.
 - Enable `health` periodic agent to inspect the repository across eight dimensions (testing, typing, linting, security, documentation, dependency freshness, code complexity, CI coverage) and file draft tickets for gaps.
