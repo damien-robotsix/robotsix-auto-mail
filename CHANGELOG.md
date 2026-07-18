@@ -6,6 +6,7 @@
 ## 0.0.0 (unreleased)
 
 - Add docstring to ``register_subparser`` in ``commands_ingest.py``
+- Add docstring to ``register_subparser`` in ``commands_triage.py``.
 - Add docstring to `register_subparser` in `commands_detect.py`.
 - Added docstring to ``register_subparser`` in ``commands_config_sync.py``.
 - Add docstring to ``main()`` entry point in ``src/robotsix_auto_mail/dev/autoupdate.py``.

@@ -19,6 +19,15 @@ from robotsix_auto_mail.db import get_record_by_message_id, init_db
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the ``triage`` and ``triage-set`` subcommands.
+
+    ``triage`` runs the LLM inbox-triage agent and records advisory action
+    statuses; ``triage-set`` records a user triage decision for a specific
+    message.
+
+    Args:
+        subparsers: The argparse subparsers group to attach parsers to.
+    """
     from robotsix_auto_mail.cli import _add_account_arg
 
     triage_parser = subparsers.add_parser(
