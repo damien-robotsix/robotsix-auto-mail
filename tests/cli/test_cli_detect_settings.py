@@ -11,17 +11,16 @@ import pytest
 from robotsix_auto_mail.cli import main
 from robotsix_auto_mail.cli.config import _detect_settings
 from robotsix_auto_mail.config.detect import DetectionError, MailProvider
-
 from tests.cli.conftest import (
-    _ok_result,
     _host_fail_result,
     _mock_autoconfig,
     _mock_autoconfig_none,
+    _mock_detect,
+    _mock_detect_error,
     _mock_mx,
     _mock_mx_empty,
     _mock_provider_from_mx,
-    _mock_detect,
-    _mock_detect_error,
+    _ok_result,
 )
 
 

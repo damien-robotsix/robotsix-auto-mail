@@ -11,7 +11,7 @@ import pytest
 
 from robotsix_auto_mail.cli import build_parser, main
 from robotsix_auto_mail.config.detect import DetectionError, MailProvider
-from tests.cli.conftest import _ok_result, _auth_fail_result
+from tests.cli.conftest import _auth_fail_result, _ok_result
 
 
 def test_parser_has_detect_subcommand() -> None:

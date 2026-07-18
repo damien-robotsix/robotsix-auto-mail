@@ -11,7 +11,7 @@ import pytest
 from robotsix_auto_mail.cli import main
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.config.detect import MailProvider
-from tests.cli.conftest import _ok_result, _auth_fail_result
+from tests.cli.conftest import _auth_fail_result, _ok_result
 
 
 def test_detect_microsoft_runs_device_code_and_verifies(
