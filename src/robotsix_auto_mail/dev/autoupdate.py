@@ -125,6 +125,18 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Entry point for the autoupdate CLI.
+
+    Pull the latest ``origin/<branch>``, rebuild the docker compose stack, and
+    restart services — but only when origin has new commits.  Uses a flock-based
+    lock to prevent concurrent runs and records the deployed SHA for idempotency.
+
+    Args:
+        argv: Command-line arguments (defaults to sys.argv).
+
+    Returns:
+        0 on success or no-op, 1 on any fatal error.
+    """
     args = _parse_args(argv)
 
     repo = Path(args.repo)

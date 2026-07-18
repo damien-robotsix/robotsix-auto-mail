@@ -125,6 +125,7 @@ modules:
       - changelog/20260718T184436Z-robotsix-auto-mail-enable-docstring-cove-d6c6.misc.md
       - changelog/20260718T184436Z-robotsix-auto-mail-enable-health-periodi-fbdb.misc.md
       - changelog/20260718T184436Z-robotsix-auto-mail-enable-survey-periodi-c635.feature.md
+      - changelog/20260718T194949Z-docstring-gap-add-docstring-to-main-in-d-2c4a.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
