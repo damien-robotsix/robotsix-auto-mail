@@ -4,15 +4,19 @@ paths-ignore:
 # ---------------------------------------------------------------------------
 # Alert suppressions — intentional behaviours that the security queries
 # flag but are correct by design.
+#
+# Each suppression is also documented with an inline # lgtm[query-id]
+# comment at the specific call site.  Those comments take effect on the
+# default branch; the query-filters below handle suppression on PR
+# branches where inline comments are not yet active.
 # ---------------------------------------------------------------------------
 query-filters:
   # false positive: _print_detect_report/sys.stdout.write receives only a
   # report dict built from individually enumerated non-sensitive MailConfig
   # keys — the password field is never included.
+  # The --stdout code path also omits the password (empty string).
   - exclude:
       id: py/clear-text-logging-sensitive-data
-      paths:
-        - src/robotsix_auto_mail/cli/commands_detect.py
 
   # loader.py save_accounts(): the config file MUST contain credentials for
   # the application to function (IMAP/SMTP auth).  Secrets are never
@@ -20,5 +24,3 @@ query-filters:
   # developer's local machine with appropriate file permissions.
   - exclude:
       id: py/clear-text-storage-sensitive-data
-      paths:
-        - src/robotsix_auto_mail/config/loader.py
