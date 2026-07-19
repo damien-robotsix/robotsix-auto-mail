@@ -46,7 +46,7 @@ def _patch_secrets(data: object, model: BaseModel) -> None:
                 continue
             value = getattr(model, field_name)
             if isinstance(value, SecretStr):
-                data[field_name] = getattr(value, "_secret_value")
+                data[field_name] = value._secret_value
             elif isinstance(value, BaseModel):
                 _patch_secrets(data[field_name], value)
             elif isinstance(value, list):
@@ -142,7 +142,7 @@ def save_accounts(
         logger.debug("robotsix_config not installed — writing JSON directly")
         target = Path(path) if path is not None else _resolve_config_path()
         target.parent.mkdir(parents=True, exist_ok=True)
-        json_text = _dump_config_json(config) + "\n"  # lgtm[py/clear-text-storage-sensitive-data]
+        json_text = _dump_config_json(config) + "\n"  # lgtm[py/clear-text-storage-sensitive-data]  # noqa: E501
         target.write_text(json_text)  # lgtm[py/clear-text-storage-sensitive-data]
         return
     _dump_config(config, path=path)
@@ -165,7 +165,7 @@ def load_llm() -> str:
         file_cfg = load()
     except Exception:
         return ""
-    return getattr(file_cfg.llm_api_key, "_secret_value")
+    return file_cfg.llm_api_key._secret_value
 
 
 def load_llm_provider_model() -> str:
