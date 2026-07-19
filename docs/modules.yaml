@@ -134,6 +134,7 @@ modules:
       - changelog/20260718T203605Z-extract-shared-llm-parameter-docstrings-599a.misc.md
       - changelog/20260718T203605Z-unify-json-watermark-loading-helpers-acr-9c2f.misc.md
       - changelog/20260718T213158Z-refactor-detect-verify-cli-into-pure-dia-240d.misc.md
+      - changelog/20260719T022116Z-narrow-exception-types-in-probe-capabili-8518.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
