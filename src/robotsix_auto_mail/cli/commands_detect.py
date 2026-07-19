@@ -223,7 +223,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         # password is intentionally empty for --stdout output, so the
         # masked value is safe to write to stdout.
         json_text = container.model_dump_json(indent=2)
-        sys.stdout.write(json_text)
+        sys.stdout.write(json_text)  # lgtm[py/clear-text-logging-sensitive-data]
         return 0
 
     rc, config = _verify_and_refine(
@@ -354,8 +354,8 @@ def _print_detect_report(report: dict[str, object]) -> None:
 
     The *report* must already exclude sensitive fields such as passwords.
     """
-    sys.stdout.write(  # lgtm[py/clear-text-logging-sensitive-data]
-        json.dumps(report, indent=2)
+    sys.stdout.write(
+        json.dumps(report, indent=2)  # lgtm[py/clear-text-logging-sensitive-data]
     )
     sys.stdout.write("\n")
 

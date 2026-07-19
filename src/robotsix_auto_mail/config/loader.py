@@ -144,7 +144,7 @@ def save_accounts(
         target.parent.mkdir(parents=True, exist_ok=True)
         json_text = (
             _dump_config_json(config) + "\n"
-        )  # lgtm[py/clear-text-storage-sensitive-data]  # noqa: E501
+        )  # lgtm[py/clear-text-storage-sensitive-data]
         target.write_text(json_text)  # lgtm[py/clear-text-storage-sensitive-data]
         return
     _dump_config(config, path=path)
