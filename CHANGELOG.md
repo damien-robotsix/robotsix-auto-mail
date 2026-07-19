@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Narrow exception types in `_probe_capabilities` from bare `Exception` to `(OSError, _IMAP4_ERROR)` and `(OSError, _SMTP_EXCEPTION)`.
 - `detect` is now report-only: prints a JSON diagnostic report to stdout
   (schema-shaped keys: imap_host/port/tls_mode, smtp_*, username, capabilities,
   login_ok) and writes no config file.  Removed ``--output``, ``--overwrite``,

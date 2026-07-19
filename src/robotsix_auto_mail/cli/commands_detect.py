@@ -236,13 +236,13 @@ def _probe_capabilities(
     try:
         with ImapClient(config) as imap:
             imap_capabilities = list(imap.capabilities)
-    except Exception:  # noqa: S110
+    except Exception:
         # Best-effort capability probe; failures are non-critical and ignored.
         pass
     try:
         with SmtpClient(config) as smtp:
             smtp_features = dict(smtp.esmtp_features)
-    except Exception:  # noqa: S110
+    except Exception:
         # Best-effort capability probe; failures are non-critical and ignored.
         pass
     return imap_capabilities, smtp_features
