@@ -195,16 +195,17 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     # Print the diagnostic report to stdout as JSON.
     # verified is True only when verification actually ran and passed.
     verified = rc == 0 and not args.no_verify
-    _print_detect_report(config, verified)
+    report = _build_detect_report(config, verified)
+    _print_detect_report(report)
     return rc
 
 
-def _print_detect_report(config: MailConfig, verified: bool) -> None:
-    """Print a JSON diagnostic report for the detected *config*.
+def _build_detect_report(config: MailConfig, verified: bool) -> dict[str, object]:
+    """Build a JSON-safe diagnostic report dictionary from *config*.
 
     The report uses keys matching the config schema so the operator can
     copy-paste values into the deploy Configure panel.  Passwords are
-    never printed.  IMAP/SMTP capabilities are collected when *verified*
+    never included.  IMAP/SMTP capabilities are collected when *verified*
     is ``True``.
     """
     from robotsix_auto_mail.imap import ImapClient
@@ -233,20 +234,27 @@ def _print_detect_report(config: MailConfig, verified: bool) -> None:
         try:
             with ImapClient(config) as imap:
                 imap_capabilities = list(imap.capabilities)
-        except Exception:  # noqa: S110 — best-effort capability probe; ignore any failure
+        except Exception:  # noqa: S110
+            # Best-effort capability probe; failures are non-critical and ignored.
             pass
         try:
             with SmtpClient(config) as smtp:
                 smtp_features = dict(smtp.esmtp_features)
-        except Exception:  # noqa: S110 — best-effort capability probe; ignore any failure
+        except Exception:  # noqa: S110
+            # Best-effort capability probe; failures are non-critical and ignored.
             pass
 
     report["imap_capabilities"] = imap_capabilities
     report["smtp_features"] = smtp_features
     report["login_ok"] = verified
+    return report
 
-    # lgtm [py/clear-text-logging-sensitive-data] — report dict explicitly
-    # excludes the password field; only non-sensitive config keys are serialised.
+
+def _print_detect_report(report: dict[str, object]) -> None:
+    """Print the diagnostic *report* as JSON to stdout.
+
+    The *report* must already exclude sensitive fields such as passwords.
+    """
     sys.stdout.write(json.dumps(report, indent=2))
     sys.stdout.write("\n")
 
