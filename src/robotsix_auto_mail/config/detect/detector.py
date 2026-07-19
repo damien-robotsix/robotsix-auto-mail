@@ -13,6 +13,8 @@ from xml.etree import ElementTree  # nosec B405
 import urllib3
 import urllib3.exceptions
 
+from pydantic import SecretStr
+
 from robotsix_auto_mail.config import (
     MailConfig,
 )
@@ -673,7 +675,7 @@ def provider_to_config(
             smtp_port=provider.smtp_port,
             smtp_tls_mode=provider.smtp_tls_mode,
             username=username,
-            password="",  # nosec B106 -- Microsoft uses OAuth2, never a password
+            password=SecretStr(""),  # nosec B106 -- Microsoft uses OAuth2, never a password
             oauth2_provider="microsoft",
             oauth2_tenant="organizations",
             oauth2_client_id="",
@@ -688,7 +690,7 @@ def provider_to_config(
         smtp_port=provider.smtp_port,
         smtp_tls_mode=provider.smtp_tls_mode,
         username=username,
-        password=password,
+        password=SecretStr(password),
         db_path=db_path,
         imap_folder="INBOX",
     )
