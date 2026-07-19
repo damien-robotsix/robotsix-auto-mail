@@ -16,6 +16,9 @@ file from just an email address — see [Auto-detection with
 
 ## Quick start — Docker Compose (recommended)
 
+> Prefer a native (non-Docker) setup? See the
+> [Quick start (native)](index.md#quick-start-native) guide.
+
 The project includes a `docker-compose.yml` that builds the container and
 mounts configuration without rebuilding the image.
 

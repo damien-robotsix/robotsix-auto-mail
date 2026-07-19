@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added a native (non-Docker) Quick Start section to `docs/index.md` with a complete five-step "from zero to working" narrative, and cross-referenced it from `docs/connecting.md`'s Docker Quick Start.
 - Narrow exception types in `_probe_capabilities` from bare `Exception` to
   `(OSError, _IMAP4_ERROR, ImapError)` and `(OSError, _SMTP_EXCEPTION, SmtpError)`,
   and fix the `_block_network` test fixture to raise `ConnectionRefusedError`
