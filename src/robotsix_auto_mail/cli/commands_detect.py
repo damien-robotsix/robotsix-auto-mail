@@ -217,7 +217,8 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         from robotsix_auto_mail.config.loader import _dump_config_json
 
-        sys.stdout.write(_dump_config_json(container))  # codeql[py/clear-text-logging-sensitive-data] -- password is empty string in stdout path
+        json_text = _dump_config_json(container)
+        sys.stdout.write(json_text)  # lgtm[py/clear-text-logging-sensitive-data]
         return 0
 
     rc, config = _verify_and_refine(

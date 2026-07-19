@@ -46,7 +46,7 @@ def _patch_secrets(data: object, model: BaseModel) -> None:
                 continue
             value = getattr(model, field_name)
             if isinstance(value, SecretStr):
-                data[field_name] = value._secret_value  # noqa: SLF001
+                data[field_name] = value._secret_value
             elif isinstance(value, BaseModel):
                 _patch_secrets(data[field_name], value)
             elif isinstance(value, list):
@@ -142,7 +142,8 @@ def save_accounts(
         logger.debug("robotsix_config not installed — writing JSON directly")
         target = Path(path) if path is not None else _resolve_config_path()
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(_dump_config_json(config) + "\n")  # codeql[py/clear-text-storage-sensitive-data] -- config file MUST store credentials for IMAP/SMTP auth
+        json_text = _dump_config_json(config) + "\n"
+        target.write_text(json_text)  # lgtm[py/clear-text-storage-sensitive-data]
         return
     _dump_config(config, path=path)
 
