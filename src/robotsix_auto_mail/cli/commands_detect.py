@@ -225,7 +225,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         sys.stdout.write(json_text)  # lgtm[py/clear-text-logging-sensitive-data]
         return 0
 
-    rc, config = _verify_and_refine(
+    rc, config = _verify_and_refine(  # type: ignore[assignment]
         provider,
         email=args.email,
         api_key=api_key,
