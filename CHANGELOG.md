@@ -5,6 +5,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Extract shared ``_create_smtp_connection`` helper in ``SmtpClient`` to
+  deduplicate plain-SMTP connection logic between ``_connect_starttls``
+  and ``_connect_plain``.
 - Added a native (non-Docker) Quick Start section to `docs/index.md` with a complete five-step "from zero to working" narrative, and cross-referenced it from `docs/connecting.md`'s Docker Quick Start.
 - Narrow exception types in `_probe_capabilities` from bare `Exception` to
   `(OSError, _IMAP4_ERROR, ImapError)` and `(OSError, _SMTP_EXCEPTION, SmtpError)`,

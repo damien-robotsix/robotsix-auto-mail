@@ -142,6 +142,7 @@ modules:
       - changelog/20260719T030252Z-restore-noqa-s110-on-bare-except-excepti-be96.misc.md
       - changelog/20260719T154209Z-robotsix-auto-mail-enable-changelog-auto-acb6.misc.md
       - changelog/20260719T204611Z-split-tests-db-test-db-py-1088-lines-int-08e9.misc.md
+      - changelog/20260719T204614Z-extract-shared-smtplib-smtp-connection-h-5102.misc.md
       - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-987-l-f637.misc.md
       - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-f637.misc.md
       - tests/__init__.py
