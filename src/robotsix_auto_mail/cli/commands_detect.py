@@ -188,17 +188,17 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         if password is None:
             return 1
     if args.stdout:
-        config = provider_to_config(
+        stdout_config = provider_to_config(
             provider,
             args.email,
             # lgtm[py/clear-text-storage-sensitive-data]
             password="",  # nosec B106 - intentionally omitted from stdout
         ).model_copy(update={"db_path": f".data/{account_id}/mail.db"})
-        if args.app_password and config.oauth2_provider:
+        if args.app_password and stdout_config.oauth2_provider:
             # provider_to_config sets oauth2_provider="microsoft" for
             # Microsoft hosts unconditionally; --app-password must clear it
             # in the stdout path because _build() is never reached here.
-            config = config.model_copy(update={"oauth2_provider": ""})
+            stdout_config = stdout_config.model_copy(update={"oauth2_provider": ""})
         if microsoft:
             sys.stderr.write(
                 f"# Detected Microsoft 365 settings for {args.email} — "
@@ -215,7 +215,9 @@ def _cmd_detect(args: argparse.Namespace) -> int:
                 "before use.\n"
                 "# Save this as config/config.json.\n"
             )
-        account = MailAccount(account_id=account_id, config=config, label=label)
+        account = MailAccount(
+            account_id=account_id, config=stdout_config, label=label
+        )
         container = MailAccountsConfig(
             accounts=[account], default_account_id=account_id
         )
@@ -225,7 +227,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         sys.stdout.write(json_text)  # lgtm[py/clear-text-logging-sensitive-data]
         return 0
 
-    rc, config = _verify_and_refine(  # type: ignore[assignment]
+    rc, config = _verify_and_refine(
         provider,
         email=args.email,
         api_key=api_key,
@@ -353,9 +355,7 @@ def _print_detect_report(report: dict[str, object]) -> None:
 
     The *report* must already exclude sensitive fields such as passwords.
     """
-    sys.stdout.write(
-        json.dumps(report, indent=2)
-    )  # lgtm[py/clear-text-logging-sensitive-data]
+    sys.stdout.write(json.dumps(report, indent=2))  # lgtm[py/clear-text-logging-sensitive-data]
     sys.stdout.write("\n")
 
     # Paste instructions.
