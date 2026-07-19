@@ -215,11 +215,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         container = MailAccountsConfig(
             accounts=[account], default_account_id=account_id
         )
-        from robotsix_auto_mail.config.loader import _dump_config_json
-
-        sys.stdout.write(
-            _dump_config_json(container)  # lgtm[py/clear-text-logging-sensitive-data]
-        )
+        sys.stdout.write(container.model_dump_json(indent=2) + "\n")
         return 0
 
     rc, config = _verify_and_refine(
