@@ -142,6 +142,8 @@ modules:
       - changelog/20260719T030252Z-restore-noqa-s110-on-bare-except-excepti-be96.misc.md
       - changelog/20260719T154209Z-robotsix-auto-mail-enable-changelog-auto-acb6.misc.md
       - changelog/20260719T204611Z-split-tests-db-test-db-py-1088-lines-int-08e9.misc.md
+      - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-987-l-f637.misc.md
+      - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-f637.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -207,7 +209,11 @@ modules:
       - tests/cli/test_cli_detect_settings.py
       - tests/cli/test_cli_ingest.py
       - tests/cli/test_cli_probe.py
-      - tests/cli/test_cli_refine.py
+      - tests/cli/test_cli_refine_password.py
+      - tests/cli/test_cli_refine_llm.py
+      - tests/cli/test_cli_refine_manual.py
+      - tests/cli/test_cli_refine_pipeline.py
+      - tests/cli/test_cli_refine_prompt_hosts.py
       - tests/cli/test_cli_triage.py
 
   - id: config

@@ -1,0 +1,1 @@
+Split `tests/cli/test_cli_refine.py` (987 lines) into five domain-focused modules under `tests/cli/`: `test_cli_refine_password`, `test_cli_refine_llm`, `test_cli_refine_manual`, `test_cli_refine_pipeline`, and `test_cli_refine_prompt_hosts`. Shared helpers extracted to `tests/cli/conftest.py`.

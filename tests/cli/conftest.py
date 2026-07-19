@@ -7,6 +7,8 @@ from unittest import mock
 
 import pytest
 
+from robotsix_auto_mail.cli.config import _VerifyResult
+from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.detect import DetectionError, MailProvider
 
 
@@ -85,3 +87,51 @@ def _mock_detect(email: str, **kwargs: Any) -> MailProvider:
 
 def _mock_detect_error(email: str, **kwargs: Any) -> MailProvider:
     raise DetectionError("LLM unavailable")
+
+
+# ---------------------------------------------------------------------------
+# Shared refine helpers
+# ---------------------------------------------------------------------------
+
+
+def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfig:
+    """Wrap a single ``MailConfig`` in a one-element accounts container."""
+    return MailAccountsConfig(
+        accounts=(MailAccount(account_id=account_id, config=cfg, label=None),),
+        default_account_id=account_id,
+    )
+
+
+def _build_config(provider: MailProvider, password: str | None) -> MailConfig:
+    return MailConfig(
+        username="user@example.com",
+        imap_host=provider.imap_host,
+        smtp_host=provider.smtp_host,
+        password=password or "",
+    )
+
+
+def _provider_to_config(
+    provider: MailProvider, email: str, password: str = ""
+) -> MailConfig:
+    return MailConfig(
+        username=email,
+        imap_host=provider.imap_host,
+        smtp_host=provider.smtp_host,
+        password=password,
+    )
+
+
+def _refine_test_config() -> MailConfig:
+    """Build a minimal MailConfig for refinement-helper unit tests."""
+    return MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+    )
+
+
+def _refine_host_result() -> _VerifyResult:
+    """Build an IMAP-host-failure _VerifyResult for helper unit tests."""
+    return _VerifyResult(imap_ok=False, smtp_ok=True, imap_error="connection refused")
