@@ -18,11 +18,22 @@ concurrency:
 
 jobs:
   codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
     permissions:
       actions: read  # needed to read workflow run data
       contents: read
       security-events: write  # needed for SARIF upload
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/codeql.yml@7314c9b6c2b536ca81023e8841f272b72733262e  # main
-    with:
-      languages: python
-      config-file: ./.github/codeql/codeql-config.yml
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v3
+        with:
+          languages: python
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v3
