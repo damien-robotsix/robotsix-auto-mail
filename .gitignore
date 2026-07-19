@@ -47,3 +47,7 @@ config/config.json
 # sandbox env (or extra_sandbox_packages) supplies runtime deps instead.
 .deps/
 .pip-site/
+
+# Secret scanning artifacts (generated; never committed)
+.gitleaks-baseline.json
+*.sarif

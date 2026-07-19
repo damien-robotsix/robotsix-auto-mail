@@ -26,8 +26,9 @@ jobs:
           extra_args: --all-files --verbose
         env:
           # Skip hooks already enforced by the reusable python-ci spine
-          # (ruff/ruff-format/mypy/bandit) and the repo-checks job
+          # (ruff/ruff-format/mypy/bandit), the repo-checks job
           # (hadolint-docker/check-config-sync/robotsix-modules-validate),
+          # or dedicated workflows (gitleaks-docker via secret-scanning.yml),
           # leaving this job responsible only for the hooks with no other
-          # CI coverage: detect-secrets, file-hygiene, private-key, large-files.
-          SKIP: ruff,ruff-format,mypy,bandit,hadolint-docker,check-config-sync,robotsix-modules-validate,vulture,deno-lint,deno-fmt
+          # CI coverage: file-hygiene, private-key, large-files.
+          SKIP: ruff,ruff-format,mypy,bandit,hadolint-docker,check-config-sync,robotsix-modules-validate,vulture,deno-lint,deno-fmt,gitleaks-docker
