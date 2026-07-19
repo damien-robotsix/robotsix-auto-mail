@@ -217,9 +217,8 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         from robotsix_auto_mail.config.loader import _dump_config_json
 
-        # lgtm[py/clear-text-logging-sensitive-data]
         sys.stdout.write(
-            _dump_config_json(container)
+            _dump_config_json(container)  # lgtm[py/clear-text-logging-sensitive-data]
         )
         return 0
 

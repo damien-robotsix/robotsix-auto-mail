@@ -114,7 +114,9 @@ def test_refine_password_returns_new_config(capsys: pytest.CaptureFixture[str]) 
     with mock.patch("getpass.getpass", return_value="newpass"):
         outcome = _refine_password(_build_config, provider)
     assert outcome.config is not None
-    assert outcome.config.password.get_secret_value() == "newpass"  # pragma: allowlist secret
+    assert (
+        outcome.config.password.get_secret_value() == "newpass"
+    )  # pragma: allowlist secret
     assert outcome.config.imap_host == "imap.test.com"
     captured = capsys.readouterr()
     assert "password was rejected" in captured.err

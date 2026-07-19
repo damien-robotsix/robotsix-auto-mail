@@ -157,10 +157,10 @@ class _BoardViewMixin:
                 message_id,
                 record,
                 api_key=(
-                self.mail_config.llm_api_key.get_secret_value()
-                if self.mail_config
-                else ""
-            ),
+                    self.mail_config.llm_api_key.get_secret_value()
+                    if self.mail_config
+                    else ""
+                ),
                 rules=rules_text_for(self.mail_config),
             )
             overrides = _load_archive_overrides(conn)
