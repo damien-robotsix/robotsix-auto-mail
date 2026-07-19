@@ -219,10 +219,11 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         container = MailAccountsConfig(
             accounts=[account], default_account_id=account_id
         )
-        from robotsix_auto_mail.config.loader import _dump_config_json
-
-        json_text = _dump_config_json(container)
-        sys.stdout.write(json_text)  # lgtm[py/clear-text-logging-sensitive-data]
+        # model_dump_json masks SecretStr fields ("**********"); the
+        # password is intentionally empty for --stdout output, so the
+        # masked value is safe to write to stdout.
+        json_text = container.model_dump_json(indent=2)
+        sys.stdout.write(json_text)
         return 0
 
     rc, config = _verify_and_refine(
