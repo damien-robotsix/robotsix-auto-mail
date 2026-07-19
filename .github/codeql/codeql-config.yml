@@ -9,3 +9,10 @@ query-filters:
   - exclude:
       id: py/ineffectual-statement
       path: "**/vulture_whitelist.py"
+  # Workaround for github/codeql#16106: Python queries emit table-kind
+  # sub-results that the id-based excludes above do not match, which keeps
+  # the parent query active and prevents the id exclude from taking effect.
+  # Excluding all table-kind results is safe — they are supplementary
+  # diagnostics, not security alerts.
+  - exclude:
+      kind: table
