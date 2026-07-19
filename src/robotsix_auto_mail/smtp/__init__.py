@@ -224,16 +224,20 @@ class SmtpClient(_ProtocolClient):
                 f"Direct-TLS connection to {self._host}:{self._port} failed: {exc}"
             ) from exc
 
-    def _connect_starttls(self) -> None:
-        # 1. Plain connection.
+    def _create_smtp_connection(self, description: str) -> smtplib.SMTP:
+        """Create a plain SMTP connection, raising SmtpConnectionError on failure."""
         try:
-            self._smtp = smtplib.SMTP(
+            return smtplib.SMTP(
                 self._host, self._port, timeout=_SMTP_TIMEOUT_SECONDS
             )
         except (OSError, _SMTP_EXCEPTION) as exc:
             raise SmtpConnectionError(
-                f"Plain connection to {self._host}:{self._port} failed: {exc}"
+                f"{description} to {self._host}:{self._port} failed: {exc}"
             ) from exc
+
+    def _connect_starttls(self) -> None:
+        # 1. Plain connection.
+        self._smtp = self._create_smtp_connection("Plain connection")
 
         # 2. Post-connect EHLO — the server may advertise STARTTLS
         #    (and possibly other extensions we don't use).
@@ -259,14 +263,7 @@ class SmtpClient(_ProtocolClient):
             raise SmtpTlsError(f"Post-STARTTLS EHLO/HELO failed: {exc}") from exc
 
     def _connect_plain(self) -> None:
-        try:
-            self._smtp = smtplib.SMTP(
-                self._host, self._port, timeout=_SMTP_TIMEOUT_SECONDS
-            )
-        except (OSError, _SMTP_EXCEPTION) as exc:
-            raise SmtpConnectionError(
-                f"Plain (no-TLS) connection to {self._host}:{self._port} failed: {exc}"
-            ) from exc
+        self._smtp = self._create_smtp_connection("Plain (no-TLS) connection")
 
     def _authenticate(self) -> None:
         if self._smtp is None:
