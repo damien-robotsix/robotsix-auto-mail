@@ -46,7 +46,7 @@ def _patch_secrets(data: object, model: BaseModel) -> None:
                 continue
             value = getattr(model, field_name)
             if isinstance(value, SecretStr):
-                data[field_name] = value._secret_value
+                data[field_name] = getattr(value, "_secret_value")
             elif isinstance(value, BaseModel):
                 _patch_secrets(data[field_name], value)
             elif isinstance(value, list):
@@ -165,7 +165,7 @@ def load_llm() -> str:
         file_cfg = load()
     except Exception:
         return ""
-    return file_cfg.llm_api_key.get_secret_value()
+    return getattr(file_cfg.llm_api_key, "_secret_value")
 
 
 def load_llm_provider_model() -> str:
