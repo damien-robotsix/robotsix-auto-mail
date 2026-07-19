@@ -12,9 +12,10 @@ from robotsix_auto_mail.cli.config import (
     _get_password,
     _verify_and_refine,
 )
-from robotsix_auto_mail.config import (
-    MailConfig,
-)
+from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.imap.client import _IMAP4_ERROR
+from robotsix_auto_mail.imap.errors import ImapError
+from robotsix_auto_mail.smtp import _SMTP_EXCEPTION, SmtpError
 
 
 def register_subparser(
@@ -236,13 +237,13 @@ def _probe_capabilities(
     try:
         with ImapClient(config) as imap:
             imap_capabilities = list(imap.capabilities)
-    except Exception:  # noqa: S110
+    except OSError, _IMAP4_ERROR, ImapError:
         # Best-effort capability probe; failures are non-critical and ignored.
         pass
     try:
         with SmtpClient(config) as smtp:
             smtp_features = dict(smtp.esmtp_features)
-    except Exception:  # noqa: S110
+    except OSError, _SMTP_EXCEPTION, SmtpError:
         # Best-effort capability probe; failures are non-critical and ignored.
         pass
     return imap_capabilities, smtp_features
