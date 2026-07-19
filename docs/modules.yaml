@@ -138,6 +138,7 @@ modules:
       - changelog/20260718T213158Z-refactor-detect-verify-cli-into-pure-dia-240d.misc.md
       - changelog/20260718T215330Z-add-native-path-quick-start-section-to-d-b24d.misc.md
       - changelog/20260719T022116Z-narrow-exception-types-in-probe-capabili-8518.misc.md
+      - changelog/20260719T024350Z-codeql-inline-lgtm-suppressions-and-quer-2c10.misc.md
       - changelog/20260719T030252Z-restore-noqa-s110-on-bare-except-excepti-be96.misc.md
       - tests/__init__.py
       - tests/conftest.py
