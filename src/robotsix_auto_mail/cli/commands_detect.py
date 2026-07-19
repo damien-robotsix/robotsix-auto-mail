@@ -353,9 +353,9 @@ def _print_detect_report(report: dict[str, object]) -> None:
 
     The *report* must already exclude sensitive fields such as passwords.
     """
-    sys.stdout.write(
+    sys.stdout.write(  # lgtm[py/clear-text-logging-sensitive-data]
         json.dumps(report, indent=2)
-    )  # lgtm[py/clear-text-logging-sensitive-data]  # noqa: E501
+    )
     sys.stdout.write("\n")
 
     # Paste instructions.
