@@ -51,7 +51,7 @@ def _dump_config_json(config: MailAccountsConfig) -> str:
     import json as _json
 
     data = config.model_dump(mode="python")
-    # lgtm[py/clear-text-storage-sensitive-data] - config file must contain credentials
+    # lgtm[py/clear-text-storage-sensitive-data] - config must contain credentials
     return _json.dumps(_unwrap_secrets(data), indent=2, ensure_ascii=False)
 
 
@@ -122,7 +122,7 @@ def save_accounts(
         logger.debug("robotsix_config not installed — writing JSON directly")
         target = Path(path) if path is not None else _resolve_config_path()
         target.parent.mkdir(parents=True, exist_ok=True)
-        # lgtm[py/clear-text-storage-sensitive-data] - config file must contain credentials
+        # lgtm[py/clear-text-storage-sensitive-data] - config must contain credentials
         target.write_text(_dump_config_json(config) + "\n")
         return
     _dump_config(config, path=path)
