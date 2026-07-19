@@ -84,7 +84,7 @@ def _block_network(request: pytest.FixtureRequest) -> Generator[None, None, None
         # Allow localhost connections for tests that run a local server.
         if isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1"):
             return original(address, *args, **kwargs)
-        raise RuntimeError(
+        raise ConnectionRefusedError(
             "Test attempted a real network connection via socket.create_connection. "
             "Mock the IMAP/SMTP client instead."
         )
