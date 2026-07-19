@@ -18,5 +18,3 @@ query-filters:
   # developer's local machine with appropriate file permissions.
   - exclude:
       id: py/clear-text-storage-sensitive-data
-      paths:
-        - src/robotsix_auto_mail/config/loader.py
