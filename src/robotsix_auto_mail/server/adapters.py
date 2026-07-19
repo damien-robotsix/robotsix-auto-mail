@@ -408,7 +408,11 @@ def _run_batch_archive_background(
                     by_source_dest: dict[tuple[str, str], list[MailRecord]] = (
                         defaultdict(list)
                     )
-                    api_key = mail_config.llm_api_key.get_secret_value() if mail_config else ""
+                    api_key = (
+                        mail_config.llm_api_key.get_secret_value()
+                        if mail_config
+                        else ""
+                    )
                     for record in records:
                         subfolder = get_archive_subfolder(
                             conn,

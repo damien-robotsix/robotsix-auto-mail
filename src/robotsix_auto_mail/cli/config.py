@@ -452,7 +452,10 @@ def _refine_with_llm(
     if refined is None:
         return _RefineOutcome()
     sys.stderr.write(f"  LLM: imap={refined.imap_host} smtp={refined.smtp_host}\n")
-    return _RefineOutcome(config=build(refined, config.password.get_secret_value()), provider=refined)
+    return _RefineOutcome(
+        config=build(refined, config.password.get_secret_value()),
+        provider=refined,
+    )
 
 
 def _refine_manual(config: MailConfig, result: _VerifyResult) -> _RefineOutcome:

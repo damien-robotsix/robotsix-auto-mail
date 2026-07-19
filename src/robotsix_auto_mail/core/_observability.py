@@ -63,7 +63,11 @@ def init_langfuse_tracing(config: MailConfig | None = None) -> bool:
         either way).
     """
     public_key = (config.langfuse_public_key or None) if config else None
-    secret_key = (config.langfuse_secret_key.get_secret_value() or None) if config else None
+    secret_key = (
+        (config.langfuse_secret_key.get_secret_value() or None)
+        if config
+        else None
+    )
     base_url = (config.langfuse_base_url or None) if config else None
     ok: bool = setup_langfuse_tracing(
         service_name="robotsix-auto-mail",

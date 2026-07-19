@@ -133,6 +133,7 @@ modules:
       - changelog/20260718T203603Z-split-tests-cli-test-cli-detect-py-1523-d05d.misc.md
       - changelog/20260718T203605Z-extract-shared-llm-parameter-docstrings-599a.misc.md
       - changelog/20260718T203605Z-unify-json-watermark-loading-helpers-acr-9c2f.misc.md
+      - changelog/20260718T213146Z-migrate-account-config-from-mail-local-y-27b1.misc.md
       - changelog/20260718T213158Z-refactor-detect-verify-cli-into-pure-dia-240d.misc.md
       - changelog/20260718T215330Z-add-native-path-quick-start-section-to-d-b24d.misc.md
       - changelog/20260719T022116Z-narrow-exception-types-in-probe-capabili-8518.misc.md

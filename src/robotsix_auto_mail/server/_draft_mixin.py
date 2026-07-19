@@ -216,7 +216,11 @@ class _DraftMixin:
                     conn,
                     message_id,
                     api_key=(
-                        self.mail_config.llm_api_key.get_secret_value() if self.mail_config else None
+                        (
+                            self.mail_config.llm_api_key.get_secret_value()
+                            if self.mail_config
+                            else None
+                        )
                     ),
                     provider_model=(
                         self.mail_config.llm_provider_model
