@@ -1,4 +1,5 @@
 """Tests for update_record_source."""
+
 from __future__ import annotations
 
 from robotsix_auto_mail.db import (
@@ -8,7 +9,6 @@ from robotsix_auto_mail.db import (
     update_record_source,
 )
 from tests.conftest import _make_record
-
 
 # ---------------------------------------------------------------------------
 # update_record_source

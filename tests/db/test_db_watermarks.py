@@ -1,8 +1,8 @@
 """Tests for get_watermark and set_watermark."""
+
 from __future__ import annotations
 
 from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
-
 
 # ---------------------------------------------------------------------------
 # Watermarks

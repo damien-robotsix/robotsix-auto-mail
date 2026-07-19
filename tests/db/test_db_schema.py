@@ -1,8 +1,12 @@
 """Tests for schema CHECK constraint sync with VALID_TRIAGE_ACTIONS."""
+
 from __future__ import annotations
 
-from robotsix_auto_mail.db import _SCHEMA, _TRIAGE_ACTION_CHECK_VALUES, VALID_TRIAGE_ACTIONS
-
+from robotsix_auto_mail.db import (
+    _SCHEMA,
+    _TRIAGE_ACTION_CHECK_VALUES,
+    VALID_TRIAGE_ACTIONS,
+)
 
 # ---------------------------------------------------------------------------
 # Schema generation: CHECK constraint stays in sync with VALID_TRIAGE_ACTIONS

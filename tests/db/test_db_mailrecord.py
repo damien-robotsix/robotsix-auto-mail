@@ -1,4 +1,5 @@
 """Tests for MailRecord construction, defaults, and notes."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -12,7 +13,6 @@ from robotsix_auto_mail.db import (
     insert_record,
 )
 from tests.conftest import _make_record
-
 
 # ---------------------------------------------------------------------------
 # MailRecord construction and defaults

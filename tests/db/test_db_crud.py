@@ -1,4 +1,5 @@
 """Tests for insert, list, get, record_exists, and list_untriaged_records."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -12,7 +13,6 @@ from robotsix_auto_mail.db import (
     list_untriaged_records,
 )
 from tests.conftest import _make_record
-
 
 # ---------------------------------------------------------------------------
 # insert_record
@@ -363,7 +363,6 @@ def test_record_exists_returns_true_after_insert() -> None:
 def test_record_exists_fresh_connection_no_error() -> None:
     """record_exists on a non-init_db connection (table created manually)
     returns False, not an error."""
-    import sqlite3
 
     conn = sqlite3.connect(":memory:")
     conn.execute(

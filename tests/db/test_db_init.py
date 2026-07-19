@@ -1,12 +1,10 @@
 """Tests for init_db, schema verification, and status migrations."""
+
 from __future__ import annotations
 
 import sqlite3
 
-import pytest
-
 from robotsix_auto_mail.db import init_db
-
 
 # ---------------------------------------------------------------------------
 # init_db

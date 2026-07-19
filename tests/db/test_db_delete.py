@@ -1,4 +1,5 @@
 """Tests for delete_record_by_message_id."""
+
 from __future__ import annotations
 
 from robotsix_auto_mail.db import (
@@ -8,7 +9,6 @@ from robotsix_auto_mail.db import (
     insert_record,
 )
 from tests.conftest import _make_record
-
 
 # ---------------------------------------------------------------------------
 # delete_record_by_message_id
