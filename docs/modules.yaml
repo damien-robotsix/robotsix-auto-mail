@@ -207,7 +207,11 @@ modules:
       - tests/cli/test_cli_detect_settings.py
       - tests/cli/test_cli_ingest.py
       - tests/cli/test_cli_probe.py
-      - tests/cli/test_cli_refine.py
+      - tests/cli/test_cli_refine_password.py
+      - tests/cli/test_cli_refine_llm.py
+      - tests/cli/test_cli_refine_manual.py
+      - tests/cli/test_cli_refine_pipeline.py
+      - tests/cli/test_cli_refine_prompt_hosts.py
       - tests/cli/test_cli_triage.py
 
   - id: config
