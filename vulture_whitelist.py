@@ -116,9 +116,9 @@ _ = FIELD_YAML_MAP
 
 from robotsix_auto_mail.cli import config
 
-config._existing_account_ids
-config._existing_accounts_for_append
-config._find_existing_account
+config._existing_account_ids  # lgtm[py/ineffectual-statement]
+config._existing_accounts_for_append  # lgtm[py/ineffectual-statement]
+config._find_existing_account  # lgtm[py/ineffectual-statement]
 
 # ===========================================================================
 # Public API function — exported from config.loader, called by external
@@ -127,4 +127,4 @@ config._find_existing_account
 
 from robotsix_auto_mail.config.loader import save_accounts
 
-save_accounts
+save_accounts  # lgtm[py/ineffectual-statement]

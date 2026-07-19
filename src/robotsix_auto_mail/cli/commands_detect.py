@@ -215,9 +215,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
                 "before use.\n"
                 "# Save this as config/config.json.\n"
             )
-        account = MailAccount(
-            account_id=account_id, config=stdout_config, label=label
-        )
+        account = MailAccount(account_id=account_id, config=stdout_config, label=label)
         container = MailAccountsConfig(
             accounts=[account], default_account_id=account_id
         )
@@ -355,7 +353,9 @@ def _print_detect_report(report: dict[str, object]) -> None:
 
     The *report* must already exclude sensitive fields such as passwords.
     """
-    sys.stdout.write(json.dumps(report, indent=2))  # lgtm[py/clear-text-logging-sensitive-data]  # noqa: E501
+    sys.stdout.write(
+        json.dumps(report, indent=2)
+    )  # lgtm[py/clear-text-logging-sensitive-data]  # noqa: E501
     sys.stdout.write("\n")
 
     # Paste instructions.
