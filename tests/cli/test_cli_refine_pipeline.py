@@ -10,10 +10,9 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.cli.config import _verify_and_refine, _VerifyResult
-from robotsix_auto_mail.config import ConfigurationError, MailConfig
+from robotsix_auto_mail.config import ConfigurationError
 from robotsix_auto_mail.config.detect import DetectionError, MailProvider
-from tests.cli.conftest import _mock_detect, _mock_detect_error, _provider_to_config
-
+from tests.cli.conftest import _mock_detect, _provider_to_config
 
 # ---------------------------------------------------------------------------
 # _verify_and_refine (integration-style with mocked sub-functions)

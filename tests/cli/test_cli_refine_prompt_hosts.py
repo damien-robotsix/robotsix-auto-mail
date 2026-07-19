@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest import mock
 
-import pytest
-
 from robotsix_auto_mail.cli.config import _prompt_hosts, _VerifyResult
 from robotsix_auto_mail.config import MailConfig
 
