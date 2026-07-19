@@ -1,0 +1,1 @@
+robotsix-auto-mail: Enable changelog_autofill periodic workflow

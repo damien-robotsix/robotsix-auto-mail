@@ -140,6 +140,7 @@ modules:
       - changelog/20260719T022116Z-narrow-exception-types-in-probe-capabili-8518.misc.md
       - changelog/20260719T024350Z-codeql-inline-lgtm-suppressions-and-quer-2c10.misc.md
       - changelog/20260719T030252Z-restore-noqa-s110-on-bare-except-excepti-be96.misc.md
+      - changelog/20260719T154209Z-robotsix-auto-mail-enable-changelog-auto-acb6.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -504,6 +505,7 @@ modules:
       - .robotsix-mill/config.yaml
       - .robotsix-mill/periodic/audit.yaml
       - .robotsix-mill/periodic/bc_check.yaml
+      - .robotsix-mill/periodic/changelog_autofill.yaml
       - .robotsix-mill/periodic/completeness_check.yaml
       - .robotsix-mill/periodic/copy_paste.yaml
       - .robotsix-mill/periodic/docstring_coverage.yaml
