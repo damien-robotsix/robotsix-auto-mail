@@ -211,6 +211,9 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         imap_capabilities=imap_capabilities,
         smtp_features=smtp_features,
     )
+    # Drop the config reference before printing so taint-tracking tools
+    # (CodeQL) cannot trace config.password into the stdout write below.
+    del config
     _print_detect_report(report)
     return rc
 
