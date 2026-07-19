@@ -145,6 +145,8 @@ modules:
       - changelog/20260719T204614Z-extract-shared-smtplib-smtp-connection-h-5102.misc.md
       - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-987-l-f637.misc.md
       - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-f637.misc.md
+      - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-829d.misc.md
+      - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-in-829d.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -487,7 +489,7 @@ modules:
       CI and developer-side quality-gate tooling: GitHub Actions
       workflows (main pipeline and uv.lock auto-update), dependency
       updates, and local pre-commit hooks (including the
-      detect-secrets baseline).
+      gitleaks secret scanning config).
     paths:
       - .github/actions/setup-project/action.yml
       - .github/PULL_REQUEST_TEMPLATE.md
@@ -502,12 +504,13 @@ modules:
       - .github/workflows/release.yml
       - .github/workflows/lint-workflows.yml
       - .github/workflows/scan-container.yml
+      - .github/workflows/secret-scanning.yml
       - .github/ISSUE_TEMPLATE/bug_report.yml
       - .github/ISSUE_TEMPLATE/config.yml
       - .github/ISSUE_TEMPLATE/feature_request.yml
       - .hadolint.yaml
+      - .gitleaks.toml
       - .pre-commit-config.yaml
-      - .secrets.baseline
       - .stylelintrc.cjs
       - .trivyignore
       - renovate.json

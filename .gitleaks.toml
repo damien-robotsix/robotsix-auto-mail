@@ -1,0 +1,21 @@
+title = "robotsix-auto-mail secret scanning config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Global Python project exclusions"
+regexTarget = "match"
+paths = [
+  '''\.venv/''',
+  '''__pycache__/''',
+  '''\.pytest_cache/''',
+  '''build/''',
+  '''dist/''',
+  '''\*.egg-info/''',
+  '''uv\.lock''',
+  '''changelog/''',
+  '''tests/''',
+  '''\.gitleaks-baseline\.json''',
+  '''\.secrets\.baseline'''
+]
