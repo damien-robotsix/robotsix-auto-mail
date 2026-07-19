@@ -121,8 +121,8 @@ def save_accounts(
         logger.debug("robotsix_config not installed — writing JSON directly")
         target = Path(path) if path is not None else _resolve_config_path()
         target.parent.mkdir(parents=True, exist_ok=True)
+        # lgtm[py/clear-text-storage-sensitive-data]
         target.write_text(
-            # lgtm[py/clear-text-storage-sensitive-data]
             _dump_config_json(config) + "\n"
         )
         return
