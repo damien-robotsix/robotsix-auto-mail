@@ -14,7 +14,6 @@ from robotsix_auto_mail.config import (
     MailAccount,
     MailAccountsConfig,
     MailConfig,
-    save_accounts,
 )
 
 # ---------------------------------------------------------------------------
@@ -198,30 +197,6 @@ def test_load_accounts_reads_multi_json(tmp_path: Path) -> None:
 
         accounts = _load_accounts()
     assert accounts.ids() == ("personal",)
-
-
-# ---------------------------------------------------------------------------
-# save_accounts round-trip
-# ---------------------------------------------------------------------------
-
-
-def test_save_and_reload_json(tmp_path: Path) -> None:
-    """save_accounts writes valid JSON that can be re-read."""
-    account = MailAccount(account_id="p", config=_cfg(db_path=".data/p/mail.db"))
-    container = MailAccountsConfig(accounts=[account], default_account_id="p")
-
-    save_path = tmp_path / "saved.json"
-    with mock.patch.dict(
-        os.environ, {"ROBOTSIX_CONFIG_FILE": str(save_path)}, clear=True
-    ):
-        save_accounts(container)
-
-    assert save_path.exists()
-    data = json.loads(save_path.read_text())
-    parsed = MailAccountsConfig.model_validate(data)
-    assert parsed.default_account_id == "p"
-    assert parsed.accounts[0].account_id == "p"
-    assert parsed.accounts[0].config.db_path == ".data/p/mail.db"
 
 
 # ---------------------------------------------------------------------------

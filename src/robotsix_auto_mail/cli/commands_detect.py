@@ -3,19 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
-from pathlib import Path
 
 from robotsix_auto_mail.cli.config import (
     _account_id_from_email,
     _detect_settings,
-    _existing_account_ids,
     _get_password,
     _verify_and_refine,
 )
 from robotsix_auto_mail.config import (
-    MailAccount,
-    MailAccountsConfig,
+    MailConfig,
 )
 
 
@@ -24,17 +22,16 @@ def register_subparser(
 ) -> None:
     """Register the ``detect`` subcommand and its arguments.
 
-    The subcommand auto-detects email provider settings via LLM and writes
-    the configuration to a YAML/JSON file.  Arguments include provider
-    override flags (--app-password, --oauth2-client-id/--oauth2-tenant) and
-    output options (--output, --stdout, --overwrite).
-
-    Args:
-        subparsers: The argparse subparsers group to attach the parser to.
+    The subcommand auto-detects email provider settings via LLM, verifies
+    them by connecting to IMAP and SMTP, and prints a JSON diagnostic report.
+    No config file is written — the operator copies the report values into
+    the deploy Configure panel.
     """
     parser = subparsers.add_parser(
         "detect",
-        help="Auto-detect email provider settings via LLM and write config",
+        help=(
+            "Auto-detect email provider settings via LLM and print a diagnostic report"
+        ),
     )
     parser.add_argument(
         "email",
@@ -47,48 +44,21 @@ def register_subparser(
         metavar="ID",
         help=(
             "Account id for the detected account. Defaults to a sanitised id "
-            "derived from the email address. Used as the multi-account "
-            "`accounts:` entry id and the `.data/<id>/mail.db` store folder."
+            "derived from the email address."
         ),
     )
     parser.add_argument(
         "--password",
         default=None,
-        help=(
-            "Password to write into the config file. "
-            "When omitted, prompts interactively."
-        ),
-    )
-    parser.add_argument(
-        "--output",
-        default="config/mail.local.yaml",
-        help="Write mail config to this file path (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--stdout",
-        action="store_true",
-        default=False,
-        help="Print mail config to stdout instead of writing to file",
+        help=("Password to use for verification. When omitted, prompts interactively."),
     )
     parser.add_argument(
         "--no-verify",
         action="store_true",
         default=False,
         help=(
-            "Skip the post-write IMAP/SMTP connection check. "
+            "Skip the post-detection IMAP/SMTP connection check. "
             "By default detect verifies the settings once a password is known."
-        ),
-    )
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        default=False,
-        help=(
-            "When the account id already exists in the output file, update its "
-            "transport settings (imap/smtp host, port, tls_mode) in place instead "
-            "of erroring. Other account fields (label, username, password, "
-            "db_path, archive, triage, calendar, oauth2 settings) are preserved "
-            "from the existing entry unless explicitly supplied on the command line."
         ),
     )
     parser.add_argument(
@@ -125,9 +95,10 @@ def register_subparser(
 
 
 def _cmd_detect(args: argparse.Namespace) -> int:
-    """Run the detect subcommand: auto-detect provider settings, write the
-    config, and verify it by connecting — refining with autoconfig, the LLM,
-    and finally a manual prompt when the servers cannot be reached.
+    """Run the detect subcommand: auto-detect provider settings, verify them
+    by connecting, and print a JSON diagnostic report.  No config file is
+    written.
+
     Returns 0 on success, 1 on any error.
     """
     try:
@@ -197,57 +168,13 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         password = _get_password(args)
         if password is None:
             return 1
-    if args.stdout:
-        config = provider_to_config(
-            provider,
-            args.email,
-            # lgtm[py/clear-text-storage-sensitive-data]
-            password="",  # nosec B106 - intentionally omitted from stdout
-        ).model_copy(update={"db_path": f".data/{account_id}/mail.db"})
-        if args.app_password and config.oauth2_provider:
-            # provider_to_config sets oauth2_provider="microsoft" for
-            # Microsoft hosts unconditionally; --app-password must clear it
-            # in the stdout path because _build() is never reached here.
-            config = config.model_copy(update={"oauth2_provider": ""})
-        if microsoft:
-            sys.stderr.write(
-                f"# Detected Microsoft 365 settings for {args.email} — "
-                "OAuth2 (XOAUTH2); no password is used.\n"
-                "# Save this as config/config.json, then run:\n"
-                f"#   robotsix-auto-mail auth login --account {account_id}\n"
-                "# to complete the device-code consent and seed the token "
-                "cache.\n"
-            )
-        else:
-            sys.stderr.write(
-                f"# Detected settings for {args.email} — verify before using.\n"
-                "# The password was intentionally omitted: fill in auth.password "
-                "before use.\n"
-                "# Save this as config/config.json.\n"
-            )
-        account = MailAccount(account_id=account_id, config=config, label=label)
-        container = MailAccountsConfig(
-            accounts=[account], default_account_id=account_id
-        )
-        # lgtm[py/clear-text-storage-sensitive-data]
-        sys.stdout.write(container.model_dump_json(indent=2))
-        return 0
 
-    output_path = Path(args.output)
-    if account_id in _existing_account_ids(output_path) and not args.overwrite:
-        sys.stderr.write(
-            f"Error: account {account_id!r} already exists in {output_path}. "
-            "Pass --id <new-id> to add a different account, --overwrite to "
-            "update the existing entry, or edit the file directly.\n"
-        )
-        return 1
-    return _verify_and_refine(
+    rc, config = _verify_and_refine(
         provider,
         email=args.email,
         api_key=api_key,
         llm_provider_model=llm_provider_model_str,
         mx_hosts=mx_hosts,
-        output_path=output_path,
         password=password,
         password_from_args=args.password,
         no_verify=args.no_verify,
@@ -257,8 +184,125 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         detect_provider=detect_provider,
         _detection_error=DetectionError,
         microsoft=microsoft,
-        overwrite=args.overwrite,
         oauth2_client_id=args.oauth2_client_id,
         oauth2_tenant=args.oauth2_tenant,
         app_password=args.app_password,
+    )
+
+    if config is None:
+        return rc
+
+    # Print the diagnostic report to stdout as JSON.
+    # verified is True only when verification actually ran and passed.
+    verified = rc == 0 and not args.no_verify
+    imap_capabilities, smtp_features = _probe_capabilities(config, verified)
+    report = _build_detect_report(
+        imap_host=config.imap_host,
+        imap_port=config.imap_port,
+        imap_tls_mode=config.imap_tls_mode,
+        smtp_host=config.smtp_host,
+        smtp_port=config.smtp_port,
+        smtp_tls_mode=config.smtp_tls_mode,
+        username=config.username,
+        oauth2_client_id=config.oauth2_client_id,
+        oauth2_tenant=config.oauth2_tenant,
+        oauth2_provider=config.oauth2_provider,
+        verified=verified,
+        imap_capabilities=imap_capabilities,
+        smtp_features=smtp_features,
+    )
+    # Drop the config reference before printing so taint-tracking tools
+    # (CodeQL) cannot trace config.password into the stdout write below.
+    del config
+    _print_detect_report(report)
+    return rc
+
+
+def _probe_capabilities(
+    config: MailConfig, verified: bool
+) -> tuple[list[str], dict[str, str]]:
+    """Collect IMAP/SMTP capability metadata for the diagnostic report.
+
+    Returns empty collections when *verified* is ``False`` or a probe fails.
+    """
+    from robotsix_auto_mail.imap import ImapClient
+    from robotsix_auto_mail.smtp import SmtpClient
+
+    if not verified:
+        return [], {}
+
+    imap_capabilities: list[str] = []
+    smtp_features: dict[str, str] = {}
+    try:
+        with ImapClient(config) as imap:
+            imap_capabilities = list(imap.capabilities)
+    except Exception:  # noqa: S110
+        # Best-effort capability probe; failures are non-critical and ignored.
+        pass
+    try:
+        with SmtpClient(config) as smtp:
+            smtp_features = dict(smtp.esmtp_features)
+    except Exception:  # noqa: S110
+        # Best-effort capability probe; failures are non-critical and ignored.
+        pass
+    return imap_capabilities, smtp_features
+
+
+def _build_detect_report(
+    *,
+    imap_host: str,
+    imap_port: int,
+    imap_tls_mode: str,
+    smtp_host: str,
+    smtp_port: int,
+    smtp_tls_mode: str,
+    username: str,
+    oauth2_client_id: str,
+    oauth2_tenant: str,
+    oauth2_provider: str,
+    verified: bool,
+    imap_capabilities: list[str],
+    smtp_features: dict[str, str],
+) -> dict[str, object]:
+    """Build a JSON-safe diagnostic report dictionary.
+
+    The report uses keys matching the config schema so the operator can
+    copy-paste values into the deploy Configure panel.  Passwords are
+    never included.
+    """
+    report: dict[str, object] = {
+        "imap_host": imap_host,
+        "imap_port": imap_port,
+        "imap_tls_mode": imap_tls_mode,
+        "smtp_host": smtp_host,
+        "smtp_port": smtp_port,
+        "smtp_tls_mode": smtp_tls_mode,
+        "username": username,
+    }
+    if oauth2_client_id:
+        report["oauth2_client_id"] = oauth2_client_id
+    if oauth2_tenant:
+        report["oauth2_tenant"] = oauth2_tenant
+    if oauth2_provider:
+        report["oauth2_provider"] = oauth2_provider
+
+    report["imap_capabilities"] = imap_capabilities
+    report["smtp_features"] = smtp_features
+    report["login_ok"] = verified
+    return report
+
+
+def _print_detect_report(report: dict[str, object]) -> None:
+    """Print the diagnostic *report* as JSON to stdout.
+
+    The *report* must already exclude sensitive fields such as passwords.
+    """
+    sys.stdout.write(json.dumps(report, indent=2))
+    sys.stdout.write("\n")
+
+    # Paste instructions.
+    sys.stderr.write(
+        "\n---\n"
+        "Copy the settings above into the deploy Configure panel.\n"
+        "Enter the password into the masked write-only password field.\n"
     )

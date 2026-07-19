@@ -1,8 +1,13 @@
-"""Tests for basic CLI detect subcommand functionality and connection verification."""
+"""Tests for basic CLI detect subcommand functionality and connection verification.
+
+Updated for report-only detect: no --output/--stdout flags; JSON diagnostic
+report is always printed to stdout.
+"""
 
 from __future__ import annotations
 
 import builtins
+import json
 import os
 from pathlib import Path
 from unittest import mock
@@ -15,13 +20,26 @@ from tests.cli.conftest import _auth_fail_result, _ok_result
 
 
 def test_parser_has_detect_subcommand() -> None:
-    """The parser knows the detect subcommand with expected defaults."""
+    """The parser knows the detect subcommand with expected arguments.
+
+    --output and --stdout have been removed; detect always prints a JSON
+    diagnostic report to stdout.
+    """
     parser = build_parser()
     args = parser.parse_args(["detect", "user@gmail.com"])
     assert args.command == "detect"
     assert args.email == "user@gmail.com"
-    assert args.stdout is False
-    assert args.output == "config/mail.local.yaml"
+    # Old flags removed — verify they're absent.
+    assert not hasattr(args, "stdout")
+    assert not hasattr(args, "output")
+    assert not hasattr(args, "overwrite")
+    # New flags are present.
+    assert args.no_verify is False
+    assert args.password is None
+    assert args.id is None
+    assert args.app_password is False
+    assert args.oauth2_client_id == ""
+    assert args.oauth2_tenant == ""
 
 
 def test_detect_missing_pydantic_ai(capsys: pytest.CaptureFixture[str]) -> None:
@@ -56,8 +74,7 @@ def test_detect_missing_pydantic_ai(capsys: pytest.CaptureFixture[str]) -> None:
 def test_detect_happy_path(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """detect writes a single config file (password included) on success."""
-    output = tmp_path / "cfg.yaml"
+    """detect prints a JSON diagnostic report to stdout on success."""
     mock_provider = MailProvider(
         imap_host="imap.gmail.com",
         smtp_host="smtp.gmail.com",
@@ -71,26 +88,23 @@ def test_detect_happy_path(
         mock.patch("getpass.getpass", return_value="testpass"),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["detect", "user@gmail.com", "--output", str(output), "--no-verify"])
+        rc = main(["detect", "user@gmail.com", "--no-verify"])
 
     assert rc == 0
-    content = output.read_text()
-    assert "imap.gmail.com" in content
-    assert "smtp.gmail.com" in content
-    assert "user@gmail.com" in content
-    # Password is written into the config file itself — no separate file.
-    assert "testpass" in content
-    assert not (tmp_path / "secrets.yaml").exists()
-
-    captured = capsys.readouterr()
-    assert "Config written" in captured.err
+    stdout = capsys.readouterr().out
+    report = json.loads(stdout)
+    assert report["imap_host"] == "imap.gmail.com"
+    assert report["smtp_host"] == "smtp.gmail.com"
+    assert report["username"] == "user@gmail.com"
+    # Password must never appear in the report.
+    assert "testpass" not in json.dumps(report)
+    assert "password" not in report
 
 
 def test_detect_password_supplied(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+    capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """detect --password skips the interactive prompt and writes the config."""
-    output = tmp_path / "cfg.yaml"
+    """detect --password skips the interactive prompt and prints a report."""
     mock_provider = MailProvider(
         imap_host="imap.gmail.com",
         smtp_host="smtp.gmail.com",
@@ -108,8 +122,6 @@ def test_detect_password_supplied(
             [
                 "detect",
                 "user@gmail.com",
-                "--output",
-                str(output),
                 "--password",
                 "cli-pass",
                 "--no-verify",
@@ -119,16 +131,16 @@ def test_detect_password_supplied(
     assert rc == 0
     mock_getpass.assert_not_called()
 
-    content = output.read_text()
-    assert "cli-pass" in content
-    assert not (tmp_path / "secrets.yaml").exists()
+    stdout = capsys.readouterr().out
+    report = json.loads(stdout)
+    assert report["imap_host"] == "imap.gmail.com"
+    assert "cli-pass" not in json.dumps(report)
 
 
 def test_detect_empty_password(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+    capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """detect with an empty password writes the config and warns the user."""
-    output = tmp_path / "cfg.yaml"
+    """detect with an empty password prints a report and warns the user."""
     mock_provider = MailProvider(
         imap_host="imap.gmail.com",
         smtp_host="smtp.gmail.com",
@@ -142,20 +154,19 @@ def test_detect_empty_password(
         mock.patch("getpass.getpass", return_value=""),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["detect", "user@gmail.com", "--output", str(output)])
+        rc = main(["detect", "user@gmail.com"])
 
     assert rc == 0
-    content = output.read_text()
-    assert "imap.gmail.com" in content
-
     captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert report["imap_host"] == "imap.gmail.com"
     assert "No password provided" in captured.err
 
 
 def test_detect_stdout(
     capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """detect --stdout prints config and emits a verification banner."""
+    """detect prints JSON report to stdout by default (--stdout removed)."""
     mock_provider = MailProvider(
         imap_host="imap.gmail.com",
         smtp_host="smtp.gmail.com",
@@ -166,26 +177,25 @@ def test_detect_stdout(
             "robotsix_auto_mail.config.detect.detect_provider",
             return_value=mock_provider,
         ),
+        mock.patch("getpass.getpass", return_value="pw"),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["detect", "user@gmail.com", "--stdout"])
+        rc = main(["detect", "user@gmail.com", "--no-verify"])
 
     assert rc == 0
     captured = capsys.readouterr()
-    assert "imap.gmail.com" in captured.out
-    assert "smtp.gmail.com" in captured.out
-    assert "user@gmail.com" in captured.out
-    assert "verify" in captured.err.lower()
+    report = json.loads(captured.out)
+    assert report["imap_host"] == "imap.gmail.com"
+    assert report["smtp_host"] == "smtp.gmail.com"
+    assert report["username"] == "user@gmail.com"
+    # The report always carries instructions on stderr.
+    assert "Copy the settings above" in captured.err
 
 
 def test_detect_stdout_redacts_password(
     capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """detect --stdout --password omits the password from the printed config.
-
-    The supplied password must NOT leak to stdout; instead the rendered
-    config carries the empty-password placeholder hinting at MAIL_PASSWORD.
-    """
+    """detect --password omits the password from the printed JSON report."""
     mock_provider = MailProvider(
         imap_host="imap.gmail.com",
         smtp_host="smtp.gmail.com",
@@ -198,16 +208,15 @@ def test_detect_stdout_redacts_password(
         ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["detect", "user@gmail.com", "--stdout", "--password", "cli-pass"])
+        rc = main(["detect", "user@gmail.com", "--password", "cli-pass", "--no-verify"])
 
     assert rc == 0
     captured = capsys.readouterr()
     assert "imap.gmail.com" in captured.out
     assert "cli-pass" not in captured.out
-    # The rendered (stdout) config redacts the password; the MAIL_PASSWORD
-    # hint is printed to stderr alongside the multi-account YAML.
-    assert '"password": ""' in captured.out
-    assert "fill in auth.password" in captured.err
+    # The report never includes a "password" key.
+    report = json.loads(captured.out)
+    assert "password" not in report
 
 
 def test_detect_detection_error(
@@ -221,7 +230,7 @@ def test_detect_detection_error(
         ),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
-        rc = main(["detect", "user@gmail.com", "--stdout"])
+        rc = main(["detect", "user@gmail.com"])
 
     assert rc == 1
     captured = capsys.readouterr()
@@ -231,9 +240,8 @@ def test_detect_detection_error(
 def test_detect_llm_api_key_from_config(
     capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """detect resolves the LLM api key from the config file (llm.api_key) and
-    forwards it to detect_provider (model is no longer forwarded — the tier
-    bakes the model choice)."""
+    """detect resolves the LLM api key from the config file and forwards it
+    to detect_provider."""
     mock_provider = MailProvider(
         imap_host="imap.gmail.com",
         smtp_host="smtp.gmail.com",
@@ -244,7 +252,7 @@ def test_detect_llm_api_key_from_config(
         mock.patch("robotsix_auto_mail.config.loader.load_llm", return_value="sk-test"),
         mock.patch("robotsix_auto_mail.config.detect.detect_provider", mock_dp),
     ):
-        rc = main(["detect", "user@x.com", "--stdout"])
+        rc = main(["detect", "user@x.com", "--password", "pw", "--no-verify"])
 
     assert rc == 0
     mock_dp.assert_called_once_with(
@@ -259,7 +267,6 @@ def test_detect_uses_autoconfig_when_available(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """When autoconfig resolves, the LLM is not consulted."""
-    output = tmp_path / "cfg.yaml"
     autoconf_provider = MailProvider(
         imap_host="imap.fromautoconfig.net",
         smtp_host="smtp.fromautoconfig.net",
@@ -278,8 +285,6 @@ def test_detect_uses_autoconfig_when_available(
             [
                 "detect",
                 "user@custom.net",
-                "--output",
-                str(output),
                 "--password",
                 "pw",
                 "--no-verify",
@@ -288,15 +293,16 @@ def test_detect_uses_autoconfig_when_available(
 
     assert rc == 0
     mock_llm.assert_not_called()
-    assert "imap.fromautoconfig.net" in output.read_text()
-    assert "autoconfig" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert report["imap_host"] == "imap.fromautoconfig.net"
+    assert "autoconfig" in captured.err
 
 
 def test_detect_verifies_connection_on_success(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """After writing the config, detect verifies by connecting (default)."""
-    output = tmp_path / "cfg.yaml"
+    """After detection, detect verifies by connecting (default)."""
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
@@ -313,8 +319,6 @@ def test_detect_verifies_connection_on_success(
             [
                 "detect",
                 "user@gmail.com",
-                "--output",
-                str(output),
                 "--password",
                 "pw",
             ]
@@ -323,14 +327,17 @@ def test_detect_verifies_connection_on_success(
     assert rc == 0
     mock_verify.assert_called_once()
     assert mock_verify.call_args.args[0].password == "pw"
-    assert "Verification succeeded" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "Verification succeeded" in captured.err
+    # Report confirms login_ok.
+    report = json.loads(captured.out)
+    assert report["login_ok"] is True
 
 
 def test_detect_verify_failure_returns_1(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
     """A failed verification (auth, no retries) surfaces as exit code 1."""
-    output = tmp_path / "cfg.yaml"
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     # --password ⇒ no interactive password retry budget, so an auth-only
@@ -350,21 +357,21 @@ def test_detect_verify_failure_returns_1(
             [
                 "detect",
                 "user@gmail.com",
-                "--output",
-                str(output),
                 "--password",
                 "pw",
             ]
         )
 
     assert rc == 1
-    assert output.exists()
-    assert "Verification FAILED" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "Verification FAILED" in captured.err
+    # Report is still printed with login_ok=False.
+    report = json.loads(captured.out)
+    assert report["login_ok"] is False
 
 
 def test_detect_no_verify_skips_check(tmp_path: Path, no_autoconfig: object) -> None:
-    """--no-verify writes the config without connecting."""
-    output = tmp_path / "cfg.yaml"
+    """--no-verify prints the report without connecting."""
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
@@ -379,8 +386,6 @@ def test_detect_no_verify_skips_check(tmp_path: Path, no_autoconfig: object) -> 
             [
                 "detect",
                 "user@gmail.com",
-                "--output",
-                str(output),
                 "--password",
                 "pw",
                 "--no-verify",

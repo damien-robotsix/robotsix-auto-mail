@@ -1,0 +1,1 @@
+Refactor detect/verify CLI into pure diagnostic tool: report-only output, no config writing, OAuth tokens to runtime dir

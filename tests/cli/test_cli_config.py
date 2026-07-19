@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 from unittest import mock
 
 import pytest
 
 from robotsix_auto_mail.cli.config import (
     _account_id_from_email,
-    _existing_account_ids,
-    _existing_accounts_for_append,
     _get_password,
     _report_verify_result,
     _verify_config,
@@ -112,204 +109,6 @@ def test_verify_result_defaults() -> None:
 def test_account_id_from_email(email: str, expected: str) -> None:
     """_account_id_from_email derives safe filesystem ids from email addresses."""
     assert _account_id_from_email(email) == expected
-
-
-# ---------------------------------------------------------------------------
-# _existing_account_ids
-# ---------------------------------------------------------------------------
-
-
-def test_existing_account_ids_missing_file(tmp_path: Path) -> None:
-    """A non-existent path returns an empty set."""
-    path = tmp_path / "nonexistent.json"
-    assert _existing_account_ids(path) == set()
-
-
-def test_existing_account_ids_multi_account(tmp_path: Path) -> None:
-    """A multi-account JSON file returns its entry ids."""
-    import json
-
-    path = tmp_path / "accounts.json"
-    path.write_text(
-        json.dumps(
-            {
-                "accounts": [
-                    {
-                        "account_id": "alpha",
-                        "config": {
-                            "imap_host": "imap.a.com",
-                            "smtp_host": "smtp.a.com",
-                            "username": "a@a.com",
-                            "password": "",
-                        },
-                    },
-                    {
-                        "account_id": "beta",
-                        "config": {
-                            "imap_host": "imap.b.com",
-                            "smtp_host": "smtp.b.com",
-                            "username": "b@b.com",
-                            "password": "",
-                        },
-                    },
-                ],
-                "default_account_id": "alpha",
-            }
-        )
-    )
-    assert _existing_account_ids(path) == {"alpha", "beta"}
-
-
-def test_existing_account_ids_empty_json(tmp_path: Path) -> None:
-    """An empty JSON file returns an empty set."""
-    path = tmp_path / "empty.json"
-    path.write_text("")
-    assert _existing_account_ids(path) == set()
-
-
-def test_existing_account_ids_invalid_json(tmp_path: Path) -> None:
-    """A corrupt JSON file returns an empty set (graceful degradation)."""
-    path = tmp_path / "corrupt.json"
-    path.write_text("{invalid: [[[")
-    assert _existing_account_ids(path) == set()
-
-
-def test_existing_account_ids_accounts_not_list(tmp_path: Path) -> None:
-    """An 'accounts' key that is not a list → empty set."""
-    import json
-
-    path = tmp_path / "bad.json"
-    path.write_text(json.dumps({"accounts": "not-a-list"}))
-    assert _existing_account_ids(path) == set()
-
-
-def test_existing_account_ids_entry_missing_id(tmp_path: Path) -> None:
-    """Account entries without an 'account_id' field are skipped."""
-    import json
-
-    path = tmp_path / "partial.json"
-    path.write_text(
-        json.dumps(
-            {
-                "accounts": [
-                    {"account_id": "ok"},
-                    {"email": "b@b.com"},  # no account_id
-                ],
-                "default_account_id": "ok",
-            }
-        )
-    )
-    assert _existing_account_ids(path) == {"ok"}
-
-
-# ---------------------------------------------------------------------------
-# _existing_accounts_for_append
-# ---------------------------------------------------------------------------
-
-
-def test_existing_accounts_for_append_missing_file(tmp_path: Path) -> None:
-    """A non-existent path returns empty list and the new id as default."""
-    path = tmp_path / "nonexistent.json"
-    others, default_id = _existing_accounts_for_append(path, "new-id")
-    assert others == []
-    assert default_id == "new-id"
-
-
-def test_existing_accounts_for_append_multi_account(tmp_path: Path) -> None:
-    """Multi-account file: existing accounts returned, matching id excluded."""
-    import json
-
-    path = tmp_path / "multi.json"
-    path.write_text(
-        json.dumps(
-            {
-                "accounts": [
-                    {
-                        "account_id": "alpha",
-                        "config": {
-                            "imap_host": "imap.a.com",
-                            "smtp_host": "smtp.a.com",
-                            "username": "a@a.com",
-                            "password": "",
-                        },
-                    },
-                    {
-                        "account_id": "beta",
-                        "config": {
-                            "imap_host": "imap.b.com",
-                            "smtp_host": "smtp.b.com",
-                            "username": "b@b.com",
-                            "password": "",
-                        },
-                    },
-                ],
-                "default_account_id": "alpha",
-            }
-        )
-    )
-    others, default_id = _existing_accounts_for_append(path, "beta")
-    assert default_id == "alpha"
-    assert len(others) == 1
-    assert others[0].account_id == "alpha"
-    assert others[0].config.username == "a@a.com"
-
-
-def test_existing_accounts_for_append_new_id(tmp_path: Path) -> None:
-    """When the new id is not in the file, all accounts are returned as others."""
-    import json
-
-    path = tmp_path / "multi.json"
-    path.write_text(
-        json.dumps(
-            {
-                "accounts": [
-                    {
-                        "account_id": "alpha",
-                        "config": {
-                            "imap_host": "imap.a.com",
-                            "smtp_host": "smtp.a.com",
-                            "username": "a@a.com",
-                            "password": "",
-                        },
-                    }
-                ],
-                "default_account_id": "alpha",
-            }
-        )
-    )
-    others, default_id = _existing_accounts_for_append(path, "gamma")
-    assert default_id == "alpha"
-    assert len(others) == 1
-    assert others[0].account_id == "alpha"
-
-
-def test_existing_accounts_for_append_non_accounts_file(tmp_path: Path) -> None:
-    """A file without an `accounts:` list is not valid config → start fresh."""
-    import json
-
-    path = tmp_path / "mono.json"
-    path.write_text(
-        json.dumps(
-            {
-                "imap_host": "imap.old.com",
-                "smtp_host": "smtp.old.com",
-                "username": "old@example.com",
-                "password": "",
-            }
-        )
-    )
-    others, default_id = _existing_accounts_for_append(path, "new-id")
-    assert others == []
-    assert default_id == "new-id"
-
-
-def test_existing_accounts_for_append_invalid_json(tmp_path: Path) -> None:
-    """Corrupt JSON → graceful fallback."""
-    path = tmp_path / "corrupt.json"
-    path.write_text("{invalid:")
-    others, default_id = _existing_accounts_for_append(path, "myid")
-    assert others == []
-    assert default_id == "myid"
 
 
 # ---------------------------------------------------------------------------
@@ -567,26 +366,20 @@ def test_verify_feedback_mixed(cfg: MailConfig) -> None:
 
 def test_get_password_from_args() -> None:
     """--password on the command line is used directly."""
-    args = argparse.Namespace(password="cli-pass", stdout=False)
+    args = argparse.Namespace(password="cli-pass")
     assert _get_password(args) == "cli-pass"
 
 
 def test_get_password_interactive() -> None:
-    """No --password, not stdout: prompts via getpass."""
-    args = argparse.Namespace(password=None, stdout=False)
+    """No --password: prompts via getpass."""
+    args = argparse.Namespace(password=None)
     with mock.patch("getpass.getpass", return_value="typed-pass"):
         assert _get_password(args) == "typed-pass"
 
 
-def test_get_password_stdout_mode() -> None:
-    """stdout mode returns empty string (no prompt)."""
-    args = argparse.Namespace(password=None, stdout=True)
-    assert _get_password(args) == ""
-
-
 def test_get_password_eof() -> None:
     """EOFError during prompt → None returned, message printed."""
-    args = argparse.Namespace(password=None, stdout=False)
+    args = argparse.Namespace(password=None)
     with mock.patch("getpass.getpass", side_effect=EOFError):
         result = _get_password(args)
     assert result is None
@@ -594,47 +387,11 @@ def test_get_password_eof() -> None:
 
 def test_get_password_keyboard_interrupt() -> None:
     """KeyboardInterrupt during prompt → None returned."""
-    args = argparse.Namespace(password=None, stdout=False)
+    args = argparse.Namespace(password=None)
     with mock.patch("getpass.getpass", side_effect=KeyboardInterrupt):
         result = _get_password(args)
     assert result is None
 
 
 # ---------------------------------------------------------------------------
-# _existing_accounts_for_append — validation-failure edge cases
-# ---------------------------------------------------------------------------
-
-
-def test_existing_accounts_for_append_multi_account_validation_error(
-    tmp_path: Path,
-) -> None:
-    """Multi-account JSON that parses but fails schema validation → graceful fallback."""
-    import json
-
-    path = tmp_path / "bad_schema.json"
-    path.write_text(
-        json.dumps(
-            {
-                "accounts": [
-                    {
-                        "account_id": "ok",
-                        "config": {
-                            "imap_host": "imap.ok.com",
-                            "smtp_host": "smtp.ok.com",
-                            "username": "a@a.com",
-                            "password": "",
-                        },
-                    }
-                ],
-                "default_account_id": "ok",
-            }
-        )
-    )
-    # Force MailAccountsConfig.model_validate to raise to cover the except path.
-    with mock.patch(
-        "robotsix_auto_mail.cli.config.MailAccountsConfig.model_validate",
-        side_effect=ValueError("schema mismatch"),
-    ):
-        others, default_id = _existing_accounts_for_append(path, "new-id")
-    assert others == []
-    assert default_id == "new-id"
+# _verify_feedback
