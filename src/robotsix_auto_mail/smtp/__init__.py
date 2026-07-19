@@ -227,9 +227,7 @@ class SmtpClient(_ProtocolClient):
     def _create_smtp_connection(self, description: str) -> smtplib.SMTP:
         """Create a plain SMTP connection, raising SmtpConnectionError on failure."""
         try:
-            return smtplib.SMTP(
-                self._host, self._port, timeout=_SMTP_TIMEOUT_SECONDS
-            )
+            return smtplib.SMTP(self._host, self._port, timeout=_SMTP_TIMEOUT_SECONDS)
         except (OSError, _SMTP_EXCEPTION) as exc:
             raise SmtpConnectionError(
                 f"{description} to {self._host}:{self._port} failed: {exc}"
