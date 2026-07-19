@@ -11,6 +11,8 @@ query-filters:
   # keys — the password field is never included.
   - exclude:
       id: py/clear-text-logging-sensitive-data
+      paths:
+        - src/robotsix_auto_mail/cli/commands_detect.py
 
   # loader.py save_accounts(): the config file MUST contain credentials for
   # the application to function (IMAP/SMTP auth).  Secrets are never
@@ -18,3 +20,5 @@ query-filters:
   # developer's local machine with appropriate file permissions.
   - exclude:
       id: py/clear-text-storage-sensitive-data
+      paths:
+        - src/robotsix_auto_mail/config/loader.py

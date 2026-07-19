@@ -106,7 +106,7 @@ def save_accounts(
         logger.debug("robotsix_config not installed — writing JSON directly")
         target = Path(path) if path is not None else _resolve_config_path()
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(_dump_config_json(config) + "\n")
+        target.write_text(_dump_config_json(config) + "\n")  # codeql[py/clear-text-storage-sensitive-data] -- config file MUST store credentials for IMAP/SMTP auth
         return
     _dump_config(config, path=path)
 
