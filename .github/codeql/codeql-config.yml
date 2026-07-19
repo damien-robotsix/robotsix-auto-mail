@@ -1,25 +1,9 @@
-# CodeQL analysis configuration.
-#
-# Exclude test code from analysis. Tests deliberately contain patterns the
-# security-and-quality suite flags — hostname-substring assertions
-# (py/incomplete-url-substring-sanitization), dual import styles
-# (py/import-and-import-from), intentionally unclosed handles, etc. The real
-# security surface is src/, so analysis there stays strict; only test noise
-# is suppressed at the source.
 paths-ignore:
   - tests
 
-# Suppress false-positive alerts.  Each entry includes a justification
-# explaining why the alert is a false positive or accepted risk.
-#
-# - py/clear-text-logging-sensitive-data in commands_detect.py:
-#   _print_detect_report writes only a report dict that explicitly excludes
-#   the password field from MailConfig.  CodeQL's inter-procedural taint
-#   tracking conservatively follows config into the caller scope, but no
-#   password field is ever serialised to stdout — the report is built from
-#   individually enumerated non-sensitive keys only.
+# false positive: _print_detect_report/sys.stdout.write receives only a
+# report dict built from individually enumerated non-sensitive MailConfig
+# keys — the password field is never included.
 query-filters:
   - exclude:
       id: py/clear-text-logging-sensitive-data
-      paths:
-        - src/robotsix_auto_mail/cli/commands_detect.py
