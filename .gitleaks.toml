@@ -15,6 +15,7 @@ paths = [
   '''\*.egg-info/''',
   '''uv\.lock''',
   '''changelog/''',
+  '''tests/''',
   '''\.gitleaks-baseline\.json''',
   '''\.secrets\.baseline'''
 ]
