@@ -195,54 +195,93 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     # Print the diagnostic report to stdout as JSON.
     # verified is True only when verification actually ran and passed.
     verified = rc == 0 and not args.no_verify
-    report = _build_detect_report(config, verified)
+    imap_capabilities, smtp_features = _probe_capabilities(config, verified)
+    report = _build_detect_report(
+        imap_host=config.imap_host,
+        imap_port=config.imap_port,
+        imap_tls_mode=config.imap_tls_mode,
+        smtp_host=config.smtp_host,
+        smtp_port=config.smtp_port,
+        smtp_tls_mode=config.smtp_tls_mode,
+        username=config.username,
+        oauth2_client_id=config.oauth2_client_id,
+        oauth2_tenant=config.oauth2_tenant,
+        oauth2_provider=config.oauth2_provider,
+        verified=verified,
+        imap_capabilities=imap_capabilities,
+        smtp_features=smtp_features,
+    )
     _print_detect_report(report)
     return rc
 
 
-def _build_detect_report(config: MailConfig, verified: bool) -> dict[str, object]:
-    """Build a JSON-safe diagnostic report dictionary from *config*.
+def _probe_capabilities(
+    config: MailConfig, verified: bool
+) -> tuple[list[str], dict[str, str]]:
+    """Collect IMAP/SMTP capability metadata for the diagnostic report.
 
-    The report uses keys matching the config schema so the operator can
-    copy-paste values into the deploy Configure panel.  Passwords are
-    never included.  IMAP/SMTP capabilities are collected when *verified*
-    is ``True``.
+    Returns empty collections when *verified* is ``False`` or a probe fails.
     """
     from robotsix_auto_mail.imap import ImapClient
     from robotsix_auto_mail.smtp import SmtpClient
 
-    report: dict[str, object] = {
-        "imap_host": config.imap_host,
-        "imap_port": config.imap_port,
-        "imap_tls_mode": config.imap_tls_mode,
-        "smtp_host": config.smtp_host,
-        "smtp_port": config.smtp_port,
-        "smtp_tls_mode": config.smtp_tls_mode,
-        "username": config.username,
-    }
-    if config.oauth2_client_id:
-        report["oauth2_client_id"] = config.oauth2_client_id
-    if config.oauth2_tenant:
-        report["oauth2_tenant"] = config.oauth2_tenant
-    if config.oauth2_provider:
-        report["oauth2_provider"] = config.oauth2_provider
+    if not verified:
+        return [], {}
 
-    # Collect capabilities when verification succeeded.
     imap_capabilities: list[str] = []
     smtp_features: dict[str, str] = {}
-    if verified:
-        try:
-            with ImapClient(config) as imap:
-                imap_capabilities = list(imap.capabilities)
-        except Exception:  # noqa: S110
-            # Best-effort capability probe; failures are non-critical and ignored.
-            pass
-        try:
-            with SmtpClient(config) as smtp:
-                smtp_features = dict(smtp.esmtp_features)
-        except Exception:  # noqa: S110
-            # Best-effort capability probe; failures are non-critical and ignored.
-            pass
+    try:
+        with ImapClient(config) as imap:
+            imap_capabilities = list(imap.capabilities)
+    except Exception:  # noqa: S110
+        # Best-effort capability probe; failures are non-critical and ignored.
+        pass
+    try:
+        with SmtpClient(config) as smtp:
+            smtp_features = dict(smtp.esmtp_features)
+    except Exception:  # noqa: S110
+        # Best-effort capability probe; failures are non-critical and ignored.
+        pass
+    return imap_capabilities, smtp_features
+
+
+def _build_detect_report(
+    *,
+    imap_host: str,
+    imap_port: int,
+    imap_tls_mode: str,
+    smtp_host: str,
+    smtp_port: int,
+    smtp_tls_mode: str,
+    username: str,
+    oauth2_client_id: str,
+    oauth2_tenant: str,
+    oauth2_provider: str,
+    verified: bool,
+    imap_capabilities: list[str],
+    smtp_features: dict[str, str],
+) -> dict[str, object]:
+    """Build a JSON-safe diagnostic report dictionary.
+
+    The report uses keys matching the config schema so the operator can
+    copy-paste values into the deploy Configure panel.  Passwords are
+    never included.
+    """
+    report: dict[str, object] = {
+        "imap_host": imap_host,
+        "imap_port": imap_port,
+        "imap_tls_mode": imap_tls_mode,
+        "smtp_host": smtp_host,
+        "smtp_port": smtp_port,
+        "smtp_tls_mode": smtp_tls_mode,
+        "username": username,
+    }
+    if oauth2_client_id:
+        report["oauth2_client_id"] = oauth2_client_id
+    if oauth2_tenant:
+        report["oauth2_tenant"] = oauth2_tenant
+    if oauth2_provider:
+        report["oauth2_provider"] = oauth2_provider
 
     report["imap_capabilities"] = imap_capabilities
     report["smtp_features"] = smtp_features
