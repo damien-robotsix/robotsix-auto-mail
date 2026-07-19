@@ -5,6 +5,16 @@
 
 ## 0.0.0 (unreleased)
 
+- `detect` is now report-only: prints a JSON diagnostic report to stdout
+  (schema-shaped keys: imap_host/port/tls_mode, smtp_*, username, capabilities,
+  login_ok) and writes no config file.  Removed ``--output``, ``--overwrite``,
+  and ``--stdout`` flags.  Passwords are never printed.  Operators paste the
+  detected values into the deploy Configure panel.
+- Removed ``save_accounts`` from ``config.loader`` (no callers remain).
+- Removed ``_existing_account_ids``, ``_existing_accounts_for_append``,
+  ``_find_existing_account``, ``_load_accounts_from_file``,
+  ``_normalise_legacy_account``, and ``_report_failure`` from
+  ``cli.config`` (all served the now-removed file-write path).
 - Extract shared `load_json_watermark` / `save_json_watermark` helpers into `db.queries`, deduplicating watermark loading logic between `config_sync_agent` and `triage.classifier`.
 - Split `tests/cli/test_cli_detect.py` (1523 lines) into four focused test
   modules — `test_cli_detect_basic.py`, `test_cli_detect_microsoft.py`,

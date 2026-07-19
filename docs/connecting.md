@@ -50,9 +50,9 @@ docker compose run robotsix-auto-mail board
 
 ## Auto-detection with `detect`
 
-Instead of manually researching and writing config, you can auto-generate it
-from just an email address. The `detect` command resolves the IMAP/SMTP
-settings through a ladder, most authoritative first:
+You can auto-detect IMAP/SMTP settings from just an email address. The
+`detect` command resolves the settings through a ladder, most authoritative
+first:
 
 1. **Published autoconfig** — the Mozilla ISPDB and the domain's own
    `autoconfig.<domain>` endpoint.
@@ -62,9 +62,16 @@ settings through a ladder, most authoritative first:
 3. **LLM** — only if the first two miss; the MX hostnames are passed in as a
    hint so it identifies the provider rather than guessing blindly.
 
-After writing the config, `detect` verifies it by connecting (see below), and
-refines on failure. The LLM step needs a `pydantic-ai` installation and an
-API key; autoconfig and MX detection do not.
+After detection, `detect` verifies the settings by connecting to IMAP and
+SMTP (the same check as the `probe` command), refining on failure.  Pass
+`--no-verify` to skip that connection check.  The LLM step needs a
+`pydantic-ai` installation and an API key; autoconfig and MX detection do
+not.
+
+`detect` prints a JSON diagnostic report to stdout — it does **not** write
+any config file.  Copy the detected values into your deploy-managed
+`config.json` via the Configure panel; enter the password into the masked
+write-only password field.
 
 ### Setup
 
@@ -77,16 +84,9 @@ API key; autoconfig and MX detection do not.
 uv sync --extra dev
 ```
 
-Set your OpenRouter API key (required for `detect`) in the `llm:` section of
-`config/mail.local.yaml` (see [Configuration keys](#configuration-keys)):
-
-```yaml
-llm:
-  api_key: sk-or-v1-…
-```
-
-The same settings will be reused by future LLM-assisted mail processing, not
-just `detect`.
+Set your OpenRouter API key (required for `detect`) via the `LLM_API_KEY`
+environment variable, or configure it in `config/config.json` under the
+`llm_api_key` field.
 
 ### Minimal usage
 
@@ -94,37 +94,18 @@ just `detect`.
 robotsix-auto-mail detect user@gmail.com
 ```
 
-This auto-detects settings, prompts for the password interactively, writes a
-multi-account `config/mail.local.yaml` (a top-level `default_account:` plus an
-`accounts:` list with one entry) with the password included, and then verifies
-the settings by connecting to the IMAP and SMTP servers (the same check as the
-`probe` command). Pass `--no-verify` to skip that connection check.
+This auto-detects settings, prompts for the password interactively, verifies
+the settings by connecting to the IMAP and SMTP servers, and prints a JSON
+report with the detected host/port/TLS values, capabilities, and login status.
+The password is **never** printed.
 
 The detected account's `id` is derived from the email address (a sanitised
-`local-part-domain` form) unless you pass `--id <id>` explicitly; its store
-defaults to the per-account folder `.data/<id>/mail.db`, and `default_account`
-is set to that id when the file is new.
-
-**Appending accounts.** Re-running `detect` against an existing multi-account
-file **appends** the newly-detected account, preserving the other accounts
-already in the file. If the resolved `id` already exists, `detect` refuses
-(exit 1) rather than clobbering it — pass `--id <new-id>` to add a distinct
-account, or `--overwrite` to update the existing entry's transport settings
-(imap/smtp host, port, tls_mode) in place. With `--overwrite`, the existing
-entry's other fields (label, username, password, db_path, archive, triage,
-calendar, oauth2 settings) are preserved unless you supply them explicitly on
-the command line. If the output file is still in the single-account ("mono") shape —
-which is no longer supported at runtime — the existing configuration is
-converted to a `default` account before the new one is appended (edit the
-`accounts:` block directly, or run `detect` to regenerate the config from
-scratch).
+`local-part-domain` form) unless you pass `--id <id>` explicitly.
 
 ### Scripting usage
 
 ```sh
-robotsix-auto-mail detect user@gmail.com \
-    --password "app-password" \
-    --output config/mail.local.yaml
+robotsix-auto-mail detect user@gmail.com --password "app-password"
 ```
 
 ### Options
@@ -132,12 +113,9 @@ robotsix-auto-mail detect user@gmail.com \
 | Option | Required | Default | Purpose |
 |---|---|---|---|
 | `EMAIL` (positional) | yes | – | Email address to detect settings for |
-| `--id ID` | no | (derived from email) | Account id for the detected account (the `accounts:` entry id and `.data/<id>/mail.db` store folder) |
-| `--password` | no | (prompted) | Password to write into the config file |
-| `--output PATH` | no | `config/mail.local.yaml` | Write mail config to this path |
-| `--stdout` | no | – | Print config to stdout instead of writing to file; password is intentionally omitted (must be filled into `auth.password` manually); no verification is performed |
-| `--no-verify` | no | – | Skip the post-write IMAP/SMTP connection check |
-| `--overwrite` | no | – | When the account id already exists in the output file, update its transport settings (imap/smtp host, port, tls_mode) in place instead of erroring. Other account fields (label, username, password, db_path, archive, triage, calendar, oauth2 settings) are preserved from the existing entry unless explicitly supplied on the command line |
+| `--id ID` | no | (derived from email) | Account id for the detected account |
+| `--password` | no | (prompted) | Password to use for verification |
+| `--no-verify` | no | – | Skip the IMAP/SMTP connection check |
 | `--oauth2-client-id` | no | Thunderbird public client | Azure app-registration client ID for Microsoft 365 OAuth2 |
 | `--oauth2-tenant` | no | `organizations` | Azure AD tenant (GUID, domain, or `organizations`/`common`) |
 | `--app-password` | no | – | Use password/basic auth even for Microsoft-hosted accounts. Mutually exclusive with `--oauth2-client-id` / `--oauth2-tenant`. Emits a warning that OAuth2 is strongly preferred |
@@ -145,8 +123,7 @@ robotsix-auto-mail detect user@gmail.com \
 ### Docker invocation
 
 ```sh
-# Set your OpenRouter API key in the config file's llm: section
-# (config/mail.local.yaml → llm.api_key), then:
+# Set your OpenRouter API key via the LLM_API_KEY environment variable, then:
 
 # Detect provider settings, write config, and verify connectivity —
 # all in one step (prompts for the password; uses the run TTY).
@@ -164,30 +141,19 @@ interactive prompt appears (requires a TTY — use `docker compose run` without
 ### Caveats
 
 - **LLM output can be wrong.** That is exactly why `detect` verifies by
-  connecting after writing the config. If verification fails, edit
-  `config/mail.local.yaml` and re-run `probe`.
-- With `--no-verify` (or `--stdout`, which never writes), no connection is
-  made — `detect` is then purely a config-file generator, so run
-  `robotsix-auto-mail probe` yourself afterwards.
-  When using `--stdout`, the password is intentionally omitted from the printed
-  config for security (to avoid leaking it into shell history or logs). You must
-  supply the password separately: save the printed config to a file and edit it
-  to fill in `auth.password` before running other commands.
-  For Microsoft 365 accounts, `--stdout` may be combined with
-  `--oauth2-client-id` and `--oauth2-tenant` — these are written into the
-  printed YAML as `auth.oauth2_client_id` and `auth.oauth2_tenant`. Save the
-  output to a file and then run `robotsix-auto-mail auth login --account <id>`
-  to complete the device-code consent flow and seed the token cache.
+  connecting after detection. If verification fails, check the host/port/TLS
+  values in the report and re-run `detect`.
+- With `--no-verify`, no connection is made — `detect` is then purely a
+  settings detector, so run `robotsix-auto-mail probe` yourself afterwards.
 - For users who prefer manual config, the traditional approach (editing
-  `config/mail.local.yaml` by hand) is unaffected and fully supported.
+  `config/config.json` by hand) is unaffected and fully supported.
 
 ## Converting a legacy single-account config
 
 The single-account ("mono") config shape is **removed**. A mono YAML file no
-longer loads at runtime — it fails with an actionable error pointing at
-`detect` (to regenerate it from scratch). To convert an existing mono file to
-the multi-account `accounts:` shape, edit the file to wrap your settings in an
-`accounts:` list:
+longer loads at runtime — it fails with an actionable error. To convert an
+existing mono file to the multi-account `accounts:` shape, edit the file to
+wrap your settings in an `accounts:` list:
 
 ```yaml
 default_account: default

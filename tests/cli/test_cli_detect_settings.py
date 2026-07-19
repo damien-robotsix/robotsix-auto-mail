@@ -25,10 +25,9 @@ from tests.cli.conftest import (
 
 
 def test_detect_refines_host_with_llm_on_connection_failure(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+    capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
     """A connection failure triggers an LLM refinement that then succeeds."""
-    output = tmp_path / "cfg.yaml"
     bad = MailProvider(imap_host="imap.bad.net", smtp_host="smtp.gmail.com")
     good = MailProvider(imap_host="imap.good.net", smtp_host="smtp.gmail.com")
 
@@ -47,8 +46,6 @@ def test_detect_refines_host_with_llm_on_connection_failure(
             [
                 "detect",
                 "user@gmail.com",
-                "--output",
-                str(output),
                 "--password",
                 "pw",
             ]
@@ -59,15 +56,15 @@ def test_detect_refines_host_with_llm_on_connection_failure(
     assert mock_dp.call_count == 2
     # the refinement was given failure feedback
     assert mock_dp.call_args.kwargs.get("feedback")
-    assert "imap.good.net" in output.read_text()
-    assert "Refining" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "imap.good.net" in captured.out
+    assert "Refining" in captured.err
 
 
 def test_detect_prompts_for_host_when_llm_cannot_fix(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
+    capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
     """When LLM refinement errors, detect prompts for the host, then verifies."""
-    output = tmp_path / "cfg.yaml"
     bad = MailProvider(imap_host="imap.bad.net", smtp_host="smtp.gmail.com")
 
     with (
@@ -86,8 +83,6 @@ def test_detect_prompts_for_host_when_llm_cannot_fix(
             [
                 "detect",
                 "user@gmail.com",
-                "--output",
-                str(output),
                 "--password",
                 "pw",
             ]
@@ -95,8 +90,9 @@ def test_detect_prompts_for_host_when_llm_cannot_fix(
 
     assert rc == 0
     mock_input.assert_called()
-    assert "mail.manual.net" in output.read_text()
-    assert "manually" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "mail.manual.net" in captured.out
+    assert "manually" in captured.err
 
 
 def test_detect_settings_autoconfig_hit(capsys: pytest.CaptureFixture[str]) -> None:

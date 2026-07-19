@@ -13,14 +13,10 @@ import logging
 import re
 import sys
 from collections.abc import Callable
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from robotsix_auto_mail.config import (
-    MailAccount,
-    MailAccountsConfig,
     MailConfig,
-    save_accounts,
 )
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
 from robotsix_auto_mail.smtp import (
@@ -174,189 +170,18 @@ def _account_id_from_email(email: str) -> str:
     return cleaned or "default"
 
 
-def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
-    """Load :class:`MailAccountsConfig` from *path* (JSON or YAML).
-
-    Returns ``None`` when the file is missing or unparseable.
-    """
-    if not path.exists():
-        return None
-    try:
-        from robotsix_config import load_config as _rc_load
-
-        return _rc_load(MailAccountsConfig, path=path)
-    except Exception:
-        logger.debug("robotsix_config load failed for %s — falling back", path)
-    # Fallback without robotsix_config: try JSON first, then YAML.
-    text = path.read_text()
-    try:
-        import json
-
-        return MailAccountsConfig.model_validate(json.loads(text))
-    except Exception:
-        logger.debug("JSON parse failed for %s — trying YAML", path)
-    try:
-        import yaml
-
-        data = yaml.safe_load(text)
-    except Exception:
-        return None
-    if not isinstance(data, dict):
-        return None
-    # Convert legacy YAML account list to pydantic model shape.
-    if isinstance(data.get("accounts"), list):
-        converted: list[dict[str, object]] = []
-        for entry in data["accounts"]:
-            if isinstance(entry, dict):
-                converted.append(_normalise_legacy_account(entry))
-        data["accounts"] = converted
-    try:
-        return MailAccountsConfig.model_validate(data)
-    except Exception:
-        return None
-
-
-def _normalise_legacy_account(entry: dict[str, object]) -> dict[str, object]:
-    """Convert a single legacy YAML account entry to modern shape.
-
-    Legacy shape (robotsix-yaml-config)::
-
-        id: myid
-        auth: {username: ..., password: ...}
-        imap: {host: ..., port: ...}
-        smtp: {host: ..., port: ...}
-        label: ...
-
-    Modern shape::
-
-        account_id: myid
-        config: {imap_host: ..., smtp_host: ..., username: ..., ...}
-        label: ...
-    """
-    account_id = entry.get("id", entry.get("account_id", "default"))
-    auth = entry.get("auth", {})
-    imap = entry.get("imap", {})
-    smtp = entry.get("smtp", {})
-    label = entry.get("label")
-
-    if not isinstance(auth, dict):
-        auth = {}
-    if not isinstance(imap, dict):
-        imap = {}
-    if not isinstance(smtp, dict):
-        smtp = {}
-
-    config: dict[str, object] = {}
-    # Transport
-    if "host" in imap:
-        config["imap_host"] = imap["host"]
-    if "port" in imap:
-        config["imap_port"] = imap["port"]
-    if "host" in smtp:
-        config["smtp_host"] = smtp["host"]
-    if "port" in smtp:
-        config["smtp_port"] = smtp["port"]
-    # Auth
-    if "username" in auth:
-        config["username"] = auth["username"]
-    config["password"] = auth.get("password", "")
-
-    result: dict[str, object] = {"account_id": account_id, "config": config}
-    if label is not None:
-        result["label"] = label
-    return result
-
-
-def _existing_account_ids(path: Path) -> set[str]:
-    """Return the account ids already present in the config file at *path*.
-
-    A multi-account file yields its entry ids; a missing/empty file yields
-    an empty set.  Reads raw JSON/YAML — full model validation is not needed
-    just to discover which ids are present.
-    """
-    if not path.exists():
-        return set()
-    # Try the full loader first (handles both JSON and YAML).
-    container = _load_accounts_from_file(path)
-    if container is not None:
-        return {a.account_id for a in container.accounts}
-    # Fallback: parse raw JSON or YAML to extract ids from partial data.
-    text = path.read_text()
-    data: object = None
-    try:
-        import json
-
-        data = json.loads(text)
-    except Exception:
-        logger.debug("JSON parse failed for %s in _existing_account_ids", path)
-    if data is None:
-        try:
-            import yaml
-
-            data = yaml.safe_load(text)
-        except Exception:
-            return set()
-    if not isinstance(data, dict):
-        return set()
-    raw_accounts = data.get("accounts")
-    if not isinstance(raw_accounts, list):
-        return set()
-    ids: set[str] = set()
-    for entry in raw_accounts:
-        if isinstance(entry, dict):
-            account_id = entry.get("account_id", entry.get("id"))
-            if isinstance(account_id, str):
-                ids.add(account_id)
-    return ids
-
-
-def _existing_accounts_for_append(
-    path: Path, new_account_id: str
-) -> tuple[list[MailAccount], str]:
-    """Return ``(other_accounts, default_account_id)`` for appending to *path*.
-
-    ``other_accounts`` are the accounts already in the file *excluding* one
-    matching ``new_account_id``.  A deprecated mono file is converted: its
-    single config becomes a ``"default"`` account.  ``default_account_id`` is
-    the file's existing default (or ``new_account_id`` when the file is new).
-    """
-    container = _load_accounts_from_file(path)
-    if container is None:
-        return [], new_account_id
-
-    others = [a for a in container.accounts if a.account_id != new_account_id]
-    return others, container.default_account_id
-
-
-def _find_existing_account(path: Path, account_id: str) -> MailAccount | None:
-    """Return the ``MailAccount`` matching *account_id* from *path*, or ``None``.
-
-    Used by the overwrite path to load the existing account's config before
-    merging freshly-detected transport fields into it.
-    """
-    container = _load_accounts_from_file(path)
-    if container is None:
-        return None
-    for account in container.accounts:
-        if account.account_id == account_id:
-            return account
-    return None
-
-
 def _get_password(args: argparse.Namespace) -> str | None:
     """Get password from args or interactive prompt.
 
     Returns the password, or ``None`` if the user cancelled (EOF / KeyboardInterrupt).
     """
     password: str | None = args.password
-    if password is None and not args.stdout:
+    if password is None:
         try:
             password = getpass.getpass("Email password: ")
         except EOFError, KeyboardInterrupt:
             sys.stderr.write("\nDetection cancelled.\n")
             return None
-    elif password is None and args.stdout:
-        password = ""  # no prompt in stdout mode  # nosec B105
     return password
 
 
@@ -495,14 +320,6 @@ def _refine_manual(config: MailConfig, result: _VerifyResult) -> _RefineOutcome:
     return _RefineOutcome(config=updated)
 
 
-def _report_failure(output_path: Path) -> None:
-    """Print the final verification-failed message before returning 1."""
-    sys.stderr.write(
-        f"\nVerification FAILED — could not confirm the settings. "
-        f"Edit {output_path} and re-run `probe`.\n"
-    )
-
-
 def _verify_and_refine(
     provider: MailProvider,
     *,
@@ -510,7 +327,6 @@ def _verify_and_refine(
     api_key: str | None,
     llm_provider_model: str | None,
     mx_hosts: list[str],
-    output_path: Path,
     password: str | None,
     password_from_args: str | None,
     no_verify: bool,
@@ -520,18 +336,11 @@ def _verify_and_refine(
     detect_provider: Callable[..., MailProvider],
     _detection_error: type[Exception],
     microsoft: bool = False,
-    overwrite: bool = False,
     oauth2_client_id: str = "",
     oauth2_tenant: str = "",
     app_password: bool = False,
-) -> int:
+) -> tuple[int, MailConfig | None]:
     """Verify *config* by connecting, refining on failure.
-
-    The detected account is written into a multi-account YAML file at
-    *output_path* under the id *account_id*.  When the file already holds
-    other accounts they are preserved (append, never clobber); a deprecated
-    mono file is converted to a ``"default"`` account first.  A duplicate id
-    is refused by the caller before this runs.
 
     Refinement strategy (bounded):
     1. Auth-only failure → re-prompt password (max 2 attempts
@@ -541,94 +350,37 @@ def _verify_and_refine(
        (max 2 attempts), then fall back to a manual interactive
        prompt.
 
-    Returns 0 when verification succeeds, 1 when all budgets are
-    exhausted.  Writes the (possibly refined) config to *output_path*
-    after each change so the on-disk file stays in sync.
+    Returns ``(0, config)`` when verification succeeds, ``(1, None)``
+    when all budgets are exhausted.  Does **not** write any files —
+    the caller is responsible for reporting the result.
     """
     from robotsix_auto_mail import cli
 
-    other_accounts, default_account_id = _existing_accounts_for_append(
-        output_path, account_id
-    )
-
-    existing_account: MailAccount | None = (
-        _find_existing_account(output_path, account_id) if overwrite else None
-    )
-    effective_label = (existing_account.label if existing_account else None) or label
-
     def _build(prov: MailProvider, pw: str | None) -> MailConfig:
         detected = provider_to_config(prov, email, password=pw or "")
-        detected = detected.model_copy(
-            update={"db_path": f".data/{account_id}/mail.db"}
-        )
         if app_password and detected.oauth2_provider:
             # Clear MSAL provider so IMAP/SMTP use plain password auth.
             detected = detected.model_copy(
                 update={"oauth2_provider": "", "password": pw or ""}
             )
-        if existing_account is not None:
-            # Overwrite mode: overlay only the six detected transport fields
-            # and the supplied password onto the existing config. Everything
-            # else (db_path, imap_folder, archive_*, triage_*, calendar_*,
-            # oauth2_*, langfuse_*, llm_*, ingest_*) is preserved as-is.
-            result = existing_account.config.model_copy(
-                update={
-                    "imap_host": detected.imap_host,
-                    "imap_port": detected.imap_port,
-                    "imap_tls_mode": detected.imap_tls_mode,
-                    "smtp_host": detected.smtp_host,
-                    "smtp_port": detected.smtp_port,
-                    "smtp_tls_mode": detected.smtp_tls_mode,
-                    "password": detected.password,
-                }
-            )
-        else:
-            result = detected
         if app_password:
-            # Ensure oauth2_provider is cleared regardless of path:
-            # - non-overwrite: detected was already cleared, harmless re-set
-            # - overwrite: the overlay above preserves existing oauth2_provider
-            #   so this explicitly clears it on the final result
-            result = result.model_copy(update={"oauth2_provider": ""})
-        # Overlay explicit CLI-supplied oauth2 fields in both modes so
-        # --oauth2-client-id / --oauth2-tenant are honoured in --overwrite.
+            # Ensure oauth2_provider is cleared.
+            detected = detected.model_copy(update={"oauth2_provider": ""})
+        # Overlay explicit CLI-supplied oauth2 fields.
         if oauth2_client_id or oauth2_tenant:
-            result = result.model_copy(
+            detected = detected.model_copy(
                 update={
-                    "oauth2_client_id": oauth2_client_id or result.oauth2_client_id,
-                    "oauth2_tenant": oauth2_tenant or result.oauth2_tenant,
+                    "oauth2_client_id": oauth2_client_id or detected.oauth2_client_id,
+                    "oauth2_tenant": oauth2_tenant or detected.oauth2_tenant,
                 }
             )
-
-        # Persist the resolved LLM key and model into the written config so
-        # the file is self-contained.  In overwrite mode, existing_account.config
-        # already carries the file's values; or fills in when the file was
-        # sparse/new.
-        if api_key and not result.llm_api_key:
-            result = result.model_copy(update={"llm_api_key": api_key})
-        if llm_provider_model and not result.llm_provider_model:
-            result = result.model_copy(
-                update={"llm_provider_model": llm_provider_model}
-            )
-
-        return result
-
-    def _write(cfg: MailConfig) -> None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        account = MailAccount(account_id=account_id, config=cfg, label=effective_label)
-        container = MailAccountsConfig(
-            accounts=[*other_accounts, account],
-            default_account_id=default_account_id,
-        )
-        save_accounts(container, path=output_path)
+        return detected
 
     config = _build(provider, password)
-    _write(config)
-    sys.stderr.write(f"Config written to {output_path}\n")
 
     if microsoft:
         if no_verify:
-            return 0
+            return 0, config
         # Seed the MSAL token cache via device-code consent so the post-write
         # verification can authenticate over XOAUTH2 — never a password.
         from robotsix_auto_mail.config import ConfigurationError
@@ -639,19 +391,19 @@ def _verify_and_refine(
             device_code_login(config)
         except ConfigurationError as exc:
             sys.stderr.write(f"Error: {exc}\n")
-            return 1
+            return 1, None
         except Exception as exc:  # device-flow error / user abort
             sys.stderr.write(f"Error: device-code login failed: {exc}\n")
-            return 1
+            return 1, None
     else:
         if not config.password:
             sys.stderr.write(
-                f"No password provided — add it to {output_path} "
-                "(or set MAIL_PASSWORD), then run `probe` to verify.\n"
+                "No password provided — pass --password or enter one "
+                "interactively, then re-run detect to verify.\n"
             )
-            return 0
+            return 0, config
         if no_verify:
-            return 0
+            return 0, config
 
     # -- verify + refine loop --
     #   connection/TLS failure → refine host via the LLM (bounded), then a
@@ -667,7 +419,7 @@ def _verify_and_refine(
         result = cli._verify_config(config)
         if result.ok:
             sys.stderr.write("Verification succeeded — settings work.\n")
-            return 0
+            return 0, config
         _report_verify_result(result)
 
         if microsoft and result.only_auth_problem:
@@ -686,7 +438,6 @@ def _verify_and_refine(
             if outcome.config is None:
                 break
             config = outcome.config
-            _write(config)
             continue
 
         if result.host_problem and llm_budget > 0:
@@ -707,7 +458,6 @@ def _verify_and_refine(
                 provider = outcome.provider
             if outcome.config is not None:
                 config = outcome.config
-                _write(config)
                 continue
 
         if result.host_problem and not manual_used:
@@ -716,10 +466,12 @@ def _verify_and_refine(
             if outcome.config is None:
                 break
             config = outcome.config
-            _write(config)
             continue
 
         break
 
-    _report_failure(output_path)
-    return 1
+    sys.stderr.write(
+        "\nVerification FAILED — could not confirm the settings. "
+        "Check the host/port/TLS values and re-run `detect`.\n"
+    )
+    return 1, config

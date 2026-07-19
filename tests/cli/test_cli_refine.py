@@ -14,7 +14,6 @@ from robotsix_auto_mail.cli.config import (
     _refine_manual,
     _refine_password,
     _refine_with_llm,
-    _report_failure,
     _verify_and_refine,
     _VerifyResult,
 )
@@ -287,20 +286,6 @@ def test_refine_manual_stops_when_prompt_returns_none() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _report_failure
-# ---------------------------------------------------------------------------
-
-
-def test_report_failure(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
-    """Prints the expected failure message referencing the output path."""
-    output = tmp_path / "cfg.yaml"
-    _report_failure(output)
-    captured = capsys.readouterr()
-    assert "Verification FAILED" in captured.err
-    assert str(output) in captured.err
-
-
-# ---------------------------------------------------------------------------
 # _verify_and_refine (integration-style with mocked sub-functions)
 # ---------------------------------------------------------------------------
 
@@ -308,21 +293,19 @@ def test_report_failure(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> N
 def test_verify_and_refine_success_first_try(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Verification succeeds immediately → returns 0, config written."""
-    output = tmp_path / "cfg.yaml"
+    """Verification succeeds immediately → returns 0, config returned."""
     provider = MailProvider(imap_host="imap.ok.com", smtp_host="smtp.ok.com")
 
     with mock.patch(
         "robotsix_auto_mail.cli._verify_config",
         return_value=_VerifyResult(imap_ok=True, smtp_ok=True),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@example.com",
             api_key=None,
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password="pw",  # pragma: allowlist secret
             password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
@@ -334,16 +317,14 @@ def test_verify_and_refine_success_first_try(
         )
 
     assert rc == 0
-    assert output.exists()
-    content = output.read_text()
-    assert "imap.ok.com" in content
+    assert config is not None
+    assert config.imap_host == "imap.ok.com"
 
 
 def test_verify_and_refine_auth_failure_with_retry_budget(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Auth failure with interactive password → re-prompt happens, then success."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(imap_host="imap.ok.com", smtp_host="smtp.ok.com")
 
     # First verify: auth failure (password wrong), then second: success
@@ -366,13 +347,12 @@ def test_verify_and_refine_auth_failure_with_retry_budget(
         ),
         mock.patch("getpass.getpass", return_value="new-correct-pw"),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@example.com",
             api_key=None,
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password="wrong-pw",  # pragma: allowlist secret
             password_from_args=None,  # interactive → retry budget available
             no_verify=False,
@@ -384,6 +364,7 @@ def test_verify_and_refine_auth_failure_with_retry_budget(
         )
 
     assert rc == 0
+    assert config is not None
     captured = capsys.readouterr()
     assert "password was rejected" in captured.err
 
@@ -392,7 +373,6 @@ def test_verify_and_refine_auth_failure_no_retry_with_args_password(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Auth failure with --password supplied → no retry budget, returns 1."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(imap_host="imap.ok.com", smtp_host="smtp.ok.com")
 
     with mock.patch(
@@ -406,13 +386,12 @@ def test_verify_and_refine_auth_failure_no_retry_with_args_password(
             smtp_error="auth",
         ),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@example.com",
             api_key=None,
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password="cli-pass",  # pragma: allowlist secret
             password_from_args="cli-pass",  # from --password → budget = 0  # pragma: allowlist secret
             no_verify=False,
@@ -424,6 +403,7 @@ def test_verify_and_refine_auth_failure_no_retry_with_args_password(
         )
 
     assert rc == 1
+    assert config is not None
     captured = capsys.readouterr()
     assert "Verification FAILED" in captured.err
 
@@ -432,7 +412,6 @@ def test_verify_and_refine_host_failure_llm_refine(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Host failure → LLM refines provider → then verify succeeds."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(imap_host="imap.bad.com", smtp_host="smtp.bad.com")
 
     verify_results = [
@@ -461,13 +440,12 @@ def test_verify_and_refine_host_failure_llm_refine(
             {"LLM_API_KEY": "sk-test"},  # pragma: allowlist secret
         ),  # pragma: allowlist secret
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@example.com",
             api_key="sk-test",  # pragma: allowlist secret
             llm_provider_model=None,
             mx_hosts=["mx.example.com"],
-            output_path=output,
             password="pw",  # pragma: allowlist secret
             password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
@@ -479,15 +457,14 @@ def test_verify_and_refine_host_failure_llm_refine(
         )
 
     assert rc == 0
-    content = output.read_text()
-    assert "imap.good.com" in content
+    assert config is not None
+    assert config.imap_host == "imap.good.com"
 
 
 def test_verify_and_refine_host_failure_llm_then_manual(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Host failure → LLM fails → manual prompt succeeds on next verify."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(imap_host="imap.bad.com", smtp_host="smtp.bad.com")
 
     verify_results = [
@@ -514,13 +491,12 @@ def test_verify_and_refine_host_failure_llm_then_manual(
         ),  # pragma: allowlist secret
         mock.patch("builtins.input", side_effect=["", "manual-smtp.com"]),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@example.com",
             api_key="sk-test",  # pragma: allowlist secret
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password="pw",  # pragma: allowlist secret
             password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
@@ -532,15 +508,14 @@ def test_verify_and_refine_host_failure_llm_then_manual(
         )
 
     assert rc == 0
-    content = output.read_text()
-    assert "manual-smtp.com" in content
+    assert config is not None
+    assert config.smtp_host == "manual-smtp.com"
 
 
 def test_verify_and_refine_microsoft_no_password_retry(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Microsoft accounts: auth failure shows consent message, no password retry."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(
         imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
     )
@@ -559,13 +534,12 @@ def test_verify_and_refine_microsoft_no_password_retry(
         ),
         mock.patch("robotsix_auto_mail.oauth2.device_code_login"),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@contoso.com",
             api_key=None,
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password=None,
             password_from_args=None,
             no_verify=False,
@@ -578,6 +552,7 @@ def test_verify_and_refine_microsoft_no_password_retry(
         )
 
     assert rc == 1
+    assert config is not None
     captured = capsys.readouterr()
     assert "XOAUTH2 authentication failed" in captured.err
 
@@ -586,7 +561,6 @@ def test_verify_and_refine_microsoft_success(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Microsoft account: device-code login succeeds, verification passes."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(
         imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
     )
@@ -598,13 +572,12 @@ def test_verify_and_refine_microsoft_success(
             return_value=_VerifyResult(imap_ok=True, smtp_ok=True),
         ),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@contoso.com",
             api_key=None,
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password=None,
             password_from_args=None,
             no_verify=False,
@@ -617,6 +590,7 @@ def test_verify_and_refine_microsoft_success(
         )
 
     assert rc == 0
+    assert config is not None
     captured = capsys.readouterr()
     assert "device-code login" in captured.err
 
@@ -625,16 +599,14 @@ def test_verify_and_refine_no_password_no_verify(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """No password + no_verify → returns 0, config written, instruction printed."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(imap_host="imap.test.com", smtp_host="smtp.test.com")
 
-    rc = _verify_and_refine(
+    rc, config = _verify_and_refine(
         provider,
         email="user@example.com",
         api_key=None,
         llm_provider_model=None,
         mx_hosts=[],
-        output_path=output,
         password=None,
         password_from_args=None,
         no_verify=True,
@@ -646,16 +618,15 @@ def test_verify_and_refine_no_password_no_verify(
     )
 
     assert rc == 0
-    assert output.exists()
+    assert config is not None
     captured = capsys.readouterr()
-    assert "Config written" in captured.err
+    assert "No password provided" in captured.err
 
 
 def test_verify_and_refine_budget_exhausted(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """LLM refines exhaust budget → manual fails → returns 1."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(imap_host="imap.bad.com", smtp_host="smtp.bad.com")
 
     verify_results = [
@@ -679,13 +650,12 @@ def test_verify_and_refine_budget_exhausted(
         ),  # pragma: allowlist secret
         mock.patch("builtins.input", side_effect=["", ""]),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@example.com",
             api_key="sk-test",  # pragma: allowlist secret
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password="pw",  # pragma: allowlist secret
             password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
@@ -697,6 +667,7 @@ def test_verify_and_refine_budget_exhausted(
         )
 
     assert rc == 1
+    assert config is not None
     captured = capsys.readouterr()
     assert "Verification FAILED" in captured.err
 
@@ -705,31 +676,18 @@ def test_verify_and_refine_multi_account_append(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Existing multi-account file: new account is appended, others preserved."""
-    output = tmp_path / "accounts.yaml"
-    output.write_text(
-        "accounts:\n"
-        "  - id: existing\n"
-        "    auth:\n"
-        "      username: old@example.com\n"
-        "    imap:\n"
-        "      host: imap.old.com\n"
-        "    smtp:\n"
-        "      host: smtp.old.com\n"
-        "default_account_id: existing\n"
-    )
     provider = MailProvider(imap_host="imap.new.com", smtp_host="smtp.new.com")
 
     with mock.patch(
         "robotsix_auto_mail.cli._verify_config",
         return_value=_VerifyResult(imap_ok=True, smtp_ok=True),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="new@example.com",
             api_key=None,
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password="pw",  # pragma: allowlist secret
             password_from_args="pw",  # pragma: allowlist secret
             no_verify=False,
@@ -741,11 +699,7 @@ def test_verify_and_refine_multi_account_append(
         )
 
     assert rc == 0
-    content = output.read_text()
-    assert "existing" in content
-    assert "new-account" in content
-    assert "old@example.com" in content
-    assert "new@example.com" in content
+    assert config is not None
 
 
 # ---------------------------------------------------------------------------
@@ -831,18 +785,16 @@ def test_verify_and_refine_microsoft_no_verify(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Microsoft account with --no-verify returns 0 immediately after writing config."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(
         imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
     )
 
-    rc = _verify_and_refine(
+    rc, config = _verify_and_refine(
         provider,
         email="user@contoso.com",
         api_key=None,
         llm_provider_model=None,
         mx_hosts=[],
-        output_path=output,
         password=None,
         password_from_args=None,
         no_verify=True,
@@ -855,14 +807,13 @@ def test_verify_and_refine_microsoft_no_verify(
     )
 
     assert rc == 0
-    assert output.exists()
+    assert config is not None
 
 
 def test_verify_and_refine_microsoft_device_code_config_error(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Microsoft device-code login raises ConfigurationError → return 1."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(
         imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
     )
@@ -871,13 +822,12 @@ def test_verify_and_refine_microsoft_device_code_config_error(
         "robotsix_auto_mail.oauth2.device_code_login",
         side_effect=ConfigurationError("missing tenant"),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@contoso.com",
             api_key=None,
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password=None,
             password_from_args=None,
             no_verify=False,
@@ -890,6 +840,7 @@ def test_verify_and_refine_microsoft_device_code_config_error(
         )
 
     assert rc == 1
+    assert config is None
     captured = capsys.readouterr()
     assert "missing tenant" in captured.err
 
@@ -898,7 +849,6 @@ def test_verify_and_refine_microsoft_device_code_exception(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Microsoft device-code login raises generic Exception → return 1."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(
         imap_host="outlook.office365.com", smtp_host="smtp.office365.com"
     )
@@ -907,13 +857,12 @@ def test_verify_and_refine_microsoft_device_code_exception(
         "robotsix_auto_mail.oauth2.device_code_login",
         side_effect=RuntimeError("network down"),
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@contoso.com",
             api_key=None,
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password=None,
             password_from_args=None,
             no_verify=False,
@@ -926,6 +875,7 @@ def test_verify_and_refine_microsoft_device_code_exception(
         )
 
     assert rc == 1
+    assert config is None
     captured = capsys.readouterr()
     assert "device-code login failed" in captured.err
 
@@ -934,16 +884,14 @@ def test_verify_and_refine_no_password_early_return(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Non-Microsoft, no password, no_verify=False → returns 0 with instructions."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(imap_host="imap.test.com", smtp_host="smtp.test.com")
 
-    rc = _verify_and_refine(
+    rc, config = _verify_and_refine(
         provider,
         email="user@example.com",
         api_key=None,
         llm_provider_model=None,
         mx_hosts=[],
-        output_path=output,
         password=None,
         password_from_args=None,
         no_verify=False,
@@ -955,7 +903,7 @@ def test_verify_and_refine_no_password_early_return(
     )
 
     assert rc == 0
-    assert output.exists()
+    assert config is not None
     captured = capsys.readouterr()
     assert "No password provided" in captured.err
 
@@ -964,7 +912,6 @@ def test_verify_and_refine_auth_retry_returns_none(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Auth failure → password re-prompt returns None → break → return 1."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(imap_host="imap.ok.com", smtp_host="smtp.ok.com")
 
     with (
@@ -981,13 +928,12 @@ def test_verify_and_refine_auth_retry_returns_none(
         ),
         mock.patch("getpass.getpass", return_value=""),  # empty → None
     ):
-        rc = _verify_and_refine(
+        rc, config = _verify_and_refine(
             provider,
             email="user@example.com",
             api_key=None,
             llm_provider_model=None,
             mx_hosts=[],
-            output_path=output,
             password="wrong-pw",  # pragma: allowlist secret
             password_from_args=None,  # interactive → pw_budget = 2
             no_verify=False,
@@ -999,6 +945,7 @@ def test_verify_and_refine_auth_retry_returns_none(
         )
 
     assert rc == 1
+    assert config is not None
     captured = capsys.readouterr()
     assert "Verification FAILED" in captured.err
 
@@ -1007,16 +954,14 @@ def test_verify_and_refine_password_with_no_verify(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Non-Microsoft, password present, --no-verify → returns 0, config written."""
-    output = tmp_path / "cfg.yaml"
     provider = MailProvider(imap_host="imap.test.com", smtp_host="smtp.test.com")
 
-    rc = _verify_and_refine(
+    rc, config = _verify_and_refine(
         provider,
         email="user@example.com",
         api_key=None,
         llm_provider_model=None,
         mx_hosts=[],
-        output_path=output,
         password="pw",  # pragma: allowlist secret
         password_from_args="pw",  # pragma: allowlist secret
         no_verify=True,
@@ -1028,4 +973,4 @@ def test_verify_and_refine_password_with_no_verify(
     )
 
     assert rc == 0
-    assert output.exists()
+    assert config is not None

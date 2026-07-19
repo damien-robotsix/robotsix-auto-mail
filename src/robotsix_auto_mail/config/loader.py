@@ -84,23 +84,6 @@ def load() -> MailConfig:
     return load_accounts().default.config
 
 
-def save_accounts(
-    config: MailAccountsConfig,
-    path: str | os.PathLike[str] | None = None,
-) -> None:
-    """Persist :class:`MailAccountsConfig` to *path*
-    (default ``config/config.json``)."""
-    try:
-        from robotsix_config import dump_config as _dump_config
-    except ModuleNotFoundError:
-        logger.debug("robotsix_config not installed — writing JSON directly")
-        target = Path(path) if path is not None else _resolve_config_path()
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(config.model_dump_json(indent=2) + "\n")
-        return
-    _dump_config(config, path=path)
-
-
 def get_config_schema() -> str:
     """Return JSON Schema for :class:`MailAccountsConfig`
     (for CI drift check)."""
