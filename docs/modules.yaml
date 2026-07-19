@@ -146,6 +146,7 @@ modules:
       - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-987-l-f637.misc.md
       - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-f637.misc.md
       - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-829d.misc.md
+      - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-in-829d.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -503,6 +504,7 @@ modules:
       - .github/workflows/release.yml
       - .github/workflows/lint-workflows.yml
       - .github/workflows/scan-container.yml
+      - .github/workflows/secret-scanning.yml
       - .github/ISSUE_TEMPLATE/bug_report.yml
       - .github/ISSUE_TEMPLATE/config.yml
       - .github/ISSUE_TEMPLATE/feature_request.yml
