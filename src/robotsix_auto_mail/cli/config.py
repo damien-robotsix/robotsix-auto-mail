@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING
 from pydantic import SecretStr
 
 from robotsix_auto_mail.config import (
+    MailAccount,
+    MailAccountsConfig,
     MailConfig,
 )
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
@@ -483,15 +485,6 @@ def _verify_and_refine(
 
         return detected
 
-    def _write(cfg: MailConfig) -> None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        account = MailAccount(account_id=account_id, config=cfg, label=effective_label)
-        container = MailAccountsConfig(
-            accounts=[*other_accounts, account],
-            default_account_id=default_account_id,
-        )
-        save_accounts(container, path=output_path)
-
     config = _build(provider, password)
 
     if microsoft:
@@ -514,7 +507,7 @@ def _verify_and_refine(
     else:
         if not config.password.get_secret_value():
             sys.stderr.write(
-                f"No password provided — add it to {output_path} "
+                "No password provided — add it to the config file "
                 "(or set it via the Configure panel), then run `probe` to verify.\n"
             )
             return 0, config

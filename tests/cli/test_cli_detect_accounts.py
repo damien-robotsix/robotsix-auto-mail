@@ -10,6 +10,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.cli import main
+from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.detect import MailProvider
 from tests.cli.conftest import _ok_result
 
@@ -18,6 +19,7 @@ def test_detect_prints_json_report(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
     """detect prints a JSON report to stdout with no secrets and writes no file."""
+    output = tmp_path / "cfg.json"
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
@@ -76,7 +78,7 @@ def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
 
     assert rc == 0
 
-    accounts = MailAccountsConfig.model_validate(_json.loads(output.read_text()))
+    accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
     assert accounts.ids() == ("personal",)
     assert accounts.default_account_id == "personal"
     assert accounts.get("personal").config.db_path == ".data/personal/mail.db"
@@ -124,7 +126,7 @@ def test_detect_appends_second_account(tmp_path: Path, no_autoconfig: object) ->
     assert rc1 == 0
     assert rc2 == 0
 
-    accounts = MailAccountsConfig.model_validate(_json.loads(output.read_text()))
+    accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
     assert set(accounts.ids()) == {"personal", "work"}
     assert accounts.get("work").config.imap_host == "imap.work.com"
 
@@ -174,7 +176,7 @@ def test_detect_refuses_duplicate_id(
     assert rc2 == 1
     assert "already exists" in capsys.readouterr().err
 
-    accounts = MailAccountsConfig.model_validate(_json.loads(output.read_text()))
+    accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
     assert accounts.ids() == ("personal",)
 
 
@@ -222,7 +224,7 @@ def test_detect_overwrite_existing_account(
 
     assert rc == 0
 
-    accounts = MailAccountsConfig.model_validate(_json.loads(output.read_text()))
+    accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
     # No duplicate account appended
     assert accounts.ids() == ("main",)
     main_account = next(a for a in accounts.accounts if a.account_id == "main")
@@ -313,8 +315,8 @@ def test_detect_overwrite_with_oauth2_flags(
             "robotsix_auto_mail.config.detect.detect_provider",
             return_value=mock_provider,
         ),
-        mock.patch("getpass.getpass") as mock_getpass,
-        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
+        mock.patch("getpass.getpass") as _mock_getpass,
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as _mock_login,
         mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
@@ -342,6 +344,7 @@ def test_detect_no_verify_still_reports(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
     """detect --no-verify still prints a report with login_ok=False."""
+    output = tmp_path / "cfg.json"
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
@@ -349,6 +352,13 @@ def test_detect_no_verify_still_reports(
             "robotsix_auto_mail.config.detect.detect_provider",
             return_value=mock_provider,
         ),
+        mock.patch("getpass.getpass", return_value="app-pw-789") as _mock_getpass,
+        mock.patch(
+            "robotsix_auto_mail.oauth2.device_code_login"
+        ) as _mock_login,
+        mock.patch(
+            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
+        ) as _mock_verify,
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
@@ -365,9 +375,9 @@ def test_detect_no_verify_still_reports(
         )
 
     assert rc == 0
-    mock_getpass.assert_called_once()
-    mock_login.assert_not_called()
-    mock_verify.assert_called_once()
+    _mock_getpass.assert_called_once()
+    _mock_login.assert_not_called()
+    _mock_verify.assert_called_once()
     err = capsys.readouterr().err
     assert "Warning: --app-password" in err
     content = output.read_text()
@@ -378,7 +388,7 @@ def test_detect_no_verify_still_reports(
 
 
 def test_detect_overwrite_preserves_llm_api_key(
-    tmp_path: Path, no_autoconfig: object
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
     """--overwrite preserves llm_api_key, llm_provider_model, and langfuse_*
     fields from an existing config file (re-deploy path)."""
@@ -429,7 +439,7 @@ def test_detect_overwrite_preserves_llm_api_key(
     assert report["imap_host"] == "imap.gmail.com"
     assert report["login_ok"] is False
 
-    accounts = MailAccountsConfig.model_validate(_json.loads(output.read_text()))
+    accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
     cfg = accounts.get("main").config
     # Existing llm/langfuse values preserved from the seed file.
     assert cfg.llm_api_key.get_secret_value() == "sk-seed"
@@ -492,6 +502,7 @@ def test_detect_honours_id_in_report(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
     """detect --id does not affect the report (account id is informational)."""
+    output = tmp_path / "cfg.json"
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
@@ -511,6 +522,8 @@ def test_detect_honours_id_in_report(
                 "--id",
                 "personal",
                 "--no-verify",
+                "--output",
+                str(output),
             ]
         )
 
@@ -519,6 +532,6 @@ def test_detect_honours_id_in_report(
     # JSON output contains the env-provided API key.
     assert "sk-env" in content
 
-    accounts = MailAccountsConfig.model_validate(_json.loads(output.read_text()))
+    accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
     cfg = accounts.default.config
     assert cfg.llm_api_key.get_secret_value() == "sk-env"

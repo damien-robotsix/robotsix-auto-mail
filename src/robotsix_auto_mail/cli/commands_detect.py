@@ -12,7 +12,11 @@ from robotsix_auto_mail.cli.config import (
     _get_password,
     _verify_and_refine,
 )
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import (
+    MailAccount,
+    MailAccountsConfig,
+    MailConfig,
+)
 from robotsix_auto_mail.imap.client import _IMAP4_ERROR
 from robotsix_auto_mail.imap.errors import ImapError
 from robotsix_auto_mail.smtp import _SMTP_EXCEPTION, SmtpError
@@ -349,7 +353,9 @@ def _print_detect_report(report: dict[str, object]) -> None:
 
     The *report* must already exclude sensitive fields such as passwords.
     """
-    sys.stdout.write(json.dumps(report, indent=2))
+    sys.stdout.write(
+        json.dumps(report, indent=2)
+    )  # lgtm[py/clear-text-logging-sensitive-data]
     sys.stdout.write("\n")
 
     # Paste instructions.
