@@ -89,7 +89,14 @@ def test_detect_stdout_app_password_clears_oauth2_provider(
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
-            ["detect", "user@contoso.com", "--app-password", "--password", "", "--no-verify"]
+            [
+                "detect",
+                "user@contoso.com",
+                "--app-password",
+                "--password",
+                "",
+                "--no-verify",
+            ]
         )
 
     assert rc == 0

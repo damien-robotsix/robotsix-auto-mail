@@ -29,7 +29,9 @@ def register_subparser(
     """
     parser = subparsers.add_parser(
         "detect",
-        help="Auto-detect email provider settings via LLM and print a diagnostic report",
+        help=(
+            "Auto-detect email provider settings via LLM and print a diagnostic report"
+        ),
     )
     parser.add_argument(
         "email",
@@ -48,10 +50,7 @@ def register_subparser(
     parser.add_argument(
         "--password",
         default=None,
-        help=(
-            "Password to use for verification. "
-            "When omitted, prompts interactively."
-        ),
+        help=("Password to use for verification. When omitted, prompts interactively."),
     )
     parser.add_argument(
         "--no-verify",
@@ -234,18 +233,20 @@ def _print_detect_report(config: MailConfig, verified: bool) -> None:
         try:
             with ImapClient(config) as imap:
                 imap_capabilities = list(imap.capabilities)
-        except Exception:
+        except Exception:  # noqa: S110 — best-effort capability probe; ignore any failure
             pass
         try:
             with SmtpClient(config) as smtp:
                 smtp_features = dict(smtp.esmtp_features)
-        except Exception:
+        except Exception:  # noqa: S110 — best-effort capability probe; ignore any failure
             pass
 
     report["imap_capabilities"] = imap_capabilities
     report["smtp_features"] = smtp_features
     report["login_ok"] = verified
 
+    # lgtm [py/clear-text-logging-sensitive-data] — report dict explicitly
+    # excludes the password field; only non-sensitive config keys are serialised.
     sys.stdout.write(json.dumps(report, indent=2))
     sys.stdout.write("\n")
 

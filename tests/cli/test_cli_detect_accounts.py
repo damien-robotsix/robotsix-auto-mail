@@ -25,9 +25,7 @@ def test_detect_prints_json_report(
             "robotsix_auto_mail.config.detect.detect_provider",
             return_value=mock_provider,
         ),
-        mock.patch(
-            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
-        ),
+        mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
@@ -133,9 +131,7 @@ def test_detect_honours_id_in_report(
             "robotsix_auto_mail.config.detect.detect_provider",
             return_value=mock_provider,
         ),
-        mock.patch(
-            "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
-        ),
+        mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
         mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
     ):
         rc = main(
