@@ -288,7 +288,14 @@ modules:
       - src/robotsix_auto_mail/db/queries.py
       - tests/db/__init__.py
       - tests/db/test_archive.py
-      - tests/db/test_db.py
+      - tests/db/conftest.py
+      - tests/db/test_db_mailrecord.py
+      - tests/db/test_db_init.py
+      - tests/db/test_db_crud.py
+      - tests/db/test_db_watermarks.py
+      - tests/db/test_db_delete.py
+      - tests/db/test_db_source.py
+      - tests/db/test_db_schema.py
       - tests/db/test_migrate.py
 
   - id: detect
