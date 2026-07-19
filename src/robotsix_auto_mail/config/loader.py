@@ -122,8 +122,8 @@ def save_accounts(
         target = Path(path) if path is not None else _resolve_config_path()
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(
-            _dump_config_json(config) + "\n"
-        )  # lgtm[py/clear-text-storage-sensitive-data]
+            _dump_config_json(config) + "\n"  # lgtm[py/clear-text-storage-sensitive-data]
+        )
         return
     _dump_config(config, path=path)
 

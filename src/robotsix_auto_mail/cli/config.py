@@ -196,62 +196,6 @@ def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
         return None
 
 
-def _normalise_legacy_account(entry: dict[str, object]) -> dict[str, object]:
-    """Convert a single legacy YAML account entry to modern shape.
-
-    .. deprecated::
-        The YAML config format is no longer supported.  This function is
-        retained only for one-shot migration of existing ``mail.local.yaml``
-        files to ``config.json``.  It will be removed in a future release.
-
-    Legacy shape (robotsix-yaml-config)::
-
-        id: myid
-        auth: {username: ..., password: ...}
-        imap: {host: ..., port: ...}
-        smtp: {host: ..., port: ...}
-        label: ...
-
-    Modern shape::
-
-        account_id: myid
-        config: {imap_host: ..., smtp_host: ..., username: ..., ...}
-        label: ...
-    """
-    account_id = entry.get("id", entry.get("account_id", "default"))
-    auth = entry.get("auth", {})
-    imap = entry.get("imap", {})
-    smtp = entry.get("smtp", {})
-    label = entry.get("label")
-
-    if not isinstance(auth, dict):
-        auth = {}
-    if not isinstance(imap, dict):
-        imap = {}
-    if not isinstance(smtp, dict):
-        smtp = {}
-
-    config: dict[str, object] = {}
-    # Transport
-    if "host" in imap:
-        config["imap_host"] = imap["host"]
-    if "port" in imap:
-        config["imap_port"] = imap["port"]
-    if "host" in smtp:
-        config["smtp_host"] = smtp["host"]
-    if "port" in smtp:
-        config["smtp_port"] = smtp["port"]
-    # Auth
-    if "username" in auth:
-        config["username"] = auth["username"]
-    config["password"] = auth.get("password", "")
-
-    result: dict[str, object] = {"account_id": account_id, "config": config}
-    if label is not None:
-        result["label"] = label
-    return result
-
-
 def _existing_account_ids(path: Path) -> set[str]:
     """Return the account ids already present in the config file at *path*.
 
