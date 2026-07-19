@@ -31,8 +31,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# lgtm[py/clear-text-storage-sensitive-data]
-# lgtm[py/clear-text-logging-sensitive-data]
 def _unwrap_secrets(obj: Any) -> Any:
     """Recursively replace :class:`SecretStr` values with their raw strings.
 
@@ -123,7 +121,6 @@ def save_accounts(
         logger.debug("robotsix_config not installed — writing JSON directly")
         target = Path(path) if path is not None else _resolve_config_path()
         target.parent.mkdir(parents=True, exist_ok=True)
-        # lgtm[py/clear-text-storage-sensitive-data]
         target.write_text(
             _dump_config_json(config) + "\n"
         )

@@ -1,9 +1,22 @@
 paths-ignore:
   - tests
 
-# false positive: _print_detect_report/sys.stdout.write receives only a
-# report dict built from individually enumerated non-sensitive MailConfig
-# keys — the password field is never included.
+# ---------------------------------------------------------------------------
+# Alert suppressions — intentional behaviours that the security queries
+# flag but are correct by design.
+# ---------------------------------------------------------------------------
 query-filters:
+  # false positive: _print_detect_report/sys.stdout.write receives only a
+  # report dict built from individually enumerated non-sensitive MailConfig
+  # keys — the password field is never included.
   - exclude:
       id: py/clear-text-logging-sensitive-data
+
+  # loader.py save_accounts(): the config file MUST contain credentials for
+  # the application to function (IMAP/SMTP auth).  Secrets are never
+  # transmitted over the network in plain text; the file is stored on a
+  # developer's local machine with appropriate file permissions.
+  - exclude:
+      id: py/clear-text-storage-sensitive-data
+      paths:
+        - src/robotsix_auto_mail/config/loader.py
