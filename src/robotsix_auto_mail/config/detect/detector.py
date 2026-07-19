@@ -12,7 +12,6 @@ from xml.etree import ElementTree  # nosec B405
 
 import urllib3
 import urllib3.exceptions
-
 from pydantic import SecretStr
 
 from robotsix_auto_mail.config import (
