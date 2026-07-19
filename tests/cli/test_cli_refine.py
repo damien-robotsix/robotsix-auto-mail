@@ -114,7 +114,9 @@ def test_refine_password_returns_new_config(capsys: pytest.CaptureFixture[str]) 
     with mock.patch("getpass.getpass", return_value="newpass"):
         outcome = _refine_password(_build_config, provider)
     assert outcome.config is not None
-    assert outcome.config.password == "newpass"  # pragma: allowlist secret
+    assert (
+        outcome.config.password.get_secret_value() == "newpass"
+    )  # pragma: allowlist secret
     assert outcome.config.imap_host == "imap.test.com"
     captured = capsys.readouterr()
     assert "password was rejected" in captured.err
@@ -172,7 +174,7 @@ def test_refine_with_llm_success(capsys: pytest.CaptureFixture[str]) -> None:
     assert outcome.config.imap_host == "imap.good.com"
     assert outcome.config.smtp_host == "smtp.good.com"
     assert (
-        outcome.config.password == "pw"  # pragma: allowlist secret
+        outcome.config.password.get_secret_value() == "pw"  # pragma: allowlist secret
     )  # preserved from original  # pragma: allowlist secret
     assert outcome.provider is not None
     assert outcome.provider.imap_host == "imap.good.com"
@@ -676,6 +678,15 @@ def test_verify_and_refine_multi_account_append(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Existing multi-account file: new account is appended, others preserved."""
+    output = tmp_path / "accounts.yaml"
+    output.write_text(
+        '{"accounts": ['
+        '{"account_id": "existing", "label": "Existing", "config": {'
+        '"imap_host": "imap.old.com", "smtp_host": "smtp.old.com",'
+        '"username": "old@example.com", "password": ""'
+        "}}"
+        '], "default_account_id": "existing"}'
+    )
     provider = MailProvider(imap_host="imap.new.com", smtp_host="smtp.new.com")
 
     with mock.patch(

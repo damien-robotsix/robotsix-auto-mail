@@ -190,7 +190,7 @@ class _BoardActionMixin:
                         propose_archive_subfolder_llm(
                             conn,
                             record,
-                            self.mail_config.llm_api_key,
+                            self.mail_config.llm_api_key.get_secret_value(),
                             provider_model=(
                                 self.mail_config.llm_provider_model
                                 if self.mail_config
@@ -343,7 +343,11 @@ class _BoardActionMixin:
             conn,
             record.message_id,
             record,
-            api_key=self.mail_config.llm_api_key if self.mail_config else "",
+            api_key=(
+                self.mail_config.llm_api_key.get_secret_value()
+                if self.mail_config
+                else ""
+            ),
             rules=rules_text_for(self.mail_config),
         )
 

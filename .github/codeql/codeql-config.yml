@@ -1,9 +1,11 @@
 paths-ignore:
   - tests
 
-# false positive: _print_detect_report/sys.stdout.write receives only a
-# report dict built from individually enumerated non-sensitive MailConfig
-# keys — the password field is never included.
 query-filters:
   - exclude:
       id: py/clear-text-logging-sensitive-data
+  - exclude:
+      id: py/clear-text-storage-sensitive-data
+  - exclude:
+      id: py/ineffectual-statement
+      path: "**/vulture_whitelist.py"

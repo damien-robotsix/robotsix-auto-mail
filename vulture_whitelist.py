@@ -108,3 +108,27 @@ MailAccountsConfig._validate
 from robotsix_auto_mail.config._field_map import FIELD_YAML_MAP
 
 _ = FIELD_YAML_MAP
+
+# ===========================================================================
+# CLI config helpers — loaded by other modules via import, not directly called
+# in this module; vulture doesn't trace cross-module usage.
+# ===========================================================================
+
+from robotsix_auto_mail.cli import config
+
+# all(...) is a function call → CodeQL treats it as effectual while
+# vulture sees the attribute accesses as "used".
+all((  # lgtm[py/ineffectual-statement]
+    config._existing_account_ids,
+    config._existing_accounts_for_append,
+    config._find_existing_account,
+))
+
+# ===========================================================================
+# Public API function — exported from config.loader, called by external
+# consumers (CLI, server); vulture doesn't trace cross-module usage.
+# ===========================================================================
+
+from robotsix_auto_mail.config.loader import save_accounts
+
+all((save_accounts,))  # lgtm[py/ineffectual-statement]

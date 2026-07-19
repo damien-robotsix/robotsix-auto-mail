@@ -12,7 +12,13 @@ import logging
 import re
 from typing import Final
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 
 from robotsix_auto_mail.config.schema import (
     _VALID_LOG_FORMATS,
@@ -47,6 +53,9 @@ def _validate_template_literals(cfg: MailConfig) -> None:
     contains an unsubstituted ``{...}`` template pattern."""
     for field_name in _TEMPLATE_CHECKED_FIELDS:
         value = getattr(cfg, field_name, "")
+        # SecretStr fields: extract the raw value for template checking.
+        if isinstance(value, SecretStr):
+            value = value.get_secret_value()
         if value and _TEMPLATE_LITERAL_RE.search(value):
             display = "<redacted>" if field_name == "password" else repr(value)
             raise ConfigurationError(
@@ -66,9 +75,10 @@ class MailConfig(BaseModel):
     plus optional LLM credentials used by ``detect`` (and future mail
     processing).
 
-    Credentials are stored in memory as plain ``str`` values but the
-    ``password``, ``llm_api_key``, ``oauth2_token``, ``oauth2_client_secret``,
-    and ``langfuse_secret_key`` fields are masked in ``repr`` / ``str``.
+    Sensitive fields (``password``, ``llm_api_key``, ``oauth2_token``,
+    ``oauth2_client_secret``, ``langfuse_secret_key``) are typed as
+    :class:`pydantic.SecretStr` so the JSON schema emits ``writeOnly``
+    and the values are masked in ``repr`` / ``str``.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -76,7 +86,7 @@ class MailConfig(BaseModel):
     imap_host: str
     smtp_host: str
     username: str
-    password: str
+    password: SecretStr
 
     imap_port: int = 993
     imap_tls_mode: str = DEFAULT_IMAP_TLS_MODE
@@ -90,7 +100,7 @@ class MailConfig(BaseModel):
 
     # LLM provider settings — optional; only needed for the `detect`
     # subcommand and future LLM-assisted mail processing.
-    llm_api_key: str = ""
+    llm_api_key: SecretStr = SecretStr("")
     llm_provider_model: str = ""
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
@@ -111,9 +121,9 @@ class MailConfig(BaseModel):
     # OAuth2 / XOAUTH2 credentials (Gmail, Microsoft 365, etc.).
     # Optional; when ``oauth2_token`` is set, SASL XOAUTH2 is used
     # instead of password-based ``login()``.
-    oauth2_token: str = ""
+    oauth2_token: SecretStr = SecretStr("")
     oauth2_client_id: str = ""
-    oauth2_client_secret: str = ""
+    oauth2_client_secret: SecretStr = SecretStr("")
 
     # MSAL-managed OAuth2 (Microsoft 365). When ``oauth2_provider`` is set
     # to ``"microsoft"``, access tokens are acquired and refreshed via MSAL
@@ -125,7 +135,7 @@ class MailConfig(BaseModel):
     # Langfuse observability — optional; when public_key/secret_key are set,
     # every LLM agent run is traced to the configured Langfuse project.
     langfuse_public_key: str = ""
-    langfuse_secret_key: str = ""
+    langfuse_secret_key: SecretStr = SecretStr("")
     langfuse_base_url: str = ""
 
     # Logging configuration — application-wide (global).

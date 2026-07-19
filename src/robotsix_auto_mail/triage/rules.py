@@ -261,7 +261,7 @@ def record_user_action(
         "subject": record.subject,
         "body": _effective_body_plain(record),
         "subfolder": subfolder,
-        "api_key": config.llm_api_key or None,
+        "api_key": config.llm_api_key.get_secret_value() or None,
         "provider_model": config.llm_provider_model or None,
     }
     if background:
@@ -279,6 +279,6 @@ def record_user_action(
             subject=record.subject,
             body=_effective_body_plain(record),
             subfolder=subfolder,
-            api_key=config.llm_api_key or None,
+            api_key=config.llm_api_key.get_secret_value() or None,
             provider_model=config.llm_provider_model or None,
         )

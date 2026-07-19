@@ -231,14 +231,14 @@ def test_provider_to_config_password_defaults_empty() -> None:
     """The password field defaults to the empty string."""
     mp = MailProvider(imap_host="ih", smtp_host="sh")
     cfg = provider_to_config(mp, "user@example.com")
-    assert cfg.password == ""
+    assert cfg.password.get_secret_value() == ""
 
 
 def test_provider_to_config_password_forwarded() -> None:
     """An explicit password is forwarded to MailConfig."""
     mp = MailProvider(imap_host="ih", smtp_host="sh")
     cfg = provider_to_config(mp, "user@example.com", password="s3cret")
-    assert cfg.password == "s3cret"
+    assert cfg.password.get_secret_value() == "s3cret"
 
 
 def test_provider_to_config_imap_folder_defaults_to_inbox() -> None:
@@ -304,7 +304,7 @@ def test_provider_to_config_microsoft_writes_oauth2_no_password() -> None:
     assert cfg.oauth2_provider == "microsoft"
     assert cfg.oauth2_tenant == "organizations"
     assert cfg.oauth2_client_id == ""
-    assert cfg.password == ""
+    assert cfg.password.get_secret_value() == ""
 
 
 # ---------------------------------------------------------------------------

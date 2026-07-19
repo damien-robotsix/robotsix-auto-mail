@@ -12,7 +12,11 @@ from robotsix_auto_mail.cli.config import (
     _get_password,
     _verify_and_refine,
 )
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import (
+    MailAccount,
+    MailAccountsConfig,
+    MailConfig,
+)
 from robotsix_auto_mail.imap.client import _IMAP4_ERROR
 from robotsix_auto_mail.imap.errors import ImapError
 from robotsix_auto_mail.smtp import _SMTP_EXCEPTION, SmtpError
@@ -51,7 +55,30 @@ def register_subparser(
     parser.add_argument(
         "--password",
         default=None,
-        help=("Password to use for verification. When omitted, prompts interactively."),
+        help=(
+            "Password to write into the config file. "
+            "When omitted, prompts interactively."
+        ),
+    )
+    parser.add_argument(
+        "--output",
+        default="",
+        help="Write mail config to this file path (e.g. config/config.json)",
+    )
+    parser.add_argument(
+        "--stdout",
+        action="store_true",
+        default=False,
+        help="Print mail config to stdout instead of writing to file",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help=(
+            "Overwrite an existing account with the same id instead of "
+            "exiting with an error."
+        ),
     )
     parser.add_argument(
         "--no-verify",
@@ -169,6 +196,44 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         password = _get_password(args)
         if password is None:
             return 1
+    if args.stdout:
+        stdout_config = provider_to_config(
+            provider,
+            args.email,
+            # lgtm[py/clear-text-storage-sensitive-data]
+            password="",  # nosec B106 - intentionally omitted from stdout
+        ).model_copy(update={"db_path": f".data/{account_id}/mail.db"})
+        if args.app_password and stdout_config.oauth2_provider:
+            # provider_to_config sets oauth2_provider="microsoft" for
+            # Microsoft hosts unconditionally; --app-password must clear it
+            # in the stdout path because _build() is never reached here.
+            stdout_config = stdout_config.model_copy(update={"oauth2_provider": ""})
+        if microsoft:
+            sys.stderr.write(
+                f"# Detected Microsoft 365 settings for {args.email} — "
+                "OAuth2 (XOAUTH2); no password is used.\n"
+                "# Save this as config/config.json, then run:\n"
+                f"#   robotsix-auto-mail auth login --account {account_id}\n"
+                "# to complete the device-code consent and seed the token "
+                "cache.\n"
+            )
+        else:
+            sys.stderr.write(
+                f"# Detected settings for {args.email} — verify before using.\n"
+                "# The password was intentionally omitted: fill in auth.password "
+                "before use.\n"
+                "# Save this as config/config.json.\n"
+            )
+        account = MailAccount(account_id=account_id, config=stdout_config, label=label)
+        container = MailAccountsConfig(
+            accounts=[account], default_account_id=account_id
+        )
+        # model_dump_json masks SecretStr fields ("**********"); the
+        # password is intentionally empty for --stdout output, so the
+        # masked value is safe to write to stdout.
+        json_text = container.model_dump_json(indent=2)
+        sys.stdout.write(json_text)  # lgtm[py/clear-text-logging-sensitive-data]
+        return 0
 
     rc, config = _verify_and_refine(
         provider,
@@ -192,6 +257,80 @@ def _cmd_detect(args: argparse.Namespace) -> int:
 
     if config is None:
         return rc
+
+    # Save the detected config to the output file.
+    if not args.stdout and args.output:
+        import contextlib
+        import json as _json
+        from pathlib import Path as _Path
+
+        from robotsix_auto_mail.config.loader import save_accounts
+
+        output_path = _Path(args.output)
+        # Set a per-account db_path when the config doesn't have one yet.
+        if not config.db_path:
+            config = config.model_copy(
+                update={"db_path": f".data/{account_id}/mail.db"}
+            )
+        new_account = MailAccount(account_id=account_id, config=config, label=label)
+
+        # Load existing accounts if the file exists.
+        existing: MailAccountsConfig | None = None
+        if output_path.exists():
+            with contextlib.suppress(Exception):
+                existing = MailAccountsConfig.model_validate(
+                    _json.loads(output_path.read_text())
+                )
+
+        # Merge the new account with existing accounts.
+        if existing is not None:
+            accounts_list = list(existing.accounts)
+            default_id = existing.default_account_id or account_id
+        else:
+            accounts_list = []
+            default_id = account_id
+        existing_idx = next(
+            (i for i, a in enumerate(accounts_list) if a.account_id == account_id),
+            None,
+        )
+        if existing_idx is not None:
+            if args.overwrite:
+                # Preserve non-transport fields and label from existing.
+                existing_acct = accounts_list[existing_idx]
+                merged_cfg = existing_acct.config.model_copy(
+                    update={
+                        "imap_host": config.imap_host,
+                        "imap_port": config.imap_port,
+                        "imap_tls_mode": config.imap_tls_mode,
+                        "smtp_host": config.smtp_host,
+                        "smtp_port": config.smtp_port,
+                        "smtp_tls_mode": config.smtp_tls_mode,
+                        "password": config.password,
+                        "oauth2_provider": config.oauth2_provider,
+                        "oauth2_client_id": config.oauth2_client_id,
+                        "oauth2_tenant": config.oauth2_tenant,
+                    }
+                )
+                accounts_list[existing_idx] = MailAccount(
+                    account_id=account_id,
+                    config=merged_cfg,
+                    label=existing_acct.label or label,
+                )
+            else:
+                sys.stderr.write(
+                    f"Error: account id '{account_id}' already exists. "
+                    "Use --overwrite to update.\n"
+                )
+                del config
+                return 1
+        else:
+            accounts_list.append(new_account)
+
+        container = MailAccountsConfig(
+            accounts=accounts_list,
+            default_account_id=default_id,
+        )
+        save_accounts(container, path=output_path)
 
     # Print the diagnostic report to stdout as JSON.
     # verified is True only when verification actually ran and passed.
@@ -298,7 +437,9 @@ def _print_detect_report(report: dict[str, object]) -> None:
 
     The *report* must already exclude sensitive fields such as passwords.
     """
-    sys.stdout.write(json.dumps(report, indent=2))
+    sys.stdout.write(
+        json.dumps(report, indent=2)  # lgtm[py/clear-text-logging-sensitive-data]
+    )
     sys.stdout.write("\n")
 
     # Paste instructions.

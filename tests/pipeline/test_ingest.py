@@ -697,7 +697,7 @@ def test_ingest_calls_setup_archive_before_fetch(
         conn,
         imap,
         archive_root=cfg.archive_root,
-        api_key=cfg.llm_api_key,
+        api_key=cfg.llm_api_key.get_secret_value(),
         provider_model=cfg.llm_provider_model,
     )
     # setup_archive must run before fetch_new_messages.
@@ -759,7 +759,7 @@ def test_ingest_passes_configured_archive_root(
         conn,
         imap,
         archive_root="custom-archive",
-        api_key=cfg.llm_api_key,
+        api_key=cfg.llm_api_key.get_secret_value(),
         provider_model=cfg.llm_provider_model,
     )
 
@@ -810,7 +810,7 @@ def test_ingest_runs_triage_on_new_mail(
 
     mock_triage.assert_called_once_with(
         conn,
-        api_key=cfg.llm_api_key,
+        api_key=cfg.llm_api_key.get_secret_value(),
         provider_model=cfg.llm_provider_model,
         only_undecided=True,
         user_email=cfg.username,

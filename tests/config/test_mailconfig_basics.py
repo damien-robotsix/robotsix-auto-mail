@@ -86,7 +86,7 @@ def test_mailconfig_langfuse_defaults_empty() -> None:
         password="p",
     )
     assert cfg.langfuse_public_key == ""
-    assert cfg.langfuse_secret_key == ""
+    assert cfg.langfuse_secret_key.get_secret_value() == ""
     assert cfg.langfuse_base_url == ""
 
 

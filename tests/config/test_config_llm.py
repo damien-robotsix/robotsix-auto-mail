@@ -22,7 +22,7 @@ from robotsix_auto_mail.config import (
 def test_llm_defaults_when_absent() -> None:
     """llm api key defaults to an empty string."""
     cfg = MailConfig(imap_host="i", smtp_host="s", username="u", password="p")
-    assert cfg.llm_api_key == ""
+    assert cfg.llm_api_key.get_secret_value() == ""
 
 
 def test_llm_api_key_redacted_in_repr() -> None:
@@ -48,13 +48,13 @@ def test_llm_api_key_set_explicitly() -> None:
         password="p",
         llm_api_key="sk-from-constructor",
     )
-    assert cfg.llm_api_key == "sk-from-constructor"
+    assert cfg.llm_api_key.get_secret_value() == "sk-from-constructor"
 
 
 def test_llm_api_key_default_when_unset() -> None:
     """Without an explicit llm_api_key, it defaults to empty."""
     cfg = MailConfig(imap_host="i", smtp_host="s", username="u", password="p")
-    assert cfg.llm_api_key == ""
+    assert cfg.llm_api_key.get_secret_value() == ""
 
 
 def test_llm_provider_model_set_explicitly() -> None:

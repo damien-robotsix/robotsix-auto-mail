@@ -13,9 +13,14 @@ import logging
 import re
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pydantic import SecretStr
+
 from robotsix_auto_mail.config import (
+    MailAccount,
+    MailAccountsConfig,
     MailConfig,
 )
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
@@ -170,6 +175,95 @@ def _account_id_from_email(email: str) -> str:
     return cleaned or "default"
 
 
+def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
+    """Load :class:`MailAccountsConfig` from *path* (JSON only).
+
+    Returns ``None`` when the file is missing or unparseable.
+    """
+    if not path.exists():
+        return None
+    try:
+        from robotsix_config import load_config as _rc_load
+
+        return _rc_load(MailAccountsConfig, path=path)
+    except Exception:
+        logger.debug("robotsix_config load failed for %s — falling back", path)
+    # Fallback without robotsix_config: plain JSON only.
+    try:
+        import json
+
+        return MailAccountsConfig.model_validate(json.loads(path.read_text()))
+    except Exception:
+        logger.debug("JSON parse failed for %s", path)
+        return None
+
+
+def _existing_account_ids(path: Path) -> set[str]:
+    """Return the account ids already present in the config file at *path*.
+
+    A multi-account file yields its entry ids; a missing/empty file yields
+    an empty set.  Reads JSON only — legacy YAML is no longer supported.
+    """
+    if not path.exists():
+        return set()
+    # Try the full loader first.
+    container = _load_accounts_from_file(path)
+    if container is not None:
+        return {a.account_id for a in container.accounts}
+    # Fallback: parse raw JSON to extract ids from partial data.
+    try:
+        import json
+
+        data = json.loads(path.read_text())
+    except Exception:
+        return set()
+    if not isinstance(data, dict):
+        return set()
+    raw_accounts = data.get("accounts")
+    if not isinstance(raw_accounts, list):
+        return set()
+    ids: set[str] = set()
+    for entry in raw_accounts:
+        if isinstance(entry, dict):
+            account_id = entry.get("account_id")
+            if isinstance(account_id, str):
+                ids.add(account_id)
+    return ids
+
+
+def _existing_accounts_for_append(
+    path: Path, new_account_id: str
+) -> tuple[list[MailAccount], str]:
+    """Return ``(other_accounts, default_account_id)`` for appending to *path*.
+
+    ``other_accounts`` are the accounts already in the file *excluding* one
+    matching ``new_account_id``.  A deprecated mono file is converted: its
+    single config becomes a ``"default"`` account.  ``default_account_id`` is
+    the file's existing default (or ``new_account_id`` when the file is new).
+    """
+    container = _load_accounts_from_file(path)
+    if container is None:
+        return [], new_account_id
+
+    others = [a for a in container.accounts if a.account_id != new_account_id]
+    return others, container.default_account_id
+
+
+def _find_existing_account(path: Path, account_id: str) -> MailAccount | None:
+    """Return the ``MailAccount`` matching *account_id* from *path*, or ``None``.
+
+    Used by the overwrite path to load the existing account's config before
+    merging freshly-detected transport fields into it.
+    """
+    container = _load_accounts_from_file(path)
+    if container is None:
+        return None
+    for account in container.accounts:
+        if account.account_id == account_id:
+            return account
+    return None
+
+
 def _get_password(args: argparse.Namespace) -> str | None:
     """Get password from args or interactive prompt.
 
@@ -304,7 +398,10 @@ def _refine_with_llm(
     if refined is None:
         return _RefineOutcome()
     sys.stderr.write(f"  LLM: imap={refined.imap_host} smtp={refined.smtp_host}\n")
-    return _RefineOutcome(config=build(refined, config.password), provider=refined)
+    return _RefineOutcome(
+        config=build(refined, config.password.get_secret_value()),
+        provider=refined,
+    )
 
 
 def _refine_manual(config: MailConfig, result: _VerifyResult) -> _RefineOutcome:
@@ -361,7 +458,7 @@ def _verify_and_refine(
         if app_password and detected.oauth2_provider:
             # Clear MSAL provider so IMAP/SMTP use plain password auth.
             detected = detected.model_copy(
-                update={"oauth2_provider": "", "password": pw or ""}
+                update={"oauth2_provider": "", "password": SecretStr(pw or "")}
             )
         if app_password:
             # Ensure oauth2_provider is cleared.
@@ -374,6 +471,18 @@ def _verify_and_refine(
                     "oauth2_tenant": oauth2_tenant or detected.oauth2_tenant,
                 }
             )
+
+        # Persist the resolved LLM key and model into the written config so
+        # the file is self-contained.  In overwrite mode, existing_account.config
+        # already carries the file's values; or fills in when the file was
+        # sparse/new.
+        if api_key and not detected.llm_api_key.get_secret_value():
+            detected = detected.model_copy(update={"llm_api_key": SecretStr(api_key)})
+        if llm_provider_model and not detected.llm_provider_model:
+            detected = detected.model_copy(
+                update={"llm_provider_model": llm_provider_model}
+            )
+
         return detected
 
     config = _build(provider, password)
@@ -396,10 +505,10 @@ def _verify_and_refine(
             sys.stderr.write(f"Error: device-code login failed: {exc}\n")
             return 1, None
     else:
-        if not config.password:
+        if not config.password.get_secret_value():
             sys.stderr.write(
-                "No password provided — pass --password or enter one "
-                "interactively, then re-run detect to verify.\n"
+                "No password provided — add it to the config file "
+                "(or set it via the Configure panel), then run `probe` to verify.\n"
             )
             return 0, config
         if no_verify:
