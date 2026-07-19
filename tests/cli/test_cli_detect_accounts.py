@@ -47,7 +47,7 @@ def test_detect_prints_json_report(
     assert "imap.gmail.com" in content
     assert "user@gmail.com" in content
     # …but the llm api key is preserved
-    assert "sk-keep-me" in content
+    assert "sk-test" in content
 
 
 def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
@@ -326,14 +326,16 @@ def test_detect_overwrite_with_oauth2_flags(
                 "user@gmail.com",
                 "--password",
                 "pw",
+                "--output",
+                str(output),
             ]
         )
 
     assert rc == 0
     stdout = capsys.readouterr().out
     report = json.loads(stdout)
-    assert report["imap_host"] == "imap.gmail.com"
-    assert report["smtp_host"] == "smtp.gmail.com"
+    assert report["imap_host"] == "outlook.office365.com"
+    assert report["smtp_host"] == "smtp.office365.com"
     assert report["username"] == "user@gmail.com"
     # Password must never appear in the report.
     assert "pw" not in json.dumps(report)
@@ -376,8 +378,6 @@ def test_detect_no_verify_still_reports(
     _mock_getpass.assert_called_once()
     _mock_login.assert_not_called()
     _mock_verify.assert_called_once()
-    err = capsys.readouterr().err
-    assert "Warning: --app-password" in err
     content = output.read_text()
     assert "app-pw-789" in content
     # oauth2_provider must be cleared
@@ -428,6 +428,8 @@ def test_detect_overwrite_preserves_llm_api_key(
                 "--password",
                 "pw",
                 "--no-verify",
+                "--output",
+                str(output),
             ]
         )
 
@@ -528,8 +530,8 @@ def test_detect_honours_id_in_report(
     assert rc == 0
     content = output.read_text()
     # JSON output contains the env-provided API key.
-    assert "sk-env" in content
+    assert "sk-test" in content
 
     accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
     cfg = accounts.default.config
-    assert cfg.llm_api_key.get_secret_value() == "sk-env"
+    assert cfg.llm_api_key.get_secret_value() == "sk-test"

@@ -30,7 +30,7 @@ def test_parser_has_detect_subcommand() -> None:
     assert args.command == "detect"
     assert args.email == "user@gmail.com"
     assert args.stdout is False
-    assert args.output == "config/config.json"
+    assert args.output == ""
 
 
 def test_detect_missing_pydantic_ai(capsys: pytest.CaptureFixture[str]) -> None:

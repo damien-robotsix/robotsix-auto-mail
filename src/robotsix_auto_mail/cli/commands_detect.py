@@ -62,14 +62,23 @@ def register_subparser(
     )
     parser.add_argument(
         "--output",
-        default="config/config.json",
-        help="Write mail config to this file path (default: %(default)s)",
+        default="",
+        help="Write mail config to this file path (e.g. config/config.json)",
     )
     parser.add_argument(
         "--stdout",
         action="store_true",
         default=False,
         help="Print mail config to stdout instead of writing to file",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help=(
+            "Overwrite an existing account with the same id instead of "
+            "exiting with an error."
+        ),
     )
     parser.add_argument(
         "--no-verify",
@@ -249,6 +258,80 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     if config is None:
         return rc
 
+    # Save the detected config to the output file.
+    if not args.stdout and args.output:
+        import contextlib
+        import json as _json
+        from pathlib import Path as _Path
+
+        from robotsix_auto_mail.config.loader import save_accounts
+
+        output_path = _Path(args.output)
+        # Set a per-account db_path when the config doesn't have one yet.
+        if not config.db_path:
+            config = config.model_copy(
+                update={"db_path": f".data/{account_id}/mail.db"}
+            )
+        new_account = MailAccount(account_id=account_id, config=config, label=label)
+
+        # Load existing accounts if the file exists.
+        existing: MailAccountsConfig | None = None
+        if output_path.exists():
+            with contextlib.suppress(Exception):
+                existing = MailAccountsConfig.model_validate(
+                    _json.loads(output_path.read_text())
+                )
+
+        # Merge the new account with existing accounts.
+        if existing is not None:
+            accounts_list = list(existing.accounts)
+            default_id = existing.default_account_id or account_id
+        else:
+            accounts_list = []
+            default_id = account_id
+        existing_idx = next(
+            (i for i, a in enumerate(accounts_list) if a.account_id == account_id),
+            None,
+        )
+        if existing_idx is not None:
+            if args.overwrite:
+                # Preserve non-transport fields and label from existing.
+                existing_acct = accounts_list[existing_idx]
+                merged_cfg = existing_acct.config.model_copy(
+                    update={
+                        "imap_host": config.imap_host,
+                        "imap_port": config.imap_port,
+                        "imap_tls_mode": config.imap_tls_mode,
+                        "smtp_host": config.smtp_host,
+                        "smtp_port": config.smtp_port,
+                        "smtp_tls_mode": config.smtp_tls_mode,
+                        "password": config.password,
+                        "oauth2_provider": config.oauth2_provider,
+                        "oauth2_client_id": config.oauth2_client_id,
+                        "oauth2_tenant": config.oauth2_tenant,
+                    }
+                )
+                accounts_list[existing_idx] = MailAccount(
+                    account_id=account_id,
+                    config=merged_cfg,
+                    label=existing_acct.label or label,
+                )
+            else:
+                sys.stderr.write(
+                    f"Error: account id '{account_id}' already exists. "
+                    "Use --overwrite to update.\n"
+                )
+                del config
+                return 1
+        else:
+            accounts_list.append(new_account)
+
+        container = MailAccountsConfig(
+            accounts=accounts_list,
+            default_account_id=default_id,
+        )
+        save_accounts(container, path=output_path)
+
     # Print the diagnostic report to stdout as JSON.
     # verified is True only when verification actually ran and passed.
     verified = rc == 0 and not args.no_verify
@@ -355,7 +438,7 @@ def _print_detect_report(report: dict[str, object]) -> None:
     The *report* must already exclude sensitive fields such as passwords.
     """
     sys.stdout.write(
-        json.dumps(report, indent=2)  # codeql[py/clear-text-logging-sensitive-data]
+        json.dumps(report, indent=2)  # lgtm[py/clear-text-logging-sensitive-data]
     )
     sys.stdout.write("\n")
 
