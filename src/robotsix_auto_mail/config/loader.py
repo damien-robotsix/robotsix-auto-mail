@@ -18,9 +18,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-from pydantic import SecretStr
+from typing import TYPE_CHECKING
 
 from robotsix_auto_mail.config.model import MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.schema import ConfigurationError
@@ -31,28 +29,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _unwrap_secrets(obj: Any) -> Any:
-    """Recursively replace :class:`SecretStr` values with their raw strings.
-
-    Used when writing the config to disk so that credentials are preserved
-    in the JSON file (``model_dump_json`` would otherwise mask them).
-    """
-    if isinstance(obj, SecretStr):
-        return obj.get_secret_value()
-    if isinstance(obj, dict):
-        return {k: _unwrap_secrets(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_unwrap_secrets(v) for v in obj]
-    return obj
-
-
 def _dump_config_json(config: MailAccountsConfig) -> str:
-    """Serialize *config* to a JSON string with secrets exposed."""
-    import json as _json
+    """Serialize *config* to a JSON string with secrets exposed.
 
-    data = config.model_dump(mode="python")
-    # lgtm[py/clear-text-storage-sensitive-data]
-    return _json.dumps(_unwrap_secrets(data), indent=2, ensure_ascii=False)
+    Uses ``model_dump_json`` with ``context={"reveal_secrets": True}`` so
+    that the field serializers on :class:`MailConfig` write the real secret
+    values instead of the default ``"**********"`` mask.
+    """
+    return config.model_dump_json(indent=2, context={"reveal_secrets": True})
 
 
 def load_accounts() -> MailAccountsConfig:
@@ -122,7 +106,6 @@ def save_accounts(
         logger.debug("robotsix_config not installed — writing JSON directly")
         target = Path(path) if path is not None else _resolve_config_path()
         target.parent.mkdir(parents=True, exist_ok=True)
-        # lgtm[py/clear-text-storage-sensitive-data]
         target.write_text(_dump_config_json(config) + "\n")
         return
     _dump_config(config, path=path)

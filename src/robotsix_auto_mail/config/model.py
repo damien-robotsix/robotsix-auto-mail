@@ -12,7 +12,14 @@ import logging
 import re
 from typing import Final
 
-from pydantic import BaseModel, ConfigDict, SecretStr, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    SecretStr,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from robotsix_auto_mail.config.schema import (
     _VALID_LOG_FORMATS,
@@ -173,6 +180,27 @@ class MailConfig(BaseModel):
                 f"log_format must be one of {sorted(_VALID_LOG_FORMATS)!r}, got {v!r}"
             )
         return v.lower()
+
+    # -- serialization -----------------------------------------------------
+    # By default, model_dump(mode="json") masks every SecretStr field as
+    # "**********".  Callers that need to persist the real values (e.g. the
+    # config-file writer in loader.py) pass ``context={"reveal_secrets": True}``
+    # to reveal them.
+
+    @field_serializer(
+        "password",
+        "llm_api_key",
+        "oauth2_token",
+        "oauth2_client_secret",
+        "langfuse_secret_key",
+        when_used="json",
+    )
+    def _reveal_secrets(self, value: SecretStr, info: object) -> str:
+        """Reveal SecretStr values when the serialization context requests it."""
+        ctx = getattr(info, "context", None)
+        if ctx and ctx.get("reveal_secrets"):
+            return value.get_secret_value()
+        return "**********"  # default masked
 
     # -- masking -----------------------------------------------------------
 
