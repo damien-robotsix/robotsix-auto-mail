@@ -119,3 +119,12 @@ from robotsix_auto_mail.cli import config
 config._existing_account_ids
 config._existing_accounts_for_append
 config._find_existing_account
+
+# ===========================================================================
+# Public API function — exported from config.loader, called by external
+# consumers (CLI, server); vulture doesn't trace cross-module usage.
+# ===========================================================================
+
+from robotsix_auto_mail.config.loader import save_accounts
+
+save_accounts

@@ -353,9 +353,7 @@ def test_detect_no_verify_still_reports(
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="app-pw-789") as _mock_getpass,
-        mock.patch(
-            "robotsix_auto_mail.oauth2.device_code_login"
-        ) as _mock_login,
+        mock.patch("robotsix_auto_mail.oauth2.device_code_login") as _mock_login,
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as _mock_verify,
