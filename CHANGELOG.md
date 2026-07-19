@@ -9,7 +9,6 @@
   `(OSError, _IMAP4_ERROR, ImapError)` and `(OSError, _SMTP_EXCEPTION, SmtpError)`,
   and fix the `_block_network` test fixture to raise `ConnectionRefusedError`
   (subclass of `OSError`) so narrow exception handling works correctly in tests.
-- Narrow exception types in `_probe_capabilities` from bare `Exception` to `(OSError, _IMAP4_ERROR)` and `(OSError, _SMTP_EXCEPTION)`.
 - `detect` is now report-only: prints a JSON diagnostic report to stdout
   (schema-shaped keys: imap_host/port/tls_mode, smtp_*, username, capabilities,
   login_ok) and writes no config file.  Removed ``--output``, ``--overwrite``,
