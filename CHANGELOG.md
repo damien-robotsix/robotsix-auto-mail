@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added 25 direct unit tests for `commands_detect.py` handler functions (`_build_detect_report`, `_cmd_detect`, `_probe_capabilities`, `_print_detect_report`).
 - Split ``tests/server/test_board_views_unit.py`` (893 lines, 47 tests) into five
   per-function test modules: ``test_board_views_columns.py``,
   ``test_board_views_batch_banner.py``, ``test_board_views_gather.py``,
