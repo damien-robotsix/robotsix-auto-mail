@@ -36,19 +36,9 @@ from robotsix_auto_mail.triage.persistence import TriageDecision
 TriageDecision._validate_action
 TriageDecision._validate_source
 
-from robotsix_auto_mail.triage.persistence import SenderMemory
-
-SenderMemory._validate_action
-SenderMemory.last_action
-SenderMemory.updated_at
-
 from robotsix_auto_mail.triage.persistence import UnsubscribeDetection
 
 UnsubscribeDetection._validate_method
-
-from robotsix_auto_mail.triage.persistence import ArchiveFolderMemory
-
-ArchiveFolderMemory.updated_at
 
 # ===========================================================================
 # Framework overrides — called by the parent class / stdlib framework.
