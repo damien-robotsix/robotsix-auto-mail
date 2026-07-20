@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added scope-triage boilerplate for CHANGELOG.md, docs/modules.yaml, and changelog/*.md accompanying-documentation patterns.
 - Added `.robotsix-mill/periodic/triage_boilerplate.yaml` periodic workflow config to enable the triage boilerplate scanner for this repo.
 - Tell the triage-rules flash LLM which actions the automated triage agent
   can actually assign (HUMAN_TRIAGE, TO_ARCHIVE, TO_DELETE, TO_ANSWER) so it
