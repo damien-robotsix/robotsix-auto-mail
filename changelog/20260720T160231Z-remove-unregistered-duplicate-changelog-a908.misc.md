@@ -1,0 +1,1 @@
+Remove unregistered duplicate changelog fragment
