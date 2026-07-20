@@ -148,6 +148,7 @@ modules:
       - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-829d.misc.md
       - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-in-829d.misc.md
       - changelog/20260720T002929Z-ci-fix-out-of-scope-ci-failure-coverage-a8c0.misc.md
+      - changelog/20260720T045441Z-missing-re-export-save-accounts-not-expo-97ec.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
