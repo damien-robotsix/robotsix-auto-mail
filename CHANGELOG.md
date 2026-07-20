@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Tell the triage-rules flash LLM which actions the automated triage agent
+  can actually assign (HUMAN_TRIAGE, TO_ARCHIVE, TO_DELETE, TO_ANSWER) so it
+  does not suggest rules using human-only actions like TO_CALENDAR.
+  Also fix the DEFAULT_RULES_HEADER example that incorrectly referenced TO_CALENDAR.
 - Add `agent_check` periodic mill workflow (`.robotsix-mill/periodic/agent_check.yaml`) to validate agent output model contracts.
 - Enable the `trace_review` periodic to flag anomalous Langfuse traces from LLM-driven agent runs (triage, unsubscribe detection, config-sync).
 - Re-export `save_accounts` from `robotsix_auto_mail.config` so callers can use the canonical import path instead of reaching into the `loader` submodule.
