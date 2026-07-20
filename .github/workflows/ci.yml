@@ -246,6 +246,15 @@ jobs:
             --tb=long
 
       - name: Post coverage PR comment
+        id: coverage-comment
+        continue-on-error: true
+        uses: py-cov-action/python-coverage-comment-action@50d15ff8768f6d897b04e5a0805bd1a98f7096c4  # v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MERGE_COVERAGE_FILES: false
+
+      - name: Retry coverage PR comment on transient failure
+        if: steps.coverage-comment.outcome == 'failure'
         uses: py-cov-action/python-coverage-comment-action@50d15ff8768f6d897b04e5a0805bd1a98f7096c4  # v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
