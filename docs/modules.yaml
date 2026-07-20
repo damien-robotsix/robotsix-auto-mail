@@ -150,6 +150,7 @@ modules:
       - changelog/20260720T002929Z-ci-fix-out-of-scope-ci-failure-coverage-a8c0.misc.md
       - changelog/20260720T045441Z-missing-re-export-save-accounts-not-expo-97ec.misc.md
       - changelog/20260720T081446Z-remove-stale-sendermemory-and-archivefol-dc24.misc.md
+      - changelog/20260720T114054Z-robotsix-auto-mail-enable-agent-check-pe-d9d1.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
