@@ -10,8 +10,8 @@ from __future__ import annotations
 import argparse
 import io
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -26,7 +26,6 @@ from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfi
 from robotsix_auto_mail.config.detect import MailProvider
 from robotsix_auto_mail.imap.errors import ImapError
 from robotsix_auto_mail.smtp import SmtpError
-
 
 # ---------------------------------------------------------------------------
 # _build_detect_report — pure unit tests (no mocking)
@@ -461,7 +460,9 @@ def test_cmd_detect_app_password_oauth2_mutual_exclusion_client_id() -> None:
         oauth2_client_id="some-id",
         oauth2_tenant="",
     )
-    with mock.patch("robotsix_auto_mail.cli.commands_detect._detect_settings") as mock_ds:
+    with mock.patch(
+        "robotsix_auto_mail.cli.commands_detect._detect_settings"
+    ) as mock_ds:
         rc = _cmd_detect(args)
 
     assert rc == 1
@@ -482,7 +483,9 @@ def test_cmd_detect_app_password_oauth2_mutual_exclusion_tenant() -> None:
         oauth2_client_id="",
         oauth2_tenant="common",
     )
-    with mock.patch("robotsix_auto_mail.cli.commands_detect._detect_settings") as mock_ds:
+    with mock.patch(
+        "robotsix_auto_mail.cli.commands_detect._detect_settings"
+    ) as mock_ds:
         rc = _cmd_detect(args)
 
     assert rc == 1
@@ -518,7 +521,6 @@ def test_cmd_detect_provider_none() -> None:
             "robotsix_auto_mail.cli.commands_detect._print_detect_report",
         ),
     ):
-
         # Now test when _detect_settings returns (None, [])
         with mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
@@ -630,7 +632,8 @@ def test_cmd_detect_stdout_microsoft_app_password_clears_oauth2() -> None:
 
 
 def test_cmd_detect_happy_path_output_file(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Full happy path: detection → verification → file save → report."""
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
@@ -777,9 +780,7 @@ def test_cmd_detect_account_exists_no_overwrite(tmp_path: Path) -> None:
 
     assert rc == 1
     # The existing file should be untouched.
-    reloaded = MailAccountsConfig.model_validate(
-        json.loads(output_path.read_text())
-    )
+    reloaded = MailAccountsConfig.model_validate(json.loads(output_path.read_text()))
     assert reloaded.accounts[0].config.imap_host == "old.host.com"
 
 
@@ -865,9 +866,7 @@ def test_cmd_detect_account_exists_overwrite_merge(tmp_path: Path) -> None:
     assert rc == 0
 
     # Reload and verify merge.
-    reloaded = MailAccountsConfig.model_validate(
-        json.loads(output_path.read_text())
-    )
+    reloaded = MailAccountsConfig.model_validate(json.loads(output_path.read_text()))
     merged = reloaded.accounts[0]
     assert merged.label == "Preserved Label"
     merged_cfg = merged.config
