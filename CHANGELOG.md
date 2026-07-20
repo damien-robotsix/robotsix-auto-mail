@@ -5,6 +5,13 @@
 
 ## 0.0.0 (unreleased)
 
+- Added `pytest-timeout` as a dev dependency and configured per-test
+  (`timeout = 30`) and session-level (`session_timeout = 900`) timeouts
+  in `[tool.pytest.ini_options]`. Limits are set with large safety margins
+  above the measured worst-case single test (~4 s) and full-suite wall time
+  (~75 s). On a timeout hit the logged timeout value and offending test id
+  make it straightforward to distinguish a true deadlock from a
+  slow-but-healthy test.
 - Added 25 direct unit tests for `commands_detect.py` handler functions (`_build_detect_report`, `_cmd_detect`, `_probe_capabilities`, `_print_detect_report`).
 - Split ``tests/server/test_board_views_unit.py`` (893 lines, 47 tests) into five
   per-function test modules: ``test_board_views_columns.py``,
