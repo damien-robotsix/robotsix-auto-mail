@@ -23,10 +23,9 @@ from robotsix_auto_mail.cli.commands_detect import (
     _probe_capabilities,
 )
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
-from robotsix_auto_mail.config.detect import DetectionError, MailProvider
+from robotsix_auto_mail.config.detect import MailProvider
 from robotsix_auto_mail.imap.errors import ImapError
 from robotsix_auto_mail.smtp import SmtpError
-from tests.cli.conftest import _ok_result, _provider_to_config
 
 
 # ---------------------------------------------------------------------------
