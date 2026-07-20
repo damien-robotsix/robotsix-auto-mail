@@ -147,6 +147,7 @@ modules:
       - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-f637.misc.md
       - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-829d.misc.md
       - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-in-829d.misc.md
+      - changelog/20260720T002929Z-ci-fix-out-of-scope-ci-failure-coverage-a8c0.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
