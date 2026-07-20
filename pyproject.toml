@@ -102,7 +102,7 @@ markers = [
     "slow: heavier property-based / fuzz tests (large example counts)",
 ]
 # pytest-timeout: kill genuinely hung tests instead of wasting CI minutes.
-# Baselines measured 2025-07-20 on this codebase (single-threaded, no coverage):
+# Baselines measured 2026-07-20 on this codebase (single-threaded, no coverage):
 #   longest single test:  ~4 s  (test_config_sync_text_output)
 #   full suite wall time: ~75 s (1668 tests)
 # These limits include a large safety margin (several× the observed worst case).
