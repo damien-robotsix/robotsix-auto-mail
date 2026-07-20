@@ -60,7 +60,7 @@ Example rules — uncomment and customise:
 # - Answer mail from `boss@mycompany.com` (needs personal reply)
 # - Archive receipts and invoices to `Finance`
 # - Archive CI notification emails from `github.com` to `Notifications`
-# - Calendar invites from any sender → TO_CALENDAR
+# - Calendar invites from any sender → HUMAN_TRIAGE (manual calendar review)
 # - Mark `[email-verification]` subject mails as TO_ANSWER (time-sensitive)
 -->
 """
@@ -149,6 +149,12 @@ def _build_rules_system_prompt() -> str:
         "- TO_CALENDAR: it references a date/event\n"
         "- TO_ANSWER: it needs a reply\n"
         "- DRAFT_READY: a reply draft has been prepared\n\n"
+        "Note: the automated triage agent can only assign these four "
+        "actions: HUMAN_TRIAGE, TO_ARCHIVE, TO_DELETE, TO_ANSWER.  "
+        "The remaining actions (INBOX, PENDING_ACTION, TO_CALENDAR, "
+        "DRAFT_READY) are for human use on the board only.  When writing "
+        "rules, prefer one of the four agent-selectable actions so the "
+        "triage agent can follow your rules.\n\n"
         "Infer a GENERAL rule from this single action based on the WHOLE "
         "context of the mail (sender, sender domain, subject, and body) — not "
         "the subject alone.  Prefer generalising by sender, sender domain, or "
