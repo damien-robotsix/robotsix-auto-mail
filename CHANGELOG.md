@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add `agent_check` periodic mill workflow (`.robotsix-mill/periodic/agent_check.yaml`) to validate agent output model contracts.
 - Re-export `save_accounts` from `robotsix_auto_mail.config` so callers can use the canonical import path instead of reaching into the `loader` submodule.
 - Replace detect-secrets (Yelp, unmaintained since May 2024) with
   gitleaks (v8.30.1, actively maintained) for secret scanning:
