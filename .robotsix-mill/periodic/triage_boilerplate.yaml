@@ -22,3 +22,33 @@ prompt_overlay: |
     consequence of the ticket's work.
 
   No unrelated files were modified.  Proceed.
+
+  ---
+
+  When generating boilerplate for completeness_check tickets where the
+  gap description matches "Missing re-export: X not exposed through
+  Y/__init__.py", include the following pattern.  These are packaging
+  consistency fixes — a public function is defined in a submodule,
+  has production callers and dedicated tests, but was accidentally
+  omitted from the package's __init__.py while all of its sibling
+  public symbols are properly re-exported.
+
+  The boilerplate response template:
+
+  **Triage decision: ACCEPT — Packaging consistency fix.**
+
+  This is a packaging consistency gap: `[SYMBOL_NAME]` is a public
+  function in `[submodule]` with production callers and dedicated
+  tests, but it is not re-exported through `[package]/__init__.py`.
+  All `[N]` sibling public functions from the same submodule ARE
+  properly exported — this appears to be an oversight.
+
+  **Risk:** Minimal. The fix is purely additive (import + `__all__`
+  entry). Existing callers using the submodule path continue to work;
+  new callers gain the canonical import path.
+
+  **Priority:** Low. No behavior change, no regression risk.
+
+  **Verification:** Confirm the symbol is public (no underscore
+  prefix), has test coverage, and all siblings are already exported
+  before implementing.

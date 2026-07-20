@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Add triage boilerplate pattern for completeness_check missing re-export tickets.
 - Added scope-triage boilerplate for CHANGELOG.md, docs/modules.yaml, and changelog/*.md accompanying-documentation patterns.
 - Added `.robotsix-mill/periodic/triage_boilerplate.yaml` periodic workflow config to enable the triage boilerplate scanner for this repo.
 - Tell the triage-rules flash LLM which actions the automated triage agent
