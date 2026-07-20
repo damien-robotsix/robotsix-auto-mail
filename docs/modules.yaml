@@ -151,6 +151,7 @@ modules:
       - changelog/20260720T045441Z-missing-re-export-save-accounts-not-expo-97ec.misc.md
       - changelog/20260720T081446Z-remove-stale-sendermemory-and-archivefol-dc24.misc.md
       - changelog/20260720T114054Z-robotsix-auto-mail-enable-agent-check-pe-d9d1.misc.md
+      - changelog/20260720T114055Z-robotsix-auto-mail-enable-trace-review-p-4e76.feature.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -537,4 +538,5 @@ modules:
       - .robotsix-mill/periodic/repo_description_sync.yaml
       - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/survey.yaml
+      - .robotsix-mill/periodic/trace_review.yaml
       - .robotsix-mill/periodic/test_gap.yaml
