@@ -44,6 +44,7 @@ modules:
       - changelog/.gitkeep
       - changelog/20260702T221229Z-consolidate-modules-observability-core-l-7593.misc.md
       - changelog/20260718T044535Z-missing-re-export-default-ingest-interva-1768.misc.md
+      - changelog/20260720T153746Z-boilerplate-scope-triage-accompanying-do-a341.misc.md
       - changelog/20260720T153746Z-scope-triage-accompanying-docs-boilerplate.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
