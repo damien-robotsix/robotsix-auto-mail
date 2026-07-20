@@ -47,6 +47,7 @@ modules:
       - changelog/20260720T153746Z-boilerplate-missing-re-export-ticket-tri-c9c3.misc.md
       - changelog/20260720T153746Z-scope-triage-accompanying-docs-boilerplate.misc.md
       - changelog/20260720T160231Z-remove-unregistered-duplicate-changelog-a908.misc.md
+      - changelog/20260720T195427Z-test-gap-add-unit-tests-for-src-robotsix-54f0.misc.md
       - changelog/20260720T195429Z-test-gap-add-unit-tests-for-src-robotsix-66c0.misc.md
       - changelog/20260720T205012Z-split-tests-server-test-board-views-unit-c030.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
@@ -215,6 +216,7 @@ modules:
       - tests/cli/test_cli.py
       - tests/cli/test_commands_auth.py
       - tests/cli/test_commands_config_sync.py
+      - tests/cli/test_commands_detect.py
       - tests/cli/test_commands_serve.py
       - tests/cli/test_cli_board.py
       - tests/cli/test_cli_config.py
