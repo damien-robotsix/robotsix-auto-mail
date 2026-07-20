@@ -1,1 +1,0 @@
-Boilerplate: Scope-Triage Accompanying Documentation
