@@ -153,6 +153,7 @@ modules:
       - changelog/20260720T114054Z-robotsix-auto-mail-enable-agent-check-pe-d9d1.misc.md
       - changelog/20260720T114055Z-robotsix-auto-mail-enable-trace-review-p-4e76.feature.md
       - changelog/20260720T123355Z-flash-llm-in-build-rules-system-prompt-e-4dd9.bugfix.md
+      - changelog/20260720T141755Z-enable-triage-boilerplate-periodic-workf-c6b4.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -541,3 +542,4 @@ modules:
       - .robotsix-mill/periodic/survey.yaml
       - .robotsix-mill/periodic/trace_review.yaml
       - .robotsix-mill/periodic/test_gap.yaml
+      - .robotsix-mill/periodic/triage_boilerplate.yaml
