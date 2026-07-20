@@ -146,7 +146,7 @@ modules:
       - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-987-l-f637.misc.md
       - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-f637.misc.md
       - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-829d.misc.md
-      - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-in-829d.misc.md
+      - changelog/20260719T233517Z-remove-duplicate-unregistered-changelog-e842.misc.md
       - changelog/20260720T002929Z-ci-fix-out-of-scope-ci-failure-coverage-a8c0.misc.md
       - changelog/20260720T045441Z-missing-re-export-save-accounts-not-expo-97ec.misc.md
       - tests/__init__.py
