@@ -11,7 +11,6 @@ from unittest import mock
 from robotsix_auto_mail.server.board_adapter import MailBoardAdapter
 from tests.conftest import _make_record
 
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------

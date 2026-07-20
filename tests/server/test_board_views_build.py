@@ -9,7 +9,6 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig
 
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------

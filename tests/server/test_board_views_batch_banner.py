@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-
 # ---------------------------------------------------------------------------
 # _batch_banner_html
 # ---------------------------------------------------------------------------
@@ -71,6 +70,3 @@ def test_batch_banner_html_bare_running_sentinel() -> None:
     assert "Processing mail" in result
     assert ": " not in result
     assert "The board will refresh automatically." in result
-
-
-
