@@ -59,6 +59,9 @@ dev = [
     "zizmor",
     # towncrier: changelog fragment management (dev/release tooling).
     "towncrier",
+    # pytest-timeout: kills hung tests instead of waiting for the job timeout
+    # (default 6 hours on GitHub Actions). Configured under [tool.pytest.ini_options].
+    "pytest-timeout",
 ]
 llm = [
     "robotsix-llmio[openrouter,tracing]",
@@ -98,6 +101,15 @@ markers = [
     "integration: tests that require a real or emulated network service (IMAP, SMTP, HTTP)",
     "slow: heavier property-based / fuzz tests (large example counts)",
 ]
+# pytest-timeout: kill genuinely hung tests instead of wasting CI minutes.
+# Baselines measured 2026-07-20 on this codebase (single-threaded, no coverage):
+#   longest single test:  ~4 s  (test_config_sync_text_output)
+#   full suite wall time: ~75 s (1668 tests)
+# These limits include a large safety margin (several× the observed worst case).
+# If a test hits the per-test timeout, check whether it is truly deadlocked or
+# just needs the limit bumped — the timeout value and test id are logged.
+timeout = 30
+session_timeout = 900
 
 [tool.coverage.run]
 source = ["src/robotsix_auto_mail"]
