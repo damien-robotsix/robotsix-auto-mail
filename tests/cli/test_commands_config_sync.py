@@ -24,7 +24,6 @@ from robotsix_auto_mail.config.config_sync_agent import (
     DriftProposal,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -272,9 +271,7 @@ class TestCmdConfigSyncSet:
                 side_effect=ConfigSyncError("No ledger finding"),
             ),
         ):
-            rc = _cmd_config_sync_set(
-                _make_sync_set_args(fingerprint="deadbeef")
-            )
+            rc = _cmd_config_sync_set(_make_sync_set_args(fingerprint="deadbeef"))
 
         assert rc == 1
         err = capsys.readouterr().err
