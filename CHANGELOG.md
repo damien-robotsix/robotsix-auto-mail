@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Split ``tests/server/test_board_views_unit.py`` (893 lines, 47 tests) into five
+  per-function test modules: ``test_board_views_columns.py``,
+  ``test_board_views_batch_banner.py``, ``test_board_views_gather.py``,
+  ``test_board_views_shell.py``, and ``test_board_views_build.py``.
 - Add triage boilerplate pattern for completeness_check missing re-export tickets.
 - Added scope-triage boilerplate for CHANGELOG.md, docs/modules.yaml, and changelog/*.md accompanying-documentation patterns.
 - Added `.robotsix-mill/periodic/triage_boilerplate.yaml` periodic workflow config to enable the triage boilerplate scanner for this repo.

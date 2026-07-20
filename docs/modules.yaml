@@ -48,6 +48,7 @@ modules:
       - changelog/20260720T153746Z-scope-triage-accompanying-docs-boilerplate.misc.md
       - changelog/20260720T160231Z-remove-unregistered-duplicate-changelog-a908.misc.md
       - changelog/20260720T195429Z-test-gap-add-unit-tests-for-src-robotsix-66c0.misc.md
+      - changelog/20260720T205012Z-split-tests-server-test-board-views-unit-c030.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
       - changelog/20260703T082456Z-simplify-entrypoint-sh-for-post-config-m-f5e8.removal.md
@@ -454,8 +455,11 @@ modules:
       - tests/server/test_board_handler_static.py
       - tests/server/test_board_handler_email_detail.py
       - tests/server/test_board_handler_health.py
-      - tests/server/test_board_views_unit.py
-
+      - tests/server/test_board_views_batch_banner.py
+      - tests/server/test_board_views_build.py
+      - tests/server/test_board_views_columns.py
+      - tests/server/test_board_views_gather.py
+      - tests/server/test_board_views_shell.py
       - tests/server/test_draft_mixin_compute_and_save.py
       - tests/server/test_draft_mixin_send_generate.py
       - tests/server/test_auth_mixin.py
