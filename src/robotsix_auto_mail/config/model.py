@@ -15,6 +15,7 @@ from typing import Final
 from pydantic import (
     BaseModel,
     ConfigDict,
+    Field,
     SecretStr,
     field_validator,
     model_validator,
@@ -88,10 +89,14 @@ class MailConfig(BaseModel):
     username: str
     password: SecretStr
 
-    imap_port: int = 993
-    imap_tls_mode: str = DEFAULT_IMAP_TLS_MODE
-    smtp_port: int = 587
-    smtp_tls_mode: str = DEFAULT_SMTP_TLS_MODE
+    imap_port: int = Field(default=993, json_schema_extra={"advanced": True})
+    imap_tls_mode: str = Field(
+        default=DEFAULT_IMAP_TLS_MODE, json_schema_extra={"advanced": True}
+    )
+    smtp_port: int = Field(default=587, json_schema_extra={"advanced": True})
+    smtp_tls_mode: str = Field(
+        default=DEFAULT_SMTP_TLS_MODE, json_schema_extra={"advanced": True}
+    )
 
     # Empty by default; the accounts loader derives ``.data/<id>/mail.db``
     # per account when ``store.path`` is absent.
@@ -101,22 +106,26 @@ class MailConfig(BaseModel):
     # LLM provider settings — optional; only needed for the `detect`
     # subcommand and future LLM-assisted mail processing.
     llm_api_key: SecretStr = SecretStr("")
-    llm_provider_model: str = ""
+    llm_provider_model: str = Field(default="", json_schema_extra={"advanced": True})
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
-    ingest_interval_minutes: int = DEFAULT_INGEST_INTERVAL_MINUTES
+    ingest_interval_minutes: int = Field(
+        default=DEFAULT_INGEST_INTERVAL_MINUTES, json_schema_extra={"advanced": True}
+    )
 
     # Self-managed archive folder structure.
-    archive_root: str = DEFAULT_ARCHIVE_ROOT
-    archive_enabled: bool = True
+    archive_root: str = Field(
+        default=DEFAULT_ARCHIVE_ROOT, json_schema_extra={"advanced": True}
+    )
+    archive_enabled: bool = Field(default=True, json_schema_extra={"advanced": True})
 
     # Run the inbox triage agent automatically at the end of each ingest.
-    triage_on_ingest: bool = True
+    triage_on_ingest: bool = Field(default=True, json_schema_extra={"advanced": True})
 
     # Path to the human-readable triage rules file maintained by the flash
     # LLM from user actions.  Empty means "derive from db_path"
     # (``<db-dir>/triage_rules.md``).
-    triage_rules_path: str = ""
+    triage_rules_path: str = Field(default="", json_schema_extra={"advanced": True})
 
     # OAuth2 / XOAUTH2 credentials (Gmail, Microsoft 365, etc.).
     # Optional; when ``oauth2_token`` is set, SASL XOAUTH2 is used
@@ -129,18 +138,20 @@ class MailConfig(BaseModel):
     # to ``"microsoft"``, access tokens are acquired and refreshed via MSAL
     # instead of password/static-token auth. ``oauth2_tenant`` is the Azure
     # AD tenant (default ``organizations``).
-    oauth2_provider: str = ""
-    oauth2_tenant: str = "organizations"
+    oauth2_provider: str = Field(default="", json_schema_extra={"advanced": True})
+    oauth2_tenant: str = Field(
+        default="organizations", json_schema_extra={"advanced": True}
+    )
 
     # Langfuse observability — optional; when public_key/secret_key are set,
     # every LLM agent run is traced to the configured Langfuse project.
-    langfuse_public_key: str = ""
+    langfuse_public_key: str = Field(default="", json_schema_extra={"advanced": True})
     langfuse_secret_key: SecretStr = SecretStr("")
-    langfuse_base_url: str = ""
+    langfuse_base_url: str = Field(default="", json_schema_extra={"advanced": True})
 
     # Logging configuration — application-wide (global).
     log_level: str = "INFO"
-    log_format: str = "console"
+    log_format: str = Field(default="console", json_schema_extra={"advanced": True})
 
     # -- validators --------------------------------------------------------
 
