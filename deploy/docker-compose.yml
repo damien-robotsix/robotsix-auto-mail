@@ -12,6 +12,8 @@ services:
     volumes:
       - auto-mail-config:/home/app/config
       - auto-mail-data:/data
+    labels:
+      robotsix.deploy.config-target: "/home/app/config/config.json"
     healthcheck:
       test:
         - CMD-SHELL
@@ -49,13 +51,9 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-    # Configuration is NOT managed by central-deploy: the app reads the JSON
-    # file at ROBOTSIX_CONFIG_FILE, seeded manually into the auto-mail-config
-    # volume (e.g. via `robotsix-auto-mail detect ... --output`). No
-    # config-target/config-assist labels on purpose — central-deploy's config
-    # writer only speaks YAML and would produce a file the app ignores.
     labels:
       robotsix.deploy.primary: "true"
+      robotsix.deploy.config-target: "/home/app/config/config.json"
 
 volumes:
   auto-mail-config:
