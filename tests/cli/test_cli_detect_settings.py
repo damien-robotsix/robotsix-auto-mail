@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from unittest import mock
 
 import pytest
@@ -39,7 +38,9 @@ def test_detect_refines_host_with_llm_on_connection_failure(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=[_host_fail_result(), _ok_result()],
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -76,7 +77,9 @@ def test_detect_prompts_for_host_when_llm_cannot_fix(
             side_effect=[_host_fail_result(), _ok_result()],
         ),
         mock.patch("builtins.input", return_value="mail.manual.net") as mock_input,
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [

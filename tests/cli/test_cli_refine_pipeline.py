@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -164,10 +163,9 @@ def test_verify_and_refine_host_failure_llm_refine(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=verify_results,
         ),
-        mock.patch.dict(
-            os.environ,
-            {"LLM_API_KEY": "sk-test"},  # pragma: allowlist secret
-        ),  # pragma: allowlist secret
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc, config = _verify_and_refine(
             provider,
@@ -214,10 +212,9 @@ def test_verify_and_refine_host_failure_llm_then_manual(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=verify_results,
         ),
-        mock.patch.dict(
-            os.environ,
-            {"LLM_API_KEY": "sk-test"},  # pragma: allowlist secret
-        ),  # pragma: allowlist secret
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
         mock.patch("builtins.input", side_effect=["", "manual-smtp.com"]),
     ):
         rc, config = _verify_and_refine(
@@ -373,10 +370,9 @@ def test_verify_and_refine_budget_exhausted(
             "robotsix_auto_mail.cli._verify_config",
             side_effect=verify_results,
         ),
-        mock.patch.dict(
-            os.environ,
-            {"LLM_API_KEY": "sk-test"},  # pragma: allowlist secret
-        ),  # pragma: allowlist secret
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
         mock.patch("builtins.input", side_effect=["", ""]),
     ):
         rc, config = _verify_and_refine(

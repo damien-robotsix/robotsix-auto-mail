@@ -176,7 +176,8 @@ def _account_id_from_email(email: str) -> str:
 
 
 def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
-    """Load :class:`MailAccountsConfig` from *path* (JSON only).
+    """Load :class:`MailAccountsConfig` from *path* via
+    :func:`robotsix_config.load_config`.
 
     Returns ``None`` when the file is missing or unparseable.
     """
@@ -187,14 +188,7 @@ def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
 
         return _rc_load(MailAccountsConfig, path=path)
     except Exception:
-        logger.debug("robotsix_config load failed for %s — falling back", path)
-    # Fallback without robotsix_config: plain JSON only.
-    try:
-        import json
-
-        return MailAccountsConfig.model_validate(json.loads(path.read_text()))
-    except Exception:
-        logger.debug("JSON parse failed for %s", path)
+        logger.debug("robotsix_config load failed for %s", path)
         return None
 
 

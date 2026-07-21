@@ -250,7 +250,6 @@ def test_run_triage_agent_missing_api_key(
     monkeypatch: pytest.MonkeyPatch, tmp_path: object
 ) -> None:
     """No api_key, no env, no config key → TriageError; LLM not built."""
-    monkeypatch.delenv("LLM_API_KEY", raising=False)
     monkeypatch.setenv("MAIL_CONFIG_PATH", str(tmp_path / "missing.yaml"))  # type: ignore[operator]
     conn = init_db(":memory:")
     try:

@@ -495,6 +495,100 @@ def check_accounts_example(
 
 
 # ====================================================================
+# Check 4 — schema drift (config.schema.json vs model)
+# ====================================================================
+
+
+def _schema_stable_ordering(schema_text: str) -> str:
+    """Canonicalise *schema_text* for comparison.
+
+    Parses the JSON, re-serialises with ``sort_keys=True`` and
+    ``indent=2`` so that key-ordering differences don't trigger
+    spurious drift.
+    """
+    return json.dumps(json.loads(schema_text), sort_keys=True, indent=2)
+
+
+def check_schema_drift(
+    repo_root: Path,
+    schema_path: str = "config/config.schema.json",
+) -> list[dict[str, Any]]:
+    """Check that the committed ``config/config.schema.json`` matches the
+    schema derived from ``MailAccountsConfig``.
+
+    Returns a list of finding dicts (empty when the file is current).
+    """
+    findings: list[dict[str, Any]] = []
+
+    schema_file = repo_root / schema_path
+    if not schema_file.exists():
+        findings.append(
+            {
+                "artifact": schema_path,
+                "type": "schema-file-missing",
+                "message": f"{schema_path} not found",
+            }
+        )
+        return findings
+
+    try:
+        committed_text = schema_file.read_text()
+    except OSError as exc:
+        findings.append(
+            {
+                "artifact": schema_path,
+                "type": "schema-read-error",
+                "message": str(exc),
+            }
+        )
+        return findings
+
+    # Regenerate from the model.
+    from robotsix_auto_mail.config.loader import get_config_schema
+
+    try:
+        generated_text = get_config_schema()
+    except Exception as exc:
+        findings.append(
+            {
+                "artifact": schema_path,
+                "type": "schema-generation-error",
+                "message": str(exc),
+            }
+        )
+        return findings
+
+    committed_stable = _schema_stable_ordering(committed_text)
+    generated_stable = _schema_stable_ordering(generated_text)
+
+    if committed_stable != generated_stable:
+        # Compute a unified diff for the human-readable finding message.
+        import difflib
+
+        diff_lines = list(
+            difflib.unified_diff(
+                committed_stable.splitlines(keepends=True),
+                generated_stable.splitlines(keepends=True),
+                fromfile=f"a/{schema_path}",
+                tofile=f"b/{schema_path}",
+            )
+        )
+        findings.append(
+            {
+                "artifact": schema_path,
+                "type": "schema-drift",
+                "message": (
+                    f"{schema_path} is stale — regenerate with "
+                    f"`robotsix_config.config_schema_json(MailAccountsConfig)`\n"
+                    + "".join(diff_lines)
+                ),
+            }
+        )
+
+    return findings
+
+
+# ====================================================================
 # Main entry point
 # ====================================================================
 
@@ -554,6 +648,7 @@ def run_checks(
     findings.extend(check_json_example(json_data, str(json_example_path)))
     findings.extend(check_docs_configuration(docs_cfg_text, str(docs_cfg_path)))
     findings.extend(check_accounts_example(str(json_example_path)))
+    findings.extend(check_schema_drift(repo_root))
 
     # -- report -------------------------------------------------------------
     if not findings:

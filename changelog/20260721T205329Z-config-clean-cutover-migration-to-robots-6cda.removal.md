@@ -1,0 +1,1 @@
+Removed all environment-variable overrides for LLM secrets and settings (`LLM_API_KEY`, `LLM_PROVIDER_MODEL`). The API key now resolves solely from `config.json`. The legacy plain-JSON fallback loader has been removed. A schema-drift check has been added to the CI config-sync step.

@@ -68,7 +68,10 @@ def test_propose_archive_subfolder_llm_stores_hint(
 ) -> None:
     """Successful LLM call stores the subfolder in the watermark and
     get_archive_subfolder returns it at priority 2."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<hint-test@x.com>", sender="dev@python.org")
@@ -110,7 +113,6 @@ def test_propose_archive_subfolder_llm_no_api_key(
 ) -> None:
     """Missing LLM_API_KEY → function returns silently, no hint stored."""
     # Ensure no API key is set
-    monkeypatch.delenv("LLM_API_KEY", raising=False)
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<nokey@x.com>")
@@ -144,7 +146,10 @@ def test_propose_archive_subfolder_llm_llm_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """LLM raises → function returns silently, no hint stored, fallback works."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<error@x.com>")
@@ -180,7 +185,10 @@ def test_propose_archive_subfolder_llm_existing_folders_in_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Archive structure watermark contents appear in the system prompt."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<folders@x.com>")
@@ -225,7 +233,10 @@ def test_propose_archive_subfolder_llm_rules_in_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A non-empty ``rules`` argument is injected into the system prompt."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<rules@x.com>", sender="alice@example.com")
@@ -267,7 +278,10 @@ def test_propose_archive_subfolder_llm_proposes_new_folder(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """LLM can return a folder name NOT in the existing archive structure."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<newfolder@x.com>")
@@ -298,7 +312,10 @@ def test_propose_archive_subfolder_llm_empty_subfolder_skips_store(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """LLM returns empty subfolder → no hint stored (don't pollute watermark)."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<empty@x.com>")
@@ -333,7 +350,10 @@ def test_hintless_with_api_key_uses_llm_and_persists(
 ) -> None:
     """When an API key is provided and no hint exists, get_archive_subfolder
     calls the LLM, persists the hint, and returns it."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<api-key-test@x.com>", sender="dev@python.org")

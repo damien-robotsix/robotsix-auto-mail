@@ -112,7 +112,6 @@ def test_update_rules_no_api_key_is_noop(
         return RulesMarkdown(markdown="x")
 
     monkeypatch.setattr(rules_mod, "_run_llm_agent", _fake_agent)
-    monkeypatch.delenv("LLM_API_KEY", raising=False)
     update_rules_for_action(
         path, action="TO_ARCHIVE", sender="a@x.com", subject="s", body="b"
     )

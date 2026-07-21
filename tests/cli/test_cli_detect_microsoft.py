@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from unittest import mock
 
@@ -33,7 +32,9 @@ def test_detect_microsoft_runs_device_code_and_verifies(
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as mock_verify,
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(["detect", "user@contoso.com"])
 
@@ -62,7 +63,9 @@ def test_detect_microsoft_stdout_instructs_auth_login(
         ),
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(["detect", "user@contoso.com", "--no-verify"])
 
@@ -86,7 +89,9 @@ def test_detect_stdout_app_password_clears_oauth2_provider(
             "robotsix_auto_mail.config.detect.detect_provider",
             return_value=mock_provider,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -128,7 +133,9 @@ def test_detect_microsoft_auth_failure_points_at_auth_login(
             "robotsix_auto_mail.cli._verify_config",
             return_value=_auth_fail_result(),
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(["detect", "user@contoso.com"])
 
@@ -155,7 +162,9 @@ def test_detect_microsoft_custom_oauth2_client_id_and_tenant(
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
         mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -202,7 +211,9 @@ def test_detect_microsoft_app_password_writes_password_config(
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as mock_verify,
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -238,7 +249,9 @@ def test_detect_app_password_mutually_exclusive_with_oauth2_flags(
         ),
         mock.patch("getpass.getpass"),
         mock.patch("robotsix_auto_mail.oauth2.device_code_login"),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -271,7 +284,9 @@ def test_detect_app_password_noop_for_non_microsoft(
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as mock_verify,
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -306,7 +321,9 @@ def test_detect_app_password_noop_for_generic_imap_host(
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as mock_verify,
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [

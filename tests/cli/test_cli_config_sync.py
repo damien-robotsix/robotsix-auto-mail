@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from unittest import mock
 
@@ -75,7 +74,9 @@ def test_config_sync_text_output(
     )
     with (
         _patch_config_sync_llm(result),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(["config-sync", "--api-key", "sk-test"])
 
@@ -102,7 +103,9 @@ def test_config_sync_json_output(
     )
     with (
         _patch_config_sync_llm(result),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(["config-sync", "--api-key", "sk-test", "--output-format", "json"])
 
@@ -120,7 +123,9 @@ def test_config_sync_no_drift(
     """An empty result prints the no-drift message and returns 0."""
     with (
         _patch_config_sync_llm(ConfigSyncResult(proposals=[])),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(["config-sync", "--api-key", "sk-test"])
 
@@ -150,7 +155,9 @@ def test_config_sync_api_key_precedence(
     """--api-key overrides LLM_API_KEY env when constructing the provider."""
     with (
         _patch_config_sync_llm(ConfigSyncResult(proposals=[])) as cls,
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-env"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-env"
+        ),
     ):
         rc = main(["config-sync", "--api-key", "sk-cli"])
 
