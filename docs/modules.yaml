@@ -52,6 +52,7 @@ modules:
       - changelog/20260720T205011Z-add-pytest-timeout-to-ci-to-prevent-hung-2b46.misc.md
       - changelog/20260720T205011Z-add-pytest-timeout-to-dev-deps.misc.md
       - changelog/20260720T205012Z-split-tests-server-test-board-views-unit-c030.misc.md
+      - changelog/20260721T011535Z-ci-fix-out-of-scope-ci-failure-validate-5dce.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
       - changelog/20260703T082456Z-simplify-entrypoint-sh-for-post-config-m-f5e8.removal.md
