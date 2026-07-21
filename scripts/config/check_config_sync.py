@@ -201,6 +201,7 @@ def check_json_example(
 # Check 2 — docs/configuration.md
 # ====================================================================
 
+
 def _strip_backticks(s: str) -> str:
     """Remove surrounding backtick quotes from *s*."""
     if s.startswith("`") and s.endswith("`"):
@@ -220,7 +221,7 @@ def _normalise_doc_default(raw: str) -> Any:
     # JSON-parse for booleans, numbers, null; strings must be quoted.
     try:
         return json.loads(stripped)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return stripped
 
 
