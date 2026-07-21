@@ -170,6 +170,8 @@ modules:
       - changelog/20260721T122323Z-update-agent-md-configuration-convention-b9ac.misc.md
       - changelog/20260721T132546Z-classify-config-settings-as-advanced-per-a917.feature.md
       - changelog/20260721T142307Z-robotsix-auto-mail-enable-module-size-pe-4287.misc.md
+      - changelog/20260721T185654Z-config-standard-compliance.feature.md
+      - changelog/20260721T185654Z-make-robotsix-auto-mail-compliant-with-t-38da.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -272,6 +274,7 @@ modules:
       - tests/config/test_config_triage.py
       - docs/config/.gitkeep
       - config/config.example.json
+      - config/config.json
       - config/config.schema.json
       - scripts/config/check_config_sync.py
       - tests/config/test_config_sync.py
