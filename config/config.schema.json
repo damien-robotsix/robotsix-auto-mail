@@ -52,21 +52,25 @@
           "writeOnly": true
         },
         "imap_port": {
+          "advanced": true,
           "default": 993,
           "title": "Imap Port",
           "type": "integer"
         },
         "imap_tls_mode": {
+          "advanced": true,
           "default": "direct-tls",
           "title": "Imap Tls Mode",
           "type": "string"
         },
         "smtp_port": {
+          "advanced": true,
           "default": 587,
           "title": "Smtp Port",
           "type": "integer"
         },
         "smtp_tls_mode": {
+          "advanced": true,
           "default": "starttls",
           "title": "Smtp Tls Mode",
           "type": "string"
@@ -89,31 +93,37 @@
           "writeOnly": true
         },
         "llm_provider_model": {
+          "advanced": true,
           "default": "",
           "title": "Llm Provider Model",
           "type": "string"
         },
         "ingest_interval_minutes": {
+          "advanced": true,
           "default": 15,
           "title": "Ingest Interval Minutes",
           "type": "integer"
         },
         "archive_root": {
+          "advanced": true,
           "default": "robotsix-mail-archive",
           "title": "Archive Root",
           "type": "string"
         },
         "archive_enabled": {
+          "advanced": true,
           "default": true,
           "title": "Archive Enabled",
           "type": "boolean"
         },
         "triage_on_ingest": {
+          "advanced": true,
           "default": true,
           "title": "Triage On Ingest",
           "type": "boolean"
         },
         "triage_rules_path": {
+          "advanced": true,
           "default": "",
           "title": "Triage Rules Path",
           "type": "string"
@@ -138,16 +148,19 @@
           "writeOnly": true
         },
         "oauth2_provider": {
+          "advanced": true,
           "default": "",
           "title": "Oauth2 Provider",
           "type": "string"
         },
         "oauth2_tenant": {
+          "advanced": true,
           "default": "organizations",
           "title": "Oauth2 Tenant",
           "type": "string"
         },
         "langfuse_public_key": {
+          "advanced": true,
           "default": "",
           "title": "Langfuse Public Key",
           "type": "string"
@@ -160,6 +173,7 @@
           "writeOnly": true
         },
         "langfuse_base_url": {
+          "advanced": true,
           "default": "",
           "title": "Langfuse Base Url",
           "type": "string"
@@ -170,6 +184,7 @@
           "type": "string"
         },
         "log_format": {
+          "advanced": true,
           "default": "console",
           "title": "Log Format",
           "type": "string"

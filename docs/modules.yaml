@@ -168,6 +168,7 @@ modules:
       - changelog/20260721T004554Z-ci-fix-out-of-scope-ci-failure-run-pre-c-aaa3.misc.md
       - changelog/20260721T091444Z-migrate-robotsix-auto-mail-to-the-typed-a5fe.removal.md
       - changelog/20260721T122323Z-update-agent-md-configuration-convention-b9ac.misc.md
+      - changelog/20260721T132546Z-classify-config-settings-as-advanced-per-a917.feature.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
