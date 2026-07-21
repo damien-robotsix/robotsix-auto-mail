@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from unittest import mock
 
-import pytest
-
 from robotsix_auto_mail.cli.commands_detect import _probe_capabilities
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap.errors import ImapError
