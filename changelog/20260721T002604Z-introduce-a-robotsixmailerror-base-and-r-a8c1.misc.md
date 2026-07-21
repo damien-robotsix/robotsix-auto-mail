@@ -1,0 +1,1 @@
+Introduce a RobotsixMailError base and reparent the 9 domain exceptions

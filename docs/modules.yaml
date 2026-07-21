@@ -15,6 +15,7 @@ modules:
       and observability/logging/tracing startup.
     paths:
       - src/robotsix_auto_mail/__init__.py
+      - src/robotsix_auto_mail/errors.py
       - src/robotsix_auto_mail/py.typed
       - src/robotsix_auto_mail/core/__init__.py
       - src/robotsix_auto_mail/core/_constants.py

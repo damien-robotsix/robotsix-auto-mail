@@ -15,6 +15,7 @@ import ssl
 from typing import Any
 
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.errors import RobotsixMailError
 from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response
 from robotsix_auto_mail.mime import build_plain_text_message
 from robotsix_auto_mail.oauth2 import build_token_provider
@@ -35,7 +36,7 @@ _SMTP_EXCEPTION = smtplib.SMTPException
 # ---------------------------------------------------------------------------
 
 
-class SmtpError(Exception):
+class SmtpError(RobotsixMailError):
     """Base exception for all SMTP client errors."""
 
 

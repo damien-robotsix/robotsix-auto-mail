@@ -29,6 +29,7 @@ from robotsix_auto_mail.core._constants import (
 )
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.db import get_watermark, set_watermark
+from robotsix_auto_mail.errors import RobotsixMailError
 from robotsix_auto_mail.imap import ImapClient, is_special_use
 
 # ---------------------------------------------------------------------------
@@ -65,7 +66,7 @@ _ = _LLM_PARAM_DOCS
 # ---------------------------------------------------------------------------
 
 
-class ArchiveError(Exception):
+class ArchiveError(RobotsixMailError):
     """Raised when determining the archive structure via the LLM fails."""
 
 

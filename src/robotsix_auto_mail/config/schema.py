@@ -12,13 +12,14 @@ from __future__ import annotations
 from typing import Final
 
 from robotsix_auto_mail.core._constants import _ARCHIVE_ROOT
+from robotsix_auto_mail.errors import RobotsixMailError
 
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
 
 
-class ConfigurationError(Exception):
+class ConfigurationError(RobotsixMailError):
     """Raised when the mail configuration is invalid or incomplete.
 
     Attributes:

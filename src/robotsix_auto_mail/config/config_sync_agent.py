@@ -28,6 +28,7 @@ from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.config.pydantic_utils import validate_confidence
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.db import load_json_watermark, save_json_watermark
+from robotsix_auto_mail.errors import RobotsixMailError
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -59,7 +60,7 @@ _VALID_LEDGER_STATES = frozenset({"pending", "accepted", "rejected"})
 # ---------------------------------------------------------------------------
 
 
-class ConfigSyncError(Exception):
+class ConfigSyncError(RobotsixMailError):
     """Raised when the config-drift advisory agent fails."""
 
 

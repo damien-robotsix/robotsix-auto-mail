@@ -5,8 +5,10 @@ from robotsix_auto_mail.core._observability import (
     setup_logging,
     setup_observability,
 )
+from robotsix_auto_mail.errors import RobotsixMailError
 
 __all__ = [
+    "RobotsixMailError",
     "__version__",
     "init_langfuse_tracing",
     "setup_logging",

@@ -17,11 +17,13 @@ import hashlib
 import json
 from typing import TYPE_CHECKING, Any
 
+from robotsix_auto_mail.errors import RobotsixMailError
+
 if TYPE_CHECKING:
     from robotsix_auto_mail.db import MailRecord
 
 
-class ParseError(Exception):
+class ParseError(RobotsixMailError):
     """Raised when the input bytes are not valid MIME at all."""
 
 
