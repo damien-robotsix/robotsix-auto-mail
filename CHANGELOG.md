@@ -9,6 +9,7 @@
   re-exported from the package root. All 9 domain exceptions now inherit from
   ``RobotsixMailError`` instead of plain ``Exception``, and the CLI entrypoint
   ``main()`` catches ``RobotsixMailError`` for a clean non-zero exit + log.
+- docs/modules.yaml: remove duplicate `d241` path entry from core module's path list without introducing `# Before` / `# After` annotations into the YAML file.
 - Added 25 direct unit tests for `commands_detect.py` handler functions (`_build_detect_report`, `_cmd_detect`, `_probe_capabilities`, `_print_detect_report`).
 - Split ``tests/server/test_board_views_unit.py`` (893 lines, 47 tests) into five
   per-function test modules: ``test_board_views_columns.py``,
