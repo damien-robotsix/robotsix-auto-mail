@@ -230,7 +230,9 @@ modules:
       - tests/cli/test_cli.py
       - tests/cli/test_commands_auth.py
       - tests/cli/test_commands_config_sync.py
-      - tests/cli/test_commands_detect.py
+      - tests/cli/test_commands_detect_cmd.py
+      - tests/cli/test_commands_detect_probe.py
+      - tests/cli/test_commands_detect_report.py
       - tests/cli/test_commands_serve.py
       - tests/cli/test_cli_board.py
       - tests/cli/test_cli_config.py
