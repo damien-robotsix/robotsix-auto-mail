@@ -38,7 +38,7 @@ from robotsix_auto_mail.errors import RobotsixMailError
 #: ``MailConfig`` pydantic model which is rendered from its field declarations.
 _SURFACE_FILES: tuple[str, ...] = (
     "config/config.example.json",
-    "docs/connecting.md",
+    "docs/configuration.md",
 )
 #: Watermark key owned by this module for the dedup memory ledger.
 #:

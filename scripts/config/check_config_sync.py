@@ -198,55 +198,8 @@ def check_json_example(
 
 
 # ====================================================================
-# Check 2 — docs/connecting.md
+# Check 2 — docs/configuration.md
 # ====================================================================
-
-
-def _parse_md_table(text: str, section_heading: str) -> list[dict[str, str]]:
-    """Parse the first pipe table after *section_heading* in *text*.
-
-    Returns a list of dicts with keys from the header row.
-    """
-    # Find the section heading.
-    heading_idx = text.find(section_heading)
-    if heading_idx == -1:
-        return []
-
-    # Find the first table after the heading.  A table starts with a
-    # line matching ``| ... |`` followed by a separator line
-    # ``|---|...|``.
-    rest = text[heading_idx:]
-    lines = rest.splitlines()
-
-    table_start: int | None = None
-    for i, line in enumerate(lines):
-        if line.strip().startswith("|") and "---" not in line:
-            # Potential first row.  Check if the next line is a separator.
-            if i + 1 < len(lines) and re.match(r"^\s*\|[\s\-:|]+\|\s*$", lines[i + 1]):
-                table_start = i
-                break
-
-    if table_start is None:
-        return []
-
-    # Parse header.
-    header_line = lines[table_start]
-    headers = [h.strip() for h in header_line.split("|")[1:-1]]
-
-    # Skip header and separator, parse data rows.
-    rows: list[dict[str, str]] = []
-    for line in lines[table_start + 2 :]:
-        stripped = line.strip()
-        if not stripped.startswith("|"):
-            break
-        cells = [c.strip() for c in stripped.split("|")[1:-1]]
-        if len(cells) != len(headers):
-            continue
-        row = dict(zip(headers, cells, strict=True))
-        rows.append(row)
-
-    return rows
-
 
 def _strip_backticks(s: str) -> str:
     """Remove surrounding backtick quotes from *s*."""
@@ -267,17 +220,15 @@ def _normalise_doc_default(raw: str) -> Any:
     # JSON-parse for booleans, numbers, null; strings must be quoted.
     try:
         return json.loads(stripped)
-    except json.JSONDecodeError, ValueError:
+    except (json.JSONDecodeError, ValueError):
         return stripped
 
 
 def _parse_all_md_tables(text: str) -> list[dict[str, str]]:
     """Parse ALL pipe tables in *text*, returning a flat list of row dicts.
 
-    Unlike ``_parse_md_table``, which finds only the first table after a
-    specific heading, this scans the entire text and collects every pipe
-    table it encounters.  Each row is a dict keyed by the column headers
-    of its table.
+    Scans the entire text and collects every pipe table it encounters.
+    Each row is a dict keyed by the column headers of its table.
     """
     rows: list[dict[str, str]] = []
     lines = text.splitlines()
@@ -425,33 +376,6 @@ def check_docs_configuration(
             container_keys_to_skip=_CONFIGURATION_MD_CONTAINER_KEYS,
         )
     )
-
-    return findings
-
-
-def check_docs_connecting(
-    text: str,
-    path: str = "docs/connecting.md",
-) -> list[dict[str, Any]]:
-    """Check *text* (``docs/connecting.md``) against ``MailConfig``.
-
-    Returns a list of finding dicts.
-    """
-    findings: list[dict[str, Any]] = []
-
-    # -- parse the YAML keys table ------------------------------------------
-    yaml_rows = _parse_md_table(text, "### YAML config file")
-
-    if not yaml_rows:
-        findings.append(
-            {
-                "artifact": path,
-                "type": "doc-parse-error",
-                "message": "Could not parse YAML keys table",
-            }
-        )
-
-    findings.extend(_validate_yaml_keys_against_mailconfig(yaml_rows, path))
 
     return findings
 

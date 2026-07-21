@@ -12,7 +12,7 @@ sys.path.insert(0, str(_SCRIPTS))
 
 from check_config_sync import (  # noqa: E402
     check_accounts_example,
-    check_docs_connecting,
+    check_docs_configuration,
     check_json_example,
     run_checks,
 )
@@ -156,11 +156,6 @@ _DOCS_YAML_TABLE = """\
 """
 
 
-def _full_docs(yaml_table: str) -> str:
-    """Wrap the YAML-key table in minimal md so the parser finds it."""
-    return "# Connecting\n\n## Configuration keys\n\n" + yaml_table + "\n"
-
-
 def _full_config_docs(yaml_table: str) -> str:
     """Wrap the YAML-key table for docs/configuration.md format."""
     return "# Configuration Reference\n\n" + yaml_table + "\n"
@@ -179,8 +174,8 @@ def test_json_example_happy() -> None:
 
 def test_docs_happy() -> None:
     """No findings when docs match MailConfig."""
-    text = _full_docs(_DOCS_YAML_TABLE)
-    findings = check_docs_connecting(text)
+    text = _full_config_docs(_DOCS_YAML_TABLE)
+    findings = check_docs_configuration(text)
     assert findings == []
 
 
@@ -243,8 +238,8 @@ def test_doc_missing_yaml_key() -> None:
     modified = _DOCS_YAML_TABLE.replace(
         "| `imap.port` | no | `993` | IMAP server port |\n", ""
     )
-    text = _full_docs(modified)
-    findings = check_docs_connecting(text)
+    text = _full_config_docs(modified)
+    findings = check_docs_configuration(text)
     assert any(
         f["type"] == "doc-missing-yaml-key" and f["key"] == "imap.port"
         for f in findings
@@ -254,8 +249,8 @@ def test_doc_missing_yaml_key() -> None:
 def test_doc_default_mismatch() -> None:
     """Changing a documented default reports doc-default-mismatch."""
     modified = _DOCS_YAML_TABLE.replace("`993`", "`1993`", 1)
-    text = _full_docs(modified)
-    findings = check_docs_connecting(text)
+    text = _full_config_docs(modified)
+    findings = check_docs_configuration(text)
     assert any(
         f["type"] == "doc-default-mismatch" and f["key"] == "imap.port"
         for f in findings
@@ -265,8 +260,8 @@ def test_doc_default_mismatch() -> None:
 def test_doc_stale_yaml_key() -> None:
     """Adding a made-up YAML row reports doc-stale-yaml-key."""
     modified = _DOCS_YAML_TABLE + ("| `foo.bar` | no | `1` | Made up |\n")
-    text = _full_docs(modified)
-    findings = check_docs_connecting(text)
+    text = _full_config_docs(modified)
+    findings = check_docs_configuration(text)
     assert any(
         f["type"] == "doc-stale-yaml-key" and f["key"] == "foo.bar" for f in findings
     )

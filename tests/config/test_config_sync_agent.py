@@ -195,7 +195,7 @@ def test_run_config_sync_agent_all_surfaces_reach_prompt(
 
     # The three on-disk surfaces are embedded verbatim.
     json_text = (_REPO_ROOT / "config" / "config.example.json").read_text()
-    docs_text = (_REPO_ROOT / "docs" / "connecting.md").read_text()
+    docs_text = (_REPO_ROOT / "docs" / "configuration.md").read_text()
     assert json_text in user_message
     assert docs_text in user_message
 
