@@ -194,15 +194,15 @@ def test_run_config_sync_agent_all_surfaces_reach_prompt(
     user_message = handle.run_sync.call_args.args[0]
 
     # The three on-disk surfaces are embedded verbatim.
-    yaml_text = (_REPO_ROOT / "docs/config" / "mail.local.example.yaml").read_text()
+    json_text = (_REPO_ROOT / "config" / "config.example.json").read_text()
     docs_text = (_REPO_ROOT / "docs" / "connecting.md").read_text()
-    assert yaml_text in user_message
+    assert json_text in user_message
     assert docs_text in user_message
 
     # The MailConfig dataclass surface and the mappings are embedded too.
     assert "MailConfig fields" in user_message
     assert "imap_host" in user_message
-    assert "imap_host: yaml=`imap.host`" in user_message
+    assert "imap_host: key=`imap.host`" in user_message
 
 
 # ---------------------------------------------------------------------------

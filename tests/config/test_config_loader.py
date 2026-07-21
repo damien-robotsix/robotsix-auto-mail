@@ -274,12 +274,10 @@ def test_resolve_llm_provider_model_explicit_wins_over_env(
 
 def test_load_accounts_returns_config() -> None:
     """load_accounts returns the config via robotsix_config."""
-    import sys as _sys
-
     accts = _default_accounts()
-    mock_rc = mock.MagicMock()
-    mock_rc.load_config = mock.MagicMock(return_value=accts)
-    with mock.patch.dict(_sys.modules, {"robotsix_config": mock_rc}):
+    with mock.patch(
+        "robotsix_auto_mail.config.loader._load_config", return_value=accts
+    ):
         accounts = load_accounts()
     assert isinstance(accounts, MailAccountsConfig)
     cfg = accounts.default.config
@@ -288,21 +286,14 @@ def test_load_accounts_returns_config() -> None:
 
 
 def test_load_accounts_missing_file_raises() -> None:
-    """When robotsix_config raises, load_accounts falls back to direct load,
-    which raises ConfigurationError when config/config.json is missing."""
-    import sys as _sys
+    """When robotsix_config raises InvalidConfigError, load_accounts propagates it."""
+    from robotsix_config import InvalidConfigError
 
-    mock_rc = mock.MagicMock()
-    mock_rc.load_config = mock.MagicMock(
-        side_effect=FileNotFoundError("no config"),
-    )
-    with (
-        mock.patch.dict(_sys.modules, {"robotsix_config": mock_rc}),
-        # Ensure the fallback can't read a local config file — the test
-        # must be deterministic regardless of what's on disk.
-        mock.patch("pathlib.Path.read_text", side_effect=FileNotFoundError),
+    with mock.patch(
+        "robotsix_auto_mail.config.loader._load_config",
+        side_effect=InvalidConfigError("Config in config/config.json is invalid"),
     ):
-        with pytest.raises(ConfigurationError, match="No valid configuration found"):
+        with pytest.raises(InvalidConfigError):
             load_accounts()
 
 

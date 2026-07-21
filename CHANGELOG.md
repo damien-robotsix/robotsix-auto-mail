@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Migrate config to typed-JSON contract: removed fallback config loading in loader.py (now uses robotsix_config exclusively), replaced YAML example with multi-account JSON example (config/config.example.json), and updated CI config-sync checker and advisory agent to validate against JSON instead of YAML.
 - Introduced ``RobotsixMailError`` base class in ``src/robotsix_auto_mail/errors.py``,
   re-exported from the package root. All 9 domain exceptions now inherit from
   ``RobotsixMailError`` instead of plain ``Exception``, and the CLI entrypoint

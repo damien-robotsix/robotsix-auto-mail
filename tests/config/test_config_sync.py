@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -12,121 +13,113 @@ sys.path.insert(0, str(_SCRIPTS))
 from check_config_sync import (  # noqa: E402
     check_accounts_example,
     check_docs_connecting,
-    check_yaml_example,
+    check_json_example,
     run_checks,
 )
-
-from robotsix_auto_mail.config import MailAccountsConfig  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Shared test data
 # ---------------------------------------------------------------------------
 
-_YAML_EXAMPLE = """\
-# Example multi-account configuration for robotsix-auto-mail.
-#
-# Copy this file to config/mail.local.yaml and fill in your real values.
-# config/mail.local.yaml is git-ignored so credentials never land in the repo.
-#
-# Any field you omit falls back to its built-in default (shown commented
-# below). The MAIL_ACCOUNTS_<n>_* environment variables override the
-# corresponding value here.
-#
-# llm: and langfuse: are application-wide (top-level) sections.
+_JSON_EXAMPLE: dict = {
+    "accounts": [
+        {
+            "account_id": "personal",
+            "label": "Personal",
+            "config": {
+                "imap_host": "imap.example.com",
+                "imap_port": 993,
+                "imap_tls_mode": "direct-tls",
+                "imap_folder": "INBOX",
+                "smtp_host": "smtp.example.com",
+                "smtp_port": 587,
+                "smtp_tls_mode": "starttls",
+                "username": "user@example.com",
+                "password": "",
+                "oauth2_token": "",
+                "oauth2_client_id": "",
+                "oauth2_client_secret": "",
+                "oauth2_provider": "",
+                "oauth2_tenant": "organizations",
+                "db_path": ".data/personal/mail.db",
+                "ingest_interval_minutes": 15,
+                "archive_root": "robotsix-mail-archive",
+                "archive_enabled": True,
+                "triage_on_ingest": True,
+                "triage_rules_path": "",
+                "llm_api_key": "",
+                "llm_provider_model": "",
+                "langfuse_public_key": "",
+                "langfuse_secret_key": "",
+                "langfuse_base_url": "",
+                "log_level": "INFO",
+                "log_format": "console",
+            },
+        },
+        {
+            "account_id": "work",
+            "label": "Work",
+            "config": {
+                "imap_host": "imap.work.example.com",
+                "smtp_host": "smtp.work.example.com",
+                "username": "user@work.example.com",
+                "password": "",
+                "imap_port": 993,
+                "imap_tls_mode": "direct-tls",
+                "smtp_port": 587,
+                "smtp_tls_mode": "starttls",
+                "db_path": ".data/work/mail.db",
+                "imap_folder": "INBOX",
+                "llm_api_key": "",
+                "llm_provider_model": "",
+                "ingest_interval_minutes": 15,
+                "archive_root": "robotsix-mail-archive",
+                "archive_enabled": True,
+                "triage_on_ingest": True,
+                "triage_rules_path": "",
+                "oauth2_token": "",
+                "oauth2_client_id": "",
+                "oauth2_client_secret": "",
+                "oauth2_provider": "",
+                "oauth2_tenant": "organizations",
+                "langfuse_public_key": "",
+                "langfuse_secret_key": "",
+                "langfuse_base_url": "",
+                "log_level": "INFO",
+                "log_format": "console",
+            },
+        },
+    ],
+    "default_account_id": "personal",
+}
 
-# LLM provider — used by the `detect` command and future LLM-assisted
-# mail processing. The LLM_API_KEY environment variable overrides this
-# value.
-# llm:
-#   api_key: sk-or-v1-…
-#   provider_model: ""  # escape-hatch: override llmio tier default (leave blank to use tier default)
-
-# Langfuse observability — optional; enables LLM agent tracing.
-# langfuse:
-#   public_key: ""
-#   secret_key: ""
-#   base_url: ""
-
-default_account: personal
-
-accounts:
-  - id: personal
-    label: Personal
-    imap:
-      host: imap.example.com
-      # port: 993
-      # tls_mode: direct-tls
-      # folder: INBOX
-    smtp:
-      host: smtp.example.com
-      # port: 587
-      # tls_mode: starttls
-    auth:
-      username: user@example.com
-      password: ""  # set your password here, or via MAIL_ACCOUNTS_0_PASSWORD
-      # OAuth2 / XOAUTH2 — optional; see docs/connecting.md.
-      # oauth2_token: ""
-      # oauth2_client_id: ""
-      # oauth2_client_secret: ""
-      # oauth2_provider: ""
-      # oauth2_tenant: organizations
-    store:
-      path: .data/personal/mail.db
-    # Automatic ingestion (used by `ingest --watch`). How often, in minutes,
-    # to fetch new mail. Overridable via MAIL_ACCOUNTS_0_INGEST_INTERVAL.
-    # ingest:
-    #   interval_minutes: 15
-    # Self-managed archive folder structure.
-    # archive:
-    #   root: robotsix-mail-archive
-    #   enabled: true
-    # Inbox triage agent — runs automatically after each ingest cycle.
-    # triage:
-    #   on_ingest: true
-    #   rules_path: ""
-    # Logging configuration — application-wide.
-    # logging:
-    #   level: INFO
-    #   format: console
-
-  - id: work
-    label: Work
-    imap:
-      host: imap.work.example.com
-    smtp:
-      host: smtp.work.example.com
-    auth:
-      username: user@work.example.com
-      password: ""
-    store:
-      path: .data/work/mail.db
-"""
-
-_ACCOUNTS_EXAMPLE = """\
-# Example multi-account configuration.
-default_account: personal
-
-accounts:
-  - id: personal
-    label: Personal
-    imap:
-      host: imap.gmail.com
-    smtp:
-      host: smtp.gmail.com
-    auth:
-      username: me@gmail.com
-      password: ""
-
-  - id: work
-    label: Work
-    imap:
-      host: imap.work.example.com
-    smtp:
-      host: smtp.work.example.com
-    auth:
-      username: me@work.example.com
-      password: ""
-"""
+_ACCOUNTS_EXAMPLE_JSON: dict = {
+    "accounts": [
+        {
+            "account_id": "personal",
+            "label": "Personal",
+            "config": {
+                "imap_host": "imap.gmail.com",
+                "smtp_host": "smtp.gmail.com",
+                "username": "me@gmail.com",
+                "password": "",
+                "db_path": ".data/personal/mail.db",
+            },
+        },
+        {
+            "account_id": "work",
+            "label": "Work",
+            "config": {
+                "imap_host": "imap.work.example.com",
+                "smtp_host": "smtp.work.example.com",
+                "username": "me@work.example.com",
+                "password": "",
+                "db_path": ".data/work/mail.db",
+            },
+        },
+    ],
+    "default_account_id": "personal",
+}
 
 _DOCS_YAML_TABLE = """\
 ### YAML config file
@@ -178,9 +171,9 @@ def _full_config_docs(yaml_table: str) -> str:
 # ====================================================================
 
 
-def test_yaml_example_happy() -> None:
-    """No findings when the example YAML matches MailConfig."""
-    findings = check_yaml_example(_YAML_EXAMPLE)
+def test_json_example_happy() -> None:
+    """No findings when the JSON example matches MailConfig."""
+    findings = check_json_example(_JSON_EXAMPLE)
     assert findings == []
 
 
@@ -194,74 +187,50 @@ def test_docs_happy() -> None:
 def test_run_checks_happy(tmp_path: Path) -> None:
     """Exit 0 when all artifacts are in sync."""
     repo = tmp_path
-    (repo / "docs/config").mkdir(parents=True)
-    (repo / "docs/config" / "mail.local.example.yaml").write_text(_YAML_EXAMPLE)
+    (repo / "config").mkdir(parents=True)
+    (repo / "config" / "config.example.json").write_text(json.dumps(_JSON_EXAMPLE))
+    (repo / "docs").mkdir(parents=True)
     (repo / "docs" / "configuration.md").write_text(_full_config_docs(_DOCS_YAML_TABLE))
     assert run_checks(repo) == 0
 
 
 # ====================================================================
-# YAML drift
+# JSON example drift
 # ====================================================================
 
 
-def test_yaml_missing_key() -> None:
-    """Removing a commented-out key reports missing-from-yaml."""
-    modified = _YAML_EXAMPLE.replace("      # port: 993\n", "")
-    findings = check_yaml_example(modified)
+def test_json_example_missing_field() -> None:
+    """Removing a field from the first account reports missing-from-json-example."""
+    modified = json.loads(json.dumps(_JSON_EXAMPLE))
+    del modified["accounts"][0]["config"]["imap_port"]
+    findings = check_json_example(modified)
     assert any(
-        f["type"] == "missing-from-yaml" and f["key"] == "imap.port" for f in findings
-    )
-
-
-def test_yaml_stale_key() -> None:
-    """Adding an unrecognised key reports stale-yaml-key."""
-    modified = _YAML_EXAMPLE + "\n# foo:\n#   bar: 1\n"
-    findings = check_yaml_example(modified)
-    assert any(
-        f["type"] == "stale-yaml-key" and f["key"] == "foo.bar" for f in findings
-    )
-
-
-def test_yaml_default_mismatch() -> None:
-    """Changing a commented-out default reports default-mismatch."""
-    modified = _YAML_EXAMPLE.replace("# port: 993", "# port: 9993")
-    findings = check_yaml_example(modified)
-    assert any(
-        f["type"] == "default-mismatch"
-        and f["key"] == "imap.port"
-        and f["expected"] == 993
+        f["type"] == "missing-from-json-example" and f["field"] == "imap_port"
         for f in findings
     )
 
 
-def test_yaml_uncommented_default_mismatch() -> None:
-    """Changing an uncommented value reports default-mismatch."""
-    # Change smtp.host to something else — it's required so no comparison,
-    # but we can change a value that has a default... actually smtp.host
-    # has no default.  Let's change the password to non-empty.
-    modified = _YAML_EXAMPLE.replace('password: ""', 'password: "real"')
-    findings = check_yaml_example(modified)
-    # password is MISSING in dataclass, so no default comparison.
-    # But we should still verify it's not flagged.
-    assert not any(
-        f["type"] == "default-mismatch" and f["key"] == "auth.password"
+def test_json_example_stale_key() -> None:
+    """Adding an unrecognised key reports stale-json-example-key."""
+    modified = json.loads(json.dumps(_JSON_EXAMPLE))
+    modified["accounts"][0]["config"]["made_up_field"] = 1
+    findings = check_json_example(modified)
+    assert any(
+        f["type"] == "stale-json-example-key" and f["key"] == "made_up_field"
         for f in findings
     )
 
 
-# ====================================================================
-# Placeholder tolerance
-# ====================================================================
+def test_json_example_no_accounts() -> None:
+    """An empty accounts list reports json-example-no-accounts."""
+    findings = check_json_example({"accounts": []})
+    assert any(f["type"] == "json-example-no-accounts" for f in findings)
 
 
-def test_placeholder_llm_api_key_yaml() -> None:
-    """llm_api_key placeholder is not a default-mismatch."""
-    # The default is "" but the example has "sk-or-v1-…" — OK.
-    findings = check_yaml_example(_YAML_EXAMPLE)
-    assert not any(
-        f["type"] == "default-mismatch" and "llm.api_key" in str(f) for f in findings
-    )
+def test_json_example_missing_config() -> None:
+    """A first account without a config dict reports json-example-missing-config."""
+    findings = check_json_example({"accounts": [{"account_id": "x", "label": "X"}]})
+    assert any(f["type"] == "json-example-missing-config" for f in findings)
 
 
 # ====================================================================
@@ -310,10 +279,9 @@ def test_doc_stale_yaml_key() -> None:
 
 def test_run_checks_missing_file(tmp_path: Path) -> None:
     """Exit 2 when an artifact file is missing entirely."""
-    # Create only some files, but not the YAML example.
     repo = tmp_path
-    (repo / "docs/config").mkdir(parents=True)
-    # intentionally skip mail.local.example.yaml
+    # Create only docs/configuration.md, not config/config.example.json.
+    (repo / "docs").mkdir(parents=True)
     (repo / "docs" / "configuration.md").write_text(_full_config_docs(_DOCS_YAML_TABLE))
     assert run_checks(repo) == 2
 
@@ -323,38 +291,42 @@ def test_run_checks_missing_file(tmp_path: Path) -> None:
 # ====================================================================
 
 
-def test_accounts_example_happy() -> None:
-    """A well-formed multi-account example produces no findings."""
-    findings = check_accounts_example(_ACCOUNTS_EXAMPLE)
+def test_accounts_example_happy(tmp_path: Path) -> None:
+    """A well-formed multi-account JSON example produces no findings."""
+    path = tmp_path / "accounts.json"
+    path.write_text(json.dumps(_ACCOUNTS_EXAMPLE_JSON))
+    findings = check_accounts_example(str(path))
     assert findings == []
 
 
 def test_accounts_example_shipped_file_clean() -> None:
-    """The shipped docs/config/mail.local.example.yaml produces no findings."""
-    findings = check_accounts_example("docs/config/mail.local.example.yaml")
+    """The shipped config/config.example.json produces no findings."""
+    findings = check_accounts_example("config/config.example.json")
     assert findings == []
 
 
 def test_accounts_example_duplicate_ids(tmp_path: Path) -> None:
     """Duplicate account ids surface at least one finding."""
-    bad = _ACCOUNTS_EXAMPLE.replace("id: work", "id: personal")
-    path = tmp_path / "accounts.yaml"
-    path.write_text(bad)
-    findings = check_accounts_example(path)
+    bad = json.loads(json.dumps(_ACCOUNTS_EXAMPLE_JSON))
+    bad["accounts"][1]["account_id"] = "personal"
+    path = tmp_path / "accounts.json"
+    path.write_text(json.dumps(bad))
+    findings = check_accounts_example(str(path))
     assert findings
 
 
 def test_accounts_example_no_accounts_key(tmp_path: Path) -> None:
-    """A single-account-shaped doc (no `accounts:` key) is rejected with an
-    actionable error naming the `accounts:` list and `detect`."""
-    mono = (
-        "imap:\n  host: imap.example.com\n"
-        "smtp:\n  host: smtp.example.com\n"
-        'auth:\n  username: user@example.com\n  password: ""\n'
-    )
-    path = tmp_path / "mono.yaml"
-    path.write_text(mono)
-    findings = check_accounts_example(path)
+    """A flat object (no ``accounts`` key) is rejected with an
+    actionable error naming the ``accounts`` list."""
+    mono = {
+        "imap_host": "imap.example.com",
+        "smtp_host": "smtp.example.com",
+        "username": "user@example.com",
+        "password": "",
+    }
+    path = tmp_path / "mono.json"
+    path.write_text(json.dumps(mono))
+    findings = check_accounts_example(str(path))
     assert findings
     load_errors = [f for f in findings if f["type"] == "accounts-load-error"]
     assert load_errors
@@ -364,22 +336,36 @@ def test_accounts_example_no_accounts_key(tmp_path: Path) -> None:
 
 def test_accounts_example_colliding_db_paths(tmp_path: Path) -> None:
     """Colliding per-account store.path values surface a finding."""
-    bad = (
-        "accounts:\n"
-        "  - id: a\n"
-        "    imap:\n      host: imap.a.example.com\n"
-        "    smtp:\n      host: smtp.a.example.com\n"
-        '    auth:\n      username: a@example.com\n      password: ""\n'
-        "    store:\n      path: .data/shared.db\n"
-        "  - id: b\n"
-        "    imap:\n      host: imap.b.example.com\n"
-        "    smtp:\n      host: smtp.b.example.com\n"
-        '    auth:\n      username: b@example.com\n      password: ""\n'
-        "    store:\n      path: .data/shared.db\n"
-    )
-    path = tmp_path / "accounts.yaml"
-    path.write_text(bad)
-    findings = check_accounts_example(path)
+    bad: dict = {
+        "accounts": [
+            {
+                "account_id": "a",
+                "label": "A",
+                "config": {
+                    "imap_host": "imap.a.example.com",
+                    "smtp_host": "smtp.a.example.com",
+                    "username": "a@example.com",
+                    "password": "",
+                    "db_path": ".data/shared.db",
+                },
+            },
+            {
+                "account_id": "b",
+                "label": "B",
+                "config": {
+                    "imap_host": "imap.b.example.com",
+                    "smtp_host": "smtp.b.example.com",
+                    "username": "b@example.com",
+                    "password": "",
+                    "db_path": ".data/shared.db",
+                },
+            },
+        ],
+        "default_account_id": "a",
+    }
+    path = tmp_path / "accounts.json"
+    path.write_text(json.dumps(bad))
+    findings = check_accounts_example(str(path))
     assert findings
 
 
@@ -392,19 +378,3 @@ def test_run_checks_real_repo() -> None:
     """run_checks() against the real repo root still exits 0."""
     repo_root = Path(__file__).resolve().parent.parent.parent
     assert run_checks(repo_root) == 0
-
-
-def test_shipped_accounts_example_loads() -> None:
-    """The shipped multi-account example loads as a valid container via yaml + model_validate."""
-    import yaml
-    from check_config_sync import _normalise_legacy_yaml
-
-    raw = yaml.safe_load(Path("docs/config/mail.local.example.yaml").read_text())
-    config = MailAccountsConfig.model_validate(_normalise_legacy_yaml(raw))
-    assert len(config.accounts) >= 2
-    ids = config.ids()
-    assert len(set(ids)) == len(ids)
-    db_paths = [account.config.db_path for account in config.accounts]
-    assert len(set(db_paths)) == len(db_paths)
-    # The default resolves without raising.
-    assert config.default.account_id in ids

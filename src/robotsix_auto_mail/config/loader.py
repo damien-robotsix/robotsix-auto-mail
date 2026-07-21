@@ -1,9 +1,9 @@
 """Configuration loaders: the public ``load*`` entry points.
 
-The primary configuration source is the JSON file at ``ROBOTSIX_CONFIG_FILE``
+The single configuration source is the JSON file at ``ROBOTSIX_CONFIG_FILE``
 (default ``config/config.json``), which must use the ``accounts:`` shape.
-``ROBOTSIX_CONFIG_FILE`` only *locates* the file — it is not a general
-environment-variable config path.
+Configuration is loaded exclusively through :mod:`robotsix_config` — there
+is no fallback or alternative config path.
 
 The two LLM-only resolvers (:func:`resolve_llm_api_key`,
 :func:`resolve_llm_provider_model`) check, in order: an explicit
@@ -17,108 +17,27 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
-from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, SecretStr
+from robotsix_config import (
+    config_schema_json as _config_schema_json,
+)
+from robotsix_config import (
+    dump_config as _dump_config,
+)
+from robotsix_config import (
+    load_config as _load_config,
+)
 
 from robotsix_auto_mail.config.model import MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.schema import ConfigurationError
 
-if TYPE_CHECKING:
-    pass
-
 logger = logging.getLogger(__name__)
-
-
-def _patch_secrets(data: object, model: BaseModel) -> None:
-    """Walk *model* tree in parallel with *data* dict/list, replacing masked
-    ``"**********"`` values with the actual :class:`SecretStr` content.
-
-    The function avoids calling :meth:`SecretStr.get_secret_value` — it
-    reads the internal ``_secret_value`` attribute directly so that
-    CodeQL's taint-tracking does not see a credential source flowing into
-    the JSON serializer.
-    """
-    if isinstance(data, dict):
-        for field_name in data:
-            if field_name not in type(model).model_fields:
-                continue
-            value = getattr(model, field_name)
-            if isinstance(value, SecretStr):
-                data[field_name] = value._secret_value
-            elif isinstance(value, BaseModel):
-                _patch_secrets(data[field_name], value)
-            elif isinstance(value, list):
-                items = data[field_name]
-                if isinstance(items, list):
-                    for i, item in enumerate(value):
-                        if i < len(items) and isinstance(item, BaseModel):
-                            _patch_secrets(items[i], item)
-
-
-def _dump_config_json(config: MailAccountsConfig) -> str:
-    """Serialize *config* to a JSON string with secrets exposed.
-
-    First serializes with secrets masked (``model_dump_json`` defaults to
-    ``"**********"``), then patches the real secret values back in via
-    :func:`_patch_secrets`.  The two-step approach keeps
-    :meth:`~pydantic.SecretStr.get_secret_value` out of the serialization
-    data-flow so that CodeQL's ``py/clear-text-storage-sensitive-data``
-    rule does not flag the intentional credential persistence.
-    """
-    import json as _json
-
-    masked_json = config.model_dump_json(indent=2)
-    data = _json.loads(masked_json)
-    _patch_secrets(data, config)
-    return _json.dumps(data, indent=2, ensure_ascii=False)
 
 
 def load_accounts() -> MailAccountsConfig:
     """Load :class:`MailAccountsConfig` from ``config/config.json``
     (``ROBOTSIX_CONFIG_FILE``)."""
-    try:
-        from robotsix_config import load_config as _load_config
-    except ModuleNotFoundError:
-        logger.debug("robotsix_config not installed — falling back to direct load")
-        return _load_accounts_fallback()
-    try:
-        return _load_config(MailAccountsConfig)
-    except Exception:
-        logger.debug("robotsix_config load failed — falling back to direct load")
-        return _load_accounts_fallback()
-
-
-def _resolve_config_path() -> Path:
-    """Return the path to the config file, respecting ``ROBOTSIX_CONFIG_FILE``."""
-    import os as _os
-
-    env = _os.environ.get("ROBOTSIX_CONFIG_FILE")
-    if env:
-        return Path(env)
-    return Path("config/config.json")
-
-
-def _load_accounts_fallback() -> MailAccountsConfig:
-    """Directly read the config file when ``robotsix_config`` is unavailable."""
-    import json as _json
-
-    path = _resolve_config_path()
-    try:
-        text = path.read_text()
-        return MailAccountsConfig.model_validate(_json.loads(text))
-    except Exception:
-        logger.debug("Cannot load config from %s — returning empty config", path)
-        try:
-            return MailAccountsConfig(accounts=[], default_account_id="")
-        except Exception:
-            from robotsix_auto_mail.config.schema import ConfigurationError
-
-            raise ConfigurationError(
-                f"No valid configuration found at {path}. "
-                "Run 'robotsix-auto-mail detect' to create one."
-            ) from None
+    return _load_config(MailAccountsConfig)
 
 
 def load() -> MailConfig:
@@ -136,28 +55,12 @@ def save_accounts(
 ) -> None:
     """Persist :class:`MailAccountsConfig` to *path*
     (default ``config/config.json``)."""
-    try:
-        from robotsix_config import dump_config as _dump_config
-    except ModuleNotFoundError:
-        logger.debug("robotsix_config not installed — writing JSON directly")
-        target = Path(path) if path is not None else _resolve_config_path()
-        target.parent.mkdir(parents=True, exist_ok=True)
-        json_text = (
-            _dump_config_json(config) + "\n"
-        )  # lgtm[py/clear-text-storage-sensitive-data]
-        target.write_text(json_text)  # lgtm[py/clear-text-storage-sensitive-data]
-        return
     _dump_config(config, path=path)
 
 
 def get_config_schema() -> str:
     """Return JSON Schema for :class:`MailAccountsConfig`
     (for CI drift check)."""
-    try:
-        from robotsix_config import config_schema_json as _config_schema_json
-    except ModuleNotFoundError:
-        logger.debug("robotsix_config not installed — returning empty schema")
-        return "{}"
     return _config_schema_json(MailAccountsConfig)
 
 
