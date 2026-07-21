@@ -50,7 +50,7 @@ _ARCHIVE_WATERMARK_KEY = "archive_structure"
 #: docstring notes the specific resolver used.
 _LLM_PARAM_DOCS = """\
         api_key: OpenRouter API key.  Resolves with the precedence
-            ``api_key`` argument → ``LLM_API_KEY`` env var → config file.
+            ``api_key`` argument → config file.
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
             back to the tier-level default model.

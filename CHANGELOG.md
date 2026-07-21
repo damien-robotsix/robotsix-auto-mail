@@ -5,7 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
-- Removed all environment-variable overrides for LLM secrets and settings (`LLM_API_KEY`, `LLM_PROVIDER_MODEL`). The API key now resolves solely from `config.json`'s `llm_api_key` field, and the provider-model from `llm_provider_model`. The legacy plain-JSON fallback loader in `_load_accounts_from_file` has been removed — `robotsix_config.load_config` is the only config-loading path. A schema-drift check (`config/config.schema.json` vs the pydantic model) has been added to the CI config-sync step.
+- **Breaking:** Remove `LLM_API_KEY` / `LLM_PROVIDER_MODEL` environment-variable fallbacks — the config file is now the sole configuration source for LLM credentials.  `resolve_llm_api_key` and `resolve_llm_provider_model` resolve only from the explicit argument or `config/config.json`.  `load_llm` and `load_llm_provider_model` convenience functions are removed.  The plain-JSON fallback in `_load_accounts_from_file` is also removed — `robotsix_config` is the only loader.
 - Migrate config to typed-JSON contract: removed fallback config loading in loader.py (now uses robotsix_config exclusively), replaced YAML example with multi-account JSON example (config/config.example.json), and updated CI config-sync checker and advisory agent to validate against JSON instead of YAML.
 - Introduced ``RobotsixMailError`` base class in ``src/robotsix_auto_mail/errors.py``,
   re-exported from the package root. All 9 domain exceptions now inherit from

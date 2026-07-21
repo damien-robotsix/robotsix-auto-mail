@@ -1,4 +1,4 @@
-"""Tests for LLM configuration settings (llm_api_key, load_llm)."""
+"""Tests for LLM configuration settings (llm_api_key)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from robotsix_auto_mail.config import (
     MailAccount,
     MailAccountsConfig,
     MailConfig,
-    load_llm,
+    resolve_llm_api_key,
 )
 
 # ---------------------------------------------------------------------------
@@ -69,8 +69,8 @@ def test_llm_provider_model_set_explicitly() -> None:
     assert cfg.llm_provider_model == "openrouter-deepseek"
 
 
-def test_load_llm_reads_from_config(monkeypatch: pytest.MonkeyPatch) -> None:
-    """load_llm reads llm_api_key from the loaded config."""
+def test_resolve_llm_api_key_from_config(monkeypatch: pytest.MonkeyPatch) -> None:
+    """resolve_llm_api_key reads llm_api_key from the loaded config."""
     accts = MailAccountsConfig(
         accounts=[
             MailAccount(
@@ -90,11 +90,13 @@ def test_load_llm_reads_from_config(monkeypatch: pytest.MonkeyPatch) -> None:
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        assert load_llm() == "sk-from-file"
+        assert resolve_llm_api_key() == "sk-from-file"
 
 
-def test_load_llm_default_when_nothing_set(monkeypatch: pytest.MonkeyPatch) -> None:
-    """load_llm returns empty key when no llm_api_key configured."""
+def test_resolve_llm_api_key_default_when_nothing_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """resolve_llm_api_key returns empty key when no llm_api_key configured."""
     accts = MailAccountsConfig(
         accounts=[
             MailAccount(
@@ -113,13 +115,13 @@ def test_load_llm_default_when_nothing_set(monkeypatch: pytest.MonkeyPatch) -> N
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        assert load_llm() == ""
+        assert resolve_llm_api_key(raise_on_missing=False) == ""
 
 
-def test_load_llm_when_load_fails() -> None:
-    """load_llm returns empty string when config loading fails."""
+def test_resolve_llm_api_key_when_load_fails() -> None:
+    """resolve_llm_api_key returns empty string when config loading fails."""
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts",
         side_effect=ConfigurationError("no config"),
     ):
-        assert load_llm() == ""
+        assert resolve_llm_api_key(raise_on_missing=False) == ""

@@ -3,7 +3,8 @@
 The single configuration source is the JSON file at ``ROBOTSIX_CONFIG_FILE``
 (default ``config/config.json``), which must use the ``accounts:`` shape.
 Configuration is loaded exclusively through :mod:`robotsix_config` — there
-is no fallback or alternative config path.
+is no fallback or alternative config path.  Environment variables are NOT
+a configuration source.
 
 The two LLM-only resolvers (:func:`resolve_llm_api_key`,
 :func:`resolve_llm_provider_model`) check, in order: an explicit
@@ -63,25 +64,6 @@ def get_config_schema() -> str:
     return _config_schema_json(MailAccountsConfig)
 
 
-def load_llm() -> str:
-    """Resolve the LLM API key from the config file's ``llm_api_key`` field."""
-    try:
-        file_cfg = load()
-    except Exception:
-        return ""
-    return file_cfg.llm_api_key._secret_value
-
-
-def load_llm_provider_model() -> str:
-    """Resolve the LLM provider-model from the config file's
-    ``llm_provider_model``."""
-    try:
-        file_cfg = load()
-    except Exception:
-        return ""
-    return file_cfg.llm_provider_model
-
-
 def resolve_llm_api_key(
     api_key: str | None = None, raise_on_missing: bool = True
 ) -> str:
@@ -100,7 +82,17 @@ def resolve_llm_api_key(
         ConfigurationError: When *raise_on_missing* is ``True`` and no key
             is found.
     """
-    resolved = api_key or load_llm()
+    if api_key:
+        return api_key
+    try:
+        file_cfg = load()
+    except Exception:
+        if raise_on_missing:
+            raise ConfigurationError(
+                "No LLM API key found — add llm_api_key to config/config.json"
+            ) from None
+        return ""
+    resolved = file_cfg.llm_api_key.get_secret_value()
     if not resolved and raise_on_missing:
         raise ConfigurationError(
             "No LLM API key found — add llm_api_key to config/config.json"
@@ -111,8 +103,7 @@ def resolve_llm_api_key(
 def resolve_llm_provider_model(
     provider_model: str | None = None, default: str = ""
 ) -> str:
-    """Resolve the LLM provider-model: explicit *provider_model* arg →
-    config file.
+    """Resolve the LLM provider-model: explicit *provider_model* arg → config file.
 
     Args:
         provider_model: An explicit provider-model identifier, usually from a
@@ -122,5 +113,11 @@ def resolve_llm_provider_model(
     Returns:
         The resolved provider-model identifier, or *default*.
     """
-    resolved = provider_model or load_llm_provider_model()
+    if provider_model:
+        return provider_model
+    try:
+        file_cfg = load()
+    except Exception:
+        return default
+    resolved = file_cfg.llm_provider_model
     return resolved or default

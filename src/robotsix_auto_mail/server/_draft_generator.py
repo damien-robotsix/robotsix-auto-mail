@@ -110,7 +110,7 @@ def generate_draft_reply(
         conn: Open SQLite connection.
         message_id: The ``mail_records`` message id to draft a reply for.
         api_key: OpenRouter API key.  Resolves with the precedence
-            ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
+            ``api_key`` argument → config file (via
             :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
         provider_model: LLM provider-model identifier (e.g. ``openrouter-deepseek``).
             ``None`` falls back to the tier-level default model (via
