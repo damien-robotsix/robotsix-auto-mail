@@ -6,6 +6,7 @@ Entry point: ``main()``, exposed via console_scripts in pyproject.toml.
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 import time as time
 
@@ -63,6 +64,7 @@ from robotsix_auto_mail.cli.config import (
 )
 from robotsix_auto_mail.config import load_accounts as load_accounts
 from robotsix_auto_mail.db import init_db as init_db
+from robotsix_auto_mail.errors import RobotsixMailError
 from robotsix_auto_mail.imap import ImapClient as ImapClient
 from robotsix_auto_mail.pipeline import ingest_mail as ingest_mail
 
@@ -154,66 +156,72 @@ def main(argv: list[str] | None = None) -> int:
     # -- configure logging + Langfuse tracing from config (or defaults) --
     setup_observability(_loaded_cfg)
 
-    if args.command == "probe":
-        return _cmd_probe(_load_config_or_exit(args.account))
+    _logger = logging.getLogger(__name__)
 
-    if args.command == "ingest":
-        return _cmd_ingest(
-            _load_accounts_or_exit(),
-            account_id=args.account,
-            all_accounts=args.all_accounts,
-            dry_run=args.dry_run,
-            watch=args.watch,
-            heartbeat_file=args.heartbeat_file,
-        )
+    try:
+        if args.command == "probe":
+            return _cmd_probe(_load_config_or_exit(args.account))
 
-    if args.command == "board":
-        return _cmd_board(_load_config_or_exit(args.account))
+        if args.command == "ingest":
+            return _cmd_ingest(
+                _load_accounts_or_exit(),
+                account_id=args.account,
+                all_accounts=args.all_accounts,
+                dry_run=args.dry_run,
+                watch=args.watch,
+                heartbeat_file=args.heartbeat_file,
+            )
 
-    if args.command == "serve":
-        from robotsix_auto_mail.config import ConfigurationError
+        if args.command == "board":
+            return _cmd_board(_load_config_or_exit(args.account))
 
-        accounts = _load_accounts_or_exit()
-        if args.account is not None:
-            try:
-                resolved = accounts.get(args.account).account_id
-            except ConfigurationError as exc:
-                sys.stderr.write(f"Error: {exc}\n")
-                return 1
-        else:
-            resolved = accounts.default_account_id
-        return _cmd_serve(
-            accounts,
-            default_account_id=resolved,
-            port=args.port,
-            host=args.host,
-        )
+        if args.command == "serve":
+            from robotsix_auto_mail.config import ConfigurationError
 
-    if args.command == "detect":
-        return _cmd_detect(args)
+            accounts = _load_accounts_or_exit()
+            if args.account is not None:
+                try:
+                    resolved = accounts.get(args.account).account_id
+                except ConfigurationError as exc:
+                    sys.stderr.write(f"Error: {exc}\n")
+                    return 1
+            else:
+                resolved = accounts.default_account_id
+            return _cmd_serve(
+                accounts,
+                default_account_id=resolved,
+                port=args.port,
+                host=args.host,
+            )
 
-    if args.command == "config-sync":
-        return _cmd_config_sync(args)
+        if args.command == "detect":
+            return _cmd_detect(args)
 
-    if args.command == "triage":
-        return _cmd_triage(args)
+        if args.command == "config-sync":
+            return _cmd_config_sync(args)
 
-    if args.command == "triage-set":
-        return _cmd_triage_set(args)
+        if args.command == "triage":
+            return _cmd_triage(args)
 
-    if args.command == "config-sync-set":
-        return _cmd_config_sync_set(args)
+        if args.command == "triage-set":
+            return _cmd_triage_set(args)
 
-    if args.command == "auth":
-        if args.auth_command == "login":
-            return _cmd_auth_login(args)
-        # No auth subcommand given — print the auth help and exit 1.
-        for action in parser._actions:
-            if isinstance(action, argparse._SubParsersAction):
-                action.choices["auth"].print_help(sys.stderr)
-                break
+        if args.command == "config-sync-set":
+            return _cmd_config_sync_set(args)
+
+        if args.command == "auth":
+            if args.auth_command == "login":
+                return _cmd_auth_login(args)
+            # No auth subcommand given — print the auth help and exit 1.
+            for action in parser._actions:
+                if isinstance(action, argparse._SubParsersAction):
+                    action.choices["auth"].print_help(sys.stderr)
+                    break
+            return 1
+
+        # No command given — print help and exit 1.
+        parser.print_help(sys.stderr)
         return 1
-
-    # No command given — print help and exit 1.
-    parser.print_help(sys.stderr)
-    return 1
+    except RobotsixMailError:
+        _logger.exception("Command failed")
+        return 1

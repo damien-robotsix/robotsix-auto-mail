@@ -15,13 +15,14 @@ from robotsix_auto_mail.config import (
     DEFAULT_IMAP_TLS_MODE,
     DEFAULT_SMTP_TLS_MODE,
 )
+from robotsix_auto_mail.errors import RobotsixMailError
 
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
 
 
-class DetectionError(Exception):
+class DetectionError(RobotsixMailError):
     """Raised when provider detection fails for any reason."""
 
 

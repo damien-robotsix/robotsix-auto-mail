@@ -15,6 +15,7 @@ modules:
       and observability/logging/tracing startup.
     paths:
       - src/robotsix_auto_mail/__init__.py
+      - src/robotsix_auto_mail/errors.py
       - src/robotsix_auto_mail/py.typed
       - src/robotsix_auto_mail/core/__init__.py
       - src/robotsix_auto_mail/core/_constants.py
@@ -163,6 +164,7 @@ modules:
       - changelog/20260720T114055Z-robotsix-auto-mail-enable-trace-review-p-4e76.feature.md
       - changelog/20260720T123355Z-flash-llm-in-build-rules-system-prompt-e-4dd9.bugfix.md
       - changelog/20260720T141755Z-enable-triage-boilerplate-periodic-workf-c6b4.misc.md
+      - changelog/20260721T002604Z-introduce-a-robotsixmailerror-base-and-r-a8c1.misc.md
       - changelog/20260721T004554Z-ci-fix-out-of-scope-ci-failure-run-pre-c-aaa3.misc.md
       - tests/__init__.py
       - tests/conftest.py

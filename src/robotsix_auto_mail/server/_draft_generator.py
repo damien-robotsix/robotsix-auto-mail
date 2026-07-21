@@ -23,12 +23,13 @@ from robotsix_auto_mail.db import (
     get_record_by_message_id,
     update_draft_text,
 )
+from robotsix_auto_mail.errors import RobotsixMailError
 
 #: Upper bound on the body length fed to the LLM, to control token cost.
 _BODY_CHAR_LIMIT = 8000
 
 
-class DraftGenerationError(Exception):
+class DraftGenerationError(RobotsixMailError):
     """Raised when draft-reply generation fails."""
 
 

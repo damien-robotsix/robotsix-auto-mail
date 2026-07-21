@@ -15,6 +15,7 @@ import pydantic
 
 from robotsix_auto_mail.config.pydantic_utils import validate_confidence
 from robotsix_auto_mail.db import VALID_TRIAGE_ACTIONS
+from robotsix_auto_mail.errors import RobotsixMailError
 from robotsix_auto_mail.triage._constants import (
     _AGENT_SELECTABLE_ACTIONS,
     _VALID_TRIAGE_SOURCES,
@@ -25,7 +26,7 @@ from robotsix_auto_mail.triage._constants import (
 # ---------------------------------------------------------------------------
 
 
-class TriageError(Exception):
+class TriageError(RobotsixMailError):
     """Raised when the inbox triage agent or persistence layer fails."""
 
 

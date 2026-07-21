@@ -1,9 +1,11 @@
+from robotsix_auto_mail.errors import RobotsixMailError
+
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
 
 
-class ImapError(Exception):
+class ImapError(RobotsixMailError):
     """Base exception for all IMAP client errors."""
 
 
