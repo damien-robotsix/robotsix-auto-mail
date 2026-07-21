@@ -188,27 +188,6 @@ def test_resolve_llm_api_key_explicit_empty_string_falls_through() -> None:
         assert resolve_llm_api_key("") == "sk-from-file"
 
 
-def test_resolve_llm_api_key_env_var_falls_back(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """LLM_API_KEY env var is consulted between explicit arg and config file."""
-    monkeypatch.setenv("LLM_API_KEY", "env-key")
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts",
-        return_value=_default_accounts(),
-    ):
-        # LLM_API_KEY env var is consulted → resolves to env-key
-        assert resolve_llm_api_key(raise_on_missing=False) == "env-key"
-
-
-def test_resolve_llm_api_key_explicit_wins_over_env(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """An explicit api_key arg wins over LLM_API_KEY env var."""
-    monkeypatch.setenv("LLM_API_KEY", "env-key")
-    assert resolve_llm_api_key("explicit-key") == "explicit-key"
-
-
 # ---------------------------------------------------------------------------
 # resolve_llm_provider_model()
 # ---------------------------------------------------------------------------
@@ -244,27 +223,6 @@ def test_resolve_llm_provider_model_explicit_empty_falls_through() -> None:
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
         assert resolve_llm_provider_model("") == "yaml-model"
-
-
-def test_resolve_llm_provider_model_env_var_falls_back(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """LLM_PROVIDER_MODEL env var is consulted between explicit arg and config file."""
-    monkeypatch.setenv("LLM_PROVIDER_MODEL", "env-model")
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts",
-        return_value=_default_accounts(),
-    ):
-        # LLM_PROVIDER_MODEL env var is consulted → resolves to env-model
-        assert resolve_llm_provider_model() == "env-model"
-
-
-def test_resolve_llm_provider_model_explicit_wins_over_env(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """An explicit provider_model arg wins over LLM_PROVIDER_MODEL env var."""
-    monkeypatch.setenv("LLM_PROVIDER_MODEL", "env-model")
-    assert resolve_llm_provider_model("explicit-model") == "explicit-model"
 
 
 # ---------------------------------------------------------------------------

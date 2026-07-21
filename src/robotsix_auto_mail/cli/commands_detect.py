@@ -146,8 +146,6 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         return 1
 
-    import os as _os
-
     from robotsix_auto_mail.config import (
         resolve_llm_api_key,
         resolve_llm_provider_model,
@@ -165,9 +163,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         return 1
 
-    api_key = _os.environ.get("LLM_API_KEY") or resolve_llm_api_key(
-        None, raise_on_missing=False
-    )
+    api_key = resolve_llm_api_key(None, raise_on_missing=False)
     llm_provider_model_str = resolve_llm_provider_model(None)
     provider, mx_hosts = _detect_settings(
         args.email,

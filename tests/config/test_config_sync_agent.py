@@ -92,7 +92,10 @@ def test_run_config_sync_agent_happy_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A ConfigSyncResult with proposals round-trips; handle is closed."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     result_obj = ConfigSyncResult(
         proposals=[
             DriftProposal(
@@ -121,7 +124,10 @@ def test_run_config_sync_agent_uses_cheap_tier(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """build_agent is called with level=1 (cheap) by default."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     _handle, patcher = _patch_llm(ConfigSyncResult(proposals=[]))
     with patcher as cls:
         run_config_sync_agent(api_key="sk-test")
@@ -134,7 +140,10 @@ def test_run_config_sync_agent_empty_no_drift(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An empty proposals list is returned unchanged as 'no drift'."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     handle, patcher = _patch_llm(ConfigSyncResult(proposals=[]))
     with patcher:
         out = run_config_sync_agent(api_key="sk-test")
@@ -146,7 +155,6 @@ def test_run_config_sync_agent_missing_api_key(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """No api_key, no LLM_API_KEY env, no config key → ConfigSyncError."""
-    monkeypatch.delenv("LLM_API_KEY", raising=False)
     # Mock resolve_llm_api_key to simulate no key configured
     with mock.patch(
         "robotsix_auto_mail.core._llm_agent.resolve_llm_api_key",
@@ -167,7 +175,10 @@ def test_run_config_sync_agent_llm_failure_wrapped(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A call_with_retry failure is wrapped as ConfigSyncError; close runs."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     mock_handle = mock.MagicMock()
     mock_provider = mock.MagicMock()
     mock_provider.build_agent.return_value = mock_handle
@@ -186,7 +197,10 @@ def test_run_config_sync_agent_all_surfaces_reach_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """All config surfaces + the ground-truth mappings reach the user message."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     handle, patcher = _patch_llm(ConfigSyncResult(proposals=[]))
     with patcher:
         run_config_sync_agent(api_key="sk-test")
@@ -429,7 +443,10 @@ def test_run_config_sync_agent_without_conn_unchanged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Without conn the LLM proposals are returned unchanged."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     result_obj = ConfigSyncResult(proposals=[_drift("only")])
     handle, patcher = _patch_llm(result_obj)
     with patcher:
@@ -442,7 +459,10 @@ def test_run_config_sync_agent_with_conn_dedups(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """With conn, the same finding is filtered on the second run."""
-    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "robotsix_auto_mail.config.resolve_llm_api_key",
+        lambda *a, **kw: "sk-test",
+    )
     conn = init_db(":memory:")
     try:
         result_obj = ConfigSyncResult(proposals=[_drift("recurring")])

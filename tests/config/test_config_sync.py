@@ -181,9 +181,12 @@ def test_docs_happy() -> None:
 
 def test_run_checks_happy(tmp_path: Path) -> None:
     """Exit 0 when all artifacts are in sync."""
+    from robotsix_auto_mail.config.loader import get_config_schema
+
     repo = tmp_path
     (repo / "config").mkdir(parents=True)
     (repo / "config" / "config.example.json").write_text(json.dumps(_JSON_EXAMPLE))
+    (repo / "config" / "config.schema.json").write_text(get_config_schema())
     (repo / "docs").mkdir(parents=True)
     (repo / "docs" / "configuration.md").write_text(_full_config_docs(_DOCS_YAML_TABLE))
     assert run_checks(repo) == 0

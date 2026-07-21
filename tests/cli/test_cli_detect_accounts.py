@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from unittest import mock
 
@@ -27,7 +26,9 @@ def test_detect_prints_json_report(
             "robotsix_auto_mail.config.detect.detect_provider",
             return_value=mock_provider,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -60,7 +61,9 @@ def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
             "robotsix_auto_mail.config.detect.detect_provider",
             return_value=mock_provider,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -94,7 +97,9 @@ def test_detect_appends_second_account(tmp_path: Path, no_autoconfig: object) ->
         mock.patch(
             "robotsix_auto_mail.config.detect.detect_provider", side_effect=[p1, p2]
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc1 = main(
             [
@@ -142,7 +147,9 @@ def test_detect_refuses_duplicate_id(
         mock.patch(
             "robotsix_auto_mail.config.detect.detect_provider", return_value=provider
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc1 = main(
             [
@@ -205,7 +212,9 @@ def test_detect_overwrite_existing_account(
         mock.patch(
             "robotsix_auto_mail.config.detect.detect_provider", return_value=provider
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -264,7 +273,9 @@ def test_detect_overwrite_not_set_still_errors_on_duplicate(
         mock.patch(
             "robotsix_auto_mail.config.detect.detect_provider", return_value=provider
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -318,7 +329,9 @@ def test_detect_overwrite_with_oauth2_flags(
         mock.patch("getpass.getpass") as _mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as _mock_login,
         mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -359,7 +372,9 @@ def test_detect_no_verify_still_reports(
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as _mock_verify,
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -416,7 +431,9 @@ def test_detect_overwrite_preserves_llm_api_key(
             "robotsix_auto_mail.config.detect.detect_provider",
             return_value=mock_provider,
         ),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-env"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-env"
+        ),
     ):
         rc = main(
             [
@@ -481,7 +498,9 @@ def test_detect_verification_failure_reports(
             side_effect=[fail, fail, fail, fail, fail],
         ),
         mock.patch("builtins.input", side_effect=["", ""]),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [
@@ -511,7 +530,9 @@ def test_detect_honours_id_in_report(
             return_value=mock_provider,
         ),
         mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
-        mock.patch.dict(os.environ, {"LLM_API_KEY": "sk-test"}),
+        mock.patch(
+            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
+        ),
     ):
         rc = main(
             [

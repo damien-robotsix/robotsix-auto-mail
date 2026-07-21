@@ -172,6 +172,7 @@ modules:
       - changelog/20260721T142307Z-robotsix-auto-mail-enable-module-size-pe-4287.misc.md
       - changelog/20260721T185654Z-config-standard-compliance.feature.md
       - changelog/20260721T185654Z-make-robotsix-auto-mail-compliant-with-t-38da.misc.md
+      - changelog/20260721T205329Z-config-clean-cutover-migration-to-robots-6cda.removal.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

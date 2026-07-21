@@ -7,8 +7,7 @@ is no fallback or alternative config path.
 
 The two LLM-only resolvers (:func:`resolve_llm_api_key`,
 :func:`resolve_llm_provider_model`) check, in order: an explicit
-argument, then the ``LLM_API_KEY`` / ``LLM_PROVIDER_MODEL``
-environment variable, then the config file.
+argument, then the config file.
 
 Depends on :mod:`robotsix_auto_mail.config.model`.
 """
@@ -86,8 +85,7 @@ def load_llm_provider_model() -> str:
 def resolve_llm_api_key(
     api_key: str | None = None, raise_on_missing: bool = True
 ) -> str:
-    """Resolve the LLM API key: explicit *api_key* arg →
-    ``LLM_API_KEY`` env var → config file.
+    """Resolve the LLM API key: explicit *api_key* arg → config file.
 
     Args:
         api_key: An explicit key, usually from a CLI parameter.
@@ -102,7 +100,7 @@ def resolve_llm_api_key(
         ConfigurationError: When *raise_on_missing* is ``True`` and no key
             is found.
     """
-    resolved = api_key or os.getenv("LLM_API_KEY") or load_llm()
+    resolved = api_key or load_llm()
     if not resolved and raise_on_missing:
         raise ConfigurationError(
             "No LLM API key found — add llm_api_key to config/config.json"
@@ -114,7 +112,7 @@ def resolve_llm_provider_model(
     provider_model: str | None = None, default: str = ""
 ) -> str:
     """Resolve the LLM provider-model: explicit *provider_model* arg →
-    ``LLM_PROVIDER_MODEL`` env var → config file.
+    config file.
 
     Args:
         provider_model: An explicit provider-model identifier, usually from a
@@ -124,7 +122,5 @@ def resolve_llm_provider_model(
     Returns:
         The resolved provider-model identifier, or *default*.
     """
-    resolved = (
-        provider_model or os.getenv("LLM_PROVIDER_MODEL") or load_llm_provider_model()
-    )
+    resolved = provider_model or load_llm_provider_model()
     return resolved or default
