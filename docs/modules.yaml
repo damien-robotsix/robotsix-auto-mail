@@ -163,6 +163,7 @@ modules:
       - changelog/20260720T114055Z-robotsix-auto-mail-enable-trace-review-p-4e76.feature.md
       - changelog/20260720T123355Z-flash-llm-in-build-rules-system-prompt-e-4dd9.bugfix.md
       - changelog/20260720T141755Z-enable-triage-boilerplate-periodic-workf-c6b4.misc.md
+      - changelog/20260721T004554Z-ci-fix-out-of-scope-ci-failure-run-pre-c-aaa3.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
