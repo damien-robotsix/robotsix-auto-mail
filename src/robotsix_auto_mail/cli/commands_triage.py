@@ -39,7 +39,7 @@ def register_subparser(
     triage_parser.add_argument(
         "--api-key",
         default=None,
-        help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
+        help="OpenRouter API key. Overrides the config file's llm_api_key.",
     )
     triage_parser.add_argument(
         "--output-format",

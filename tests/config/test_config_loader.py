@@ -1,9 +1,8 @@
 """Unit tests for the config loader module (loader.py).
 
 Configuration is read exclusively from the JSON config file via
-``robotsix_config``.  Covers load(), load_accounts(), load_llm(),
-load_llm_provider_model(), resolve_llm_api_key() and
-resolve_llm_provider_model().
+``robotsix_config``.  Covers load(), load_accounts(),
+resolve_llm_api_key() and resolve_llm_provider_model().
 """
 
 from __future__ import annotations
@@ -19,8 +18,6 @@ from robotsix_auto_mail.config import (
     MailConfig,
     load,
     load_accounts,
-    load_llm,
-    load_llm_provider_model,
     resolve_llm_api_key,
     resolve_llm_provider_model,
 )
@@ -66,79 +63,6 @@ def _patch_load_accounts(
         lambda: accounts,
     )
     return accounts
-
-
-# ---------------------------------------------------------------------------
-# load_llm()
-# ---------------------------------------------------------------------------
-
-
-def test_load_llm_reads_config() -> None:
-    """load_llm reads llm_api_key from the config."""
-    accts = _default_accounts(llm_api_key="sk-from-file")
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
-    ):
-        assert load_llm() == "sk-from-file"
-
-
-def test_load_llm_config_without_llm_section() -> None:
-    """Config without llm_api_key yields empty string."""
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts",
-        return_value=_default_accounts(),
-    ):
-        assert load_llm() == ""
-
-
-def test_load_llm_missing_config_file() -> None:
-    """When config loading fails, load_llm returns ''."""
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts",
-        side_effect=ConfigurationError("no config"),
-    ):
-        assert load_llm() == ""
-
-
-def test_load_llm_config_load_error() -> None:
-    """When load_accounts raises ConfigurationError, returns ''."""
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts",
-        side_effect=ConfigurationError("boom"),
-    ):
-        assert load_llm() == ""
-
-
-# ---------------------------------------------------------------------------
-# load_llm_provider_model()
-# ---------------------------------------------------------------------------
-
-
-def test_load_llm_provider_model_reads_config() -> None:
-    """load_llm_provider_model reads llm_provider_model from the config."""
-    accts = _default_accounts(llm_provider_model="yaml-model")
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
-    ):
-        assert load_llm_provider_model() == "yaml-model"
-
-
-def test_load_llm_provider_model_config_without_llm_section() -> None:
-    """Config without llm_provider_model → empty string."""
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts",
-        return_value=_default_accounts(),
-    ):
-        assert load_llm_provider_model() == ""
-
-
-def test_load_llm_provider_model_config_without_provider_model_key() -> None:
-    """llm_api_key present but provider_model absent → empty string."""
-    accts = _default_accounts(llm_api_key="k")
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
-    ):
-        assert load_llm_provider_model() == ""
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +112,27 @@ def test_resolve_llm_api_key_explicit_empty_string_falls_through() -> None:
         assert resolve_llm_api_key("") == "sk-from-file"
 
 
+def test_resolve_llm_api_key_no_env_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LLM_API_KEY env var is NOT consulted — only explicit arg and config file."""
+    monkeypatch.setenv("LLM_API_KEY", "env-key")
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts",
+        return_value=_default_accounts(),
+    ):
+        # Env var is ignored; no key in config file → empty string.
+        assert resolve_llm_api_key(raise_on_missing=False) == ""
+
+
+def test_resolve_llm_api_key_explicit_wins_over_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An explicit api_key arg wins over LLM_API_KEY env var."""
+    monkeypatch.setenv("LLM_API_KEY", "env-key")
+    assert resolve_llm_api_key("explicit-key") == "explicit-key"
+
+
 # ---------------------------------------------------------------------------
 # resolve_llm_provider_model()
 # ---------------------------------------------------------------------------
@@ -223,6 +168,27 @@ def test_resolve_llm_provider_model_explicit_empty_falls_through() -> None:
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
         assert resolve_llm_provider_model("") == "yaml-model"
+
+
+def test_resolve_llm_provider_model_no_env_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LLM_PROVIDER_MODEL env var is NOT consulted — only explicit arg and config file."""
+    monkeypatch.setenv("LLM_PROVIDER_MODEL", "env-model")
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts",
+        return_value=_default_accounts(),
+    ):
+        # Env var is ignored; no model in config file → empty string (default).
+        assert resolve_llm_provider_model() == ""
+
+
+def test_resolve_llm_provider_model_explicit_wins_over_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An explicit provider_model arg wins over LLM_PROVIDER_MODEL env var."""
+    monkeypatch.setenv("LLM_PROVIDER_MODEL", "env-model")
+    assert resolve_llm_provider_model("explicit-model") == "explicit-model"
 
 
 # ---------------------------------------------------------------------------

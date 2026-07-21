@@ -338,8 +338,7 @@ def run_config_sync_agent(
         repo_root: Repository root.  Defaults to auto-detection (resolved
             the same way the deterministic checker resolves it).
         api_key: OpenRouter API key.  Resolves with the precedence
-            ``api_key`` argument → ``LLM_API_KEY`` env var →
-            config file (via
+            ``api_key`` argument → config file (via
             :func:`~robotsix_auto_mail.config.resolve_llm_api_key`).
         provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
             ``None`` falls back to the tier-level default model (via

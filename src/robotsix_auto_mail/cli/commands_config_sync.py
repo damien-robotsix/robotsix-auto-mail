@@ -33,13 +33,13 @@ def register_subparser(
     config_sync_parser.add_argument(
         "--api-key",
         default=None,
-        help="OpenRouter API key. Overrides LLM_API_KEY env and config file.",
+        help="OpenRouter API key. Overrides the config file's llm_api_key.",
     )
     config_sync_parser.add_argument(
         "--provider-model",
         default=None,
         help="LLM provider-model identifier (e.g. openrouter-deepseek). Overrides "
-        "LLM_PROVIDER_MODEL env and config file.",
+        "the config file's llm_provider_model.",
     )
     config_sync_parser.add_argument(
         "--output-format",

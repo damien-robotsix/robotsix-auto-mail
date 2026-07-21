@@ -373,7 +373,7 @@ def detect_provider(
         email_address: The email address to detect provider settings for.
         level: LLM integer tier to use.  ``1`` (cheap, default).
         api_key: OpenRouter API key.  Resolves with the precedence
-            ``api_key`` argument → ``LLM_API_KEY`` env var → config file (via
+            ``api_key`` argument → config file (via
             :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
         provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
             When ``None`` or empty, the tier-level default model is used
