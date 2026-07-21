@@ -98,37 +98,42 @@ significant LLM input-token cost by keeping the context window small.
 
 ## Configuration conventions
 
-### The `mail.local.example.yaml` / `MailConfig` pair
+### The `config/config.json` / `MailConfig` pair
 
-Configuration is loaded from a single YAML config file only — there are no
+Configuration is loaded from a single JSON config file only — there are no
 environment-variable overrides (with two narrow exceptions: ``LLM_API_KEY``
 and ``LLM_PROVIDER_MODEL`` are read as env-var fallbacks for LLM key/model
 resolution, via ``resolve_llm_api_key`` and ``resolve_llm_provider_model`` in
-``config/loader.py``). Every configuration field lives on the
-`MailConfig` frozen dataclass (`src/robotsix_auto_mail/config/model.py`).
+``config/loader.py``).  Loading is handled by
+``robotsix_config.load_config(MailAccountsConfig)``
+(see ``src/robotsix_auto_mail/config/loader.py``).
+
+``MailConfig`` is a pydantic ``BaseModel`` with
+``model_config = ConfigDict(frozen=True)``
+(see ``src/robotsix_auto_mail/config/model.py``).
+
 When you **add** a new configuration field you MUST update **both** artifacts:
 
-1. **`MailConfig`** — add the dataclass field with its default.
-2. **`docs/config/mail.local.example.yaml`** — add the commented-out entry so
-   users know it exists.
+1. **``MailConfig``** — add the pydantic field with its default.
+2. **``config/config.example.json``** — add the JSON key with its default
+   value so users know it exists.
 
-The `_FIELD_SPECS` table in `src/robotsix_auto_mail/config/schema.py`
-must enumerate every `MailConfig` field exactly once — an
-`assert _spec_names == _dc_names` guard at import time enforces this.
-When you add a field, add its `_FieldSpec` row in the same commit.
+``config/config.schema.json`` is **auto-generated** from the pydantic models
+(via ``robotsix_config.config_schema_json``) — there is no manual field-spec
+table.  The pydantic model fields are the single source of truth.
 
-Failure mode: if the two artifacts drift, the `config-sync` CLI
+Failure mode: if the two artifacts drift, the ``config-sync`` CLI
 subcommand reports the gap, and CI gates on it.
 
 ### secrets
 
-Credentials are masked in `MailConfig.__repr__` via `_SECRET_FIELDS`.
-Add any new secret field to that tuple.  Never log or repr a raw
-credential.
+Credentials are masked in ``MailConfig.__repr__`` via ``_SECRET_FIELDS``.
+Add any new secret field to that tuple (and type it as
+:class:`pydantic.SecretStr`).  Never log or repr a raw credential.
 
 ### Multi-account config shape
 
-The YAML config uses the `accounts:` list shape — the only supported
+The JSON config uses the ``accounts:`` list shape — the only supported
 config-file shape. New features MUST work in multi-account mode.
 
 ---
