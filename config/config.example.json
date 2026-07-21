@@ -1,18 +1,51 @@
 {
   "accounts": [
     {
-      "account_id": "primary",
-      "label": "Primary Account",
+      "account_id": "personal",
+      "label": "Personal Gmail",
       "config": {
-        "imap_host": "imap.example.com",
-        "smtp_host": "smtp.example.com",
-        "username": "user@example.com",
+        "imap_host": "imap.gmail.com",
+        "smtp_host": "smtp.gmail.com",
+        "username": "me@gmail.com",
         "password": "changeme",
         "imap_port": 993,
         "imap_tls_mode": "direct-tls",
         "smtp_port": 587,
         "smtp_tls_mode": "starttls",
-        "db_path": "",
+        "db_path": "/data/personal/mail.db",
+        "imap_folder": "INBOX",
+        "llm_api_key": "",
+        "llm_provider_model": "",
+        "ingest_interval_minutes": 15,
+        "archive_root": "robotsix-mail-archive",
+        "archive_enabled": true,
+        "triage_on_ingest": true,
+        "triage_rules_path": "",
+        "oauth2_token": "",
+        "oauth2_client_id": "",
+        "oauth2_client_secret": "",
+        "oauth2_provider": "",
+        "oauth2_tenant": "organizations",
+        "langfuse_public_key": "",
+        "langfuse_secret_key": "",
+        "langfuse_base_url": "",
+        "log_level": "INFO",
+        "log_format": "console"
+      }
+    },
+    {
+      "account_id": "work",
+      "label": "Work Mailbox",
+      "config": {
+        "imap_host": "imap.work.example.com",
+        "smtp_host": "smtp.work.example.com",
+        "username": "me@work.example.com",
+        "password": "changeme",
+        "imap_port": 993,
+        "imap_tls_mode": "direct-tls",
+        "smtp_port": 587,
+        "smtp_tls_mode": "starttls",
+        "db_path": "/data/work/mail.db",
         "imap_folder": "INBOX",
         "llm_api_key": "",
         "llm_provider_model": "",
@@ -34,5 +67,5 @@
       }
     }
   ],
-  "default_account_id": "primary"
+  "default_account_id": "personal"
 }

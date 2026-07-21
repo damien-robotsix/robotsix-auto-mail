@@ -195,9 +195,9 @@ def test_detect_overwrite_existing_account(
     )
     seed_account = MailAccount(account_id="main", config=seed_cfg, label="Main Account")
     container = MailAccountsConfig(accounts=[seed_account], default_account_id="main")
-    from robotsix_auto_mail.config.loader import _dump_config_json
+    from robotsix_config import dump_config
 
-    output.write_text(_dump_config_json(container))
+    dump_config(container, path=output)
 
     provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
@@ -405,9 +405,9 @@ def test_detect_overwrite_preserves_llm_api_key(
     )
     seed_account = MailAccount(account_id="main", config=seed_cfg, label="Main")
     container = MailAccountsConfig(accounts=[seed_account], default_account_id="main")
-    from robotsix_auto_mail.config.loader import _dump_config_json
+    from robotsix_config import dump_config
 
-    output.write_text(_dump_config_json(container))
+    dump_config(container, path=output)
 
     mock_provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 

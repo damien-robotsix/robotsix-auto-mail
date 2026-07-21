@@ -166,6 +166,7 @@ modules:
       - changelog/20260721T001055Z-cleanup-duplicate-path-in-module-core-ch-3ccf.misc.md
       - changelog/20260721T002604Z-introduce-a-robotsixmailerror-base-and-r-a8c1.misc.md
       - changelog/20260721T004554Z-ci-fix-out-of-scope-ci-failure-run-pre-c-aaa3.misc.md
+      - changelog/20260721T091444Z-migrate-robotsix-auto-mail-to-the-typed-a5fe.removal.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -267,7 +268,6 @@ modules:
       - tests/config/test_config_archive.py
       - tests/config/test_config_triage.py
       - docs/config/.gitkeep
-      - docs/config/mail.local.example.yaml
       - config/config.example.json
       - config/config.schema.json
       - scripts/config/check_config_sync.py

@@ -4,20 +4,14 @@
 Cross-references the canonical ``MailConfig`` field list (obtained via
 ``MailConfig.model_fields``) against two user-facing artifacts:
 
-1. ``docs/config/mail.local.example.yaml`` (the single, canonical multi-account
-   example)
-2. ``docs/connecting.md`` (the YAML-key table)
+1. ``config/config.example.json`` (the canonical multi-account JSON example)
+2. ``docs/configuration.md`` (the config-key table)
 
-Configuration is read only from the YAML config file; environment-variable
-configuration has been removed, so no ``.env.example`` surface is checked.
-
-The merged ``docs/config/mail.local.example.yaml`` is checked two ways: its
-representative (first) account's nested sections plus the commented optional
-sections are cross-referenced against every ``MailConfig`` field (field
-drift), and the whole file is validated structurally against
-``MailAccountsConfig`` (>= 2 accounts, unique non-empty ids, unique per-account
-``db_path``s, a valid ``default_account``, and no account silently falling back
-to a legacy ``.data/mail.db`` / ``.data/mail-<id>.db`` default).
+The JSON example is validated structurally against ``MailAccountsConfig``
+(>= 2 accounts, unique non-empty ids, unique per-account ``db_path``s, a
+valid ``default_account_id``, and no account silently falling back to a
+legacy ``.data/mail.db`` / ``.data/mail-<id>.db`` default).  Every
+``MailConfig`` field must appear in the example's first account.
 
 Exits 0 when in sync, 1 when drift is found, 2 on a script-level error.
 """
@@ -28,11 +22,8 @@ import dataclasses
 import json
 import re
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
-
-import yaml
 
 try:
     from pydantic import SecretStr
@@ -64,26 +55,13 @@ from robotsix_auto_mail.config._field_map import (  # noqa: E402
     FIELD_YAML_MAP as FIELD_TO_YAML,
 )
 
-# ---------------------------------------------------------------------------
-# Placeholder patterns — values that are NOT default-mismatches.
-# ---------------------------------------------------------------------------
-
-_PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"^sk-or-v1-…$"),
-    re.compile(r"^sk-or-v1-\w+$"),
-    re.compile(r"^your-password-here$"),
-    re.compile(r"^pk-lf-…$"),
-    re.compile(r"^sk-lf-…$"),
-    re.compile(r"^https://cloud\.langfuse\.com$"),
-]
-
 # ====================================================================
 # Self-consistency check
 # ====================================================================
 
 
 def _self_consistency_check() -> None:
-    """Verify the YAML mapping dict is 1:1 with ``MailConfig`` fields."""
+    """Verify the field mapping dict is 1:1 with ``MailConfig`` fields."""
     fields = set(MailConfig.model_fields.keys())
 
     for field_name in fields:
@@ -112,33 +90,6 @@ def _fail(message: str) -> None:
     sys.exit(2)
 
 
-def _is_placeholder(value: str) -> bool:
-    """Return True when *value* is a known placeholder string."""
-    for pattern in _PLACEHOLDER_PATTERNS:
-        if pattern.match(value):
-            return True
-    return False
-
-
-_MISSING_SENTINEL = object()
-
-
-def _get_nested(data: dict[str, Any], path: str) -> Any:
-    """Return the value at *path* (dotted, e.g. ``imap.host``) in *data*.
-
-    Returns ``_MISSING_SENTINEL`` when any segment is missing.
-    """
-    keys = path.split(".")
-    for key in keys:
-        if not isinstance(data, dict):
-            return _MISSING_SENTINEL
-        val = data.get(key, _MISSING_SENTINEL)
-        if val is _MISSING_SENTINEL:
-            return _MISSING_SENTINEL
-        data = val
-    return data
-
-
 def _field_default(field_name: str) -> Any:
     """Return *field_name*'s default from the pydantic model, or
     ``dataclasses.MISSING``."""
@@ -150,55 +101,6 @@ def _field_default(field_name: str) -> Any:
     if field_info.default_factory is not None:
         return field_info.default_factory()
     return dataclasses.MISSING
-
-
-def _values_match(
-    artifact_value: Any,
-    mailconfig_default: Any,
-    *,
-    raw_string: str = "",
-) -> bool:
-    """Return True when *artifact_value* matches the MailConfig default.
-
-    Handles type coercion for commented-out YAML values (which arrive
-    as strings) and placeholder tolerance.
-    """
-    # If the raw string is a known placeholder, skip comparison.
-    if raw_string and _is_placeholder(raw_string):
-        return True
-
-    # If the value itself looks like a placeholder string, also skip.
-    if isinstance(artifact_value, str) and _is_placeholder(artifact_value):
-        return True
-
-    # Required fields (MISSING default) — no comparison performed.
-    if mailconfig_default is dataclasses.MISSING:
-        return True
-
-    # Direct match.
-    if artifact_value == mailconfig_default:
-        return True
-
-    # Artifact value might be a string but the default is a different
-    # type (e.g. commented-out port "993" vs default int 993).
-    # Try YAML-parsing the string form.
-    if isinstance(artifact_value, str):
-        try:
-            parsed = yaml.safe_load(artifact_value)
-        except yaml.YAMLError:
-            return False
-        if parsed == mailconfig_default:
-            return True
-        # SecretStr: compare the parsed raw value against the secret.
-        if SecretStr is not None and isinstance(mailconfig_default, SecretStr):
-            if parsed == mailconfig_default.get_secret_value():
-                return True
-        # Handle "993" → "993" (str) vs 993 (int) — already caught
-        # by safe_load giving int 993.  Quoted-string values (e.g.
-        # '"direct-tls"') are already handled by the parsed == default
-        # check above.
-
-    return False
 
 
 def _is_empty_default(default: Any) -> bool:
@@ -228,192 +130,67 @@ def _values_match_doc(doc_value: Any, model_default: Any) -> bool:
 
 
 # ====================================================================
-# Check 1 — YAML example file
+# Check 1 — JSON example file
 # ====================================================================
 
 
-def _scan_commented_yaml(text: str) -> dict[str, str]:
-    """Extract commented-out ``section.key: value`` pairs from YAML *text*.
-
-    Indentation-agnostic so it works for the multi-account example, where the
-    config sections are nested under ``accounts:`` list entries.  An active
-    (uncommented) or commented ``<section>:`` header — a lowercase word
-    followed by a colon and nothing else — sets the current section; a
-    subsequent commented ``<key>: <value>`` line (with a non-empty value) is
-    recorded under it.  Keys whose commented value is empty are intentionally
-    not supported (they are indistinguishable from a section header), so the
-    example writes ``""`` for otherwise-empty optional values.
-
-    Returns a ``{dotted.path: raw_value_string}`` dict.
-    """
-    result: dict[str, str] = {}
-    current_section: str | None = None
-
-    section_re = re.compile(r"^\s*([a-z][a-z0-9_]*):\s*$")
-    commented_section_re = re.compile(r"^\s*#\s*([a-z][a-z0-9_]*):\s*$")
-    commented_key_re = re.compile(r"^\s*#\s*([a-z][a-z0-9_]*):\s*(.+)$")
-
-    for line in text.splitlines():
-        # Active (uncommented) section header.
-        if not line.lstrip().startswith("#"):
-            m = section_re.match(line)
-            if m:
-                current_section = m.group(1)
-            continue
-
-        # Commented section header (checked before commented key so an
-        # empty-valued line is treated as a header, never a key).
-        m = commented_section_re.match(line)
-        if m:
-            current_section = m.group(1)
-            continue
-
-        m = commented_key_re.match(line)
-        if m and current_section is not None:
-            key = m.group(1)
-            value = m.group(2).strip()
-            result[f"{current_section}.{key}"] = value
-
-    return result
-
-
-# ``store.path`` is intentionally per-account in the multi-account example
-# (``.data/<id>/mail.db``) and therefore legitimately differs from the
-# single-account ``MailConfig`` default — its presence is checked (field
-# drift) but its value is not compared against the default.
-_SKIP_DEFAULT_CHECK: frozenset[str] = frozenset({"store.path"})
-
-
-def check_yaml_example(
-    text: str,
-    path: str = "docs/config/mail.local.example.yaml",
+def check_json_example(
+    data: dict[str, Any],
+    path: str = "config/config.example.json",
 ) -> list[dict[str, Any]]:
-    """Check the merged multi-account example *text* against ``MailConfig``.
+    """Check the JSON example *data* against ``MailConfig``.
 
-    The representative (first) account's structured sections plus the file's
-    commented optional sections are cross-referenced against every
-    ``FIELD_TO_YAML`` key, so adding a new ``MailConfig`` field without
-    reflecting it in the example still fails the gate.  Commented defaults are
-    additionally value-checked against the ``MailConfig`` defaults.
-
-    Returns a list of finding dicts.
+    Every ``MailConfig`` field must appear in the first account's ``config``
+    dict.  Returns a list of finding dicts.
     """
     findings: list[dict[str, Any]] = []
 
-    # -- structured parse ---------------------------------------------------
-    try:
-        data: Any = yaml.safe_load(text)
-    except yaml.YAMLError:
-        return [{"artifact": path, "type": "yaml-parse-error"}]
-
-    if not isinstance(data, dict):
-        return [{"artifact": path, "type": "yaml-parse-error"}]
-
     accounts = data.get("accounts")
     if not isinstance(accounts, list) or not accounts:
-        return [
+        findings.append(
             {
                 "artifact": path,
-                "type": "yaml-not-multi-account",
-                "message": "expected a non-empty top-level 'accounts:' list",
+                "type": "json-example-no-accounts",
+                "message": "expected a non-empty 'accounts' list",
             }
-        ]
+        )
+        return findings
+
     representative = accounts[0]
     if not isinstance(representative, dict):
-        return [{"artifact": path, "type": "yaml-parse-error"}]
+        findings.append({"artifact": path, "type": "json-example-invalid-account"})
+        return findings
 
-    # -- structured keys of the representative account ----------------------
-    structured: dict[str, Any] = {}
+    config = representative.get("config")
+    if not isinstance(config, dict):
+        findings.append(
+            {
+                "artifact": path,
+                "type": "json-example-missing-config",
+                "message": "first account must have a 'config' dict",
+            }
+        )
+        return findings
 
-    def _collect_paths(d: dict[str, Any], prefix: str) -> None:
-        for k, v in d.items():
-            full = f"{prefix}.{k}" if prefix else k
-            if isinstance(v, dict):
-                _collect_paths(v, full)
-            else:
-                structured[full] = v
-
-    for section, value in representative.items():
-        if isinstance(value, dict):
-            _collect_paths(value, section)
-
-    # -- top-level keys (llm, langfuse, logging) ----------------------------
-    for tls in ("llm", "langfuse", "logging"):
-        tls_data = data.get(tls)
-        if isinstance(tls_data, dict):
-            for k, v in tls_data.items():
-                if not isinstance(v, dict):
-                    structured[f"{tls}.{k}"] = v
-
-    # -- text scan (commented-out optional keys) ----------------------------
-    commented = _scan_commented_yaml(text)
-
-    # -- check each MailConfig field ----------------------------------------
-    field_defaults: dict[str, Any] = {}
-    for f_name in MailConfig.model_fields:
-        field_defaults[f_name] = _field_default(f_name)
-
-    for field_name, ypath in FIELD_TO_YAML.items():
-        has_structured = ypath in structured
-        has_commented = ypath in commented
-
-        if not has_structured and not has_commented:
+    # -- check each MailConfig field appears in the example -----------------
+    for field_name in MailConfig.model_fields:
+        if field_name not in config:
             findings.append(
                 {
                     "artifact": path,
-                    "type": "missing-from-yaml",
-                    "key": ypath,
+                    "type": "missing-from-json-example",
                     "field": field_name,
                 }
             )
-            continue
 
-        default = field_defaults[field_name]
-        if default is dataclasses.MISSING:
-            continue  # required field — presence check was enough
-        if ypath in _SKIP_DEFAULT_CHECK:
-            continue  # per-account value; presence check was enough
-
-        if has_structured:
-            actual = structured[ypath]
-            if not _values_match(actual, default):
-                findings.append(
-                    {
-                        "artifact": path,
-                        "type": "default-mismatch",
-                        "key": ypath,
-                        "expected": default,
-                        "actual": actual,
-                    }
-                )
-        elif has_commented:
-            raw = commented[ypath]
-            if not _values_match(raw, default, raw_string=raw):
-                findings.append(
-                    {
-                        "artifact": path,
-                        "type": "default-mismatch",
-                        "key": ypath,
-                        "expected": default,
-                        "actual": raw,
-                    }
-                )
-
-    # -- stale YAML keys ----------------------------------------------------
-    # Any leaf ``section.key`` (structured or commented) that does not map to
-    # a known ``MailConfig`` field is flagged so an example cannot document a
-    # key the code no longer reads.
-    known_paths = set(FIELD_TO_YAML.values())
-    for ypath in {*structured, *commented}:
-        if "." not in ypath:
-            # Top-level account keys (``id``, ``label``) are not config fields.
-            continue
-        if ypath not in known_paths:
+    # -- stale keys in the example ------------------------------------------
+    for key in config:
+        if key not in MailConfig.model_fields:
             findings.append(
                 {
                     "artifact": path,
-                    "type": "stale-yaml-key",
-                    "key": ypath,
+                    "type": "stale-json-example-key",
+                    "key": key,
                 }
             )
 
@@ -421,54 +198,8 @@ def check_yaml_example(
 
 
 # ====================================================================
-# Check 2 — docs/connecting.md
+# Check 2 — docs/configuration.md
 # ====================================================================
-
-
-def _parse_md_table(text: str, section_heading: str) -> list[dict[str, str]]:
-    """Parse the first pipe table after *section_heading* in *text*.
-
-    Returns a list of dicts with keys from the header row.
-    """
-    # Find the section heading.
-    heading_idx = text.find(section_heading)
-    if heading_idx == -1:
-        return []
-
-    # Find the first table after the heading.  A table starts with a
-    # line matching ``| ... |`` followed by a separator line
-    # ``|---|...|``.
-    rest = text[heading_idx:]
-    lines = rest.splitlines()
-
-    table_start: int | None = None
-    for i, line in enumerate(lines):
-        if line.strip().startswith("|") and "---" not in line:
-            # Potential first row.  Check if the next line is a separator.
-            if i + 1 < len(lines) and re.match(r"^\s*\|[\s\-:|]+\|\s*$", lines[i + 1]):
-                table_start = i
-                break
-
-    if table_start is None:
-        return []
-
-    # Parse header.
-    header_line = lines[table_start]
-    headers = [h.strip() for h in header_line.split("|")[1:-1]]
-
-    # Skip header and separator, parse data rows.
-    rows: list[dict[str, str]] = []
-    for line in lines[table_start + 2 :]:
-        stripped = line.strip()
-        if not stripped.startswith("|"):
-            break
-        cells = [c.strip() for c in stripped.split("|")[1:-1]]
-        if len(cells) != len(headers):
-            continue
-        row = dict(zip(headers, cells, strict=True))
-        rows.append(row)
-
-    return rows
 
 
 def _strip_backticks(s: str) -> str:
@@ -487,20 +218,18 @@ def _normalise_doc_default(raw: str) -> Any:
     stripped = _strip_backticks(raw.strip())
     if stripped in ("–", "—", "-", "N/A", "", "*(none)*"):  # noqa: RUF001
         return dataclasses.MISSING
-    # YAML-parse: bare numbers, quoted strings, etc.
+    # JSON-parse for booleans, numbers, null; strings must be quoted.
     try:
-        return yaml.safe_load(stripped)
-    except yaml.YAMLError:
+        return json.loads(stripped)
+    except json.JSONDecodeError, ValueError:
         return stripped
 
 
 def _parse_all_md_tables(text: str) -> list[dict[str, str]]:
     """Parse ALL pipe tables in *text*, returning a flat list of row dicts.
 
-    Unlike ``_parse_md_table``, which finds only the first table after a
-    specific heading, this scans the entire text and collects every pipe
-    table it encounters.  Each row is a dict keyed by the column headers
-    of its table.
+    Scans the entire text and collects every pipe table it encounters.
+    Each row is a dict keyed by the column headers of its table.
     """
     rows: list[dict[str, str]] = []
     lines = text.splitlines()
@@ -652,33 +381,6 @@ def check_docs_configuration(
     return findings
 
 
-def check_docs_connecting(
-    text: str,
-    path: str = "docs/connecting.md",
-) -> list[dict[str, Any]]:
-    """Check *text* (``docs/connecting.md``) against ``MailConfig``.
-
-    Returns a list of finding dicts.
-    """
-    findings: list[dict[str, Any]] = []
-
-    # -- parse the YAML keys table ------------------------------------------
-    yaml_rows = _parse_md_table(text, "### YAML config file")
-
-    if not yaml_rows:
-        findings.append(
-            {
-                "artifact": path,
-                "type": "doc-parse-error",
-                "message": "Could not parse YAML keys table",
-            }
-        )
-
-    findings.extend(_validate_yaml_keys_against_mailconfig(yaml_rows, path))
-
-    return findings
-
-
 # ====================================================================
 # Check 3 — structural validation of the merged multi-account example
 # ====================================================================
@@ -689,53 +391,6 @@ def check_docs_connecting(
 _LEGACY_FLAT_DB_PATH_RE = re.compile(r"^\.data/mail-[^/]+\.db$")
 
 
-def _normalise_legacy_yaml(raw: dict[str, Any]) -> dict[str, Any]:
-    """Convert legacy YAML format (``id``, nested sections) to the pydantic
-    model format (``account_id``, flat ``config`` dict)."""
-    result: dict[str, Any] = dict(raw)
-
-    # default_account → default_account_id
-    if "default_account" in result and "default_account_id" not in result:
-        result["default_account_id"] = result.pop("default_account")
-
-    # Build a reverse mapping: dotted YAML path → flat field name.
-    _yaml_to_flat: dict[str, str] = {v: k for k, v in FIELD_TO_YAML.items()}
-
-    accounts: list[dict[str, Any]] = []
-    for account in result.get("accounts", []):
-        if not isinstance(account, dict):
-            accounts.append(account)
-            continue
-        acc: dict[str, Any] = dict(account)
-
-        # id → account_id
-        if "id" in acc and "account_id" not in acc:
-            acc["account_id"] = acc.pop("id")
-
-        # Flatten nested config sections into a single ``config`` dict,
-        # converting dotted paths (``imap.host``) to flat field names
-        # (``imap_host``).
-        config: dict[str, Any] = {}
-        for section in list(acc):
-            if section in ("account_id", "label", "id"):
-                continue
-            if isinstance(acc[section], dict):
-                sub = acc.pop(section)
-                for sub_key, sub_val in sub.items():
-                    ypath = f"{section}.{sub_key}"
-                    flat = _yaml_to_flat.get(ypath, ypath)
-                    config[flat] = sub_val
-        if config and "config" not in acc:
-            acc["config"] = config
-
-        accounts.append(acc)
-
-    if accounts:
-        result["accounts"] = accounts
-
-    return result
-
-
 def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
     """Validate the multi-account example loaded from *load_path*.
 
@@ -744,16 +399,14 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
 
     try:
-        # Support both JSON (.json) and YAML (.yaml / .yml) example files.
-        if load_path.suffix == ".json":
-            data = json.loads(load_path.read_text())
-        else:
-            raw = yaml.safe_load(load_path.read_text())
-            if raw is None:
-                raise FileNotFoundError(f"Empty or unparseable: {load_path}")
-            data = _normalise_legacy_yaml(raw)
+        data = json.loads(load_path.read_text())
         config = MailAccountsConfig.model_validate(data)
-    except (ConfigurationError, FileNotFoundError, ValueError) as exc:
+    except (
+        ConfigurationError,
+        FileNotFoundError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
         findings.append(
             {
                 "artifact": label,
@@ -831,27 +484,14 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
 
 
 def check_accounts_example(
-    text_or_path: str | Path,
-    path: str = "docs/config/mail.local.example.yaml",
+    path: str = "config/config.example.json",
 ) -> list[dict[str, Any]]:
-    """Check the multi-account example against ``MailAccountsConfig``.
-
-    *text_or_path* may be either a filesystem path to the example file or
-    the raw YAML text (which is written to a temporary file so the
-    path-based ``MailAccountsConfig.model_validate`` can read it).  *path*
-    is the artifact label used in the returned finding dicts.
+    """Check the multi-account JSON example at *path* against
+    ``MailAccountsConfig``.
 
     Returns a list of finding dicts (empty when the example is consistent).
     """
-    source = Path(text_or_path)
-    if source.exists():
-        return _check_accounts_path(source, path)
-
-    # Treat the argument as YAML text.
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_file = Path(tmp_dir) / "mail.local.example.yaml"
-        tmp_file.write_text(str(text_or_path))
-        return _check_accounts_path(tmp_file, path)
+    return _check_accounts_path(Path(path), path)
 
 
 # ====================================================================
@@ -882,19 +522,19 @@ def run_checks(
         return exc.code if isinstance(exc.code, int) else 2
 
     # -- load artifact files ------------------------------------------------
-    yaml_path = repo_root / "docs/config" / "mail.local.example.yaml"
+    json_example_path = repo_root / "config" / "config.example.json"
     docs_cfg_path = repo_root / "docs" / "configuration.md"
 
     try:
-        yaml_text = yaml_path.read_text()
+        json_data = json.loads(json_example_path.read_text())
     except FileNotFoundError:
         print(
-            f"ERROR: {yaml_path} not found — cannot run YAML check",
+            f"ERROR: {json_example_path} not found — cannot run JSON example check",
             file=sys.stderr,
         )
         return 2
-    except OSError as exc:
-        print(f"ERROR: cannot read {yaml_path}: {exc}", file=sys.stderr)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: cannot read {json_example_path}: {exc}", file=sys.stderr)
         return 2
 
     try:
@@ -911,9 +551,9 @@ def run_checks(
 
     # -- run checks ---------------------------------------------------------
     findings: list[dict[str, Any]] = []
-    findings.extend(check_yaml_example(yaml_text, str(yaml_path)))
+    findings.extend(check_json_example(json_data, str(json_example_path)))
     findings.extend(check_docs_configuration(docs_cfg_text, str(docs_cfg_path)))
-    findings.extend(check_accounts_example(yaml_path, str(yaml_path)))
+    findings.extend(check_accounts_example(str(json_example_path)))
 
     # -- report -------------------------------------------------------------
     if not findings:

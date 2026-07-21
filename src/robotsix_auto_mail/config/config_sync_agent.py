@@ -5,7 +5,7 @@ fast, free, exact CI gate — it catches drift that fits its hard-coded
 ``FIELD_TO_YAML`` mapping and rule set.  This module is
 an *optional, operator-facing advisory tool* that **complements** (and does
 NOT replace) that gate: it asks an LLM to compare the three config surfaces
-(the ``MailConfig`` dataclass, the YAML template, and the connecting docs)
+(the ``MailConfig`` dataclass, the JSON example, and the connecting docs)
 against those same ground-truth mappings and emit
 human-readable drift proposals — catching *unanticipated* patterns the
 deterministic rules cannot express.
@@ -37,8 +37,8 @@ from robotsix_auto_mail.errors import RobotsixMailError
 #: Config surfaces (repo-relative) the agent compares, besides the
 #: ``MailConfig`` pydantic model which is rendered from its field declarations.
 _SURFACE_FILES: tuple[str, ...] = (
-    "docs/config/mail.local.example.yaml",
-    "docs/connecting.md",
+    "config/config.example.json",
+    "docs/configuration.md",
 )
 #: Watermark key owned by this module for the dedup memory ledger.
 #:
@@ -278,14 +278,14 @@ def _build_config_sync_system_prompt() -> str:
     return (
         "You are a configuration-consistency auditor for a Python project. "
         "You are given an authoritative mapping of each `MailConfig` field "
-        "to its YAML key, followed by the text of three configuration "
-        "surfaces: the `MailConfig` dataclass, the YAML template, and the "
-        "connecting docs.\n"
+        "to its dotted config key, followed by the text of three "
+        "configuration surfaces: the `MailConfig` dataclass, the JSON "
+        "example, and the connecting docs.\n"
         "\n"
         "Compare the three surfaces against the authoritative mapping and "
         "against each other. Emit a human-readable proposal for any "
         "divergence — for example a field described with the wrong "
-        "semantics in prose, a YAML key that looks meaningful but is not in "
+        "semantics in prose, a JSON key that looks meaningful but is not in "
         "the mapping, an inconsistent default between surfaces, or "
         "contradictory documentation. Each proposal has a `title`, a `body` "
         "explaining the drift, an `affected_field` (the `MailConfig` field "
@@ -301,10 +301,10 @@ def _build_config_sync_system_prompt() -> str:
 
 
 def _render_mappings(field_to_yaml: dict[str, str]) -> str:
-    """Render the ground-truth field/YAML mapping for the prompt."""
-    lines = ["Authoritative field -> YAML key mapping:"]
+    """Render the ground-truth field/key mapping for the prompt."""
+    lines = ["Authoritative field -> dotted config key mapping:"]
     for field_name, yaml_key in field_to_yaml.items():
-        lines.append(f"- {field_name}: yaml=`{yaml_key}`")
+        lines.append(f"- {field_name}: key=`{yaml_key}`")
     return "\n".join(lines)
 
 

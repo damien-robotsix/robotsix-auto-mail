@@ -1,0 +1,1 @@
+Migrate config to typed-JSON contract: removed fallback config loading in loader.py (now uses robotsix_config exclusively), replaced YAML example with multi-account JSON example, and updated CI config-sync checker and advisory agent to validate against JSON instead of YAML.
