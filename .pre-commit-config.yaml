@@ -24,6 +24,7 @@ repos:
     rev: v0.25
     hooks:
       - id: validate-pyproject
+        args: [--disable-plugins=uv]
         additional_dependencies:
           - validate-pyproject-schema-store[all]
 
