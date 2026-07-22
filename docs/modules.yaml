@@ -177,6 +177,7 @@ modules:
       - changelog/20260721T210331Z-config-standard-cutover-remove-auto-mail-79ff.misc.md
       - changelog/20260722T004846Z-add-towncrier-build-step-to-release-yml-c4f8.misc.md
       - changelog/20260722T010422Z-remove-dead-pydantic-v1-compat-guard-in-939d.removal.md
+      - changelog/20260722T122628Z-replace-duplicated-imap-archive-move-log-50af.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
