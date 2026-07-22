@@ -378,10 +378,7 @@ class _BoardActionMixin:
                 self._bad_request(str(exc))
                 return False
             except ImapMessageNotFoundError:
-                from robotsix_auto_mail.imap import ImapClient, ImapError
                 from robotsix_auto_mail.server.adapters import (
-                    _archive_dest_folder,
-                    _ensure_folder_hierarchy,
                     _imap_cross_folder_fallback,
                 )
 
@@ -396,29 +393,14 @@ class _BoardActionMixin:
                 if result is not None:
                     new_folder, new_uid = result
                     try:
-                        with ImapClient(self.mail_config) as client2:
-                            client2.select_folder(new_folder)
-                            # Compute the archive destination.
-                            delimiter = next(
-                                (
-                                    f.delimiter
-                                    for f in client2.list_folders()
-                                    if f.delimiter
-                                ),
-                                "/",
-                            )
-                            dest_folder = _archive_dest_folder(
-                                effective_root, subfolder, delimiter
-                            )
-                            if dest_folder is None:
-                                raise ValueError(
-                                    "Archive destination escapes archive root"
-                                )
-                            _ensure_folder_hierarchy(client2, dest_folder, delimiter)
-                            client2.move_message(new_uid, dest_folder)
-                    except ValueError as exc:
-                        self._bad_request(str(exc))
-                        return False
+                        self._imap_archive_move(
+                            self.mail_config,
+                            new_uid,
+                            effective_root,
+                            subfolder,
+                            source_folder=new_folder,
+                            message_id=record.message_id,
+                        )
                     except (ImapError, OSError) as exc:
                         self._send_response(
                             f"IMAP cross-folder resolution failed: {exc}",
