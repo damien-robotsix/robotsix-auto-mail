@@ -399,7 +399,10 @@ modules:
       - tests/pipeline/_helpers.py
       - tests/pipeline/test_pipeline_cli_ingest.py
       - tests/pipeline/test_fetch.py
-      - tests/pipeline/test_ingest.py
+      - tests/pipeline/test_ingest_archive_triage.py
+      - tests/pipeline/test_ingest_core.py
+      - tests/pipeline/test_ingest_dataclass.py
+      - tests/pipeline/test_ingest_dryrun.py
       - tests/pipeline/test_parser.py
       - tests/pipeline/test_parser_properties.py
       - tests/pipeline/test_reconcile.py
