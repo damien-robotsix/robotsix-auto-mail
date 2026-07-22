@@ -175,6 +175,7 @@ modules:
       - changelog/20260721T205329Z-config-clean-cutover-migration-to-robots-6cda.removal.md
       - changelog/20260721T205654Z-split-tests-cli-test-commands-detect-py-d7f6.misc.md
       - changelog/20260721T210331Z-config-standard-cutover-remove-auto-mail-79ff.misc.md
+      - changelog/20260722T004846Z-add-towncrier-build-step-to-release-yml-c4f8.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
