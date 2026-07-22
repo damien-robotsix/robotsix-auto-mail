@@ -243,14 +243,22 @@ class TestArchiveAndDelete:
                 ) as mock_cross,
             ):
                 mock_client = mock_cls.return_value.__enter__.return_value
-                mock_client.search_uids.return_value = []
+                # Outer _imap_archive_move fails (stale UID 42),
+                # triggering the cross-folder fallback.  The inner
+                # _imap_archive_move must succeed — resolve the
+                # healed UID 99.
+                mock_client.search_uids.side_effect = lambda q: (
+                    [99] if "99" in q else []
+                )
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
                 mock_cross.return_value = ("Projects", 99)
 
                 result = handler._archive_and_delete(conn, record)
 
             assert result is True
-            # Verify that the healed UID was moved.
+            # Verify that the healed UID was moved (by the inner
+            # _imap_archive_move call, not the original duplicated
+            # move logic).
             mock_client.move_message.assert_called_once()
             move_uid = mock_client.move_message.call_args[0][0]
             assert move_uid == 99

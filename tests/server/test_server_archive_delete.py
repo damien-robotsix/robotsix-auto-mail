@@ -673,7 +673,13 @@ def test_archive_cross_folder_heal_and_archive(single_db: str) -> None:
             mock.patch("robotsix_auto_mail.imap.cross_folder_resolve") as mock_cross,
         ):
             mock_client = mock_cls.return_value.__enter__.return_value
-            mock_client.search_uids.return_value = []
+            # Outer _imap_archive_move fails (stale UID 42),
+            # triggering the cross-folder fallback.  The inner
+            # _imap_archive_move must succeed — resolve the
+            # healed UID 99.
+            mock_client.search_uids.side_effect = lambda q: (
+                [99] if "99" in q else []
+            )
             mock_cross.return_value = ("Projects", 99)
             # The archive heal path calls list_folders on the
             # second client to get the delimiter.
