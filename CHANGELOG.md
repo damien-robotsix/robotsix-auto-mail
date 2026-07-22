@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed dead pydantic v1 compatibility `hasattr(field_info, "is_required")` guard in `_render_mailconfig_surface()`. The project requires pydantic ≥ 2.0 where `FieldInfo.is_required()` is always available.
 - Split ``tests/cli/test_commands_detect.py`` (926 lines) into three domain-focused modules: ``test_commands_detect_report.py``, ``test_commands_detect_probe.py``, ``test_commands_detect_cmd.py``, following the AGENT.md ~500-line threshold.
 - Removed all environment-variable overrides for LLM secrets and settings (`LLM_API_KEY`, `LLM_PROVIDER_MODEL`). The API key now resolves solely from `config.json`'s `llm_api_key` field, and the provider-model from `llm_provider_model`. The legacy plain-JSON fallback loader in `_load_accounts_from_file` has been removed — `robotsix_config.load_config` is the only config-loading path. A schema-drift check (`config/config.schema.json` vs the pydantic model) has been added to the CI config-sync step.
 - Migrate config to typed-JSON contract: removed fallback config loading in loader.py (now uses robotsix_config exclusively), replaced YAML example with multi-account JSON example (config/config.example.json), and updated CI config-sync checker and advisory agent to validate against JSON instead of YAML.

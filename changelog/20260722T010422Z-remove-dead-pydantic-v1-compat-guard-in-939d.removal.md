@@ -1,0 +1,1 @@
+Removed dead pydantic v1 compatibility `hasattr(field_info, "is_required")` guard in `_render_mailconfig_surface()`. The project requires pydantic ≥ 2.0 where `FieldInfo.is_required()` is always available.

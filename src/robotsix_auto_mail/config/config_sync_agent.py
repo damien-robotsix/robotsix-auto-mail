@@ -223,9 +223,7 @@ def _render_mailconfig_surface() -> str:
     lines = ["MailConfig fields (field | type | default):"]
     for field_name, field_info in MailConfig.model_fields.items():
         default = field_info.default
-        if default is None or (
-            hasattr(field_info, "is_required") and field_info.is_required()
-        ):
+        if default is None or field_info.is_required():
             default_repr = "<required>"
         else:
             default_repr = repr(default)
