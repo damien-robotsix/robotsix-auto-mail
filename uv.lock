@@ -1246,6 +1246,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "robotsix-board" },
     { name = "robotsix-config" },
+    { name = "robotsix-http" },
     { name = "robotsix-llmio" },
     { name = "structlog" },
     { name = "urllib3" },
@@ -1298,6 +1299,7 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.3" },
     { name = "robotsix-board", git = "https://github.com/damien-robotsix/robotsix-board.git?rev=a364bf5116dcea5c35b036d158d2f3e47b8caeec" },
     { name = "robotsix-config", git = "https://github.com/damien-robotsix/robotsix-config.git?rev=424f8ec5140e14e9699b92d5c3755d929625b570" },
+    { name = "robotsix-http", git = "https://github.com/damien-robotsix/robotsix-http.git?rev=4cf79993f07c0d56e50cf02af816058144beacb9" },
     { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=3da3c4317f4a" },
     { name = "robotsix-llmio", extras = ["openrouter", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=3da3c4317f4a" },
     { name = "robotsix-llmio", extras = ["openrouter", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=3da3c4317f4a" },
@@ -1323,6 +1325,14 @@ version = "0.1.0"
 source = { git = "https://github.com/damien-robotsix/robotsix-config.git?rev=424f8ec5140e14e9699b92d5c3755d929625b570#424f8ec5140e14e9699b92d5c3755d929625b570" }
 dependencies = [
     { name = "pydantic" },
+]
+
+[[package]]
+name = "robotsix-http"
+version = "0.1.dev4+g4cf79993f"
+source = { git = "https://github.com/damien-robotsix/robotsix-http.git?rev=4cf79993f07c0d56e50cf02af816058144beacb9#4cf79993f07c0d56e50cf02af816058144beacb9" }
+dependencies = [
+    { name = "httpx" },
 ]
 
 [[package]]

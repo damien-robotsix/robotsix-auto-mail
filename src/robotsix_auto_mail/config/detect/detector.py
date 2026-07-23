@@ -12,6 +12,9 @@ from xml.etree import ElementTree  # nosec B405
 
 import urllib3
 import urllib3.exceptions
+import dataclasses
+import random
+import time
 from pydantic import SecretStr
 
 from robotsix_auto_mail.config import (
@@ -29,7 +32,46 @@ from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 # Shared connection pool
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Inline retry primitives (avoid hard dependency on robotsix_http at import)
+# ---------------------------------------------------------------------------
+
+@dataclasses.dataclass(frozen=True)
+class _RetryConfig:
+    """Lightweight retry configuration — mirrors robotsix_http.RetryConfig."""
+    max_retries: int = 4
+    backoff_base: float = 2.0
+    backoff_cap: float = 30.0
+
+def _call_with_retry(fn, *, config, is_transient_fn, what=""):
+    """Call *fn* with exponential-backoff retry on transient errors."""
+    last_exc: Exception | None = None
+    for attempt in range(config.max_retries + 1):
+        try:
+            return fn()
+        except Exception as exc:
+            last_exc = exc
+            if attempt == config.max_retries:
+                raise
+            if not is_transient_fn(exc):
+                raise
+            delay = min(config.backoff_base ** attempt, config.backoff_cap)
+            delay -= delay * 0.5 * random.random()
+            time.sleep(delay)
+    assert last_exc is not None
+    raise last_exc
+
 _HTTP = urllib3.PoolManager()
+
+_RETRY_CONFIG = _RetryConfig(max_retries=2, backoff_base=2.0, backoff_cap=10.0)
+
+def _is_transient_urllib3(exc: BaseException) -> bool:
+    """Return ``True`` for urllib3 errors that are likely transient.
+
+    Timeouts and connection failures are transient; permanent errors
+    (e.g. invalid URL, TLS handshake failure) are not retried.
+    """
+    return isinstance(exc, (urllib3.exceptions.HTTPError, OSError))
 
 # ---------------------------------------------------------------------------
 # Single source-of-truth provider registry
@@ -212,7 +254,6 @@ _GATEWAY_MX_NEEDLES: tuple[tuple[str, ...], ...] = (
 # Derive _MX_PROVIDERS from the unified registry
 # ---------------------------------------------------------------------------
 
-
 def _build_mx_providers() -> list[tuple[tuple[str, ...], MailProvider | None]]:
     """Build the MX-provider lookup table from ``_PROVIDER_DB``."""
     result: list[tuple[tuple[str, ...], MailProvider | None]] = []
@@ -235,14 +276,11 @@ def _build_mx_providers() -> list[tuple[tuple[str, ...], MailProvider | None]]:
         result.append((needles, None))
     return result
 
-
 _MX_PROVIDERS: list[tuple[tuple[str, ...], MailProvider | None]] = _build_mx_providers()
-
 
 # ---------------------------------------------------------------------------
 # Build the LLM system prompt from the unified registry
 # ---------------------------------------------------------------------------
-
 
 def _build_domain_heuristic_line(entry: ProviderEntry) -> str:
     """Build a single domain-heuristic bullet for *entry*."""
@@ -253,7 +291,6 @@ def _build_domain_heuristic_line(entry: ProviderEntry) -> str:
     if entry.label == "Proton Mail Bridge":
         return f"- {quoted} → {label} (localhost)."
     return f"- {quoted} → {label} settings."
-
 
 def _build_prompt_table_row(entry: ProviderEntry) -> str:
     """Build a single Markdown table row for *entry*."""
@@ -266,7 +303,6 @@ def _build_prompt_table_row(entry: ProviderEntry) -> str:
         f"| {entry.smtp_port} "
         f"| `{entry.smtp_tls_mode}` |"
     )
-
 
 def _build_system_prompt() -> str:
     """Assemble the full system prompt from the registry + fixed prose."""
@@ -349,14 +385,11 @@ def _build_system_prompt() -> str:
         "no markdown fences."
     )
 
-
 _DETECT_SYSTEM_PROMPT: str = _build_system_prompt()
-
 
 # ---------------------------------------------------------------------------
 # Core detection
 # ---------------------------------------------------------------------------
-
 
 def detect_provider(
     email_address: str,
@@ -437,7 +470,6 @@ def detect_provider(
         smtp_tls_mode=detected.smtp_tls_mode,
     )
 
-
 # ---------------------------------------------------------------------------
 # Autoconfig (Mozilla ISPDB + domain autoconfig) — no LLM required
 # ---------------------------------------------------------------------------
@@ -448,7 +480,6 @@ _SOCKET_TYPE_TO_TLS = {
     "STARTTLS": "starttls",
     "plain": "none",
 }
-
 
 def _autoconfig_urls(email_address: str) -> list[str]:
     """Return candidate autoconfig URLs to try, most authoritative first."""
@@ -466,7 +497,6 @@ def _autoconfig_urls(email_address: str) -> list[str]:
         # Provider-hosted autoconfig (the Thunderbird autoconfig protocol).
         f"https://autoconfig.{domain}/mail/config-v1.1.xml?emailaddress={quoted}",
     ]
-
 
 def _parse_autoconfig_xml(xml_text: str) -> MailProvider | None:
     """Parse a Thunderbird ``clientConfig`` document into a MailProvider.
@@ -517,7 +547,6 @@ def _parse_autoconfig_xml(xml_text: str) -> MailProvider | None:
         smtp_tls_mode=_tls(smtp["socket"], smtp_port),
     )
 
-
 def autoconfig_lookup(
     email_address: str, *, timeout: float = 5.0
 ) -> MailProvider | None:
@@ -531,7 +560,12 @@ def autoconfig_lookup(
     for url in _autoconfig_urls(email_address):
         # See _autoconfig_urls() for the SSRF-risk rationale.
         try:
-            resp = _HTTP.request("GET", url, timeout=timeout)
+            resp = _call_with_retry(
+                lambda u=url: _HTTP.request("GET", u, timeout=timeout),
+                config=_RETRY_CONFIG,
+                is_transient_fn=_is_transient_urllib3,
+                what=f"autoconfig lookup {url}",
+            )
             if resp.status != 200:
                 continue
             xml_text = resp.data.decode("utf-8", errors="replace")
@@ -542,14 +576,12 @@ def autoconfig_lookup(
             return provider
     return None
 
-
 # ---------------------------------------------------------------------------
 # MX-record provider detection (DNS-over-HTTPS) — no LLM required
 # ---------------------------------------------------------------------------
 
 # Google's DNS-over-HTTPS JSON resolver — stdlib-only, works in slim images.
 _DOH_RESOLVER = "https://dns.google/resolve"
-
 
 def mx_lookup(email_address: str, *, timeout: float = 5.0) -> list[str]:
     """Return the MX hostnames for the email's domain, lowest preference first.
@@ -562,11 +594,16 @@ def mx_lookup(email_address: str, *, timeout: float = 5.0) -> list[str]:
         return []
     url = f"{_DOH_RESOLVER}?name={urllib.parse.quote(domain)}&type=MX"
     try:
-        resp = _HTTP.request(
-            "GET",
-            url,
-            timeout=timeout,
-            headers={"Accept": "application/dns-json"},
+        resp = _call_with_retry(
+            lambda: _HTTP.request(
+                "GET",
+                url,
+                timeout=timeout,
+                headers={"Accept": "application/dns-json"},
+            ),
+            config=_RETRY_CONFIG,
+            is_transient_fn=_is_transient_urllib3,
+            what=f"MX lookup {domain}",
         )
         if resp.status != 200:
             return []
@@ -596,7 +633,6 @@ def mx_lookup(email_address: str, *, timeout: float = 5.0) -> list[str]:
     records.sort(key=lambda item: item[0])
     return [host for _, host in records]
 
-
 def provider_from_mx(mx_hosts: list[str]) -> MailProvider | None:
     """Map MX hostnames to known provider settings.
 
@@ -610,11 +646,9 @@ def provider_from_mx(mx_hosts: list[str]) -> MailProvider | None:
                 return provider
     return None
 
-
 # ---------------------------------------------------------------------------
 # Conversion helpers
 # ---------------------------------------------------------------------------
-
 
 def _build_microsoft_hosts() -> frozenset[str]:
     """Return known Microsoft IMAP/SMTP hosts, derived from ``_PROVIDER_DB``.
@@ -628,13 +662,11 @@ def _build_microsoft_hosts() -> frozenset[str]:
             return frozenset({entry.imap_host, entry.smtp_host, "outlook.com"})
     raise AssertionError("Microsoft provider entry not found in _PROVIDER_DB")
 
-
 #: Microsoft 365 / Outlook.com IMAP & SMTP hosts.  Used to classify a
 #: detected provider as Microsoft regardless of which detection backend
 #: (autoconfig / MX / LLM) produced it, so ``detect`` can write an OAuth2
 #: (XOAUTH2) auth block instead of prompting for a (rejected) password.
 _MICROSOFT_HOSTS = _build_microsoft_hosts()
-
 
 def is_microsoft_provider(provider: MailProvider) -> bool:
     """Return ``True`` when *provider* points at Microsoft 365 / Outlook.com.
@@ -649,7 +681,6 @@ def is_microsoft_provider(provider: MailProvider) -> bool:
         if normalized in _MICROSOFT_HOSTS or normalized.endswith(".office365.com"):
             return True
     return False
-
 
 def provider_to_config(
     provider: MailProvider,
