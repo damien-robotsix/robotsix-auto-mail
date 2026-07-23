@@ -7,11 +7,10 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.pipeline import (
-    ingest_mail,
     IngestResult,
+    ingest_mail,
 )
 from tests.pipeline._helpers import _make_raw_message, _mock_imap_client
-
 
 # ---------------------------------------------------------------------------
 # ingest_mail - first-run archive setup

@@ -11,8 +11,8 @@ import pytest
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
-    get_watermark,
     MailRecord,
+    get_watermark,
 )
 from robotsix_auto_mail.pipeline import (
     ingest_mail,
@@ -20,7 +20,6 @@ from robotsix_auto_mail.pipeline import (
 )
 from robotsix_auto_mail.pipeline._parse import ParseError
 from tests.pipeline._helpers import _make_raw_message, _mock_imap_client
-
 
 # ---------------------------------------------------------------------------
 # ingest_mail - happy path (acceptance criterion 1)

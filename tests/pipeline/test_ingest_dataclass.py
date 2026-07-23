@@ -8,7 +8,6 @@ import pytest
 
 from robotsix_auto_mail.pipeline import IngestError, IngestResult
 
-
 # ---------------------------------------------------------------------------
 # IngestError / IngestResult dataclass tests
 # ---------------------------------------------------------------------------
