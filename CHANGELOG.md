@@ -15,6 +15,11 @@
   now create new mail accounts entirely through the browser — no manual
   config-file editing or container restart required.  The new account
   appears in the board picker immediately after creation.
+- Allow the application to start with an empty accounts list (idle/
+  degraded-but-healthy mode).  When no accounts are configured the web
+  board and healthcheck remain reachable, a warning is logged, and the
+  reconcile loop skips gracefully.  Previously startup aborted with
+  "accounts list must not be empty".
 - Split `tests/pipeline/test_ingest.py` (887 lines) into four domain-focused
   modules: `test_ingest_dataclass.py`, `test_ingest_core.py`,
   `test_ingest_dryrun.py`, and `test_ingest_archive_triage.py`.

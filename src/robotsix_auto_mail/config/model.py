@@ -289,15 +289,13 @@ class MailAccountsConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate(self) -> MailAccountsConfig:
-        if not self.accounts:
-            raise ConfigurationError("accounts list must not be empty")
         ids = [a.account_id for a in self.accounts]
         if len(ids) != len(set(ids)):
             raise ConfigurationError("duplicate account_id values")
         paths = [a.config.db_path for a in self.accounts if a.config.db_path]
         if len(paths) != len(set(paths)):
             raise ConfigurationError("duplicate db_path values")
-        if self.default_account_id not in ids:
+        if ids and self.default_account_id not in ids:
             raise ConfigurationError(
                 f"default_account_id {self.default_account_id!r} not in accounts"
             )
@@ -305,7 +303,13 @@ class MailAccountsConfig(BaseModel):
 
     @property
     def default(self) -> MailAccount:
-        """Return the :class:`MailAccount` for ``default_account_id``."""
+        """Return the :class:`MailAccount` for ``default_account_id``.
+
+        Raises:
+            ConfigurationError: When no accounts are configured.
+        """
+        if not self.accounts:
+            raise ConfigurationError("No mail accounts configured")
         return next(a for a in self.accounts if a.account_id == self.default_account_id)
 
     def get(self, account_id: str) -> MailAccount:

@@ -43,6 +43,7 @@ modules:
       - SECURITY.md
       - ROADMAP.md
       - changelog/.gitkeep
+      - changelog/20260723T125240Z-start-cleanly-with-empty-accounts.feature.md
       - changelog/20260702T221229Z-consolidate-modules-observability-core-l-7593.misc.md
       - changelog/20260718T044535Z-missing-re-export-default-ingest-interva-1768.misc.md
       - changelog/20260720T153746Z-boilerplate-missing-re-export-ticket-tri-c9c3.misc.md

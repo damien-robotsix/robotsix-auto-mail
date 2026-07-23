@@ -1,0 +1,1 @@
+Allow the application to start with an empty accounts list (idle/degraded-but-healthy mode).  When no accounts are configured the web board and healthcheck remain reachable, a warning is logged, and the reconcile loop skips gracefully.  Previously startup aborted with "accounts list must not be empty".

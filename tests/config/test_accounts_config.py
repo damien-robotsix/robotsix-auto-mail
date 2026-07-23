@@ -79,9 +79,11 @@ def test_accounts_get_unknown_lists_valid_ids() -> None:
     assert "work" in msg
 
 
-def test_accounts_empty_raises() -> None:
-    with pytest.raises(ConfigurationError):
-        MailAccountsConfig(accounts=[], default_account_id="x")
+def test_accounts_empty_allowed() -> None:
+    """Empty accounts list is allowed (idle/degraded mode)."""
+    cfg = MailAccountsConfig(accounts=[], default_account_id="")
+    assert cfg.accounts == []
+    assert cfg.default_account_id == ""
 
 
 def test_accounts_duplicate_id_raises() -> None:

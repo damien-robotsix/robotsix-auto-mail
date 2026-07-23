@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import errno
+import logging
 import sys
 import threading
 import time
@@ -11,6 +12,8 @@ import time
 from robotsix_auto_mail.cli.commands_triage import _clear_stale_triage_state
 from robotsix_auto_mail.config import MailAccountsConfig
 from robotsix_auto_mail.core._constants import _RECONCILE_STATE_KEY
+
+_logger = logging.getLogger(__name__)
 
 
 def register_subparser(
@@ -49,6 +52,13 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
 
     from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
     from robotsix_auto_mail.server.adapters import _run_reconcile_background
+
+    if not accounts.accounts:
+        _logger.warning(
+            "No mail accounts configured — add one via the UI; "
+            "reconcile loop will not start."
+        )
+        return
 
     interval_minutes = max(
         1, min(acct.config.ingest_interval_minutes for acct in accounts.accounts)
@@ -94,6 +104,29 @@ def _cmd_serve(
     from http.server import ThreadingHTTPServer
 
     from robotsix_auto_mail.server import make_board_handler
+
+    if not accounts.accounts:
+        _logger.warning("No mail accounts configured — add one via the UI")
+        # Use a fallback database so the board can serve healthchecks
+        # and render an empty UI.
+        handler_class = make_board_handler(
+            ".data/auto-mail.db",
+            mail_config=None,
+            accounts=accounts,
+            default_account_id=default_account_id,
+        )
+        print(f"Serving board on http://{host}:{port}/board")
+        try:
+            server = ThreadingHTTPServer((host, port), handler_class)
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("Shutting down.")
+        except OSError as exc:
+            if exc.errno == errno.EADDRINUSE:
+                print(f"Port {port} is already in use.", file=sys.stderr)
+                return 1
+            raise
+        return 0
 
     default = accounts.get(default_account_id)
 
