@@ -312,7 +312,7 @@ class _AccountMixin:
         # updated config.
         handler_factory = getattr(self.server, "RequestHandlerClass", None)
         if handler_factory is not None and hasattr(handler_factory, "keywords"):
-            kw = handler_factory.keywords  # type: ignore[union-attr]
+            kw = handler_factory.keywords
             if "accounts" in kw:
                 kw["accounts"] = new_config
 
