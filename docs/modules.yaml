@@ -178,6 +178,7 @@ modules:
       - changelog/20260722T004846Z-add-towncrier-build-step-to-release-yml-c4f8.misc.md
       - changelog/20260722T010422Z-remove-dead-pydantic-v1-compat-guard-in-939d.removal.md
       - changelog/20260722T122628Z-replace-duplicated-imap-archive-move-log-50af.misc.md
+      - changelog/20260722T205817Z-remove-dead-dependabot-auto-merge-yml-wo-12c3.misc.md
       - changelog/20260722T205817Z-split-tests-pipeline-test-ingest-py-887-5b4a.misc.md
       - tests/__init__.py
       - tests/conftest.py
