@@ -5,12 +5,10 @@ from __future__ import annotations
 import sqlite3
 from unittest import mock
 
-import pytest
-
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
-    MailRecord,
     get_watermark,
+    MailRecord,
 )
 from robotsix_auto_mail.pipeline import (
     ingest_mail,

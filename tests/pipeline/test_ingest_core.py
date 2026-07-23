@@ -11,11 +11,10 @@ import pytest
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import (
-    MailRecord,
     get_watermark,
+    MailRecord,
 )
 from robotsix_auto_mail.pipeline import (
-    IngestResult,
     ingest_mail,
     update_watermark,
 )

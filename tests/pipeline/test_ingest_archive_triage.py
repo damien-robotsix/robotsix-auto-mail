@@ -5,12 +5,10 @@ from __future__ import annotations
 import sqlite3
 from unittest import mock
 
-import pytest
-
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.pipeline import (
-    IngestResult,
     ingest_mail,
+    IngestResult,
 )
 from tests.pipeline._helpers import _make_raw_message, _mock_imap_client
 
