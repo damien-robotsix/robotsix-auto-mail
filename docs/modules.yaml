@@ -427,7 +427,11 @@ modules:
     paths:
       - src/robotsix_auto_mail/smtp/__init__.py
       - tests/smtp/__init__.py
-      - tests/smtp/test_smtp_client.py
+      - tests/smtp/test_smtp_close.py
+      - tests/smtp/test_smtp_connect.py
+      - tests/smtp/test_smtp_exceptions.py
+      - tests/smtp/test_smtp_isolation.py
+      - tests/smtp/test_smtp_send.py
 
   - id: server
     description: >-
