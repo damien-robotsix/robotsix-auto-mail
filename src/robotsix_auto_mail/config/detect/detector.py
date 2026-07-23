@@ -43,7 +43,7 @@ class _RetryConfig:
     backoff_base: float = 2.0
     backoff_cap: float = 30.0
 
-def _call_with_retry(fn, *, config, is_transient_fn, what=""):
+def _call_with_retry(fn, *, config, is_transient_fn):
     """Call *fn* with exponential-backoff retry on transient errors."""
     last_exc: Exception | None = None
     for attempt in range(config.max_retries + 1):
@@ -58,8 +58,7 @@ def _call_with_retry(fn, *, config, is_transient_fn, what=""):
             delay = min(config.backoff_base ** attempt, config.backoff_cap)
             delay -= delay * 0.5 * random.random()
             time.sleep(delay)
-    assert last_exc is not None
-    raise last_exc
+    raise last_exc  # type: ignore[arg-type]  # unreachable; satisfies type checker
 
 _HTTP = urllib3.PoolManager()
 
@@ -71,7 +70,7 @@ def _is_transient_urllib3(exc: BaseException) -> bool:
     Timeouts and connection failures are transient; permanent errors
     (e.g. invalid URL, TLS handshake failure) are not retried.
     """
-    return isinstance(exc, (urllib3.exceptions.HTTPError, OSError))
+    return isinstance(exc, (urllib3.exceptions.TimeoutError, OSError))
 
 # ---------------------------------------------------------------------------
 # Single source-of-truth provider registry
@@ -564,7 +563,6 @@ def autoconfig_lookup(
                 lambda u=url: _HTTP.request("GET", u, timeout=timeout),
                 config=_RETRY_CONFIG,
                 is_transient_fn=_is_transient_urllib3,
-                what=f"autoconfig lookup {url}",
             )
             if resp.status != 200:
                 continue
@@ -603,7 +601,6 @@ def mx_lookup(email_address: str, *, timeout: float = 5.0) -> list[str]:
             ),
             config=_RETRY_CONFIG,
             is_transient_fn=_is_transient_urllib3,
-            what=f"MX lookup {domain}",
         )
         if resp.status != 200:
             return []
