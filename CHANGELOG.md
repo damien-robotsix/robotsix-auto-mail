@@ -5,6 +5,12 @@
 
 ## 0.0.0 (unreleased)
 
+- Increase the smoke-test readiness-poll timeout from 20 s to 60 s
+  (120 iterations × 0.5 s) so the first import on a cold bytecode cache
+  completes before the poll gives up.  The import chain for
+  ``robotsix_auto_mail.cli`` pulls in pydantic, robotsix_config,
+  smtplib (→ email → …), and the cumulative compile time can exceed
+  10 s in a fresh venv.
 - Added an "Add Account" button to the mail board web UI.  Operators can
   now create new mail accounts entirely through the browser — no manual
   config-file editing or container restart required.  The new account

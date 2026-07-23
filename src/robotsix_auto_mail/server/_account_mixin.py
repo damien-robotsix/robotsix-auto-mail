@@ -33,6 +33,11 @@ _REQUIRED_FIELDS = ("account_id", "imap_host", "smtp_host", "username", "passwor
 
 # Pre-rendered HTML fragments shared by GET /add-account (fresh form) and
 # POST /add-account (re-render with error + pre-filled values).
+#
+# NOTE: The var() fallback colours below are intentional and load-bearing —
+# /add-account is a standalone page that does not link board.css, so the
+# CSS custom properties are never defined.  The second argument to every
+# var() call is the actual colour used at runtime.
 _ADD_ACCOUNT_FORM_CSS = """\
 body {
   background: var(--color-bg-page, #121626);
@@ -215,7 +220,7 @@ class _AccountMixin:
         # 6. Parse optional integer fields.
         try:
             imap_port = int(fields["imap_port"]) if fields.get("imap_port") else 993
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             self._serve_add_account(
                 error="IMAP Port must be a number.",
                 prefill=prefill,
@@ -223,7 +228,7 @@ class _AccountMixin:
             return
         try:
             smtp_port = int(fields["smtp_port"]) if fields.get("smtp_port") else 587
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             self._serve_add_account(
                 error="SMTP Port must be a number.",
                 prefill=prefill,
