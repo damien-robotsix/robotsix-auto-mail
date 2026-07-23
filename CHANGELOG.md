@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Added an "Add Account" button to the mail board web UI.  Operators can
+  now create new mail accounts entirely through the browser — no manual
+  config-file editing or container restart required.  The new account
+  appears in the board picker immediately after creation.
 - Split `tests/pipeline/test_ingest.py` (887 lines) into four domain-focused
   modules: `test_ingest_dataclass.py`, `test_ingest_core.py`,
   `test_ingest_dryrun.py`, and `test_ingest_archive_triage.py`.
