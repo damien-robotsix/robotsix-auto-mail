@@ -181,6 +181,8 @@ def _detect_unsubscribe_for_sender(
     conn: sqlite3.Connection | None,
     sender: str,
     records: list[MailRecord],
+    api_key: str | None = None,
+    provider_model: str | None = None,
 ) -> UnsubscribeDetection | None:
     """Check *sender* (lowercased address) for unsubscribe options.
 
@@ -188,6 +190,10 @@ def _detect_unsubscribe_for_sender(
     ``unsubscribe_header`` is non-empty, returns a mechanical detection
     without calling the LLM.  Otherwise calls the LLM to scan the full
     ``body_plain`` for unsubscribe links / instructions.
+
+    When *api_key* or *provider_model* are provided they take
+    precedence over config-level resolution; otherwise the function
+    resolves its own credentials (best-effort, for standalone callers).
 
     Returns ``None`` on LLM failure so the caller can continue safely.
     """
@@ -217,13 +223,15 @@ def _detect_unsubscribe_for_sender(
 
     # -- LLM path: scan body for unsubscribe options --------------------
 
-    # Resolve API key with the same precedence as run_triage_agent.
-    resolved_key = resolve_llm_api_key(raise_on_missing=False)
+    # Resolve API key: explicit arg → config-level fallback (best-effort).
+    resolved_key = api_key if api_key is not None else resolve_llm_api_key(raise_on_missing=False)
     if not resolved_key:
         return None
 
-    # Resolve provider.
-    resolved_provider_model = resolve_llm_provider_model()
+    # Resolve provider: explicit arg → config-level fallback.
+    resolved_provider_model = (
+        provider_model if provider_model is not None else resolve_llm_provider_model()
+    )
 
     system_prompt = (
         "You are an unsubscribe-detection assistant. "
@@ -263,13 +271,21 @@ def _detect_unsubscribe_for_sender(
         return None
 
 
-def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
+def _check_unsubscribe_for_to_delete(
+    conn: sqlite3.Connection,
+    api_key: str | None = None,
+    provider_model: str | None = None,
+) -> None:
     """Check TO_DELETE senders for unsubscribe options and cache findings.
 
     Groups TO_DELETE records by lowercased sender address.  For senders
     with ≥3 messages, runs :func:`_detect_unsubscribe_for_sender` and
     caches the result in the ``unsubscribe_suggestions`` watermark.
     Senders already cached are skipped (idempotent).
+
+    *api_key* and *provider_model* are forwarded to
+    :func:`_detect_unsubscribe_for_sender`; when ``None`` that function
+    falls back to config-level resolution.
     """
     # Load all TO_DELETE decisions and resolve to MailRecords.
     all_decisions = list_triage_decisions(conn)
@@ -300,7 +316,10 @@ def _check_unsubscribe_for_to_delete(conn: sqlite3.Connection) -> None:
             continue
         if sender_key in suggestions:
             continue  # already cached
-        detection = _detect_unsubscribe_for_sender(conn, sender_key, sender_records)
+        detection = _detect_unsubscribe_for_sender(
+            conn, sender_key, sender_records,
+            api_key=api_key, provider_model=provider_model,
+        )
         # Only cache if an unsubscribe mechanism was actually found.
         if detection is not None and detection.has_unsubscribe:
             suggestions[sender_key] = detection.model_dump()
@@ -534,6 +553,8 @@ def run_triage_agent(
     )
 
     # -- check TO_DELETE senders for unsubscribe options ------------------
-    _check_unsubscribe_for_to_delete(conn)
+    _check_unsubscribe_for_to_delete(
+        conn, api_key=resolved_key, provider_model=resolved_provider_model,
+    )
 
     return decisions

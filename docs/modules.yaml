@@ -181,6 +181,7 @@ modules:
       - changelog/20260722T205817Z-remove-dead-dependabot-auto-merge-yml-wo-12c3.misc.md
       - changelog/20260722T205817Z-split-tests-pipeline-test-ingest-py-887-5b4a.misc.md
       - changelog/20260723T132809Z-migrate-robotsix-auto-mail-to-consume-ro-cc78.feature.md
+      - changelog/20260723T133742Z-thread-api-key-unsubscribe.bugfix.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
