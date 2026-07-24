@@ -224,7 +224,9 @@ def _detect_unsubscribe_for_sender(
     # -- LLM path: scan body for unsubscribe options --------------------
 
     # Resolve API key: explicit arg → config-level fallback (best-effort).
-    resolved_key = api_key if api_key is not None else resolve_llm_api_key(raise_on_missing=False)
+    resolved_key = (
+        api_key if api_key is not None else resolve_llm_api_key(raise_on_missing=False)
+    )
     if not resolved_key:
         return None
 
