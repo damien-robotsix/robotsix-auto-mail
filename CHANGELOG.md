@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Fix 17 instances of Python 2 `except X, Y:` syntax that silently failed to catch all listed exception types in Python 3.
 - Replace `pip install` instructions with `uv`-native equivalents in developer setup docs (README.md, CONTRIBUTING.md, testing.md).
 - Increase the smoke-test readiness-poll timeout from 20 s to 60 s
   (120 iterations × 0.5 s) so the first import on a cold bytecode cache

@@ -369,7 +369,7 @@ class ImapClient(_ProtocolClient):
         if data and data[0]:
             try:
                 return int(data[0])
-            except ValueError, TypeError:
+            except (ValueError, TypeError):  # fmt: skip
                 return 0
         return 0
 
@@ -403,7 +403,7 @@ class ImapClient(_ProtocolClient):
         if data and data[0]:
             try:
                 uidvalidity = int(data[0])
-            except ValueError, TypeError:
+            except (ValueError, TypeError):  # fmt: skip
                 uidvalidity = None
         return count, uidvalidity
 
@@ -480,7 +480,7 @@ class ImapClient(_ProtocolClient):
             return []
         try:
             uid_str = data[0].decode("utf-8", errors="replace").strip()
-        except AttributeError, LookupError:
+        except (AttributeError, LookupError):  # fmt: skip
             return []
         if not uid_str:
             return []
@@ -773,7 +773,7 @@ class ImapClient(_ProtocolClient):
                 return None
         try:
             return int(text[start:end].rstrip(")"))
-        except ValueError, TypeError:
+        except (ValueError, TypeError):  # fmt: skip
             return None
 
     @staticmethod
@@ -793,5 +793,5 @@ class ImapClient(_ProtocolClient):
             return None
         try:
             return int(match.group(1))
-        except ValueError, TypeError:
+        except (ValueError, TypeError):  # fmt: skip
             return None

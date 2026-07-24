@@ -220,7 +220,7 @@ class _AccountMixin:
         # 6. Parse optional integer fields.
         try:
             imap_port = int(fields["imap_port"]) if fields.get("imap_port") else 993
-        except ValueError, TypeError:
+        except (ValueError, TypeError):  # fmt: skip
             self._serve_add_account(
                 error="IMAP Port must be a number.",
                 prefill=prefill,
@@ -228,7 +228,7 @@ class _AccountMixin:
             return
         try:
             smtp_port = int(fields["smtp_port"]) if fields.get("smtp_port") else 587
-        except ValueError, TypeError:
+        except (ValueError, TypeError):  # fmt: skip
             self._serve_add_account(
                 error="SMTP Port must be a number.",
                 prefill=prefill,
