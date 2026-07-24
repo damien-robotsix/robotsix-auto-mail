@@ -497,6 +497,7 @@ modules:
       - tests/server/test_action_handle_save_notes.py
       - tests/server/test_action_imap_archive_move.py
       - tests/server/test_action_parse_request_body.py
+      - tests/server/test_account_mixin.py
       - tests/server/test_action_post_action.py
       - tests/server/test_adapters.py
       - tests/server/test_archive_structure.py
