@@ -1,10 +1,11 @@
 name: Release image
 
-# Publishes container images to GHCR via the shared docker-release
-# reusable workflow in robotsix-mill, then runs a Trivy vulnerability
-# scan with SARIF upload to Code Scanning.
+# Publishes container images to GHCR using the Docker daemon's
+# built-in BuildKit (`docker` driver) to avoid pulling the
+# `moby/buildkit` image from Docker Hub (which causes transient
+# timeouts under Docker Hub rate-limiting).
 #
-# Tags produced by the reusable (see docker-release.yml in robotsix-mill):
+# Tags produced:
 #   push to `main`  -> `main`, `sha-<short>`, `latest`
 #   push of a `v*` tag -> `1.2.3`, `sha-<short>`
 on:
@@ -22,13 +23,50 @@ concurrency:
 jobs:
   publish:
     name: Publish container image
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/docker-release.yml@5cd8c1facb02299da618979e7a55f1953f9c075a  # main
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write  # needed to push container image to GHCR
       id-token: write  # needed for provenance/SBOM attestation signing
       attestations: write  # needed for provenance/SBOM attestation signing
-      security-events: write  # needed for Trivy SARIF upload from reusable workflow
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
+        with:
+          driver: docker  # Use Docker daemon's built-in BuildKit — avoids pulling moby/buildkit from Docker Hub
+
+      - name: Log into GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute Docker metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=min
+          sbom: true
 
   trivy:
     name: Scan image with Trivy
