@@ -5,6 +5,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Added triage boilerplate for deterministic periodic-agent proposals
+  (audit, bc_check, module_size, copy_paste, test_gap, docstring_coverage)
+  to `.robotsix-mill/periodic/triage_boilerplate.yaml`.
 - Replace inlined `_RetryConfig`/`_call_with_retry` in `detector.py` with imports
   from `robotsix-http` (shared library).  Replace `urllib3.PoolManager` with
   `httpx.Client` and `robotsix_http.call_with_retry` for autoconfig and MX-lookup
