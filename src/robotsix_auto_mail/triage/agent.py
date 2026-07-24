@@ -319,8 +319,11 @@ def _check_unsubscribe_for_to_delete(
         if sender_key in suggestions:
             continue  # already cached
         detection = _detect_unsubscribe_for_sender(
-            conn, sender_key, sender_records,
-            api_key=api_key, provider_model=provider_model,
+            conn,
+            sender_key,
+            sender_records,
+            api_key=api_key,
+            provider_model=provider_model,
         )
         # Only cache if an unsubscribe mechanism was actually found.
         if detection is not None and detection.has_unsubscribe:
