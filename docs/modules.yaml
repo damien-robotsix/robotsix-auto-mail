@@ -61,6 +61,7 @@ modules:
       - changelog/20260724T161646Z-ci-failure-ci-on-main-32c0.misc.md
       - changelog/20260724T211230Z-split-tests-config-detect-test-detect-py-d8d2.misc.md
       - changelog/20260724T211231Z-split-tests-imap-test-imap-messages-py-5-305f.misc.md
+      - changelog/20260724T211233Z-extract-duplicated-sbom-job-to-reusable-w.misc.md
       - changelog/20260724T180805Z-ci-failure-release-image-on-main-5747.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
@@ -577,6 +578,7 @@ modules:
       - .github/workflows/lockfile.yml
       - .github/workflows/pre-commit.yml
       - .github/workflows/release.yml
+      - .github/workflows/sbom.yml
       - .github/workflows/lint-workflows.yml
       - .github/workflows/scan-container.yml
       - .github/workflows/secret-scanning.yml
