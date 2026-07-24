@@ -43,6 +43,7 @@ jobs:
       run-deptry: true
       run-bandit: true
       pytest-args: --hypothesis-profile=ci -m "not docker" --cov-report=xml:coverage.xml
+      upload-coverage-data: true
 
   # auto-mail-specific checks with no equivalent in the reusable spine. They
   # keep their own steps and stay blocking on every push + PR.
