@@ -184,6 +184,7 @@ modules:
       - changelog/20260723T132809Z-migrate-robotsix-auto-mail-to-consume-ro-cc78.feature.md
       - changelog/20260723T133742Z-thread-api-key-unsubscribe.bugfix.md
       - changelog/20260723T133742Z-thread-resolved-api-key-provider-model-f-1dfa.misc.md
+      - changelog/20260723T210507Z-split-tests-smtp-test-smtp-client-py-872-3c04.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -428,7 +429,11 @@ modules:
     paths:
       - src/robotsix_auto_mail/smtp/__init__.py
       - tests/smtp/__init__.py
-      - tests/smtp/test_smtp_client.py
+      - tests/smtp/test_smtp_close.py
+      - tests/smtp/test_smtp_connect.py
+      - tests/smtp/test_smtp_exceptions.py
+      - tests/smtp/test_smtp_isolation.py
+      - tests/smtp/test_smtp_send.py
 
   - id: server
     description: >-
