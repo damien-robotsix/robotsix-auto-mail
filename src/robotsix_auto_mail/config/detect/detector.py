@@ -6,17 +6,19 @@ All the logic that was previously in ``detect/__init__.py``, split out so
 
 from __future__ import annotations
 
+import dataclasses
 import json
+import random
+import time
 import urllib.parse
+from collections.abc import Callable
 from xml.etree import ElementTree  # nosec B405
 
 import urllib3
 import urllib3.exceptions
 from pydantic import SecretStr
 
-from robotsix_auto_mail.config import (
-    MailConfig,
-)
+from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.config.detect.models import (
     DetectedProvider,
     DetectionError,
@@ -29,7 +31,56 @@ from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 # Shared connection pool
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Inline retry primitives (avoid hard dependency on robotsix_http at import)
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class _RetryConfig:
+    """Lightweight retry configuration — mirrors robotsix_http.RetryConfig."""
+
+    max_retries: int = 4
+    backoff_base: float = 2.0
+    backoff_cap: float = 30.0
+
+
+def _call_with_retry[T](
+    fn: Callable[[], T],
+    *,
+    config: _RetryConfig,
+    is_transient_fn: Callable[[BaseException], bool],
+) -> T:
+    """Call *fn* with exponential-backoff retry on transient errors."""
+    last_exc: Exception | None = None
+    for attempt in range(config.max_retries + 1):
+        try:
+            return fn()
+        except Exception as exc:
+            last_exc = exc
+            if attempt == config.max_retries:
+                raise
+            if not is_transient_fn(exc):
+                raise
+            delay = min(config.backoff_base**attempt, config.backoff_cap)
+            delay -= delay * 0.5 * random.random()  # noqa: S311
+            time.sleep(delay)
+    raise RuntimeError("unreachable: max_retries exhausted") from last_exc
+
+
 _HTTP = urllib3.PoolManager()
+
+_RETRY_CONFIG = _RetryConfig(max_retries=2, backoff_base=2.0, backoff_cap=10.0)
+
+
+def _is_transient_urllib3(exc: BaseException) -> bool:
+    """Return ``True`` for urllib3 errors that are likely transient.
+
+    Timeouts and connection failures are transient; permanent errors
+    (e.g. invalid URL, TLS handshake failure) are not retried.
+    """
+    return isinstance(exc, (urllib3.exceptions.TimeoutError, OSError))
+
 
 # ---------------------------------------------------------------------------
 # Single source-of-truth provider registry
@@ -238,7 +289,6 @@ def _build_mx_providers() -> list[tuple[tuple[str, ...], MailProvider | None]]:
 
 _MX_PROVIDERS: list[tuple[tuple[str, ...], MailProvider | None]] = _build_mx_providers()
 
-
 # ---------------------------------------------------------------------------
 # Build the LLM system prompt from the unified registry
 # ---------------------------------------------------------------------------
@@ -351,7 +401,6 @@ def _build_system_prompt() -> str:
 
 
 _DETECT_SYSTEM_PROMPT: str = _build_system_prompt()
-
 
 # ---------------------------------------------------------------------------
 # Core detection
@@ -531,7 +580,11 @@ def autoconfig_lookup(
     for url in _autoconfig_urls(email_address):
         # See _autoconfig_urls() for the SSRF-risk rationale.
         try:
-            resp = _HTTP.request("GET", url, timeout=timeout)
+            resp = _call_with_retry(
+                lambda u=url: _HTTP.request("GET", u, timeout=timeout),  # type: ignore[misc]
+                config=_RETRY_CONFIG,
+                is_transient_fn=_is_transient_urllib3,
+            )
             if resp.status != 200:
                 continue
             xml_text = resp.data.decode("utf-8", errors="replace")
@@ -562,11 +615,15 @@ def mx_lookup(email_address: str, *, timeout: float = 5.0) -> list[str]:
         return []
     url = f"{_DOH_RESOLVER}?name={urllib.parse.quote(domain)}&type=MX"
     try:
-        resp = _HTTP.request(
-            "GET",
-            url,
-            timeout=timeout,
-            headers={"Accept": "application/dns-json"},
+        resp = _call_with_retry(
+            lambda: _HTTP.request(
+                "GET",
+                url,
+                timeout=timeout,
+                headers={"Accept": "application/dns-json"},
+            ),
+            config=_RETRY_CONFIG,
+            is_transient_fn=_is_transient_urllib3,
         )
         if resp.status != 200:
             return []

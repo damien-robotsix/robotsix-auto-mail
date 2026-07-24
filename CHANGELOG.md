@@ -9,6 +9,8 @@
   modules: `test_ingest_dataclass.py`, `test_ingest_core.py`,
   `test_ingest_dryrun.py`, and `test_ingest_archive_triage.py`.
 - Removed `.github/workflows/dependabot-auto-merge.yml` (dead workflow — Renovate handles all dependencies, Dependabot is intentionally absent)
+- Wrap autoconfig and MX-lookup HTTP calls with `robotsix-http`'s `call_with_retry` for resilience against transient network errors (timeouts, connection drops). Adds `robotsix-http` as a git dependency.
+- Add inlined exponential-backoff retry primitives (`_RetryConfig`, `_call_with_retry`, `_is_transient_urllib3`) to autoconfig and MX-lookup HTTP calls for resilience against transient network errors (timeouts, connection drops).
 - Replace duplicated IMAP archive-move logic in `_archive_and_delete`'s cross-folder fallback with a direct call to `_imap_archive_move`, eliminating ~25 lines of duplicated code (ImapClient lifecycle, delimiter discovery, folder-hierarchy creation) and ensuring future archive-move changes apply uniformly to both code paths.
 - Removed dead pydantic v1 compatibility `hasattr(field_info, "is_required")` guard in `_render_mailconfig_surface()`. The project requires pydantic ≥ 2.0 where `FieldInfo.is_required()` is always available.
 - Split ``tests/cli/test_commands_detect.py`` (926 lines) into three domain-focused modules: ``test_commands_detect_report.py``, ``test_commands_detect_probe.py``, ``test_commands_detect_cmd.py``, following the AGENT.md ~500-line threshold.
