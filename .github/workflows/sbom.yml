@@ -3,6 +3,8 @@ name: SBOM
 on:
   workflow_call:
 
+permissions: {}
+
 jobs:
   sbom:
     name: Generate SBOM
