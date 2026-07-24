@@ -72,7 +72,7 @@ microsoft = [
 ]
 docs = [
     "mkdocs>=1.6",
-    "mkdocs-material>=9.5",
+    "mkdocs-material>=9.7.7",
 ]
 
 [tool.ruff]
