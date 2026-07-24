@@ -40,7 +40,7 @@ dev = [
     "pytest",
     "pytest-xdist",
     "pytest-cov>=7.1.0",
-    "hypothesis>=6.156.1",
+    "hypothesis>=6.161.2",
     "deptry",
     "hatchling",
     # pyyaml is kept as a dev-only need for the CI helper
