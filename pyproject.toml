@@ -175,7 +175,7 @@ extend_exclude = ["scripts"]
 [tool.deptry.per_rule_ignores]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter]
 # (declared in the [llm] extra); the lazy import in detect.py is intentional.
-DEP003 = ["pydantic_ai", "httpx"]
+DEP003 = ["pydantic_ai"]
 # structlog is no longer imported directly by this package (logging has been
 # migrated to robotsix_llmio.logging.setup_logging), but it must remain a
 # direct dependency to preserve the uv dependency resolution order.
