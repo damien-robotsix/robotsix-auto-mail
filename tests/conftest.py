@@ -19,7 +19,11 @@ from unittest import mock
 # this automatically, but local ``python -m pytest`` does not).
 # ---------------------------------------------------------------------------
 _venv_site = str(
-    Path(__file__).resolve().parent.parent / ".venv" / "lib" / "python3.14" / "site-packages"
+    Path(__file__).resolve().parent.parent
+    / ".venv"
+    / "lib"
+    / "python3.14"
+    / "site-packages"
 )
 if Path(_venv_site).exists() and _venv_site not in _sys.path:
     _sys.path.insert(0, _venv_site)
