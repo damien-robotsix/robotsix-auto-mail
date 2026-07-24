@@ -1,0 +1,1 @@
+Thread `api_key` and `provider_model` through `_check_unsubscribe_for_to_delete` to `_detect_unsubscribe_for_sender`, so that unsubscribe detection uses the explicitly-provided credentials instead of silently falling back to config-level resolution.
