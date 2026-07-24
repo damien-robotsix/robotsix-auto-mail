@@ -60,6 +60,7 @@ modules:
       - changelog/20260724T161547Z-ci-failure-release-image-on-main-e1da.misc.md
       - changelog/20260724T161646Z-ci-failure-ci-on-main-32c0.misc.md
       - changelog/20260724T211230Z-split-tests-config-detect-test-detect-py-d8d2.misc.md
+      - changelog/20260724T211231Z-split-tests-imap-test-imap-messages-py-5-305f.misc.md
       - changelog/20260724T180805Z-ci-failure-release-image-on-main-5747.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
@@ -396,7 +397,10 @@ modules:
       - tests/imap/test_imap_errors.py
       - tests/imap/test_imap_folders.py
       - tests/imap/test_imap_integration.py
-      - tests/imap/test_imap_messages.py
+      - tests/imap/test_imap_delete_message.py
+      - tests/imap/test_imap_fetch_message.py
+      - tests/imap/test_imap_move_message.py
+      - tests/imap/test_imap_search_uids.py
       - tests/imap/test_imap_utils.py
 
   - id: oauth2
