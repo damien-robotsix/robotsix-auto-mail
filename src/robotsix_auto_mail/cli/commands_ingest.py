@@ -230,6 +230,6 @@ def _cmd_ingest(
             sys.stdout.write(f"Next ingest in {interval_minutes} min.\n")
             sys.stdout.flush()
             _cli.time.sleep(interval_minutes * 60)
-    except KeyboardInterrupt, SystemExit:
+    except (KeyboardInterrupt, SystemExit):  # fmt: skip
         sys.stdout.write("\nWatch stopped.\n")
         return 0

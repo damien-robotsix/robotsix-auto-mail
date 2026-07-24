@@ -372,13 +372,13 @@ def _probe_capabilities(
     try:
         with ImapClient(config) as imap:
             imap_capabilities = list(imap.capabilities)
-    except OSError, _IMAP4_ERROR, ImapError:
+    except (OSError, _IMAP4_ERROR, ImapError):  # fmt: skip
         # Best-effort capability probe; failures are non-critical and ignored.
         pass
     try:
         with SmtpClient(config) as smtp:
             smtp_features = dict(smtp.esmtp_features)
-    except OSError, _SMTP_EXCEPTION, SmtpError:
+    except (OSError, _SMTP_EXCEPTION, SmtpError):  # fmt: skip
         # Best-effort capability probe; failures are non-critical and ignored.
         pass
     return imap_capabilities, smtp_features
