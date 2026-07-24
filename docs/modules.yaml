@@ -165,6 +165,7 @@ modules:
       - changelog/20260720T141755Z-enable-triage-boilerplate-periodic-workf-c6b4.misc.md
       - changelog/20260721T001055Z-cleanup-duplicate-path-in-module-core-ch-3ccf.misc.md
       - changelog/20260721T002604Z-introduce-a-robotsixmailerror-base-and-r-a8c1.misc.md
+      - changelog/20260723T210514Z-split-tests-server-test-view-mixin-py-74-76f5.misc.md
       - changelog/20260721T004554Z-ci-fix-out-of-scope-ci-failure-run-pre-c-aaa3.misc.md
       - changelog/20260721T091444Z-migrate-robotsix-auto-mail-to-the-typed-a5fe.removal.md
       - changelog/20260721T122323Z-update-agent-md-configuration-convention-b9ac.misc.md
@@ -512,7 +513,11 @@ modules:
       - tests/server/test_server_reconcile.py
       - tests/server/test_server_triage.py
       - tests/server/test_triage_mixin.py
-      - tests/server/test_view_mixin.py
+      - tests/server/_view_mixin_helpers.py
+      - tests/server/test_view_mixin_archive.py
+      - tests/server/test_view_mixin_board.py
+      - tests/server/test_view_mixin_email.py
+      - tests/server/test_view_mixin_static.py
       - tests/server/test_views_detail.py
       - tests/server/test_views_forms.py
       - tests/server/test_batch_mixin.py
