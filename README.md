@@ -90,7 +90,7 @@ This repository uses [pre-commit](https://pre-commit.com) to lint and
 format code before each commit.  After cloning, run:
 
 ```sh
-pip install pre-commit && pre-commit install
+uvx pre-commit install
 ```
 
 ## Web Board

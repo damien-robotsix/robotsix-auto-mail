@@ -12,8 +12,6 @@ extras:
 
 ```sh
 uv sync --extra dev
-# or, with pip:
-pip install -e '.[dev]'
 ```
 
 The dev extras pull in `pytest`, `mypy`, `ruff`, and `deptry` — the tools
@@ -24,7 +22,7 @@ format code before each commit. After installing the dev extras, enable
 the hooks once:
 
 ```sh
-pip install pre-commit && pre-commit install
+uvx pre-commit install
 ```
 
 ## Running tests
