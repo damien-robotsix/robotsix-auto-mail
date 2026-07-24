@@ -153,7 +153,7 @@ jobs:
       # pip-audit.
       run-pip-audit: true
       pip-audit-requirements-file: requirements-locked.txt
-      pip-audit-ignore-packages: "robotsix-config robotsix-board robotsix-auto-mail robotsix-llmio robotsix-modules"
+      pip-audit-ignore-packages: "robotsix-config robotsix-board robotsix-auto-mail robotsix-llmio robotsix-modules robotsix-http"
 
   # Standalone CycloneDX SBOM of the full Python dependency tree (direct +
   # transitive), generated from uv.lock. Uploaded as a workflow artifact so

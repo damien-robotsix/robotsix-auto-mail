@@ -1243,12 +1243,13 @@ name = "robotsix-auto-mail"
 version = "0.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "pydantic" },
     { name = "robotsix-board" },
     { name = "robotsix-config" },
+    { name = "robotsix-http" },
     { name = "robotsix-llmio" },
     { name = "structlog" },
-    { name = "urllib3" },
 ]
 
 [package.optional-dependencies]
@@ -1285,6 +1286,7 @@ microsoft = [
 requires-dist = [
     { name = "deptry", marker = "extra == 'dev'" },
     { name = "hatchling", marker = "extra == 'dev'" },
+    { name = "httpx", specifier = ">=0.27" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.156.1" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.5" },
@@ -1298,6 +1300,7 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.3" },
     { name = "robotsix-board", git = "https://github.com/damien-robotsix/robotsix-board.git?rev=a364bf5116dcea5c35b036d158d2f3e47b8caeec" },
     { name = "robotsix-config", git = "https://github.com/damien-robotsix/robotsix-config.git?rev=424f8ec5140e14e9699b92d5c3755d929625b570" },
+    { name = "robotsix-http", git = "https://github.com/damien-robotsix/robotsix-http.git?rev=a3b4d2280bea1acd858759e564aa22963c616111" },
     { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=3da3c4317f4a" },
     { name = "robotsix-llmio", extras = ["openrouter", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=3da3c4317f4a" },
     { name = "robotsix-llmio", extras = ["openrouter", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=3da3c4317f4a" },
@@ -1306,7 +1309,6 @@ requires-dist = [
     { name = "structlog", specifier = ">=24.1" },
     { name = "towncrier", marker = "extra == 'dev'" },
     { name = "types-pyyaml", marker = "extra == 'dev'" },
-    { name = "urllib3", specifier = ">=2.7.0" },
     { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.16" },
     { name = "zizmor", marker = "extra == 'dev'" },
 ]
@@ -1323,6 +1325,14 @@ version = "0.1.0"
 source = { git = "https://github.com/damien-robotsix/robotsix-config.git?rev=424f8ec5140e14e9699b92d5c3755d929625b570#424f8ec5140e14e9699b92d5c3755d929625b570" }
 dependencies = [
     { name = "pydantic" },
+]
+
+[[package]]
+name = "robotsix-http"
+version = "0.1.dev15+ga3b4d2280"
+source = { git = "https://github.com/damien-robotsix/robotsix-http.git?rev=a3b4d2280bea1acd858759e564aa22963c616111#a3b4d2280bea1acd858759e564aa22963c616111" }
+dependencies = [
+    { name = "httpx" },
 ]
 
 [[package]]
