@@ -9,6 +9,25 @@ from collections.abc import Generator
 import pytest
 
 
+def _uid_side_effect(
+    *, search_result: tuple[str, list[bytes]], other: tuple[str, list[bytes]]
+) -> object:
+    """Build a ``.uid`` side_effect branching on the IMAP command.
+
+    The destructive primitives now pre-verify a UID via ``UID SEARCH``
+    before issuing ``STORE`` / ``COPY``.  This helper routes ``"SEARCH"``
+    to *search_result* (UID-existence) and every other command (``STORE``,
+    ``COPY``) to *other*.
+    """
+
+    def _side_effect(command: str, *args: object) -> tuple[str, list[bytes]]:
+        if command == "SEARCH":
+            return search_result
+        return other
+
+    return _side_effect
+
+
 class TestTCPServer(socketserver.TCPServer):
     """TCPServer that re-raises handler exceptions for visible test failures."""
 
