@@ -59,6 +59,7 @@ modules:
       - changelog/20260724T161520Z-ci-failure-uv-in-for-zizmor-update-14796-30f7.misc.md
       - changelog/20260724T161547Z-ci-failure-release-image-on-main-e1da.misc.md
       - changelog/20260724T161646Z-ci-failure-ci-on-main-32c0.misc.md
+      - changelog/20260724T211230Z-split-tests-config-detect-test-detect-py-d8d2.misc.md
       - changelog/20260724T180805Z-ci-failure-release-image-on-main-5747.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
@@ -369,7 +370,11 @@ modules:
       - src/robotsix_auto_mail/config/detect/detector.py
       - src/robotsix_auto_mail/config/detect/models.py
       - tests/config/detect/__init__.py
-      - tests/config/detect/test_detect.py
+      - tests/config/detect/conftest.py
+      - tests/config/detect/test_detect_autoconfig.py
+      - tests/config/detect/test_detect_consistency.py
+      - tests/config/detect/test_detect_models.py
+      - tests/config/detect/test_detect_provider.py
 
   - id: imap
     description: >-
