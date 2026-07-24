@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Replace inlined `_RetryConfig`/`_call_with_retry` in `detector.py` with imports
+  from `robotsix-http` (shared library).  Replace `urllib3.PoolManager` with
+  `httpx.Client` and `robotsix_http.call_with_retry` for autoconfig and MX-lookup
+  HTTP calls.
 - Fix 17 instances of Python 2 `except X, Y:` syntax that silently failed to catch all listed exception types in Python 3.
 - Replace `pip install` instructions with `uv`-native equivalents in developer setup docs (README.md, CONTRIBUTING.md, testing.md).
 - Increase the smoke-test readiness-poll timeout from 20 s to 60 s

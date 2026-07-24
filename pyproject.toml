@@ -17,9 +17,10 @@ classifiers = [
 ]
 keywords = ["mail", "imap", "smtp", "triage", "kanban"]
 dependencies = [
-    "urllib3>=2.7.0",
+    "httpx>=0.27",
     "pydantic>=2.0",
     "robotsix-board",
+    "robotsix-http",
     "robotsix-llmio",
     "structlog>=24.1",
     "robotsix-config",
@@ -174,7 +175,7 @@ extend_exclude = ["scripts"]
 [tool.deptry.per_rule_ignores]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter]
 # (declared in the [llm] extra); the lazy import in detect.py is intentional.
-DEP003 = ["pydantic_ai"]
+DEP003 = ["pydantic_ai", "httpx"]
 # structlog is no longer imported directly by this package (logging has been
 # migrated to robotsix_llmio.logging.setup_logging), but it must remain a
 # direct dependency to preserve the uv dependency resolution order.
@@ -198,6 +199,7 @@ ignore_names = ["format", "method_name"]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "a364bf5116dcea5c35b036d158d2f3e47b8caeec" }  # pragma: allowlist secret
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "3da3c4317f4a" }  # pragma: allowlist secret
 robotsix-config = { git = "https://github.com/damien-robotsix/robotsix-config.git", rev = "424f8ec5140e14e9699b92d5c3755d929625b570" }  # pragma: allowlist secret
+robotsix-http = { git = "https://github.com/damien-robotsix/robotsix-http.git", rev = "a3b4d2280bea1acd858759e564aa22963c616111" }  # pragma: allowlist secret
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "8a40eee6130d5e005148bb9ddf85e1af7f7dee4f" }  # pragma: allowlist secret
 
 [tool.towncrier]

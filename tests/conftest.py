@@ -6,10 +6,23 @@ import os
 import smtplib
 import socket
 import sqlite3
+import sys as _sys
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 from unittest import mock
+
+# ---------------------------------------------------------------------------
+# Ensure the venv site-packages are on sys.path so that git-sourced
+# dependencies (like robotsix-http) are importable even when the bare
+# system Python is used to run tests (CI uses ``uv run``, which handles
+# this automatically, but local ``python -m pytest`` does not).
+# ---------------------------------------------------------------------------
+_venv_site = str(
+    Path(__file__).resolve().parent.parent / ".venv" / "lib" / "python3.14" / "site-packages"
+)
+if Path(_venv_site).exists() and _venv_site not in _sys.path:
+    _sys.path.insert(0, _venv_site)
 
 import pytest
 
