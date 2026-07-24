@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from tests.server._view_mixin_helpers import _FakeHandler, tmp_db_path  # noqa: F401
+from tests.server._view_mixin_helpers import _FakeHandler
+
+pytest_plugins = ["tests.server._view_mixin_helpers"]
 
 
 class TestServeStatic:

@@ -6,14 +6,9 @@ from unittest import mock
 
 import pytest
 
-from tests.server._view_mixin_helpers import (
-    _FakeHandler,
-    mock_build_detail_html,  # noqa: F401
-    mock_get_record_by_message_id,  # noqa: F401
-    mock_get_triage_decision,  # noqa: F401
-    mock_init_db,  # noqa: F401
-    tmp_db_path,  # noqa: F401
-)
+from tests.server._view_mixin_helpers import _FakeHandler
+
+pytest_plugins = ["tests.server._view_mixin_helpers"]
 
 
 class TestServeEmailStatus:

@@ -7,17 +7,9 @@ from unittest import mock
 
 import pytest
 
-from tests.server._view_mixin_helpers import (
-    _FakeHandler,
-    mock_get_archive_subfolder,  # noqa: F401
-    mock_get_record_by_message_id,  # noqa: F401
-    mock_get_watermark,  # noqa: F401
-    mock_init_db,  # noqa: F401
-    mock_load_archive_overrides,  # noqa: F401
-    mock_load_llm_archive_hints,  # noqa: F401
-    mock_parse_archive_structure,  # noqa: F401
-    tmp_db_path,  # noqa: F401
-)
+from tests.server._view_mixin_helpers import _FakeHandler
+
+pytest_plugins = ["tests.server._view_mixin_helpers"]
 
 
 class TestServeArchiveProposal:

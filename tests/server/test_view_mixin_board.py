@@ -4,15 +4,9 @@ from __future__ import annotations
 
 from unittest import mock
 
-from tests.server._view_mixin_helpers import (
-    _FakeHandler,
-    _patch_serve_board_deps,  # noqa: F401
-    mock_build_board_content,  # noqa: F401
-    mock_build_board_html,  # noqa: F401
-    mock_build_global_board_content,  # noqa: F401
-    mock_build_global_board_html,  # noqa: F401
-    tmp_db_path,  # noqa: F401
-)
+from tests.server._view_mixin_helpers import _FakeHandler
+
+pytest_plugins = ["tests.server._view_mixin_helpers"]
 
 
 class TestServeBoard:
