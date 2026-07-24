@@ -186,6 +186,7 @@ modules:
       - changelog/20260723T133742Z-thread-api-key-unsubscribe.bugfix.md
       - changelog/20260723T133742Z-thread-resolved-api-key-provider-model-f-1dfa.misc.md
       - changelog/20260723T210507Z-split-tests-smtp-test-smtp-client-py-872-3c04.misc.md
+      - changelog/20260724T010820Z-remove-stale-changelog-md-entry-that-cla-bec6.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

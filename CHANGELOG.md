@@ -19,7 +19,6 @@
   modules: `test_ingest_dataclass.py`, `test_ingest_core.py`,
   `test_ingest_dryrun.py`, and `test_ingest_archive_triage.py`.
 - Removed `.github/workflows/dependabot-auto-merge.yml` (dead workflow — Renovate handles all dependencies, Dependabot is intentionally absent)
-- Wrap autoconfig and MX-lookup HTTP calls with `robotsix-http`'s `call_with_retry` for resilience against transient network errors (timeouts, connection drops). Adds `robotsix-http` as a git dependency.
 - Add inlined exponential-backoff retry primitives (`_RetryConfig`, `_call_with_retry`, `_is_transient_urllib3`) to autoconfig and MX-lookup HTTP calls for resilience against transient network errors (timeouts, connection drops).
 - Thread `api_key` and `provider_model` through `_check_unsubscribe_for_to_delete` to `_detect_unsubscribe_for_sender`, so that unsubscribe detection uses the explicitly-provided credentials instead of silently falling back to config-level resolution when a caller passes `--api-key` or a `provider_model` override to `run_triage_agent`.
 - Split `tests/smtp/test_smtp_client.py` (872 lines) into five domain-focused modules: test_smtp_exceptions, test_smtp_connect, test_smtp_send, test_smtp_close, and test_smtp_isolation.
