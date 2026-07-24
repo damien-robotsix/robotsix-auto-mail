@@ -43,6 +43,7 @@ jobs:
       run-deptry: true
       run-bandit: true
       pytest-args: --hypothesis-profile=ci -m "not docker" --cov-report=xml:coverage.xml
+      upload-coverage-data: true
 
   # auto-mail-specific checks with no equivalent in the reusable spine. They
   # keep their own steps and stay blocking on every push + PR.
@@ -207,10 +208,8 @@ jobs:
   # INFORMATIONAL — the actual blocking coverage gate is --cov-fail-under=80
   # inside the reusable, enforced in the `ci` job above.
   #
-  # The reusable python-ci.yml workflow does not upload coverage artifacts,
-  # so this job generates its own .coverage + coverage.xml from a fresh test
-  # run.  Running the full suite twice is wasteful but the only way to get
-  # per-file diff commentary without modifying the shared reusable workflow.
+  # Coverage data (coverage.xml + .coverage) is produced by the reusable
+  # python-ci.yml workflow and downloaded here via the coverage-data artifact.
   coverage-comment:
     name: Coverage comment
     if: github.event_name == 'pull_request'
@@ -227,23 +226,10 @@ jobs:
 
       - uses: ./.github/actions/setup-project
 
-      - name: Install dev deps
-        env:
-          UV_PROJECT_ENVIRONMENT: system
-          UV_MALWARE_CHECK: 1
-        run: uv sync --frozen --extra dev
-
-      - name: Generate coverage data
-        env:
-          UV_PROJECT_ENVIRONMENT: system
-        run: |
-          uv run --with pytest-xdist --with pytest-cov pytest tests/ \
-            -n auto --dist loadscope \
-            --hypothesis-profile=ci \
-            -m "not docker" \
-            --cov=robotsix_auto_mail \
-            --cov-report=xml:coverage.xml \
-            --tb=long
+      - name: Download coverage data
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7
+        with:
+          name: coverage-data
 
       - name: Post coverage PR comment
         id: coverage-comment
