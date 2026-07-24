@@ -1,0 +1,1528 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Automated mail ingestion, triage, and board for robotsix-auto-mail.">
+      
+      
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../connecting/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Ingestion - robotsix-auto-mail</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mail-ingestion" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="robotsix-auto-mail" class="md-header__button md-logo" aria-label="robotsix-auto-mail" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            robotsix-auto-mail
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Ingestion
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/damien-robotsix/robotsix-auto-mail" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="robotsix-auto-mail" class="md-nav__button md-logo" aria-label="robotsix-auto-mail" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    robotsix-auto-mail
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/damien-robotsix/robotsix-auto-mail" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestion
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-level flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CLI usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#watch-mode-automatic-on-an-interval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watch mode (automatic, on an interval)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dry-run-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dry-run mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#representative-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datastore-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Datastore schema
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Datastore schema">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mail_records-parsed-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mail_records — parsed messages
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#watermark-keyvalue-progress-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        watermark — key/value progress store
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triage_decisions-per-message-triage-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        triage_decisions — per-message triage state
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idempotency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Idempotency
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Idempotency">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#level-1-message-id-uniqueness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Level 1: Message-ID uniqueness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#level-2-imap-uid-watermark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Level 2: IMAP UID watermark
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#crash-recovery-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Crash recovery scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-events-and-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log events and monitoring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Log events and monitoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-batch_summary-log-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The batch_summary log line
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connecting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connecting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Board HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../codeql-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CodeQL Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/CHANGELOG.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-level flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CLI usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#watch-mode-automatic-on-an-interval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watch mode (automatic, on an interval)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dry-run-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dry-run mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#representative-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Representative output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datastore-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Datastore schema
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Datastore schema">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mail_records-parsed-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mail_records — parsed messages
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#watermark-keyvalue-progress-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        watermark — key/value progress store
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triage_decisions-per-message-triage-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        triage_decisions — per-message triage state
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idempotency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Idempotency
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Idempotency">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#level-1-message-id-uniqueness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Level 1: Message-ID uniqueness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#level-2-imap-uid-watermark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Level 2: IMAP UID watermark
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#crash-recovery-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Crash recovery scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-events-and-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log events and monitoring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Log events and monitoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-batch_summary-log-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The batch_summary log line
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="mail-ingestion">Mail Ingestion<a class="headerlink" href="#mail-ingestion" title="Permanent link">&para;</a></h1>
+<p><code>robotsix-auto-mail</code> fetches messages from a configured IMAP inbox, parses them
+into structured records, and stores them idempotently in a local SQLite
+database.</p>
+<h2 id="high-level-flow">High-level flow<a class="headerlink" href="#high-level-flow" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>archive setup → connect → fetch → parse → store → update watermark → triage
+</code></pre></div>
+<ol>
+<li><strong>Archive setup</strong> — on the first run, <code>setup_archive</code> proposes and creates
+   the archive folder hierarchy. This step
+   is guarded by <code>not dry_run and config.archive_enabled</code> and runs best-effort:
+   any failure (LLM, network, IMAP) is logged but never aborts ingestion.</li>
+<li><strong>Connect</strong> — open an authenticated IMAP connection using the configured
+   credentials and server details.</li>
+<li><strong>Fetch</strong> — read the current IMAP UID watermark from the local database.
+   Only messages with UIDs greater than the watermark are retrieved from the
+   server.</li>
+<li><strong>Parse</strong> — each raw MIME message is parsed into a structured record
+   (sender, subject, date, recipients, body, attachments).</li>
+<li><strong>Store</strong> — each record is inserted into the <code>mail_records</code> table. If a
+   message with the same <code>Message-ID</code> header already exists, it is not
+   re-inserted; instead the existing row's <code>source_folder</code> and <code>imap_uid</code> are
+   refreshed and the message counts as a duplicate (see
+   <a href="#idempotency">Idempotency</a>).</li>
+<li><strong>Update watermark</strong> — after the full batch has been processed, the
+   <code>imap_uid</code> watermark is advanced to the highest IMAP UID fetched in the
+   batch, regardless of whether each message stored successfully.</li>
+<li><strong>Triage</strong> — after the watermark advances, a post-ingest triage pass
+   (<code>run_triage_agent</code>) classifies the newly-stored inbox mail. This step is
+   guarded by <code>not dry_run and config.triage_on_ingest</code> and runs best-effort:
+   a triage failure is logged but never aborts ingestion or changes the
+   stored/skipped counts.</li>
+</ol>
+<h2 id="cli-usage">CLI usage<a class="headerlink" href="#cli-usage" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest
+</code></pre></div>
+<p>A single pass: fetch new mail since the watermark, store it, and exit.</p>
+<h3 id="watch-mode-automatic-on-an-interval">Watch mode (automatic, on an interval)<a class="headerlink" href="#watch-mode-automatic-on-an-interval" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest<span class="w"> </span>--watch
+</code></pre></div>
+<p>Runs a cycle, then repeats every <code>ingest.interval_minutes</code> (config, default
+15; configured via the <code>ingest.interval_minutes</code> YAML key).  A failed cycle is logged and the
+loop continues; Ctrl-C stops it cleanly.  This is the default command of the
+<code>robotsix-auto-mail</code> Docker service, so <code>docker compose up -d</code> keeps the
+board's datastore fed automatically.</p>
+<h3 id="dry-run-mode">Dry-run mode<a class="headerlink" href="#dry-run-mode" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>robotsix-auto-mail<span class="w"> </span>ingest<span class="w"> </span>--dry-run
+</code></pre></div>
+<p>When <code>--dry-run</code> is active the pipeline still fetches messages from IMAP,
+parses them, and runs the duplicate check — but it <strong>skips</strong> inserting records
+and updating the watermark.  The <code>Stored</code> count reflects messages that <em>would
+have been</em> inserted (i.e. whose <code>Message-ID</code> was not already in the database).
+A <code>DRY RUN — nothing stored</code> banner is printed.</p>
+<p>Dry-run is <strong>not</strong> fully side-effect-free, however.  The duplicate-row refresh
+(<code>update_record_source</code>, see <a href="#idempotency">Idempotency</a>) runs and commits
+<em>before</em> the <code>if dry_run:</code> store guard, so an already-seen message still has
+its existing row's <code>source_folder</code> and <code>imap_uid</code> updated even in dry-run mode.
+The <code>DRY RUN — nothing stored</code> banner is therefore slightly misleading for that
+case: no <em>new</em> record is stored, but an existing one may be refreshed.</p>
+<h3 id="representative-output">Representative output<a class="headerlink" href="#representative-output" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Fetched: 12 messages
+Stored:  10 new
+Skipped:  1 duplicate
+Triaged:  4
+Errors:   1
+  UID 42 (&lt;msg-id@example.com&gt;): failed to parse raw bytes as MIME message
+</code></pre></div>
+<h3 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h3>
+<p>Exit code <code>0</code> whenever the pipeline runs to completion, <strong>even when
+per-message errors are present</strong>.  Exit code <code>1</code> only on configuration-load
+failures (missing or invalid config) and fatal connection failures (e.g. IMAP
+server unreachable).  This makes the exit code suitable for cron and
+automation — a single malformed message will not cause a non-zero exit.</p>
+<h2 id="datastore-schema">Datastore schema<a class="headerlink" href="#datastore-schema" title="Permanent link">&para;</a></h2>
+<p>The local SQLite database (default: <code>.data/&lt;account-id&gt;/mail.db</code>, set via the
+<code>store.path</code> YAML key in each account block) contains three tables —
+<code>mail_records</code>, <code>watermark</code>, and <code>triage_decisions</code> — created automatically on
+first run (<code>CREATE TABLE IF NOT EXISTS</code>).</p>
+<h3 id="mail_records-parsed-messages"><code>mail_records</code> — parsed messages<a class="headerlink" href="#mail_records-parsed-messages" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>INTEGER</code></td>
+<td>Auto-increment primary key (internal row ID).</td>
+</tr>
+<tr>
+<td><code>imap_uid</code></td>
+<td><code>INTEGER</code></td>
+<td>IMAP UID of the message on the server at fetch time.</td>
+</tr>
+<tr>
+<td><code>source_folder</code></td>
+<td><code>TEXT NOT NULL DEFAULT 'INBOX'</code></td>
+<td>The IMAP folder the message was fetched from; refreshed on re-ingest.</td>
+</tr>
+<tr>
+<td><code>message_id</code></td>
+<td><code>TEXT NOT NULL UNIQUE</code></td>
+<td>The <code>Message-ID</code> header value. The <code>UNIQUE</code> constraint is the first line of deduplication.</td>
+</tr>
+<tr>
+<td><code>sender</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td><code>From</code> header (RFC 5322).</td>
+</tr>
+<tr>
+<td><code>subject</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td><code>Subject</code> header, decoded from RFC 2047 if necessary.</td>
+</tr>
+<tr>
+<td><code>date</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td><code>Date</code> header parsed to ISO 8601 (empty string if unparseable).</td>
+</tr>
+<tr>
+<td><code>recipients_json</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td>JSON object with <code>"to"</code> and <code>"cc"</code> keys, each an array of address strings.</td>
+</tr>
+<tr>
+<td><code>body_plain</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td>Decoded <code>text/plain</code> body (empty string if absent).</td>
+</tr>
+<tr>
+<td><code>body_html</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td>Decoded <code>text/html</code> body (empty string if absent).</td>
+</tr>
+<tr>
+<td><code>attachments_json</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td>JSON array of attachment metadata (filename, MIME type, size).</td>
+</tr>
+<tr>
+<td><code>unsubscribe_header</code></td>
+<td><code>TEXT NOT NULL DEFAULT ''</code></td>
+<td>Raw <code>List-Unsubscribe</code> header value (empty string if absent).</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>TEXT NOT NULL DEFAULT 'to_read'</code></td>
+<td>Kanban board column for the record; new mail defaults to <code>to_read</code>.</td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td><code>TEXT NOT NULL DEFAULT ''</code></td>
+<td>Free-form user notes attached to the record.</td>
+</tr>
+<tr>
+<td><code>draft_text</code></td>
+<td><code>TEXT NOT NULL DEFAULT ''</code></td>
+<td>Draft reply text (empty until a draft is composed).</td>
+</tr>
+<tr>
+<td><code>sent_reply_text</code></td>
+<td><code>TEXT NOT NULL DEFAULT ''</code></td>
+<td>Text of a reply that has been sent (empty until then).</td>
+</tr>
+<tr>
+<td><code>calendar_event_ref</code></td>
+<td><code>TEXT NOT NULL DEFAULT ''</code></td>
+<td>Reference returned by the calendar agent (or an <code>error: …</code> string); empty until "Add to Calendar" is used.</td>
+</tr>
+<tr>
+<td><code>calendar_correlation_id</code></td>
+<td><code>TEXT NOT NULL DEFAULT ''</code></td>
+<td>Correlation ID of the calendar dispatch request (empty until then).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="watermark-keyvalue-progress-store"><code>watermark</code> — key/value progress store<a class="headerlink" href="#watermark-keyvalue-progress-store" title="Permanent link">&para;</a></h3>
+<p>The <code>watermark</code> table is a general key/value store, not a single-row table.
+Several keys share it:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Written by</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>imap_uid</code></td>
+<td>ingestion</td>
+<td>Highest IMAP UID fetched so far (the fetch watermark).</td>
+</tr>
+<tr>
+<td><code>account_health</code></td>
+<td>health probe</td>
+<td>Last connection-health status JSON for the account.</td>
+</tr>
+<tr>
+<td><code>archive_structure</code></td>
+<td>archive setup</td>
+<td>JSON list of the chosen archive folder names.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td><code>TEXT PRIMARY KEY</code></td>
+<td>The key name (e.g. <code>imap_uid</code>, <code>account_health</code>, <code>archive_structure</code>).</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td>The stored value for that key (a UID string or a JSON blob).</td>
+</tr>
+</tbody>
+</table>
+<p>On every ingest that fetched at least one message, the <code>imap_uid</code> row is
+advanced to the maximum UID fetched in the batch — regardless of whether each
+individual message stored successfully (an errored message still advances it).</p>
+<h3 id="triage_decisions-per-message-triage-state"><code>triage_decisions</code> — per-message triage state<a class="headerlink" href="#triage_decisions-per-message-triage-state" title="Permanent link">&para;</a></h3>
+<p>Holds the triage classification for each message, keyed by <code>message_id</code>
+(<code>FOREIGN KEY</code> into <code>mail_records</code>).  Populated by the post-ingest triage pass
+and by manual board actions.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>message_id</code></td>
+<td><code>TEXT NOT NULL UNIQUE</code></td>
+<td>The message's <code>Message-ID</code>; foreign key into <code>mail_records</code>.</td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td><code>TEXT NOT NULL CHECK(...)</code></td>
+<td>The triage action; constrained to the canonical vocabulary (<code>INBOX</code>, <code>HUMAN_TRIAGE</code>, <code>PENDING_ACTION</code>, <code>TO_ARCHIVE</code>, <code>TO_DELETE</code>, <code>TO_CALENDAR</code>, <code>TO_ANSWER</code>, <code>DRAFT_READY</code>).</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td>Where the decision came from (e.g. the triage agent vs. a manual action).</td>
+</tr>
+<tr>
+<td><code>reason</code></td>
+<td><code>TEXT NOT NULL DEFAULT ''</code></td>
+<td>Human-readable rationale for the decision.</td>
+</tr>
+<tr>
+<td><code>confidence</code></td>
+<td><code>TEXT NOT NULL DEFAULT 'medium'</code></td>
+<td>Confidence level of the decision.</td>
+</tr>
+<tr>
+<td><code>updated_at</code></td>
+<td><code>TEXT NOT NULL</code></td>
+<td>ISO-8601 timestamp of the last update.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="idempotency">Idempotency<a class="headerlink" href="#idempotency" title="Permanent link">&para;</a></h2>
+<p>The pipeline is safe to re-run even if a previous run crashed partway through.</p>
+<h3 id="level-1-message-id-uniqueness">Level 1: <code>Message-ID</code> uniqueness<a class="headerlink" href="#level-1-message-id-uniqueness" title="Permanent link">&para;</a></h3>
+<p>The <code>UNIQUE</code> constraint on <code>mail_records.message_id</code> prevents storing the same
+message twice.  A duplicate is <strong>not</strong> a pure no-op, though: when
+<code>_process_messages</code> finds that a message's <code>Message-ID</code> is already present, it
+does not re-insert the row, but it <em>does</em> call <code>update_record_source(...)</code>,
+which UPDATEs and COMMITs the existing row's <code>source_folder</code> and <code>imap_uid</code>
+before counting the message as a duplicate.  This keeps a re-ingested message
+actionable (for archive/delete) even when its tracked UID has gone stale or it
+was re-fetched from a different folder.</p>
+<h3 id="level-2-imap-uid-watermark">Level 2: IMAP UID watermark<a class="headerlink" href="#level-2-imap-uid-watermark" title="Permanent link">&para;</a></h3>
+<p>The watermark (<code>imap_uid</code> in the <code>watermark</code> table) tracks the highest UID
+fetched in the batch.  It is advanced to the maximum UID in the batch
+regardless of whether each individual message stored successfully — an errored
+message still advances it.  Each fetch only retrieves messages with UIDs
+strictly greater than this value, so messages from completed batches are never
+re-fetched.</p>
+<h3 id="crash-recovery-scenarios">Crash recovery scenarios<a class="headerlink" href="#crash-recovery-scenarios" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Crash before watermark update:</strong> Stored messages have their <code>message_id</code>
+  recorded.  On re-run the same UIDs are re-fetched (watermark hasn't moved),
+  but the <code>UNIQUE</code> constraint causes them to be skipped as duplicates.</li>
+<li><strong>Crash after watermark update:</strong> The watermark has already advanced;
+  subsequent runs start from the new watermark and never re-fetch those UIDs.</li>
+<li><strong>Empty batch:</strong> If no new messages exist, the pipeline returns immediately
+  without touching the watermark.</li>
+</ul>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>The <code>ingest</code> subcommand uses the same IMAP connection and authentication
+settings as the rest of <code>robotsix-auto-mail</code> (see
+<a href="../connecting/">docs/connecting.md</a>).  Two additional keys control the local
+datastore and the watch interval:</p>
+<p>These fields are YAML-only configuration keys with no environment-variable
+override:</p>
+<p>The database is created automatically on first use — no manual setup is needed.</p>
+<h2 id="log-events-and-monitoring">Log events and monitoring<a class="headerlink" href="#log-events-and-monitoring" title="Permanent link">&para;</a></h2>
+<p>The <code>ingest_mail()</code> function emits structured log events that are useful for
+monitoring and debugging. The most important one is the final <code>batch_summary</code>
+line, which is logged at the end of a run and carries metrics about what
+happened.</p>
+<h3 id="the-batch_summary-log-line">The <code>batch_summary</code> log line<a class="headerlink" href="#the-batch_summary-log-line" title="Permanent link">&para;</a></h3>
+<p><code>batch_summary</code> is <strong>not</strong> emitted on every run.  When no new messages are
+fetched (<code>total_fetched == 0</code>) the pipeline returns early — before the summary
+is logged — so no <code>batch_summary</code> line appears.  In <code>--watch</code> mode, where most
+cycles fetch nothing, this is the common case.  When at least one message is
+fetched, exactly one <code>batch_summary</code> line is logged per run (one per cycle in
+watch mode).</p>
+<p>The metrics are <strong>not</strong> discrete structured fields.  <code>batch_summary</code> is logged
+as a single printf-style message string, and the JSON log formatter
+(<code>logging.format: json</code>) emits only the generic record envelope:
+<code>timestamp</code>, <code>level</code>, <code>logger</code>, <code>message</code>, and <code>trace_id</code>.  All of the
+ingestion metrics live <em>inside</em> the <code>message</code> string — there is no <code>event</code> key
+and no per-metric JSON field.</p>
+<p><strong>Metrics embedded in the <code>message</code> string:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>total_fetched</code></td>
+<td>int</td>
+<td>Number of messages retrieved from IMAP since the watermark.</td>
+</tr>
+<tr>
+<td><code>stored</code></td>
+<td>int</td>
+<td>Number of messages newly inserted into <code>mail_records</code>.</td>
+</tr>
+<tr>
+<td><code>skipped</code></td>
+<td>int</td>
+<td>Number of messages skipped as duplicates (same <code>Message-ID</code> already in database).</td>
+</tr>
+<tr>
+<td><code>error_count</code></td>
+<td>int</td>
+<td>Number of per-message errors (parse failures, DB write errors, etc.).</td>
+</tr>
+<tr>
+<td><code>triaged</code></td>
+<td>int</td>
+<td>Number of triage decisions produced by the post-ingest triage pass (0 when triage is disabled, in dry-run mode, or when triage raised an error).</td>
+</tr>
+<tr>
+<td><code>duration_ms</code></td>
+<td>float</td>
+<td>Wall-clock duration of the ingestion run in milliseconds, measured using <code>time.perf_counter()</code> (monotonic, robust against system clock adjustments). Useful for detecting slow IMAP servers or degraded LLM performance.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong> (JSON log output with <code>logging.format: json</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-06-14T12:34:56.789012Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;logger&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;robotsix_auto_mail.pipeline&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;batch_summary total_fetched=5 stored=4 skipped=1 error_count=0 triaged=2 duration_ms=1234.5&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;trace_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;00000000000000000000000000000000&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Operational value:</strong> The <code>duration_ms</code> field is the single most useful signal
+for detecting operational problems in a cron or systemd one-shot ingestion job.
+A sudden spike often indicates a slow IMAP server (e.g. due to backlog or
+network issues), degrading LLM-assisted triage performance, or other resource
+contention. Monitoring this field allows early detection of such problems.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

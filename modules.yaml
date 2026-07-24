@@ -1,0 +1,601 @@
+# Canonical module taxonomy for robotsix-auto-mail.
+#
+# Each module declares an id, a human-readable description, and the
+# set of repo-relative file paths it owns.  Every file in the repo
+# must belong to exactly one module.  Paths use forward slashes.
+#
+# This file is the source of truth for drift detection: any file not
+# listed here is "unclassified"; any listed path that no longer exists
+# is "stale"; any new module proposal must start by adding an entry here.
+
+modules:
+  - id: core
+    description: >-
+      Project root, package identity, build configuration, roadmap,
+      and observability/logging/tracing startup.
+    paths:
+      - src/robotsix_auto_mail/__init__.py
+      - src/robotsix_auto_mail/errors.py
+      - src/robotsix_auto_mail/py.typed
+      - src/robotsix_auto_mail/core/__init__.py
+      - src/robotsix_auto_mail/core/_constants.py
+      - src/robotsix_auto_mail/core/_llm_agent.py
+      - src/robotsix_auto_mail/core/_observability.py
+      - src/robotsix_auto_mail/core/format.py
+      - src/robotsix_auto_mail/core/health.py
+      - tests/core/__init__.py
+      - tests/core/test_format.py
+      - tests/core/test_health.py
+      - tests/core/test_llm_agent.py
+      - tests/core/test_observability_logging.py
+      - tests/core/test_observability_tracing.py
+      - pyproject.toml
+      - uv.lock
+      - vulture_whitelist.py
+      - .gitignore
+      - .python-version
+      - .github/CODE_OF_CONDUCT.md
+      - CHANGELOG.md
+      - CONTRIBUTING.md
+      - LICENSE
+      - AGENT.md
+      - README.md
+      - SECURITY.md
+      - ROADMAP.md
+      - changelog/.gitkeep
+      - changelog/20260702T221229Z-consolidate-modules-observability-core-l-7593.misc.md
+      - changelog/20260718T044535Z-missing-re-export-default-ingest-interva-1768.misc.md
+      - changelog/20260720T153746Z-boilerplate-missing-re-export-ticket-tri-c9c3.misc.md
+      - changelog/20260720T153746Z-scope-triage-accompanying-docs-boilerplate.misc.md
+      - changelog/20260720T160231Z-remove-unregistered-duplicate-changelog-a908.misc.md
+      - changelog/20260720T195427Z-test-gap-add-unit-tests-for-src-robotsix-54f0.misc.md
+      - changelog/20260720T195429Z-test-gap-add-unit-tests-for-src-robotsix-66c0.misc.md
+      - changelog/20260720T205011Z-add-pytest-timeout-to-ci-to-prevent-hung-2b46.misc.md
+      - changelog/20260720T205011Z-add-pytest-timeout-to-dev-deps.misc.md
+      - changelog/20260720T205012Z-split-tests-server-test-board-views-unit-c030.misc.md
+      - changelog/20260721T011535Z-ci-fix-out-of-scope-ci-failure-validate-5dce.misc.md
+      - changelog/20260724T025143Z-replace-pip-install-instructions-in-deve-a388.misc.md
+      - changelog/20260724T030450Z-fix-17-instances-of-python-2-except-x-y-c52a.bugfix.md
+      - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
+      - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
+      - changelog/20260703T082456Z-simplify-entrypoint-sh-for-post-config-m-f5e8.removal.md
+      - changelog/20260703T085156Z-ci-failure-uv-in-update-1446419417-on-ma-171e.misc.md
+      - changelog/20260703T092619Z-ci-fix-out-of-scope-ci-failure-repo-chec-e128.misc.md
+      - changelog/20260703T180457Z-migrate-robotsix-auto-mail-to-use-shared-28fc.misc.md
+      - changelog/20260703T100000Z-deploy-contract-json-only-config.removal.md
+      - changelog/20260703T103000Z-drop-managed-config-artifacts.removal.md
+      - changelog/20260703T101218Z-standards-round-2-drop-requires-python-u-a525.removal.md
+      - changelog/20260703T110407Z-drop-pre-commit-autoupdate-yml-redundant-a748.misc.md
+      - changelog/20260703T151937Z-ci-fix-out-of-scope-ci-failure-shellchec-fbb2.misc.md
+      - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-d241.misc.md
+      - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-8ead.misc.md
+      - changelog/20260703T162148Z-test-gap-add-unit-tests-for-src-robotsix-d2d8.misc.md
+      - changelog/20260703T225054Z-optimization-240-observations-12-median-6e9d.misc.md
+      - changelog/20260703T225054Z-agent-limitation-the-agent-made-six-sequ-77d8.misc.md
+      - changelog/20260703T232718Z-add-code-of-conduct-md-contributor-coven-cbe8.misc.md
+      - changelog/20260703T114033Z-remove-broker-integration-rename-healthz-5ad9.misc.md
+      - changelog/20260704T005011Z-replace-duplicate-config-key-table-in-do-8d05.misc.md
+      - changelog/20260704T005011Z-update-docs-architecture-md-to-reflect-c-66b4.misc.md
+      - changelog/20260704T032222Z-add-css-custom-properties-layer-to-board-12dc.misc.md
+      - changelog/20260704T032222Z-add-stylelint-declaration-strict-value-t-65d4.misc.md
+      - changelog/20260704T032222Z-extract-duplicated-launch-background-wor-61ca.misc.md
+      - changelog/20260704T032222Z-split-195-line-card-extra-html-method-in-2cb0.misc.md
+      - changelog/20260704T032222Z-extract-shared-force-refresh-method-to-e-6b6e.misc.md
+      - changelog/20260704T035854Z-add-codeql-yml-using-shared-reusable-wor-d275.misc.md
+      - changelog/20260704T035854Z-add-lint-workflows-yml-using-shared-reus-1edb.misc.md
+      - changelog/20260704T050008Z-implement-agent-auto-register-changelog-dad5.misc.md
+      - changelog/20260704T051132Z-config-drift-stale-key-component-agent-e-4d53.misc.md
+      - changelog/20260704T051132Z-remove-stale-component-agent-enabled-config-example-4d53.misc.md
+      - changelog/20260704T060804Z-ci-fix-out-of-scope-ci-failure-lint-work-34df.misc.md
+      - changelog/20260704T070912Z-ci-fix-out-of-scope-ci-failure-zizmor-ex-78e5.misc.md
+      - changelog/20260704T073043Z-ci-fix-out-of-scope-ci-failure-lint-work-d14b.misc.md
+      - changelog/20260704T074502Z-ci-skip-python-specific-jobs-when-no-py-8cb9.misc.md
+      - changelog/20260704T082208Z-get-healthz-returns-404-container-perman-4432.misc.md
+      - changelog/20260704T082208Z-vestigial-volume-data-in-dockerfile-spaw-a319.removal.md
+      - changelog/20260704T150328Z-consolidate-duplicated-css-property-bloc-b341.misc.md
+      - changelog/20260704T150328Z-extend-mypy-strict-checking-to-cover-tes-7bf1.misc.md
+      - changelog/20260704T150328Z-extract-mime-message-composition-from-sm-19a6.feature.md
+      - changelog/20260704T192757Z-docs-reference-obsolete-mail-config-path-ac4c.misc.md
+      - changelog/20260704T192757Z-robotsix-autoupdate-cli-entry-point-remo-6151.misc.md
+      - changelog/20260704T193857Z-copy-paste-32-line-clone-in-check-config-ce23.misc.md
+      - changelog/20260704T195609Z-remove-observability-deprecation-shim-ro-a0f0.misc.md
+      - changelog/20260704T202047Z-decompose-build-parser-by-delegating-sub-61d1.misc.md
+      - changelog/20260704T202047Z-refactor-archive-and-delete-in-server-ac-45c4.misc.md
+      - changelog/20260704T202047Z-refactor-gather-account-board-data-in-se-3cf2.misc.md
+      - changelog/20260704T202325Z-remove-dependabot-for-ecosystems-already-f7af.misc.md
+      - changelog/20260704T204106Z-docker-polish-remove-dead-envsubst-code-64e9.misc.md
+      - changelog/20260705T091322Z-extract-shared-plain-socket-helper-from-5d24.misc.md
+      - changelog/20260705T091322Z-factor-out-shared-oauth2-constructor-boi-de1a.misc.md
+      - changelog/20260705T185305Z-config-sync-load-ledger-graceful-json-error-handling-9848.misc.md
+      - changelog/20260705T185305Z-config-sync-load-ledger-missing-json-dec-9848.misc.md
+      - changelog/20260705T185306Z-add-method-field-validator-to-unsubscribe-detection.bugfix.md
+      - changelog/20260705T185306Z-unsubscribedetection-method-field-missin-51c9.misc.md
+      - changelog/20260705T230424Z-update-pr-template-and-contributing-guid-eea1.misc.md
+      - changelog/20260706T093140Z-deactivate-all-periodic-mill-workflows-k-4789.misc.md
+      - changelog/20260706T100734Z-consolidate-near-identical-single-column-749d.misc.md
+      - changelog/20260706T100734Z-consolidate-update-column-queries-749d.misc.md
+      - changelog/20260706T100734Z-extract-private-helpers-from-tests-serve-10f9.misc.md
+      - changelog/20260706T100734Z-split-server-views-board-py-extract-data-6558.misc.md
+      - changelog/20260714T153350Z-robotsix-auto-mail-enable-baseline-perio-47b4.misc.md
+      - changelog/20260714T165938Z-reorganize-module-mime-align-to-per-modu-4fc4.misc.md
+      - changelog/20260715T191710Z-consolidate-modules-config-detect-move-d-9178.misc.md
+      - changelog/20260715T191710Z-reorganize-module-core-align-to-per-modu-8b73.misc.md
+      - changelog/20260715T192538Z-robotsix-auto-mail-enable-bc-check-perio-186f.misc.md
+      - changelog/20260716T040733Z-robotsix-auto-mail-enable-completeness-c-3fac.misc.md
+      - changelog/20260716T045127Z-missing-re-export-get-account-health-and-70a6.misc.md
+      - changelog/20260716T192336Z-robotsix-auto-mail-enable-audit-periodic-bbeb.misc.md
+      - changelog/20260716T192337Z-robotsix-auto-mail-enable-copy-paste-per-3ddd.misc.md
+      - changelog/20260716T200417Z-deduplicate-archive-structure-watermark-cbc2.misc.md
+      - changelog/20260716T200418Z-enable-uv-malware-check-1-in-ci-to-block-31fb.misc.md
+      - changelog/20260717T044305Z-missing-re-export-normalize-archive-subf-33d3.misc.md
+      - changelog/20260717T044305Z-missing-re-export-parseerror-and-parse-m-b662.misc.md
+      - changelog/20260717T183958Z-test-gap-add-unit-tests-for-src-robotsix-47ec.misc.md
+      - changelog/20260717T201911Z-split-tests-server-test-action-mixin-py-60b7.misc.md
+      - changelog/20260717T201912Z-make-trivy-container-scan-blocking-on-cr-94a9.misc.md
+      - changelog/20260717T210820Z-ci-failure-release-image-on-main-ed22.misc.md
+      - changelog/20260718T002044Z-robotsix-auto-mail-enable-repo-descripti-f04d.misc.md
+      - changelog/20260718T184436Z-robotsix-auto-mail-enable-docstring-cove-d6c6.misc.md
+      - changelog/20260718T184436Z-robotsix-auto-mail-enable-health-periodi-fbdb.misc.md
+      - changelog/20260718T184436Z-robotsix-auto-mail-enable-survey-periodi-c635.feature.md
+      - changelog/20260718T194949Z-docstring-gap-add-docstring-to-main-in-d-2c4a.misc.md
+      - changelog/20260718T194950Z-docstring-gap-add-docstring-to-register-1642.misc.md
+      - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-0c44.misc.md
+      - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-69fb.misc.md
+      - changelog/20260718T194951Z-docstring-gap-add-docstring-to-register-7a9c.misc.md
+      - changelog/20260718T203603Z-split-tests-cli-test-cli-detect-py-1523-d05d.misc.md
+      - changelog/20260718T203605Z-extract-shared-llm-parameter-docstrings-599a.misc.md
+      - changelog/20260718T203605Z-unify-json-watermark-loading-helpers-acr-9c2f.misc.md
+      - changelog/20260718T213146Z-migrate-account-config-from-mail-local-y-27b1.misc.md
+      - changelog/20260718T213158Z-refactor-detect-verify-cli-into-pure-dia-240d.misc.md
+      - changelog/20260718T215330Z-add-native-path-quick-start-section-to-d-b24d.misc.md
+      - changelog/20260719T022116Z-narrow-exception-types-in-probe-capabili-8518.misc.md
+      - changelog/20260719T024350Z-codeql-inline-lgtm-suppressions-and-quer-2c10.misc.md
+      - changelog/20260719T030252Z-restore-noqa-s110-on-bare-except-excepti-be96.misc.md
+      - changelog/20260719T154209Z-robotsix-auto-mail-enable-changelog-auto-acb6.misc.md
+      - changelog/20260719T204611Z-split-tests-db-test-db-py-1088-lines-int-08e9.misc.md
+      - changelog/20260719T204614Z-extract-shared-smtplib-smtp-connection-h-5102.misc.md
+      - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-987-l-f637.misc.md
+      - changelog/20260719T204612Z-split-tests-cli-test-cli-refine-py-f637.misc.md
+      - changelog/20260719T231858Z-replace-detect-secrets-with-gitleaks-829d.misc.md
+      - changelog/20260719T233517Z-remove-duplicate-unregistered-changelog-e842.misc.md
+      - changelog/20260720T002929Z-ci-fix-out-of-scope-ci-failure-coverage-a8c0.misc.md
+      - changelog/20260720T045441Z-missing-re-export-save-accounts-not-expo-97ec.misc.md
+      - changelog/20260720T081446Z-remove-stale-sendermemory-and-archivefol-dc24.misc.md
+      - changelog/20260720T114054Z-robotsix-auto-mail-enable-agent-check-pe-d9d1.misc.md
+      - changelog/20260720T114055Z-robotsix-auto-mail-enable-trace-review-p-4e76.feature.md
+      - changelog/20260720T123355Z-flash-llm-in-build-rules-system-prompt-e-4dd9.bugfix.md
+      - changelog/20260720T141755Z-enable-triage-boilerplate-periodic-workf-c6b4.misc.md
+      - changelog/20260721T001055Z-cleanup-duplicate-path-in-module-core-ch-3ccf.misc.md
+      - changelog/20260721T002604Z-introduce-a-robotsixmailerror-base-and-r-a8c1.misc.md
+      - changelog/20260723T210514Z-split-tests-server-test-view-mixin-py-74-76f5.misc.md
+      - changelog/20260721T004554Z-ci-fix-out-of-scope-ci-failure-run-pre-c-aaa3.misc.md
+      - changelog/20260721T091444Z-migrate-robotsix-auto-mail-to-the-typed-a5fe.removal.md
+      - changelog/20260721T122323Z-update-agent-md-configuration-convention-b9ac.misc.md
+      - changelog/20260721T132546Z-classify-config-settings-as-advanced-per-a917.feature.md
+      - changelog/20260721T142307Z-robotsix-auto-mail-enable-module-size-pe-4287.misc.md
+      - changelog/20260721T185654Z-config-standard-compliance.feature.md
+      - changelog/20260721T185654Z-make-robotsix-auto-mail-compliant-with-t-38da.misc.md
+      - changelog/20260721T205329Z-config-clean-cutover-migration-to-robots-6cda.removal.md
+      - changelog/20260721T205654Z-split-tests-cli-test-commands-detect-py-d7f6.misc.md
+      - changelog/20260721T210331Z-config-standard-cutover-remove-auto-mail-79ff.misc.md
+      - changelog/20260722T004846Z-add-towncrier-build-step-to-release-yml-c4f8.misc.md
+      - changelog/20260722T010422Z-remove-dead-pydantic-v1-compat-guard-in-939d.removal.md
+      - changelog/20260722T122628Z-replace-duplicated-imap-archive-move-log-50af.misc.md
+      - changelog/20260722T205817Z-remove-dead-dependabot-auto-merge-yml-wo-12c3.misc.md
+      - changelog/20260722T205817Z-split-tests-pipeline-test-ingest-py-887-5b4a.misc.md
+      - changelog/20260723T013124Z-consume-coverage-artifact-from-reusable-4f5d.misc.md
+      - changelog/20260723T125250Z-add-a-ui-button-to-add-a-new-mail-accoun-2715.misc.md
+      - changelog/20260723T132809Z-migrate-robotsix-auto-mail-to-consume-ro-cc78.feature.md
+      - changelog/20260723T133742Z-thread-api-key-unsubscribe.bugfix.md
+      - changelog/20260723T133742Z-thread-resolved-api-key-provider-model-f-1dfa.misc.md
+      - changelog/20260723T210507Z-split-tests-smtp-test-smtp-client-py-872-3c04.misc.md
+      - changelog/20260724T010820Z-remove-stale-changelog-md-entry-that-cla-bec6.misc.md
+      - changelog/20260724T031442Z-migrate-robotsix-auto-mail-to-consume-ro-6a1e.misc.md
+      - tests/__init__.py
+      - tests/conftest.py
+      - tests/test_stub.py
+
+  - id: docker
+    description: >-
+      Docker image definition, Compose orchestration, and
+      container entrypoint.
+    paths:
+      - .dockerignore
+      - Dockerfile
+      - docker-compose.yml
+      - entrypoint.sh
+
+  - id: deploy
+    description: >-
+      central-deploy contract (contract-version 1): the Compose file
+      that the external central-deploy system consumes to pull the
+      published GHCR image and run the ingester + board services, plus
+      the managed config template. Operator-facing deployment docs live
+      in docs/deployment.md.
+    paths:
+      - deploy/docker-compose.yml
+
+  - id: dev
+    description: >-
+      Developer and deployment helper scripts.
+    paths:
+      - scripts/dev/auto-mail-autoupdate.sh
+      - src/robotsix_auto_mail/dev/__init__.py
+      - src/robotsix_auto_mail/dev/autoupdate.py
+      - tests/dev/__init__.py
+      - tests/dev/test_autoupdate.py
+
+  - id: cli
+    description: >-
+      CLI entry point exposing probe, ingest, board, serve, detect,
+      config-sync, config-sync-set, triage, triage-set, and auth
+      subcommands.
+    paths:
+      - src/robotsix_auto_mail/cli/__init__.py
+      - src/robotsix_auto_mail/cli/commands.py
+      - src/robotsix_auto_mail/cli/commands_auth.py
+      - src/robotsix_auto_mail/cli/commands_board.py
+      - src/robotsix_auto_mail/cli/commands_config_sync.py
+      - src/robotsix_auto_mail/cli/commands_detect.py
+      - src/robotsix_auto_mail/cli/commands_ingest.py
+      - src/robotsix_auto_mail/cli/commands_probe.py
+      - src/robotsix_auto_mail/cli/commands_serve.py
+      - src/robotsix_auto_mail/cli/commands_triage.py
+      - src/robotsix_auto_mail/cli/config.py
+      - tests/cli/__init__.py
+      - tests/cli/conftest.py
+      - tests/cli/test_cli.py
+      - tests/cli/test_commands_auth.py
+      - tests/cli/test_commands_config_sync.py
+      - tests/cli/test_commands_detect_cmd.py
+      - tests/cli/test_commands_detect_probe.py
+      - tests/cli/test_commands_detect_report.py
+      - tests/cli/test_commands_serve.py
+      - tests/cli/test_cli_board.py
+      - tests/cli/test_cli_config.py
+      - tests/cli/test_cli_config_sync.py
+      - tests/cli/test_cli_detect_accounts.py
+      - tests/cli/test_cli_detect_basic.py
+      - tests/cli/test_cli_detect_microsoft.py
+      - tests/cli/test_cli_detect_settings.py
+      - tests/cli/test_cli_ingest.py
+      - tests/cli/test_cli_probe.py
+      - tests/cli/test_cli_refine_password.py
+      - tests/cli/test_cli_refine_llm.py
+      - tests/cli/test_cli_refine_manual.py
+      - tests/cli/test_cli_refine_pipeline.py
+      - tests/cli/test_cli_refine_prompt_hosts.py
+      - tests/cli/test_cli_triage.py
+
+  - id: config
+    description: >-
+      Configuration loading from the JSON config file only, the config
+      template, the deterministic drift-detection script, and the optional
+      LLM-driven drift-advisory agent. Together they keep the MailConfig
+      pydantic model, JSON example, and connecting docs in sync. Also covers
+      multi-account loading (MailAccountsConfig) and per-account SQLite DB
+      isolation.
+    paths:
+      - src/robotsix_auto_mail/config/__init__.py
+      - src/robotsix_auto_mail/config/_field_map.py
+      - src/robotsix_auto_mail/config/loader.py
+      - src/robotsix_auto_mail/config/model.py
+      - src/robotsix_auto_mail/config/schema.py
+      - src/robotsix_auto_mail/config/config_sync_agent.py
+      - tests/config/__init__.py
+      - tests/config/test_mailconfig_basics.py
+      - tests/config/test_model.py
+      - tests/config/test_schema.py
+      - tests/config/test_config_from_yaml.py
+      - tests/config/test_config_load.py
+      - tests/config/test_config_llm.py
+      - tests/config/test_config_loader.py
+      - tests/config/test_config_ingest.py
+      - tests/config/test_config_archive.py
+      - tests/config/test_config_triage.py
+      - docs/config/.gitkeep
+      - config/config.example.json
+      - config/config.json
+      - config/config.schema.json
+      - scripts/config/check_config_sync.py
+      - tests/config/test_config_sync.py
+      - tests/config/test_config_sync_agent.py
+      - src/robotsix_auto_mail/config/pydantic_utils.py
+      - tests/config/test_accounts_config.py
+      - tests/config/test_account_isolation.py
+      - tests/config/test_pydantic_utils.py
+
+  - id: triage
+    description: >-
+      LLM-driven inbox triage agent and local triage-decision
+      persistence: classifies inbox mail into the triage actions
+      (INBOX / HUMAN_TRIAGE / PENDING_ACTION / TO_ARCHIVE / TO_DELETE /
+      TO_CALENDAR / TO_ANSWER / DRAFT_READY) stored in the
+      triage_decisions table without moving mail in the mailbox.  Learned
+      preferences live in a human-readable triage_rules.md file that a
+      flash LLM maintains from the user's board actions.
+    paths:
+      - src/robotsix_auto_mail/triage/__init__.py
+      - src/robotsix_auto_mail/triage/_constants.py
+      - src/robotsix_auto_mail/triage/agent.py
+      - src/robotsix_auto_mail/triage/classifier.py
+      - src/robotsix_auto_mail/triage/persistence.py
+      - src/robotsix_auto_mail/triage/rules.py
+      - tests/triage/__init__.py
+      - tests/triage/test_triage_agent.py
+      - tests/triage/test_triage_archive_hints.py
+      - tests/triage/test_triage_archive_llm.py
+      - tests/triage/test_triage_archive_subfolder.py
+      - tests/triage/test_triage_crud.py
+      - tests/triage/test_triage_models.py
+      - tests/triage/test_triage_prompt.py
+      - tests/triage/test_triage_propose_name.py
+      - tests/triage/test_triage_rules.py
+      - tests/triage/test_triage_unsubscribe.py
+      - tests/triage/test_classifier.py
+
+  - id: db
+    description: >-
+      SQLite datastore: schema, MailRecord, insert, watermark, and
+      self-managed archive folder structure.
+    paths:
+      - src/robotsix_auto_mail/db/__init__.py
+      - src/robotsix_auto_mail/db/_migrate.py
+      - src/robotsix_auto_mail/db/archive.py
+      - src/robotsix_auto_mail/db/models.py
+      - src/robotsix_auto_mail/db/queries.py
+      - tests/db/__init__.py
+      - tests/db/test_archive.py
+      - tests/db/conftest.py
+      - tests/db/test_db_mailrecord.py
+      - tests/db/test_db_init.py
+      - tests/db/test_db_crud.py
+      - tests/db/test_db_watermarks.py
+      - tests/db/test_db_delete.py
+      - tests/db/test_db_source.py
+      - tests/db/test_db_schema.py
+      - tests/db/test_migrate.py
+
+  - id: detect
+    description: >-
+      MX-record provider detection and auto-configuration lookup
+      (Mozilla ISPDB, autoconfig XML, LLM fallback).
+    paths:
+      - src/robotsix_auto_mail/config/detect/__init__.py
+      - src/robotsix_auto_mail/config/detect/detector.py
+      - src/robotsix_auto_mail/config/detect/models.py
+      - tests/config/detect/__init__.py
+      - tests/config/detect/test_detect.py
+
+  - id: imap
+    description: >-
+      Low-level IMAP client (stdlib imaplib wrapper).
+    paths:
+      - src/robotsix_auto_mail/imap/__init__.py
+      - src/robotsix_auto_mail/imap/_protocol.py
+      - src/robotsix_auto_mail/imap/client.py
+      - src/robotsix_auto_mail/imap/errors.py
+      - src/robotsix_auto_mail/imap/mailbox.py
+      - src/robotsix_auto_mail/imap/utils.py
+      - tests/imap/__init__.py
+      - tests/imap/test_protocol.py
+      - tests/imap/conftest.py
+      - tests/imap/test_imap_auth.py
+      - tests/imap/test_imap_connection.py
+      - tests/imap/test_imap_cross_folder.py
+      - tests/imap/test_imap_encoding.py
+      - tests/imap/test_imap_errors.py
+      - tests/imap/test_imap_folders.py
+      - tests/imap/test_imap_integration.py
+      - tests/imap/test_imap_messages.py
+      - tests/imap/test_imap_utils.py
+
+  - id: oauth2
+    description: >-
+      MSAL-backed OAuth2 token provider for Microsoft 365 (XOAUTH2):
+      device-code consent, a persistent per-account token cache, and
+      silent access-token refresh. msal is an optional dependency
+      behind the [microsoft] extra, imported lazily.
+    paths:
+      - src/robotsix_auto_mail/oauth2/__init__.py
+      - tests/oauth2/__init__.py
+      - tests/oauth2/test_msal_provider.py
+
+  - id: pipeline
+    description: >-
+      Ingestion orchestration: fetch, parse, store, watermark.
+    paths:
+      - src/robotsix_auto_mail/pipeline/__init__.py
+      - src/robotsix_auto_mail/pipeline/_parse.py
+      - src/robotsix_auto_mail/pipeline/reconcile.py
+      - tests/pipeline/__init__.py
+      - tests/pipeline/_helpers.py
+      - tests/pipeline/test_pipeline_cli_ingest.py
+      - tests/pipeline/test_fetch.py
+      - tests/pipeline/test_ingest_archive_triage.py
+      - tests/pipeline/test_ingest_core.py
+      - tests/pipeline/test_ingest_dataclass.py
+      - tests/pipeline/test_ingest_dryrun.py
+      - tests/pipeline/test_parser.py
+      - tests/pipeline/test_parser_properties.py
+      - tests/pipeline/test_reconcile.py
+      - tests/pipeline/test_uidvalidity.py
+
+  - id: mime
+    description: >-
+      Pure functions for constructing plain-text MIME email messages,
+      decoupled from SMTP transport.
+    paths:
+      - src/robotsix_auto_mail/mime/__init__.py
+      - tests/mime/test_mime.py
+
+  - id: smtp
+    description: >-
+      SMTP sending client.
+    paths:
+      - src/robotsix_auto_mail/smtp/__init__.py
+      - tests/smtp/__init__.py
+      - tests/smtp/test_smtp_close.py
+      - tests/smtp/test_smtp_connect.py
+      - tests/smtp/test_smtp_exceptions.py
+      - tests/smtp/test_smtp_isolation.py
+      - tests/smtp/test_smtp_send.py
+
+  - id: server
+    description: >-
+      HTTP kanban board server exposing the mail database as
+      a read/write web UI, plus the runtime-verification smoke
+      test that boots the server and asserts its key routes.
+    paths:
+      - src/robotsix_auto_mail/server/__init__.py
+      - src/robotsix_auto_mail/server/_constants.py
+      - src/robotsix_auto_mail/server/adapters.py
+      - src/robotsix_auto_mail/server/handlers.py
+      - src/robotsix_auto_mail/server/_account_mixin.py
+      - src/robotsix_auto_mail/server/_action_mixin.py
+      - src/robotsix_auto_mail/server/_auth_mixin.py
+      - src/robotsix_auto_mail/server/_batch_mixin.py
+      - src/robotsix_auto_mail/server/_board_handler_protocol.py
+      - src/robotsix_auto_mail/server/_config_mixin.py
+      - src/robotsix_auto_mail/server/_draft_generator.py
+      - src/robotsix_auto_mail/server/_draft_mixin.py
+      - src/robotsix_auto_mail/server/_reconcile_mixin.py
+      - src/robotsix_auto_mail/server/_triage_mixin.py
+      - src/robotsix_auto_mail/server/_view_mixin.py
+      - src/robotsix_auto_mail/server/views/__init__.py
+      - src/robotsix_auto_mail/server/views/board.py
+      - src/robotsix_auto_mail/server/views/board_data.py
+      - src/robotsix_auto_mail/server/views/detail.py
+      - src/robotsix_auto_mail/server/views/forms.py
+      - src/robotsix_auto_mail/server/static/board.css
+      - src/robotsix_auto_mail/server/static/board-auto-mail.js
+      - src/robotsix_auto_mail/server/board_adapter.py
+      - tests/server/__init__.py
+      - tests/server/conftest.py
+      - tests/server/conftest_helpers.py
+      - tests/server/test_csrf.py
+      - tests/server/_test_helpers.py
+      - tests/server/test_action_archive_and_delete.py
+      - tests/server/test_action_background_worker.py
+      - tests/server/test_action_handle_archive.py
+      - tests/server/test_action_handle_delete.py
+      - tests/server/test_action_handle_move.py
+      - tests/server/test_action_handle_save_notes.py
+      - tests/server/test_action_imap_archive_move.py
+      - tests/server/test_action_parse_request_body.py
+      - tests/server/test_action_post_action.py
+      - tests/server/test_adapters.py
+      - tests/server/test_archive_structure.py
+      - tests/server/test_board_adapter.py
+      - tests/server/test_board_handler_root.py
+      - tests/server/test_board_handler_move.py
+      - tests/server/test_board_handler_email_status.py
+      - tests/server/test_board_handler_email_embed.py
+      - tests/server/test_board_handler_config_sync.py
+      - tests/server/test_board_handler_triage_display.py
+      - tests/server/test_board_handler_access_log.py
+      - tests/server/test_board_handler_board.py
+      - tests/server/test_board_handler_static.py
+      - tests/server/test_board_handler_email_detail.py
+      - tests/server/test_board_handler_health.py
+      - tests/server/test_board_views_batch_banner.py
+      - tests/server/test_board_views_build.py
+      - tests/server/test_board_views_columns.py
+      - tests/server/test_board_views_gather.py
+      - tests/server/test_board_views_shell.py
+      - tests/server/test_draft_mixin_compute_and_save.py
+      - tests/server/test_draft_mixin_send_generate.py
+      - tests/server/test_auth_mixin.py
+      - tests/server/test_format_date.py
+      - tests/server/test_global_board.py
+      - tests/server/test_redirect_safety.py
+      - tests/server/test_server_archive_batch.py
+      - tests/server/test_server_archive_delete.py
+      - tests/server/test_server_archive.py
+      - tests/server/test_server_archive_proposal.py
+      - tests/server/test_server_archive_security.py
+      - tests/server/test_server_draft.py
+      - tests/server/test_server_reconcile.py
+      - tests/server/test_server_triage.py
+      - tests/server/test_triage_mixin.py
+      - tests/server/_view_mixin_helpers.py
+      - tests/server/test_view_mixin_archive.py
+      - tests/server/test_view_mixin_board.py
+      - tests/server/test_view_mixin_email.py
+      - tests/server/test_view_mixin_static.py
+      - tests/server/test_views_detail.py
+      - tests/server/test_views_forms.py
+      - tests/server/test_batch_mixin.py
+      - scripts/server/smoke_board.sh
+
+  - id: docs
+    description: >-
+      User-facing documentation.
+    paths:
+      - docs/CONTRIBUTING.md
+      - docs/dependencies.md
+      - docs/index.md
+      - mkdocs.yml
+      - docs/architecture.md
+      - docs/codeql-verification.md
+      - docs/configuration.md
+      - docs/connecting.md
+      - docs/deployment.md
+      - docs/ingestion.md
+      - docs/testing.md
+      - docs/troubleshooting.md
+      - docs/modules.yaml
+      - docs/skill.md
+
+  - id: ci
+    description: >-
+      CI and developer-side quality-gate tooling: GitHub Actions
+      workflows (main pipeline and uv.lock auto-update), dependency
+      updates, and local pre-commit hooks (including the
+      gitleaks secret scanning config).
+    paths:
+      - .github/actions/setup-project/action.yml
+      - .github/PULL_REQUEST_TEMPLATE.md
+      - .github/codeql/codeql-config.yml
+      - .github/dependabot.yml
+      - .github/workflows/ci.yml
+      - .github/workflows/codeql.yml
+      - .github/workflows/docs.yml
+      - .github/workflows/lockfile.yml
+      - .github/workflows/pre-commit.yml
+      - .github/workflows/release.yml
+      - .github/workflows/lint-workflows.yml
+      - .github/workflows/scan-container.yml
+      - .github/workflows/secret-scanning.yml
+      - .github/ISSUE_TEMPLATE/bug_report.yml
+      - .github/ISSUE_TEMPLATE/config.yml
+      - .github/ISSUE_TEMPLATE/feature_request.yml
+      - .hadolint.yaml
+      - .gitleaks.toml
+      - .pre-commit-config.yaml
+      - .stylelintrc.cjs
+      - .trivyignore
+      - renovate.json
+      - scripts/ci/check_kind_literals.py
+
+  - id: mill
+    description: >-
+      Robotsix-mill board orchestration configuration.
+    paths:
+      - .robotsix-mill/config.yaml
+      - .robotsix-mill/periodic/agent_check.yaml
+      - .robotsix-mill/periodic/audit.yaml
+      - .robotsix-mill/periodic/bc_check.yaml
+      - .robotsix-mill/periodic/changelog_autofill.yaml
+      - .robotsix-mill/periodic/completeness_check.yaml
+      - .robotsix-mill/periodic/copy_paste.yaml
+      - .robotsix-mill/periodic/docstring_coverage.yaml
+      - .robotsix-mill/periodic/health.yaml
+      - .robotsix-mill/periodic/module_curator.yaml
+      - .robotsix-mill/periodic/module_size.yaml
+      - .robotsix-mill/periodic/repo_description_sync.yaml
+      - .robotsix-mill/periodic/security_posture.yaml
+      - .robotsix-mill/periodic/survey.yaml
+      - .robotsix-mill/periodic/trace_review.yaml
+      - .robotsix-mill/periodic/test_gap.yaml
+      - .robotsix-mill/periodic/triage_boilerplate.yaml

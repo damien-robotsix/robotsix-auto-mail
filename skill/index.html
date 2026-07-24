@@ -1,0 +1,1378 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Automated mail ingestion, triage, and board for robotsix-auto-mail.">
+      
+      
+      
+      
+        <link rel="prev" href="../deployment/">
+      
+      
+        <link rel="next" href="../dependencies/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Board HTTP API - robotsix-auto-mail</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#board-http-api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="robotsix-auto-mail" class="md-header__button md-logo" aria-label="robotsix-auto-mail" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            robotsix-auto-mail
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Board HTTP API
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/damien-robotsix/robotsix-auto-mail" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="robotsix-auto-mail" class="md-nav__button md-logo" aria-label="robotsix-auto-mail" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    robotsix-auto-mail
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/damien-robotsix/robotsix-auto-mail" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingestion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connecting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connecting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Board HTTP API
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Board HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#base-urls-and-auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base URLs and auth
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Base URLs and auth">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gateway-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gateway (production)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#direct-local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direct (local / development)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#account-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Account selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET endpoints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST endpoints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#curl-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        curl examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="curl examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-read-board-state-as-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Read board state as JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-set-a-triage-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Set a triage decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-archive-a-message-immediately-imap-move-db-delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Archive a message immediately (IMAP move + DB delete)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-delete-a-message" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Delete a message
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-run-triage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run triage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-generate-inspect-and-send-a-draft-reply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Generate, inspect, and send a draft reply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-trigger-reconcile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Trigger reconcile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-check-liveness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Check liveness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-batch-archive-all-to_archive-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Batch-archive all TO_ARCHIVE messages
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-config-sync-returns-json-not-a-redirect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Config sync (returns JSON, not a redirect)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../codeql-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CodeQL Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/CHANGELOG.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#base-urls-and-auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base URLs and auth
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Base URLs and auth">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gateway-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gateway (production)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#direct-local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direct (local / development)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#account-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Account selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET endpoints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST endpoints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#curl-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        curl examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="curl examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-read-board-state-as-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Read board state as JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-set-a-triage-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Set a triage decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-archive-a-message-immediately-imap-move-db-delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Archive a message immediately (IMAP move + DB delete)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-delete-a-message" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Delete a message
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-run-triage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run triage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-generate-inspect-and-send-a-draft-reply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Generate, inspect, and send a draft reply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-trigger-reconcile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Trigger reconcile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-check-liveness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Check liveness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-batch-archive-all-to_archive-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Batch-archive all TO_ARCHIVE messages
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-config-sync-returns-json-not-a-redirect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Config sync (returns JSON, not a redirect)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="board-http-api">Board HTTP API<a class="headerlink" href="#board-http-api" title="Permanent link">&para;</a></h1>
+<p>External agents can read board state and trigger all board actions directly
+over HTTP — no agent-comm bridge needed.</p>
+<h2 id="base-urls-and-auth">Base URLs and auth<a class="headerlink" href="#base-urls-and-auth" title="Permanent link">&para;</a></h2>
+<h3 id="gateway-production">Gateway (production)<a class="headerlink" href="#gateway-production" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>https://deploy.robotsix.net/mail
+</code></pre></div>
+<p>Fronted by the central-deploy gateway; requires <strong>HTTP Basic Auth</strong>.</p>
+<h3 id="direct-local-development">Direct (local / development)<a class="headerlink" href="#direct-local-development" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>http://&lt;host&gt;:&lt;port&gt;
+</code></pre></div>
+<p>The port is passed to <code>robotsix-auto-mail serve --port &lt;N&gt;</code>.  No auth at
+this layer — the server listens on <code>0.0.0.0</code>.</p>
+<h2 id="account-selection">Account selection<a class="headerlink" href="#account-selection" title="Permanent link">&para;</a></h2>
+<p>Append <code>?account=&lt;account_id&gt;</code> (e.g. <code>?account=main</code>) to any request.</p>
+<ul>
+<li>Without <code>?account=</code>, the server uses a per-session cookie, then falls
+  back to the default account.</li>
+<li>Use <code>?account=__all__</code> for the aggregate multi-account board view.</li>
+</ul>
+<h2 id="get-endpoints">GET endpoints<a class="headerlink" href="#get-endpoints" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Response</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /</code></td>
+<td>301 → <code>/board</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>GET /board</code></td>
+<td>HTML</td>
+<td>Full board UI</td>
+</tr>
+<tr>
+<td><code>GET /board-content</code></td>
+<td>JSON <code>{"columns_html":"…","triage_running":bool,"batch_op":{"op":…,"done":…,"total":…}\|null,"health":{…}\|null,"health_alerts_html":"…","unsubscribe_suggestions":{…}}</code></td>
+<td>Board payload (rendered columns + metadata); preferred for machine reads. <code>batch_op</code> is an object (verb + progress counts) while a batch op runs, else <code>null</code>; <code>health</code> carries the account-health watermark and <code>health_alerts_html</code> the rendered red-banner markup</td>
+</tr>
+<tr>
+<td><code>GET /health</code></td>
+<td>JSON <code>{"status":"ok"}</code> 200</td>
+<td>Liveness; returns 200 while the process is alive</td>
+</tr>
+<tr>
+<td><code>GET /probe-health</code></td>
+<td>JSON <code>{"accounts":{"&lt;id&gt;":{"status":"…","error":…}}}</code></td>
+<td>On-demand IMAP+SMTP connectivity probe across all accounts; persists each result to the account's <code>account_health</code> watermark</td>
+</tr>
+<tr>
+<td><code>GET /auth-status</code></td>
+<td>JSON <code>{"status":"…",…}</code></td>
+<td>Polls a running OAuth2 device-code flow; <code>status</code> is <code>idle</code>/<code>pending_prompt</code>/<code>pending_consent</code>/<code>success</code>/<code>error</code>. Cross-account: takes <code>?account_id=&lt;id&gt;</code> and ignores the session account</td>
+</tr>
+<tr>
+<td><code>GET /archive-folders</code></td>
+<td>JSON <code>{"delimiter":"/","folders":[…]}</code></td>
+<td>Available IMAP archive subfolders. Returns <code>{"delimiter":"/","folders":[]}</code> in aggregate mode</td>
+</tr>
+<tr>
+<td><code>GET /email/{message_id}/status</code></td>
+<td>plain text — triage action name</td>
+<td>404 if unknown</td>
+</tr>
+<tr>
+<td><code>GET /email/{message_id}</code></td>
+<td>HTML</td>
+<td>Detail page; optional <code>?embed=1</code> strips chrome, <code>?draft=1</code> shows draft panel</td>
+</tr>
+<tr>
+<td><code>GET /archive-proposal/{message_id}</code></td>
+<td>JSON <code>{"subfolder":"…","archive_root":"…","folder_exists":bool,"overridden":bool,"source":"…"}</code></td>
+<td>Effective archive subfolder for the message. <code>overridden</code> is a bool (true when a user override is set); <code>source</code> is one of <code>override</code> / <code>llm</code> / <code>rule</code>. 404 if message_id unknown</td>
+</tr>
+<tr>
+<td><code>GET /static/{file}</code></td>
+<td>asset bytes</td>
+<td>JS/CSS static files</td>
+</tr>
+</tbody>
+</table>
+<h2 id="post-endpoints">POST endpoints<a class="headerlink" href="#post-endpoints" title="Permanent link">&para;</a></h2>
+<p>All POST endpoints accept <code>Content-Type: application/x-www-form-urlencoded</code>
+(standard HTML form encoding).  Most return a <code>302</code> redirect to the
+<code>redirect_to</code> field value (if supplied) or a hardcoded default.  Exception:
+<code>/config-sync</code> returns JSON directly.</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Form fields</th>
+<th>Default redirect</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /move</code></td>
+<td><code>message_id</code>, <code>triage_action</code>, <code>redirect_to</code> (opt)</td>
+<td><code>/board</code></td>
+<td>Sets triage decision. Valid <code>triage_action</code> values (from <code>VALID_TRIAGE_ACTIONS</code>): <strong><code>INBOX</code></strong>, <strong><code>HUMAN_TRIAGE</code></strong>, <strong><code>PENDING_ACTION</code></strong>, <strong><code>TO_ARCHIVE</code></strong>, <strong><code>TO_DELETE</code></strong>, <strong><code>TO_CALENDAR</code></strong>, <strong><code>TO_ANSWER</code></strong>, <strong><code>DRAFT_READY</code></strong>. 400 on invalid.</td>
+</tr>
+<tr>
+<td><code>POST /delete</code></td>
+<td><code>message_id</code>, <code>redirect_to</code> (opt)</td>
+<td><code>/board</code></td>
+<td>IMAP deletion + DB row removal. 502 on IMAP error</td>
+</tr>
+<tr>
+<td><code>POST /archive</code></td>
+<td><code>message_id</code>, <code>redirect_to</code> (opt)</td>
+<td><code>/board</code></td>
+<td>IMAP folder-move + DB row removal. 400/502 on error</td>
+</tr>
+<tr>
+<td><code>POST /save-notes</code></td>
+<td><code>message_id</code>, <code>notes</code>, <code>redirect_to</code> (opt)</td>
+<td><code>/board</code></td>
+<td>Persists notes. <code>notes</code> is NOT stripped of whitespace</td>
+</tr>
+<tr>
+<td><code>POST /batch-delete</code></td>
+<td><em>(none)</em></td>
+<td><code>/board</code></td>
+<td>Fire-and-forget: deletes all <code>TO_DELETE</code> records in background. Single-flighted by watermark</td>
+</tr>
+<tr>
+<td><code>POST /batch-archive</code></td>
+<td><em>(none)</em></td>
+<td><code>/board</code></td>
+<td>Fire-and-forget: archives all <code>TO_ARCHIVE</code> records in background</td>
+</tr>
+<tr>
+<td><code>POST /batch-archive-folder</code></td>
+<td><code>folder</code></td>
+<td><code>/board</code></td>
+<td>Like <code>/batch-archive</code> scoped to one destination subfolder</td>
+</tr>
+<tr>
+<td><code>POST /config-sync</code></td>
+<td><em>(none)</em></td>
+<td>— (returns JSON <code>ConfigSyncResult</code>, not redirect)</td>
+<td>Triggers config-sync advisory. 503 on error</td>
+</tr>
+<tr>
+<td><code>POST /run-triage</code></td>
+<td><em>(none)</em></td>
+<td><code>/board</code></td>
+<td>Launches triage agent in background. Idempotent (no-op if already running)</td>
+</tr>
+<tr>
+<td><code>POST /reconcile</code></td>
+<td><em>(none)</em></td>
+<td><code>/board</code></td>
+<td>Launches reconcile in background</td>
+</tr>
+<tr>
+<td><code>POST /force-triage-column</code></td>
+<td><code>action</code></td>
+<td><code>/board</code></td>
+<td>Clears all triage decisions for <code>action</code> then re-runs triage. Same valid values as <code>triage_action</code>. 400 on invalid</td>
+</tr>
+<tr>
+<td><code>POST /archive-proposal</code></td>
+<td><code>message_id</code>, <code>subfolder</code>, <code>redirect_to</code> (opt)</td>
+<td><code>/board</code></td>
+<td>Saves an archive-subfolder choice for a message</td>
+</tr>
+<tr>
+<td><code>POST /save-draft</code></td>
+<td><code>message_id</code>, <code>draft_text</code>, <code>redirect_to</code> (opt)</td>
+<td><code>/board</code></td>
+<td>Persists a draft reply text</td>
+</tr>
+<tr>
+<td><code>POST /send-draft</code></td>
+<td><code>message_id</code>, <code>reply_mode</code>, <code>forward_to</code> (required when <code>reply_mode=forward</code>), <code>redirect_to</code> (opt)</td>
+<td><code>/board</code></td>
+<td>Sends the stored draft via SMTP. Valid <code>reply_mode</code> values: <strong><code>reply</code></strong>, <strong><code>reply_all</code></strong>, <strong><code>forward</code></strong>. <code>forward</code> additionally requires a <code>forward_to</code> recipient address. 400 on invalid</td>
+</tr>
+<tr>
+<td><code>POST /generate-draft</code></td>
+<td><code>message_id</code>, <code>redirect_to</code> (opt)</td>
+<td><code>/board#&lt;message_id&gt;</code></td>
+<td>Triggers LLM draft generation in background</td>
+</tr>
+<tr>
+<td><code>POST /auth-start</code></td>
+<td><code>account_id</code></td>
+<td>— (returns JSON flow state, not redirect)</td>
+<td>Starts the OAuth2 device-code flow for a Microsoft account; blocks up to ~15s for the device prompt then returns the flow state JSON. Cross-account (ignores the session account). 400 for unknown / non-Microsoft accounts</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Redirect-following note</strong>: curl follows redirects with <code>-L</code>. Without
+<code>-L</code>, a POST returns the 302 directly. An agent that only needs the
+side-effect (triage decision set, archive triggered, etc.) can ignore
+the redirect body.</p>
+</blockquote>
+<h2 id="curl-examples">curl examples<a class="headerlink" href="#curl-examples" title="Permanent link">&para;</a></h2>
+<p>All examples assume the gateway base URL. Replace <code>&lt;user&gt;:&lt;pass&gt;</code> with
+gateway Basic Auth credentials and <code>&lt;id&gt;</code> with the target message ID.</p>
+<h3 id="1-read-board-state-as-json">1. Read board state as JSON<a class="headerlink" href="#1-read-board-state-as-json" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/board-content?account=main&#39;</span>
+</code></pre></div>
+<h3 id="2-set-a-triage-decision">2. Set a triage decision<a class="headerlink" href="#2-set-a-triage-decision" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/move?account=main&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;message_id=&lt;id&gt;&amp;triage_action=TO_ARCHIVE&#39;</span>
+</code></pre></div>
+<h3 id="3-archive-a-message-immediately-imap-move-db-delete">3. Archive a message immediately (IMAP move + DB delete)<a class="headerlink" href="#3-archive-a-message-immediately-imap-move-db-delete" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/archive?account=main&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;message_id=&lt;id&gt;&#39;</span>
+</code></pre></div>
+<h3 id="4-delete-a-message">4. Delete a message<a class="headerlink" href="#4-delete-a-message" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/delete?account=main&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;message_id=&lt;id&gt;&#39;</span>
+</code></pre></div>
+<h3 id="5-run-triage">5. Run triage<a class="headerlink" href="#5-run-triage" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/run-triage?account=main&#39;</span>
+</code></pre></div>
+<h3 id="6-generate-inspect-and-send-a-draft-reply">6. Generate, inspect, and send a draft reply<a class="headerlink" href="#6-generate-inspect-and-send-a-draft-reply" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Step 1 – trigger generation (returns immediately; background LLM job)</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/generate-draft?account=main&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;message_id=&lt;id&gt;&#39;</span>
+
+<span class="c1"># Step 2 – poll until status is not HUMAN_TRIAGE (draft ready)</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/email/&lt;id&gt;/status?account=main&#39;</span>
+
+<span class="c1"># Step 3 – send (reply_mode: &quot;reply&quot; or &quot;reply_all&quot;)</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/send-draft?account=main&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;message_id=&lt;id&gt;&amp;reply_mode=reply&#39;</span>
+</code></pre></div>
+<h3 id="7-trigger-reconcile">7. Trigger reconcile<a class="headerlink" href="#7-trigger-reconcile" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/reconcile?account=main&#39;</span>
+</code></pre></div>
+<h3 id="8-check-liveness">8. Check liveness<a class="headerlink" href="#8-check-liveness" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span><span class="s1">&#39;https://deploy.robotsix.net/mail/health&#39;</span>
+</code></pre></div>
+<h3 id="9-batch-archive-all-to_archive-messages">9. Batch-archive all TO_ARCHIVE messages<a class="headerlink" href="#9-batch-archive-all-to_archive-messages" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/batch-archive?account=main&#39;</span>
+</code></pre></div>
+<h3 id="10-config-sync-returns-json-not-a-redirect">10. Config sync (returns JSON, not a redirect)<a class="headerlink" href="#10-config-sync-returns-json-not-a-redirect" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-u<span class="w"> </span>&lt;user&gt;:&lt;pass&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;https://deploy.robotsix.net/mail/config-sync?account=main&#39;</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
