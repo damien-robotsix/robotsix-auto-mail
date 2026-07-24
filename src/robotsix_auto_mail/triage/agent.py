@@ -559,7 +559,9 @@ def run_triage_agent(
 
     # -- check TO_DELETE senders for unsubscribe options ------------------
     _check_unsubscribe_for_to_delete(
-        conn, api_key=resolved_key, provider_model=resolved_provider_model,
+        conn,
+        api_key=resolved_key,
+        provider_model=resolved_provider_model,
     )
 
     return decisions
