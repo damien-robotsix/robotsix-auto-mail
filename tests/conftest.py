@@ -24,7 +24,7 @@ _venv_site = str(
 if Path(_venv_site).exists() and _venv_site not in _sys.path:
     _sys.path.insert(0, _venv_site)
 
-import pytest
+import pytest  # noqa: E402
 
 try:
     from hypothesis import settings as _hypothesis_settings
@@ -33,8 +33,8 @@ try:
 except ImportError:
     _has_hypothesis = False
 
-from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.db import MailRecord, init_db
+from robotsix_auto_mail.config import MailConfig  # noqa: E402
+from robotsix_auto_mail.db import MailRecord, init_db  # noqa: E402
 
 if _has_hypothesis:
     _hypothesis_settings.register_profile("ci", max_examples=200, deadline=None)
