@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import smtplib
 from email.mime.text import MIMEText
-from typing import Any
 from unittest import mock
 
 import pytest

@@ -5,8 +5,6 @@ from __future__ import annotations
 import smtplib
 from unittest import mock
 
-import pytest
-
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.smtp import SmtpClient
 from tests.conftest import _make_mock_smtp, _make_mock_smtp_ssl

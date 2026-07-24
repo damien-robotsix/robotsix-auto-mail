@@ -15,7 +15,6 @@ from robotsix_auto_mail.smtp import (
     SmtpAuthError,
     SmtpClient,
     SmtpConnectionError,
-    SmtpError,
     SmtpTlsError,
 )
 from tests.conftest import _make_mock_smtp, _make_mock_smtp_ssl
