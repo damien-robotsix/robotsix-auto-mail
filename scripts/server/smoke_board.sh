@@ -84,8 +84,13 @@ fi
 SERVER_PID=$!
 
 # Readiness poll: wait until /board answers 200, with a bounded timeout.
+# The timeout is generous (120 iterations × 0.5 s = 60 s) to accommodate
+# cold bytecode caches — the first import of robotsix_auto_mail.cli plus
+# its transitive dependencies (pydantic, robotsix_config, smtplib, …) can
+# take 10–15 s on a cold cache, and `uv run` adds another 3–5 s of
+# environment setup before Python even starts.
 ready=0
-for _ in {1..40}; do
+for _ in {1..120}; do
     if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
         diagnose "boot" "server process exited before becoming ready"
         exit 1

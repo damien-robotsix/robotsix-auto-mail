@@ -30,6 +30,7 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
 )
+from robotsix_auto_mail.server._account_mixin import _AccountMixin
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
@@ -49,6 +50,7 @@ class BoardHandler(
     _TriageMixin,
     _DraftMixin,
     _ConfigMixin,
+    _AccountMixin,
     _BoardAuthMixin,
     BaseHTTPRequestHandler,
 ):
@@ -95,6 +97,11 @@ class BoardHandler(
         if self.path.split("?")[0] == "/auth-status":
             self._handle_auth_status()
             return
+        # /add-account is also cross-account — handle before
+        # _select_account() so account creation works even with zero accounts.
+        if self.path.split("?")[0] == "/add-account":
+            self._serve_add_account()
+            return
         if self.accounts is not None and not self._select_account():
             return
         # Dispatch on the bare path so ``?account=<id>`` query strings do
@@ -140,6 +147,11 @@ class BoardHandler(
         # _select_account() so it works regardless of the session account.
         if urlsplit(self.path).path == "/auth-start":
             self._handle_auth_start()
+            return
+        # /add-account is also cross-account — handle before
+        # _select_account() so account creation works even with zero accounts.
+        if urlsplit(self.path).path == "/add-account":
+            self._handle_add_account()
             return
         if self.accounts is not None and not self._select_account():
             return

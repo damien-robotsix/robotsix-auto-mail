@@ -715,6 +715,25 @@ button:hover {
   }
 }
 
+/* -- add-account button (board header) ---------------------------------- */
+
+.add-account-btn {
+  float: right;
+  margin-top: 0.4em;
+  padding: 0.35em 1em;
+  background: var(--color-bg-primary, #1976d2);
+  color: var(--color-text-on-primary, #fff);
+  border: none;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-account-btn:hover {
+  background: var(--color-bg-primary-hover, #1565c0);
+}
+
 /* -- health alert banner -------------------------------------------- */
 
 .health-alert-banner {

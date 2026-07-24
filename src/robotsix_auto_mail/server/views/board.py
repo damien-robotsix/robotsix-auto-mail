@@ -417,7 +417,11 @@ def _render_board_page_shell(
             "Recheck connections</button>\n"
         )
         + "<h1>Mail Board</h1>\n"
-        f'<span id="triage-control">{triage_control_html}</span>\n'
+        + (
+            '<a href="/add-account" class="add-account-btn"'
+            ' title="Add a new mail account">+ Add Account</a>\n'
+        )
+        + f'<span id="triage-control">{triage_control_html}</span>\n'
         f'<span id="batch-control">{batch_control_html}</span>\n'
         f"{picker_html}\n"
         '<div class="board-wrapper">\n'
