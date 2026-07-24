@@ -27,23 +27,25 @@ class TestImapArchiveMove:
         )
         handler = _FakeHandler(":memory:", mail_config=mail_config)
 
-        with (
-            mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
-            mock.patch(
+        imap_patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
+        mock_cls = imap_patcher.start()
+        try:
+            with mock.patch(
                 "robotsix_auto_mail.server.adapters._archive_dest_folder",
                 return_value=None,  # path traversal detected
-            ),
-        ):
-            mock_client = mock_cls.return_value.__enter__.return_value
-            mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
+            ):
+                mock_client = mock_cls.return_value.__enter__.return_value
+                mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-            with pytest.raises(ValueError, match="escapes archive root"):
-                handler._imap_archive_move(
-                    mail_config,
-                    imap_uid=1,
-                    effective_root="my-archive",
-                    subfolder="..",
-                )
+                with pytest.raises(ValueError, match="escapes archive root"):
+                    handler._imap_archive_move(
+                        mail_config,
+                        imap_uid=1,
+                        effective_root="my-archive",
+                        subfolder="..",
+                    )
+        finally:
+            imap_patcher.stop()
 
     def test_folder_hierarchy_created_level_by_level(self) -> None:
         mail_config = MailConfig(
@@ -54,7 +56,9 @@ class TestImapArchiveMove:
         )
         handler = _FakeHandler(":memory:", mail_config=mail_config)
 
-        with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+        patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
+        mock_cls = patcher.start()
+        try:
             mock_client = mock_cls.return_value.__enter__.return_value
             mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
             mock_client.search_uids.return_value = [7]
@@ -67,6 +71,8 @@ class TestImapArchiveMove:
                 source_folder="INBOX",
                 message_id="hier",
             )
+        finally:
+            patcher.stop()
 
         expected_calls = [
             mock.call("my-archive"),
@@ -85,7 +91,9 @@ class TestImapArchiveMove:
         )
         handler = _FakeHandler(":memory:", mail_config=mail_config)
 
-        with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+        patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
+        mock_cls = patcher.start()
+        try:
             mock_client = mock_cls.return_value.__enter__.return_value
             mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
             mock_client.search_uids.return_value = [3]
@@ -98,6 +106,8 @@ class TestImapArchiveMove:
                 source_folder="INBOX",
                 message_id="rootonly",
             )
+        finally:
+            patcher.stop()
 
         mock_client.create_folder.assert_called_once_with("my-archive")
         mock_client.move_message.assert_called_once_with(3, "my-archive")
@@ -111,7 +121,9 @@ class TestImapArchiveMove:
         )
         handler = _FakeHandler(":memory:", mail_config=mail_config)
 
-        with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+        patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
+        mock_cls = patcher.start()
+        try:
             mock_client = mock_cls.return_value.__enter__.return_value
             mock_client.list_folders.return_value = [mock.Mock(delimiter=".")]
             mock_client.search_uids.return_value = [23]
@@ -124,6 +136,8 @@ class TestImapArchiveMove:
                 source_folder="INBOX",
                 message_id="dot-delim",
             )
+        finally:
+            patcher.stop()
 
         expected_calls = [
             mock.call("my-archive"),
@@ -146,7 +160,9 @@ class TestImapArchiveMove:
         )
         handler = _FakeHandler(":memory:", mail_config=mail_config)
 
-        with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+        patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
+        mock_cls = patcher.start()
+        try:
             mock_client = mock_cls.return_value.__enter__.return_value
             mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
@@ -170,6 +186,8 @@ class TestImapArchiveMove:
                 source_folder="INBOX",
                 message_id="fallback-test",
             )
+        finally:
+            patcher.stop()
 
         # move_message called with the resolved UID (77), not the stale one.
         mock_client.move_message.assert_called_once_with(77, "my-archive")
