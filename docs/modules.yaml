@@ -193,6 +193,7 @@ modules:
       - changelog/20260722T205817Z-remove-dead-dependabot-auto-merge-yml-wo-12c3.misc.md
       - changelog/20260722T205817Z-split-tests-pipeline-test-ingest-py-887-5b4a.misc.md
       - changelog/20260723T013124Z-consume-coverage-artifact-from-reusable-4f5d.misc.md
+      - changelog/20260723T125240Z-start-cleanly-with-an-empty-accounts-lis-7691.bugfix.md
       - changelog/20260723T125250Z-add-a-ui-button-to-add-a-new-mail-accoun-2715.misc.md
       - changelog/20260723T132809Z-migrate-robotsix-auto-mail-to-consume-ro-cc78.feature.md
       - changelog/20260723T133742Z-thread-api-key-unsubscribe.bugfix.md
@@ -200,6 +201,12 @@ modules:
       - changelog/20260723T210507Z-split-tests-smtp-test-smtp-client-py-872-3c04.misc.md
       - changelog/20260724T010820Z-remove-stale-changelog-md-entry-that-cla-bec6.misc.md
       - changelog/20260724T031442Z-migrate-robotsix-auto-mail-to-consume-ro-6a1e.misc.md
+      - changelog/20260724T175523Z-register-20260724t161520z-changelog-frag-a8d6.misc.md
+      - changelog/20260724T185005Z-register-three-additional-unregistered-c-4451.misc.md
+      - changelog/20260724T211233Z-extract-duplicated-sbom-generation-job-f-cb26.misc.md
+      - changelog/20260724T223517Z-test-gap-add-unit-tests-for-src-robotsix-4769.misc.md
+      - changelog/20260725T000213Z-register-pr-968-s-changelog-fragment-in-ec0a.misc.md
+      - changelog/20260725T022916Z-robotsix-auto-mail-remove-dead-security-eee3.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
