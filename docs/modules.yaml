@@ -544,12 +544,20 @@ modules:
       - tests/server/test_server_reconcile.py
       - tests/server/test_server_triage.py
       - tests/server/test_triage_mixin.py
+      - tests/server/_view_helpers.py
       - tests/server/_view_mixin_helpers.py
       - tests/server/test_view_mixin_archive.py
       - tests/server/test_view_mixin_board.py
       - tests/server/test_view_mixin_email.py
       - tests/server/test_view_mixin_static.py
-      - tests/server/test_views_detail.py
+      - tests/server/test_views_detail_attachments.py
+      - tests/server/test_views_detail_body.py
+      - tests/server/test_views_detail_build_html.py
+      - tests/server/test_views_detail_calendar.py
+      - tests/server/test_views_detail_draft_section.py
+      - tests/server/test_views_detail_imap_uid.py
+      - tests/server/test_views_detail_recipients.py
+      - tests/server/test_views_detail_triage.py
       - tests/server/test_views_forms.py
       - tests/server/test_batch_mixin.py
       - scripts/server/smoke_board.sh
