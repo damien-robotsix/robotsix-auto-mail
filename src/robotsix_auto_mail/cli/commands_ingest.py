@@ -11,6 +11,7 @@ import sys
 import robotsix_auto_mail.cli as _cli  # lgtm[py/unsafe-cyclic-import]
 from robotsix_auto_mail.config import (
     ConfigurationError,
+    MailAccount,
     MailAccountsConfig,
     MailConfig,
 )
@@ -173,7 +174,7 @@ def _cmd_ingest(
 
     # -- skip accounts that have no password configured -----------------
     skipped: list[str] = []
-    active: list[type(selected[0])] = []
+    active: list[MailAccount] = []
     for account in selected:
         if not account.config.password.get_secret_value():
             skipped.append(account.account_id)
