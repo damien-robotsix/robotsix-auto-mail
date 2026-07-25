@@ -5,6 +5,14 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed ``startup_failure`` in both the ``CI`` and ``Release image`` workflows
+  on main: the ``sbom.yml`` reusable workflow had an internal permissions
+  mismatch (workflow-level ``permissions: {}`` vs the job's ``contents: read``)
+  that caused GitHub to reject any caller, and the release workflow's ``sbom``
+  job inherited ``{}`` from its workflow-level permissions, which was
+  insufficient for the called reusable workflow. Also added missing
+  ``security-events: write`` to the ``security`` job in ``ci.yml`` so the
+  ``python-security.yml`` reusable workflow can upload SARIF results.
 - Remove dead periodic workflow config ``.robotsix-mill/periodic/security_posture.yaml`` (name-only file, not in available catalog).
 - Make `password` optional in per-account config; accounts without a password are skipped at runtime with a clear warning rather than crashing. The service can now deploy with zero fully-credentialed accounts and activate them later via config update.
 - Added triage boilerplate for deterministic periodic-agent proposals
