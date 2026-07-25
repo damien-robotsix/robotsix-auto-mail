@@ -267,3 +267,78 @@ def test_cli_ingest_config_load_failure(
     err = capsys.readouterr().err
     assert "Error loading configuration" in err
     assert "boom" in err
+
+
+# ---------------------------------------------------------------------------
+# Password-less account skipping
+# ---------------------------------------------------------------------------
+
+
+def test_cli_ingest_skips_account_without_password(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An account with no password is skipped with a warning."""
+    from robotsix_auto_mail.cli.commands_ingest import _cmd_ingest
+
+    cfg_no_pw = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="",
+    )
+    accounts = _accounts_ingest(cfg_no_pw)
+
+    with mock.patch(
+        "robotsix_auto_mail.cli._ingest_cycle"
+    ) as mock_ingest_cycle:
+        rc = _cmd_ingest(accounts)
+
+    assert rc == 0
+    mock_ingest_cycle.assert_not_called()
+
+    err = capsys.readouterr().err
+    assert "has no password configured" in err
+    assert "default" in err
+
+
+def test_cli_ingest_skips_passwordless_account_but_runs_credentialed(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A password-less account is skipped but a fully-credentialed
+    account in the same container still runs."""
+    from robotsix_auto_mail.cli.commands_ingest import _cmd_ingest
+
+    cfg_pw = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+    )
+    cfg_no_pw = MailConfig(
+        imap_host="imap2.example.com",
+        smtp_host="smtp2.example.com",
+        username="user2@example.com",
+        password="",
+    )
+    accounts = MailAccountsConfig(
+        accounts=(
+            MailAccount(account_id="good", config=cfg_pw, label=None),
+            MailAccount(account_id="nopw", config=cfg_no_pw, label=None),
+        ),
+        default_account_id="good",
+    )
+
+    with mock.patch(
+        "robotsix_auto_mail.cli._ingest_cycle", return_value=0
+    ) as mock_ingest_cycle:
+        rc = _cmd_ingest(accounts)
+
+    assert rc == 0
+    # Only the good account should be processed.
+    assert mock_ingest_cycle.call_count == 1
+    called_config = mock_ingest_cycle.call_args[0][0]
+    assert called_config.password.get_secret_value() == "s3cret"
+
+    err = capsys.readouterr().err
+    assert "has no password configured" in err
+    assert "nopw" in err

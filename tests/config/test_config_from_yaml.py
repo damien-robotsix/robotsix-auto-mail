@@ -205,13 +205,11 @@ def test_mailconfig_missing_required_fields() -> None:
             imap_host="imap.example.com",
             # smtp_host missing
             # username missing
-            # password missing
+            # password is now optional — defaults to empty string
         )
     errors = str(exc.value)
     assert "smtp_host" in errors
     assert "username" in errors
-    # password is required
-    assert "password" in errors
 
 
 def test_mailconfig_missing_password_ok_if_empty() -> None:
@@ -221,6 +219,17 @@ def test_mailconfig_missing_password_ok_if_empty() -> None:
         smtp_host="smtp.example.com",
         username="user@example.com",
         password="",
+    )
+    assert cfg.password.get_secret_value() == ""
+    assert cfg.username == "user@example.com"
+
+
+def test_mailconfig_password_omitted_defaults_to_empty() -> None:
+    """Omitting password entirely defaults to an empty SecretStr."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
     )
     assert cfg.password.get_secret_value() == ""
     assert cfg.username == "user@example.com"

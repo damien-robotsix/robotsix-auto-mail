@@ -46,6 +46,7 @@
           "type": "string"
         },
         "password": {
+          "default": "",
           "format": "password",
           "title": "Password",
           "type": "string",
@@ -193,8 +194,7 @@
       "required": [
         "imap_host",
         "smtp_host",
-        "username",
-        "password"
+        "username"
       ],
       "title": "MailConfig",
       "type": "object"
@@ -221,3 +221,4 @@
   "title": "MailAccountsConfig",
   "type": "object"
 }
+

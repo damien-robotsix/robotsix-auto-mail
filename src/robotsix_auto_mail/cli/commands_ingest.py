@@ -171,6 +171,25 @@ def _cmd_ingest(
     else:
         selected = list(accounts.accounts)
 
+    # -- skip accounts that have no password configured -----------------
+    skipped: list[str] = []
+    active: list[type(selected[0])] = []
+    for account in selected:
+        if not account.config.password.get_secret_value():
+            skipped.append(account.account_id)
+        else:
+            active.append(account)
+    if skipped:
+        for aid in skipped:
+            sys.stderr.write(
+                f"Account '{aid}' has no password configured; "
+                "skipping until credentials are supplied.\n"
+            )
+    selected = active
+    if not selected:
+        sys.stderr.write("No accounts have passwords configured; nothing to do.\n")
+        return 0
+
     show_header = len(selected) > 1
 
     if not watch:
