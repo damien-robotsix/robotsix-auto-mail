@@ -87,7 +87,7 @@ class MailConfig(BaseModel):
     imap_host: str
     smtp_host: str
     username: str
-    password: SecretStr
+    password: SecretStr = SecretStr("")
 
     imap_port: int = Field(default=993, json_schema_extra={"advanced": True})
     imap_tls_mode: str = Field(

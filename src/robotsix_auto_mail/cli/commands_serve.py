@@ -55,6 +55,8 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
     )
     while True:
         for acct in accounts.accounts:
+            if not acct.config.password.get_secret_value():
+                continue
             try:
                 conn = init_db(acct.config.db_path, skip_migrations=True)
                 try:

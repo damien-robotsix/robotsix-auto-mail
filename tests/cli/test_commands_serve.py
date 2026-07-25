@@ -219,6 +219,47 @@ def test_reconcile_loop_respects_ingest_interval(
             _reconcile_loop(accounts)
 
 
+def test_reconcile_loop_skips_account_without_password() -> None:
+    """An account with no password is skipped in the reconcile loop."""
+    from robotsix_auto_mail.cli.commands_serve import _reconcile_loop
+
+    mock_conn = mock.MagicMock()
+    mock_init_db = mock.Mock(return_value=mock_conn)
+    mock_get_watermark = mock.Mock(return_value=None)
+    mock_run_reconcile = mock.Mock()
+
+    cfg_no_pw = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="",
+        db_path=":memory:?nopw",
+    )
+    accounts = _accounts(cfg_no_pw, account_id="nopw")
+
+    def _sleep_side_effect(seconds: float) -> None:
+        raise _StopLoopError
+
+    with (
+        mock.patch("robotsix_auto_mail.db.init_db", mock_init_db),
+        mock.patch("robotsix_auto_mail.db.get_watermark", mock_get_watermark),
+        mock.patch(
+            "robotsix_auto_mail.server.adapters._run_reconcile_background",
+            mock_run_reconcile,
+        ),
+        mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
+    ):
+        mock_sleep.side_effect = _sleep_side_effect
+        with pytest.raises(_StopLoopError):
+            _reconcile_loop(accounts)
+
+    # The password-less account should be skipped entirely — no DB open,
+    # no reconcile spawn.
+    mock_init_db.assert_not_called()
+    mock_get_watermark.assert_not_called()
+    mock_run_reconcile.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # _cmd_serve
 # ---------------------------------------------------------------------------
