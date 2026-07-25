@@ -1,0 +1,1 @@
+Start cleanly with an empty accounts list: `_select_account` now serves requests account-less when zero accounts are configured instead of raising `ConfigurationError` on every request (including `/health`).

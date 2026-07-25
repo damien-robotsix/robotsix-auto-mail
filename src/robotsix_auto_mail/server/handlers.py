@@ -245,6 +245,10 @@ class BoardHandler(
         accounts = self.accounts
         if accounts is None:  # pragma: no cover - guarded by the caller
             return True
+        # Zero configured accounts → nothing to resolve; serve the request
+        # account-less so endpoints like /health keep working at startup.
+        if not accounts.ids():
+            return True
         query = parse_qs(urlsplit(self.path).query)
         query_values = query.get("account")
         query_id = query_values[0] if query_values else None
