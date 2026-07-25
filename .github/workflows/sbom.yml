@@ -3,7 +3,8 @@ name: SBOM
 on:
   workflow_call:
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   sbom:

@@ -107,6 +107,8 @@ jobs:
 
   sbom:
     name: Generate SBOM
+    permissions:
+      contents: read
     uses: ./.github/workflows/sbom.yml
 
   release-notes:
