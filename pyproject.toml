@@ -115,6 +115,7 @@ session_timeout = 900
 [tool.coverage.run]
 source = ["src/robotsix_auto_mail"]
 relative_files = true
+parallel = true
 
 [tool.coverage.report]
 fail_under = 80
