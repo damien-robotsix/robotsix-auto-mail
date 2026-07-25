@@ -5,7 +5,9 @@
 
 ## 0.0.0 (unreleased)
 
-- Register missing changelog fragment `20260725T030052Z-fix-startup-failure-on-ci-and-release-im-96b3.misc.md` in `docs/modules.yaml`.
+- Also register this PR's own changelog fragment `changelog/20260725T041822Z-register-pr-973-s-changelog-fragment-in-b0fb.misc.md` in `docs/modules.yaml`, and clarify CHANGELOG.md entry to use the full fragment filename.
+- Register missing changelog fragment `changelog/20260725T030052Z-fix-startup-failure-on-ci-and-release-im-96b3.misc.md` in `docs/modules.yaml`.
+- Register this PR's own changelog fragment `changelog/20260725T041822Z-register-pr-973-s-changelog-fragment-in-b0fb.misc.md` in `docs/modules.yaml`.
 - Fixed ``startup_failure`` in both the ``CI`` and ``Release image`` workflows
   on main: the ``sbom.yml`` reusable workflow had an internal permissions
   mismatch (workflow-level ``permissions: {}`` vs the job's ``contents: read``)

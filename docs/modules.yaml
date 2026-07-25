@@ -65,6 +65,7 @@ modules:
       - changelog/20260724T233442Z-boilerplate-deterministic-periodic-agent-039b.misc.md
       - changelog/20260725T013433Z-config-schema-make-account-password-opti-19ac.misc.md
       - changelog/20260725T030052Z-fix-startup-failure-on-ci-and-release-im-96b3.misc.md
+      - changelog/20260725T041822Z-register-pr-973-s-changelog-fragment-in-b0fb.misc.md
       - changelog/20260724T180805Z-ci-failure-release-image-on-main-5747.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
