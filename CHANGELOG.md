@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Remove dead periodic workflow config ``.robotsix-mill/periodic/security_posture.yaml`` (name-only file, not in available catalog).
 - Make `password` optional in per-account config; accounts without a password are skipped at runtime with a clear warning rather than crashing. The service can now deploy with zero fully-credentialed accounts and activate them later via config update.
 - Added triage boilerplate for deterministic periodic-agent proposals
   (audit, bc_check, module_size, copy_paste, test_gap, docstring_coverage)
