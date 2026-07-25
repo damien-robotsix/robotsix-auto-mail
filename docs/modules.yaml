@@ -612,7 +612,6 @@ modules:
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/module_size.yaml
       - .robotsix-mill/periodic/repo_description_sync.yaml
-      - .robotsix-mill/periodic/security_posture.yaml
       - .robotsix-mill/periodic/survey.yaml
       - .robotsix-mill/periodic/trace_review.yaml
       - .robotsix-mill/periodic/test_gap.yaml
