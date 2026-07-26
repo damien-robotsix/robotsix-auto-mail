@@ -209,6 +209,7 @@ modules:
       - changelog/20260724T223517Z-test-gap-add-unit-tests-for-src-robotsix-4769.misc.md
       - changelog/20260725T000213Z-register-pr-968-s-changelog-fragment-in-ec0a.misc.md
       - changelog/20260725T022916Z-robotsix-auto-mail-remove-dead-security-eee3.misc.md
+      - changelog/20260726T075146Z-ingester-stay-healthy-idle-standby-when-bc58.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
