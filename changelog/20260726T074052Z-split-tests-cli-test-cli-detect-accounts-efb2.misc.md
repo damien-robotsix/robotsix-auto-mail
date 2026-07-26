@@ -1,0 +1,1 @@
+Split `tests/cli/test_cli_detect_accounts.py` (558 lines) into four thematic modules: `test_cli_detect_report.py`, `test_cli_detect_accounts.py`, `test_cli_detect_flags.py`, and `test_cli_detect_interactive.py`.
