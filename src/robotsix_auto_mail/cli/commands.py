@@ -26,6 +26,25 @@ def _load_accounts_or_exit() -> MailAccountsConfig:
         sys.exit(1)
 
 
+def _load_accounts_allow_empty() -> MailAccountsConfig | None:
+    """Load accounts, returning ``None`` when the list is empty.
+
+    All other configuration errors still cause ``sys.exit(1)``.
+    This is used by ``ingest --watch`` so the watch loop can enter an
+    idle standby state instead of exiting.
+    """
+    try:
+        return _cli.load_accounts()
+    except ConfigurationError as exc:
+        if "accounts list must not be empty" in str(exc):
+            return None
+        sys.stderr.write(f"Error loading configuration: {exc}\n")
+        sys.exit(1)
+    except Exception as exc:
+        sys.stderr.write(f"Error loading configuration: {exc}\n")
+        sys.exit(1)
+
+
 def _load_config_or_exit(account_id: str | None = None) -> MailConfig:
     """Select one account's :class:`MailConfig`, or exit 1 on failure.
 

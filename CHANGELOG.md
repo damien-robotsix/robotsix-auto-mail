@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Ingest `--watch` mode now stays alive when no accounts are configured, entering an idle heartbeat loop instead of exiting. The loop re-checks the config each cycle so newly added accounts are picked up without a restart (liveness heartbeat is written every cycle). Non-watch commands (`probe`, `ingest`, `board`, `serve`) still exit with an error on empty config.
 - Split ``tests/server/test_views_detail.py`` (644 lines) into 8 per-render-function test modules plus a shared ``_view_helpers.py`` helper.
 - Also register this PR's own changelog fragment `changelog/20260725T041822Z-register-pr-973-s-changelog-fragment-in-b0fb.misc.md` in `docs/modules.yaml`, and clarify CHANGELOG.md entry to use the full fragment filename.
 - Register missing changelog fragment `changelog/20260725T030052Z-fix-startup-failure-on-ci-and-release-im-96b3.misc.md` in `docs/modules.yaml`.

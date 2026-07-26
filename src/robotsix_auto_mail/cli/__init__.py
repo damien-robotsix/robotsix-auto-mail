@@ -12,6 +12,7 @@ import time as time
 
 from robotsix_auto_mail import __version__, setup_observability
 from robotsix_auto_mail.cli.commands import (  # lgtm[py/unsafe-cyclic-import]
+    _load_accounts_allow_empty,
     _load_accounts_or_exit,
     _load_config_or_exit,
 )
@@ -164,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "ingest":
             return _cmd_ingest(
-                _load_accounts_or_exit(),
+                _load_accounts_allow_empty() if args.watch else _load_accounts_or_exit(),
                 account_id=args.account,
                 all_accounts=args.all_accounts,
                 dry_run=args.dry_run,
