@@ -7,6 +7,7 @@ The implementation is split across internal submodules:
 - ``queries`` — CRUD and query functions (``init_db``, ``insert_record``,
   ``list_records``, watermark management, etc.).
 - ``_migrate`` — additive column migrations and legacy status remapping.
+- ``archive`` — self-managed archive folder structure and LLM-driven layout.
 
 This module re-exports the public and previously-importable symbols so
 ``from robotsix_auto_mail.db import ...`` keeps working unchanged.
@@ -86,6 +87,21 @@ from .queries import (
 from .queries import (
     write_account_health as write_account_health,
 )
+from .archive import (
+    ARCHIVE_ROOT as ARCHIVE_ROOT,
+)
+from .archive import (
+    ArchiveError as ArchiveError,
+)
+from .archive import (
+    ArchiveStructure as ArchiveStructure,
+)
+from .archive import (
+    determine_archive_structure as determine_archive_structure,
+)
+from .archive import (
+    setup_archive as setup_archive,
+)
 
 __all__ = [
     "VALID_TRIAGE_ACTIONS",
@@ -110,4 +126,9 @@ __all__ = [
     "update_record_source",
     "update_sent_reply_text",
     "write_account_health",
+    "ARCHIVE_ROOT",
+    "ArchiveError",
+    "ArchiveStructure",
+    "determine_archive_structure",
+    "setup_archive",
 ]
