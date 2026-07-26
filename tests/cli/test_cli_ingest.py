@@ -237,3 +237,182 @@ def test_ingest_account_and_all_accounts_mutually_exclusive() -> None:
     with pytest.raises(SystemExit) as exc:
         build_parser().parse_args(["ingest", "--account", "a", "--all-accounts"])
     assert exc.value.code == 2
+
+
+# ---------------------------------------------------------------------------
+# watch-mode idle heartbeat (zero / password-less accounts)
+# ---------------------------------------------------------------------------
+
+
+def test_ingest_watch_idle_heartbeat_zero_accounts(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Watch mode with zero accounts enters idle loop and writes heartbeat."""
+    from robotsix_auto_mail.cli import _cmd_ingest
+    from robotsix_auto_mail.config import ConfigurationError
+
+    hb = tmp_path / "idle.heartbeat"
+    assert not hb.exists()
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts",
+            side_effect=ConfigurationError("accounts list must not be empty"),
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli.time.sleep",
+            side_effect=KeyboardInterrupt,
+        ),
+    ):
+        rc = _cmd_ingest(None, watch=True, heartbeat_file=str(hb))
+
+    assert rc == 0
+    assert hb.exists()
+    out = capsys.readouterr().out
+    assert "idle: no accounts configured yet, waiting" in out
+    assert "Watch stopped" in out
+
+
+def test_ingest_watch_idle_heartbeat_passwordless(
+    cfg: MailConfig, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Watch mode with password-less accounts enters idle loop and writes heartbeat."""
+    from robotsix_auto_mail.cli import _cmd_ingest
+    from robotsix_auto_mail.config import ConfigurationError
+
+    # Build an account with no password.
+    pwless_cfg = MailConfig(
+        imap_host=cfg.imap_host,
+        smtp_host=cfg.smtp_host,
+        username=cfg.username,
+        password="",
+    )
+    accounts = _accounts(pwless_cfg)
+
+    hb = tmp_path / "pwless.heartbeat"
+    assert not hb.exists()
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts",
+            side_effect=ConfigurationError("accounts list must not be empty"),
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli.time.sleep",
+            side_effect=KeyboardInterrupt,
+        ),
+    ):
+        rc = _cmd_ingest(accounts, watch=True, heartbeat_file=str(hb))
+
+    assert rc == 0
+    assert hb.exists()
+    out = capsys.readouterr().out
+    assert "idle: no accounts configured yet, waiting" in out
+    assert "Watch stopped" in out
+
+
+def test_ingest_watch_transition_idle_to_active(
+    cfg: MailConfig, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Idle loop transitions to active ingestion when accounts appear between cycles."""
+    from robotsix_auto_mail.cli import _cmd_ingest
+    from robotsix_auto_mail.config import ConfigurationError
+
+    hb = tmp_path / "trans.heartbeat"
+    # Give the account a real db_path so init_db can create the file.
+    acct_cfg = MailConfig(
+        imap_host=cfg.imap_host,
+        smtp_host=cfg.smtp_host,
+        username=cfg.username,
+        password=cfg.password,
+        db_path=str(tmp_path / "test.db"),
+    )
+    accounts = _accounts(acct_cfg)
+
+    # load_accounts: first raise (stay idle), then return accounts (transition).
+    load_calls: list[object] = [
+        ConfigurationError("accounts list must not be empty"),
+        accounts,
+    ]
+
+    # time.sleep: first call passes (idle loop), second raises (active loop).
+    sleep_calls: list[object] = [None, KeyboardInterrupt]
+
+    with (
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts",
+            side_effect=load_calls,
+        ) as mock_load,
+        mock.patch(
+            "robotsix_auto_mail.cli.commands_ingest.probe_account",
+            return_value=("ok", None),
+        ),
+        mock.patch(
+            "robotsix_auto_mail.cli._ingest_cycle",
+            return_value=0,
+        ) as mock_cycle,
+        mock.patch(
+            "robotsix_auto_mail.cli.time.sleep",
+            side_effect=sleep_calls,
+        ),
+    ):
+        rc = _cmd_ingest(None, watch=True, heartbeat_file=str(hb))
+
+    assert rc == 0
+    # load_accounts called twice: once idle, once during transition re-check.
+    assert mock_load.call_count == 2
+    # After transition, the active watch loop runs _ingest_cycle.
+    mock_cycle.assert_called_once()
+    assert hb.exists()
+    out = capsys.readouterr().out
+    assert "idle: no accounts configured yet, waiting" in out
+    assert "Watch mode: ingesting" in out
+
+
+def test_ingest_non_watch_zero_accounts_returns_0(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Non-watch ingest with accounts=None prints a message and returns 0."""
+    from robotsix_auto_mail.cli import _cmd_ingest
+
+    rc = _cmd_ingest(None, watch=False)
+    assert rc == 0
+    out = capsys.readouterr().err
+    assert "No accounts configured" in out
+
+
+def test_ingest_non_watch_passwordless_returns_0(
+    cfg: MailConfig, capsys: pytest.CaptureFixture[str],
+) -> None:
+    """One-shot ingest with password-less accounts prints a message and returns 0."""
+    from robotsix_auto_mail.cli import _cmd_ingest
+
+    pwless_cfg = MailConfig(
+        imap_host=cfg.imap_host,
+        smtp_host=cfg.smtp_host,
+        username=cfg.username,
+        password="",
+    )
+    accounts = _accounts(pwless_cfg)
+
+    rc = _cmd_ingest(accounts, watch=False)
+    assert rc == 0
+    out = capsys.readouterr().err
+    assert "No accounts have passwords configured" in out
+
+
+def test_ingest_non_watch_empty_config_exits_1(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """One-shot ingest CLI with empty config exits 1 (via _load_accounts_or_exit)."""
+    from robotsix_auto_mail.config import ConfigurationError
+
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts",
+        side_effect=ConfigurationError("accounts list must not be empty"),
+    ):
+        with pytest.raises(SystemExit) as exc:
+            main(["ingest"])
+
+    assert exc.value.code == 1
+    assert "accounts list must not be empty" in capsys.readouterr().err

@@ -20,6 +20,63 @@ from robotsix_auto_mail.db.queries import write_account_health
 from robotsix_auto_mail.pipeline import IngestResult, reconcile_records
 
 
+def _idle_watch_loop(heartbeat_file: str | None) -> int:
+    """Idle heartbeat loop for watch mode when no accounts are ingestable.
+
+    Touches *heartbeat_file* (if set) every cycle so a Docker HEALTHCHECK
+    can verify the process is alive, and re-loads the config on each cycle
+    so newly added accounts are picked up without a restart.  When an
+    account with a password appears the function delegates to
+    :func:`_cmd_ingest` to begin normal ingestion.
+
+    Returns 0 on clean shutdown (Ctrl-C / SIGTERM).
+    """
+    from robotsix_auto_mail.config import ConfigurationError as _CE
+
+    def _handle_sigterm(_sig: int, _frame: object) -> None:
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGTERM, _handle_sigterm)
+
+    try:
+        while True:
+            sys.stdout.write(
+                "idle: no accounts configured yet, waiting\n"
+            )
+            sys.stdout.flush()
+
+            if heartbeat_file is not None:
+                try:
+                    pathlib.Path(heartbeat_file).touch()
+                except Exception as exc:
+                    sys.stderr.write(f"Heartbeat write failed: {exc}\n")
+
+            # Re-check the config so freshly added accounts are picked up.
+            try:
+                fresh = _cli.load_accounts()
+            except _CE:
+                fresh = None
+
+            if fresh is not None:
+                active = [
+                    a
+                    for a in fresh.accounts
+                    if a.config.password.get_secret_value()
+                ]
+                if active:
+                    # Transition to normal watch mode.
+                    return _cmd_ingest(
+                        fresh,
+                        watch=True,
+                        heartbeat_file=heartbeat_file,
+                    )
+
+            _cli.time.sleep(60)
+    except (KeyboardInterrupt, SystemExit):
+        sys.stdout.write("\nWatch stopped.\n")
+        return 0
+
+
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
@@ -142,7 +199,7 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
 
 
 def _cmd_ingest(
-    accounts: MailAccountsConfig,
+    accounts: MailAccountsConfig | None,
     *,
     account_id: str | None = None,
     all_accounts: bool = False,
@@ -162,7 +219,17 @@ def _cmd_ingest(
     In watch mode it loops forever, running an ingest cycle for each selected
     account every interval.  A failed cycle is logged and the loop continues;
     Ctrl-C or SIGTERM exits cleanly with 0.
+
+    When *accounts* is ``None`` (zero-account config) and *watch* is true the
+    function enters an idle heartbeat loop that re-checks the config on each
+    cycle so newly added accounts are picked up without a restart.
     """
+    if accounts is None:
+        if not watch:
+            sys.stderr.write("No accounts configured; nothing to do.\n")
+            return 0
+        return _idle_watch_loop(heartbeat_file)
+
     if account_id is not None:
         try:
             selected = [accounts.get(account_id)]
@@ -188,8 +255,12 @@ def _cmd_ingest(
             )
     selected = active
     if not selected:
-        sys.stderr.write("No accounts have passwords configured; nothing to do.\n")
-        return 0
+        if not watch:
+            sys.stderr.write(
+                "No accounts have passwords configured; nothing to do.\n"
+            )
+            return 0
+        return _idle_watch_loop(heartbeat_file)
 
     show_header = len(selected) > 1
 
