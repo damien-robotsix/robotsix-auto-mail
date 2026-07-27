@@ -5,6 +5,9 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: lint-workflows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   lint-workflows:
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/lint-workflows.yml@7314c9b6c2b536ca81023e8841f272b72733262e  # main
