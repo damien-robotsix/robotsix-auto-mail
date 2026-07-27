@@ -28,6 +28,11 @@ jobs:
       contents: read
       packages: write  # needed to push container image to GHCR
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf  # v2.11.1
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
@@ -73,6 +78,11 @@ jobs:
       packages: read  # needed to pull image from GHCR
       security-events: write  # needed for SARIF upload
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf  # v2.11.1
+        with:
+          egress-policy: audit
+
       - name: Compute image reference
         id: ref
         env:
@@ -120,6 +130,11 @@ jobs:
       contents: write  # needed to create the GitHub Release
       actions: read  # needed to download workflow artifacts
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf  # v2.11.1
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
