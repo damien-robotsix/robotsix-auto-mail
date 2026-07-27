@@ -13,6 +13,7 @@ from typing import Any, Callable
 from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.server._account_mixin import _AccountMixin
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
@@ -111,3 +112,52 @@ class _SyncThread:
     def start(self) -> None:
         if self._target is not None:
             self._target(*self._args, **self._kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Account-mixin helpers
+# ---------------------------------------------------------------------------
+
+
+class _AccountMixinFakeHandler(_AccountMixin):
+    """Concrete handler that wires ``BoardHandlerProtocol`` attributes
+    to MagicMock defaults so account-mixin methods can be called directly."""
+
+    def __init__(
+        self,
+        db_path: str = "/tmp/test.db",
+        mail_config: MailConfig | None = None,
+        *,
+        accounts: Any = None,
+    ) -> None:
+        self.db_path = db_path
+        self.mail_config = mail_config
+        self.accounts = accounts
+        self._current_account_id = None
+        self._aggregate = False
+        self._account_cookie = None
+        self.default_account_id = None
+        self.headers = mock.MagicMock()
+        self.rfile = mock.MagicMock()
+        self._send_response = mock.MagicMock()
+        self._redirect = mock.MagicMock()
+        self._not_found = mock.MagicMock()
+        self._bad_request = mock.MagicMock()
+        self._serve_json = mock.MagicMock()
+        self.server = mock.MagicMock()
+
+
+_FORM_BODY = "account_id=test&imap_host=h&smtp_host=h&username=u&password=p"
+
+
+def _make_post_body(**overrides: str) -> str:
+    """Build a URL-encoded POST body from required defaults + overrides."""
+    defaults = {
+        "account_id": "test",
+        "imap_host": "imap.example.com",
+        "smtp_host": "smtp.example.com",
+        "username": "user@example.com",
+        "password": "secret",
+    }
+    defaults.update(overrides)
+    return "&".join(f"{k}={v}" for k, v in defaults.items())

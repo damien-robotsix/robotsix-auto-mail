@@ -214,6 +214,7 @@ modules:
       - changelog/20260727T003529Z-robotsix-auto-mail-migrate-command-overr-fef7.misc.md
       - changelog/20260727T040044Z-add-pytest-randomly-to-dev-dependencies-c908.misc.md
       - changelog/20260727T040044Z-split-tests-server-test-batch-mixin-py-5-5d2f.misc.md
+      - changelog/20260727T150011Z-split-tests-server-test-account-mixin-py-5f27.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -516,7 +517,10 @@ modules:
       - tests/server/test_action_handle_save_notes.py
       - tests/server/test_action_imap_archive_move.py
       - tests/server/test_action_parse_request_body.py
-      - tests/server/test_account_mixin.py
+      - tests/server/test_account_mixin_build_add_account_form_html.py
+      - tests/server/test_account_mixin_handle_add_account_config_save.py
+      - tests/server/test_account_mixin_handle_add_account_validation.py
+      - tests/server/test_account_mixin_serve_add_account.py
       - tests/server/test_action_post_action.py
       - tests/server/test_adapters.py
       - tests/server/test_archive_structure.py
