@@ -536,7 +536,11 @@ modules:
       - tests/server/test_board_views_gather.py
       - tests/server/test_board_views_shell.py
       - tests/server/test_draft_mixin_compute_and_save.py
-      - tests/server/test_draft_mixin_send_generate.py
+      - tests/server/_draft_helpers.py
+      - tests/server/test_draft_mixin_draft_generator.py
+      - tests/server/test_draft_mixin_generate.py
+      - tests/server/test_draft_mixin_redirect.py
+      - tests/server/test_draft_mixin_send.py
       - tests/server/test_auth_mixin.py
       - tests/server/test_format_date.py
       - tests/server/test_global_board.py
