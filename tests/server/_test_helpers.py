@@ -14,6 +14,7 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
+from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
 
 
@@ -59,6 +60,34 @@ class _DraftMixinFakeHandler(_DraftMixin, _BoardActionMixin):
         self._not_found = mock.MagicMock()
         self._bad_request = mock.MagicMock()
         self._serve_json = mock.MagicMock()
+
+
+class _BatchFakeHandler(_BatchActionMixin, _BoardActionMixin):
+    """Concrete handler mixing in batch + action mixins for direct testing.
+
+    Wires every ``BoardHandlerProtocol`` attribute to a ``MagicMock``
+    default so mixin methods can be called without a real HTTP server.
+    """
+
+    def __init__(
+        self,
+        db_path: str,
+        mail_config: MailConfig | None = None,
+    ) -> None:
+        self.db_path: str = db_path
+        self.mail_config: MailConfig | None = mail_config
+        self.accounts: Any = None
+        self._aggregate: bool = False
+        self._current_account_id: str | None = None
+        self._account_cookie: str | None = None
+        self.default_account_id: str | None = None
+        self.headers: Any = mock.MagicMock()
+        self.rfile: Any = mock.MagicMock()
+        self._send_response: Any = mock.MagicMock()
+        self._redirect: Any = mock.MagicMock()
+        self._not_found: Any = mock.MagicMock()
+        self._bad_request: Any = mock.MagicMock()
+        self._serve_json: Any = mock.MagicMock()
 
 
 class _SyncThread:
