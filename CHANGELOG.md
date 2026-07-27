@@ -5,6 +5,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Split `tests/server/test_account_mixin.py` (562 lines, 37 tests, 4 classes)
+  into four per-class modules and extract shared helpers
+  (`_AccountMixinFakeHandler`, `_make_post_body`) to `tests/server/_test_helpers.py`.
 - Added `pytest-randomly` as a dev dependency and configured `--randomly-seed=last` in CI's pytest invocation to randomize test execution order and surface hidden ordering dependencies.
 - Split 731-line ``tests/server/test_draft_mixin_send_generate.py`` into four focused test modules: ``test_draft_mixin_send.py``, ``test_draft_mixin_generate.py``, ``test_draft_mixin_redirect.py``, and ``test_draft_mixin_draft_generator.py``. Extracted shared ``_patch_llm`` and ``_insert_inbox`` helpers to ``tests/server/_draft_helpers.py``.
 - Migrated `command:` override and `BOARD_PORT` env var out of docker-compose per the config-ownership standard. Added `ingest_mode` (Literal["watch","once"], default "once") and `heartbeat_file` (str, default "") to `MailConfig` and `config.example.json`. Entrypoint `main()` now merges config values with CLI args for ingest, and auto-starts the watch loop when no command is given and `ingest_mode` is "watch". Removed `command: ingest --watch --heartbeat-file ...` from both `docker-compose.yml` and `deploy/docker-compose.yml`. Replaced `${BOARD_PORT:-8080}:8080` with fixed `"8080:8080"`. All config-sync artifacts (`_field_map.py`, `docs/configuration.md`, `config.schema.json`, `test_config_sync.py`) updated. Full test suite: 507 config + CLI tests pass.
