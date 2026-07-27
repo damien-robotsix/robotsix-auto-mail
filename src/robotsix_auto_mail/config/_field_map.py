@@ -26,6 +26,8 @@ FIELD_YAML_MAP: dict[str, str] = {
     "llm_api_key": "llm.api_key",  # pragma: allowlist secret
     "llm_provider_model": "llm.provider_model",
     "ingest_interval_minutes": "ingest.interval_minutes",
+    "ingest_mode": "ingest.mode",
+    "heartbeat_file": "ingest.heartbeat_file",
     "archive_root": "archive.root",
     "archive_enabled": "archive.enabled",
     "triage_on_ingest": "triage.on_ingest",

@@ -105,6 +105,22 @@
           "title": "Ingest Interval Minutes",
           "type": "integer"
         },
+        "ingest_mode": {
+          "advanced": true,
+          "default": "once",
+          "enum": [
+            "watch",
+            "once"
+          ],
+          "title": "Ingest Mode",
+          "type": "string"
+        },
+        "heartbeat_file": {
+          "advanced": true,
+          "default": "",
+          "title": "Heartbeat File",
+          "type": "string"
+        },
         "archive_root": {
           "advanced": true,
           "default": "robotsix-mail-archive",
@@ -221,3 +237,4 @@
   "title": "MailAccountsConfig",
   "type": "object"
 }
+

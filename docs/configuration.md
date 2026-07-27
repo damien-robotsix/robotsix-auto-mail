@@ -129,6 +129,8 @@ accounts:
 | Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
 | `ingest.interval_minutes` | `15` | integer | no | Minutes between automatic ingest cycles when running `ingest --watch`. |
+| `ingest.mode` | `"once"` | `"watch"` / `"once"` | no | Start-up behaviour: `"watch"` runs the ingest loop continuously; `"once"` exits after a single pass. The entrypoint reads this field when no CLI command is given. |
+| `ingest.heartbeat_file` | `""` | string | no | Filesystem path touched at the end of each poll cycle in `"watch"` mode so a Docker HEALTHCHECK can verify liveness. An empty string disables the heartbeat file. |
 
 ### `archive`
 

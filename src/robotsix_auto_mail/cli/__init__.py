@@ -164,13 +164,30 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_probe(_load_config_or_exit(args.account))
 
         if args.command == "ingest":
+            # -- Merge config values with CLI args -------------------------------
+            watch = args.watch
+            heartbeat_file = args.heartbeat_file
+            # Load the full accounts container so we can read ingest_mode /
+            # heartbeat_file from the first account's config.
+            try:
+                _accts = load_accounts()
+            except Exception:
+                _accts = None
+            if _accts is not None and _accts.accounts:
+                first_cfg = _accts.accounts[0].config
+                if not watch and first_cfg.ingest_mode == "watch":
+                    watch = True
+                if heartbeat_file is None:
+                    hb = first_cfg.heartbeat_file
+                    if hb:  # empty string → keep None
+                        heartbeat_file = hb
             return _cmd_ingest(
-                _load_accounts_allow_empty() if args.watch else _load_accounts_or_exit(),
+                _load_accounts_allow_empty() if watch else _load_accounts_or_exit(),
                 account_id=args.account,
                 all_accounts=args.all_accounts,
                 dry_run=args.dry_run,
-                watch=args.watch,
-                heartbeat_file=args.heartbeat_file,
+                watch=watch,
+                heartbeat_file=heartbeat_file,
             )
 
         if args.command == "board":
@@ -220,7 +237,25 @@ def main(argv: list[str] | None = None) -> int:
                     break
             return 1
 
-        # No command given — print help and exit 1.
+        # No command given.
+        # When config says ingest_mode == "watch", auto-start the ingest
+        # watch loop instead of printing help.  Otherwise print help.
+        try:
+            _accts = load_accounts()
+        except Exception:
+            _accts = None
+        if _accts is not None and _accts.accounts:
+            try:
+                first_cfg = _accts.accounts[0].config
+            except Exception:
+                first_cfg = None
+            if first_cfg is not None and first_cfg.ingest_mode == "watch":
+                hb = first_cfg.heartbeat_file or None
+                return _cmd_ingest(
+                    _load_accounts_allow_empty(),
+                    watch=True,
+                    heartbeat_file=hb,
+                )
         parser.print_help(sys.stderr)
         return 1
     except RobotsixMailError:

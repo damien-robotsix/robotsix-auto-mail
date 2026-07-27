@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Final
+from typing import Final, Literal
 
 from pydantic import (
     BaseModel,
@@ -111,6 +111,22 @@ class MailConfig(BaseModel):
     # Minutes between automatic ingest cycles (`ingest --watch`).
     ingest_interval_minutes: int = Field(
         default=DEFAULT_INGEST_INTERVAL_MINUTES, json_schema_extra={"advanced": True}
+    )
+
+    # Ingest mode: ``"once"`` (single pass, the default) or ``"watch"``
+    # (loop forever on an interval).  The entrypoint reads this field when
+    # no CLI command is given and auto-starts the watch loop when set to
+    # ``"watch"``.  The ``ingest`` CLI subcommand also merges this field
+    # with its ``--watch`` flag.
+    ingest_mode: Literal["watch", "once"] = Field(
+        default="once", json_schema_extra={"advanced": True}
+    )
+
+    # Heartbeat file path — touched at the end of each poll cycle in
+    # ``--watch`` mode so a Docker HEALTHCHECK can verify the loop is
+    # alive.  An empty string means no file is written.
+    heartbeat_file: str = Field(
+        default="", json_schema_extra={"advanced": True}
     )
 
     # Self-managed archive folder structure.
