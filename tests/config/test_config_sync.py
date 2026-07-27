@@ -43,6 +43,8 @@ _JSON_EXAMPLE: dict = {
                 "oauth2_tenant": "organizations",
                 "db_path": ".data/personal/mail.db",
                 "ingest_interval_minutes": 15,
+                "ingest_mode": "once",
+                "heartbeat_file": "",
                 "archive_root": "robotsix-mail-archive",
                 "archive_enabled": True,
                 "triage_on_ingest": True,
@@ -73,6 +75,8 @@ _JSON_EXAMPLE: dict = {
                 "llm_api_key": "",
                 "llm_provider_model": "",
                 "ingest_interval_minutes": 15,
+                "ingest_mode": "once",
+                "heartbeat_file": "",
                 "archive_root": "robotsix-mail-archive",
                 "archive_enabled": True,
                 "triage_on_ingest": True,
@@ -142,6 +146,8 @@ _DOCS_YAML_TABLE = """\
 | `auth.oauth2_tenant` | no | `organizations` | Azure AD tenant |
 | `store.path` | no | `""` | Filesystem path for the SQLite database |
 | `ingest.interval_minutes` | no | `15` | Minutes between automatic ingest cycles |
+| `ingest.mode` | no | `"once"` | Ingest start-up behaviour (`"watch"` or `"once"`) |
+| `ingest.heartbeat_file` | no | `""` | Heartbeat file path touched each poll cycle |
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |

@@ -32,8 +32,6 @@ services:
 
     # Default: run the periodic ingester. `docker compose run … <cmd>`
     # overrides this for one-shot commands (probe, detect, ingest, …).
-    command: ingest --watch --heartbeat-file /home/mailbot/.data/ingest.heartbeat
-
     environment:
       # Dev uses config/config.json (git-ignored local config); deploy uses
       # a different filename (managed by deploy tooling).
@@ -73,7 +71,7 @@ services:
       ROBOTSIX_CONFIG_FILE: /home/app/config/config.json
 
     ports:
-      - "${BOARD_PORT:-8080}:8080"
+      - "8080:8080"
 
     volumes:
       - ./config:/home/app/config
