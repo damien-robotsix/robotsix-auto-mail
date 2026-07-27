@@ -1,0 +1,1 @@
+Added `pytest-randomly` as a dev dependency and configured `--randomly-seed=last` in CI's pytest invocation. This randomizes test execution order on each run to surface hidden ordering dependencies — tests that pass only because a previous test set up global state, monkeypatching, or DB state they implicitly depend on.

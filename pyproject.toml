@@ -63,6 +63,11 @@ dev = [
     # pytest-timeout: kills hung tests instead of waiting for the job timeout
     # (default 6 hours on GitHub Actions). Configured under [tool.pytest.ini_options].
     "pytest-timeout",
+    # pytest-randomly: randomizes test execution order on each run to surface
+    # hidden ordering dependencies (tests that pass only because a previous
+    # test set up global state, monkeypatching, or DB state they implicitly
+    # depend on).
+    "pytest-randomly",
 ]
 llm = [
     "robotsix-llmio[openrouter,tracing]",
