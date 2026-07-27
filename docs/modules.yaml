@@ -212,6 +212,7 @@ modules:
       - changelog/20260725T022916Z-robotsix-auto-mail-remove-dead-security-eee3.misc.md
       - changelog/20260726T075146Z-ingester-stay-healthy-idle-standby-when-bc58.misc.md
       - changelog/20260727T003529Z-robotsix-auto-mail-migrate-command-overr-fef7.misc.md
+      - changelog/20260727T040044Z-add-pytest-randomly-to-dev-dependencies-c908.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py

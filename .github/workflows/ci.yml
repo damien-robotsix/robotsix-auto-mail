@@ -42,7 +42,7 @@ jobs:
       mypy-advisory: false        # auto-mail runs `mypy --strict` as a BLOCKING gate; it must NOT become advisory
       run-deptry: true
       run-bandit: true
-      pytest-args: --hypothesis-profile=ci -m "not docker" --cov-report=xml:coverage.xml
+      pytest-args: --hypothesis-profile=ci -m "not docker" --cov-report=xml:coverage.xml --randomly-seed=last
       upload-coverage-data: true
 
   # auto-mail-specific checks with no equivalent in the reusable spine. They
