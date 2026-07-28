@@ -144,6 +144,9 @@ from robotsix_auto_mail.triage.persistence import (
     set_triage_decision as set_triage_decision,
 )
 from robotsix_auto_mail.triage.rules import (
+    DEFAULT_RULES_HEADER as DEFAULT_RULES_HEADER,
+)
+from robotsix_auto_mail.triage.rules import (
     RulesMarkdown as RulesMarkdown,
 )
 from robotsix_auto_mail.triage.rules import (
@@ -163,6 +166,7 @@ from robotsix_auto_mail.triage.rules import (
 )
 
 __all__ = [
+    "DEFAULT_RULES_HEADER",
     "DRAFT_READY",
     "HUMAN_TRIAGE",
     "INBOX",
