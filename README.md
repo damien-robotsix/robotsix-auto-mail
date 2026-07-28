@@ -34,10 +34,10 @@ Configuration keys, precedence rules, and walkthroughs of the `probe`
 diagnostics command, the `ingest` mail-fetching command, and the `board`
 web view are documented in [docs/connecting.md](docs/connecting.md).
 
-Configuration is loaded from a single YAML config file (default
+Configuration is loaded from a single JSON config file (default
 `config/config.json`, located via `ROBOTSIX_CONFIG_FILE`) using the
 multi-account `accounts:` shape — the only supported config-file shape. Copy
-`docs/config/mail.local.example.yaml` to `config/mail.local.yaml` and fill in
+`config/config.example.json` to `config/config.json` and fill in
 your values, or run `robotsix-auto-mail detect` to generate it from your email
 address.
 

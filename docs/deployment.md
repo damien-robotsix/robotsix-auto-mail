@@ -37,21 +37,21 @@ cd robotsix-auto-mail
 
 ### 2. Create your local configuration
 
-The recommended path is a single YAML config file:
+The recommended path is a single JSON config file:
 
 ```sh
-cp docs/config/mail.local.example.yaml config/mail.local.yaml
+cp config/config.example.json config/config.json
 ```
 
-Then edit `config/mail.local.yaml` with your real IMAP and SMTP credentials:
+Then edit `config/config.json` with your real IMAP and SMTP credentials:
 
 ```sh
-$EDITOR config/mail.local.yaml
+$EDITOR config/config.json
 ```
 
 ### 2a. Alternative: auto-detect provider settings (detect)
 
-Instead of manually creating the whole `config/mail.local.yaml`, you can
+Instead of manually creating the whole `config/config.json`, you can
 auto-generate the account settings from just your email address. First put
 your LLM API key in the config file's top-level `llm:` section (e.g. copy the
 example and set `llm.api_key`), then run:
@@ -61,11 +61,11 @@ docker compose run robotsix-auto-mail detect user@gmail.com
 ```
 
 This calls an LLM to look up the correct IMAP/SMTP settings and writes
-`config/mail.local.yaml`, prompting for your password and including it in
+`config/config.json`, prompting for your password and including it in
 that file.  See [docs/connecting.md](connecting.md#auto-detection-with-detect)
 for full details.
 
-The file `config/mail.local.yaml` is **git-ignored** (`config/mail.local.yaml`
+The file `config/config.json` is **git-ignored** (`config/config.json`
 in `.gitignore`), so your credentials stay local and never land in the repo.
 
 ---
@@ -167,12 +167,12 @@ ls -la .mail_data/        # mail.db lives here
 
 ## Configuration quick-reference
 
-Configuration is loaded from a single YAML config file; any field you omit
+Configuration is loaded from a single JSON config file; any field you omit
 falls back to its built-in default.
 
 | Path | Mechanism | How to use |
 |---|---|---|
-| **YAML file** | A single `config/mail.local.yaml` | Copy `docs/config/mail.local.example.yaml` → `config/mail.local.yaml` and edit. Located via `ROBOTSIX_CONFIG_FILE`. |
+| **JSON file** | A single `config/config.json` | Copy `config/config.example.json` → `config/config.json` and edit. Located via `ROBOTSIX_CONFIG_FILE`. |
 
 Full config-key details are documented in
 **[docs/connecting.md](connecting.md)**.  Do not duplicate that reference
@@ -444,7 +444,7 @@ docker compose run robotsix-auto-mail ls -l /home/app/config/config.json
 ```
 
 **Fix:**  ensure the config file exists and is readable — copy the example
-(`cp docs/config/mail.local.example.yaml config/mail.local.yaml`) or generate
+(`cp config/config.example.json config/config.json`) or generate
 one with `robotsix-auto-mail detect user@example.com`, then verify the
 bind-mount isn't being shadowed by another volume definition.
 

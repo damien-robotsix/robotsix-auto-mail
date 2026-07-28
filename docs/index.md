@@ -26,8 +26,8 @@ uv sync --frozen
 ### 2. Create your config
 
 ```sh
-cp docs/config/mail.local.example.yaml config/mail.local.yaml
-$EDITOR config/mail.local.yaml
+cp config/config.example.json config/config.json
+$EDITOR config/config.json
 ```
 
 Fill in your IMAP/SMTP host, username, and password (see
