@@ -67,6 +67,7 @@ modules:
       - changelog/20260725T030052Z-fix-startup-failure-on-ci-and-release-im-96b3.misc.md
       - changelog/20260725T041822Z-register-pr-973-s-changelog-fragment-in-b0fb.misc.md
       - changelog/20260726T074052Z-split-tests-cli-test-cli-detect-accounts-efb2.misc.md
+      - changelog/20260728T204809Z-update-stale-documentation-references-fr-84a5.misc.md
       - changelog/20260724T180805Z-ci-failure-release-image-on-main-5747.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
@@ -322,7 +323,6 @@ modules:
       - tests/config/test_config_ingest.py
       - tests/config/test_config_archive.py
       - tests/config/test_config_triage.py
-      - docs/config/.gitkeep
       - config/config.example.json
       - config/config.json
       - config/config.schema.json

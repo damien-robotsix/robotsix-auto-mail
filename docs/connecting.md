@@ -24,10 +24,10 @@ mounts configuration without rebuilding the image.
 
 ```sh
 # 1. Create your local config from the template
-cp docs/config/mail.local.example.yaml config/mail.local.yaml
+cp config/config.example.json config/config.json
 
 # 2. Edit it with your real credentials
-$EDITOR config/mail.local.yaml
+$EDITOR config/config.json
 
 # 3. Build the image
 docker compose build
@@ -179,7 +179,7 @@ scratch with provider auto-detection.
 For the full configuration-key reference — including every key, its type,
 default value, and detailed descriptions — see the
 [Configuration Reference](configuration.md).  The canonical template file
-ships at [`docs/config/mail.local.example.yaml`](config/mail.local.example.yaml).
+ships at [`config/config.example.json`](../config/config.example.json).
 
 ## Trace ID injection
 
@@ -461,46 +461,48 @@ nested `imap` / `smtp` / `auth` / `store` (and optional `llm` / `ingest` /
 `archive` / `triage`) sections — parsed exactly as in the single-account
 file. An optional top-level `default_account:` names the default account;
 when omitted, the first entry is the default. The canonical example ships in
-`docs/config/mail.local.example.yaml`:
+`config/config.example.json`:
 
-```yaml
-default_account: personal
-
-accounts:
-  - id: personal
-    label: Personal Gmail
-    imap:
-      host: imap.gmail.com
-    smtp:
-      host: smtp.gmail.com
-    auth:
-      username: me@gmail.com
-    store:
-      path: .data/personal/mail.db
-
-  - id: work
-    label: Work mailbox
-    imap:
-      host: imap.work.example.com
-    smtp:
-      host: smtp.work.example.com
-    auth:
-      username: me@work.example.com
-    store:
-      path: .data/work/mail.db
-
-  - id: office365
-    label: Microsoft 365
-    imap:
-      host: outlook.office365.com
-    smtp:
-      host: smtp.office365.com
-    auth:
-      username: me@contoso.com
-      oauth2_provider: microsoft
-      oauth2_tenant: organizations
-    store:
-      path: .data/office365/mail.db
+```json
+{
+  "default_account_id": "personal",
+  "accounts": [
+    {
+      "account_id": "personal",
+      "label": "Personal Gmail",
+      "config": {
+        "imap_host": "imap.gmail.com",
+        "smtp_host": "smtp.gmail.com",
+        "username": "me@gmail.com",
+        "password": "changeme",
+        "db_path": ".data/personal/mail.db"
+      }
+    },
+    {
+      "account_id": "work",
+      "label": "Work mailbox",
+      "config": {
+        "imap_host": "imap.work.example.com",
+        "smtp_host": "smtp.work.example.com",
+        "username": "me@work.example.com",
+        "password": "changeme",
+        "db_path": ".data/work/mail.db"
+      }
+    },
+    {
+      "account_id": "office365",
+      "label": "Microsoft 365",
+      "config": {
+        "imap_host": "outlook.office365.com",
+        "smtp_host": "smtp.office365.com",
+        "username": "me@contoso.com",
+        "oauth2_provider": "microsoft",
+        "oauth2_tenant": "organizations",
+        "db_path": ".data/office365/mail.db"
+      }
+    }
+  ]
+}
 ```
 
 The Microsoft 365 account above carries **no password** — run
@@ -1263,8 +1265,8 @@ text or JSON output, look at its `title`, `body`, `affected_field`, and
   `python scripts/config/check_config_sync.py` goes green again. Those surfaces
   are:
   - the `MailConfig` dataclass (`src/robotsix_auto_mail/config/__init__.py`),
-  - the YAML template (`docs/config/mail.local.example.yaml`), and
-  - the "YAML config file" key table in this file.
+  - the JSON template (`config/config.example.json`), and
+  - the config-key table in `docs/configuration.md`.
 
   The `FIELD_TO_YAML` mapping in
   `scripts/config/check_config_sync.py` is the **source of truth** for which
@@ -1299,8 +1301,8 @@ default of `INBOX.All`, but the MailConfig default for imap_folder is INBOX.
 
 You confirm it is a **real drift** — the documented default no longer matches
 the dataclass. Reconcile the affected surface(s), e.g. fix the `imap.folder`
-row in the "YAML config file" table (and any other surface that disagrees, such
-as `docs/config/mail.local.example.yaml`) so the documented default reads
+row in the config-key table (and any other surface that disagrees, such
+as `config/config.example.json`) so the documented default reads
 `INBOX` again:
 
 ```text
