@@ -215,6 +215,7 @@ modules:
       - changelog/20260727T040044Z-add-pytest-randomly-to-dev-dependencies-c908.misc.md
       - changelog/20260727T040044Z-split-tests-server-test-batch-mixin-py-5-5d2f.misc.md
       - changelog/20260727T150011Z-split-tests-server-test-account-mixin-py-5f27.misc.md
+      - changelog/20260728T045028Z-missing-re-export-default-rules-header-f-7d42.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
