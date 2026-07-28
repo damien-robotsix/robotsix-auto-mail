@@ -26,8 +26,10 @@ uv.tgz
 !.env.example
 
 # Real mail configuration (may contain credentials) — the shipped
-# config/config.json is a default template; deployment tooling
-# injects the real credentials at deploy time.
+# config/config.json is an empty skeleton (no accounts).
+# Real credentials are injected at deploy time; see
+# config/config.example.json for the expected structure with
+# example accounts.
 
 
 # Runtime log files (generated artifacts, never committed).
