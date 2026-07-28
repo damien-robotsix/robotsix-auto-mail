@@ -226,13 +226,13 @@
       "type": "array"
     },
     "default_account_id": {
+      "default": "",
       "title": "Default Account Id",
       "type": "string"
     }
   },
   "required": [
-    "accounts",
-    "default_account_id"
+    "accounts"
   ],
   "title": "MailAccountsConfig",
   "type": "object"

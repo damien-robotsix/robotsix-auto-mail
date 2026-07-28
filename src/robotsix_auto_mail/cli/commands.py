@@ -34,15 +34,13 @@ def _load_accounts_allow_empty() -> MailAccountsConfig | None:
     idle standby state instead of exiting.
     """
     try:
-        return _cli.load_accounts()
-    except ConfigurationError as exc:
-        if "accounts list must not be empty" in str(exc):
-            return None
-        sys.stderr.write(f"Error loading configuration: {exc}\n")
-        sys.exit(1)
+        accounts = _cli.load_accounts()
     except Exception as exc:
         sys.stderr.write(f"Error loading configuration: {exc}\n")
         sys.exit(1)
+    if not accounts.accounts:
+        return None
+    return accounts
 
 
 def _load_config_or_exit(account_id: str | None = None) -> MailConfig:

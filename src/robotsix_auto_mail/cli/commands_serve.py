@@ -44,16 +44,26 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
     daemon thread (non-blocking) so one slow IMAP server doesn't delay
     reconciliation of other accounts.  Uses the per-account
     ``reconcile:state`` watermark to prevent overlapping runs.
+
+    When no accounts are configured the loop sleeps on a default interval
+    and re-checks on each cycle so newly added accounts are picked up
+    without a restart.
     """
     import threading
 
     from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
     from robotsix_auto_mail.server.adapters import _run_reconcile_background
 
-    interval_minutes = max(
-        1, min(acct.config.ingest_interval_minutes for acct in accounts.accounts)
-    )
+    _DEFAULT_FALLBACK_MINUTES = 15
+
     while True:
+        if accounts.accounts:
+            interval_minutes = max(
+                1,
+                min(acct.config.ingest_interval_minutes for acct in accounts.accounts),
+            )
+        else:
+            interval_minutes = _DEFAULT_FALLBACK_MINUTES
         for acct in accounts.accounts:
             if not acct.config.password.get_secret_value():
                 continue
@@ -92,18 +102,28 @@ def _cmd_serve(
     (``__all__``) view — ``default_account_id`` is not consulted for the
     initial board view.  Returns 0 on clean shutdown, 1 if the port is
     already in use.
+
+    When no accounts are configured (fresh deploy) the server starts with
+    an in-memory database so the add-account form and health endpoints
+    are available.
     """
     from http.server import ThreadingHTTPServer
 
     from robotsix_auto_mail.server import make_board_handler
 
-    default = accounts.get(default_account_id)
+    if accounts.accounts:
+        default = accounts.get(default_account_id)
+        db_path = default.config.db_path
+        mail_config = default.config
+    else:
+        db_path = ":memory:"
+        mail_config = None
 
     handler_class = make_board_handler(
-        default.config.db_path,
-        mail_config=default.config,
+        db_path,
+        mail_config=mail_config,
         accounts=accounts,
-        default_account_id=default_account_id,
+        default_account_id=default_account_id if accounts.accounts else None,
     )
 
     # Self-heal any orphaned ``triage_run:state == "running"`` watermark left

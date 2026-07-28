@@ -275,10 +275,11 @@ def test_accounts_validation_single() -> None:
     assert len(cfg.accounts) == 1
 
 
-def test_accounts_validation_empty_raises() -> None:
-    """Empty accounts list → ConfigurationError."""
-    with pytest.raises(ConfigurationError):
-        MailAccountsConfig(accounts=[], default_account_id="x")
+def test_accounts_validation_empty_allowed() -> None:
+    """Empty accounts list is accepted (fresh-deploy friendly)."""
+    cfg = MailAccountsConfig(accounts=[])
+    assert cfg.accounts == []
+    assert cfg.default_account_id == ""
 
 
 def test_accounts_duplicate_id_raises() -> None:

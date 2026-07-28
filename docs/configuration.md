@@ -193,8 +193,10 @@ agent run is traced to the configured Langfuse project.
 
 Rules enforced when the file loads:
 
-- At least one account is required; every account needs a unique, non-empty
-  `id`.
+- Every account needs a unique, non-empty `id`.
+- An empty `accounts: []` is valid — fresh deploys start with zero accounts
+  configured. The server boots with an in-memory database and the add-account
+  form is available to create accounts through the web UI.
 - Every account's resolved `store.path` must be unique (one SQLite database per
   account).
 - `default_account`, when set, must name an existing account `id`.

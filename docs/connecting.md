@@ -460,8 +460,11 @@ mapping with a required string `id`, an optional `label`, and the usual
 nested `imap` / `smtp` / `auth` / `store` (and optional `llm` / `ingest` /
 `archive` / `triage`) sections — parsed exactly as in the single-account
 file. An optional top-level `default_account:` names the default account;
-when omitted, the first entry is the default. The canonical example ships in
-`config/config.example.json`:
+when omitted, the first entry is the default (when accounts are present).
+A fresh deploy starts with `"accounts": []` and `"default_account_id": ""`
+— the server boots with an in-memory database and the add-account form
+is available to create accounts through the web UI. The canonical example
+ships in `config/config.example.json`:
 
 ```json
 {
