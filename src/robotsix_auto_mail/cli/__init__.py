@@ -204,6 +204,8 @@ def main(argv: list[str] | None = None) -> int:
                     sys.stderr.write(f"Error: {exc}\n")
                     return 1
             else:
+                # When no accounts are configured the default id is empty;
+                # _cmd_serve handles the zero-account case gracefully.
                 resolved = accounts.default_account_id
             return _cmd_serve(
                 accounts,

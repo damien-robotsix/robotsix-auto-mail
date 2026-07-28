@@ -79,9 +79,12 @@ def test_accounts_get_unknown_lists_valid_ids() -> None:
     assert "work" in msg
 
 
-def test_accounts_empty_raises() -> None:
+def test_accounts_empty_is_allowed() -> None:
+    """Empty accounts list is allowed — fresh deploys start with zero accounts."""
+    cfg = MailAccountsConfig(accounts=[], default_account_id="")
+    assert cfg.ids() == ()
     with pytest.raises(ConfigurationError):
-        MailAccountsConfig(accounts=[], default_account_id="x")
+        _ = cfg.default
 
 
 def test_accounts_duplicate_id_raises() -> None:
