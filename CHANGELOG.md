@@ -6,6 +6,7 @@
 ## 0.0.0 (unreleased)
 
 - Updated 11 stale references from the deleted `docs/config/mail.local.example.yaml` to `config/config.example.json` across README and docs (README.md, docs/index.md, docs/configuration.md, docs/connecting.md, docs/deployment.md). Removed empty `docs/config/` directory and its `.gitkeep`.
+- Added cross-reference update rule to AGENT.md documentation conventions: when a PR removes or renames a file referenced in docs, all cross-references must be updated in the same PR.
 - Split ``tests/server/test_server_draft.py`` (592 lines) into two focused modules: ``test_server_draft_manage.py`` (draft move/save/generate) and ``test_server_draft_send.py`` (send-draft reply/forward/validation/buttons). Extracted the shared ``_patch_smtp_and_imap`` context manager into ``tests/server/_draft_helpers.py``.
 - Add missing re-export of ``DEFAULT_RULES_HEADER`` in ``robotsix_auto_mail.triage``
 - Split `tests/server/test_account_mixin.py` (562 lines, 37 tests, 4 classes)

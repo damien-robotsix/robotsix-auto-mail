@@ -252,3 +252,9 @@ When you add or change a user-facing CLI subcommand in
 the same PR, following the `config-sync` command section pattern
 (purpose, optional-extra requirements, flags, example invocation, and
 output).
+
+When a PR removes or renames a file that is hyperlinked or referenced
+in documentation (`README.md`, `docs/`), ALL cross-references to that
+file MUST be updated in the same PR.  Use `git grep <old-filename>`
+across `README.md` and `docs/` to identify stale references before
+merging.
