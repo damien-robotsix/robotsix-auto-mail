@@ -546,4 +546,3 @@ def _detect_provider_for_email(
         return provider, ""
 
     return None, "The email domain is not in the known-provider database."
-
