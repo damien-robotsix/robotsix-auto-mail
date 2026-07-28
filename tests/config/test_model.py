@@ -245,9 +245,11 @@ class TestMailAccountValidateAccountId:
 
 
 class TestMailAccountsConfigValidate:
-    def test_empty_accounts_raises(self) -> None:
-        with pytest.raises(ConfigurationError, match="must not be empty"):
-            MailAccountsConfig(accounts=[], default_account_id="any")
+    def test_empty_accounts_allowed(self) -> None:
+        """Empty accounts list is accepted (fresh-deploy friendly)."""
+        cfg = MailAccountsConfig(accounts=[])
+        assert cfg.accounts == []
+        assert cfg.default_account_id == ""
 
     def test_duplicate_account_ids_raises(self) -> None:
         a1 = _make_account(account_id="dup")
