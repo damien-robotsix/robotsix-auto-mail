@@ -1,0 +1,1 @@
+Added a "Detect Settings" button to the web Add Mail Account form that auto-detects IMAP/SMTP host, port, and TLS settings from the entered email address using the existing ``config/detect`` autoconfig and MX-lookup logic. Detected fields remain editable so the operator can override them, and detection failures fall back to manual entry with a clear error message.

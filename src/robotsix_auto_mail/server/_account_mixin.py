@@ -17,6 +17,12 @@ from robotsix_auto_mail.config import (
     load_accounts,
     save_accounts,
 )
+from robotsix_auto_mail.config.detect import (
+    MailProvider,
+    autoconfig_lookup,
+    mx_lookup,
+    provider_from_mx,
+)
 from robotsix_auto_mail.config.schema import (
     _VALID_TLS_MODES,
     DEFAULT_IMAP_TLS_MODE,
@@ -79,6 +85,15 @@ input:focus, select:focus {
   margin-bottom: 1.5em;
   font-weight: bold;
 }
+.success-banner {
+  background: var(--color-bg-success-muted, #e8f5e9);
+  border: 2px solid var(--color-bg-success, #2e7d32);
+  border-radius: 4px;
+  color: var(--color-bg-success, #2e7d32);
+  padding: 0.75em 1em;
+  margin-bottom: 1.5em;
+  font-weight: bold;
+}
 .form-actions {
   display: flex;
   gap: 0.75rem;
@@ -98,6 +113,20 @@ input:focus, select:focus {
 }
 .form-actions button[type="submit"]:hover {
   background: var(--color-bg-success-hover, #1b5e20);
+}
+.form-actions button[name="action"][value="detect"] {
+  width: auto;
+  background: var(--color-bg-panel, #16213e);
+  color: var(--color-text-link, #a0c0ff);
+  border: 1px solid var(--color-border-button, #3a3a6a);
+  padding: 0.5rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.form-actions button[name="action"][value="detect"]:hover {
+  background: var(--color-bg-button-hover, #1f2d50);
 }
 .form-actions .cancel-link {
   color: var(--color-text-muted, #c0c0e0);
@@ -138,11 +167,12 @@ class _AccountMixin:
     def _serve_add_account(
         self,
         error: str = "",
+        success: str = "",
         prefill: dict[str, str] | None = None,
     ) -> None:
         """Serve the account-creation form (GET) or re-render on error (POST)."""
         p = prefill or {}
-        body = _build_add_account_form_html(error=error, prefill=p)
+        body = _build_add_account_form_html(error=error, success=success, prefill=p)
         self._send_response(body, content_type="text/html; charset=utf-8")
 
     # -- POST /add-account -------------------------------------------------
@@ -175,6 +205,49 @@ class _AccountMixin:
             if key != "password":
                 prefill[key] = value
             fields[key] = value
+
+        # 2b. If the "Detect Settings" button was pressed, run provider
+        #     detection and re-render the form with the detected values
+        #     (or an error).
+        action = (body.get("action", [""])[0]).strip()
+        if action == "detect":
+            email = fields.get("username", "").strip()
+            if not email:
+                self._serve_add_account(
+                    error="Enter an email address in the Username field,"
+                    " then click Detect Settings.",
+                    prefill=prefill,
+                )
+                return
+            provider, detect_error = _detect_provider_for_email(email)
+            if provider is not None:
+                prefill["imap_host"] = provider.imap_host
+                prefill["smtp_host"] = provider.smtp_host
+                prefill["imap_port"] = str(provider.imap_port)
+                prefill["smtp_port"] = str(provider.smtp_port)
+                prefill["imap_tls_mode"] = provider.imap_tls_mode
+                prefill["smtp_tls_mode"] = provider.smtp_tls_mode
+                self._serve_add_account(
+                    success=(
+                        f"Settings detected for {html.escape(email)}:"
+                        f" IMAP {provider.imap_host}:{provider.imap_port},"
+                        f" SMTP {provider.smtp_host}:{provider.smtp_port}."
+                        " Review and edit if needed, then click Add Account."
+                    ),
+                    prefill=prefill,
+                )
+                return
+            else:
+                self._serve_add_account(
+                    error=(
+                        f"Could not auto-detect settings for"
+                        f" {html.escape(email)}."
+                        f" {detect_error or 'No provider match found.'}"
+                        " Please enter IMAP/SMTP settings manually."
+                    ),
+                    prefill=prefill,
+                )
+                return
 
         # 3. Validate required fields.
         missing = [f for f in _REQUIRED_FIELDS if not fields.get(f)]
@@ -322,6 +395,7 @@ class _AccountMixin:
 def _build_add_account_form_html(
     *,
     error: str = "",
+    success: str = "",
     prefill: dict[str, str] | None = None,
 ) -> str:
     """Build the HTML page for the add-account form."""
@@ -331,9 +405,15 @@ def _build_add_account_form_html(
         """Return the pre-filled value, HTML-escaped."""
         return html.escape(p.get(key, default), quote=True)
 
-    error_html = (
-        f'<div class="error-banner">{html.escape(error)}</div>\n' if error else ""
-    )
+    banner_html = ""
+    if error:
+        banner_html = (
+            f'<div class="error-banner">{html.escape(error)}</div>\n'
+        )
+    elif success:
+        banner_html = (
+            f'<div class="success-banner">{html.escape(success)}</div>\n'
+        )
 
     imap_tls = p.get("imap_tls_mode", DEFAULT_IMAP_TLS_MODE)
     smtp_tls = p.get("smtp_tls_mode", DEFAULT_SMTP_TLS_MODE)
@@ -351,7 +431,7 @@ def _build_add_account_form_html(
         "</head>\n"
         "<body>\n"
         "<h1>Add Mail Account</h1>\n"
-        f"{error_html}"
+        f"{banner_html}"
         '<form method="post" action="/add-account">\n'
         # account_id
         "<label>Account ID"
@@ -433,10 +513,37 @@ def _build_add_account_form_html(
         "</details>\n"
         # Actions
         '<div class="form-actions">\n'
-        '<button type="submit">Add Account</button>\n'
+        '<button type="submit" name="action" value="add">Add Account</button>\n'
+        '<button type="submit" name="action" value="detect">Detect Settings</button>\n'
         '<a class="cancel-link" href="/board">Cancel</a>\n'
         "</div>\n"
         "</form>\n"
         "</body>\n"
         "</html>"
     )
+
+
+def _detect_provider_for_email(
+    email_address: str,
+) -> tuple[MailProvider | None, str]:
+    """Run the provider-detection ladder for *email_address*.
+
+    Tries the non-LLM detection paths only (autoconfig + MX lookup)
+    so the web UI stays responsive even without an LLM API key.
+
+    Returns ``(provider, error_message)`` — exactly one of the two
+    is non-truthy.
+    """
+    # 1. Autoconfig lookup (Mozilla ISPDB + domain autoconfig endpoint).
+    provider = autoconfig_lookup(email_address, timeout=4.0)
+    if provider is not None:
+        return provider, ""
+
+    # 2. MX-record lookup → pattern-match against known providers.
+    mx_hosts = mx_lookup(email_address, timeout=4.0)
+    provider = provider_from_mx(mx_hosts)
+    if provider is not None:
+        return provider, ""
+
+    return None, "The email domain is not in the known-provider database."
+
