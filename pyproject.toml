@@ -127,9 +127,6 @@ fail_under = 80
 show_missing = true
 skip_empty = true
 
-[tool.bandit]
-skips = ["B107"]
-
 [project.scripts]
 robotsix-auto-mail = "robotsix_auto_mail.cli:main"
 [tool.mypy]
