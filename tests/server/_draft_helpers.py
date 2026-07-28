@@ -1,13 +1,27 @@
 """Shared helpers for draft-mixin and draft-generator unit tests.
 
 Provides ``_patch_llm`` (patch the LLM provider to return a canned
-``DraftResult``) and ``_insert_inbox`` (insert an inbox ``MailRecord``
-with sensible defaults).
+``DraftResult``), ``_insert_inbox`` (insert an inbox ``MailRecord``
+with sensible defaults), and ``_patch_smtp_and_imap`` (patch
+SmtpClient and ImapClient together).
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from unittest import mock
+
+
+@contextmanager
+def _patch_smtp_and_imap() -> Iterator[tuple[mock.MagicMock, mock.MagicMock]]:
+    with (
+        mock.patch("robotsix_auto_mail.smtp.SmtpClient") as smtp_cls,
+        mock.patch("robotsix_auto_mail.imap.ImapClient") as imap_cls,
+    ):
+        imap_client = imap_cls.return_value.__enter__.return_value
+        imap_client.list_folders.return_value = [mock.Mock(delimiter="/")]
+        yield smtp_cls, imap_cls
 
 
 def _patch_llm(

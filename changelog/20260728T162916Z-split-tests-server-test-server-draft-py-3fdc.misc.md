@@ -1,0 +1,1 @@
+Split ``tests/server/test_server_draft.py`` (592 lines) into two focused modules: ``test_server_draft_manage.py`` (draft move/save/generate) and ``test_server_draft_send.py`` (send-draft reply/forward/validation/buttons). Extracted the shared ``_patch_smtp_and_imap`` context manager into ``tests/server/_draft_helpers.py``.
