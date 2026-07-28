@@ -216,6 +216,7 @@ modules:
       - changelog/20260727T040044Z-split-tests-server-test-batch-mixin-py-5-5d2f.misc.md
       - changelog/20260727T150011Z-split-tests-server-test-account-mixin-py-5f27.misc.md
       - changelog/20260728T045028Z-missing-re-export-default-rules-header-f-7d42.misc.md
+      - changelog/20260728T162916Z-split-tests-server-test-server-draft-py-3fdc.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -557,7 +558,8 @@ modules:
       - tests/server/test_server_archive.py
       - tests/server/test_server_archive_proposal.py
       - tests/server/test_server_archive_security.py
-      - tests/server/test_server_draft.py
+      - tests/server/test_server_draft_manage.py
+      - tests/server/test_server_draft_send.py
       - tests/server/test_server_reconcile.py
       - tests/server/test_server_triage.py
       - tests/server/test_triage_mixin.py
