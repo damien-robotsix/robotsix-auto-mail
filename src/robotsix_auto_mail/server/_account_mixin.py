@@ -514,7 +514,7 @@ def _build_add_account_form_html(
         # Actions
         '<div class="form-actions">\n'
         '<button type="submit" name="action" value="add">Add Account</button>\n'
-        '<button type="submit" name="action" value="detect">Detect Settings</button>\n'
+        '<button type="submit" name="action" value="detect" formnovalidate>Detect Settings</button>\n'
         '<a class="cancel-link" href="/board">Cancel</a>\n'
         "</div>\n"
         "</form>\n"

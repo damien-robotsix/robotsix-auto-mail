@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Fixed the **Detect Settings** button on the Add Mail Account form so it works without pre-filled IMAP/SMTP host fields. The button now uses ``formnovalidate`` to bypass browser-side form validation, allowing the server-side detection to auto-populate settings from the email domain alone.
 - Split `tests/server/test_server_archive_delete.py` (790 lines) into four domain-focused modules: `test_server_archive_delete_basic.py`, `test_server_archive_delete_stale_uid.py`, `test_server_archive_delete_cross_folder.py`, and `test_server_archive_proposal_endpoint.py`.
 - Updated 11 stale references from the deleted `docs/config/mail.local.example.yaml` to `config/config.example.json` across README and docs (README.md, docs/index.md, docs/configuration.md, docs/connecting.md, docs/deployment.md). Removed empty `docs/config/` directory and its `.gitkeep`.
 - Added cross-reference update rule to AGENT.md documentation conventions: when a PR removes or renames a file referenced in docs, all cross-references must be updated in the same PR.
