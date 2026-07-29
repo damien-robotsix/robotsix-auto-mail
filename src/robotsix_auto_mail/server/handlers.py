@@ -215,6 +215,9 @@ class BoardHandler(
         }
         if origin in allowed:
             return True
+        if self.mail_config is not None:
+            if origin in set(self.mail_config.allowed_origins):
+                return True
         self._send_response("Forbidden: cross-origin request rejected", status=403)
         return False
 

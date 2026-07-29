@@ -136,6 +136,60 @@ class TestCsrfIntegration:
 
 
 # ---------------------------------------------------------------------------
+# integration tests: allowed_origins config
+# ---------------------------------------------------------------------------
+
+
+class TestCsrfAllowedOrigins:
+    """CSRF gate with a configured allowed_origins list."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, single_db: str) -> None:
+        """Start a test server with allowed_origins configured."""
+        from tests.server.conftest_helpers import _start_test_server_with_mail_config
+
+        cfg = _account_config(single_db)
+        # Add a remote origin that would normally be rejected.
+        cfg = cfg.model_copy(
+            update={"allowed_origins": ["https://mail.deploy.robotsix.net"]}
+        )
+        self.server, self.port = _start_test_server_with_mail_config(
+            single_db, mail_config=cfg
+        )
+
+    def teardown_method(self) -> None:
+        self.server.shutdown()
+
+    def test_configured_origin_allowed(self) -> None:
+        """A POST with an allowed_origins entry must pass CSRF."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://mail.deploy.robotsix.net",
+        )
+        # Missing ``message_id`` → 400, NOT 403 (CSRF gate passed).
+        assert status == 400
+        assert "cross-origin" not in body.lower()
+
+    def test_unconfigured_origin_still_rejected(self) -> None:
+        """A POST with an origin NOT in allowed_origins must still be rejected."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="http://evil.example.com",
+        )
+        assert status == 403
+        assert "cross-origin" in body.lower()
+
+    def test_loopback_still_allowed(self) -> None:
+        """Loopback origins must still pass even when allowed_origins is set."""
+        status, body = _post_with_origin(
+            self.port,
+            origin=f"http://127.0.0.1:{self.port}",
+        )
+        assert status == 400
+        assert "cross-origin" not in body.lower()
+
+
+# ---------------------------------------------------------------------------
 # unit tests: _cmd_serve passes ``host`` to ``HTTPServer``
 # ---------------------------------------------------------------------------
 
