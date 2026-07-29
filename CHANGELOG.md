@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Split `tests/server/test_server_archive_delete.py` (790 lines) into four domain-focused modules: `test_server_archive_delete_basic.py`, `test_server_archive_delete_stale_uid.py`, `test_server_archive_delete_cross_folder.py`, and `test_server_archive_proposal_endpoint.py`.
 - Updated 11 stale references from the deleted `docs/config/mail.local.example.yaml` to `config/config.example.json` across README and docs (README.md, docs/index.md, docs/configuration.md, docs/connecting.md, docs/deployment.md). Removed empty `docs/config/` directory and its `.gitkeep`.
 - Added cross-reference update rule to AGENT.md documentation conventions: when a PR removes or renames a file referenced in docs, all cross-references must be updated in the same PR.
 - Split ``tests/server/test_server_draft.py`` (592 lines) into two focused modules: ``test_server_draft_manage.py`` (draft move/save/generate) and ``test_server_draft_send.py`` (send-draft reply/forward/validation/buttons). Extracted the shared ``_patch_smtp_and_imap`` context manager into ``tests/server/_draft_helpers.py``.
