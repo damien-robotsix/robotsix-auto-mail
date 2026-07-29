@@ -179,7 +179,6 @@ agent run is traced to the configured Langfuse project.
 |---|---|---|---|---|
 | `logging.level` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` | no | Minimum log level. |
 | `logging.format` | `console` | `json` / `console` | no | Log renderer. `json` for structured production logs; `console` for human-friendly development output. |
-| `server.allowed_origins` | `[]` | list of strings | no | Additional origins (beyond the request's own Host header) allowed by the CSRF guard for the board server. |
 
 ---
 

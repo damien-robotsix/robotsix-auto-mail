@@ -165,18 +165,6 @@ class MailConfig(BaseModel):
     langfuse_secret_key: SecretStr = SecretStr("")
     langfuse_base_url: str = Field(default="", json_schema_extra={"advanced": True})
 
-    # Allowed origins for the board server's CSRF check.
-    # When the server runs behind a reverse proxy, the browser's
-    # ``Origin`` header carries the public URL (e.g.
-    # ``https://mail.deploy.robotsix.net``).  List those origins here
-    # so same-origin POSTs to the board are not rejected.  The CSRF
-    # guard also accepts the request's own ``Host`` header (the
-    # standard proxy-aware same-origin check), so this list is only
-    # needed when ``Origin`` and ``Host`` differ legitimately.
-    allowed_origins: list[str] = Field(
-        default_factory=list, json_schema_extra={"advanced": True}
-    )
-
     # Logging configuration — application-wide (global).
     log_level: str = "INFO"
     log_format: str = Field(default="console", json_schema_extra={"advanced": True})

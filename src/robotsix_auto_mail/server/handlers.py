@@ -202,7 +202,6 @@ class BoardHandler(
 
         * the server's own loopback origin (``127.0.0.1`` / ``localhost``
           on the bound port) — covers local dev / CLI use;
-        * an entry in ``MailConfig.allowed_origins`` — explicit opt-in;
         * the request's own ``Host`` header — the standard proxy-aware
           same-origin check: when the server runs behind a reverse proxy
           the browser sets ``Origin`` and ``Host`` to the same public
@@ -222,9 +221,6 @@ class BoardHandler(
         }
         if origin in allowed:
             return True
-        if self.mail_config is not None:
-            if origin in set(self.mail_config.allowed_origins):
-                return True
         # Proxy-aware same-origin check: when the server runs behind a
         # reverse proxy the browser sends Origin and Host set to the
         # same public authority (e.g. ``mail.deploy.robotsix.net``).
