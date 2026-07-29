@@ -195,6 +195,14 @@
           "title": "Langfuse Base Url",
           "type": "string"
         },
+        "allowed_origins": {
+          "advanced": true,
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Origins",
+          "type": "array"
+        },
         "log_level": {
           "default": "INFO",
           "title": "Log Level",
@@ -237,3 +245,4 @@
   "title": "MailAccountsConfig",
   "type": "object"
 }
+

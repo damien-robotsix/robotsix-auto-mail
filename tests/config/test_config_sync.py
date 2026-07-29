@@ -56,6 +56,7 @@ _JSON_EXAMPLE: dict = {
                 "langfuse_base_url": "",
                 "log_level": "INFO",
                 "log_format": "console",
+                "allowed_origins": [],
             },
         },
         {
@@ -91,6 +92,7 @@ _JSON_EXAMPLE: dict = {
                 "langfuse_base_url": "",
                 "log_level": "INFO",
                 "log_format": "console",
+                "allowed_origins": [],
             },
         },
     ],
@@ -159,6 +161,7 @@ _DOCS_YAML_TABLE = """\
 | `langfuse.base_url` | no | - | Langfuse base URL for LLM tracing |
 | `logging.level` | no | `INFO` | Log level |
 | `logging.format` | no | `console` | Log format |
+| `server.allowed_origins` | no | `[]` | Additional allowed origins for CSRF guard |
 """
 
 

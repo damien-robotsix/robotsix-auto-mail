@@ -32,7 +32,8 @@
         "langfuse_secret_key": "",
         "langfuse_base_url": "",
         "log_level": "INFO",
-        "log_format": "console"
+        "log_format": "console",
+        "allowed_origins": []
       }
     },
     {
@@ -67,7 +68,8 @@
         "langfuse_secret_key": "",
         "langfuse_base_url": "",
         "log_level": "INFO",
-        "log_format": "console"
+        "log_format": "console",
+        "allowed_origins": []
       }
     }
   ],
