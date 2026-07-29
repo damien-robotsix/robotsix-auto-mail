@@ -558,9 +558,12 @@ modules:
       - tests/server/test_global_board.py
       - tests/server/test_redirect_safety.py
       - tests/server/test_server_archive_batch.py
-      - tests/server/test_server_archive_delete.py
+      - tests/server/test_server_archive_delete_basic.py
+      - tests/server/test_server_archive_delete_cross_folder.py
+      - tests/server/test_server_archive_delete_stale_uid.py
       - tests/server/test_server_archive.py
       - tests/server/test_server_archive_proposal.py
+      - tests/server/test_server_archive_proposal_endpoint.py
       - tests/server/test_server_archive_security.py
       - tests/server/test_server_draft_manage.py
       - tests/server/test_server_draft_send.py
