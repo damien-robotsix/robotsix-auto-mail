@@ -457,6 +457,8 @@ modules:
       - tests/pipeline/test_ingest_dataclass.py
       - tests/pipeline/test_ingest_dryrun.py
       - tests/pipeline/test_parser.py
+      - tests/pipeline/test_parser_body.py
+      - tests/pipeline/test_parser_headers.py
       - tests/pipeline/test_parser_properties.py
       - tests/pipeline/test_reconcile.py
       - tests/pipeline/test_uidvalidity.py
