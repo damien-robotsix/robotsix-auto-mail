@@ -85,6 +85,38 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
         time.sleep(interval_minutes * 60)
 
 
+def _import_settings_from_central_deploy(accounts: MailAccountsConfig) -> None:
+    """Seed each account's settings store from central-deploy on first boot.
+
+    The import is idempotent — it only runs when the store is empty and
+    the ``CENTRAL_DEPLOY_EXPORT_URL`` environment variable is set.
+    Failures are logged but never prevent the server from starting.
+    """
+    import logging
+    import os
+
+    logger = logging.getLogger(__name__)
+
+    if not os.environ.get("CENTRAL_DEPLOY_EXPORT_URL"):
+        return
+
+    from robotsix_auto_mail.db import init_db
+    from robotsix_auto_mail.settings import SettingsStore, import_from_central_deploy
+
+    for acct in accounts.accounts:
+        try:
+            conn = init_db(acct.config.db_path, skip_migrations=True)
+            try:
+                store = SettingsStore(acct.config.db_path)
+                import_from_central_deploy(store, conn)
+            finally:
+                conn.close()
+        except Exception:
+            logger.exception(
+                "Failed to import settings for account %s", acct.id
+            )
+
+
 def _cmd_serve(
     accounts: MailAccountsConfig,
     *,
@@ -118,6 +150,12 @@ def _cmd_serve(
     else:
         db_path = ":memory:"
         mail_config = None
+
+    # One-time import: seed the per-component settings store from
+    # central-deploy's export endpoint on first boot.  Each account's
+    # store is seeded independently; the import is idempotent (skips
+    # when the store is already populated).
+    _import_settings_from_central_deploy(accounts)
 
     handler_class = make_board_handler(
         db_path,
