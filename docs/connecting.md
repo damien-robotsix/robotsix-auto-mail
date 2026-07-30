@@ -1,16 +1,16 @@
 # Connecting
 
 `robotsix-auto-mail` needs IMAP and SMTP connection parameters. They are
-resolved from **built-in defaults overlaid by a single YAML config file** —
+resolved from **built-in defaults overlaid by a single JSON config file** —
 any field you omit falls back to its built-in default.
 
-> **Configuration is provided ONLY via the YAML config file.** The
+> **Configuration is provided ONLY via the JSON config file.** The
 > `ROBOTSIX_CONFIG_FILE` environment variable *locates* the file (default
 > `config/config.json`); it does not itself carry configuration. Individual
 > settings are **no longer read from environment variables** — put every value
-> (hosts, username, password, OAuth2, LLM, logging, …) in the YAML file.
+> (hosts, username, password, OAuth2, LLM, logging, …) in the config file.
 
-New users can also run `robotsix-auto-mail detect` to auto-generate the YAML
+New users can also run `robotsix-auto-mail detect` to auto-generate the config file
 file from just an email address — see [Auto-detection with
 `detect`](#auto-detection-with-detect).
 
@@ -208,21 +208,26 @@ IMAP/SMTP. The simplest working setup needs no OAuth2 client registration — an
 4. Use that App Password as `auth.password`, with your
    full address as `auth.username`:
 
-   ```yaml
-   accounts:
-     - id: default
-       imap:
-         host: imap.gmail.com
-         port: 993
-         tls_mode: direct-tls
-       smtp:
-         host: smtp.gmail.com
-         port: 587
-         tls_mode: starttls
-       auth:
-         username: you@gmail.com
-         # the 16-char App Password, NOT your normal login password
-         password: "abcd efgh ijkl mnop"
+   ```json
+   {
+     "default_account_id": "default",
+     "accounts": [
+       {
+         "account_id": "default",
+         "config": {
+           "imap_host": "imap.gmail.com",
+           "imap_port": 993,
+           "imap_tls_mode": "direct-tls",
+           "smtp_host": "smtp.gmail.com",
+           "smtp_port": 587,
+           "smtp_tls_mode": "starttls",
+           "username": "you@gmail.com",
+           // the 16-char App Password, NOT your normal login password
+           "password": "abcd efgh ijkl mnop"
+         }
+       }
+     ]
+   }
    ```
 
    ```sh
@@ -257,7 +262,7 @@ account password, but accepts either an
 [App Password](#gmail-app-password--simplest) (simplest — see above) or
 XOAUTH2.
 
-When ``oauth2_token`` is set in the YAML config, the IMAP and SMTP clients
+When ``oauth2_token`` is set in the JSON config, the IMAP and SMTP clients
 authenticate via XOAUTH2 instead of the legacy ``login()`` call.  Password auth
 is only used when no token is present.
 
@@ -376,7 +381,7 @@ After the device-code consent flow completes once, the MSAL integration
 handles token refresh automatically — no user interaction is needed for normal
 operation.
 
-**Where tokens live.** Access tokens are **not** stored in the YAML config
+**Where tokens live.** Access tokens are **not** stored in the JSON config
 (``auth.oauth2_token`` is unused when ``oauth2_provider: microsoft`` is set).
 Instead, a refresh token is persisted in the MSAL serializable token cache at
 ``<dirname(db_path)>/msal_cache.json`` — one per account, next to its SQLite
@@ -454,7 +459,7 @@ which is unique per account and created automatically on first DB use.
 > [Converting a legacy single-account config](#converting-a-legacy-single-account-config)),
 > or run [`robotsix-auto-mail detect`](#scripting-usage) to regenerate it.
 
-**YAML shape.** A multi-account YAML file uses a top-level `accounts:` list
+**JSON shape.** A multi-account JSON file uses a top-level `accounts:` list
 instead of the single-account top-level sections. Each list entry is a
 mapping with a required string `id`, an optional `label`, and the usual
 nested `imap` / `smtp` / `auth` / `store` (and optional `llm` / `ingest` /
@@ -539,7 +544,7 @@ root only takes effect on a fresh run that has no watermark yet.
 
 ## Precedence rules
 
-Configuration resolves from **built-in defaults overlaid by the YAML config
+Configuration resolves from **built-in defaults overlaid by the JSON config
 file** at `ROBOTSIX_CONFIG_FILE` (default `config/config.json`). Each field the
 file supplies overrides its built-in default; any field the file omits keeps
 its default. Environment variables are **not** consulted for configuration —

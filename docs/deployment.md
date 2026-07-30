@@ -364,7 +364,7 @@ docker run --rm \
 ### What the entrypoint does
 
 Before the Python interpreter starts, [`entrypoint.sh`](../entrypoint.sh)
-validates that a readable YAML config file exists at
+validates that a readable JSON config file exists at
 `${ROBOTSIX_CONFIG_FILE:-config/config.json}`.
 
 If the file is missing or unreadable, the script prints a clear error message
