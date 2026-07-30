@@ -183,7 +183,7 @@ here — the connecting doc is authoritative.
 - `docker-compose.yml` sets `ROBOTSIX_CONFIG_FILE=/home/app/config/config.json`.
 - The `./config:/home/app/config` bind-mount maps the host `config/`
   directory into the container.
-- Editing `config/mail.local.yaml` on the host takes effect on the **next**
+- Editing `config/config.json` on the host takes effect on the **next**
   `docker compose run` — no rebuild required.
 
 ---
@@ -344,7 +344,7 @@ The same `docker compose run` pattern works — just make sure `config/` is
 populated with the production credentials and the image is pulled:
 
 ```sh
-# On the production host, with config/mail.local.yaml in place:
+# On the production host, with config/config.json in place:
 docker compose run robotsix-auto-mail probe
 docker compose run robotsix-auto-mail ingest
 ```
@@ -427,7 +427,7 @@ messages from the watermark baseline.
 ### "Missing configuration file"
 
 ```text
-Missing configuration file: config/mail.local.yaml
+Missing configuration file: config/config.json
 ```
 
 The entrypoint validated config before launching Python and could not read a
@@ -437,7 +437,7 @@ config file at `${ROBOTSIX_CONFIG_FILE:-config/config.json}`.
 
 ```sh
 # Check that the config file exists and has content
-cat config/mail.local.yaml
+cat config/config.json
 
 # Check that the bind-mount is working
 docker compose run robotsix-auto-mail ls -l /home/app/config/config.json
@@ -458,7 +458,7 @@ If `probe` fails with a connection error, the remote mail server is
 unreachable from the container.  Possible causes:
 
 - Firewall or VPN blocking outbound IMAP (993) / SMTP (587).
-- Incorrect `imap.host` or `smtp.host` in `config/mail.local.yaml`.
+- Incorrect `imap_host` or `smtp_host` in `config/config.json`.
 
 **Diagnose:**
 

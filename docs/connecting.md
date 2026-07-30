@@ -40,11 +40,11 @@ docker compose run robotsix-auto-mail board
 
 ### How it works
 
-- `config/mail.local.yaml` *(git-ignored)* holds your settings — typically
-  `imap.host`, `smtp.host`, `auth.username`, and `auth.password`. Any field
+- `config/config.json` *(git-ignored)* holds your settings — typically
+  `imap_host`, `smtp_host`, `username`, and `password`. Any field
   you omit falls back to its built-in default.
 - The `./config` directory is bind-mounted into the container at
-  `/home/app/config`, so editing `config/mail.local.yaml` on the host
+  `/home/app/config`, so editing `config/config.json` on the host
   is picked up immediately — no rebuild needed.
 - The `ROBOTSIX_CONFIG_FILE` environment variable is set to
   `/home/app/config/config.json` by `docker-compose.yml`.
@@ -133,7 +133,7 @@ robotsix-auto-mail detect user@gmail.com --password "app-password"
 docker compose run robotsix-auto-mail detect user@gmail.com
 ```
 
-The `detect` command writes `config/mail.local.yaml` (with the password
+The `detect` command writes `config/config.json` (with the password
 included when one is supplied) into the bind-mounted `./config` directory on
 the host.  No image rebuild is needed — the file is available immediately.
 
@@ -553,25 +553,28 @@ The `detect` command resolves the LLM settings (`llm.api_key`) on their own
 
 ## Example setups
 
-### Docker Compose with YAML (recommended)
+### Docker Compose with JSON (recommended)
 
-```yaml
-# config/mail.local.yaml (git-ignored)
-default_account: main
-
-accounts:
-  - id: main
-    imap:
-      host: imap.mail.example.com
-      port: 993
-      tls_mode: direct-tls
-    smtp:
-      host: smtp.mail.example.com
-      port: 587
-      tls_mode: starttls
-    auth:
-      username: user@mail.example.com
-      password: your-app-password-here
+```json
+// config/config.json (git-ignored)
+{
+  "default_account_id": "main",
+  "accounts": [
+    {
+      "account_id": "main",
+      "config": {
+        "imap_host": "imap.mail.example.com",
+        "imap_port": 993,
+        "imap_tls_mode": "direct-tls",
+        "smtp_host": "smtp.mail.example.com",
+        "smtp_port": 587,
+        "smtp_tls_mode": "starttls",
+        "username": "user@mail.example.com",
+        "password": "your-app-password-here"
+      }
+    }
+  ]
+}
 ```
 
 ```sh
@@ -732,7 +735,7 @@ count badge.  Every mail card has a **Move** dropdown that lets you change
 the card's status column via `POST /move`.
 
 **Account picker (multi-account mode).**  When two or more accounts are configured
-(via `config/mail.local.yaml`), an account picker
+(via `config/config.json`), an account picker
 dropdown appears in the page header. The dropdown
 shows each configured account with its `label` (or `id` if no label is set), and
 you can click to switch accounts. Switching navigates to `/board?account=<id>` and
@@ -868,7 +871,7 @@ will, on re-trigger, process only the remaining 218 without re-deleting the firs
 
 ### Multi-account request routing
 
-When multiple accounts are configured (via `config/mail.local.yaml`), the
+When multiple accounts are configured (via `config/config.json`), the
 `serve` command hosts all accounts at a single
 HTTP server address. Per-request account selection determines which account's
 database and mail config are used to handle each request.
@@ -899,11 +902,14 @@ default); multi-account selection is invisible to the user.
 
 ```sh
 # Config with two accounts
-cat config/mail.local.yaml
-# default_account: personal
-# accounts:
-#   - id: personal
-#   - id: work
+cat config/config.json
+# {
+#   "default_account_id": "personal",
+#   "accounts": [
+#     { "account_id": "personal", ... },
+#     { "account_id": "work", ... }
+#   ]
+# }
 
 # Start the server (personal is the default)
 robotsix-auto-mail serve
