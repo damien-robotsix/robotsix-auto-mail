@@ -38,6 +38,7 @@ from robotsix_auto_mail.server._config_mixin import _ConfigMixin
 from robotsix_auto_mail.server._constants import GLOBAL_VIEW_ACCOUNT_ID, _with_db
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
+from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
 from robotsix_auto_mail.server._triage_mixin import _TriageMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
@@ -52,6 +53,7 @@ class BoardHandler(
     _ConfigMixin,
     _AccountMixin,
     _BoardAuthMixin,
+    _SettingsMixin,
     BaseHTTPRequestHandler,
 ):
     """Request handler for the robotsix-auto-mail board server.

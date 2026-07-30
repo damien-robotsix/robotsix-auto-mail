@@ -28,6 +28,9 @@ from .models import (
     MailRecord as MailRecord,
 )
 from .queries import (
+    component_settings_count as component_settings_count,
+)
+from .queries import (
     delete_record_by_message_id as delete_record_by_message_id,
 )
 from .queries import (
@@ -35,6 +38,12 @@ from .queries import (
 )
 from .queries import (
     get_account_health as get_account_health,
+)
+from .queries import (
+    get_all_component_settings as get_all_component_settings,
+)
+from .queries import (
+    get_component_setting as get_component_setting,
 )
 from .queries import (
     get_record_by_message_id as get_record_by_message_id,
@@ -62,6 +71,12 @@ from .queries import (
 )
 from .queries import (
     save_json_watermark as save_json_watermark,
+)
+from .queries import (
+    set_component_setting as set_component_setting,
+)
+from .queries import (
+    set_component_settings as set_component_settings,
 )
 from .queries import (
     set_watermark as set_watermark,
@@ -106,9 +121,12 @@ from .archive import (
 __all__ = [
     "VALID_TRIAGE_ACTIONS",
     "MailRecord",
+    "component_settings_count",
     "delete_record_by_message_id",
     "delete_watermark",
     "get_account_health",
+    "get_all_component_settings",
+    "get_component_setting",
     "get_record_by_message_id",
     "get_watermark",
     "init_db",
@@ -118,6 +136,8 @@ __all__ = [
     "load_json_watermark",
     "record_exists",
     "save_json_watermark",
+    "set_component_setting",
+    "set_component_settings",
     "set_watermark",
     "update_calendar_correlation_id",
     "update_calendar_event_ref",
