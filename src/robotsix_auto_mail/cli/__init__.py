@@ -241,7 +241,9 @@ def main(argv: list[str] | None = None) -> int:
 
         # No command given.
         # When config says ingest_mode == "watch", auto-start the ingest
-        # watch loop instead of printing help.  Otherwise print help.
+        # watch loop instead of printing help.  Otherwise print a clear
+        # diagnostic error before the help text so the container logs show
+        # WHY the process failed rather than just dumping usage text.
         try:
             _accts = load_accounts()
         except Exception:
@@ -258,6 +260,31 @@ def main(argv: list[str] | None = None) -> int:
                     watch=True,
                     heartbeat_file=hb,
                 )
+            # Config loaded, accounts exist, but ingest_mode is not "watch".
+            sys.stderr.write(
+                "Error: no subcommand given and ingest_mode is not set to "
+                "'watch'.\n"
+                "  The container cannot auto-start the ingest loop.\n"
+                "  Either set ingest_mode to 'watch' in the first account's "
+                "config, or pass an explicit subcommand.\n\n"
+            )
+        elif _accts is not None:
+            # Config loaded but has zero accounts.
+            sys.stderr.write(
+                "Error: no subcommand given and no accounts are configured.\n"
+                "  The container cannot auto-start the ingest loop.\n"
+                "  Add an account with ingest_mode set to 'watch', or pass "
+                "an explicit subcommand.\n\n"
+            )
+        else:
+            # Config file missing or unreadable.
+            sys.stderr.write(
+                "Error: no subcommand given and the config file is missing "
+                "or unreadable.\n"
+                "  The container cannot auto-start the ingest loop.\n"
+                "  Ensure a valid config file is present at the configured "
+                "path, or pass an explicit subcommand.\n\n"
+            )
         parser.print_help(sys.stderr)
         return 1
     except RobotsixMailError:

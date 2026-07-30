@@ -5,6 +5,7 @@ name: robotsix-auto-mail
 services:
   ingester:
     image: ghcr.io/damien-robotsix/robotsix-auto-mail:main
+    command: ingest
     restart: unless-stopped
     environment:
       ROBOTSIX_CONFIG_FILE: /home/app/config/config.json
