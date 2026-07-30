@@ -116,6 +116,7 @@ class BoardHandler(
             (lambda p: p == "/board-content", self._serve_board_content),
             (lambda p: p == "/health", self._serve_health),
             (lambda p: p == "/healthz", self._serve_health),
+            (lambda p: p == "/settings", self._handle_get_settings),
             (
                 lambda p: p == "/probe-health",
                 self._serve_probe_health,
@@ -185,6 +186,7 @@ class BoardHandler(
             "/save-draft": self._handle_save_draft,
             "/send-draft": self._handle_send_draft,
             "/generate-draft": self._handle_generate_draft,
+            "/settings": self._handle_put_settings,
         }
         # Dispatch on the bare path so ``?account=<id>`` query strings do
         # not defeat exact-match routing.

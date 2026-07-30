@@ -68,7 +68,11 @@ def import_from_central_deploy(
     """
     from robotsix_auto_mail.settings.store import SettingsStore
 
-    assert isinstance(store, SettingsStore)  # noqa: S101 — guard for callers
+    if not isinstance(store, SettingsStore):
+        raise TypeError(
+            f"import_from_central_deploy expects a SettingsStore, "
+            f"got {type(store).__name__}"
+        )
 
     if not store.is_empty(conn):
         logger.debug("Settings store already populated — skipping import.")

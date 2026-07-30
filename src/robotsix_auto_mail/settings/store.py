@@ -26,7 +26,6 @@ _SECRET_FIELD_SUFFIXES: tuple[str, ...] = (
     "_secret",
     "password",
     "_token",
-    "oauth2_token",
 )
 #: Exact field names that are secret but don't match a suffix above.
 _SECRET_FIELD_NAMES: frozenset[str] = frozenset(
@@ -77,21 +76,20 @@ def _validate_field(field_name: str, value: str) -> str | None:
         # Build a minimal valid config and patch the target field.
         defaults: dict[str, object] = {}
         for name, info in MailConfig.model_fields.items():
-            if info.default is not ... and info.default is not None:
-                defaults[name] = info.default
-            elif info.default is not ...:
-                defaults[name] = info.default
-            else:
+            if info.is_required():
                 # Required fields — provide dummy values that satisfy
                 # their validators so we can isolate the target field.
-                if annotation is str:
+                ann = info.annotation
+                if ann is str:
                     defaults[name] = "dummy"
-                elif annotation is int:
+                elif ann is int:
                     defaults[name] = 0
-                elif annotation is bool:
+                elif ann is bool:
                     defaults[name] = False
                 else:
                     defaults[name] = ""
+            else:
+                defaults[name] = info.default
 
         # Override host fields with valid-looking values.
         if "imap_host" in defaults:
