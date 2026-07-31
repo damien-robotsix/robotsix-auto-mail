@@ -1,0 +1,1 @@
+Add `permissions: contents: read` to the `sbom` job in `ci.yml` that calls the local reusable `sbom.yml` workflow. Without explicit permissions, GitHub Actions may reject the workflow at parse time with `startup_failure`.

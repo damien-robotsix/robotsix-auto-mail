@@ -43,7 +43,6 @@ jobs:
       run-deptry: true
       run-bandit: true
       pytest-args: --hypothesis-profile=ci -m "not docker" --cov-report=xml:coverage.xml --randomly-seed=last
-      upload-coverage-data: true
 
   # auto-mail-specific checks with no equivalent in the reusable spine. They
   # keep their own steps and stay blocking on every push + PR.
@@ -167,6 +166,8 @@ jobs:
   # CycloneDX SBOM generated via reusable workflow (.github/workflows/sbom.yml).
   sbom:
     name: Generate SBOM
+    permissions:
+      contents: read
     uses: ./.github/workflows/sbom.yml
 
   # Diff-scoped dependency review gate on pull requests. Uses GitHub's

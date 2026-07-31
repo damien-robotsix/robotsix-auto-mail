@@ -8,6 +8,8 @@
 - Added dedicated unit tests for `_ReconcileMixin._handle_reconcile` covering idempotency guard, per-account thread spawning in aggregate mode, and single-thread non-aggregate path.
 - Fix crash when adding the first account to a fresh-deploy config with ``accounts=[]`` and ``default_account_id=''`` — the handler now falls back to the first account's id when the existing default is empty, and wraps ``MailAccountsConfig`` construction in try/except so validation errors render the form with an error message instead of crashing the request handler.
 - Fix pre-existing ruff violations (formatting, naming, import ordering) across 26 source and test files, upgrade pymdown-extensions transitive dependency to resolve uv audit advisory, and fix CodeQL py/mixed-returns alert in cli/commands.py.
+- Add `permissions: contents: read` to the `sbom` job in `ci.yml` that calls the local reusable `sbom.yml` workflow. Without explicit permissions, GitHub Actions validates the caller's inherited workflow-level permissions against the reusable workflow's declared `contents: read` requirement — a mismatch that can cause `startup_failure` with zero jobs. This mirrors the identical fix already applied to `release.yml`.
+- Removed `upload-coverage-data` input from the `ci` job's reusable-workflow call in `ci.yml`. The upstream `python-ci.yml` workflow does not define this input; passing it caused GitHub to reject the entire workflow at parse time with `startup_failure` and zero jobs running.
 - Honour ``X-Forwarded-Host`` and ``Forwarded: host=`` headers in the CSRF
   origin check so browser POSTs behind the fleet reverse proxy are no longer
   rejected with 403 Forbidden.
