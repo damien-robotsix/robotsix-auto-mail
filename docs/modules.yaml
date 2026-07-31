@@ -228,6 +228,7 @@ modules:
       - changelog/20260730T125533Z-missing-re-export-providerentry-from-con-a26d.misc.md
       - changelog/20260730T135940Z-mail-ingester-container-restart-loops-st-e3ce.misc.md
       - changelog/20260730T142338Z-adopt-internal-per-component-settings-mi-59ae.misc.md
+      - changelog/20260731T021749Z-add-unit-tests-for-the-per-component-set-46c7.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -542,6 +543,7 @@ modules:
       - tests/server/test_archive_structure.py
       - tests/server/test_board_adapter.py
       - tests/server/test_board_handler_root.py
+      - tests/server/test_board_handler_settings.py
       - tests/server/test_board_handler_move.py
       - tests/server/test_board_handler_email_status.py
       - tests/server/test_board_handler_email_embed.py
@@ -611,6 +613,8 @@ modules:
       - src/robotsix_auto_mail/settings/__init__.py
       - src/robotsix_auto_mail/settings/import_.py
       - src/robotsix_auto_mail/settings/store.py
+      - tests/settings/__init__.py
+      - tests/settings/test_store.py
 
   - id: docs
     description: >-
