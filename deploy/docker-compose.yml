@@ -5,7 +5,11 @@ name: robotsix-auto-mail
 services:
   ingester:
     image: ghcr.io/damien-robotsix/robotsix-auto-mail:main
-    command: ingest
+    # --watch is required, not optional: a bare `ingest` polls once, exits 0
+    # and — under restart: unless-stopped — is restarted immediately, forever.
+    # --heartbeat-file is what the healthcheck below reads; without it the
+    # file never appears and the container is permanently unhealthy.
+    command: ingest --watch --heartbeat-file /data/ingest.heartbeat
     restart: unless-stopped
     environment:
       ROBOTSIX_CONFIG_FILE: /home/app/config/config.json
