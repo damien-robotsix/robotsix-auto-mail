@@ -209,7 +209,8 @@ directly — extend `robotsix_llmio` instead.
 
 Langfuse credentials live on `MailConfig` (`langfuse_public_key`,
 `langfuse_secret_key`, `langfuse_base_url`) and are populated from
-`config/mail.local.yaml` (under the top-level `langfuse:` section).
+the JSON config file (`config/config.json`, under the `config` object
+within each account entry).
 They are application-wide (not per-account).
 
 ---

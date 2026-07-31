@@ -57,7 +57,7 @@ through its ladder — published autoconfig (Mozilla ISPDB / domain
 `autoconfig`), then MX-record lookup, then an LLM fallback (see
 [docs/connecting.md](connecting.md#auto-detection-with-detect)).  When all
 three miss (or the LLM returns wrong settings, which is why `detect` verifies
-by connecting afterward), fall back to writing `config/mail.local.yaml`
+by connecting afterward), fall back to writing `config/config.json`
 manually — the hand-edited approach is fully supported.  After editing, re-run
 `robotsix-auto-mail probe` to confirm.
 

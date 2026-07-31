@@ -1,16 +1,16 @@
 # Connecting
 
 `robotsix-auto-mail` needs IMAP and SMTP connection parameters. They are
-resolved from **built-in defaults overlaid by a single YAML config file** —
+resolved from **built-in defaults overlaid by a single JSON config file** —
 any field you omit falls back to its built-in default.
 
-> **Configuration is provided ONLY via the YAML config file.** The
+> **Configuration is provided ONLY via the JSON config file.** The
 > `ROBOTSIX_CONFIG_FILE` environment variable *locates* the file (default
 > `config/config.json`); it does not itself carry configuration. Individual
 > settings are **no longer read from environment variables** — put every value
-> (hosts, username, password, OAuth2, LLM, logging, …) in the YAML file.
+> (hosts, username, password, OAuth2, LLM, logging, …) in the config file.
 
-New users can also run `robotsix-auto-mail detect` to auto-generate the YAML
+New users can also run `robotsix-auto-mail detect` to auto-generate the config file
 file from just an email address — see [Auto-detection with
 `detect`](#auto-detection-with-detect).
 
@@ -40,11 +40,11 @@ docker compose run robotsix-auto-mail board
 
 ### How it works
 
-- `config/mail.local.yaml` *(git-ignored)* holds your settings — typically
-  `imap.host`, `smtp.host`, `auth.username`, and `auth.password`. Any field
+- `config/config.json` *(git-ignored)* holds your settings — typically
+  `imap_host`, `smtp_host`, `username`, and `password`. Any field
   you omit falls back to its built-in default.
 - The `./config` directory is bind-mounted into the container at
-  `/home/app/config`, so editing `config/mail.local.yaml` on the host
+  `/home/app/config`, so editing `config/config.json` on the host
   is picked up immediately — no rebuild needed.
 - The `ROBOTSIX_CONFIG_FILE` environment variable is set to
   `/home/app/config/config.json` by `docker-compose.yml`.
@@ -133,7 +133,7 @@ robotsix-auto-mail detect user@gmail.com --password "app-password"
 docker compose run robotsix-auto-mail detect user@gmail.com
 ```
 
-The `detect` command writes `config/mail.local.yaml` (with the password
+The `detect` command writes `config/config.json` (with the password
 included when one is supplied) into the bind-mounted `./config` directory on
 the host.  No image rebuild is needed — the file is available immediately.
 
@@ -208,21 +208,26 @@ IMAP/SMTP. The simplest working setup needs no OAuth2 client registration — an
 4. Use that App Password as `auth.password`, with your
    full address as `auth.username`:
 
-   ```yaml
-   accounts:
-     - id: default
-       imap:
-         host: imap.gmail.com
-         port: 993
-         tls_mode: direct-tls
-       smtp:
-         host: smtp.gmail.com
-         port: 587
-         tls_mode: starttls
-       auth:
-         username: you@gmail.com
-         # the 16-char App Password, NOT your normal login password
-         password: "abcd efgh ijkl mnop"
+   ```json
+   {
+     "default_account_id": "default",
+     "accounts": [
+       {
+         "account_id": "default",
+         "config": {
+           "imap_host": "imap.gmail.com",
+           "imap_port": 993,
+           "imap_tls_mode": "direct-tls",
+           "smtp_host": "smtp.gmail.com",
+           "smtp_port": 587,
+           "smtp_tls_mode": "starttls",
+           "username": "you@gmail.com",
+           // the 16-char App Password, NOT your normal login password
+           "password": "abcd efgh ijkl mnop"
+         }
+       }
+     ]
+   }
    ```
 
    ```sh
@@ -257,7 +262,7 @@ account password, but accepts either an
 [App Password](#gmail-app-password--simplest) (simplest — see above) or
 XOAUTH2.
 
-When ``oauth2_token`` is set in the YAML config, the IMAP and SMTP clients
+When ``oauth2_token`` is set in the JSON config, the IMAP and SMTP clients
 authenticate via XOAUTH2 instead of the legacy ``login()`` call.  Password auth
 is only used when no token is present.
 
@@ -376,7 +381,7 @@ After the device-code consent flow completes once, the MSAL integration
 handles token refresh automatically — no user interaction is needed for normal
 operation.
 
-**Where tokens live.** Access tokens are **not** stored in the YAML config
+**Where tokens live.** Access tokens are **not** stored in the JSON config
 (``auth.oauth2_token`` is unused when ``oauth2_provider: microsoft`` is set).
 Instead, a refresh token is persisted in the MSAL serializable token cache at
 ``<dirname(db_path)>/msal_cache.json`` — one per account, next to its SQLite
@@ -454,7 +459,7 @@ which is unique per account and created automatically on first DB use.
 > [Converting a legacy single-account config](#converting-a-legacy-single-account-config)),
 > or run [`robotsix-auto-mail detect`](#scripting-usage) to regenerate it.
 
-**YAML shape.** A multi-account YAML file uses a top-level `accounts:` list
+**JSON shape.** A multi-account JSON file uses a top-level `accounts:` list
 instead of the single-account top-level sections. Each list entry is a
 mapping with a required string `id`, an optional `label`, and the usual
 nested `imap` / `smtp` / `auth` / `store` (and optional `llm` / `ingest` /
@@ -539,7 +544,7 @@ root only takes effect on a fresh run that has no watermark yet.
 
 ## Precedence rules
 
-Configuration resolves from **built-in defaults overlaid by the YAML config
+Configuration resolves from **built-in defaults overlaid by the JSON config
 file** at `ROBOTSIX_CONFIG_FILE` (default `config/config.json`). Each field the
 file supplies overrides its built-in default; any field the file omits keeps
 its default. Environment variables are **not** consulted for configuration —
@@ -553,25 +558,28 @@ The `detect` command resolves the LLM settings (`llm.api_key`) on their own
 
 ## Example setups
 
-### Docker Compose with YAML (recommended)
+### Docker Compose with JSON (recommended)
 
-```yaml
-# config/mail.local.yaml (git-ignored)
-default_account: main
-
-accounts:
-  - id: main
-    imap:
-      host: imap.mail.example.com
-      port: 993
-      tls_mode: direct-tls
-    smtp:
-      host: smtp.mail.example.com
-      port: 587
-      tls_mode: starttls
-    auth:
-      username: user@mail.example.com
-      password: your-app-password-here
+```json
+// config/config.json (git-ignored)
+{
+  "default_account_id": "main",
+  "accounts": [
+    {
+      "account_id": "main",
+      "config": {
+        "imap_host": "imap.mail.example.com",
+        "imap_port": 993,
+        "imap_tls_mode": "direct-tls",
+        "smtp_host": "smtp.mail.example.com",
+        "smtp_port": 587,
+        "smtp_tls_mode": "starttls",
+        "username": "user@mail.example.com",
+        "password": "your-app-password-here"
+      }
+    }
+  ]
+}
 ```
 
 ```sh
@@ -732,7 +740,7 @@ count badge.  Every mail card has a **Move** dropdown that lets you change
 the card's status column via `POST /move`.
 
 **Account picker (multi-account mode).**  When two or more accounts are configured
-(via `config/mail.local.yaml`), an account picker
+(via `config/config.json`), an account picker
 dropdown appears in the page header. The dropdown
 shows each configured account with its `label` (or `id` if no label is set), and
 you can click to switch accounts. Switching navigates to `/board?account=<id>` and
@@ -868,7 +876,7 @@ will, on re-trigger, process only the remaining 218 without re-deleting the firs
 
 ### Multi-account request routing
 
-When multiple accounts are configured (via `config/mail.local.yaml`), the
+When multiple accounts are configured (via `config/config.json`), the
 `serve` command hosts all accounts at a single
 HTTP server address. Per-request account selection determines which account's
 database and mail config are used to handle each request.
@@ -899,11 +907,14 @@ default); multi-account selection is invisible to the user.
 
 ```sh
 # Config with two accounts
-cat config/mail.local.yaml
-# default_account: personal
-# accounts:
-#   - id: personal
-#   - id: work
+cat config/config.json
+# {
+#   "default_account_id": "personal",
+#   "accounts": [
+#     { "account_id": "personal", ... },
+#     { "account_id": "work", ... }
+#   ]
+# }
 
 # Start the server (personal is the default)
 robotsix-auto-mail serve
