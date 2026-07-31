@@ -270,7 +270,7 @@ def test_ingest_watch_idle_heartbeat_zero_accounts(
     assert rc == 0
     assert hb.exists()
     out = capsys.readouterr().out
-    assert "idle: no accounts configured yet, waiting" in out
+    assert "idle: no watchable accounts configured; waiting" in out
     assert "Watch stopped" in out
 
 
@@ -310,7 +310,7 @@ def test_ingest_watch_idle_heartbeat_passwordless(
     assert rc == 0
     assert hb.exists()
     out = capsys.readouterr().out
-    assert "idle: no accounts configured yet, waiting" in out
+    assert "idle: no watchable accounts configured; waiting" in out
     assert "Watch stopped" in out
 
 
@@ -370,7 +370,7 @@ def test_ingest_watch_transition_idle_to_active(
     mock_cycle.assert_called_once()
     assert hb.exists()
     out = capsys.readouterr().out
-    assert "idle: no accounts configured yet, waiting" in out
+    assert "idle: no watchable accounts configured; waiting" in out
     assert "Watch mode: ingesting" in out
 
 

@@ -95,6 +95,39 @@ def test_no_subcommand_prints_help_and_exits_1(
     assert "usage:" in captured.err.lower() or "usage:" in captured.out.lower()
 
 
+def test_no_subcommand_no_watch_accounts_enters_idle(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+) -> None:
+    """When accounts exist but none has ingest_mode='watch', the auto-start
+    enters the idle watch loop instead of crashing."""
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="user@example.com",
+        password="s3cret",
+        db_path=str(tmp_path / "test.db"),
+        ingest_mode="once",
+    )
+    accounts = MailAccountsConfig(
+        accounts=(MailAccount(account_id="default", config=cfg, label=None),),
+        default_account_id="default",
+    )
+    with (
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
+        mock.patch("robotsix_auto_mail.cli._config.load", return_value=cfg),
+        mock.patch(
+            "robotsix_auto_mail.cli._idle_watch_loop",
+            return_value=0,
+        ) as mock_idle,
+    ):
+        rc = main([])
+
+    assert rc == 0
+    mock_idle.assert_called_once()
+    err = capsys.readouterr().err
+    assert "Warning: no accounts have ingest_mode set to 'watch'" in err
+
+
 # ---------------------------------------------------------------------------
 # SmtpClient / ImapClient properties after connect
 # ---------------------------------------------------------------------------
