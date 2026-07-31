@@ -356,15 +356,22 @@ class _AccountMixin:
                 )
                 return
             new_accounts = [*list(existing.accounts), account]
-            default_id = existing.default_account_id
+            default_id = existing.default_account_id or new_accounts[0].account_id
         else:
             new_accounts = [account]
             default_id = account_id
 
-        new_config = MailAccountsConfig(
-            accounts=new_accounts,
-            default_account_id=default_id,
-        )
+        try:
+            new_config = MailAccountsConfig(
+                accounts=new_accounts,
+                default_account_id=default_id,
+            )
+        except Exception as exc:
+            self._serve_add_account(
+                error=f"Invalid configuration: {html.escape(str(exc))}",
+                prefill=prefill,
+            )
+            return
 
         try:
             save_accounts(new_config)
