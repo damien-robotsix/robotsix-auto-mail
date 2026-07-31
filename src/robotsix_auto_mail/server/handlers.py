@@ -209,7 +209,13 @@ class BoardHandler(
         * the request's own ``Host`` header — the standard proxy-aware
           same-origin check: when the server runs behind a reverse proxy
           the browser sets ``Origin`` and ``Host`` to the same public
-          authority (e.g. ``mail.deploy.robotsix.net``).
+          authority (e.g. ``mail.deploy.robotsix.net``);
+        * the ``X-Forwarded-Host`` header — first value when
+          comma-separated, stripped of whitespace, for environments where
+          the reverse proxy rewrites ``Host`` but forwards the public
+          host here;
+        * the ``host=`` parameter of the first ``Forwarded`` (RFC 7239)
+          header element.
 
         Requests without an ``Origin`` header (same-origin page navigation,
         ``curl``, CLI tools) are allowed — malicious cross-site forms cannot
@@ -225,12 +231,32 @@ class BoardHandler(
         }
         if origin in allowed:
             return True
+        origin_netloc = urlsplit(origin).netloc
         # Proxy-aware same-origin check: when the server runs behind a
         # reverse proxy the browser sends Origin and Host set to the
         # same public authority (e.g. ``mail.deploy.robotsix.net``).
         host = self.headers.get("Host")
-        if host is not None and urlsplit(origin).netloc == host:
+        if host is not None and origin_netloc == host:
             return True
+        # ``X-Forwarded-Host``: first value when comma-separated.
+        xfh = self.headers.get("X-Forwarded-Host")
+        if xfh is not None:
+            first_xfh = xfh.split(",")[0].strip()
+            if origin_netloc == first_xfh:
+                return True
+        # ``Forwarded`` (RFC 7239): ``host=`` parameter of first element.
+        fwd = self.headers.get("Forwarded")
+        if fwd is not None:
+            first_element = fwd.split(",")[0].strip()
+            for param in first_element.split(";"):
+                param = param.strip()
+                if param.startswith("host="):
+                    fwd_host = param[len("host="):].strip()
+                    if fwd_host.startswith('"') and fwd_host.endswith('"'):
+                        fwd_host = fwd_host[1:-1]
+                    if origin_netloc == fwd_host:
+                        return True
+                    break
         self._send_response("Forbidden: cross-origin request rejected", status=403)
         return False
 

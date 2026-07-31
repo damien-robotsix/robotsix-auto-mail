@@ -5,6 +5,9 @@
 
 ## 0.0.0 (unreleased)
 
+- Honour ``X-Forwarded-Host`` and ``Forwarded: host=`` headers in the CSRF
+  origin check so browser POSTs behind the fleet reverse proxy are no longer
+  rejected with 403 Forbidden.
 - Updated `docs/deployment.md` to reflect the config-driven ingester contract (`ingest_mode` / `heartbeat_file`) instead of the old `--watch` / `--heartbeat-file` CLI flags.
 - Add unit tests for SettingsStore CRUD, secret masking, field validation,
   and request-handler tests for GET/POST /settings endpoints.
