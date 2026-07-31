@@ -130,6 +130,8 @@ all((save_accounts,))  # lgtm[py/ineffectual-statement]
 
 from robotsix_auto_mail.settings.store import SettingsStore
 
-SettingsStore._db_path
-SettingsStore.seed_from_mail_config
-SettingsStore.to_mail_config
+all((  # lgtm[py/ineffectual-statement]
+    SettingsStore._db_path,
+    SettingsStore.seed_from_mail_config,
+    SettingsStore.to_mail_config,
+))
