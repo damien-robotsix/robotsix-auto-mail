@@ -11,8 +11,6 @@ from __future__ import annotations
 import json
 from unittest import mock
 
-import pytest
-
 from robotsix_auto_mail.config import MailConfig
 from tests.server._test_helpers import _DraftMixinFakeHandler
 from tests.server.conftest_helpers import _seed_draft_record

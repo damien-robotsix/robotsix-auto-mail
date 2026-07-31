@@ -54,7 +54,7 @@ class TestBuildAddAccountFormHtml:
         assert "&lt;script&gt;" in html_out
 
     def test_html_escapes_error_message(self) -> None:
-        html_out = _build_add_account_form_html(error='<b>bold</b>')
+        html_out = _build_add_account_form_html(error="<b>bold</b>")
         assert "<b>bold</b>" not in html_out
         assert "&lt;b&gt;bold&lt;/b&gt;" in html_out
 

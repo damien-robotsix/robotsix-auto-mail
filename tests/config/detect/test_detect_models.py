@@ -14,7 +14,6 @@ from robotsix_auto_mail.config.detect import (
     provider_to_config,
 )
 
-
 # ---------------------------------------------------------------------------
 # DetectedProvider — validation
 # ---------------------------------------------------------------------------

@@ -42,7 +42,6 @@ class _SettingsMixin:
                     # We can't iterate fields directly on the Protocol type,
                     # so use the concrete MailConfig fields.
                     from robotsix_auto_mail.config.model import MailConfig
-
                     from robotsix_auto_mail.settings.store import _masked_value
 
                     settings = {
@@ -61,9 +60,7 @@ class _SettingsMixin:
 
             settings = store.get_all(conn)
 
-        self._serve_json(
-            {"settings": settings, "source": "internal"}, status=200
-        )
+        self._serve_json({"settings": settings, "source": "internal"}, status=200)
 
     # -- PUT /settings -------------------------------------------------------
 

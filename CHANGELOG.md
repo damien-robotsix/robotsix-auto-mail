@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Fix pre-existing ruff violations (formatting, naming, import ordering) across 26 source and test files, upgrade pymdown-extensions transitive dependency to resolve uv audit advisory, and fix CodeQL py/mixed-returns alert in cli/commands.py.
 - Honour ``X-Forwarded-Host`` and ``Forwarded: host=`` headers in the CSRF
   origin check so browser POSTs behind the fleet reverse proxy are no longer
   rejected with 403 Forbidden.

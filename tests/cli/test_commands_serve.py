@@ -10,7 +10,6 @@ import pytest
 from robotsix_auto_mail.config import MailConfig
 from tests.cli.conftest import _accounts
 
-
 # ---------------------------------------------------------------------------
 # _cmd_serve
 # ---------------------------------------------------------------------------

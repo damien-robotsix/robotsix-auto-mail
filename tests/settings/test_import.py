@@ -12,7 +12,6 @@ import pytest
 from robotsix_auto_mail.settings import import_ as settings_import
 from robotsix_auto_mail.settings.store import SettingsStore
 
-
 # ===========================================================================
 # _fetch_export
 # ===========================================================================
@@ -139,21 +138,29 @@ def test_import_skips_when_store_not_empty(conn: sqlite3.Connection) -> None:
     """Returns ``False`` when the store is already populated."""
     store = SettingsStore(":memory:")
     with mock.patch.object(store, "is_empty", return_value=False):
-        with mock.patch.dict(os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}):
+        with mock.patch.dict(
+            os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}
+        ):
             result = settings_import.import_from_central_deploy(store, conn)
     assert result is False
 
 
-def test_import_raises_type_error_for_non_settings_store(conn: sqlite3.Connection) -> None:
+def test_import_raises_type_error_for_non_settings_store(
+    conn: sqlite3.Connection,
+) -> None:
     """Raises ``TypeError`` when *store* is not a ``SettingsStore``."""
-    with mock.patch.dict(os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}):
+    with mock.patch.dict(
+        os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}
+    ):
         with pytest.raises(TypeError, match="expects a SettingsStore"):
             settings_import.import_from_central_deploy("not-a-store", conn)
 
 
 def test_import_raises_type_error_for_none_store(conn: sqlite3.Connection) -> None:
     """Raises ``TypeError`` when *store* is ``None``."""
-    with mock.patch.dict(os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}):
+    with mock.patch.dict(
+        os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}
+    ):
         with pytest.raises(TypeError, match="expects a SettingsStore"):
             settings_import.import_from_central_deploy(None, conn)
 
@@ -172,7 +179,9 @@ def test_type_check_before_empty_check() -> None:
 
 def test_import_returns_false_on_fetch_error(conn: sqlite3.Connection) -> None:
     """Returns ``False`` (not an exception) when ``_fetch_export`` raises."""
-    with mock.patch.dict(os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}):
+    with mock.patch.dict(
+        os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}
+    ):
         with mock.patch.object(
             settings_import, "_fetch_export", side_effect=OSError("timeout")
         ):
@@ -184,7 +193,9 @@ def test_import_returns_false_on_fetch_error(conn: sqlite3.Connection) -> None:
 
 def test_import_returns_false_on_json_error(conn: sqlite3.Connection) -> None:
     """Returns ``False`` when the export returns invalid JSON."""
-    with mock.patch.dict(os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}):
+    with mock.patch.dict(
+        os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}
+    ):
         with mock.patch.object(
             settings_import,
             "_fetch_export",
@@ -210,11 +221,11 @@ def test_import_seeds_recognised_settings(conn: sqlite3.Connection) -> None:
         "password": "s3cret",
         "unknown_key": "should-be-filtered",
     }
-    with mock.patch.dict(os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}):
+    with mock.patch.dict(
+        os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}
+    ):
         with mock.patch.object(settings_import, "_fetch_export", return_value=export):
-            with mock.patch(
-                "robotsix_auto_mail.db.set_component_settings"
-            ) as mock_set:
+            with mock.patch("robotsix_auto_mail.db.set_component_settings") as mock_set:
                 result = settings_import.import_from_central_deploy(
                     SettingsStore(":memory:"), conn
                 )
@@ -235,11 +246,11 @@ def test_import_seeds_recognised_settings(conn: sqlite3.Connection) -> None:
 def test_import_filters_empty_result(conn: sqlite3.Connection) -> None:
     """Returns ``False`` when export contains no recognised MailConfig keys."""
     export = {"completely_unknown": "val", "also_unknown": 42}
-    with mock.patch.dict(os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}):
+    with mock.patch.dict(
+        os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}
+    ):
         with mock.patch.object(settings_import, "_fetch_export", return_value=export):
-            with mock.patch(
-                "robotsix_auto_mail.db.set_component_settings"
-            ) as mock_set:
+            with mock.patch("robotsix_auto_mail.db.set_component_settings") as mock_set:
                 result = settings_import.import_from_central_deploy(
                     SettingsStore(":memory:"), conn
                 )
@@ -251,12 +262,12 @@ def test_import_filters_empty_result(conn: sqlite3.Connection) -> None:
 def test_import_seeds_nested_config_response(conn: sqlite3.Connection) -> None:
     """_fetch_export's nested ``{"config": {...}}`` unwrapping is transparent."""
     inner = {"imap_host": "nested.example.com", "username": "nested-user"}
-    with mock.patch.dict(os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}):
+    with mock.patch.dict(
+        os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}
+    ):
         # Simulate what _fetch_export returns for a nested response.
         with mock.patch.object(settings_import, "_fetch_export", return_value=inner):
-            with mock.patch(
-                "robotsix_auto_mail.db.set_component_settings"
-            ) as mock_set:
+            with mock.patch("robotsix_auto_mail.db.set_component_settings") as mock_set:
                 result = settings_import.import_from_central_deploy(
                     SettingsStore(":memory:"), conn
                 )
@@ -277,11 +288,11 @@ def test_import_converts_values_to_str(conn: sqlite3.Connection) -> None:
         "imap_port": 993,  # int → str
         "archive_enabled": True,  # bool → str
     }
-    with mock.patch.dict(os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}):
+    with mock.patch.dict(
+        os.environ, {"CENTRAL_DEPLOY_EXPORT_URL": "https://example.com/export"}
+    ):
         with mock.patch.object(settings_import, "_fetch_export", return_value=export):
-            with mock.patch(
-                "robotsix_auto_mail.db.set_component_settings"
-            ) as mock_set:
+            with mock.patch("robotsix_auto_mail.db.set_component_settings") as mock_set:
                 result = settings_import.import_from_central_deploy(
                     SettingsStore(":memory:"), conn
                 )
