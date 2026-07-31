@@ -11,6 +11,7 @@
 - Updated `docs/deployment.md` to reflect the config-driven ingester contract (`ingest_mode` / `heartbeat_file`) instead of the old `--watch` / `--heartbeat-file` CLI flags.
 - Add unit tests for SettingsStore CRUD, secret masking, field validation,
   and request-handler tests for GET/POST /settings endpoints.
+- Strengthen AGENT.md changelog-fragment registration rule with explicit "applies to ALL PRs" note and mandatory ``git grep`` self-check to eliminate per-fragment cleanup-ticket churn.
 - docs: fix remaining stale "YAML config file" references in connecting.md, deployment.md; register changelog fragment in docs/modules.yaml
 - Update all `config/mail.local.yaml` references in docs (connecting, deployment, troubleshooting) and AGENT.md to `config/config.json`, and replace YAML config examples with JSON `accounts:` list shape.
 - Fix CSRF guard rejecting same-origin POSTs behind a reverse proxy by comparing the request's ``Origin`` header against its ``Host`` header (proxy-aware same-origin check).

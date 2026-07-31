@@ -242,7 +242,14 @@ MUST also register its path in `docs/modules.yaml` under the `core`
 module's `paths` list.  This prevents the `robotsix-modules
 check-registration` pre-commit gate from failing on the new file.
 Insert the entry alphabetically among the existing `changelog/` entries
-in the `core` module's `paths` block.
+in the `core` module's `paths` block.  **This applies to EVERY PR that
+creates a fragment — even when no Python source files are touched**
+(docs-only, config-only, test-only, changelog-only, CI-only PRs).
+
+**Self-check (mandatory):** before the implement stage declares
+completion, run ``git grep "<fragment-filename>" docs/modules.yaml``.
+The command must return a matching line.  If it does not, the
+registration step was missed — add the entry and re-check.
 
 ---
 
