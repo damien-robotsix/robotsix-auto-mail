@@ -29,6 +29,8 @@ def _post_with_origin(
     path: str = "/move",
     fields: dict[str, str] | None = None,
     host: str | None = None,
+    x_forwarded_host: str | None = None,
+    forwarded: str | None = None,
 ) -> tuple[int, str]:
     """POST url-encoded *fields* to *path* with an optional ``Origin`` header.
 
@@ -50,6 +52,10 @@ def _post_with_origin(
         headers["Origin"] = origin
     if host is not None:
         headers["Host"] = host
+    if x_forwarded_host is not None:
+        headers["X-Forwarded-Host"] = x_forwarded_host
+    if forwarded is not None:
+        headers["Forwarded"] = forwarded
     req = urllib.request.Request(url, data=data, headers=headers)  # noqa: S310
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
@@ -158,6 +164,66 @@ class TestCsrfIntegration:
         )
         assert status == 403
         assert "cross-origin" in body.lower()
+
+    # -- X-Forwarded-Host ----------------------------------------------------
+
+    def test_origin_matches_x_forwarded_host_allowed(self) -> None:
+        """A POST whose ``Origin`` netloc matches ``X-Forwarded-Host`` must pass CSRF."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://mail.deploy.robotsix.net",
+            host="backend.internal",
+            x_forwarded_host="mail.deploy.robotsix.net",
+        )
+        assert status == 400
+        assert "cross-origin" not in body.lower()
+
+    def test_origin_mismatches_x_forwarded_host_rejected(self) -> None:
+        """A POST whose ``Origin`` netloc mismatches both ``Host`` and
+        ``X-Forwarded-Host`` must receive 403."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://evil.example.com",
+            host="backend.internal",
+            x_forwarded_host="mail.deploy.robotsix.net",
+        )
+        assert status == 403
+        assert "cross-origin" in body.lower()
+
+    def test_x_forwarded_host_first_value_used(self) -> None:
+        """Comma-separated ``X-Forwarded-Host``: first value is used for matching."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://mail.deploy.robotsix.net",
+            host="backend.internal",
+            x_forwarded_host="mail.deploy.robotsix.net, other.proxy.example.com",
+        )
+        assert status == 400
+        assert "cross-origin" not in body.lower()
+
+    # -- Forwarded (RFC 7239) ------------------------------------------------
+
+    def test_origin_matches_forwarded_host_allowed(self) -> None:
+        """A POST whose ``Origin`` netloc matches the ``host=`` parameter of a
+        ``Forwarded`` header must pass CSRF."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://mail.deploy.robotsix.net",
+            host="backend.internal",
+            forwarded="for=192.0.2.43;host=mail.deploy.robotsix.net;proto=https",
+        )
+        assert status == 400
+        assert "cross-origin" not in body.lower()
+
+    def test_no_forwarding_headers_host_only(self) -> None:
+        """Without forwarding headers, the existing Host-only behavior is unchanged."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://mail.deploy.robotsix.net",
+            host="mail.deploy.robotsix.net",
+        )
+        assert status == 400
+        assert "cross-origin" not in body.lower()
 
 
 # ---------------------------------------------------------------------------
