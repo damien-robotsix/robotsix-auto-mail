@@ -430,3 +430,64 @@ def update_calendar_correlation_id(
 ) -> bool:
     """Update ``mail_records.calendar_correlation_id`` for *message_id*."""
     return _update_column(conn, message_id, "calendar_correlation_id", correlation_id)
+
+
+# ---------------------------------------------------------------------------
+# Component settings (key-value store in ``component_settings`` table)
+# ---------------------------------------------------------------------------
+
+
+def get_component_setting(conn: sqlite3.Connection, key: str) -> str | None:
+    """Return the value for *key* in ``component_settings``, or ``None``."""
+    cur = conn.execute(
+        "SELECT value FROM component_settings WHERE key = ?", (key,)
+    )
+    row = cur.fetchone()
+    return row[0] if row is not None else None
+
+
+def get_all_component_settings(conn: sqlite3.Connection) -> dict[str, str]:
+    """Return all ``component_settings`` rows as ``{{key: value}}``."""
+    cur = conn.execute("SELECT key, value FROM component_settings ORDER BY key")
+    return {row[0]: row[1] for row in cur.fetchall()}
+
+
+def set_component_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
+    """Upsert a single ``component_settings`` row."""
+    conn.execute(
+        """\
+INSERT INTO component_settings (key, value, updated_at)
+VALUES (?, ?, datetime('now'))
+ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+""",
+        (key, value),
+    )
+    conn.commit()
+
+
+def set_component_settings(
+    conn: sqlite3.Connection, settings: dict[str, str]
+) -> None:
+    """Upsert many ``component_settings`` rows in a single transaction."""
+    conn.execute("BEGIN")
+    try:
+        for key, value in settings.items():
+            conn.execute(
+                """\
+INSERT INTO component_settings (key, value, updated_at)
+VALUES (?, ?, datetime('now'))
+ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+""",
+                (key, value),
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def component_settings_count(conn: sqlite3.Connection) -> int:
+    """Return the number of rows in ``component_settings``."""
+    cur = conn.execute("SELECT COUNT(*) FROM component_settings")
+    row = cur.fetchone()
+    return row[0] if row is not None else 0

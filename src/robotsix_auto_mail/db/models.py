@@ -115,6 +115,12 @@ CREATE TABLE IF NOT EXISTS triage_decisions (
     updated_at  TEXT NOT NULL,
     FOREIGN KEY (message_id) REFERENCES mail_records(message_id)
 );
+
+CREATE TABLE IF NOT EXISTS component_settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 

@@ -225,6 +225,7 @@ modules:
       - changelog/20260728T204810Z-update-agent-md-documentation-conventions.misc.md
       - changelog/20260728T212324Z-remove-shipped-placeholder-mail-accounts-e8b2.bugfix.md
       - changelog/20260730T125533Z-missing-re-export-providerentry-from-con-a26d.misc.md
+      - changelog/20260730T142338Z-adopt-internal-per-component-settings-mi-59ae.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -505,6 +506,7 @@ modules:
       - src/robotsix_auto_mail/server/_draft_generator.py
       - src/robotsix_auto_mail/server/_draft_mixin.py
       - src/robotsix_auto_mail/server/_reconcile_mixin.py
+      - src/robotsix_auto_mail/server/_settings_mixin.py
       - src/robotsix_auto_mail/server/_triage_mixin.py
       - src/robotsix_auto_mail/server/_view_mixin.py
       - src/robotsix_auto_mail/server/views/__init__.py
@@ -595,6 +597,17 @@ modules:
       - tests/server/test_batch_mixin_delete.py
       - tests/server/test_batch_mixin_delete_aggregate.py
       - scripts/server/smoke_board.sh
+
+  - id: settings
+    description: >-
+      Per-component settings store backed by the local SQLite database,
+      with secret masking and field-level validation against MailConfig.
+      Includes the one-time import from central-deploy's config export
+      endpoint.
+    paths:
+      - src/robotsix_auto_mail/settings/__init__.py
+      - src/robotsix_auto_mail/settings/import_.py
+      - src/robotsix_auto_mail/settings/store.py
 
   - id: docs
     description: >-

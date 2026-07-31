@@ -203,6 +203,70 @@ Rules enforced when the file loads:
 
 ---
 
+## Runtime settings API
+
+The board server exposes a per-component settings API at ``/settings`` that
+reads and writes the **internal settings store** (a ``component_settings``
+table in the per-account SQLite database).  Once the store is populated —
+either via a one-time import from central-deploy on first boot or via the
+``PUT /settings`` endpoint — runtime configuration is fully self-owned by
+the component; no central-deploy call is required to change a runtime
+setting.
+
+### GET /settings
+
+Returns all component settings as a JSON object with secrets masked as
+``"***"``.  The response includes a ``source`` field:
+
+- ``"internal"`` — settings come from the internal store (the
+  ``component_settings`` table).
+- ``"config-file"`` — the store is empty (no import has run yet); values
+  are derived from the in-memory config file with secrets masked.
+
+```json
+{
+  "settings": {
+    "imap_host": "imap.gmail.com",
+    "password": "***",
+    "username": "me@gmail.com",
+    "db_path": ".data/personal/mail.db"
+  },
+  "source": "internal"
+}
+```
+
+### PUT /settings
+
+Accepts a JSON object with one or more field names and their new values.
+Each field is validated against the :class:`MailConfig` model before being
+persisted.  On partial failure, valid fields are still written — the
+``errors`` map lists only the rejected keys.
+
+**Request** (partial update):
+```json
+{"imap_host": "new-imap.example.com", "ingest_interval_minutes": "10"}
+```
+
+**Response** (all valid):
+```json
+{"ok": true, "errors": {}}
+```
+
+**Response** (partial failure):
+```json
+{"ok": false, "errors": {"bad_field": "unknown setting: 'bad_field'"}}
+```
+
+### One-time import (first boot)
+
+When the ``CENTRAL_DEPLOY_EXPORT_URL`` environment variable is set at
+container boot time, the board server calls central-deploy's config-export
+endpoint on first startup and seeds the internal settings store.  The
+import is **idempotent** — it only runs when the store is empty, so
+restarting the service never overwrites locally-edited settings.
+
+---
+
 ## Related pages
 
 - [Connecting](connecting.md) — guided setup, YAML config structure, and the
