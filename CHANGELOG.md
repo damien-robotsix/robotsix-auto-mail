@@ -5,6 +5,8 @@
 
 ## 0.0.0 (unreleased)
 
+- Add unit tests for SettingsStore CRUD, secret masking, field validation,
+  and request-handler tests for GET/POST /settings endpoints.
 - docs: fix remaining stale "YAML config file" references in connecting.md, deployment.md; register changelog fragment in docs/modules.yaml
 - Update all `config/mail.local.yaml` references in docs (connecting, deployment, troubleshooting) and AGENT.md to `config/config.json`, and replace YAML config examples with JSON `accounts:` list shape.
 - Fix CSRF guard rejecting same-origin POSTs behind a reverse proxy by comparing the request's ``Origin`` header against its ``Host`` header (proxy-aware same-origin check).
