@@ -228,6 +228,7 @@ modules:
       - changelog/20260730T125533Z-missing-re-export-providerentry-from-con-a26d.misc.md
       - changelog/20260730T135940Z-mail-ingester-container-restart-loops-st-e3ce.misc.md
       - changelog/20260730T142338Z-adopt-internal-per-component-settings-mi-59ae.misc.md
+      - changelog/20260731T010315Z-fix-stale-changelog-entry-claiming-allow-d909.misc.md
       - changelog/20260731T014311Z-enforce-changelog-fragment-registration-self-check.misc.md
       - changelog/20260731T021749Z-add-unit-tests-for-the-per-component-set-46c7.misc.md
       - changelog/20260731T122824Z-re-file-check-csrf-must-honor-x-forwarde-1983.bugfix.md
