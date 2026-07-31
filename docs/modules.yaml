@@ -617,6 +617,7 @@ modules:
       - src/robotsix_auto_mail/settings/import_.py
       - src/robotsix_auto_mail/settings/store.py
       - tests/settings/__init__.py
+      - tests/settings/test_import.py
       - tests/settings/test_store.py
 
   - id: docs
