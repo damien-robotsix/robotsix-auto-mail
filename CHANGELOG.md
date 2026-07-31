@@ -7,7 +7,7 @@
 
 - docs: fix remaining stale "YAML config file" references in connecting.md, deployment.md; register changelog fragment in docs/modules.yaml
 - Update all `config/mail.local.yaml` references in docs (connecting, deployment, troubleshooting) and AGENT.md to `config/config.json`, and replace YAML config examples with JSON `accounts:` list shape.
-- Fix CSRF guard rejecting same-origin POSTs behind a reverse proxy by comparing the request's ``Origin`` header against its ``Host`` header (proxy-aware same-origin check), and add ``allowed_origins`` config field.
+- Fix CSRF guard rejecting same-origin POSTs behind a reverse proxy by comparing the request's ``Origin`` header against its ``Host`` header (proxy-aware same-origin check).
 - Add `ProviderEntry` re-export to `config.detect.__init__` so it is importable from the public package alongside its peers `DetectedProvider`, `DetectionError`, and `MailProvider`.
 - Wire one-time settings import from central-deploy on first boot so each account's per-component settings store is seeded automatically when ``CENTRAL_DEPLOY_EXPORT_URL`` is set. The import is idempotent — restarting the service never overwrites locally-edited settings. Document the GET/PUT ``/settings`` API in ``docs/configuration.md``.
 - Split `tests/cli/test_commands_serve.py` into two modules: the
