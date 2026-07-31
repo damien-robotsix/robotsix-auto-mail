@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Updated `docs/deployment.md` to reflect the config-driven ingester contract (`ingest_mode` / `heartbeat_file`) instead of the old `--watch` / `--heartbeat-file` CLI flags.
 - Add unit tests for SettingsStore CRUD, secret masking, field validation,
   and request-handler tests for GET/POST /settings endpoints.
 - docs: fix remaining stale "YAML config file" references in connecting.md, deployment.md; register changelog fragment in docs/modules.yaml

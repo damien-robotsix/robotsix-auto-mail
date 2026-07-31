@@ -199,7 +199,7 @@ The Compose file defines two services that share the same image and data:
 |---|---|---|
 | `build.context` | `.` | Build from the repo root. |
 | `build.dockerfile` | `Dockerfile` | The multi-stage Dockerfile. |
-| `command` | `ingest --watch` | Default: run the periodic ingester. Overridden by `docker compose run … <cmd>` for one-shot commands. |
+| `command` | `ingest` | Default: run the periodic ingester. Watch mode and heartbeat file are driven by the first account's `ingest_mode` / `heartbeat_file` config values (see [Configuration](#configuration)). |
 | `stdin_open` | `true` | Keeps stdin open so one-shot interactive commands (e.g. `detect`'s password prompt) work. |
 | `tty` | `false` | No pseudo-TTY allocation; output is plain streams. |
 | `restart` | `unless-stopped` | The default command is a long-running daemon, so it should stay up. |
@@ -295,11 +295,13 @@ ingress are not configured here.
   and `board` (the read-only web board, published on `8080`) — both from the
   same image, sharing the named volumes `auto-mail-config`, `auto-mail-data`,
   and `auto-mail-logs`.
-- The `ingester` runs `ingest --watch --heartbeat-file
-  /data/ingest.heartbeat`. The `--heartbeat-file` CLI flag
-  makes each watch pass touch that file, and the service's healthcheck is a
-  small Python probe that fails if the heartbeat is missing or older than 30
-  minutes — so a wedged ingester is detected even though it serves no HTTP.
+- The `ingester` runs `ingest` (no flags). Its watch mode and heartbeat
+  file come from the first account's `ingest_mode` / `heartbeat_file` config
+  values rather than explicit CLI flags. When `ingest_mode` is `"watch"`,
+  each poll cycle touches the configured `heartbeat_file`, and the service's
+  healthcheck is a small Python probe that fails if the heartbeat is missing
+  or older than 30 minutes — so a wedged ingester is detected even though it
+  serves no HTTP.
 - TLS termination and HTTP basic auth are handled by the **central-deploy
   gateway** in front of the board; the board itself has no authentication.
 - Configuration is **not** managed by central-deploy. The app reads the JSON
