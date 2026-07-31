@@ -28,6 +28,7 @@ def _post_with_origin(
     origin: str | None,
     path: str = "/move",
     fields: dict[str, str] | None = None,
+    host: str | None = None,
 ) -> tuple[int, str]:
     """POST url-encoded *fields* to *path* with an optional ``Origin`` header.
 
@@ -47,6 +48,8 @@ def _post_with_origin(
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     if origin is not None:
         headers["Origin"] = origin
+    if host is not None:
+        headers["Host"] = host
     req = urllib.request.Request(url, data=data, headers=headers)  # noqa: S310
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
@@ -133,6 +136,28 @@ class TestCsrfIntegration:
         )
         assert status == 400
         assert "cross-origin" not in body.lower()
+
+    # -- Host-header same-origin (proxy-aware) -------------------------------
+
+    def test_origin_matches_host_allowed(self) -> None:
+        """A POST whose ``Origin`` netloc matches ``Host`` must pass CSRF."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://mail.deploy.robotsix.net",
+            host="mail.deploy.robotsix.net",
+        )
+        assert status == 400
+        assert "cross-origin" not in body.lower()
+
+    def test_origin_mismatched_host_rejected(self) -> None:
+        """A POST whose ``Origin`` netloc differs from ``Host`` must be rejected."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://evil.example.com",
+            host="mail.deploy.robotsix.net",
+        )
+        assert status == 403
+        assert "cross-origin" in body.lower()
 
 
 # ---------------------------------------------------------------------------

@@ -198,8 +198,14 @@ class BoardHandler(
         Modern browsers always include an ``Origin`` header on cross-origin
         requests (including simple ``application/x-www-form-urlencoded``
         form POSTs that do not trigger a CORS preflight).  When the header
-        is present and does not match the server's own loopback origin the
-        request is rejected with 403.
+        is present the request is accepted only if it matches one of:
+
+        * the server's own loopback origin (``127.0.0.1`` / ``localhost``
+          on the bound port) — covers local dev / CLI use;
+        * the request's own ``Host`` header — the standard proxy-aware
+          same-origin check: when the server runs behind a reverse proxy
+          the browser sets ``Origin`` and ``Host`` to the same public
+          authority (e.g. ``mail.deploy.robotsix.net``).
 
         Requests without an ``Origin`` header (same-origin page navigation,
         ``curl``, CLI tools) are allowed — malicious cross-site forms cannot
@@ -214,6 +220,12 @@ class BoardHandler(
             f"http://localhost:{server_port}",
         }
         if origin in allowed:
+            return True
+        # Proxy-aware same-origin check: when the server runs behind a
+        # reverse proxy the browser sends Origin and Host set to the
+        # same public authority (e.g. ``mail.deploy.robotsix.net``).
+        host = self.headers.get("Host")
+        if host is not None and urlsplit(origin).netloc == host:
             return True
         self._send_response("Forbidden: cross-origin request rejected", status=403)
         return False

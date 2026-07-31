@@ -7,6 +7,7 @@
 
 - docs: fix remaining stale "YAML config file" references in connecting.md, deployment.md; register changelog fragment in docs/modules.yaml
 - Update all `config/mail.local.yaml` references in docs (connecting, deployment, troubleshooting) and AGENT.md to `config/config.json`, and replace YAML config examples with JSON `accounts:` list shape.
+- Fix CSRF guard rejecting same-origin POSTs behind a reverse proxy by comparing the request's ``Origin`` header against its ``Host`` header (proxy-aware same-origin check), and add ``allowed_origins`` config field.
 - Fixed the **Detect Settings** button on the Add Mail Account form so it works without pre-filled IMAP/SMTP host fields. The button now uses ``formnovalidate`` to bypass browser-side form validation, allowing the server-side detection to auto-populate settings from the email domain alone.
 - Split `tests/server/test_server_archive_delete.py` (790 lines) into four domain-focused modules: `test_server_archive_delete_basic.py`, `test_server_archive_delete_stale_uid.py`, `test_server_archive_delete_cross_folder.py`, and `test_server_archive_proposal_endpoint.py`.
 - Updated 11 stale references from the deleted `docs/config/mail.local.example.yaml` to `config/config.example.json` across README and docs (README.md, docs/index.md, docs/configuration.md, docs/connecting.md, docs/deployment.md). Removed empty `docs/config/` directory and its `.gitkeep`.

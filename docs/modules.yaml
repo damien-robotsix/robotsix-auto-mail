@@ -69,6 +69,7 @@ modules:
       - changelog/20260726T074052Z-split-tests-cli-test-cli-detect-accounts-efb2.misc.md
       - changelog/20260728T204809Z-update-stale-documentation-references-fr-84a5.misc.md
       - changelog/20260728T212327Z-wire-existing-provider-auto-detection-in-a0dd.feature.md
+      - changelog/20260729T123424Z-add-account-page-returns-forbidden-cross-2ab9.misc.md
       - changelog/20260730T091340Z-update-stale-mail-local-yaml-references-e6cc.misc.md
       - changelog/20260724T180805Z-ci-failure-release-image-on-main-5747.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
