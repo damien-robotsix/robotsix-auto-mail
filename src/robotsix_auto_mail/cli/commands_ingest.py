@@ -40,7 +40,9 @@ def _idle_watch_loop(heartbeat_file: str | None) -> int:
 
     try:
         while True:
-            sys.stdout.write("idle: no accounts configured yet, waiting\n")
+            sys.stdout.write(
+                "idle: no watchable accounts configured; waiting\n"
+            )
             sys.stdout.flush()
 
             if heartbeat_file is not None:

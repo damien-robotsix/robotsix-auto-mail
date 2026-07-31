@@ -31,6 +31,7 @@ from robotsix_auto_mail.cli.commands_detect import (
 )
 from robotsix_auto_mail.cli.commands_ingest import (
     _cmd_ingest,
+    _idle_watch_loop,
 )
 from robotsix_auto_mail.cli.commands_ingest import (
     _ingest_cycle as _ingest_cycle,
@@ -261,21 +262,21 @@ def main(argv: list[str] | None = None) -> int:
                     heartbeat_file=hb,
                 )
             # Config loaded, accounts exist, but ingest_mode is not "watch".
+            # Enter an idle heartbeat loop so the container stays healthy
+            # until a watch account is configured (via restart or reload).
             sys.stderr.write(
-                "Error: no subcommand given and ingest_mode is not set to "
-                "'watch'.\n"
-                "  The container cannot auto-start the ingest loop.\n"
-                "  Either set ingest_mode to 'watch' in the first account's "
-                "config, or pass an explicit subcommand.\n\n"
+                "Warning: no accounts have ingest_mode set to 'watch'; "
+                "idling until a watch account is configured.\n"
             )
+            hb = first_cfg.heartbeat_file or None
+            return _idle_watch_loop(hb)
         elif _accts is not None:
             # Config loaded but has zero accounts.
             sys.stderr.write(
-                "Error: no subcommand given and no accounts are configured.\n"
-                "  The container cannot auto-start the ingest loop.\n"
-                "  Add an account with ingest_mode set to 'watch', or pass "
-                "an explicit subcommand.\n\n"
+                "Warning: no accounts configured; idling until an account "
+                "with ingest_mode='watch' is added.\n"
             )
+            return _idle_watch_loop(None)
         else:
             # Config file missing or unreadable.
             sys.stderr.write(
