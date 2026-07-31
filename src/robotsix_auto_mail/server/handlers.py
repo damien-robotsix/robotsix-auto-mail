@@ -251,7 +251,7 @@ class BoardHandler(
             for param in first_element.split(";"):
                 param = param.strip()
                 if param.startswith("host="):
-                    fwd_host = param[len("host="):].strip()
+                    fwd_host = param[len("host=") :].strip()
                     if fwd_host.startswith('"') and fwd_host.endswith('"'):
                         fwd_host = fwd_host[1:-1]
                     if origin_netloc == fwd_host:

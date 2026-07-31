@@ -15,7 +15,6 @@ from robotsix_auto_mail.imap import (
 from tests.conftest import _make_mock_imap_ssl
 from tests.imap.conftest import _uid_side_effect
 
-
 # ---------------------------------------------------------------------------
 # delete_messages / move_messages (batched primitives)
 # ---------------------------------------------------------------------------

@@ -125,7 +125,7 @@ class _AccountMixinFakeHandler(_AccountMixin):
 
     def __init__(
         self,
-        db_path: str = "/tmp/test.db",
+        db_path: str = "/tmp/test.db",  # noqa: S108
         mail_config: MailConfig | None = None,
         *,
         accounts: Any = None,

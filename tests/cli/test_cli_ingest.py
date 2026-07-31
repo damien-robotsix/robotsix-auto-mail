@@ -245,7 +245,8 @@ def test_ingest_account_and_all_accounts_mutually_exclusive() -> None:
 
 
 def test_ingest_watch_idle_heartbeat_zero_accounts(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Watch mode with zero accounts enters idle loop and writes heartbeat."""
     from robotsix_auto_mail.cli import _cmd_ingest
@@ -274,7 +275,9 @@ def test_ingest_watch_idle_heartbeat_zero_accounts(
 
 
 def test_ingest_watch_idle_heartbeat_passwordless(
-    cfg: MailConfig, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    cfg: MailConfig,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Watch mode with password-less accounts enters idle loop and writes heartbeat."""
     from robotsix_auto_mail.cli import _cmd_ingest
@@ -312,7 +315,9 @@ def test_ingest_watch_idle_heartbeat_passwordless(
 
 
 def test_ingest_watch_transition_idle_to_active(
-    cfg: MailConfig, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    cfg: MailConfig,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Idle loop transitions to active ingestion when accounts appear between cycles."""
     from robotsix_auto_mail.cli import _cmd_ingest
@@ -382,7 +387,8 @@ def test_ingest_non_watch_zero_accounts_returns_0(
 
 
 def test_ingest_non_watch_passwordless_returns_0(
-    cfg: MailConfig, capsys: pytest.CaptureFixture[str],
+    cfg: MailConfig,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """One-shot ingest with password-less accounts prints a message and returns 0."""
     from robotsix_auto_mail.cli import _cmd_ingest

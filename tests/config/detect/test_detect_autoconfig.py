@@ -7,14 +7,12 @@ from unittest import mock
 import httpx
 
 from robotsix_auto_mail.config.detect import (
-    MailProvider,
     autoconfig_lookup,
     mx_lookup,
     provider_from_mx,
 )
 
-from .conftest import _FakeResp, _ISPDB_XML, _MX_JSON
-
+from .conftest import _ISPDB_XML, _MX_JSON, _FakeResp
 
 # ---------------------------------------------------------------------------
 # autoconfig_lookup

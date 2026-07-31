@@ -407,13 +407,9 @@ def _build_add_account_form_html(
 
     banner_html = ""
     if error:
-        banner_html = (
-            f'<div class="error-banner">{html.escape(error)}</div>\n'
-        )
+        banner_html = f'<div class="error-banner">{html.escape(error)}</div>\n'
     elif success:
-        banner_html = (
-            f'<div class="success-banner">{html.escape(success)}</div>\n'
-        )
+        banner_html = f'<div class="success-banner">{html.escape(success)}</div>\n'
 
     imap_tls = p.get("imap_tls_mode", DEFAULT_IMAP_TLS_MODE)
     smtp_tls = p.get("smtp_tls_mode", DEFAULT_SMTP_TLS_MODE)
@@ -514,7 +510,8 @@ def _build_add_account_form_html(
         # Actions
         '<div class="form-actions">\n'
         '<button type="submit" name="action" value="add">Add Account</button>\n'
-        '<button type="submit" name="action" value="detect" formnovalidate>Detect Settings</button>\n'
+        '<button type="submit" name="action" value="detect"'
+        " formnovalidate>Detect Settings</button>\n"
         '<a class="cancel-link" href="/board">Cancel</a>\n'
         "</div>\n"
         "</form>\n"

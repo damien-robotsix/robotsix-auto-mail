@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from urllib.request import urlopen
 
-import pytest
-
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 from tests.server.conftest_helpers import (
     _populate_db,

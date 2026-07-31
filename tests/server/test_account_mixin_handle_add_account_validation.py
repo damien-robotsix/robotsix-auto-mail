@@ -56,11 +56,14 @@ class TestHandleAddAccountValidation:
         """Valid ID passes charset check; test fails later (duplicate / save)."""
         handler = _AccountMixinFakeHandler()
         self._setup_post(handler, _make_post_body(account_id="valid-id.1_test"))
-        with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
-            side_effect=FileNotFoundError,
-        ), mock.patch(
-            "robotsix_auto_mail.server._account_mixin.save_accounts",
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                side_effect=FileNotFoundError,
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.save_accounts",
+            ),
         ):
             handler._handle_add_account()
         # Should not fail on charset; will hit save path
@@ -98,17 +101,19 @@ class TestHandleAddAccountValidation:
             handler,
             _make_post_body(imap_tls_mode="starttls", smtp_tls_mode="none"),
         )
-        with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
-            side_effect=FileNotFoundError,
-        ), mock.patch(
-            "robotsix_auto_mail.server._account_mixin.save_accounts",
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                side_effect=FileNotFoundError,
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.save_accounts",
+            ),
         ):
             handler._handle_add_account()
         # Should not produce TLS error
         assert not any(
-            "TLS mode" in str(call)
-            for call in handler._send_response.call_args_list
+            "TLS mode" in str(call) for call in handler._send_response.call_args_list
         )
 
     # -- Port parsing ------------------------------------------------------
@@ -134,13 +139,17 @@ class TestHandleAddAccountValidation:
     def test_valid_numeric_ports_accepted(self) -> None:
         handler = _AccountMixinFakeHandler()
         self._setup_post(
-            handler, _make_post_body(imap_port="993", smtp_port="587"),
+            handler,
+            _make_post_body(imap_port="993", smtp_port="587"),
         )
-        with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
-            side_effect=FileNotFoundError,
-        ), mock.patch(
-            "robotsix_auto_mail.server._account_mixin.save_accounts",
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                side_effect=FileNotFoundError,
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.save_accounts",
+            ),
         ):
             handler._handle_add_account()
         assert not any(
@@ -152,13 +161,17 @@ class TestHandleAddAccountValidation:
         """Empty port strings should use defaults (993/587)."""
         handler = _AccountMixinFakeHandler()
         self._setup_post(
-            handler, _make_post_body(imap_port="", smtp_port=""),
+            handler,
+            _make_post_body(imap_port="", smtp_port=""),
         )
-        with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
-            side_effect=FileNotFoundError,
-        ), mock.patch(
-            "robotsix_auto_mail.server._account_mixin.save_accounts",
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                side_effect=FileNotFoundError,
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.save_accounts",
+            ),
         ):
             handler._handle_add_account()
         # Should not produce port error

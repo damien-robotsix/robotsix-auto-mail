@@ -28,7 +28,7 @@ def _fetch_export(url: str) -> dict[str, Any]:
     """
     import urllib.request
 
-    req = urllib.request.Request(
+    req = urllib.request.Request(  # noqa: S310 — HTTPS expected
         url,
         method="GET",
         headers={"Accept": "application/json"},
@@ -44,8 +44,8 @@ def _fetch_export(url: str) -> dict[str, Any]:
     # The export endpoint may return a nested structure; accept either a
     # flat {field: value} dict or {"config": {field: value}}.
     if "config" in data and isinstance(data["config"], dict):
-        return data["config"]  # type: ignore[no-any-return]
-    return data  # type: ignore[no-any-return]
+        return data["config"]
+    return data
 
 
 def import_from_central_deploy(

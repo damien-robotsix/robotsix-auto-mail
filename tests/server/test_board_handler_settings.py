@@ -1,5 +1,7 @@
 """HTTP request-handler tests for GET /settings and PUT /settings."""
 
+# ruff: noqa: S310 — localhost test URLs
+
 from __future__ import annotations
 
 import json
@@ -40,7 +42,9 @@ def _json_post(port: int, path: str, payload: dict) -> tuple[int, dict]:
     data = json.dumps(payload).encode("utf-8")
     url = f"http://127.0.0.1:{port}{path}"
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-    req = urllib.request.Request(url, data=data, method="POST", headers={"Content-Type": "application/json"})  # noqa: S310
+    req = urllib.request.Request(
+        url, data=data, method="POST", headers={"Content-Type": "application/json"}
+    )
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
     return resp.status, json.loads(body)
@@ -107,7 +111,9 @@ def test_put_settings_valid_update(single_db: str) -> None:
     """PUT /settings with valid fields returns 200 and persists them."""
     server, port = _start_test_server(single_db)
     try:
-        status, payload = _json_post(port, "/settings", {"imap_host": "new.example.com"})
+        status, payload = _json_post(
+            port, "/settings", {"imap_host": "new.example.com"}
+        )
         assert status == 200
         assert payload["ok"] is True
         assert payload["errors"] == {}
@@ -212,7 +218,9 @@ def test_put_settings_empty_body(single_db: str) -> None:
     try:
         url = f"http://127.0.0.1:{port}/settings"
         opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-        req = urllib.request.Request(url, data=b"", method="POST", headers={"Content-Type": "application/json"})  # noqa: S310
+        req = urllib.request.Request(
+            url, data=b"", method="POST", headers={"Content-Type": "application/json"}
+        )
         resp = opener.open(req)
         body = resp.read().decode("utf-8")
         payload = json.loads(body)
@@ -229,7 +237,12 @@ def test_put_settings_invalid_json(single_db: str) -> None:
     try:
         url = f"http://127.0.0.1:{port}/settings"
         opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-        req = urllib.request.Request(url, data=b"not json", method="POST", headers={"Content-Type": "application/json"})  # noqa: S310
+        req = urllib.request.Request(
+            url,
+            data=b"not json",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        )
         resp = opener.open(req)
         body = resp.read().decode("utf-8")
         payload = json.loads(body)
@@ -246,7 +259,12 @@ def test_put_settings_non_object_json(single_db: str) -> None:
     try:
         url = f"http://127.0.0.1:{port}/settings"
         opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-        req = urllib.request.Request(url, data=b"[1,2,3]", method="POST", headers={"Content-Type": "application/json"})  # noqa: S310
+        req = urllib.request.Request(
+            url,
+            data=b"[1,2,3]",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        )
         resp = opener.open(req)
         body = resp.read().decode("utf-8")
         payload = json.loads(body)

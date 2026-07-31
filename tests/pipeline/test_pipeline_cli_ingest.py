@@ -288,9 +288,7 @@ def test_cli_ingest_skips_account_without_password(
     )
     accounts = _accounts_ingest(cfg_no_pw)
 
-    with mock.patch(
-        "robotsix_auto_mail.cli._ingest_cycle"
-    ) as mock_ingest_cycle:
+    with mock.patch("robotsix_auto_mail.cli._ingest_cycle") as mock_ingest_cycle:
         rc = _cmd_ingest(accounts)
 
     assert rc == 0

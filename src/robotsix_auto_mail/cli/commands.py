@@ -23,7 +23,7 @@ def _load_accounts_or_exit() -> MailAccountsConfig:
         return _cli.load_accounts()
     except Exception as exc:
         sys.stderr.write(f"Error loading configuration: {exc}\n")
-        sys.exit(1)
+        raise SystemExit(1) from None
 
 
 def _load_accounts_allow_empty() -> MailAccountsConfig | None:
@@ -37,7 +37,7 @@ def _load_accounts_allow_empty() -> MailAccountsConfig | None:
         accounts = _cli.load_accounts()
     except Exception as exc:
         sys.stderr.write(f"Error loading configuration: {exc}\n")
-        sys.exit(1)
+        raise SystemExit(1) from None
     if not accounts.accounts:
         return None
     return accounts

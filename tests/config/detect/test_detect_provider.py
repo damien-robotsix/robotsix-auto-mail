@@ -14,7 +14,6 @@ from robotsix_auto_mail.config.detect import (
 )
 from robotsix_auto_mail.config.schema import ConfigurationError
 
-
 # ---------------------------------------------------------------------------
 # detect_provider — integration-style tests
 # ---------------------------------------------------------------------------

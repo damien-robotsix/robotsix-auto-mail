@@ -13,7 +13,6 @@ from robotsix_auto_mail.imap import (
 )
 from tests.conftest import _make_mock_imap_ssl
 
-
 # ---------------------------------------------------------------------------
 # fetch_messages
 # ---------------------------------------------------------------------------

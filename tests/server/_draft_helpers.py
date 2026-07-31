@@ -12,6 +12,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from unittest import mock
 
+from robotsix_auto_mail.server._draft_generator import DraftResult
+
 
 @contextmanager
 def _patch_smtp_and_imap() -> Iterator[tuple[mock.MagicMock, mock.MagicMock]]:
@@ -25,7 +27,7 @@ def _patch_smtp_and_imap() -> Iterator[tuple[mock.MagicMock, mock.MagicMock]]:
 
 
 def _patch_llm(
-    result_obj: "DraftResult",
+    result_obj: DraftResult,
 ) -> tuple[mock.MagicMock, mock._patch[mock.MagicMock]]:
     """Patch get_provider to return *result_obj* from the LLM.
 

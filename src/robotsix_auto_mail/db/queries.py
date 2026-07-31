@@ -439,9 +439,7 @@ def update_calendar_correlation_id(
 
 def get_component_setting(conn: sqlite3.Connection, key: str) -> str | None:
     """Return the value for *key* in ``component_settings``, or ``None``."""
-    cur = conn.execute(
-        "SELECT value FROM component_settings WHERE key = ?", (key,)
-    )
+    cur = conn.execute("SELECT value FROM component_settings WHERE key = ?", (key,))
     row = cur.fetchone()
     return row[0] if row is not None else None
 
@@ -465,9 +463,7 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.upd
     conn.commit()
 
 
-def set_component_settings(
-    conn: sqlite3.Connection, settings: dict[str, str]
-) -> None:
+def set_component_settings(conn: sqlite3.Connection, settings: dict[str, str]) -> None:
     """Upsert many ``component_settings`` rows in a single transaction."""
     conn.execute("BEGIN")
     try:

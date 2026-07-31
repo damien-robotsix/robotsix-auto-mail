@@ -5,8 +5,6 @@ from __future__ import annotations
 
 from unittest import mock
 
-import pytest
-
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 from robotsix_auto_mail.imap import ImapError

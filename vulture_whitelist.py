@@ -122,3 +122,14 @@ all((  # lgtm[py/ineffectual-statement]
 from robotsix_auto_mail.config.loader import save_accounts
 
 all((save_accounts,))  # lgtm[py/ineffectual-statement]
+
+# ===========================================================================
+# SettingsStore — methods called by tests and internally; vulture doesn't
+# trace test usage or attribute access inside the same module.
+# ===========================================================================
+
+from robotsix_auto_mail.settings.store import SettingsStore
+
+SettingsStore._db_path
+SettingsStore.seed_from_mail_config
+SettingsStore.to_mail_config

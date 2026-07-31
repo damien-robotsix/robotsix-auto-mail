@@ -125,9 +125,7 @@ class MailConfig(BaseModel):
     # Heartbeat file path — touched at the end of each poll cycle in
     # ``--watch`` mode so a Docker HEALTHCHECK can verify the loop is
     # alive.  An empty string means no file is written.
-    heartbeat_file: str = Field(
-        default="", json_schema_extra={"advanced": True}
-    )
+    heartbeat_file: str = Field(default="", json_schema_extra={"advanced": True})
 
     # Self-managed archive folder structure.
     archive_root: str = Field(
@@ -311,13 +309,12 @@ class MailAccountsConfig(BaseModel):
         paths = [a.config.db_path for a in self.accounts if a.config.db_path]
         if len(paths) != len(set(paths)):
             raise ConfigurationError("duplicate db_path values")
-        if ids:
+        if ids and self.default_account_id not in ids:
             # Only validate default_account_id when accounts is non-empty;
             # a fresh deploy starts with zero accounts and an empty default.
-            if self.default_account_id not in ids:
-                raise ConfigurationError(
-                    f"default_account_id {self.default_account_id!r} not in accounts"
-                )
+            raise ConfigurationError(
+                f"default_account_id {self.default_account_id!r} not in accounts"
+            )
         return self
 
     @property

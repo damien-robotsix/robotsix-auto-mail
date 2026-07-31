@@ -54,7 +54,7 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
     from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
     from robotsix_auto_mail.server.adapters import _run_reconcile_background
 
-    _DEFAULT_FALLBACK_MINUTES = 15
+    _default_fallback_minutes = 15
 
     while True:
         if accounts.accounts:
@@ -63,7 +63,7 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
                 min(acct.config.ingest_interval_minutes for acct in accounts.accounts),
             )
         else:
-            interval_minutes = _DEFAULT_FALLBACK_MINUTES
+            interval_minutes = _default_fallback_minutes
         for acct in accounts.accounts:
             if not acct.config.password.get_secret_value():
                 continue
@@ -112,9 +112,7 @@ def _import_settings_from_central_deploy(accounts: MailAccountsConfig) -> None:
             finally:
                 conn.close()
         except Exception:
-            logger.exception(
-                "Failed to import settings for account %s", acct.id
-            )
+            logger.exception("Failed to import settings for account %s", acct.id)
 
 
 def _cmd_serve(

@@ -15,7 +15,6 @@ from robotsix_auto_mail.settings.store import (
     _validate_field,
 )
 
-
 # ===========================================================================
 # _is_secret_field
 # ===========================================================================
@@ -176,16 +175,24 @@ def store() -> SettingsStore:
 class TestSettingsStoreEmpty:
     """Tests for an empty store."""
 
-    def test_is_empty_true(self, store: SettingsStore, conn: sqlite3.Connection) -> None:
+    def test_is_empty_true(
+        self, store: SettingsStore, conn: sqlite3.Connection
+    ) -> None:
         assert store.is_empty(conn) is True
 
-    def test_get_all_empty(self, store: SettingsStore, conn: sqlite3.Connection) -> None:
+    def test_get_all_empty(
+        self, store: SettingsStore, conn: sqlite3.Connection
+    ) -> None:
         assert store.get_all(conn) == {}
 
-    def test_get_missing_key(self, store: SettingsStore, conn: sqlite3.Connection) -> None:
+    def test_get_missing_key(
+        self, store: SettingsStore, conn: sqlite3.Connection
+    ) -> None:
         assert store.get(conn, "any_key") is None
 
-    def test_to_mail_config_returns_none(self, store: SettingsStore, conn: sqlite3.Connection) -> None:
+    def test_to_mail_config_returns_none(
+        self, store: SettingsStore, conn: sqlite3.Connection
+    ) -> None:
         assert store.to_mail_config(conn) is None
 
 
@@ -193,7 +200,9 @@ class TestSettingsStoreSeeded:
     """Tests for a store with pre-seeded settings."""
 
     @pytest.fixture
-    def seeded_conn(self, store: SettingsStore, conn: sqlite3.Connection) -> sqlite3.Connection:
+    def seeded_conn(
+        self, store: SettingsStore, conn: sqlite3.Connection
+    ) -> sqlite3.Connection:
         """Seed the store with a MailConfig, then return the connection."""
         cfg = MailConfig(
             imap_host="imap.example.com",
@@ -205,10 +214,14 @@ class TestSettingsStoreSeeded:
         store.seed_from_mail_config(conn, cfg)
         return conn
 
-    def test_is_empty_false(self, store: SettingsStore, seeded_conn: sqlite3.Connection) -> None:
+    def test_is_empty_false(
+        self, store: SettingsStore, seeded_conn: sqlite3.Connection
+    ) -> None:
         assert store.is_empty(seeded_conn) is False
 
-    def test_get_all_masks_secrets(self, store: SettingsStore, seeded_conn: sqlite3.Connection) -> None:
+    def test_get_all_masks_secrets(
+        self, store: SettingsStore, seeded_conn: sqlite3.Connection
+    ) -> None:
         settings = store.get_all(seeded_conn)
         # Non-secret fields pass through.
         assert settings["imap_host"] == "imap.example.com"
@@ -217,39 +230,57 @@ class TestSettingsStoreSeeded:
         assert settings["password"] == "***"
         assert settings["llm_api_key"] == "***"
 
-    def test_get_masks_secret(self, store: SettingsStore, seeded_conn: sqlite3.Connection) -> None:
+    def test_get_masks_secret(
+        self, store: SettingsStore, seeded_conn: sqlite3.Connection
+    ) -> None:
         assert store.get(seeded_conn, "imap_host") == "imap.example.com"
         assert store.get(seeded_conn, "password") == "***"
 
-    def test_get_nonexistent_key(self, store: SettingsStore, seeded_conn: sqlite3.Connection) -> None:
+    def test_get_nonexistent_key(
+        self, store: SettingsStore, seeded_conn: sqlite3.Connection
+    ) -> None:
         assert store.get(seeded_conn, "nonexistent") is None
 
-    def test_update_valid_fields(self, store: SettingsStore, seeded_conn: sqlite3.Connection) -> None:
-        errors = store.update(seeded_conn, {"imap_host": "new.example.com", "imap_port": "143"})
+    def test_update_valid_fields(
+        self, store: SettingsStore, seeded_conn: sqlite3.Connection
+    ) -> None:
+        errors = store.update(
+            seeded_conn, {"imap_host": "new.example.com", "imap_port": "143"}
+        )
         assert errors == {}
         assert store.get(seeded_conn, "imap_host") == "new.example.com"
         assert store.get(seeded_conn, "imap_port") == "143"
 
-    def test_update_unknown_field_rejected(self, store: SettingsStore, conn: sqlite3.Connection) -> None:
+    def test_update_unknown_field_rejected(
+        self, store: SettingsStore, conn: sqlite3.Connection
+    ) -> None:
         errors = store.update(conn, {"bad_field": "value"})
         assert "bad_field" in errors
         assert "unknown setting" in errors["bad_field"]
 
-    def test_update_partial_success(self, store: SettingsStore, conn: sqlite3.Connection) -> None:
+    def test_update_partial_success(
+        self, store: SettingsStore, conn: sqlite3.Connection
+    ) -> None:
         """Valid fields are persisted even when other fields fail validation."""
-        errors = store.update(conn, {"imap_host": "host.example.com", "bad_field": "value"})
+        errors = store.update(
+            conn, {"imap_host": "host.example.com", "bad_field": "value"}
+        )
         assert "bad_field" in errors
         assert "imap_host" not in errors
         # The valid field was persisted.
         assert store.get(conn, "imap_host") == "host.example.com"
 
-    def test_update_secret_field_stored_raw(self, store: SettingsStore, conn: sqlite3.Connection) -> None:
+    def test_update_secret_field_stored_raw(
+        self, store: SettingsStore, conn: sqlite3.Connection
+    ) -> None:
         """Secret fields are stored as plain text but masked on read."""
         store.update(conn, {"password": "new-secret"})
         # Read returns masked value.
         assert store.get(conn, "password") == "***"
 
-    def test_to_mail_config_round_trip(self, store: SettingsStore, conn: sqlite3.Connection) -> None:
+    def test_to_mail_config_round_trip(
+        self, store: SettingsStore, conn: sqlite3.Connection
+    ) -> None:
         """seed_from_mail_config → to_mail_config round-trips faithfully."""
         original = MailConfig(
             imap_host="imap.example.com",

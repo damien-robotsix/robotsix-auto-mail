@@ -15,6 +15,21 @@ This module re-exports the public and previously-importable symbols so
 
 from __future__ import annotations
 
+from .archive import (
+    ARCHIVE_ROOT as ARCHIVE_ROOT,
+)
+from .archive import (
+    ArchiveError as ArchiveError,
+)
+from .archive import (
+    ArchiveStructure as ArchiveStructure,
+)
+from .archive import (
+    determine_archive_structure as determine_archive_structure,
+)
+from .archive import (
+    setup_archive as setup_archive,
+)
 from .models import (
     _SCHEMA as _SCHEMA,
 )
@@ -102,28 +117,17 @@ from .queries import (
 from .queries import (
     write_account_health as write_account_health,
 )
-from .archive import (
-    ARCHIVE_ROOT as ARCHIVE_ROOT,
-)
-from .archive import (
-    ArchiveError as ArchiveError,
-)
-from .archive import (
-    ArchiveStructure as ArchiveStructure,
-)
-from .archive import (
-    determine_archive_structure as determine_archive_structure,
-)
-from .archive import (
-    setup_archive as setup_archive,
-)
 
 __all__ = [
+    "ARCHIVE_ROOT",
     "VALID_TRIAGE_ACTIONS",
+    "ArchiveError",
+    "ArchiveStructure",
     "MailRecord",
     "component_settings_count",
     "delete_record_by_message_id",
     "delete_watermark",
+    "determine_archive_structure",
     "get_account_health",
     "get_all_component_settings",
     "get_component_setting",
@@ -139,6 +143,7 @@ __all__ = [
     "set_component_setting",
     "set_component_settings",
     "set_watermark",
+    "setup_archive",
     "update_calendar_correlation_id",
     "update_calendar_event_ref",
     "update_draft_text",
@@ -146,9 +151,4 @@ __all__ = [
     "update_record_source",
     "update_sent_reply_text",
     "write_account_health",
-    "ARCHIVE_ROOT",
-    "ArchiveError",
-    "ArchiveStructure",
-    "determine_archive_structure",
-    "setup_archive",
 ]

@@ -31,7 +31,7 @@ def _idle_watch_loop(heartbeat_file: str | None) -> int:
 
     Returns 0 on clean shutdown (Ctrl-C / SIGTERM).
     """
-    from robotsix_auto_mail.config import ConfigurationError as _CE
+    from robotsix_auto_mail.config import ConfigurationError
 
     def _handle_sigterm(_sig: int, _frame: object) -> None:
         raise SystemExit(0)
@@ -40,9 +40,7 @@ def _idle_watch_loop(heartbeat_file: str | None) -> int:
 
     try:
         while True:
-            sys.stdout.write(
-                "idle: no accounts configured yet, waiting\n"
-            )
+            sys.stdout.write("idle: no accounts configured yet, waiting\n")
             sys.stdout.flush()
 
             if heartbeat_file is not None:
@@ -54,14 +52,12 @@ def _idle_watch_loop(heartbeat_file: str | None) -> int:
             # Re-check the config so freshly added accounts are picked up.
             try:
                 fresh = _cli.load_accounts()
-            except _CE:
+            except ConfigurationError:
                 fresh = None
 
             if fresh is not None:
                 active = [
-                    a
-                    for a in fresh.accounts
-                    if a.config.password.get_secret_value()
+                    a for a in fresh.accounts if a.config.password.get_secret_value()
                 ]
                 if active:
                     # Transition to normal watch mode.
@@ -72,7 +68,7 @@ def _idle_watch_loop(heartbeat_file: str | None) -> int:
                     )
 
             _cli.time.sleep(60)
-    except (KeyboardInterrupt, SystemExit):
+    except KeyboardInterrupt, SystemExit:
         sys.stdout.write("\nWatch stopped.\n")
         return 0
 
@@ -256,9 +252,7 @@ def _cmd_ingest(
     selected = active
     if not selected:
         if not watch:
-            sys.stderr.write(
-                "No accounts have passwords configured; nothing to do.\n"
-            )
+            sys.stderr.write("No accounts have passwords configured; nothing to do.\n")
             return 0
         return _idle_watch_loop(heartbeat_file)
 

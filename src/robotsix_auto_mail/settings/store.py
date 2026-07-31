@@ -18,7 +18,6 @@ from robotsix_auto_mail.db import (
     set_component_settings,
 )
 
-
 #: Field-name suffixes and exact matches that mark a value as secret.
 #: Values for these fields are always masked as ``"***"`` on read.
 _SECRET_FIELD_SUFFIXES: tuple[str, ...] = (
@@ -149,9 +148,7 @@ class SettingsStore:
 
     # -- write --------------------------------------------------------------
 
-    def update(
-        self, conn: object, updates: dict[str, object]
-    ) -> dict[str, str]:
+    def update(self, conn: object, updates: dict[str, object]) -> dict[str, str]:
         """Validate and apply *updates*.
 
         Returns a ``{field_name: error_message}`` dict for every field

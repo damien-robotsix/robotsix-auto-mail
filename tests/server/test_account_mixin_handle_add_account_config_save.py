@@ -67,12 +67,15 @@ class TestHandleAddAccountConfigSave:
     def test_config_save_failure(self) -> None:
         handler = _AccountMixinFakeHandler()
         self._setup_post(handler, _make_post_body())
-        with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
-            side_effect=FileNotFoundError,
-        ), mock.patch(
-            "robotsix_auto_mail.server._account_mixin.save_accounts",
-            side_effect=OSError("disk full"),
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                side_effect=FileNotFoundError,
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.save_accounts",
+                side_effect=OSError("disk full"),
+            ),
         ):
             handler._handle_add_account()
         handler._redirect.assert_not_called()
@@ -87,11 +90,14 @@ class TestHandleAddAccountConfigSave:
         handler.server.RequestHandlerClass.keywords = {"accounts": None}
         self._setup_post(handler, _make_post_body())
 
-        with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
-            side_effect=FileNotFoundError,
-        ), mock.patch(
-            "robotsix_auto_mail.server._account_mixin.save_accounts",
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                side_effect=FileNotFoundError,
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.save_accounts",
+            ),
         ):
             handler._handle_add_account()
 
@@ -103,11 +109,14 @@ class TestHandleAddAccountConfigSave:
         handler.server.RequestHandlerClass.keywords = keywords
         self._setup_post(handler, _make_post_body())
 
-        with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
-            side_effect=FileNotFoundError,
-        ), mock.patch(
-            "robotsix_auto_mail.server._account_mixin.save_accounts",
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                side_effect=FileNotFoundError,
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.save_accounts",
+            ),
         ):
             handler._handle_add_account()
 
@@ -137,12 +146,15 @@ class TestHandleAddAccountConfigSave:
             default_account_id="old-account",
         )
 
-        with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
-            return_value=existing_config,
-        ), mock.patch(
-            "robotsix_auto_mail.server._account_mixin.save_accounts",
-        ) as mock_save:
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                return_value=existing_config,
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.save_accounts",
+            ) as mock_save,
+        ):
             handler._handle_add_account()
 
         mock_save.assert_called_once()
@@ -159,12 +171,15 @@ class TestHandleAddAccountConfigSave:
         handler.server.RequestHandlerClass.keywords = {"accounts": None}
         self._setup_post(handler, _make_post_body(account_id="sole-account"))
 
-        with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
-            side_effect=FileNotFoundError,
-        ), mock.patch(
-            "robotsix_auto_mail.server._account_mixin.save_accounts",
-        ) as mock_save:
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                side_effect=FileNotFoundError,
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._account_mixin.save_accounts",
+            ) as mock_save,
+        ):
             handler._handle_add_account()
 
         mock_save.assert_called_once()
