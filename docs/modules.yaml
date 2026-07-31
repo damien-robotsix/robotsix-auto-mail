@@ -72,6 +72,7 @@ modules:
       - changelog/20260729T123424Z-add-account-page-returns-forbidden-cross-2ab9.misc.md
       - changelog/20260730T091340Z-split-tests-cli-test-commands-serve-py-5-68b8.misc.md
       - changelog/20260730T091340Z-update-stale-mail-local-yaml-references-e6cc.misc.md
+      - changelog/20260731T175636Z-ci-fix-out-of-scope-ci-failure-python-ci-851f.misc.md
       - changelog/20260724T180805Z-ci-failure-release-image-on-main-5747.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
