@@ -226,6 +226,7 @@ modules:
       - changelog/20260728T204810Z-update-agent-md-documentation-conventions.misc.md
       - changelog/20260728T212324Z-remove-shipped-placeholder-mail-accounts-e8b2.bugfix.md
       - changelog/20260730T125533Z-missing-re-export-providerentry-from-con-a26d.misc.md
+      - changelog/20260730T135940Z-mail-ingester-container-restart-loops-st-e3ce.misc.md
       - changelog/20260730T142338Z-adopt-internal-per-component-settings-mi-59ae.misc.md
       - tests/__init__.py
       - tests/conftest.py

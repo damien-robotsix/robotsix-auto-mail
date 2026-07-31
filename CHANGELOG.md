@@ -14,6 +14,7 @@
   reconcile-loop tests move to `test_commands_serve_reconcile.py`
   and the local `_accounts()` helper is replaced by the shared
   conftest import.
+- The ingester service in `deploy/docker-compose.yml` now has an explicit `command: ingest` so it no longer relies on the no-subcommand auto-start fallback. The CLI no-command fallback now emits a clear diagnostic error message (instead of just argparse help text) when it cannot auto-start the ingest watch loop, making container restart-loop failures self-documenting in the logs.
 - Fixed the **Detect Settings** button on the Add Mail Account form so it works without pre-filled IMAP/SMTP host fields. The button now uses ``formnovalidate`` to bypass browser-side form validation, allowing the server-side detection to auto-populate settings from the email domain alone.
 - Split `tests/server/test_server_archive_delete.py` (790 lines) into four domain-focused modules: `test_server_archive_delete_basic.py`, `test_server_archive_delete_stale_uid.py`, `test_server_archive_delete_cross_folder.py`, and `test_server_archive_proposal_endpoint.py`.
 - Updated 11 stale references from the deleted `docs/config/mail.local.example.yaml` to `config/config.example.json` across README and docs (README.md, docs/index.md, docs/configuration.md, docs/connecting.md, docs/deployment.md). Removed empty `docs/config/` directory and its `.gitkeep`.
