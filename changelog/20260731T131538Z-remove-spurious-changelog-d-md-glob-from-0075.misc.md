@@ -1,0 +1,1 @@
+Remove the spurious `changelog.d/*.md` glob from the `core` module's `paths` list in `docs/modules.yaml` (the `changelog.d/` directory does not exist; only `changelog/` does).
