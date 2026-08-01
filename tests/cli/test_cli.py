@@ -85,10 +85,13 @@ def test_probe_takes_no_extra_args() -> None:
 def test_no_subcommand_prints_help_and_exits_1(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Calling main() with no subcommand prints help to stderr and exits 1."""
-    # Need to patch load() to avoid a real config call, but we want to
-    # ensure we reach the dispatch.  With no command, we won't hit load().
-    rc = main([])
+    """Calling main() with no subcommand prints help to stderr and exits 1
+    when the config file is missing or unreadable."""
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts",
+        side_effect=Exception("config missing"),
+    ):
+        rc = main([])
     assert rc == 1
     # help goes to stderr
     captured = capsys.readouterr()
@@ -115,7 +118,7 @@ def test_no_subcommand_no_watch_accounts_enters_idle(
     )
     with (
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
-        mock.patch("robotsix_auto_mail.cli._config.load", return_value=cfg),
+        mock.patch("robotsix_auto_mail.config.load", return_value=cfg),
         mock.patch(
             "robotsix_auto_mail.cli._idle_watch_loop",
             return_value=0,
