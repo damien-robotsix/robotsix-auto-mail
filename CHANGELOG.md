@@ -14,6 +14,7 @@
 - Add unit tests for SettingsStore CRUD, secret masking, field validation,
   and request-handler tests for GET/POST /settings endpoints.
 - Strengthen AGENT.md changelog-fragment registration rule with explicit "applies to ALL PRs" note and mandatory ``git grep`` self-check to eliminate per-fragment cleanup-ticket churn.
+- Register changelog fragment `20260730T181056Z-split-tests-pipeline-test-parser-py-508-0ab6.misc.md` in `docs/modules.yaml`.
 - docs: fix remaining stale "YAML config file" references in connecting.md, deployment.md; register changelog fragment in docs/modules.yaml
 - Update all `config/mail.local.yaml` references in docs (connecting, deployment, troubleshooting) and AGENT.md to `config/config.json`, and replace YAML config examples with JSON `accounts:` list shape.
 - Fix CSRF guard rejecting same-origin POSTs behind a reverse proxy by comparing the request's ``Origin`` header against its ``Host`` header (proxy-aware same-origin check).
