@@ -5,6 +5,13 @@
 
 ## 0.0.0 (unreleased)
 
+- Web UI add-account now seeds the per-account settings store and initializes the
+  new account's database immediately, ensuring the account config is persisted in
+  the managed configuration plane. The reconcile loop reloads accounts from the
+  config file on every cycle so newly added accounts begin fetching mail without
+  a restart. On boot, accounts discovered from existing settings stores are merged
+  with config-file accounts so web-UI-added accounts survive even when the deploy
+  system overwrites ``config/config.json``.
 - Removed unused `set_component_setting` function from `db/queries.py` and its re-export in `db/__init__.py` (only the plural `set_component_settings` is used).
 - Added dedicated unit tests for `_ReconcileMixin._handle_reconcile` covering idempotency guard, per-account thread spawning in aggregate mode, and single-thread non-aggregate path.
 - Fix pre-existing ruff format violations in `commands_ingest.py` and `test_cli.py` (style-only). Fix pre-existing mypy errors in `commands_serve.py` (wrong attribute name `acct.id` → `acct.account_id`) and `cli/__init__.py` (type-narrowing on reused variable names in the no-command auto-start path). Pin uv to 0.12.1 in the setup action and use `UV_PREVIEW=1` for the `uv audit` CI step for broader uv-version compatibility.

@@ -383,18 +383,44 @@ class _AccountMixin:
             )
             return
 
+        # Initialize the new account's database and seed its settings
+        # store so the account config is persisted in the managed
+        # configuration plane (the per-account SQLite DB).  This ensures
+        # the account survives even when the deploy system overwrites
+        # config/config.json on restart — the settings store is the
+        # authoritative source for runtime config.
+        try:
+            from robotsix_auto_mail.db import init_db
+            from robotsix_auto_mail.settings import SettingsStore
+
+            conn = init_db(db_path, skip_migrations=True)
+            try:
+                store = SettingsStore(db_path)
+                store.seed_from_mail_config(conn, mail_cfg)
+            finally:
+                conn.close()
+        except Exception:
+            logger.exception(
+                "Failed to seed settings store for account %r", account_id
+            )
+            # The account was saved to config; the settings-store seeding
+            # is a best-effort addition — do not block the redirect.
+
         logger.info("Added account %r via web UI", account_id)
 
         # Update the handler factory's cached accounts so the redirect
         # immediately reflects the new account without a server restart.
         # The handler is built via functools.partial; updating its
         # keywords dict causes the next handler instance to receive the
-        # updated config.
+        # updated config.  Also update default_account_id so the account
+        # picker and per-request resolution use the new default.
         handler_factory = getattr(self.server, "RequestHandlerClass", None)
         if handler_factory is not None and hasattr(handler_factory, "keywords"):
             kw = handler_factory.keywords
             if "accounts" in kw:
                 kw["accounts"] = new_config
+            if "default_account_id" in kw and new_config.default_account_id:
+                kw["default_account_id"] = new_config.default_account_id
 
         self._redirect("/board", code=303)
 

@@ -219,3 +219,79 @@ class SettingsStore:
             else:
                 kwargs[field_name] = raw_val
         return MailConfig.model_validate(kwargs)
+
+
+def discover_accounts_from_settings_stores(
+    data_dir: str = ".data",
+) -> list[MailAccount]:
+    """Discover accounts from existing per-account settings stores.
+
+    Scans *data_dir* for subdirectories containing a ``mail.db`` file,
+    reads each DB's ``component_settings`` table via :class:`SettingsStore`,
+    and reconstructs :class:`MailAccount` objects from non-empty stores.
+
+    Accounts that fail to load (corrupt DB, missing required fields) are
+    skipped with a warning log.  This function is a fallback for when the
+    main config file (``config/config.json``) has been overwritten by the
+    deploy system — accounts added via the web UI can still be recovered
+    from their settings stores.
+
+    Returns:
+        A (possibly empty) list of discovered :class:`MailAccount` objects.
+    """
+    import logging
+    import sqlite3
+    from pathlib import Path
+
+    from robotsix_auto_mail.config.model import MailAccount
+
+    logger = logging.getLogger(__name__)
+    discovered: list[MailAccount] = []
+    data_path = Path(data_dir)
+
+    if not data_path.is_dir():
+        return discovered
+
+    for entry in sorted(data_path.iterdir()):
+        if not entry.is_dir():
+            continue
+        db_file = entry / "mail.db"
+        if not db_file.is_file():
+            continue
+
+        account_id = entry.name
+        try:
+            conn = sqlite3.connect(str(db_file))
+            try:
+                store = SettingsStore(str(db_file))
+                if store.is_empty(conn):
+                    continue
+                mail_config = store.to_mail_config(conn)
+                if mail_config is None:
+                    continue
+                # Ensure the db_path reflects the actual file location.
+                mail_config = mail_config.model_copy(
+                    update={"db_path": str(db_file)}
+                )
+                discovered.append(
+                    MailAccount(
+                        account_id=account_id,
+                        config=mail_config,
+                    )
+                )
+                logger.info(
+                    "Discovered account %r from settings store at %s",
+                    account_id,
+                    db_file,
+                )
+            finally:
+                conn.close()
+        except Exception:
+            logger.warning(
+                "Failed to load settings store for account %r at %s",
+                account_id,
+                db_file,
+                exc_info=True,
+            )
+
+    return discovered
