@@ -74,6 +74,7 @@ modules:
       - changelog/20260730T091340Z-update-stale-mail-local-yaml-references-e6cc.misc.md
       - changelog/20260731T175636Z-ci-fix-out-of-scope-ci-failure-python-ci-851f.misc.md
       - changelog/20260730T181056Z-split-tests-pipeline-test-parser-py-508-0ab6.misc.md
+      - changelog/20260731T014312Z-register-changelog-fragment-20260730t181-9e17.misc.md
       - changelog/20260724T180805Z-ci-failure-release-image-on-main-5747.misc.md
       - changelog/20260703T082456Z-adopt-towncrier-for-changelog-management-a50b.misc.md
       - changelog/20260703T144458Z-add-env-var-resolution-to-resolve-llm-ap-0c9b.misc.md
