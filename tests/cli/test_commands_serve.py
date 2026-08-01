@@ -44,6 +44,10 @@ def test_cmd_serve_starts_http_server(
         mock.patch(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ),
+        mock.patch(
+            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            return_value=[],
+        ),
     ):
         _cmd_serve(accounts, default_account_id="default", port=8099)
 
@@ -77,6 +81,10 @@ def test_cmd_serve_clears_stale_triage_state(
         ),
         mock.patch(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
+        ),
+        mock.patch(
+            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            return_value=[],
         ),
     ):
         _cmd_serve(accounts, default_account_id="default", port=8099)
@@ -112,6 +120,10 @@ def test_cmd_serve_starts_reconcile_background_thread(
         mock.patch(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ) as mock_thread_cls,
+        mock.patch(
+            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            return_value=[],
+        ),
     ):
         _cmd_serve(accounts, default_account_id="default", port=8099)
 
@@ -148,6 +160,10 @@ def test_cmd_serve_eaddrinuse_returns_1(
         mock.patch(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ),
+        mock.patch(
+            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            return_value=[],
+        ),
     ):
         rc = _cmd_serve(accounts, default_account_id="default", port=8099)
 
@@ -180,6 +196,10 @@ def test_cmd_serve_other_oserror_propagates(
         ),
         mock.patch(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
+        ),
+        mock.patch(
+            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            return_value=[],
         ),
     ):
         with pytest.raises(OSError, match="Permission denied"):
@@ -214,6 +234,10 @@ def test_cmd_serve_keyboard_interrupt_returns_0(
         ),
         mock.patch(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
+        ),
+        mock.patch(
+            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            return_value=[],
         ),
     ):
         rc = _cmd_serve(accounts, default_account_id="default", port=8099)
@@ -264,6 +288,10 @@ def test_cmd_serve_instantiates_threading_http_server(
         ),
         mock.patch(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
+        ),
+        mock.patch(
+            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            return_value=[],
         ),
     ):
         _cmd_serve(accounts, default_account_id="default", port=8099)

@@ -32,10 +32,14 @@ def test_reconcile_loop_spawns_thread_when_watermark_free(
     mock_set_watermark = mock.Mock()
     mock_run_reconcile = mock.Mock()
 
+    test_accounts = _accounts(cfg)
+    mock_load_accounts = mock.Mock(return_value=test_accounts)
+
     def _sleep_side_effect(seconds: float) -> None:
         raise _StopLoopError
 
     with (
+        mock.patch("robotsix_auto_mail.config.load_accounts", mock_load_accounts),
         mock.patch("robotsix_auto_mail.db.init_db", mock_init_db),
         mock.patch("robotsix_auto_mail.db.get_watermark", mock_get_watermark),
         mock.patch("robotsix_auto_mail.db.set_watermark", mock_set_watermark),
@@ -47,7 +51,7 @@ def test_reconcile_loop_spawns_thread_when_watermark_free(
     ):
         mock_sleep.side_effect = _sleep_side_effect
         with pytest.raises(_StopLoopError):
-            _reconcile_loop(_accounts(cfg))
+            _reconcile_loop(test_accounts)
 
     mock_init_db.assert_called_once()
     mock_set_watermark.assert_called_once_with(mock_conn, "reconcile:state", "running")
@@ -68,10 +72,14 @@ def test_reconcile_loop_skips_when_already_running(
     mock_set_watermark = mock.Mock()
     mock_run_reconcile = mock.Mock()
 
+    test_accounts = _accounts(cfg)
+    mock_load_accounts = mock.Mock(return_value=test_accounts)
+
     def _sleep_side_effect(seconds: float) -> None:
         raise _StopLoopError
 
     with (
+        mock.patch("robotsix_auto_mail.config.load_accounts", mock_load_accounts),
         mock.patch("robotsix_auto_mail.db.init_db", mock_init_db),
         mock.patch("robotsix_auto_mail.db.get_watermark", mock_get_watermark),
         mock.patch("robotsix_auto_mail.db.set_watermark", mock_set_watermark),
@@ -83,7 +91,7 @@ def test_reconcile_loop_skips_when_already_running(
     ):
         mock_sleep.side_effect = _sleep_side_effect
         with pytest.raises(_StopLoopError):
-            _reconcile_loop(_accounts(cfg))
+            _reconcile_loop(test_accounts)
 
     mock_set_watermark.assert_not_called()
     mock_run_reconcile.assert_not_called()
@@ -100,10 +108,14 @@ def test_reconcile_loop_survives_db_init_error(
     mock_get_watermark = mock.Mock()
     mock_run_reconcile = mock.Mock()
 
+    test_accounts = _accounts(cfg)
+    mock_load_accounts = mock.Mock(return_value=test_accounts)
+
     def _sleep_side_effect(seconds: float) -> None:
         raise _StopLoopError
 
     with (
+        mock.patch("robotsix_auto_mail.config.load_accounts", mock_load_accounts),
         mock.patch("robotsix_auto_mail.db.init_db", mock_init_db),
         mock.patch("robotsix_auto_mail.db.get_watermark", mock_get_watermark),
         mock.patch(
@@ -114,7 +126,7 @@ def test_reconcile_loop_survives_db_init_error(
     ):
         mock_sleep.side_effect = _sleep_side_effect
         with pytest.raises(_StopLoopError):
-            _reconcile_loop(_accounts(cfg))
+            _reconcile_loop(test_accounts)
 
     # The loop must not crash — reaching StopLoop proves it survived.
     mock_init_db.assert_called()
@@ -133,10 +145,14 @@ def test_reconcile_loop_survives_watermark_error(
     mock_get_watermark = mock.Mock(side_effect=OSError("read error"))
     mock_run_reconcile = mock.Mock()
 
+    test_accounts = _accounts(cfg)
+    mock_load_accounts = mock.Mock(return_value=test_accounts)
+
     def _sleep_side_effect(seconds: float) -> None:
         raise _StopLoopError
 
     with (
+        mock.patch("robotsix_auto_mail.config.load_accounts", mock_load_accounts),
         mock.patch("robotsix_auto_mail.db.init_db", mock_init_db),
         mock.patch("robotsix_auto_mail.db.get_watermark", mock_get_watermark),
         mock.patch(
@@ -147,7 +163,7 @@ def test_reconcile_loop_survives_watermark_error(
     ):
         mock_sleep.side_effect = _sleep_side_effect
         with pytest.raises(_StopLoopError):
-            _reconcile_loop(_accounts(cfg))
+            _reconcile_loop(test_accounts)
 
     mock_init_db.assert_called_once()
     mock_get_watermark.assert_called_once()
@@ -197,11 +213,14 @@ def test_reconcile_loop_respects_ingest_interval(
         default_account_id="a",
     )
 
+    mock_load_accounts = mock.Mock(return_value=accounts)
+
     def _sleep_side_effect(seconds: float) -> None:
         assert seconds == 3 * 60  # 3 minutes in seconds
         raise _StopLoopError
 
     with (
+        mock.patch("robotsix_auto_mail.config.load_accounts", mock_load_accounts),
         mock.patch("robotsix_auto_mail.db.init_db", mock_init_db),
         mock.patch("robotsix_auto_mail.db.get_watermark", mock_get_watermark),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
@@ -229,10 +248,13 @@ def test_reconcile_loop_skips_account_without_password() -> None:
     )
     accounts = _accounts(cfg_no_pw, account_id="nopw")
 
+    mock_load_accounts = mock.Mock(return_value=accounts)
+
     def _sleep_side_effect(seconds: float) -> None:
         raise _StopLoopError
 
     with (
+        mock.patch("robotsix_auto_mail.config.load_accounts", mock_load_accounts),
         mock.patch("robotsix_auto_mail.db.init_db", mock_init_db),
         mock.patch("robotsix_auto_mail.db.get_watermark", mock_get_watermark),
         mock.patch(

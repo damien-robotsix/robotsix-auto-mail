@@ -45,18 +45,29 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
     reconciliation of other accounts.  Uses the per-account
     ``reconcile:state`` watermark to prevent overlapping runs.
 
-    When no accounts are configured the loop sleeps on a default interval
-    and re-checks on each cycle so newly added accounts are picked up
-    without a restart.
+    Reloads the accounts container from the config file on every cycle
+    so newly added accounts (via web UI) are picked up without a restart.
+    When the config file is unreadable the loop keeps using the last
+    successfully loaded snapshot.
     """
     import threading
 
+    from robotsix_auto_mail.config import load_accounts
     from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
     from robotsix_auto_mail.server.adapters import _run_reconcile_background
 
     _default_fallback_minutes = 15
 
     while True:
+        # Reload accounts from the config file on every cycle so accounts
+        # added via the web UI are picked up without a restart.
+        try:
+            accounts = load_accounts()
+        except Exception:
+            # Keep using the last-known snapshot when the config file
+            # is temporarily unreadable.
+            pass
+
         if accounts.accounts:
             interval_minutes = max(
                 1,
@@ -138,10 +149,39 @@ def _cmd_serve(
     When no accounts are configured (fresh deploy) the server starts with
     an in-memory database so the add-account form and health endpoints
     are available.
+
+    Accounts discovered from existing settings stores (e.g. accounts added
+    via the web UI whose config-file entries were overwritten by a deploy)
+    are merged into the container so they survive restarts.
     """
+    import logging
     from http.server import ThreadingHTTPServer
 
     from robotsix_auto_mail.server import make_board_handler
+
+    _logger = logging.getLogger(__name__)
+
+    # Merge accounts discovered from settings stores that are not already
+    # in the config file.  This ensures accounts added via the web UI
+    # survive even when the deploy system overwrites config/config.json.
+    from robotsix_auto_mail.settings import discover_accounts_from_settings_stores
+
+    discovered = discover_accounts_from_settings_stores()
+    existing_ids = set(accounts.ids())
+    new_discovered = [a for a in discovered if a.account_id not in existing_ids]
+    if new_discovered:
+        _logger.info(
+            "Merging %d account(s) discovered from settings stores: %s",
+            len(new_discovered),
+            [a.account_id for a in new_discovered],
+        )
+        merged_accounts = list(accounts.accounts) + new_discovered
+        if not accounts.default_account_id and merged_accounts:
+            default_account_id = merged_accounts[0].account_id
+        accounts = MailAccountsConfig(
+            accounts=merged_accounts,
+            default_account_id=accounts.default_account_id or default_account_id,
+        )
 
     if accounts.accounts:
         default = accounts.get(default_account_id)
