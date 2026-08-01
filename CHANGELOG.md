@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Enable mypy_baseline periodic workflow to track mypy baseline drift
 - Web UI add-account now seeds the per-account settings store and initializes the
   new account's database immediately, ensuring the account config is persisted in
   the managed configuration plane. The reconcile loop reloads accounts from the
