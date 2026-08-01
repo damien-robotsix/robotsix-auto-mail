@@ -6,6 +6,7 @@
 ## 0.0.0 (unreleased)
 
 - Clear repo-wide ruff lint debt (remove unused `# noqa: S310` directives).
+- Registered the `20260731T153408Z-register-changelog-fragment-20260731t123-f52a.misc.md` changelog fragment in `docs/modules.yaml` under the `core` module's `paths`, satisfying the AGENT.md changelog-fragment registration rule.
 - Removed an unregistered duplicate changelog fragment (`20260731T123451Z-test-gap-add-unit-tests-for-src-robotsix-333e.misc.md`) that was a near-duplicate of the already-registered reconcile-mixin fragment.
 - Fix all remaining ruff lint and format violations across the whole repository, and register all unregistered changelog fragments and test files in ``docs/modules.yaml`` so the module-registration completeness check passes on CI.
 - The ``serve`` command now starts a background ingest loop that
