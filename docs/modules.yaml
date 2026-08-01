@@ -241,6 +241,7 @@ modules:
       - changelog/20260731T155400Z-add-account-crashes-with-configurationer-60a4.bugfix.md
       - changelog/20260731T123451Z-add-unit-tests-for-reconcile-mixin-333e.misc.md
       - changelog/20260731T182528Z-fix-ruff-lint-format-and-uv-audit-ci-2581.misc.md
+      - changelog/20260731T213327Z-robotsix-auto-mail-enable-mypy-baseline-f349.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -697,6 +698,7 @@ modules:
       - .robotsix-mill/periodic/health.yaml
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/module_size.yaml
+      - .robotsix-mill/periodic/mypy_baseline.yaml
       - .robotsix-mill/periodic/repo_description_sync.yaml
       - .robotsix-mill/periodic/survey.yaml
       - .robotsix-mill/periodic/trace_review.yaml
