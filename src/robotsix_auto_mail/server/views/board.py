@@ -421,6 +421,11 @@ def _render_board_page_shell(
             '<a href="/add-account" class="add-account-btn"'
             ' title="Add a new mail account">+ Add Account</a>\n'
         )
+        + (
+            '<a href="/settings-panel" class="add-account-btn settings-btn"'
+            ' title="Manage accounts and settings">'
+            "Settings</a>\n"
+        )
         + f'<span id="triage-control">{triage_control_html}</span>\n'
         f'<span id="batch-control">{batch_control_html}</span>\n'
         f"{picker_html}\n"
