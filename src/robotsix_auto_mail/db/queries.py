@@ -450,19 +450,6 @@ def get_all_component_settings(conn: sqlite3.Connection) -> dict[str, str]:
     return {row[0]: row[1] for row in cur.fetchall()}
 
 
-def set_component_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
-    """Upsert a single ``component_settings`` row."""
-    conn.execute(
-        """\
-INSERT INTO component_settings (key, value, updated_at)
-VALUES (?, ?, datetime('now'))
-ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-""",
-        (key, value),
-    )
-    conn.commit()
-
-
 def set_component_settings(conn: sqlite3.Connection, settings: dict[str, str]) -> None:
     """Upsert many ``component_settings`` rows in a single transaction."""
     conn.execute("BEGIN")
