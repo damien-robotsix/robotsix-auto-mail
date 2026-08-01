@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added dedicated unit tests for `_ReconcileMixin._handle_reconcile` covering idempotency guard, per-account thread spawning in aggregate mode, and single-thread non-aggregate path.
 - Fix crash when adding the first account to a fresh-deploy config with ``accounts=[]`` and ``default_account_id=''`` — the handler now falls back to the first account's id when the existing default is empty, and wraps ``MailAccountsConfig`` construction in try/except so validation errors render the form with an error message instead of crashing the request handler.
 - Fix pre-existing ruff violations (formatting, naming, import ordering) across 26 source and test files, upgrade pymdown-extensions transitive dependency to resolve uv audit advisory, and fix CodeQL py/mixed-returns alert in cli/commands.py.
 - Honour ``X-Forwarded-Host`` and ``Forwarded: host=`` headers in the CSRF

@@ -236,6 +236,7 @@ modules:
       - changelog/20260731T021749Z-add-unit-tests-for-the-per-component-set-46c7.misc.md
       - changelog/20260731T122824Z-re-file-check-csrf-must-honor-x-forwarde-1983.bugfix.md
       - changelog/20260731T155400Z-add-account-crashes-with-configurationer-60a4.bugfix.md
+      - changelog/20260731T123451Z-add-unit-tests-for-reconcile-mixin-333e.misc.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -576,6 +577,7 @@ modules:
       - tests/server/test_auth_mixin.py
       - tests/server/test_format_date.py
       - tests/server/test_global_board.py
+      - tests/server/test_reconcile_mixin.py
       - tests/server/test_redirect_safety.py
       - tests/server/test_server_archive_batch.py
       - tests/server/test_server_archive_delete_basic.py
