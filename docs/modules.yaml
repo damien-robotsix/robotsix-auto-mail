@@ -236,6 +236,7 @@ modules:
       - changelog/20260731T010315Z-fix-stale-changelog-entry-claiming-allow-d909.misc.md
       - changelog/20260731T014311Z-enforce-changelog-fragment-registration-self-check.misc.md
       - changelog/20260731T021749Z-add-unit-tests-for-the-per-component-set-46c7.misc.md
+      - changelog/20260731T023847Z-register-the-new-changelog-fragment-in-d-fa86.misc.md
       - changelog/20260731T122824Z-re-file-check-csrf-must-honor-x-forwarde-1983.bugfix.md
       - changelog/20260731T155400Z-add-account-crashes-with-configurationer-60a4.bugfix.md
       - changelog/20260731T123451Z-add-unit-tests-for-reconcile-mixin-333e.misc.md
