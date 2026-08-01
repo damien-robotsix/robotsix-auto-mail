@@ -63,6 +63,9 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
         # added via the web UI are picked up without a restart.
         try:
             accounts = load_accounts()
+            from robotsix_auto_mail.settings import merge_settings_store_accounts
+
+            accounts = merge_settings_store_accounts(accounts)
         except Exception:
             # Keep using the last-known snapshot when the config file
             # is temporarily unreadable.
@@ -164,24 +167,11 @@ def _cmd_serve(
     # Merge accounts discovered from settings stores that are not already
     # in the config file.  This ensures accounts added via the web UI
     # survive even when the deploy system overwrites config/config.json.
-    from robotsix_auto_mail.settings import discover_accounts_from_settings_stores
+    from robotsix_auto_mail.settings import merge_settings_store_accounts
 
-    discovered = discover_accounts_from_settings_stores()
-    existing_ids = set(accounts.ids())
-    new_discovered = [a for a in discovered if a.account_id not in existing_ids]
-    if new_discovered:
-        _logger.info(
-            "Merging %d account(s) discovered from settings stores: %s",
-            len(new_discovered),
-            [a.account_id for a in new_discovered],
-        )
-        merged_accounts = list(accounts.accounts) + new_discovered
-        if not accounts.default_account_id and merged_accounts:
-            default_account_id = merged_accounts[0].account_id
-        accounts = MailAccountsConfig(
-            accounts=merged_accounts,
-            default_account_id=accounts.default_account_id or default_account_id,
-        )
+    accounts = merge_settings_store_accounts(accounts)
+    if not default_account_id and accounts.default_account_id:
+        default_account_id = accounts.default_account_id
 
     if accounts.accounts:
         default = accounts.get(default_account_id)
