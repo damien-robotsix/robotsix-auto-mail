@@ -39,6 +39,7 @@ Append `?account=<account_id>` (e.g. `?account=main`) to any request.
 | `GET /board-content` | JSON `{"columns_html":"…","triage_running":bool,"batch_op":{"op":…,"done":…,"total":…}\|null,"health":{…}\|null,"health_alerts_html":"…","unsubscribe_suggestions":{…}}` | Board payload (rendered columns + metadata); preferred for machine reads. `batch_op` is an object (verb + progress counts) while a batch op runs, else `null`; `health` carries the account-health watermark and `health_alerts_html` the rendered red-banner markup |
 | `GET /health` | JSON `{"status":"ok"}` 200 | Liveness; returns 200 while the process is alive |
 | `GET /probe-health` | JSON `{"accounts":{"<id>":{"status":"…","error":…}}}` | On-demand IMAP+SMTP connectivity probe across all accounts; persists each result to the account's `account_health` watermark |
+| `GET /settings-panel` | HTML | Settings panel page listing all configured mail accounts with per-account Delete buttons (see also `POST /delete-account`) |
 | `GET /auth-status` | JSON `{"status":"…",…}` | Polls a running OAuth2 device-code flow; `status` is `idle`/`pending_prompt`/`pending_consent`/`success`/`error`. Cross-account: takes `?account_id=<id>` and ignores the session account |
 | `GET /archive-folders` | JSON `{"delimiter":"/","folders":[…]}` | Available IMAP archive subfolders. Returns `{"delimiter":"/","folders":[]}` in aggregate mode |
 | `GET /email/{message_id}/status` | plain text — triage action name | 404 if unknown |
@@ -156,6 +157,15 @@ curl -s 'https://deploy.robotsix.net/mail/health'
 ```bash
 curl -s -u <user>:<pass> -X POST \
   'https://deploy.robotsix.net/mail/batch-archive?account=main'
+```
+
+### 10. Config sync (returns JSON, not a redirect)
+
+```bash
+curl -s -u <user>:<pass> -X POST \
+  'https://deploy.robotsix.net/mail/config-sync?account=main'
+```
+mail/batch-archive?account=main'
 ```
 
 ### 10. Config sync (returns JSON, not a redirect)

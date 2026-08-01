@@ -213,6 +213,13 @@ either via a one-time import from central-deploy on first boot or via the
 the component; no central-deploy call is required to change a runtime
 setting.
 
+The browser-side surface for *account* management (as distinct from
+per-component runtime settings) is the **Settings panel** page served at
+``/settings-panel``, linked from the board header.  It lists every
+configured mail account and lets an operator delete one via
+``POST /delete-account``, which removes the account from the persisted
+``config/config.json`` (see `docs/connecting.md` → "The board page").
+
 ### GET /settings
 
 Returns all component settings as a JSON object with secrets masked as

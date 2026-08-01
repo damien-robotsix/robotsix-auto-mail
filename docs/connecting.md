@@ -751,6 +751,17 @@ and cookie-less clients maintain account context. When only one account is
 configured, the picker does not appear and the board behaves as a single-account
 view.
 
+**Settings panel.**  The board page header includes a **Settings** button
+(alongside **+ Add Account**) that opens `/settings-panel`.  This page lists
+every configured mail account (label/id, username, IMAP host) and marks the
+current default account, with a **Delete** button per account.  Deleting an
+account prompts for confirmation and removes it from the persisted
+`config/config.json`, updating the running server immediately (so the account
+disappears from the board picker and account lists without a restart).  If the
+deleted account is the default, the new default falls back to the first
+remaining account.  When no accounts are configured the panel shows an
+"Add Account" link to create one.
+
 **Triage badges.**  When a mail record has a triage decision, the card displays a
 small **triage badge** showing the action label (one of `INBOX`, `HUMAN_TRIAGE`,
 `PENDING_ACTION`, `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, `TO_ANSWER`, or
