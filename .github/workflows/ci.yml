@@ -89,7 +89,7 @@ jobs:
         if: github.event_name == 'pull_request'
 
       - name: Dependency vulnerability audit
-        run: uv audit --preview-features audit-command --frozen
+        run: UV_PREVIEW=1 uv audit --frozen
 
       - name: Check config sync
         run: uv run --frozen python scripts/config/check_config_sync.py
