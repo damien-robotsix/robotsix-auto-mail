@@ -112,7 +112,9 @@ def _import_settings_from_central_deploy(accounts: MailAccountsConfig) -> None:
             finally:
                 conn.close()
         except Exception:
-            logger.exception("Failed to import settings for account %s", acct.id)
+            logger.exception(
+                "Failed to import settings for account %s", acct.account_id
+            )
 
 
 def _cmd_serve(

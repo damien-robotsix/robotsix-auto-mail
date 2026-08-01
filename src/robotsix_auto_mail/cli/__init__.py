@@ -251,16 +251,18 @@ def main(argv: list[str] | None = None) -> int:
             _accts = None
         if _accts is not None and _accts.accounts:
             try:
-                first_cfg = _accts.accounts[0].config
+                acct_cfg = _accts.accounts[0].config
             except Exception:
-                first_cfg = None
-            if first_cfg is not None and first_cfg.ingest_mode == "watch":
-                hb = first_cfg.heartbeat_file or None
+                acct_cfg = None
+            if acct_cfg is not None and acct_cfg.ingest_mode == "watch":
+                hb_val = acct_cfg.heartbeat_file or None
                 return _cmd_ingest(
                     _load_accounts_allow_empty(),
                     watch=True,
-                    heartbeat_file=hb,
+                    heartbeat_file=hb_val,
                 )
+            if acct_cfg is None:
+                return _idle_watch_loop(None)
             # Config loaded, accounts exist, but ingest_mode is not "watch".
             # Enter an idle heartbeat loop so the container stays healthy
             # until a watch account is configured (via restart or reload).
@@ -268,8 +270,8 @@ def main(argv: list[str] | None = None) -> int:
                 "Warning: no accounts have ingest_mode set to 'watch'; "
                 "idling until a watch account is configured.\n"
             )
-            hb = first_cfg.heartbeat_file or None
-            return _idle_watch_loop(hb)
+            hb_val = acct_cfg.heartbeat_file or None
+            return _idle_watch_loop(hb_val)
         elif _accts is not None:
             # Config loaded but has zero accounts.
             sys.stderr.write(

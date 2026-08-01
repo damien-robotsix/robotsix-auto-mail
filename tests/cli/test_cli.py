@@ -96,7 +96,8 @@ def test_no_subcommand_prints_help_and_exits_1(
 
 
 def test_no_subcommand_no_watch_accounts_enters_idle(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """When accounts exist but none has ingest_mode='watch', the auto-start
     enters the idle watch loop instead of crashing."""
