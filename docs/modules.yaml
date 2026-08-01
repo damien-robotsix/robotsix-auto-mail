@@ -233,6 +233,7 @@ modules:
       - changelog/20260731T014311Z-enforce-changelog-fragment-registration-self-check.misc.md
       - changelog/20260731T021749Z-add-unit-tests-for-the-per-component-set-46c7.misc.md
       - changelog/20260731T122824Z-re-file-check-csrf-must-honor-x-forwarde-1983.bugfix.md
+      - changelog/20260731T155400Z-add-account-crashes-with-configurationer-60a4.bugfix.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
