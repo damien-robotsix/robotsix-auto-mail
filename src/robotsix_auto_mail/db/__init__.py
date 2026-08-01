@@ -88,9 +88,6 @@ from .queries import (
     save_json_watermark as save_json_watermark,
 )
 from .queries import (
-    set_component_setting as set_component_setting,
-)
-from .queries import (
     set_component_settings as set_component_settings,
 )
 from .queries import (
@@ -140,7 +137,6 @@ __all__ = [
     "load_json_watermark",
     "record_exists",
     "save_json_watermark",
-    "set_component_setting",
     "set_component_settings",
     "set_watermark",
     "setup_archive",
