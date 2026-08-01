@@ -117,6 +117,7 @@ class BoardHandler(
             (lambda p: p == "/health", self._serve_health),
             (lambda p: p == "/healthz", self._serve_health),
             (lambda p: p == "/settings", self._handle_get_settings),
+            (lambda p: p == "/settings-panel", self._serve_settings_panel),
             (
                 lambda p: p == "/probe-health",
                 self._serve_probe_health,
@@ -155,6 +156,12 @@ class BoardHandler(
         # _select_account() so account creation works even with zero accounts.
         if urlsplit(self.path).path == "/add-account":
             self._handle_add_account()
+            return
+        # /delete-account is also cross-account — handle before
+        # _select_account() so account deletion works even when the
+        # deleted account is not the currently-selected one.
+        if urlsplit(self.path).path == "/delete-account":
+            self._handle_delete_account()
             return
         if self.accounts is not None and not self._select_account():
             return

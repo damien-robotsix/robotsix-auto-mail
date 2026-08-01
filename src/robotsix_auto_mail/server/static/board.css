@@ -734,6 +734,18 @@ button:hover {
   background: var(--color-bg-primary-hover, #1565c0);
 }
 
+/* Settings button — muted variant alongside Add Account */
+.settings-btn {
+  background: var(--color-bg-panel, #16213e);
+  color: var(--color-text-muted, #c0c0e0);
+  border: 1px solid var(--color-border-button, #3a3a6a);
+  margin-left: 0.5em;
+}
+.settings-btn:hover {
+  background: var(--color-bg-button-hover, #1f2d50);
+  color: var(--color-text-secondary, #e0e0e0);
+}
+
 /* -- health alert banner -------------------------------------------- */
 
 .health-alert-banner {
