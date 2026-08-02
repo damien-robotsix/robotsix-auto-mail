@@ -269,6 +269,9 @@ modules:
       - changelog/20260801T125239Z-test-gap-add-unit-tests-for-src-robotsix-d249.misc.md
       - changelog/20260801T132605Z-clean-main-part-2-fix-whole-repo-ruff-li-d0f7.misc.md
       - changelog/20260802T012725Z-clear-repo-wide-ruff-debt-fix-module-reg-af3d.misc.md
+      - changelog/20260802T103200Z-ci-workflow-on-main-fails-at-startup-zer-6a4e.misc.md
+      - changelog/20260802T183000Z-drop-library-move-form.misc.md
+      - changelog/20260802T191409Z-adopt-shared-config-panel-and-standard-surface.feature.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
