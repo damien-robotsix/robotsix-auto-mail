@@ -400,9 +400,7 @@ class _AccountMixin:
             finally:
                 conn.close()
         except Exception:
-            logger.exception(
-                "Failed to seed settings store for account %r", account_id
-            )
+            logger.exception("Failed to seed settings store for account %r", account_id)
             # The account was saved to config; the settings-store seeding
             # is a best-effort addition — do not block the redirect.
 

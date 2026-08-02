@@ -66,7 +66,7 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
             from robotsix_auto_mail.settings import merge_settings_store_accounts
 
             accounts = merge_settings_store_accounts(accounts)
-        except Exception:
+        except Exception:  # noqa: S110
             # Keep using the last-known snapshot when the config file
             # is temporarily unreadable.
             pass
@@ -131,7 +131,7 @@ def _ingest_loop(accounts: MailAccountsConfig) -> None:
             from robotsix_auto_mail.settings import merge_settings_store_accounts
 
             accounts = merge_settings_store_accounts(accounts)
-        except Exception:
+        except Exception:  # noqa: S110
             # Keep using the last-known snapshot when the config file
             # is temporarily unreadable.
             pass
@@ -154,9 +154,7 @@ def _ingest_loop(accounts: MailAccountsConfig) -> None:
             try:
                 _ingest_cycle(acct.config, dry_run=False)
             except Exception:
-                logger.exception(
-                    "Ingest cycle failed for account %r", acct.account_id
-                )
+                logger.exception("Ingest cycle failed for account %r", acct.account_id)
 
         time.sleep(interval_minutes * 60)
 

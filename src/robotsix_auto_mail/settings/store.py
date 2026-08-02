@@ -9,9 +9,14 @@ GET /settings.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from pydantic import SecretStr
 
 from robotsix_auto_mail.config.model import MailConfig
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config.model import MailAccount, MailAccountsConfig
 from robotsix_auto_mail.db import (
     component_settings_count,
     get_all_component_settings,
@@ -270,9 +275,7 @@ def discover_accounts_from_settings_stores(
                 if mail_config is None:
                     continue
                 # Ensure the db_path reflects the actual file location.
-                mail_config = mail_config.model_copy(
-                    update={"db_path": str(db_file)}
-                )
+                mail_config = mail_config.model_copy(update={"db_path": str(db_file)})
                 discovered.append(
                     MailAccount(
                         account_id=account_id,
@@ -298,8 +301,8 @@ def discover_accounts_from_settings_stores(
 
 
 def merge_settings_store_accounts(
-    accounts: "MailAccountsConfig",
-) -> "MailAccountsConfig":
+    accounts: MailAccountsConfig,
+) -> MailAccountsConfig:
     """Merge accounts discovered from per-account settings stores into *accounts*.
 
     Scans ``.data/`` for per-account databases whose settings stores contain
