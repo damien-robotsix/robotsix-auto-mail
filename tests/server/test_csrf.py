@@ -56,7 +56,7 @@ def _post_with_origin(
         headers["X-Forwarded-Host"] = x_forwarded_host
     if forwarded is not None:
         headers["Forwarded"] = forwarded
-    req = urllib.request.Request(url, data=data, headers=headers)
+    req = urllib.request.Request(url, data=data, headers=headers)  # noqa: S310
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
     return resp.status, body

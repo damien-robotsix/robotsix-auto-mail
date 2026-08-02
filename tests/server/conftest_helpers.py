@@ -118,7 +118,7 @@ def _build_opener(
     url = f"http://127.0.0.1:{port}{path}"
 
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-    req = urllib.request.Request(
+    req = urllib.request.Request(  # noqa: S310
         url,
         data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -201,7 +201,7 @@ def _post_config_sync(port: int) -> tuple[int, str]:
     url = f"http://127.0.0.1:{port}/config-sync"
 
     opener = urllib.request.build_opener(CaptureError())
-    req = urllib.request.Request(url, data=b"", method="POST")
+    req = urllib.request.Request(url, data=b"", method="POST")  # noqa: S310
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
     return resp.status, body
