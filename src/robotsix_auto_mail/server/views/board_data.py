@@ -208,6 +208,7 @@ def _gather_account_board_data(
         "health": health,
         "triage_by_mid": triage_by_mid,
         "column_buckets": column_buckets,
+        "total_mail_count": len(all_records),
         **archive_ctx,
         "unsubscribe_suggestions": unsubscribe_suggestions,
         "record_notes": record_notes,

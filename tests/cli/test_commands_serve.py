@@ -45,7 +45,7 @@ def test_cmd_serve_starts_http_server(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
     ):
@@ -83,7 +83,7 @@ def test_cmd_serve_clears_stale_triage_state(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
     ):
@@ -118,19 +118,27 @@ def test_cmd_serve_starts_reconcile_background_thread(
             "robotsix_auto_mail.cli.commands_serve._reconcile_loop",
         ) as mock_reconcile,
         mock.patch(
+            "robotsix_auto_mail.cli.commands_serve._ingest_loop",
+        ) as mock_ingest,
+        mock.patch(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ) as mock_thread_cls,
         mock.patch(
-            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
     ):
         _cmd_serve(accounts, default_account_id="default", port=8099)
 
-    mock_thread_cls.assert_called_once_with(
+    # Two daemon threads are started: reconcile + ingest.
+    assert mock_thread_cls.call_count == 2
+    mock_thread_cls.assert_any_call(
         target=mock_reconcile, args=(accounts,), daemon=True
     )
-    mock_thread_cls.return_value.start.assert_called_once()
+    mock_thread_cls.assert_any_call(
+        target=mock_ingest, args=(accounts,), daemon=True
+    )
+    assert mock_thread_cls.return_value.start.call_count == 2
 
 
 def test_cmd_serve_eaddrinuse_returns_1(
@@ -161,7 +169,7 @@ def test_cmd_serve_eaddrinuse_returns_1(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
     ):
@@ -198,7 +206,7 @@ def test_cmd_serve_other_oserror_propagates(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
     ):
@@ -236,7 +244,7 @@ def test_cmd_serve_keyboard_interrupt_returns_0(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
     ):
@@ -290,7 +298,7 @@ def test_cmd_serve_instantiates_threading_http_server(
             "robotsix_auto_mail.cli.commands_serve.threading.Thread",
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
     ):

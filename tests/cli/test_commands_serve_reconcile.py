@@ -47,6 +47,10 @@ def test_reconcile_loop_spawns_thread_when_watermark_free(
             "robotsix_auto_mail.server.adapters._run_reconcile_background",
             mock_run_reconcile,
         ),
+        mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[],
+        ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
     ):
         mock_sleep.side_effect = _sleep_side_effect
@@ -87,6 +91,10 @@ def test_reconcile_loop_skips_when_already_running(
             "robotsix_auto_mail.server.adapters._run_reconcile_background",
             mock_run_reconcile,
         ),
+        mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[],
+        ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
     ):
         mock_sleep.side_effect = _sleep_side_effect
@@ -121,6 +129,10 @@ def test_reconcile_loop_survives_db_init_error(
         mock.patch(
             "robotsix_auto_mail.server.adapters._run_reconcile_background",
             mock_run_reconcile,
+        ),
+        mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[],
         ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
     ):
@@ -158,6 +170,10 @@ def test_reconcile_loop_survives_watermark_error(
         mock.patch(
             "robotsix_auto_mail.server.adapters._run_reconcile_background",
             mock_run_reconcile,
+        ),
+        mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[],
         ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
     ):
@@ -223,6 +239,10 @@ def test_reconcile_loop_respects_ingest_interval(
         mock.patch("robotsix_auto_mail.config.load_accounts", mock_load_accounts),
         mock.patch("robotsix_auto_mail.db.init_db", mock_init_db),
         mock.patch("robotsix_auto_mail.db.get_watermark", mock_get_watermark),
+        mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[],
+        ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
     ):
         mock_sleep.side_effect = _sleep_side_effect
@@ -260,6 +280,10 @@ def test_reconcile_loop_skips_account_without_password() -> None:
         mock.patch(
             "robotsix_auto_mail.server.adapters._run_reconcile_background",
             mock_run_reconcile,
+        ),
+        mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[],
         ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
     ):

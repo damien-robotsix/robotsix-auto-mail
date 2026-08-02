@@ -85,6 +85,28 @@ def _isolate_env() -> Generator[None, None, None]:
 
 
 @pytest.fixture(autouse=True)
+def _isolate_settings_store_merge() -> Generator[None, None, None]:
+    """Mock ``merge_settings_store_accounts`` to be a no-op identity function.
+
+    Without this mock, accounts discovered from on-disk settings stores
+    (``.data/<id>/mail.db``) created by other tests leak into tests that
+    call ``_cmd_ingest`` or ``_cmd_serve``, causing spurious failures.
+    No test exercises the merge path directly — the settings-store tests
+    cover ``merge_settings_store_accounts`` via its own unit tests.
+
+    The function is patched on ``robotsix_auto_mail.settings`` (the public
+    re-export) because every caller does a local ``from robotsix_auto_mail.
+    settings import merge_settings_store_accounts`` inside the function body,
+    and that import resolves through the settings package namespace.
+    """
+    with mock.patch(
+        "robotsix_auto_mail.settings.merge_settings_store_accounts",
+        side_effect=lambda accounts: accounts,
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def _block_network(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     """Block socket.create_connection so no test accidentally hits the network.
 

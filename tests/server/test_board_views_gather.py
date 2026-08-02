@@ -352,6 +352,7 @@ def test_gather_returns_all_expected_keys(single_db: str) -> None:
         "triage_running",
         "batch_op",
         "health",
+        "total_mail_count",
         "triage_by_mid",
         "column_buckets",
         "archive_subfolders",
