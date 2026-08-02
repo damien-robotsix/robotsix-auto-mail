@@ -33,7 +33,9 @@ def _fetch_export(url: str) -> dict[str, Any]:
         method="GET",
         headers={"Accept": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 — HTTPS expected
+    with urllib.request.urlopen(  # noqa: S310  # nosec B310 — HTTPS expected
+        req, timeout=30
+    ) as resp:
         body = resp.read().decode("utf-8")
     data = json.loads(body)
     if not isinstance(data, dict):
