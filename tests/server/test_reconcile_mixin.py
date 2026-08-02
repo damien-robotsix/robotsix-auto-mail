@@ -6,7 +6,7 @@ from unittest import mock
 
 from pydantic import SecretStr
 
-from robotsix_auto_mail.config import MailAccountsConfig, MailAccount, MailConfig
+from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 
 
@@ -39,7 +39,11 @@ def _make_mail_config(db_path: str = "/tmp/test.db") -> MailConfig:  # noqa: S10
     )
 
 
-def _make_accounts(count: int, *, base_db_path: str = "/tmp/acct") -> MailAccountsConfig:  # noqa: S108
+def _make_accounts(
+    count: int,
+    *,
+    base_db_path: str = "/tmp/acct",  # noqa: S108
+) -> MailAccountsConfig:
     accounts = [
         MailAccount(
             account_id=f"acct-{i}",
@@ -97,7 +101,7 @@ def test_handle_reconcile_aggregate_spawns_per_account_threads() -> None:
         kwargs = call_args.kwargs
         assert kwargs["target"].__name__ == "_run_reconcile_background"
         assert kwargs["daemon"] is True
-        expected_db = f"/tmp/acct-{i}.db"
+        expected_db = f"/tmp/acct-{i}.db"  # noqa: S108
         assert kwargs["args"][0] == expected_db
         assert kwargs["args"][1] is accounts.accounts[i].config
 

@@ -72,9 +72,7 @@ def test_ingest_watch_loops_then_stops_on_interrupt(
         mock.patch(
             "robotsix_auto_mail.cli._ingest_cycle", return_value=0
         ) as mock_cycle,
-        mock.patch(
-            "robotsix_auto_mail.cli.load_accounts", return_value=accounts
-        ),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
         mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
         mock.patch(
             "robotsix_auto_mail.cli.commands_ingest.probe_account",
@@ -101,9 +99,7 @@ def test_ingest_watch_survives_cycle_error(
             "robotsix_auto_mail.cli._ingest_cycle",
             side_effect=RuntimeError("boom"),
         ),
-        mock.patch(
-            "robotsix_auto_mail.cli.load_accounts", return_value=accounts
-        ),
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
         mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
         mock.patch(
             "robotsix_auto_mail.cli.commands_ingest.probe_account",

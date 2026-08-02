@@ -10,9 +10,11 @@ has been overwritten.
 from __future__ import annotations
 
 from robotsix_auto_mail.settings.import_ import import_from_central_deploy
-from robotsix_auto_mail.settings.store import SettingsStore
-from robotsix_auto_mail.settings.store import discover_accounts_from_settings_stores
-from robotsix_auto_mail.settings.store import merge_settings_store_accounts
+from robotsix_auto_mail.settings.store import (
+    SettingsStore,
+    discover_accounts_from_settings_stores,
+    merge_settings_store_accounts,
+)
 
 __all__ = [
     "SettingsStore",

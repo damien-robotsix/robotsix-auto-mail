@@ -135,9 +135,7 @@ def test_cmd_serve_starts_reconcile_background_thread(
     mock_thread_cls.assert_any_call(
         target=mock_reconcile, args=(accounts,), daemon=True
     )
-    mock_thread_cls.assert_any_call(
-        target=mock_ingest, args=(accounts,), daemon=True
-    )
+    mock_thread_cls.assert_any_call(target=mock_ingest, args=(accounts,), daemon=True)
     assert mock_thread_cls.return_value.start.call_count == 2
 
 
