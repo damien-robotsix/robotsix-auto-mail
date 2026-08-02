@@ -112,7 +112,7 @@ def test_validate_field_bool_coercion() -> None:
 def test_validate_field_secret_str_accepts_string() -> None:
     """SecretStr fields accept plain strings."""
     assert _validate_field("password", "s3cret") is None
-    assert _validate_field("llm_api_key", "sk-abc") is None
+    assert _validate_field("oauth2_token", "ya29.abc") is None
 
 
 def test_validate_field_required_field_valid() -> None:
@@ -209,7 +209,7 @@ class TestSettingsStoreSeeded:
             smtp_host="smtp.example.com",
             username="user@example.com",
             password="s3cret",
-            llm_api_key="sk-abc123",
+            oauth2_token="ya29.abc123",
         )
         store.seed_from_mail_config(conn, cfg)
         return conn
@@ -228,7 +228,7 @@ class TestSettingsStoreSeeded:
         assert settings["username"] == "user@example.com"
         # Secret fields are masked.
         assert settings["password"] == "***"
-        assert settings["llm_api_key"] == "***"
+        assert settings["oauth2_token"] == "***"
 
     def test_get_masks_secret(
         self, store: SettingsStore, seeded_conn: sqlite3.Connection

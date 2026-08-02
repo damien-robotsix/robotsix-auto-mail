@@ -9,7 +9,15 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.cli import main
-from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
+from robotsix_auto_mail.config import (
+    MAIN_LLM_ALIAS,
+    LangfuseConfig,
+    LangfuseProject,
+    MailAccount,
+    MailAccountsConfig,
+    MailConfig,
+    OpenRouterConfig,
+)
 from robotsix_auto_mail.config.detect import MailProvider
 from tests.cli.conftest import _ok_result
 
@@ -318,11 +326,15 @@ def test_detect_overwrite_with_oauth2_flags(
     assert "password" not in report
 
 
-def test_detect_overwrite_preserves_llm_api_key(
+def test_detect_overwrite_preserves_component_credentials(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], no_autoconfig: object
 ) -> None:
-    """--overwrite preserves llm_api_key, llm_provider_model, and langfuse_*
-    fields from an existing config file (re-deploy path)."""
+    """--overwrite rewrites the account without touching the credential blocks.
+
+    Re-detecting a mailbox rebuilds the container.  Rebuilt from the account
+    list alone it would drop the component-wide `langfuse` / `openrouter`
+    blocks — a silent credential wipe on every re-deploy.
+    """
 
     output = tmp_path / "cfg.json"
     seed_cfg = MailConfig(
@@ -330,14 +342,22 @@ def test_detect_overwrite_preserves_llm_api_key(
         smtp_host="old.example.com",
         username="test@gmail.com",
         password="old-pw",
-        llm_api_key="sk-seed",
-        llm_provider_model="openai/gpt-4o",
-        langfuse_public_key="pk-seed",
-        langfuse_secret_key="sk-seed-lf",
-        langfuse_base_url="https://cloud.langfuse.com",
     )
     seed_account = MailAccount(account_id="main", config=seed_cfg, label="Main")
-    container = MailAccountsConfig(accounts=[seed_account], default_account_id="main")
+    container = MailAccountsConfig(
+        accounts=[seed_account],
+        default_account_id="main",
+        langfuse=LangfuseConfig(
+            host="https://cloud.langfuse.com",
+            projects={
+                MAIN_LLM_ALIAS: LangfuseProject(
+                    public_key="pk-seed", secret_key="sk-seed-lf"
+                )
+            },
+        ),
+        openrouter=OpenRouterConfig(keys={MAIN_LLM_ALIAS: "sk-seed"}),
+        llm_provider_model="openai/gpt-4o",
+    )
     from robotsix_config import dump_config
 
     dump_config(container, path=output)
@@ -375,17 +395,18 @@ def test_detect_overwrite_preserves_llm_api_key(
     assert report["login_ok"] is False
 
     accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
-    cfg = accounts.get("main").config
-    # Existing llm/langfuse values preserved from the seed file.
-    assert cfg.llm_api_key.get_secret_value() == "sk-seed"
-    assert cfg.llm_provider_model == "openai/gpt-4o"
-    assert cfg.langfuse_public_key == "pk-seed"
-    assert cfg.langfuse_secret_key.get_secret_value() == "sk-seed-lf"
-    assert cfg.langfuse_base_url == "https://cloud.langfuse.com"
-    # Transport fields updated.
-    assert cfg.imap_host == "imap.gmail.com"
+    # The credential blocks survived the rewrite…
+    assert accounts.openrouter.key() == "sk-seed"
+    assert accounts.langfuse.host == "https://cloud.langfuse.com"
+    project = accounts.langfuse.project()
+    assert project is not None
+    assert project.public_key == "pk-seed"
+    assert project.secret_key.get_secret_value() == "sk-seed-lf"
+    assert accounts.llm_provider_model == "openai/gpt-4o"
+    # …and the transport fields were updated.
+    assert accounts.get("main").config.imap_host == "imap.gmail.com"
 
-    # Raw file carries the llm and langfuse fields.
+    # Raw file still carries the credentials.
     content = output.read_text()
     assert "sk-seed" in content
     assert "pk-seed" in content

@@ -3,6 +3,11 @@
 Single source of truth shared by the config-sync
 checker (``scripts/config/check_config_sync.FIELD_TO_YAML``), so the two
 cannot drift when a config field is added, renamed, or removed.
+
+Only *per-mailbox* fields appear here.  The component-wide LLM settings
+(the canonical ``langfuse`` / ``openrouter`` blocks and
+``llm_provider_model``) live on ``MailAccountsConfig``, outside any
+account, and are therefore outside this map.
 """
 
 from __future__ import annotations
@@ -23,8 +28,6 @@ FIELD_YAML_MAP: dict[str, str] = {
     "oauth2_provider": "auth.oauth2_provider",
     "oauth2_tenant": "auth.oauth2_tenant",
     "db_path": "store.path",
-    "llm_api_key": "llm.api_key",  # pragma: allowlist secret
-    "llm_provider_model": "llm.provider_model",
     "ingest_interval_minutes": "ingest.interval_minutes",
     "ingest_mode": "ingest.mode",
     "heartbeat_file": "ingest.heartbeat_file",
@@ -32,9 +35,6 @@ FIELD_YAML_MAP: dict[str, str] = {
     "archive_enabled": "archive.enabled",
     "triage_on_ingest": "triage.on_ingest",
     "triage_rules_path": "triage.rules_path",
-    "langfuse_public_key": "langfuse.public_key",
-    "langfuse_secret_key": "langfuse.secret_key",  # pragma: allowlist secret
-    "langfuse_base_url": "langfuse.base_url",
     "log_level": "logging.level",
     "log_format": "logging.format",
 }

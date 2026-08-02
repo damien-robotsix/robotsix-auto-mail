@@ -11,7 +11,12 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
-from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
+from robotsix_auto_mail.config import (
+    DEFAULT_ARCHIVE_ROOT,
+    MailConfig,
+    resolve_llm_api_key,
+    resolve_llm_provider_model,
+)
 from robotsix_auto_mail.core._constants import _WATERMARK_RUNNING
 from robotsix_auto_mail.db import MailRecord, get_watermark, set_watermark
 from robotsix_auto_mail.server._constants import _is_safe_redirect_path, _with_db
@@ -191,12 +196,8 @@ class _BoardActionMixin:
                         propose_archive_subfolder_llm(
                             conn,
                             record,
-                            self.mail_config.llm_api_key.get_secret_value(),
-                            provider_model=(
-                                self.mail_config.llm_provider_model
-                                if self.mail_config
-                                else None
-                            ),
+                            resolve_llm_api_key(raise_on_missing=False),
+                            provider_model=resolve_llm_provider_model() or None,
                             rules=rules_text_for(self.mail_config),
                         )
                 except Exception:  # noqa: S110  # nosec B110
@@ -344,11 +345,7 @@ class _BoardActionMixin:
             conn,
             record.message_id,
             record,
-            api_key=(
-                self.mail_config.llm_api_key.get_secret_value()
-                if self.mail_config
-                else ""
-            ),
+            api_key=resolve_llm_api_key(raise_on_missing=False),
             rules=rules_text_for(self.mail_config),
         )
 

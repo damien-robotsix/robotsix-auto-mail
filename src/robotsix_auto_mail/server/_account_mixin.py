@@ -362,9 +362,12 @@ class _AccountMixin:
             default_id = account_id
 
         try:
-            new_config = MailAccountsConfig(
-                accounts=new_accounts,
-                default_account_id=default_id,
+            new_config = (
+                existing.with_accounts(new_accounts, default_id)
+                if existing is not None
+                else MailAccountsConfig(
+                    accounts=new_accounts, default_account_id=default_id
+                )
             )
         except Exception as exc:
             self._serve_add_account(

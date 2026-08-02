@@ -77,28 +77,11 @@ def test_mailconfig_str_redacts_password() -> None:
     assert "<redacted>" in s
 
 
-def test_mailconfig_langfuse_defaults_empty() -> None:
-    """Langfuse fields default to empty strings when unset."""
-    cfg = MailConfig(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-        username="u",
-        password="p",
-    )
-    assert cfg.langfuse_public_key == ""
-    assert cfg.langfuse_secret_key.get_secret_value() == ""
-    assert cfg.langfuse_base_url == ""
+def test_mailconfig_carries_no_llm_credentials() -> None:
+    """Credentials belong to the component, not to a mailbox.
 
-
-def test_mailconfig_repr_redacts_langfuse_secret_key() -> None:
-    """repr() must NOT include the langfuse_secret_key value."""
-    cfg = MailConfig(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-        username="u",
-        password="p",
-        langfuse_secret_key="sk-lf-supersecret",
-    )
-    r = repr(cfg)
-    assert "sk-lf-supersecret" not in r
-    assert "<redacted>" in r
+    A stray per-account field would be invisible to the fleet's credential
+    discovery, which reads only the canonical top-level blocks.
+    """
+    per_account = set(MailConfig.model_fields)
+    assert not {f for f in per_account if "langfuse" in f or f.startswith("llm_")}

@@ -1,5 +1,51 @@
 {
   "$defs": {
+    "LangfuseConfig": {
+      "description": "The canonical ``langfuse`` block: one instance, N named projects.",
+      "properties": {
+        "host": {
+          "default": "",
+          "description": "Langfuse instance base URL, e.g. `https://langfuse.example.net`.",
+          "title": "Host",
+          "type": "string"
+        },
+        "projects": {
+          "additionalProperties": {
+            "$ref": "#/$defs/LangfuseProject"
+          },
+          "description": "One entry per LLM function, keyed by its Langfuse project name. auto-mail has one: `robotsix-auto-mail`.",
+          "title": "Projects",
+          "type": "object"
+        }
+      },
+      "title": "LangfuseConfig",
+      "type": "object"
+    },
+    "LangfuseProject": {
+      "description": "Credentials for one Langfuse project.",
+      "properties": {
+        "public_key": {
+          "default": "",
+          "title": "Public Key",
+          "type": "string"
+        },
+        "secret_key": {
+          "default": "",
+          "format": "password",
+          "title": "Secret Key",
+          "type": "string",
+          "writeOnly": true
+        },
+        "project_id": {
+          "advanced": true,
+          "default": "",
+          "title": "Project Id",
+          "type": "string"
+        }
+      },
+      "title": "LangfuseProject",
+      "type": "object"
+    },
     "MailAccount": {
       "description": "One named mailbox: a stable ``account_id`` plus its ``MailConfig``.\n\n``label`` is an optional human-friendly display name.  ``account_id`` is\na stable identifier (e.g. ``\"personal\"``) used in the account's SQLite\nfilename and, later in the epic, in URLs / board selectors \u2014 so it must\nbe non-empty and match ``^[A-Za-z0-9._-]+$``.",
       "properties": {
@@ -31,7 +77,7 @@
       "type": "object"
     },
     "MailConfig": {
-      "description": "Immutable application settings: mail server connection parameters\nplus optional LLM credentials used by ``detect`` (and future mail\nprocessing).\n\nSensitive fields (``password``, ``llm_api_key``, ``oauth2_token``,\n``oauth2_client_secret``, ``langfuse_secret_key``) are typed as\n:class:`pydantic.SecretStr` so the JSON schema emits ``writeOnly``\nand the values are masked in ``repr`` / ``str``.",
+      "description": "Immutable per-mailbox settings: mail server connection parameters.\n\nSensitive fields (``password``, ``oauth2_token``,\n``oauth2_client_secret``) are typed as :class:`pydantic.SecretStr` so\nthe JSON schema emits ``writeOnly`` and the values are masked in\n``repr`` / ``str``.\n\nLLM and Langfuse credentials are deliberately **not** here: they belong\nto the component, not to a mailbox, and live in the canonical\n``langfuse`` / ``openrouter`` blocks on :class:`MailAccountsConfig`\n(see :mod:`robotsix_auto_mail.config.credentials`).",
       "properties": {
         "imap_host": {
           "title": "Imap Host",
@@ -84,19 +130,6 @@
         "imap_folder": {
           "default": "INBOX",
           "title": "Imap Folder",
-          "type": "string"
-        },
-        "llm_api_key": {
-          "default": "",
-          "format": "password",
-          "title": "Llm Api Key",
-          "type": "string",
-          "writeOnly": true
-        },
-        "llm_provider_model": {
-          "advanced": true,
-          "default": "",
-          "title": "Llm Provider Model",
           "type": "string"
         },
         "ingest_interval_minutes": {
@@ -176,25 +209,6 @@
           "title": "Oauth2 Tenant",
           "type": "string"
         },
-        "langfuse_public_key": {
-          "advanced": true,
-          "default": "",
-          "title": "Langfuse Public Key",
-          "type": "string"
-        },
-        "langfuse_secret_key": {
-          "default": "",
-          "format": "password",
-          "title": "Langfuse Secret Key",
-          "type": "string",
-          "writeOnly": true
-        },
-        "langfuse_base_url": {
-          "advanced": true,
-          "default": "",
-          "title": "Langfuse Base Url",
-          "type": "string"
-        },
         "log_level": {
           "default": "INFO",
           "title": "Log Level",
@@ -214,9 +228,26 @@
       ],
       "title": "MailConfig",
       "type": "object"
+    },
+    "OpenRouterConfig": {
+      "description": "The canonical ``openrouter`` block: one provider key per alias.",
+      "properties": {
+        "keys": {
+          "additionalProperties": {
+            "format": "password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "description": "The OpenRouter key funding each LLM function, keyed by the same alias as `langfuse.projects` \u2014 that shared alias is what lets billed spend be reconciled against traced spend.",
+          "title": "Keys",
+          "type": "object"
+        }
+      },
+      "title": "OpenRouterConfig",
+      "type": "object"
     }
   },
-  "description": "An ordered collection of :class:`MailAccount`s plus a default id.\n\nOne SQLite DB per account\n-------------------------\nMultiple accounts are modelled as N independent :class:`MailConfig`\ninstances, each carrying its **own** ``db_path``, rather than adding an\n``account_id`` column to every table.  The rationale:\n\n- Per-account state (triage decisions, archive watermarks \u2014 all keyed\n  by ``message_id`` in each DB, plus the per-account ``triage_rules.md``\n  file) is naturally isolated with zero schema migration.\n- Each :class:`MailConfig` already owns a ``db_path`` field, so no new\n  per-row plumbing is required.\n- The cost is one SQLite file per account; uniqueness of ``db_path``\n  across accounts is therefore enforced at load time.\n\nValidation (all raise :class:`ConfigurationError`): at least one\naccount; all ``account_id``s unique; all ``MailConfig.db_path``s unique\nacross accounts; ``default_account_id`` resolves to a known account.",
+  "description": "An ordered collection of :class:`MailAccount`s plus a default id.\n\nOne SQLite DB per account\n-------------------------\nMultiple accounts are modelled as N independent :class:`MailConfig`\ninstances, each carrying its **own** ``db_path``, rather than adding an\n``account_id`` column to every table.  The rationale:\n\n- Per-account state (triage decisions, archive watermarks \u2014 all keyed\n  by ``message_id`` in each DB, plus the per-account ``triage_rules.md``\n  file) is naturally isolated with zero schema migration.\n- Each :class:`MailConfig` already owns a ``db_path`` field, so no new\n  per-row plumbing is required.\n- The cost is one SQLite file per account; uniqueness of ``db_path``\n  across accounts is therefore enforced at load time.\n\nComponent-wide settings\n-----------------------\nThe ``langfuse`` and ``openrouter`` blocks and ``llm_provider_model``\nsit here rather than on each :class:`MailConfig` because they describe\nthe component's one LLM function, not a mailbox.  Their shape is fixed\nby robotsix-standards \u2014 see\n:mod:`robotsix_auto_mail.config.credentials`.\n\nValidation (all raise :class:`ConfigurationError`): at least one\naccount; all ``account_id``s unique; all ``MailConfig.db_path``s unique\nacross accounts; ``default_account_id`` resolves to a known account.",
   "properties": {
     "accounts": {
       "items": {
@@ -229,6 +260,17 @@
       "default": "",
       "title": "Default Account Id",
       "type": "string"
+    },
+    "langfuse": {
+      "$ref": "#/$defs/LangfuseConfig"
+    },
+    "openrouter": {
+      "$ref": "#/$defs/OpenRouterConfig"
+    },
+    "llm_provider_model": {
+      "default": "",
+      "title": "Llm Provider Model",
+      "type": "string"
     }
   },
   "required": [
@@ -237,3 +279,4 @@
   "title": "MailAccountsConfig",
   "type": "object"
 }
+

@@ -53,8 +53,8 @@ $EDITOR config/config.json
 
 Instead of manually creating the whole `config/config.json`, you can
 auto-generate the account settings from just your email address. First put
-your LLM API key in the config file's top-level `llm:` section (e.g. copy the
-example and set `llm.api_key`), then run:
+your LLM API key in the config file's top-level `openrouter:` block (e.g. copy
+the example and set `openrouter.keys.robotsix-auto-mail`), then run:
 
 ```sh
 docker compose run robotsix-auto-mail detect user@gmail.com

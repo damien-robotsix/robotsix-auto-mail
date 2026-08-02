@@ -165,12 +165,6 @@ class TestMailConfigReprMasking:
         assert "super-secret-pw" not in r
         assert "password=<redacted>" in r
 
-    def test_llm_api_key_redacted(self) -> None:
-        cfg = _make_config(llm_api_key="sk-1234567890")
-        r = repr(cfg)
-        assert "sk-1234567890" not in r
-        assert "llm_api_key=<redacted>" in r
-
     def test_oauth2_token_redacted(self) -> None:
         cfg = _make_config(oauth2_token="ya29.secret-token")
         r = repr(cfg)
@@ -182,12 +176,6 @@ class TestMailConfigReprMasking:
         r = repr(cfg)
         assert "GOCSPX-secret" not in r
         assert "oauth2_client_secret=<redacted>" in r
-
-    def test_langfuse_secret_key_redacted(self) -> None:
-        cfg = _make_config(langfuse_secret_key="sk-lf-abcdef")
-        r = repr(cfg)
-        assert "sk-lf-abcdef" not in r
-        assert "langfuse_secret_key=<redacted>" in r
 
     def test_non_secret_fields_visible(self) -> None:
         cfg = _make_config(username="alice@example.com", imap_host="mail.example.com")
@@ -205,7 +193,7 @@ class TestMailConfigReprMasking:
         """Even empty secret fields should appear as <redacted>."""
         cfg = _make_config()
         r = repr(cfg)
-        assert "llm_api_key=<redacted>" in r
+        assert "password=<redacted>" in r
         assert "oauth2_token=<redacted>" in r
 
 

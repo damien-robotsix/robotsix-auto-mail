@@ -68,7 +68,17 @@ def _unwrap_optional(annotation: Any) -> Any:
 
 
 def _classify(annotation: Any) -> tuple[str, type[BaseModel] | None]:
-    """Classify a field annotation as ``secret`` / ``model`` / ``list`` / ``scalar``."""
+    """Classify a field annotation.
+
+    Kinds: ``secret`` (a bare ``SecretStr``), ``model``, ``list`` (of
+    models), ``map`` (a ``dict`` of models — the second element is the value
+    model), ``secret_map`` (a ``dict`` of ``SecretStr``), or ``scalar``.
+
+    The two map kinds are what the canonical credential blocks are made of
+    (``langfuse.projects``, ``openrouter.keys``).  Without them a map falls
+    through to ``scalar``, and every secret nested in one is written verbatim
+    into version history and overwritten by the panel's blank input.
+    """
     annotation = _unwrap_optional(annotation)
     if annotation is SecretStr:
         return "secret", None
@@ -78,6 +88,13 @@ def _classify(annotation: Any) -> tuple[str, type[BaseModel] | None]:
         args = typing.get_args(annotation)
         if args and isinstance(args[0], type) and issubclass(args[0], BaseModel):
             return "list", args[0]
+    if typing.get_origin(annotation) is dict:
+        args = typing.get_args(annotation)
+        value = _unwrap_optional(args[1]) if len(args) == 2 else None
+        if value is SecretStr:
+            return "secret_map", None
+        if isinstance(value, type) and issubclass(value, BaseModel):
+            return "map", value
     return "scalar", None
 
 
@@ -106,7 +123,7 @@ def strip_secrets(model_cls: type[BaseModel], data: dict[str, Any]) -> dict[str,
             out[key] = value
             continue
         kind, sub = _classify(info.annotation)
-        if kind == "secret":
+        if kind in ("secret", "secret_map"):
             continue
         if kind == "model" and sub is not None and isinstance(value, dict):
             out[key] = strip_secrets(sub, value)
@@ -115,6 +132,11 @@ def strip_secrets(model_cls: type[BaseModel], data: dict[str, Any]) -> dict[str,
                 strip_secrets(sub, item) if isinstance(item, dict) else item
                 for item in value
             ]
+        elif kind == "map" and sub is not None and isinstance(value, dict):
+            out[key] = {
+                name: strip_secrets(sub, entry) if isinstance(entry, dict) else entry
+                for name, entry in value.items()
+            }
         else:
             out[key] = value
     return out
@@ -153,8 +175,43 @@ def merge_updates(
             merged[key] = _merge_list(
                 sub, existing_list if isinstance(existing_list, list) else [], value
             )
+        elif kind in ("map", "secret_map") and isinstance(value, dict):
+            existing_map = current.get(key)
+            merged[key] = _merge_map(
+                sub,
+                existing_map if isinstance(existing_map, dict) else {},
+                value,
+            )
         else:
             merged[key] = value
+    return merged
+
+
+def _merge_map(
+    model_cls: type[BaseModel] | None,
+    current: dict[str, Any],
+    updates: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge a map of models (or of secrets), keyed by name.
+
+    *updates* is authoritative about which keys exist — an alias the operator
+    removed has to disappear, and a partial map would silently resurrect it.
+    Each surviving entry is still *merged*, so a secret left blank keeps the
+    stored value instead of being overwritten with the mask.
+    """
+    merged: dict[str, Any] = {}
+    for name, value in updates.items():
+        existing = current.get(name)
+        if model_cls is not None and isinstance(value, dict):
+            merged[name] = merge_updates(
+                model_cls, existing if isinstance(existing, dict) else {}, value
+            )
+        elif isinstance(value, str) and value in ("", MASK):
+            # A blank secret means "unchanged"; with nothing stored under this
+            # alias it stays declared-but-unset rather than vanishing.
+            merged[name] = existing if isinstance(existing, str) else ""
+        else:
+            merged[name] = value
     return merged
 
 
@@ -258,6 +315,22 @@ def _collect_changes(
         if kind == "secret":
             if before.get(key) != after.get(key):
                 out.append(f"{path} (secret)")
+        elif kind == "secret_map":
+            was = before.get(key) or {}
+            now = after.get(key) or {}
+            for name in sorted(set(was) | set(now)):
+                if was.get(name) != now.get(name):
+                    out.append(f"{path}.{name} (secret)")
+        elif kind == "map":
+            was_map = before.get(key) or {}
+            now_map = after.get(key) or {}
+            for name in sorted(set(was_map) | set(now_map)):
+                if name not in was_map or name not in now_map:
+                    out.append(f"{path}.{name}")
+                    continue
+                _collect_changes(
+                    sub, was_map[name], now_map[name], f"{path}.{name}", out
+                )
         elif kind == "model":
             _collect_changes(sub, before.get(key), after.get(key), path, out)
         elif kind == "list":
@@ -365,6 +438,25 @@ def _with_real_secrets(
             and isinstance(out[key], dict)
         ):
             out[key] = _with_real_secrets(sub, value, out[key])
+        elif kind == "secret_map" and isinstance(value, dict):
+            out[key] = {
+                name: secret.get_secret_value()
+                if isinstance(secret, SecretStr)
+                else secret
+                for name, secret in value.items()
+            }
+        elif (
+            kind == "map"
+            and sub is not None
+            and isinstance(value, dict)
+            and isinstance(out[key], dict)
+        ):
+            out[key] = {
+                name: _with_real_secrets(sub, entry, out[key][name])
+                if isinstance(entry, BaseModel) and isinstance(out[key].get(name), dict)
+                else out[key].get(name)
+                for name, entry in value.items()
+            }
         elif (
             kind == "list"
             and sub is not None

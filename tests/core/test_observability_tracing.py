@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from unittest import mock
 
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import (
+    MAIN_LLM_ALIAS,
+    LangfuseConfig,
+    LangfuseProject,
+)
 from robotsix_auto_mail.core._observability import init_langfuse_tracing
 
 
@@ -13,16 +17,17 @@ def _make_config(
     langfuse_public_key: str = "",
     langfuse_secret_key: str = "",
     langfuse_base_url: str = "",
-) -> MailConfig:
-    """Build a minimal ``MailConfig`` for tracing tests."""
-    return MailConfig(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-        username="user@example.com",
-        password="secret",
-        langfuse_public_key=langfuse_public_key,
-        langfuse_secret_key=langfuse_secret_key,
-        langfuse_base_url=langfuse_base_url,
+    alias: str = MAIN_LLM_ALIAS,
+) -> LangfuseConfig:
+    """Build the canonical ``langfuse`` block for tracing tests."""
+    return LangfuseConfig(
+        host=langfuse_base_url,
+        projects={
+            alias: LangfuseProject(
+                public_key=langfuse_public_key,
+                secret_key=langfuse_secret_key,
+            )
+        },
     )
 
 
@@ -80,7 +85,7 @@ def test_init_setup_fails_no_handlers() -> None:
 
 
 def test_init_passes_config_credentials() -> None:
-    """Credentials from a MailConfig are forwarded to setup_langfuse_tracing."""
+    """Credentials from the canonical block reach setup_langfuse_tracing."""
     config = _make_config(
         langfuse_public_key="pk-lf-test",
         langfuse_secret_key="sk-lf-test",
@@ -101,7 +106,32 @@ def test_init_passes_config_credentials() -> None:
 
 def test_init_empty_config_fields_become_none() -> None:
     """Empty-string Langfuse fields convert to None (env-fallback no-op)."""
-    config = _make_config()  # langfuse_* default to ""
+    config = _make_config()  # the project is declared but unset
+    with mock.patch(
+        "robotsix_auto_mail.core._observability.setup_langfuse_tracing",
+        return_value=False,
+    ) as mock_setup:
+        init_langfuse_tracing(config)
+        mock_setup.assert_called_once_with(
+            service_name="robotsix-auto-mail",
+            public_key=None,
+            secret_key=None,
+            base_url=None,
+        )
+
+
+def test_init_ignores_a_project_under_another_alias() -> None:
+    """Only this component's own function is traced.
+
+    Picking up any project in the block would send auto-mail's traces into a
+    neighbouring function's project and break the one-project-per-function
+    split the standard requires.
+    """
+    config = _make_config(
+        langfuse_public_key="pk-other",
+        langfuse_secret_key="sk-other",
+        alias="some-other-function",
+    )
     with mock.patch(
         "robotsix_auto_mail.core._observability.setup_langfuse_tracing",
         return_value=False,

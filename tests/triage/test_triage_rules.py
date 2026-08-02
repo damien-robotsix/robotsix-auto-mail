@@ -27,7 +27,6 @@ def _config(tmp_path: Path, **overrides: str) -> MailConfig:
         username="user@example.com",
         password="pw",
         db_path=overrides.get("db_path", str(tmp_path / "mail.db")),
-        llm_api_key=overrides.get("llm_api_key", ""),
         triage_rules_path=overrides.get("triage_rules_path", ""),
     )
 
@@ -197,7 +196,10 @@ def test_record_user_action_inline_writes(
         "_run_llm_agent",
         lambda **_k: RulesMarkdown(markdown="# Triage rules\n\n- Reply to boss\n"),
     )
-    config = _config(tmp_path, llm_api_key="sk-test")
+    # The provider key is component-wide now, so it comes from the resolver
+    # rather than from the account this action was recorded against.
+    monkeypatch.setattr(rules_mod, "resolve_llm_api_key", lambda *_a, **_k: "sk-test")
+    config = _config(tmp_path)
     record = _make_record(
         message_id="<m1@x.com>", sender="boss@x.com", subject="Q3 plan"
     )
@@ -223,7 +225,6 @@ def test_record_user_action_memory_db_is_noop(
         username="u@x.com",
         password="p",
         db_path=":memory:",
-        llm_api_key="sk-test",
     )
     record = _make_record(message_id="<m@x.com>", sender="a@x.com", subject="s")
     record_user_action(record, "TO_ARCHIVE", config=config, background=False)

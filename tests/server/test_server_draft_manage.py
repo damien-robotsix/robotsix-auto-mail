@@ -152,7 +152,6 @@ def test_generate_draft_generates_and_moves_to_draft_ready(single_db: str) -> No
         smtp_host="smtp.example.com",
         username="user",
         password="pass",
-        llm_api_key="sk-test",
     )
 
     mock_run_result = mock.MagicMock()
@@ -163,9 +162,16 @@ def test_generate_draft_generates_and_moves_to_draft_ready(single_db: str) -> No
     mock_provider.build_agent.return_value = mock_handle
     mock_provider.call_with_retry.side_effect = lambda fn, what: fn()
 
-    with mock.patch(
-        "robotsix_llmio.core.factory.get_provider_for_identifier",
-        return_value=mock_provider,
+    with (
+        mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
+            return_value=mock_provider,
+        ),
+        # Draft generation resolves the component-wide provider key itself.
+        mock.patch(
+            "robotsix_auto_mail.server._draft_mixin.resolve_llm_api_key",
+            return_value="sk-test",
+        ),
     ):
         server, port = _start_test_server_with_mail_config(single_db, mail_config)
         try:

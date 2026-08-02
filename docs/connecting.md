@@ -87,9 +87,9 @@ write-only password field.
 uv sync --extra dev
 ```
 
-Set your OpenRouter API key (required for `detect`) via the `LLM_API_KEY`
-environment variable, or configure it in `config/config.json` under the
-`llm_api_key` field.
+Set your OpenRouter API key (required for `detect`) in `config/config.json`
+under `openrouter.keys.robotsix-auto-mail`, or pass it per-run with
+`--api-key`.
 
 ### Minimal usage
 
@@ -126,7 +126,8 @@ robotsix-auto-mail detect user@gmail.com --password "app-password"
 ### Docker invocation
 
 ```sh
-# Set your OpenRouter API key via the LLM_API_KEY environment variable, then:
+# Set your OpenRouter API key in config/config.json under
+# openrouter.keys.robotsix-auto-mail (or pass --api-key), then:
 
 # Detect provider settings, write config, and verify connectivity —
 # all in one step (prompts for the password; uses the run TTY).
@@ -185,8 +186,8 @@ ships at [`config/config.example.json`](../config/config.example.json).
 
 **Trace ID injection.** Every log event automatically includes a `trace_id`
 field that correlates logs with OpenTelemetry / Langfuse recordings.  When a
-Langfuse trace is active (see the `langfuse.public_key` / `langfuse.secret_key`
-keys in the [Configuration Reference](configuration.md)), the `trace_id` is
+Langfuse trace is active (see the `langfuse.projects` block in the
+[Configuration Reference](configuration.md)), the `trace_id` is
 stamped as a 32-character lowercase hexadecimal string; when no trace is active
 (or OpenTelemetry is absent), it is set to `"-"`.  This is transparent — no
 configuration is needed — and applies to both `json` and `console` log
@@ -553,8 +554,10 @@ only `ROBOTSIX_CONFIG_FILE` (which locates the file) is read from the environmen
 If the config file has an *invalid* value (e.g. a non-integer port), the error
 is raised immediately so your typo is not silently swallowed.
 
-The `detect` command resolves the LLM settings (`llm.api_key`) on their own
-(via `load_llm()`) so it works before the mail fields are filled in.
+The `detect` command resolves the LLM settings (`openrouter.keys`,
+`llm_provider_model`) on their own, so it works before the mail fields are
+filled in.  It never copies them onto the account it writes: they are
+component-wide.
 
 ## Example setups
 
@@ -1011,7 +1014,7 @@ error (e.g., missing API key):
 
 The endpoint requires the same setup as the CLI `config-sync` command:
 - The `pydantic-ai` package (install via `pip install robotsix-auto-mail[dev]`)
-- An LLM API key (`llm.api_key` in the config file)
+- An LLM API key (`openrouter.keys.robotsix-auto-mail` in the config file)
 
 The endpoint applies dedup filtering by default (consulting the persisted
 ledger in the SQLite `watermark` table), so previously-seen drift proposals
@@ -1224,7 +1227,7 @@ deterministic checker doesn't encode. Because a successful advisory run exits
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--api-key` | – | OpenRouter API key; overrides the config file's `llm.api_key` |
+| `--api-key` | – | OpenRouter API key; overrides the config file's `openrouter` key |
 | `--provider-model` | – | LLM provider-model identifier (e.g. `openrouter-deepseek`); overrides the config file's `llm.provider_model` |
 | `--output-format` | `text` | Output format: `text` (human-readable) or `json` (machine-readable) |
 | `--dedup` | – | Consult/update the dedup memory ledger to suppress previously-seen findings; requires a loadable config (for db path) |
@@ -1233,7 +1236,7 @@ deterministic checker doesn't encode. Because a successful advisory run exits
 
 The `config-sync` command requires:
 - The `pydantic-ai` package (install via `pip install robotsix-auto-mail[dev]`)
-- An LLM API key (via `--api-key` or `llm.api_key` in the config file)
+- An LLM API key (via `--api-key` or `openrouter.keys` in the config file)
 
 When `--dedup` is **not** passed, the command does not require a full mail config
 — it skips config loading and uses `conn=None`. When `--dedup` **is** passed,
@@ -1462,14 +1465,14 @@ action itself.
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--api-key` | – | OpenRouter API key; overrides the config file's `llm.api_key` |
+| `--api-key` | – | OpenRouter API key; overrides the config file's `openrouter` key |
 | `--output-format` | `text` | Output format: `text` (human-readable) or `json` (machine-readable) |
 
 ### Requirements
 
 The `triage` command requires:
 - The `pydantic-ai` package (install via `pip install robotsix-auto-mail[dev]`)
-- An LLM API key (via `--api-key` or `llm.api_key` in the config file)
+- An LLM API key (via `--api-key` or `openrouter.keys` in the config file)
 
 ### Representative text output
 

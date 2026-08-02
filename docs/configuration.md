@@ -4,14 +4,11 @@
 single YAML config file**. Each field the YAML file supplies overrides its
 built-in default; any field you omit keeps its default.
 
-> **Configuration is provided primarily via the YAML config file.** Three
-> environment variables are consulted:
+> **Configuration comes from the config file alone.** One environment
+> variable is consulted, and it carries no configuration of its own:
 >
-> - `ROBOTSIX_CONFIG_FILE` — locates the YAML config file (default
+> - `ROBOTSIX_CONFIG_FILE` — locates the config file (default
 >   `config/config.json`).
-> - `LLM_API_KEY` — LLM API key fallback (read by `resolve_llm_api_key` in
->   `config/loader.py`).
-> - `LLM_PROVIDER_MODEL` — LLM model/provider fallback.
 
 For a guided setup and the `detect` auto-configuration command, see
 [Connecting](connecting.md). The canonical template ships in
@@ -34,15 +31,17 @@ file — it carries no configuration values itself.
 ## File shape
 
 The config file has a top-level `accounts:` list — one entry per mailbox — plus
-optional application-wide `llm:`, `langfuse:`, and `logging:` sections and an
-optional `default_account:` key.
+optional application-wide `openrouter:`, `langfuse:`, and `logging:` sections
+and an optional `default_account:` key.
 
 ```yaml
 # Application-wide (top-level) sections
-llm:
-  api_key: sk-or-v1-…
+openrouter:
+  keys:
+    robotsix-auto-mail: sk-or-v1-…
 langfuse:
-  public_key: ""
+  host: ""
+  projects: {}
 logging:
   level: INFO
 
@@ -78,8 +77,8 @@ accounts:
 - **Per-account sections** — `imap`, `smtp`, `auth`, `store`, `ingest`,
   `archive`, and `triage` — live under each `accounts:`
   entry.
-- **Application-wide sections** — `llm`, `langfuse`, and `logging` — are
-  top-level and apply to every account.
+- **Application-wide sections** — `openrouter`, `langfuse`, `llm_provider_model`
+  and `logging` — are top-level and apply to every account.
 - The single-account ("mono") shape (top-level `imap:` / `smtp:` / `auth:`
   with no `accounts:` key) is **no longer loaded**. Run
   edit the `accounts:` block directly, or run
@@ -153,25 +152,53 @@ accounts:
 These sections are **not** nested under `accounts:` — they apply to every
 account.
 
-### `llm` — LLM provider
+### `openrouter` and `langfuse` — LLM credentials
 
-Used by the `detect` subcommand and future LLM-assisted mail processing.
+The provider key and the tracing credentials are **component-wide**: a mailbox
+is not an LLM function, so they are not per-account settings. Their shape is
+fixed by the [robotsix component
+standard](https://github.com/damien-robotsix/robotsix-standards) so that the
+deployment engine can enumerate every component's credentials the same way and
+serve them to the fleet consumers that need them (the chat agent's trace proxy,
+cost-monitor's reconciliation). Credentials kept in any other shape are
+invisible to that discovery — the component's own tracing still works, which is
+what makes the breakage easy to miss.
+
+```json
+{
+  "langfuse": {
+    "host": "https://langfuse.example.net",
+    "projects": {
+      "robotsix-auto-mail": {
+        "public_key": "pk-lf-…",
+        "secret_key": "sk-lf-…",
+        "project_id": ""
+      }
+    }
+  },
+  "openrouter": {
+    "keys": {
+      "robotsix-auto-mail": "sk-or-…"
+    }
+  },
+  "llm_provider_model": ""
+}
+```
+
+Both maps are keyed by **alias**, which is the Langfuse project name. auto-mail
+has one LLM function — detection, triage, archiving and draft generation all
+run on one key and trace to one project — so it declares one alias,
+`robotsix-auto-mail`. The two maps share the alias on purpose: reconciliation
+compares what the provider billed for a function against what Langfuse traced
+for it, and the shared alias is what makes the two joinable. A key must
+therefore fund exactly one function.
 
 | Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
-| `llm.api_key` | `""` | string | no | OpenRouter API key (or provider-specific key). Get one at <https://openrouter.ai/keys>. Masked in logs and `repr`. |
-| `llm.provider_model` | `""` | string | no | LLM backend name. When empty, the `robotsix-llmio` library's tier default is used. See its README for available backends. |
-
-### `langfuse` — tracing
-
-When both `langfuse.public_key` and `langfuse.secret_key` are set, every LLM
-agent run is traced to the configured Langfuse project.
-
-| Key | Default | Kind | Required | Description |
-|---|---|---|---|---|
-| `langfuse.public_key` | `""` | string | no | Public key from your Langfuse project settings. |
-| `langfuse.secret_key` | `""` | string | no | Secret key from your Langfuse project settings. Masked in logs and `repr`. |
-| `langfuse.base_url` | `""` | string | no | Langfuse host override. When empty, the `robotsix-llmio` library default (`https://cloud.langfuse.com`) is used. |
+| `langfuse.host` | `""` | string | no | Langfuse instance base URL. When empty, the `robotsix-llmio` default (`https://cloud.langfuse.com`) is used. |
+| `langfuse.projects` | `{}` | map | no | Alias → `{public_key, secret_key, project_id}`. Tracing is enabled once both keys of an alias are set; `project_id` is optional and only used by consumers that address a project by id. Secret keys are masked in logs and `repr`. |
+| `openrouter.keys` | `{}` | map | no | Alias → OpenRouter API key. Get one at <https://openrouter.ai/keys>. Masked in logs and `repr`. |
+| `llm_provider_model` | `""` | string | no | LLM backend name. When empty, the `robotsix-llmio` library's tier default is used. See its README for available backends. |
 
 ### `logging` — observability
 

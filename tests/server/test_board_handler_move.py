@@ -216,6 +216,15 @@ def test_move_unknown_message_id_returns_404() -> None:
         server.shutdown()
 
 
+@pytest.fixture(autouse=True)
+def _component_llm_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The provider key is component-wide, so the handler resolves it itself."""
+    monkeypatch.setattr(
+        "robotsix_auto_mail.server._action_mixin.resolve_llm_api_key",
+        lambda *_a, **_k: "sk-test",
+    )
+
+
 def test_move_to_archive_triggers_llm(single_db: str) -> None:
     """Moving to TO_ARCHIVE triggers the LLM provider."""
 
@@ -238,7 +247,6 @@ def test_move_to_archive_triggers_llm(single_db: str) -> None:
         smtp_host="smtp.example.com",
         username="user",
         password="pass",
-        llm_api_key="sk-test",
     )
 
     with mock.patch(
@@ -279,7 +287,6 @@ def test_move_to_archive_llm_failure_still_redirects(single_db: str) -> None:
         smtp_host="smtp.example.com",
         username="user",
         password="pass",
-        llm_api_key="sk-test",
     )
 
     mock_provider = mock.MagicMock()
@@ -331,7 +338,6 @@ def test_move_to_other_column_skips_llm(single_db: str) -> None:
         smtp_host="smtp.example.com",
         username="user",
         password="pass",
-        llm_api_key="sk-test",
     )
 
     with mock.patch(

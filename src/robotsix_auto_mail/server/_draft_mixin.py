@@ -8,6 +8,7 @@ import json
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
+from robotsix_auto_mail.config import resolve_llm_api_key, resolve_llm_provider_model
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._constants import _is_safe_redirect_path, _with_db
 from robotsix_auto_mail.triage import (
@@ -215,16 +216,8 @@ class _DraftMixin:
                 generate_draft_reply(
                     conn,
                     message_id,
-                    api_key=(
-                        self.mail_config.llm_api_key.get_secret_value()
-                        if self.mail_config
-                        else None
-                    ),
-                    provider_model=(
-                        self.mail_config.llm_provider_model
-                        if self.mail_config
-                        else None
-                    ),
+                    api_key=resolve_llm_api_key(raise_on_missing=False) or None,
+                    provider_model=resolve_llm_provider_model() or None,
                 )
             except DraftGenerationError:
                 # Generation failed — degrade gracefully (existing draft /

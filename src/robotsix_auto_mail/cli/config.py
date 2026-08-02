@@ -466,17 +466,10 @@ def _verify_and_refine(
                 }
             )
 
-        # Persist the resolved LLM key and model into the written config so
-        # the file is self-contained.  In overwrite mode, existing_account.config
-        # already carries the file's values; or fills in when the file was
-        # sparse/new.
-        if api_key and not detected.llm_api_key.get_secret_value():
-            detected = detected.model_copy(update={"llm_api_key": SecretStr(api_key)})
-        if llm_provider_model and not detected.llm_provider_model:
-            detected = detected.model_copy(
-                update={"llm_provider_model": llm_provider_model}
-            )
-
+        # An LLM key or model supplied here is *not* written into the account:
+        # both are component-wide, and copying them onto a mailbox is what the
+        # canonical `openrouter` / `llm_provider_model` settings replaced.
+        # They are still used for this run's detection calls.
         return detected
 
     config = _build(provider, password)
