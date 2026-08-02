@@ -203,13 +203,23 @@ jobs:
   # INFORMATIONAL — the actual blocking coverage gate is --cov-fail-under=80
   # inside the reusable, enforced in the `ci` job above.
   #
-  # Coverage data (coverage.xml + .coverage) is produced by the reusable
-  # python-ci.yml workflow and downloaded here via the coverage-data artifact.
+  # Coverage data is produced by the reusable python-ci.yml workflow and
+  # downloaded here via the coverage-data artifact.  That artifact currently
+  # carries only coverage.xml: this repo sets `parallel = true`, so coverage
+  # writes `.coverage.<host>.<pid>.<rand>` files, nothing runs `coverage
+  # combine`, and the reusable workflow's literal `.coverage` upload path
+  # matches no file.  Both the comment action and `coverage html` need that
+  # combined database, so both fail with "No data to report".
+  #
+  # Because this job is informational it must never gate a merge — hence
+  # continue-on-error at the job level.  Fixing the artifact itself is a
+  # robotsix-github-workflows change, tracked separately.
   coverage-comment:
     name: Coverage comment
     if: github.event_name == 'pull_request'
     needs: [ci]
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       contents: read
       pull-requests: write  # needed to post PR comment
