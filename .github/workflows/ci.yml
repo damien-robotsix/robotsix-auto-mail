@@ -211,9 +211,12 @@ jobs:
   # matches no file.  Both the comment action and `coverage html` need that
   # combined database, so both fail with "No data to report".
   #
-  # Because this job is informational it must never gate a merge — hence
-  # continue-on-error at the job level.  Fixing the artifact itself is a
-  # robotsix-github-workflows change, tracked separately.
+  # Because this job is informational it must never gate a merge.  Every step
+  # carries continue-on-error, not just the job: a job-level flag still leaves
+  # the *check-run* reported as failed, and mill classifies a failed check-run
+  # as a terminal CI failure — which is precisely what feeds the ci_fix
+  # no-op-commit loop.  Fixing the artifact itself is a robotsix-github-workflows
+  # change, tracked separately.
   coverage-comment:
     name: Coverage comment
     if: github.event_name == 'pull_request'
@@ -263,13 +266,16 @@ jobs:
           MERGE_COVERAGE_FILES: false
 
       - name: Generate HTML coverage report
+        continue-on-error: true
         env:
           UV_PROJECT_ENVIRONMENT: system
         run: uv run coverage html --directory=coverage_html
 
       - name: Upload HTML report
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: coverage-html-report
           path: coverage_html/
+          if-no-files-found: ignore
           retention-days: 7
