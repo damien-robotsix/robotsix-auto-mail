@@ -12,6 +12,8 @@ from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
     _RECONCILE_STATE_KEY,
     _TRIAGE_RUN_STATE_KEY,
+    _WATERMARK_IDLE,
+    _WATERMARK_RUNNING,
 )
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
@@ -190,13 +192,13 @@ def _clear_stale_triage_state(accounts: MailAccountsConfig) -> None:
         try:
             conn = init_db(db_path, skip_migrations=True)
             try:
-                if get_watermark(conn, _TRIAGE_RUN_STATE_KEY) == "running":
-                    set_watermark(conn, _TRIAGE_RUN_STATE_KEY, "idle")
-                if get_watermark(conn, _RECONCILE_STATE_KEY) == "running":
-                    set_watermark(conn, _RECONCILE_STATE_KEY, "idle")
+                if get_watermark(conn, _TRIAGE_RUN_STATE_KEY) == _WATERMARK_RUNNING:
+                    set_watermark(conn, _TRIAGE_RUN_STATE_KEY, _WATERMARK_IDLE)
+                if get_watermark(conn, _RECONCILE_STATE_KEY) == _WATERMARK_RUNNING:
+                    set_watermark(conn, _RECONCILE_STATE_KEY, _WATERMARK_IDLE)
                 batch_state = get_watermark(conn, _BATCH_OP_STATE_KEY)
-                if batch_state is not None and batch_state != "idle":
-                    set_watermark(conn, _BATCH_OP_STATE_KEY, "idle")
+                if batch_state is not None and batch_state != _WATERMARK_IDLE:
+                    set_watermark(conn, _BATCH_OP_STATE_KEY, _WATERMARK_IDLE)
             finally:
                 conn.close()
         except Exception:  # noqa: S112  # nosec B112

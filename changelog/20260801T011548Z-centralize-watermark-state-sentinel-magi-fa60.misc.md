@@ -1,0 +1,1 @@
+Centralized watermark sentinel values ``"running"`` and ``"idle"`` into shared constants ``_WATERMARK_RUNNING`` and ``_WATERMARK_IDLE`` in ``core/_constants.py``, replacing bare string literals across 6 source files.

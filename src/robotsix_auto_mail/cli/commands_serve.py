@@ -10,7 +10,10 @@ import time
 
 from robotsix_auto_mail.cli.commands_triage import _clear_stale_triage_state
 from robotsix_auto_mail.config import MailAccountsConfig
-from robotsix_auto_mail.core._constants import _RECONCILE_STATE_KEY
+from robotsix_auto_mail.core._constants import (
+    _RECONCILE_STATE_KEY,
+    _WATERMARK_RUNNING,
+)
 
 
 def register_subparser(
@@ -84,8 +87,8 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
             try:
                 conn = init_db(acct.config.db_path, skip_migrations=True)
                 try:
-                    if get_watermark(conn, _RECONCILE_STATE_KEY) != "running":
-                        set_watermark(conn, _RECONCILE_STATE_KEY, "running")
+                    if get_watermark(conn, _RECONCILE_STATE_KEY) != _WATERMARK_RUNNING:
+                        set_watermark(conn, _RECONCILE_STATE_KEY, _WATERMARK_RUNNING)
                         threading.Thread(
                             target=_run_reconcile_background,
                             args=(acct.config.db_path, acct.config),

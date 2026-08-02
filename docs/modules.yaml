@@ -263,6 +263,7 @@ modules:
       - changelog/20260731T213327Z-robotsix-auto-mail-enable-mypy-baseline-f349.misc.md
       - changelog/20260801T000222Z-mail-ingester-no-longer-crash-loops-when-no-account-has-ing.bugfix.md
       - changelog/20260801T004610Z-newly-added-mail-account-not-visible-in-e75a.bugfix.md
+      - changelog/20260801T011548Z-centralize-watermark-state-sentinel-magi-fa60.misc.md
       - changelog/20260801T011548Z-remove-orphaned-ruff-per-file-ignore-and-4fab.misc.md
       - changelog/20260801T082711Z-mailbox-shows-0-mails-for-configured-acc-247a.misc.md
       - changelog/20260801T132605Z-clean-main-part-2-fix-whole-repo-ruff-li-d0f7.misc.md

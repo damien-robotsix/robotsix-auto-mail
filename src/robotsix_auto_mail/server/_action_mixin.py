@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
+from robotsix_auto_mail.core._constants import _WATERMARK_RUNNING
 from robotsix_auto_mail.db import MailRecord, get_watermark, set_watermark
 from robotsix_auto_mail.server._constants import _is_safe_redirect_path, _with_db
 from robotsix_auto_mail.triage import (
@@ -68,14 +69,14 @@ class _BoardActionMixin:
             else:
 
                 def _is_running(s: str | None) -> bool:
-                    return s == "running"
+                    return s == _WATERMARK_RUNNING
 
             if _is_running(get_watermark(conn, watermark_key)):
                 if redirect:
                     self._redirect("/board", code=302)
                 return False
 
-            set_watermark(conn, watermark_key, "running")
+            set_watermark(conn, watermark_key, _WATERMARK_RUNNING)
 
         if target is not None:
             threading.Thread(target=target, args=args, daemon=True).start()
