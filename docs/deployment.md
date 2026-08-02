@@ -291,10 +291,13 @@ ingress are not configured here.
 - Pushing to `main` publishes a moving `ghcr.io/.../robotsix-auto-mail:main`
   image (the reusable `docker-release.yml` workflow tags both `main` pushes
   and `v*` tag pushes). central-deploy pulls `:main` to pick up new builds.
-- The contract runs two services — `ingester` (the sole datastore writer)
-  and `board` (the read-only web board, published on `8080`) — both from the
-  same image, sharing the named volumes `auto-mail-config`, `auto-mail-data`,
-  and `auto-mail-logs`.
+- The contract runs two services — `ingester` (the primary datastore
+  fetch/writer) and `board` (the web board, published on `8080`) — both from
+  the same image, sharing the named volumes `auto-mail-config`,
+  `auto-mail-data`, and `auto-mail-logs`.  The `board` service's `serve`
+  command also runs a background ingest loop, so it can fetch mail
+  independently; when both services run, they share the datastore and each
+  uses its own IMAP connection.
 - The `ingester` runs `ingest` (no flags). Its watch mode and heartbeat
   file come from the first account's `ingest_mode` / `heartbeat_file` config
   values rather than explicit CLI flags. When `ingest_mode` is `"watch"`,
@@ -336,9 +339,18 @@ Run on the central-deploy host, against the contract compose project:
 | Restart the board only | `docker compose restart board` |
 | Stop everything | `docker compose down` |
 
-The database on the `auto-mail-data` volume is shared by both services; the
-ingester is the sole writer and the board only reads it, so there is no
-concurrent-writer contention.
+The database on the `auto-mail-data` volume is shared by both services.
+The `serve` command (the `board` service) now starts a background ingest
+loop that fetches mail on the `ingest_interval_minutes` interval, so the
+board service keeps its own datastore fed and is self-sufficient — it no
+longer relies on the separate `ingester` service to populate the database.
+Both services write to the shared datastore, so when both are running
+alongside each other each uses its own IMAP connection and SQLite handles
+the (rare) concurrent writer through its normal locking. To avoid duplicate
+ingestion from two processes, run either the `ingester` service or the
+board's background loop — if you keep both, set the board to a
+longer `ingest_interval_minutes` and rely on the `ingester` as the primary
+fetcher.
 
 ### Run on a production host
 

@@ -91,6 +91,7 @@ def _build_board_content(
     triage_running = gathered["triage_running"]
     batch_op = gathered["batch_op"]
     health = gathered["health"]
+    total_mail_count: int = gathered["total_mail_count"]
     triage_by_mid: dict[str, TriageDecision] = gathered["triage_by_mid"]
     column_buckets: dict[str, list[MailRecord]] = gathered["column_buckets"]
     archive_subfolders: dict[str, str] = gathered["archive_subfolders"]
@@ -134,12 +135,18 @@ def _build_board_content(
         account_configs={account_id: mail_config} if mail_config is not None else None,
     )
 
+    zero_mails_warning_html = _zero_mails_warning_html(
+        total_mail_count=total_mail_count,
+        account_count=1,
+    )
+
     return {
         "columns_html": columns_html,
         "triage_running": triage_running,
         "batch_op": batch_op,
         "health": health,
         "health_alerts_html": health_alerts_html,
+        "zero_mails_warning_html": zero_mails_warning_html,
         "unsubscribe_suggestions": unsubscribe_suggestions,
     }
 
@@ -175,6 +182,7 @@ def _build_global_board_content(
     account_labels: dict[str, str] = {}
     account_health: dict[str, dict[str, Any] | None] = {}
     triage_running: bool = False
+    total_mail_count: int = 0
     # Aggregate batch-op progress across accounts.  Each account runs its
     # own worker against its own DB; we sum their done/total so the banner
     # shows combined progress for the fanned-out "Delete All".
@@ -195,6 +203,9 @@ def _build_global_board_content(
 
         triage_running = triage_running or gathered["triage_running"]
         account_health[aid] = gathered["health"]
+
+        account_total: int = gathered.get("total_mail_count", 0)
+        total_mail_count += account_total
 
         account_batch = gathered["batch_op"]
         if account_batch is not None:
@@ -259,12 +270,18 @@ def _build_global_board_content(
         account_configs={a.account_id: a.config for a in accounts.accounts},
     )
 
+    zero_mails_warning_html = _zero_mails_warning_html(
+        total_mail_count=total_mail_count,
+        account_count=len(accounts.accounts),
+    )
+
     return {
         "columns_html": columns_html,
         "triage_running": triage_running,
         "unsubscribe_suggestions": merged_unsubscribe,
         "batch_op": batch_op,
         "health_alerts_html": health_alerts_html,
+        "zero_mails_warning_html": zero_mails_warning_html,
         "account_health": account_health,
     }
 
@@ -356,6 +373,29 @@ def _health_alerts_html(
     return "\n".join(parts)
 
 
+def _zero_mails_warning_html(
+    total_mail_count: int,
+    account_count: int,
+) -> str:
+    """Return a yellow warning banner when accounts are configured but no mails
+    have been fetched yet, or ``""`` when mails are present / no accounts exist.
+
+    This is the regression guard for "accounts configured but zero mails
+    fetched" — it tells the operator at a glance that the ingest process
+    may not be running or may have failed silently.
+    """
+    if total_mail_count > 0 or account_count == 0:
+        return ""
+    return (
+        '<div class="zero-mails-banner banner-base" role="alert">\n'
+        "  &#9888; <strong>No mail fetched yet.</strong>"
+        f" {account_count} account(s) configured but the mailbox is empty."
+        " Check that the ingest process is running or"
+        ' <a href="/probe-health">recheck connections</a>.\n'
+        "</div>"
+    )
+
+
 def _render_board_page_shell(
     *,
     columns_html: str,
@@ -366,6 +406,7 @@ def _render_board_page_shell(
     batch_control_html: str,
     data_account_js: bool,
     health_alerts_html: str = "",
+    zero_mails_warning_html: str = "",
 ) -> str:
     """Shared HTML page shell + JS for both single-account and global boards.
 
@@ -411,6 +452,7 @@ def _render_board_page_shell(
         "</head>\n"
         "<body>\n"
         + (health_alerts_html or '<div id="health-alerts"></div>\n')
+        + (zero_mails_warning_html or "")
         + (
             '<button id="probe-health-btn"'
             ' onclick="probeHealth()">'
@@ -561,6 +603,7 @@ def _build_board_html(
         batch_control_html=batch_control_html,
         data_account_js=False,
         health_alerts_html=content.get("health_alerts_html", ""),
+        zero_mails_warning_html=content.get("zero_mails_warning_html", ""),
     )
 
 
@@ -621,4 +664,5 @@ def _build_global_board_html(
         batch_control_html=_batch_banner_html(content.get("batch_op")),
         data_account_js=True,
         health_alerts_html=content.get("health_alerts_html", ""),
+        zero_mails_warning_html=content.get("zero_mails_warning_html", ""),
     )

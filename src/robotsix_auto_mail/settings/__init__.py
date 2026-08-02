@@ -12,9 +12,11 @@ from __future__ import annotations
 from robotsix_auto_mail.settings.import_ import import_from_central_deploy
 from robotsix_auto_mail.settings.store import SettingsStore
 from robotsix_auto_mail.settings.store import discover_accounts_from_settings_stores
+from robotsix_auto_mail.settings.store import merge_settings_store_accounts
 
 __all__ = [
     "SettingsStore",
     "discover_accounts_from_settings_stores",
     "import_from_central_deploy",
+    "merge_settings_store_accounts",
 ]

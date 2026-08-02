@@ -63,6 +63,9 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
         # added via the web UI are picked up without a restart.
         try:
             accounts = load_accounts()
+            from robotsix_auto_mail.settings import merge_settings_store_accounts
+
+            accounts = merge_settings_store_accounts(accounts)
         except Exception:
             # Keep using the last-known snapshot when the config file
             # is temporarily unreadable.
@@ -93,6 +96,68 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
             except Exception:  # noqa: S110  # nosec B110  # lgtm[py/empty-except]
                 # A bad DB must not kill the loop.
                 pass
+        time.sleep(interval_minutes * 60)
+
+
+def _ingest_loop(accounts: MailAccountsConfig) -> None:
+    """Periodically ingest new mail for every account in a background daemon thread.
+
+    Runs :func:`_ingest_cycle` for each account with a configured password
+    on an interval derived from the minimum ``ingest_interval_minutes``
+    across all accounts.  Reloads the accounts container from the config
+    file on every cycle so newly added accounts (via web UI) are picked up
+    without a restart.
+
+    This loop is the background-ingest counterpart to ``_reconcile_loop``
+    (which only runs reconciliation/tombstone cleanup).  Starting this in
+    the serve command makes the web server self-sufficient — mails are
+    fetched automatically without requiring a separate ``ingest --watch``
+    process.
+    """
+    import logging
+
+    from robotsix_auto_mail.cli.commands_ingest import _ingest_cycle
+    from robotsix_auto_mail.config import load_accounts
+
+    logger = logging.getLogger(__name__)
+
+    _default_fallback_minutes = 15
+
+    while True:
+        # Reload accounts from the config file on every cycle so accounts
+        # added via the web UI are picked up without a restart.
+        try:
+            accounts = load_accounts()
+            from robotsix_auto_mail.settings import merge_settings_store_accounts
+
+            accounts = merge_settings_store_accounts(accounts)
+        except Exception:
+            # Keep using the last-known snapshot when the config file
+            # is temporarily unreadable.
+            pass
+
+        if accounts.accounts:
+            interval_minutes = max(
+                1,
+                min(acct.config.ingest_interval_minutes for acct in accounts.accounts),
+            )
+        else:
+            interval_minutes = _default_fallback_minutes
+
+        for acct in accounts.accounts:
+            if not acct.config.password.get_secret_value():
+                logger.debug(
+                    "Skipping ingest for account %r: no password configured",
+                    acct.account_id,
+                )
+                continue
+            try:
+                _ingest_cycle(acct.config, dry_run=False)
+            except Exception:
+                logger.exception(
+                    "Ingest cycle failed for account %r", acct.account_id
+                )
+
         time.sleep(interval_minutes * 60)
 
 
@@ -164,24 +229,11 @@ def _cmd_serve(
     # Merge accounts discovered from settings stores that are not already
     # in the config file.  This ensures accounts added via the web UI
     # survive even when the deploy system overwrites config/config.json.
-    from robotsix_auto_mail.settings import discover_accounts_from_settings_stores
+    from robotsix_auto_mail.settings import merge_settings_store_accounts
 
-    discovered = discover_accounts_from_settings_stores()
-    existing_ids = set(accounts.ids())
-    new_discovered = [a for a in discovered if a.account_id not in existing_ids]
-    if new_discovered:
-        _logger.info(
-            "Merging %d account(s) discovered from settings stores: %s",
-            len(new_discovered),
-            [a.account_id for a in new_discovered],
-        )
-        merged_accounts = list(accounts.accounts) + new_discovered
-        if not accounts.default_account_id and merged_accounts:
-            default_account_id = merged_accounts[0].account_id
-        accounts = MailAccountsConfig(
-            accounts=merged_accounts,
-            default_account_id=accounts.default_account_id or default_account_id,
-        )
+    accounts = merge_settings_store_accounts(accounts)
+    if not default_account_id and accounts.default_account_id:
+        default_account_id = accounts.default_account_id
 
     if accounts.accounts:
         default = accounts.get(default_account_id)
@@ -210,6 +262,7 @@ def _cmd_serve(
     _clear_stale_triage_state(accounts)
 
     threading.Thread(target=_reconcile_loop, args=(accounts,), daemon=True).start()
+    threading.Thread(target=_ingest_loop, args=(accounts,), daemon=True).start()
 
     print(f"Serving board on http://{host}:{port}/board")
     try:

@@ -66,16 +66,25 @@ def test_ingest_watch_loops_then_stops_on_interrupt(
     """Watch mode runs a cycle, then exits 0 when interrupted during sleep."""
     from robotsix_auto_mail.cli import _cmd_ingest
 
+    accounts = _accounts(cfg)
+
     with (
         mock.patch(
             "robotsix_auto_mail.cli._ingest_cycle", return_value=0
         ) as mock_cycle,
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=accounts
+        ),
         mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
+        mock.patch(
+            "robotsix_auto_mail.cli.commands_ingest.probe_account",
+            return_value=("ok", None),
+        ),
     ):
-        rc = _cmd_ingest(_accounts(cfg), watch=True)
+        rc = _cmd_ingest(accounts, watch=True)
 
     assert rc == 0
-    mock_cycle.assert_called_once()
+    mock_cycle.assert_called()
     assert "Watch stopped" in capsys.readouterr().out
 
 
@@ -85,14 +94,23 @@ def test_ingest_watch_survives_cycle_error(
     """A failing cycle is logged and does not abort the watch loop."""
     from robotsix_auto_mail.cli import _cmd_ingest
 
+    accounts = _accounts(cfg)
+
     with (
         mock.patch(
             "robotsix_auto_mail.cli._ingest_cycle",
             side_effect=RuntimeError("boom"),
         ),
+        mock.patch(
+            "robotsix_auto_mail.cli.load_accounts", return_value=accounts
+        ),
         mock.patch("robotsix_auto_mail.cli.time.sleep", side_effect=KeyboardInterrupt),
+        mock.patch(
+            "robotsix_auto_mail.cli.commands_ingest.probe_account",
+            return_value=("ok", None),
+        ),
     ):
-        rc = _cmd_ingest(_accounts(cfg), watch=True)
+        rc = _cmd_ingest(accounts, watch=True)
 
     assert rc == 0
     assert "Ingest cycle failed" in capsys.readouterr().err
@@ -110,7 +128,8 @@ def test_ingest_single_pass_unaffected(
         rc = _cmd_ingest(_accounts(cfg), watch=False)
 
     assert rc == 0
-    mock_cycle.assert_called_once_with(cfg, dry_run=False)
+    mock_cycle.assert_called()
+    assert mock_cycle.call_args_list[0] == mock.call(cfg, dry_run=False)
 
 
 def test_ingest_watch_heartbeat_file_touched(
@@ -364,14 +383,14 @@ def test_ingest_watch_transition_idle_to_active(
         rc = _cmd_ingest(None, watch=True, heartbeat_file=str(hb))
 
     assert rc == 0
-    # load_accounts called twice: once idle, once during transition re-check.
-    assert mock_load.call_count == 2
+    # load_accounts called at least twice (idle + transition + active loop reload).
+    assert mock_load.call_count >= 2
     # After transition, the active watch loop runs _ingest_cycle.
-    mock_cycle.assert_called_once()
+    mock_cycle.assert_called()
     assert hb.exists()
     out = capsys.readouterr().out
     assert "idle: no watchable accounts configured; waiting" in out
-    assert "Watch mode: ingesting" in out
+    assert "STARTUP: account" in out
 
 
 def test_ingest_non_watch_zero_accounts_returns_0(

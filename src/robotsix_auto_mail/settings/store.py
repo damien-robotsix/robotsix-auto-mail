@@ -295,3 +295,51 @@ def discover_accounts_from_settings_stores(
             )
 
     return discovered
+
+
+def merge_settings_store_accounts(
+    accounts: "MailAccountsConfig",
+) -> "MailAccountsConfig":
+    """Merge accounts discovered from per-account settings stores into *accounts*.
+
+    Scans ``.data/`` for per-account databases whose settings stores contain
+    a full :class:`MailConfig`, and adds any account whose ``account_id`` is
+    not already present in *accounts*.  The original *accounts* is never
+    mutated — a new :class:`MailAccountsConfig` is returned.
+
+    This is the shared merge step used by the serve command, the ingester
+    watch loop, and the background reconcile loop so that accounts added via
+    the web UI survive a deploy-system overwrite of ``config/config.json``
+    in every code path, not just the board.
+
+    When *accounts* has no ``default_account_id`` and the merge adds the
+    first account, that account becomes the default.
+    """
+    import logging
+
+    from robotsix_auto_mail.config.model import MailAccountsConfig
+
+    logger = logging.getLogger(__name__)
+
+    discovered = discover_accounts_from_settings_stores()
+    existing_ids = set(accounts.ids())
+    new_discovered = [a for a in discovered if a.account_id not in existing_ids]
+
+    if not new_discovered:
+        return accounts
+
+    logger.info(
+        "Merging %d account(s) discovered from settings stores: %s",
+        len(new_discovered),
+        [a.account_id for a in new_discovered],
+    )
+
+    merged_accounts = list(accounts.accounts) + new_discovered
+    default_id = accounts.default_account_id
+    if not default_id and merged_accounts:
+        default_id = merged_accounts[0].account_id
+
+    return MailAccountsConfig(
+        accounts=merged_accounts,
+        default_account_id=default_id,
+    )

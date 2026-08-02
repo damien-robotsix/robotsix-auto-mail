@@ -52,6 +52,9 @@ def _idle_watch_loop(heartbeat_file: str | None) -> int:
             # Re-check the config so freshly added accounts are picked up.
             try:
                 fresh = _cli.load_accounts()
+                from robotsix_auto_mail.settings import merge_settings_store_accounts
+
+                fresh = merge_settings_store_accounts(fresh)
             except ConfigurationError:
                 fresh = None
 
@@ -226,6 +229,12 @@ def _cmd_ingest(
             return 0
         return _idle_watch_loop(heartbeat_file)
 
+    # Merge accounts discovered from settings stores so accounts added via
+    # the web UI survive a deploy-system overwrite of config/config.json.
+    from robotsix_auto_mail.settings import merge_settings_store_accounts
+
+    accounts = merge_settings_store_accounts(accounts)
+
     if account_id is not None:
         try:
             selected = [accounts.get(account_id)]
@@ -285,12 +294,6 @@ def _cmd_ingest(
         else:
             sys.stdout.write(f"STARTUP: account '{account.account_id}' connection OK\n")
 
-    interval_minutes = max(1, selected[0].config.ingest_interval_minutes)
-    sys.stdout.write(
-        f"Watch mode: ingesting every {interval_minutes} min (Ctrl-C to stop).\n"
-    )
-    sys.stdout.flush()
-
     def _handle_sigterm(_sig: int, _frame: object) -> None:
         raise SystemExit(0)
 
@@ -298,6 +301,42 @@ def _cmd_ingest(
 
     try:
         while True:
+            # Reload accounts on each cycle so accounts added via the web UI
+            # (or recovered from settings stores) are picked up without a
+            # restart.  A failed reload keeps the last-known snapshot.
+            try:
+                fresh = _cli.load_accounts()
+                fresh = merge_settings_store_accounts(fresh)
+            except Exception:
+                fresh = accounts
+
+            if account_id is not None:
+                try:
+                    fresh_selected = [fresh.get(account_id)]
+                except ConfigurationError:
+                    sys.stderr.write(
+                        f"Account {account_id!r} no longer present in the reloaded config; "
+                        f"falling back to all {len(fresh.accounts)} configured accounts. "
+                        "Restart with --account to resume a single-account watch.\n"
+                    )
+                    fresh_selected = list(fresh.accounts)
+            else:
+                fresh_selected = list(fresh.accounts)
+
+            # Filter to accounts with passwords.
+            fresh_active = [
+                a for a in fresh_selected if a.config.password.get_secret_value()
+            ]
+            if not fresh_active:
+                # No active accounts — fall back to idle mode which will
+                # re-check the config every 60 s for newly added credentials.
+                return _idle_watch_loop(heartbeat_file)
+
+            selected = fresh_active
+            accounts = fresh
+            show_header = len(selected) > 1
+            interval_minutes = max(1, selected[0].config.ingest_interval_minutes)
+
             for account in selected:
                 if show_header:
                     sys.stdout.write(f"=== account: {account.account_id} ===\n")
