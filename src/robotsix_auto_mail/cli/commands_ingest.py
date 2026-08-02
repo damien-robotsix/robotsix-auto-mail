@@ -314,6 +314,13 @@ def _cmd_ingest(
                 try:
                     fresh_selected = [fresh.get(account_id)]
                 except ConfigurationError:
+                    _logger.warning(
+                        "Account %r no longer present in the reloaded config; "
+                        "falling back to all %d configured accounts. "
+                        "Restart with --account to resume a single-account watch.",
+                        account_id,
+                        len(fresh.accounts),
+                    )
                     fresh_selected = list(fresh.accounts)
             else:
                 fresh_selected = list(fresh.accounts)

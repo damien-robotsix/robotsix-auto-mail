@@ -117,6 +117,7 @@ def _ingest_loop(accounts: MailAccountsConfig) -> None:
     import logging
 
     from robotsix_auto_mail.cli.commands_ingest import _ingest_cycle
+    from robotsix_auto_mail.config import load_accounts
 
     logger = logging.getLogger(__name__)
 
