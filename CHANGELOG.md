@@ -29,6 +29,10 @@
 - Remove accidentally committed empty `changelog/test-file` artifact.
 - Added dedicated unit tests for ``ConfigVersionStore`` covering atomic writes, corrupt-JSON recovery, version numbering, retention trimming, snapshot retrieval, and metadata extraction.
 - Resolve pre-existing CI failures: upgrade cryptography transitive dependency from 48.0.1 to 50.0.0, fix CodeQL py/log-injection in _settings_mixin.py, fix CodeQL py/unused-global-variable in _constants.py, and remove unused local variable in commands_serve.py.
+- Fix three CodeQL alerts: remove unused `_logger` in `commands_serve.py`,
+  register `_STATIC_ROBOTSIX_UI_JS`/`_STATIC_ROBOTSIX_UI_CSS` in the
+  "unused" suppression tuple in `_constants.py`, and sanitize newlines
+  from `account_id` before logging in `_settings_mixin.py`.
 - Grouped board header controls (Recheck connections, Add Account, Settings)
   into an aligned flex toolbar.  Embedded the add-account auto-detection flow
   directly into the Settings page via an iframe so it is a first-class part of
