@@ -140,7 +140,7 @@ def test_determine_archive_structure_missing_api_key() -> None:
     """No api_key and no LLM_API_KEY env var → ArchiveError."""
     with pytest.raises(ArchiveError) as exc:
         determine_archive_structure(["INBOX"])
-    assert "llm_api_key" in str(exc.value)
+    assert "openrouter.keys" in str(exc.value)
 
 
 def test_determine_archive_structure_llm_error_wrapped() -> None:

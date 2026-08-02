@@ -7,7 +7,10 @@ import json
 import sys
 
 from robotsix_auto_mail.cli.commands import _load_config_or_exit, _print_header
-from robotsix_auto_mail.config import MailAccountsConfig
+from robotsix_auto_mail.config import (
+    MailAccountsConfig,
+    resolve_llm_provider_model,
+)
 from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
     _RECONCILE_STATE_KEY,
@@ -41,7 +44,7 @@ def register_subparser(
     triage_parser.add_argument(
         "--api-key",
         default=None,
-        help="OpenRouter API key. Overrides the config file's llm_api_key.",
+        help="OpenRouter API key. Overrides the config file's openrouter key.",
     )
     triage_parser.add_argument(
         "--output-format",
@@ -93,7 +96,7 @@ def _cmd_triage(args: argparse.Namespace) -> int:
         decisions = run_triage_agent(
             conn,
             api_key=args.api_key,
-            provider_model=config.llm_provider_model,
+            provider_model=resolve_llm_provider_model(),
             user_email=config.username,
             rules_path=resolve_rules_path(
                 db_path=config.db_path, rules_path=config.triage_rules_path

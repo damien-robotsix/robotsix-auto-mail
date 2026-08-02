@@ -150,8 +150,6 @@ class TestHandleMove:
             smtp_host="smtp.example.com",
             username="test",
             password="test",
-            llm_api_key="sk-test",
-            llm_provider_model="openrouter-deepseek",
         )
         handler = _FakeHandler(single_db, mail_config=mail_config)
         handler.headers.get.return_value = 90
@@ -159,9 +157,21 @@ class TestHandleMove:
             b"message_id=arch-llm&triage_action=TO_ARCHIVE&redirect_to=/board"
         )
 
-        with mock.patch(
-            "robotsix_auto_mail.server._action_mixin.propose_archive_subfolder_llm"
-        ) as mock_propose:
+        # The provider key and model are component-wide: they reach the call
+        # through the resolvers, not through the account being moved.
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._action_mixin.resolve_llm_api_key",
+                return_value="sk-test",
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._action_mixin.resolve_llm_provider_model",
+                return_value="openrouter-deepseek",
+            ),
+            mock.patch(
+                "robotsix_auto_mail.server._action_mixin.propose_archive_subfolder_llm"
+            ) as mock_propose,
+        ):
             handler._handle_move()
 
         mock_propose.assert_called_once()
@@ -193,7 +203,6 @@ class TestHandleMove:
             smtp_host="smtp.example.com",
             username="test",
             password="test",
-            llm_api_key="sk-test",
         )
         handler = _FakeHandler(single_db, mail_config=mail_config)
         handler.headers.get.return_value = 100

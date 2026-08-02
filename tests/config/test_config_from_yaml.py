@@ -83,8 +83,6 @@ def test_mailconfig_full_fields() -> None:
         smtp_tls_mode="direct-tls",
         db_path=".data/custom/db.db",
         imap_folder="Archive",
-        llm_api_key="sk-top-level",
-        llm_provider_model="openrouter-deepseek",
         ingest_interval_minutes=10,
         archive_root="custom-archive",
         archive_enabled=False,
@@ -92,9 +90,6 @@ def test_mailconfig_full_fields() -> None:
         triage_rules_path="/path/to/rules.md",
         oauth2_provider="microsoft",
         oauth2_tenant="contoso.onmicrosoft.com",
-        langfuse_public_key="pk-lf-yaml",
-        langfuse_secret_key="sk-lf-yaml",
-        langfuse_base_url="https://langfuse.example.net",
         log_level="DEBUG",
         log_format="json",
     )
@@ -111,11 +106,6 @@ def test_mailconfig_full_fields() -> None:
     assert cfg.oauth2_tenant == "contoso.onmicrosoft.com"
     assert cfg.db_path == ".data/custom/db.db"
     assert cfg.triage_on_ingest is False
-    assert cfg.llm_api_key.get_secret_value() == "sk-top-level"
-    assert cfg.llm_provider_model == "openrouter-deepseek"
-    assert cfg.langfuse_public_key == "pk-lf-yaml"
-    assert cfg.langfuse_secret_key.get_secret_value() == "sk-lf-yaml"
-    assert cfg.langfuse_base_url == "https://langfuse.example.net"
 
 
 def test_multi_account_with_label() -> None:
@@ -156,28 +146,14 @@ def test_mailconfig_defaults_for_missing_fields() -> None:
     assert cfg.triage_on_ingest is True
 
 
-def test_mailconfig_langfuse_defaults_when_absent() -> None:
-    """Langfuse fields default to empty strings."""
-    cfg = MailConfig(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-        username="u",
-        password="p",
+def test_credential_blocks_default_to_unconfigured() -> None:
+    """A config with no `langfuse` / `openrouter` block loads and traces nothing."""
+    cfg = MailAccountsConfig(
+        accounts=[_acct("a", imap_host="i")], default_account_id="a"
     )
-    assert cfg.langfuse_public_key == ""
-    assert cfg.langfuse_secret_key.get_secret_value() == ""
-    assert cfg.langfuse_base_url == ""
-
-
-def test_mailconfig_llm_defaults_when_absent() -> None:
-    """LLM fields default to empty strings."""
-    cfg = MailConfig(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-        username="u",
-        password="p",
-    )
-    assert cfg.llm_api_key.get_secret_value() == ""
+    assert cfg.langfuse.host == ""
+    assert cfg.langfuse.projects == {}
+    assert cfg.openrouter.keys == {}
     assert cfg.llm_provider_model == ""
 
 
@@ -398,8 +374,7 @@ def test_model_validate_default_top_level_fields() -> None:
     }
     cfg = MailAccountsConfig.model_validate(data)
     c = cfg.default.config
-    assert c.llm_api_key.get_secret_value() == ""
-    assert c.llm_provider_model == ""
+    assert cfg.llm_provider_model == ""
     assert c.ingest_interval_minutes == 15
     assert c.archive_root == "robotsix-mail-archive"
     assert c.archive_enabled is True

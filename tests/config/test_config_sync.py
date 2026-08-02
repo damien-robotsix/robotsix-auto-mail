@@ -49,11 +49,6 @@ _JSON_EXAMPLE: dict = {
                 "archive_enabled": True,
                 "triage_on_ingest": True,
                 "triage_rules_path": "",
-                "llm_api_key": "",
-                "llm_provider_model": "",
-                "langfuse_public_key": "",
-                "langfuse_secret_key": "",
-                "langfuse_base_url": "",
                 "log_level": "INFO",
                 "log_format": "console",
             },
@@ -72,8 +67,6 @@ _JSON_EXAMPLE: dict = {
                 "smtp_tls_mode": "starttls",
                 "db_path": ".data/work/mail.db",
                 "imap_folder": "INBOX",
-                "llm_api_key": "",
-                "llm_provider_model": "",
                 "ingest_interval_minutes": 15,
                 "ingest_mode": "once",
                 "heartbeat_file": "",
@@ -86,9 +79,6 @@ _JSON_EXAMPLE: dict = {
                 "oauth2_client_secret": "",
                 "oauth2_provider": "",
                 "oauth2_tenant": "organizations",
-                "langfuse_public_key": "",
-                "langfuse_secret_key": "",
-                "langfuse_base_url": "",
                 "log_level": "INFO",
                 "log_format": "console",
             },
@@ -152,11 +142,10 @@ _DOCS_YAML_TABLE = """\
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
 | `triage.rules_path` | no | `""` | Path to the human-readable triage rules file |
-| `llm.api_key` | no | - | LLM provider API key |
-| `llm.provider_model` | no | `""` | LLM provider-model identifier |
-| `langfuse.public_key` | no | - | Langfuse public key for LLM tracing |
-| `langfuse.secret_key` | no | - | Langfuse secret key for LLM tracing |
-| `langfuse.base_url` | no | - | Langfuse base URL for LLM tracing |
+| `langfuse.host` | no | `""` | Langfuse instance base URL |
+| `langfuse.projects` | no | `{}` | Alias → Langfuse project credentials |
+| `openrouter.keys` | no | `{}` | Alias → OpenRouter API key |
+| `llm_provider_model` | no | `""` | LLM provider-model identifier |
 | `logging.level` | no | `INFO` | Log level |
 | `logging.format` | no | `console` | Log format |
 """

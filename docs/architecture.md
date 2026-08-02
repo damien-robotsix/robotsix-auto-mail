@@ -76,10 +76,13 @@ OAuth2 access token presented over SASL XOAUTH2:
 - `config/__init__.py` — re-exports the config API (loaders, dataclasses,
   and schema) for callers.
 - `config/loader.py` — the actual load cascade (`load` / `load_accounts`)
-  that builds `MailConfig` from built-in defaults and the YAML file.
-  The `ROBOTSIX_CONFIG_FILE` env var locates the config file;
-  `LLM_API_KEY`/`LLM_PROVIDER_MODEL` serve as env-var fallbacks for LLM
-  calls specifically (not a general config override tier).
+  that builds `MailConfig` from built-in defaults and the config file, plus
+  the component-wide LLM resolvers (`resolve_llm_api_key`,
+  `resolve_llm_provider_model`, `load_langfuse`).  The `ROBOTSIX_CONFIG_FILE`
+  env var locates the config file and is the only environment variable
+  consulted — there is no env-var override tier.
+- `config/credentials.py` — the canonical `langfuse` / `openrouter` credential
+  blocks fixed by robotsix-standards, keyed by LLM-function alias.
 - `config/model.py` — the config dataclasses (`MailConfig` and friends).
 - `config/schema.py` — the field defaults and specs the cascade applies.
 - `config/config_sync_agent.py` — the optional LLM-driven config-drift advisory

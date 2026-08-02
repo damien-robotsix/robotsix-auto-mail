@@ -322,9 +322,15 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         else:
             accounts_list.append(new_account)
 
-        container = MailAccountsConfig(
-            accounts=accounts_list,
-            default_account_id=default_id,
+        # Through the container, never around it: rebuilding from the account
+        # list alone would drop the component-wide credential blocks the file
+        # already holds.
+        container = (
+            existing.with_accounts(accounts_list, default_id)
+            if existing is not None
+            else MailAccountsConfig(
+                accounts=accounts_list, default_account_id=default_id
+            )
         )
         save_accounts(container, path=output_path)
 

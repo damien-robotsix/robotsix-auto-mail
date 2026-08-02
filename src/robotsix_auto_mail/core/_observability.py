@@ -19,7 +19,7 @@ from robotsix_llmio.logging import (
 )
 
 if TYPE_CHECKING:
-    from robotsix_auto_mail.config import MailConfig
+    from robotsix_auto_mail.config import LangfuseConfig, MailConfig
 
 
 def setup_logging(
@@ -46,15 +46,14 @@ def setup_logging(
     )
 
 
-def init_langfuse_tracing(config: MailConfig | None = None) -> bool:
-    """Enable Langfuse tracing from *config* (with env fallback).
+def init_langfuse_tracing(langfuse: LangfuseConfig | None = None) -> bool:
+    """Enable Langfuse tracing from the canonical ``langfuse`` block.
 
-    When *config* is provided, its ``langfuse_public_key``,
-    ``langfuse_secret_key`` and ``langfuse_base_url`` fields are passed
-    to :func:`setup_langfuse_tracing`.  Empty-string fields convert to
-    ``None`` so llmio falls back to the ``LANGFUSE_PUBLIC_KEY`` /
-    ``LANGFUSE_SECRET_KEY`` / ``LANGFUSE_BASE_URL`` env vars exactly as
-    before.  Passing ``config=None`` reproduces the previous
+    *langfuse* is the block declared in ``config/config.json``; the
+    project traced is the one aliased :data:`MAIN_LLM_ALIAS`, auto-mail's
+    single LLM function.  Unset fields convert to ``None`` so llmio falls
+    back to the ``LANGFUSE_PUBLIC_KEY`` / ``LANGFUSE_SECRET_KEY`` /
+    ``LANGFUSE_BASE_URL`` env vars, and ``langfuse=None`` reproduces the
     env-only behaviour.
 
     Returns:
@@ -62,11 +61,15 @@ def init_langfuse_tracing(config: MailConfig | None = None) -> bool:
         credentials were missing (application should continue normally
         either way).
     """
-    public_key = (config.langfuse_public_key or None) if config else None
-    secret_key = (
-        (config.langfuse_secret_key.get_secret_value() or None) if config else None
-    )
-    base_url = (config.langfuse_base_url or None) if config else None
+    project = langfuse.project() if langfuse else None
+    # A half-filled project is unconfigured, not broken: passing one key on
+    # its own would hand llmio a credential pair it cannot use, instead of
+    # falling through to the env vars.
+    if project is not None and not project.is_configured():
+        project = None
+    public_key = project.public_key if project else None
+    secret_key = project.secret_key.get_secret_value() if project else None
+    base_url = (langfuse.host or None) if langfuse else None
     ok: bool = setup_langfuse_tracing(
         service_name="robotsix-auto-mail",
         public_key=public_key,
@@ -81,20 +84,23 @@ def init_langfuse_tracing(config: MailConfig | None = None) -> bool:
 def setup_observability(
     config: MailConfig | None = None,
 ) -> None:
-    """Set up logging + Langfuse tracing from *config*.
+    """Set up logging + Langfuse tracing.
 
     Configures the console logging pipeline and (when Langfuse
     credentials are available) the OTel tracing provider.  Both
     sub-systems are safe to call more than once (idempotent).
 
     Args:
-        config: An optional :class:`MailConfig`.  When given, its
-            ``log_level`` and ``log_format`` fields control logging
-            verbosity and output, and its ``langfuse_public_key`` /
-            ``langfuse_secret_key`` / ``langfuse_base_url`` fields
-            drive Langfuse tracing.  When omitted or ``None``,
-            defaults are used for logging and tracing falls back to
-            environment variables.
+        config: An optional :class:`MailConfig` whose ``log_level`` and
+            ``log_format`` fields control logging verbosity and output.
+            When omitted or ``None``, logging defaults are used.
+
+    Tracing credentials are not taken from *config*: they belong to the
+    component rather than to a mailbox, so they are read from the
+    canonical ``langfuse`` block via
+    :func:`~robotsix_auto_mail.config.load_langfuse` — which means
+    tracing is configured identically no matter which account (if any)
+    the caller happens to hold.
     """
     if config is not None:
         setup_logging(
@@ -104,4 +110,6 @@ def setup_observability(
     else:
         setup_logging()
 
-    init_langfuse_tracing(config)
+    from robotsix_auto_mail.config import load_langfuse
+
+    init_langfuse_tracing(load_langfuse())

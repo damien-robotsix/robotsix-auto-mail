@@ -5,12 +5,32 @@ from __future__ import annotations
 import sqlite3
 from unittest import mock
 
+import pytest
+
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.pipeline import (
     IngestResult,
     ingest_mail,
 )
 from tests.pipeline._helpers import _make_raw_message, _mock_imap_client
+
+#: The component-wide LLM settings the resolvers hand the pipeline.  They no
+#: longer come from the account being ingested, so the tests fix them here.
+_API_KEY = "sk-component"
+_PROVIDER_MODEL = "openrouter-test"
+
+
+@pytest.fixture(autouse=True)
+def _llm_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "robotsix_auto_mail.pipeline.resolve_llm_api_key",
+        lambda *_a, **_k: _API_KEY,
+    )
+    monkeypatch.setattr(
+        "robotsix_auto_mail.pipeline.resolve_llm_provider_model",
+        lambda *_a, **_k: _PROVIDER_MODEL,
+    )
+
 
 # ---------------------------------------------------------------------------
 # ingest_mail - first-run archive setup
@@ -38,8 +58,8 @@ def test_ingest_calls_setup_archive_before_fetch(
         conn,
         imap,
         archive_root=cfg.archive_root,
-        api_key=cfg.llm_api_key.get_secret_value(),
-        provider_model=cfg.llm_provider_model,
+        api_key=_API_KEY,
+        provider_model=_PROVIDER_MODEL,
     )
     # setup_archive must run before fetch_new_messages.
     call_order = [c[0] for c in manager.mock_calls]
@@ -100,8 +120,8 @@ def test_ingest_passes_configured_archive_root(
         conn,
         imap,
         archive_root="custom-archive",
-        api_key=cfg.llm_api_key.get_secret_value(),
-        provider_model=cfg.llm_provider_model,
+        api_key=_API_KEY,
+        provider_model=_PROVIDER_MODEL,
     )
 
 
@@ -151,8 +171,8 @@ def test_ingest_runs_triage_on_new_mail(
 
     mock_triage.assert_called_once_with(
         conn,
-        api_key=cfg.llm_api_key.get_secret_value(),
-        provider_model=cfg.llm_provider_model,
+        api_key=_API_KEY,
+        provider_model=_PROVIDER_MODEL,
         only_undecided=True,
         user_email=cfg.username,
         rules_path=mock.ANY,

@@ -47,8 +47,10 @@ def test_detect_prints_json_report(
     # mail fields updated…
     assert "imap.gmail.com" in content
     assert "user@gmail.com" in content
-    # …but the llm api key is preserved
-    assert "sk-test" in content
+    # …and the resolved LLM key is *not* copied onto the account: it is
+    # component-wide, and a per-account copy is what the canonical
+    # `openrouter` block replaced.
+    assert "sk-test" not in content
 
 
 def test_detect_honours_id_in_report(
@@ -84,9 +86,9 @@ def test_detect_honours_id_in_report(
 
     assert rc == 0
     content = output.read_text()
-    # JSON output contains the env-provided API key.
-    assert "sk-test" in content
+    # The detection key never lands in the written account.
+    assert "sk-test" not in content
 
     accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
-    cfg = accounts.default.config
-    assert cfg.llm_api_key.get_secret_value() == "sk-test"
+    assert accounts.default_account_id == "personal"
+    assert accounts.default.config.imap_host == "imap.gmail.com"

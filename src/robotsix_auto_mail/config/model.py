@@ -21,6 +21,10 @@ from pydantic import (
     model_validator,
 )
 
+from robotsix_auto_mail.config.credentials import (
+    LangfuseConfig,
+    OpenRouterConfig,
+)
 from robotsix_auto_mail.config.schema import (
     _VALID_LOG_FORMATS,
     _VALID_LOG_LEVELS,
@@ -72,14 +76,17 @@ def _validate_template_literals(cfg: MailConfig) -> None:
 
 
 class MailConfig(BaseModel):
-    """Immutable application settings: mail server connection parameters
-    plus optional LLM credentials used by ``detect`` (and future mail
-    processing).
+    """Immutable per-mailbox settings: mail server connection parameters.
 
-    Sensitive fields (``password``, ``llm_api_key``, ``oauth2_token``,
-    ``oauth2_client_secret``, ``langfuse_secret_key``) are typed as
-    :class:`pydantic.SecretStr` so the JSON schema emits ``writeOnly``
-    and the values are masked in ``repr`` / ``str``.
+    Sensitive fields (``password``, ``oauth2_token``,
+    ``oauth2_client_secret``) are typed as :class:`pydantic.SecretStr` so
+    the JSON schema emits ``writeOnly`` and the values are masked in
+    ``repr`` / ``str``.
+
+    LLM and Langfuse credentials are deliberately **not** here: they belong
+    to the component, not to a mailbox, and live in the canonical
+    ``langfuse`` / ``openrouter`` blocks on :class:`MailAccountsConfig`
+    (see :mod:`robotsix_auto_mail.config.credentials`).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -102,11 +109,6 @@ class MailConfig(BaseModel):
     # per account when ``store.path`` is absent.
     db_path: str = ""
     imap_folder: str = "INBOX"
-
-    # LLM provider settings — optional; only needed for the `detect`
-    # subcommand and future LLM-assisted mail processing.
-    llm_api_key: SecretStr = SecretStr("")
-    llm_provider_model: str = Field(default="", json_schema_extra={"advanced": True})
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
     ingest_interval_minutes: int = Field(
@@ -157,12 +159,6 @@ class MailConfig(BaseModel):
         default="organizations", json_schema_extra={"advanced": True}
     )
 
-    # Langfuse observability — optional; when public_key/secret_key are set,
-    # every LLM agent run is traced to the configured Langfuse project.
-    langfuse_public_key: str = Field(default="", json_schema_extra={"advanced": True})
-    langfuse_secret_key: SecretStr = SecretStr("")
-    langfuse_base_url: str = Field(default="", json_schema_extra={"advanced": True})
-
     # Logging configuration — application-wide (global).
     log_level: str = "INFO"
     log_format: str = Field(default="console", json_schema_extra={"advanced": True})
@@ -209,10 +205,8 @@ class MailConfig(BaseModel):
 
     _SECRET_FIELDS = (
         "password",
-        "llm_api_key",
         "oauth2_token",
         "oauth2_client_secret",
-        "langfuse_secret_key",
     )
 
     def __repr__(self) -> str:
@@ -291,6 +285,14 @@ class MailAccountsConfig(BaseModel):
     - The cost is one SQLite file per account; uniqueness of ``db_path``
       across accounts is therefore enforced at load time.
 
+    Component-wide settings
+    -----------------------
+    The ``langfuse`` and ``openrouter`` blocks and ``llm_provider_model``
+    sit here rather than on each :class:`MailConfig` because they describe
+    the component's one LLM function, not a mailbox.  Their shape is fixed
+    by robotsix-standards — see
+    :mod:`robotsix_auto_mail.config.credentials`.
+
     Validation (all raise :class:`ConfigurationError`): at least one
     account; all ``account_id``s unique; all ``MailConfig.db_path``s unique
     across accounts; ``default_account_id`` resolves to a known account.
@@ -300,6 +302,15 @@ class MailAccountsConfig(BaseModel):
 
     accounts: list[MailAccount]
     default_account_id: str = ""
+
+    #: The canonical credential blocks, shared by every account.
+    langfuse: LangfuseConfig = Field(default_factory=LangfuseConfig)
+    openrouter: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
+
+    #: Provider-model identifier for every LLM call (e.g.
+    #: ``"openrouter:anthropic/claude-sonnet-4"``).  Empty means the
+    #: caller's own default.
+    llm_provider_model: str = ""
 
     @model_validator(mode="after")
     def _validate(self) -> MailAccountsConfig:
@@ -316,6 +327,27 @@ class MailAccountsConfig(BaseModel):
                 f"default_account_id {self.default_account_id!r} not in accounts"
             )
         return self
+
+    def with_accounts(
+        self, accounts: list[MailAccount], default_account_id: str
+    ) -> MailAccountsConfig:
+        """Return a copy with a new account list, keeping everything else.
+
+        Every flow that adds, removes or re-detects an account has to go
+        through this rather than constructing a fresh container: a bare
+        ``MailAccountsConfig(accounts=…, default_account_id=…)`` silently
+        resets the component-wide blocks, which would wipe the operator's
+        Langfuse and OpenRouter credentials on the next account edit.
+
+        Validation runs exactly as it does on construction, so callers keep
+        catching the same errors for a duplicate id or an unknown default.
+        """
+        # Shallow field mapping, so any field added later is carried over
+        # without another edit here.
+        data = dict(self)
+        data["accounts"] = accounts
+        data["default_account_id"] = default_account_id
+        return type(self).model_validate(data)
 
     @property
     def default(self) -> MailAccount:

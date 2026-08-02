@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
+from robotsix_auto_mail.config import (
+    DEFAULT_ARCHIVE_ROOT,
+    MailConfig,
+    resolve_llm_api_key,
+)
 from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
     _RECONCILE_STATE_KEY,
@@ -373,7 +377,7 @@ def _run_batch_archive_background(
         try:
             records = _collect_records_for_action(conn, TO_ARCHIVE)
             if subfolder_filter is not None:
-                fkey = mail_config.llm_api_key.get_secret_value() if mail_config else ""
+                fkey = resolve_llm_api_key(raise_on_missing=False)
                 records = [
                     r
                     for r in records
@@ -409,11 +413,7 @@ def _run_batch_archive_background(
                     by_source_dest: dict[tuple[str, str], list[MailRecord]] = (
                         defaultdict(list)
                     )
-                    api_key = (
-                        mail_config.llm_api_key.get_secret_value()
-                        if mail_config
-                        else ""
-                    )
+                    api_key = resolve_llm_api_key(raise_on_missing=False)
                     for record in records:
                         subfolder = get_archive_subfolder(
                             conn,

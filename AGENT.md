@@ -101,10 +101,7 @@ significant LLM input-token cost by keeping the context window small.
 ### The `config/config.json` / `MailConfig` pair
 
 Configuration is loaded from a single JSON config file only — there are no
-environment-variable overrides (with two narrow exceptions: ``LLM_API_KEY``
-and ``LLM_PROVIDER_MODEL`` are read as env-var fallbacks for LLM key/model
-resolution, via ``resolve_llm_api_key`` and ``resolve_llm_provider_model`` in
-``config/loader.py``).  Loading is handled by
+environment-variable overrides of any kind.  Loading is handled by
 ``robotsix_config.load_config(MailAccountsConfig)``
 (see ``src/robotsix_auto_mail/config/loader.py``).
 
@@ -124,6 +121,27 @@ table.  The pydantic model fields are the single source of truth.
 
 Failure mode: if the two artifacts drift, the ``config-sync`` CLI
 subcommand reports the gap, and CI gates on it.
+
+### LLM credentials are component-wide, never per-account
+
+The provider key and the Langfuse credentials live **only** in the canonical
+top-level blocks on ``MailAccountsConfig`` — ``openrouter.keys`` and
+``langfuse.projects``, both keyed by the alias
+``robotsix_auto_mail.config.credentials.MAIN_LLM_ALIAS`` (see
+``src/robotsix_auto_mail/config/credentials.py``).  Never add an LLM or
+tracing credential to ``MailConfig``: a mailbox is not an LLM function, and
+the deployment engine reads the canonical blocks *and nothing else*, so a
+credential stored anywhere else is invisible to the fleet while the
+component's own tracing keeps working — the breakage is silent.
+
+Read them through ``resolve_llm_api_key`` / ``resolve_llm_provider_model`` /
+``load_langfuse``; do not reach into a ``MailConfig`` for them.
+
+Any flow that adds, removes or re-detects an account MUST rebuild the
+container with ``MailAccountsConfig.with_accounts()``.  Constructing a fresh
+``MailAccountsConfig(accounts=…, default_account_id=…)`` silently resets
+every component-wide block, wiping the operator's credentials on the next
+account edit.
 
 ### secrets
 

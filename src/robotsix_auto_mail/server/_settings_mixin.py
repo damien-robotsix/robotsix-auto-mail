@@ -281,7 +281,6 @@ class _SettingsMixin:
         and default_account_id so the change is visible immediately.
         """
         from robotsix_auto_mail.config import (
-            MailAccountsConfig,
             load_accounts,
             save_accounts,
         )
@@ -326,10 +325,7 @@ class _SettingsMixin:
             default_id = new_accounts[0].account_id if new_accounts else ""
 
         try:
-            new_config = MailAccountsConfig(
-                accounts=new_accounts,
-                default_account_id=default_id,
-            )
+            new_config = existing.with_accounts(new_accounts, default_id)
         except Exception as exc:
             self._serve_json(
                 {"ok": False, "error": f"invalid config after deletion: {exc}"},

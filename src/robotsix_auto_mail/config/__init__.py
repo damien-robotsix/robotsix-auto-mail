@@ -22,6 +22,18 @@ This module re-exports the public and previously-importable symbols so
 
 from __future__ import annotations
 
+from robotsix_auto_mail.config.credentials import (
+    MAIN_LLM_ALIAS as MAIN_LLM_ALIAS,
+)
+from robotsix_auto_mail.config.credentials import (
+    LangfuseConfig as LangfuseConfig,
+)
+from robotsix_auto_mail.config.credentials import (
+    LangfuseProject as LangfuseProject,
+)
+from robotsix_auto_mail.config.credentials import (
+    OpenRouterConfig as OpenRouterConfig,
+)
 from robotsix_auto_mail.config.loader import (
     get_config_schema as get_config_schema,
 )
@@ -30,6 +42,9 @@ from robotsix_auto_mail.config.loader import (
 )
 from robotsix_auto_mail.config.loader import (
     load_accounts as load_accounts,
+)
+from robotsix_auto_mail.config.loader import (
+    load_langfuse as load_langfuse,
 )
 from robotsix_auto_mail.config.loader import (
     resolve_llm_api_key as resolve_llm_api_key,
@@ -73,14 +88,19 @@ __all__ = [
     "DEFAULT_IMAP_TLS_MODE",
     "DEFAULT_INGEST_INTERVAL_MINUTES",
     "DEFAULT_SMTP_TLS_MODE",
+    "MAIN_LLM_ALIAS",
     "_VALID_TLS_MODES",
     "ConfigurationError",
+    "LangfuseConfig",
+    "LangfuseProject",
     "MailAccount",
     "MailAccountsConfig",
     "MailConfig",
+    "OpenRouterConfig",
     "get_config_schema",
     "load",
     "load_accounts",
+    "load_langfuse",
     "resolve_llm_api_key",
     "resolve_llm_provider_model",
     "save_accounts",

@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from urllib.parse import unquote
 
-from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
+from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, resolve_llm_api_key
 from robotsix_auto_mail.server._constants import (
     _STATIC_AUTOMAIL_BOARD_CSS,
     _STATIC_BOARD_AUTOMAIL_JS,
@@ -176,11 +176,7 @@ class _BoardViewMixin:
                 conn,
                 message_id,
                 record,
-                api_key=(
-                    self.mail_config.llm_api_key.get_secret_value()
-                    if self.mail_config
-                    else ""
-                ),
+                api_key=resolve_llm_api_key(raise_on_missing=False),
                 rules=rules_text_for(self.mail_config),
             )
             overrides = _load_archive_overrides(conn)

@@ -12,10 +12,12 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import (
+    MAIN_LLM_ALIAS,
     ConfigurationError,
     MailAccount,
     MailAccountsConfig,
     MailConfig,
+    OpenRouterConfig,
     load,
     load_accounts,
     resolve_llm_api_key,
@@ -32,7 +34,12 @@ def _default_accounts(
     llm_api_key: str = "",
     llm_provider_model: str = "",
 ) -> MailAccountsConfig:
-    """Return a minimal single-account config."""
+    """Return a minimal single-account config.
+
+    The LLM settings are component-wide: the provider key goes in the
+    canonical ``openrouter`` block under the component's alias, not on the
+    account.
+    """
     return MailAccountsConfig(
         accounts=[
             MailAccount(
@@ -42,12 +49,12 @@ def _default_accounts(
                     smtp_host="smtp.example.com",
                     username="user@example.com",
                     password="pass",
-                    llm_api_key=llm_api_key,
-                    llm_provider_model=llm_provider_model,
                 ),
             )
         ],
         default_account_id="default",
+        openrouter=OpenRouterConfig(keys={MAIN_LLM_ALIAS: llm_api_key}),
+        llm_provider_model=llm_provider_model,
     )
 
 
@@ -76,7 +83,7 @@ def test_resolve_llm_api_key_explicit_arg_wins() -> None:
 
 
 def test_resolve_llm_api_key_falls_back_to_file() -> None:
-    """No arg → falls back to the config file's llm_api_key."""
+    """No arg → falls back to the config file's openrouter key."""
     accts = _default_accounts(llm_api_key="sk-from-file")
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts

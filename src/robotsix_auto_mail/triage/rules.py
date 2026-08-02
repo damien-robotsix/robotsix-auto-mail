@@ -267,8 +267,8 @@ def record_user_action(
         "subject": record.subject,
         "body": _effective_body_plain(record),
         "subfolder": subfolder,
-        "api_key": config.llm_api_key.get_secret_value() or None,
-        "provider_model": config.llm_provider_model or None,
+        "api_key": resolve_llm_api_key(raise_on_missing=False) or None,
+        "provider_model": resolve_llm_provider_model() or None,
     }
     if background:
         threading.Thread(
@@ -285,6 +285,6 @@ def record_user_action(
             subject=record.subject,
             body=_effective_body_plain(record),
             subfolder=subfolder,
-            api_key=config.llm_api_key.get_secret_value() or None,
-            provider_model=config.llm_provider_model or None,
+            api_key=resolve_llm_api_key(raise_on_missing=False) or None,
+            provider_model=resolve_llm_provider_model() or None,
         )

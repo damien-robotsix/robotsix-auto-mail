@@ -131,11 +131,13 @@ modules:
       template, the deterministic drift-detection script, and the optional
       LLM-driven drift-advisory agent. Together they keep the MailConfig
       pydantic model, JSON example, and connecting docs in sync. Also covers
-      multi-account loading (MailAccountsConfig) and per-account SQLite DB
-      isolation.
+      multi-account loading (MailAccountsConfig), per-account SQLite DB
+      isolation, and the canonical component-wide credential blocks
+      (langfuse / openrouter).
     paths:
       - src/robotsix_auto_mail/config/__init__.py
       - src/robotsix_auto_mail/config/_field_map.py
+      - src/robotsix_auto_mail/config/credentials.py
       - src/robotsix_auto_mail/config/loader.py
       - src/robotsix_auto_mail/config/model.py
       - src/robotsix_auto_mail/config/schema.py

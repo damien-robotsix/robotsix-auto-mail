@@ -14,8 +14,6 @@
         "smtp_tls_mode": "starttls",
         "db_path": "/data/personal/mail.db",
         "imap_folder": "INBOX",
-        "llm_api_key": "",
-        "llm_provider_model": "",
         "ingest_interval_minutes": 15,
         "ingest_mode": "once",
         "heartbeat_file": "",
@@ -28,9 +26,6 @@
         "oauth2_client_secret": "",
         "oauth2_provider": "",
         "oauth2_tenant": "organizations",
-        "langfuse_public_key": "",
-        "langfuse_secret_key": "",
-        "langfuse_base_url": "",
         "log_level": "INFO",
         "log_format": "console"
       }
@@ -49,8 +44,6 @@
         "smtp_tls_mode": "starttls",
         "db_path": "/data/work/mail.db",
         "imap_folder": "INBOX",
-        "llm_api_key": "",
-        "llm_provider_model": "",
         "ingest_interval_minutes": 15,
         "ingest_mode": "once",
         "heartbeat_file": "",
@@ -63,13 +56,26 @@
         "oauth2_client_secret": "",
         "oauth2_provider": "",
         "oauth2_tenant": "organizations",
-        "langfuse_public_key": "",
-        "langfuse_secret_key": "",
-        "langfuse_base_url": "",
         "log_level": "INFO",
         "log_format": "console"
       }
     }
   ],
-  "default_account_id": "personal"
+  "default_account_id": "personal",
+  "langfuse": {
+    "host": "https://langfuse.example.net",
+    "projects": {
+      "robotsix-auto-mail": {
+        "public_key": "pk-lf-...",
+        "secret_key": "sk-lf-...",
+        "project_id": ""
+      }
+    }
+  },
+  "openrouter": {
+    "keys": {
+      "robotsix-auto-mail": "sk-or-..."
+    }
+  },
+  "llm_provider_model": ""
 }

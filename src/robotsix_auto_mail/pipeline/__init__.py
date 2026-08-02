@@ -13,7 +13,11 @@ import logging
 import sqlite3
 import time
 
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import (
+    MailConfig,
+    resolve_llm_api_key,
+    resolve_llm_provider_model,
+)
 from robotsix_auto_mail.db import (
     delete_watermark,
     get_watermark,
@@ -367,8 +371,8 @@ def ingest_mail(
                 db_conn,
                 imap_client,
                 archive_root=config.archive_root,
-                api_key=config.llm_api_key.get_secret_value(),
-                provider_model=config.llm_provider_model,
+                api_key=resolve_llm_api_key(raise_on_missing=False),
+                provider_model=resolve_llm_provider_model(),
             )
             _logger.info("archive_setup_done")
         except Exception:
@@ -416,8 +420,8 @@ def ingest_mail(
         try:
             decisions = run_triage_agent(
                 db_conn,
-                api_key=config.llm_api_key.get_secret_value(),
-                provider_model=config.llm_provider_model,
+                api_key=resolve_llm_api_key(raise_on_missing=False),
+                provider_model=resolve_llm_provider_model(),
                 only_undecided=True,
                 user_email=config.username,
                 rules_path=resolve_rules_path(

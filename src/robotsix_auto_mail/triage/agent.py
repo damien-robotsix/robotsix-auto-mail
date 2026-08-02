@@ -467,12 +467,12 @@ def run_triage_agent(
     Args:
         conn: Open SQLite connection.
         api_key: OpenRouter API key.  Resolves with the precedence
-            ``api_key`` argument → ``config.llm_api_key`` (via
+            ``api_key`` argument → the canonical ``openrouter`` block (via
             :func:`~robotsix_auto_mail.config.resolve_llm_api_key`).
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).
             Resolves with the precedence ``provider_model`` argument →
-            ``config.llm_provider_model`` (via
+            ``llm_provider_model`` (via
             :func:`~robotsix_auto_mail.config.resolve_llm_provider_model`).
         level: LLM integer tier to use.  ``1`` (cheap, default).
         only_undecided: When ``True``, inbox records that already have a
@@ -503,13 +503,13 @@ def run_triage_agent(
     decisions: list[TriageDecision] = []
     remaining = records
 
-    # -- resolve API key (arg -> config.llm_api_key) --
+    # -- resolve API key (arg -> openrouter.keys) --
     try:
         resolved_key = resolve_llm_api_key(api_key)
     except ConfigurationError as exc:
         raise TriageError(str(exc)) from exc
 
-    # -- resolve provider-model (arg → config.llm_provider_model) --
+    # -- resolve provider-model (arg → llm_provider_model) --
     resolved_provider_model = resolve_llm_provider_model(provider_model)
 
     # -- read archive folder structure for the prompt --

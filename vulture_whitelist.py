@@ -136,3 +136,14 @@ all((  # lgtm[py/ineffectual-statement]
     SettingsStore.seed_from_mail_config,
     SettingsStore.to_mail_config,
 ))
+
+# ===========================================================================
+# Canonical credential blocks — ``project_id`` is part of the storage shape
+# robotsix-standards fixes for every component; it exists for the fleet
+# consumers that address a Langfuse project by id, and this component never
+# reads it itself.
+# ===========================================================================
+
+from robotsix_auto_mail.config.credentials import LangfuseProject
+
+all((LangfuseProject.project_id,))  # lgtm[py/ineffectual-statement]

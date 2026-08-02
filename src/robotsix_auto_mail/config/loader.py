@@ -8,7 +8,9 @@ a configuration source.
 
 The two LLM-only resolvers (:func:`resolve_llm_api_key`,
 :func:`resolve_llm_provider_model`) check, in order: an explicit
-argument, then the config file.
+argument, then the config file's component-wide LLM settings — the
+canonical ``openrouter`` block and ``llm_provider_model``, never a
+per-account field.
 
 Depends on :mod:`robotsix_auto_mail.config.model`.
 """
@@ -28,6 +30,7 @@ from robotsix_config import (
     load_config as _load_config,
 )
 
+from robotsix_auto_mail.config.credentials import MAIN_LLM_ALIAS, LangfuseConfig
 from robotsix_auto_mail.config.model import MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.schema import ConfigurationError
 
@@ -64,10 +67,19 @@ def get_config_schema() -> str:
     return _config_schema_json(MailAccountsConfig)
 
 
+_MISSING_KEY_HELP = (
+    f"No LLM API key found — add openrouter.keys.{MAIN_LLM_ALIAS} to config/config.json"
+)
+
+
 def resolve_llm_api_key(
     api_key: str | None = None, raise_on_missing: bool = True
 ) -> str:
     """Resolve the LLM API key: explicit *api_key* arg → config file.
+
+    The config-file value is the provider key declared under
+    :data:`~robotsix_auto_mail.config.credentials.MAIN_LLM_ALIAS` in the
+    canonical ``openrouter`` block.
 
     Args:
         api_key: An explicit key, usually from a CLI parameter.
@@ -85,18 +97,14 @@ def resolve_llm_api_key(
     if api_key:
         return api_key
     try:
-        file_cfg = load()
+        accounts = load_accounts()
     except Exception:
         if raise_on_missing:
-            raise ConfigurationError(
-                "No LLM API key found — add llm_api_key to config/config.json"
-            ) from None
+            raise ConfigurationError(_MISSING_KEY_HELP) from None
         return ""
-    resolved = file_cfg.llm_api_key.get_secret_value()
+    resolved = accounts.openrouter.key()
     if not resolved and raise_on_missing:
-        raise ConfigurationError(
-            "No LLM API key found — add llm_api_key to config/config.json"
-        )
+        raise ConfigurationError(_MISSING_KEY_HELP)
     return resolved
 
 
@@ -116,8 +124,21 @@ def resolve_llm_provider_model(
     if provider_model:
         return provider_model
     try:
-        file_cfg = load()
+        accounts = load_accounts()
     except Exception:
         return default
-    resolved = file_cfg.llm_provider_model
-    return resolved or default
+    return accounts.llm_provider_model or default
+
+
+def load_langfuse() -> LangfuseConfig:
+    """The canonical ``langfuse`` block, or an empty one when unreadable.
+
+    Tracing setup must never be the reason the process fails to start, so a
+    missing or invalid config file yields an unconfigured block rather than
+    an exception.
+    """
+    try:
+        return load_accounts().langfuse
+    except Exception:
+        logger.debug("Config unreadable; Langfuse tracing left unconfigured")
+        return LangfuseConfig()
