@@ -1,5 +1,7 @@
 """Package-wide constants shared across submodules."""
 
+from typing import Final
+
 #: Root folder under which all managed archive folders live.
 _ARCHIVE_ROOT = "robotsix-mail-archive"
 
@@ -7,6 +9,10 @@ _ARCHIVE_ROOT = "robotsix-mail-archive"
 _TRIAGE_RUN_STATE_KEY = "triage_run:state"
 _BATCH_OP_STATE_KEY = "batch_op:state"
 _RECONCILE_STATE_KEY = "reconcile:state"
+
+#: Watermark sentinel values — the two canonical states for single-flight guards.
+_WATERMARK_RUNNING: Final = "running"
+_WATERMARK_IDLE: Final = "idle"
 
 _ARCHIVE_TAXONOMY_GUIDANCE = (
     "Categorize by purpose or topic: choose a top-level semantic "
@@ -28,5 +34,7 @@ _ = (
     _TRIAGE_RUN_STATE_KEY,
     _BATCH_OP_STATE_KEY,
     _RECONCILE_STATE_KEY,
+    _WATERMARK_RUNNING,
+    _WATERMARK_IDLE,
     _ARCHIVE_TAXONOMY_GUIDANCE,
 )

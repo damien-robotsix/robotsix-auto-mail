@@ -10,6 +10,7 @@ from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
     _RECONCILE_STATE_KEY,
     _TRIAGE_RUN_STATE_KEY,
+    _WATERMARK_IDLE,
 )
 from robotsix_auto_mail.db import (
     MailRecord,
@@ -82,7 +83,7 @@ def _run_triage_background(
             # Swallow all exceptions — the watermark is always cleared.
             pass
         finally:
-            set_watermark(conn, _TRIAGE_RUN_STATE_KEY, "idle")
+            set_watermark(conn, _TRIAGE_RUN_STATE_KEY, _WATERMARK_IDLE)
 
 
 def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> None:
@@ -116,7 +117,7 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
             # Swallow all exceptions — the watermark is always cleared.
             pass
         finally:
-            set_watermark(conn, _RECONCILE_STATE_KEY, "idle")
+            set_watermark(conn, _RECONCILE_STATE_KEY, _WATERMARK_IDLE)
 
 
 def _batch_op_running(state: str | None) -> bool:
@@ -126,7 +127,7 @@ def _batch_op_running(state: str | None) -> bool:
     ``"idle"`` — i.e. the JSON progress payload set while a batch worker
     is in flight.
     """
-    return state is not None and state != "idle"
+    return state is not None and state != _WATERMARK_IDLE
 
 
 def _archive_dest_folder(
@@ -329,7 +330,7 @@ def _run_batch_delete_background(db_path: str, mail_config: MailConfig | None) -
             # Swallow all exceptions — the watermark is always cleared.
             pass
         finally:
-            set_watermark(conn, _BATCH_OP_STATE_KEY, "idle")
+            set_watermark(conn, _BATCH_OP_STATE_KEY, _WATERMARK_IDLE)
 
 
 def _run_batch_archive_background(
@@ -480,4 +481,5 @@ def _run_batch_archive_background(
             # Swallow all exceptions — the watermark is always cleared.
             pass
         finally:
-            set_watermark(conn, _BATCH_OP_STATE_KEY, "idle")
+            set_watermark(conn, _BATCH_OP_STATE_KEY, _WATERMARK_IDLE)
+

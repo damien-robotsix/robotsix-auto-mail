@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
 from robotsix_auto_mail.config import ConfigurationError
+from robotsix_auto_mail.core._constants import _WATERMARK_IDLE
 from robotsix_auto_mail.oauth2 import MICROSOFT_PROVIDER, device_code_login
 
 if TYPE_CHECKING:
@@ -153,7 +154,7 @@ class _BoardAuthMixin:
         # 3. Look up state.
         state = _BoardAuthMixin._AUTH_FLOWS.get(flow_key)
         if state is None:
-            self._serve_json({"status": "idle"})
+            self._serve_json({"status": _WATERMARK_IDLE})
             return
 
         # 4. One-shot clear on success.

@@ -17,6 +17,8 @@ from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
 from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
     _TRIAGE_RUN_STATE_KEY,
+    _WATERMARK_IDLE,
+    _WATERMARK_RUNNING,
 )
 from robotsix_auto_mail.db import MailRecord, get_watermark, list_records
 from robotsix_auto_mail.db.queries import get_account_health
@@ -43,7 +45,7 @@ def _read_account_health(
     Returns a ``(health, triage_running)`` pair.
     """
     health = get_account_health(conn)
-    triage_running = get_watermark(conn, _TRIAGE_RUN_STATE_KEY) == "running"
+    triage_running = get_watermark(conn, _TRIAGE_RUN_STATE_KEY) == _WATERMARK_RUNNING
     return health, triage_running
 
 
@@ -57,7 +59,7 @@ def _parse_batch_op(conn: sqlite3.Connection) -> dict[str, Any] | None:
     counts.
     """
     batch_raw = get_watermark(conn, _BATCH_OP_STATE_KEY)
-    if batch_raw is None or batch_raw == "idle":
+    if batch_raw is None or batch_raw == _WATERMARK_IDLE:
         return None
     try:
         parsed = json.loads(batch_raw)
