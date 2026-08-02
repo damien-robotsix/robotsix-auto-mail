@@ -56,6 +56,28 @@ _STATIC_BOARD_AUTOMAIL_JS = (  # lgtm[py/unused-global-variable]
     / "board-auto-mail.js"
 ).read_text()
 
+
+def _read_vendored_ui(name: str) -> str | None:
+    """Read a vendored ``@robotsix/ui`` build artifact, or ``None`` if absent.
+
+    These two files are not committed — they are build output, copied in from
+    the pinned package at image build time (see the ``ui`` stage in the
+    Dockerfile) or by ``scripts/vendor-ui.sh`` for a local checkout.  A missing
+    file must degrade the Settings page, never break the import.
+    """
+    try:
+        return (
+            importlib.resources.files("robotsix_auto_mail.server") / "static" / name
+        ).read_text()
+    except FileNotFoundError, OSError:
+        return None
+
+
+#: The shared config panel and its stylesheet — the fleet's one settings
+#: renderer (robotsix-standards config-ownership.md, "cross-UI uniformity").
+_STATIC_ROBOTSIX_UI_JS = _read_vendored_ui("robotsix-ui.js")
+_STATIC_ROBOTSIX_UI_CSS = _read_vendored_ui("robotsix-ui.css")
+
 # -- Constants --------------------------------------------------------------
 _BOARD_COLUMNS = TRIAGE_ACTION_ORDER  # lgtm[py/unused-global-variable]
 

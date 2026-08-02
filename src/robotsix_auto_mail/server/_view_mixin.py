@@ -13,6 +13,8 @@ from robotsix_auto_mail.server._constants import (
     _STATIC_BOARD_AUTOMAIL_JS,
     _STATIC_BOARD_CSS,
     _STATIC_BOARD_JS,
+    _STATIC_ROBOTSIX_UI_CSS,
+    _STATIC_ROBOTSIX_UI_JS,
     _parse_archive_structure,
     _with_db,
 )
@@ -125,6 +127,24 @@ class _BoardViewMixin:
                 _STATIC_BOARD_AUTOMAIL_JS,
                 content_type="text/javascript; charset=utf-8",
             )
+        elif self.path == "/static/robotsix-ui.js":
+            # Vendored at image build time; absent in a bare checkout, where
+            # the Settings page shows how to fetch it instead of blank space.
+            if _STATIC_ROBOTSIX_UI_JS is None:
+                self._not_found()
+            else:
+                self._send_response(
+                    _STATIC_ROBOTSIX_UI_JS,
+                    content_type="text/javascript; charset=utf-8",
+                )
+        elif self.path == "/static/robotsix-ui.css":
+            if _STATIC_ROBOTSIX_UI_CSS is None:
+                self._not_found()
+            else:
+                self._send_response(
+                    _STATIC_ROBOTSIX_UI_CSS,
+                    content_type="text/css; charset=utf-8",
+                )
         else:
             self._not_found()
 

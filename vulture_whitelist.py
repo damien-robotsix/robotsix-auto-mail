@@ -48,6 +48,7 @@ from robotsix_auto_mail.server.handlers import BoardHandler
 
 BoardHandler.do_GET
 BoardHandler.do_POST
+BoardHandler.do_PUT
 BoardHandler.log_message
 
 # ===========================================================================

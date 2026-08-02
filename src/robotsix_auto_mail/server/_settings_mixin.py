@@ -1,353 +1,272 @@
-"""GET /settings, PUT /settings, settings panel, and delete-account mixin."""
+"""The standard config surface and the Settings page.
+
+``GET /config``, ``PUT /config``, ``GET /config/versions`` and
+``POST /config/rollback`` are the surface every deployable component exposes
+(robotsix-standards ``config-ownership.md``).  The Settings page mounts the
+fleet's shared panel from ``@robotsix/ui`` against that surface rather than
+rendering a form of its own — no component-specific settings UI exists here,
+which is what keeps this UI, the deploy UI and every future one identical.
+
+Account creation and deletion stay separate flows: they validate a mailbox
+connection, which is more than a config write.
+"""
 
 # mypy: disable-error-code="attr-defined"
 
 from __future__ import annotations
 
-import html
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
-
-from robotsix_auto_mail.server._constants import _with_db
 
 logger = logging.getLogger(__name__)
 
-# -- Settings panel inline CSS ----------------------------------------------
+#: Cap on a config request body — the panel sends only changed keys.
+_MAX_BODY_BYTES = 1_000_000
 
-_SETTINGS_PANEL_CSS = """\
+_SETTINGS_PAGE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<link rel="stylesheet" href="/static/robotsix-ui.css">
+<style>
 body {
-  background: var(--color-bg-page, #121626);
-  color: var(--color-text-primary, #eee);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  max-width: 640px;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  margin: 0;
+  padding: 2rem 1rem;
+  font-family: var(--rsu-font-family, system-ui, sans-serif);
+  background: var(--rsu-color-bg-secondary, #121626);
+  color: var(--rsu-color-text, #eee);
 }
-h1 { margin-bottom: 1.5rem; }
-h2 { margin-top: 2rem; margin-bottom: 0.75rem; font-size: 1.1rem; }
-.account-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1rem;
-}
-.account-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 0.75rem;
-  margin-bottom: 0.35rem;
-  background: var(--color-bg-panel, #16213e);
-  border: 1px solid var(--color-border-button, #3a3a6a);
+main { max-width: 56rem; margin: 0 auto; }
+.nav-links { display: flex; gap: 1.5rem; margin: 1.5rem 0; }
+.nav-links a { color: var(--rsu-color-primary, #a0c0ff); text-decoration: none; }
+.nav-links a:hover { text-decoration: underline; }
+.panel-fallback {
+  padding: 1rem;
   border-radius: 4px;
+  background: var(--rsu-color-error-bg, #fef2f2);
+  color: var(--rsu-color-error, #b71c1c);
 }
-.account-item-info {
-  flex: 1;
-}
-.account-item-label {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-.account-item-id {
-  font-size: 0.8rem;
-  color: var(--color-text-muted, #c0c0e0);
-  margin-left: 0.4rem;
-}
-.account-item-detail {
-  font-size: 0.75rem;
-  color: var(--color-text-subtle, #a0a0c0);
-  margin-top: 0.15rem;
-}
-.delete-account-btn {
-  background: var(--color-bg-danger, #d32f2f);
-  color: var(--color-text-on-danger, #fff);
-  border: none;
-  padding: 0.3rem 0.8rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-.delete-account-btn:hover {
-  background: var(--color-bg-danger-hover, #b71c1c);
-}
-.delete-account-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.empty-message {
-  color: var(--color-text-muted, #c0c0e0);
-  font-style: italic;
-  padding: 0.5rem 0;
-}
-.nav-links {
-  margin-top: 2rem;
-  display: flex;
-  gap: 1.5rem;
-}
-.nav-links a {
-  color: var(--color-text-link, #a0c0ff);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-.nav-links a:hover {
-  text-decoration: underline;
-}
-.error-banner {
-  background: var(--color-bg-health, #fde8e8);
-  border: 2px solid var(--color-border-health, #d93025);
-  border-radius: 4px;
-  color: var(--color-text-health, #b71c1c);
-  padding: 0.75em 1em;
-  margin-bottom: 1.5em;
-  font-weight: bold;
-}
-.success-banner {
-  background: var(--color-bg-success-muted, #e8f5e9);
-  border: 2px solid var(--color-bg-success, #2e7d32);
-  border-radius: 4px;
-  color: var(--color-bg-success, #2e7d32);
-  padding: 0.75em 1em;
-  margin-bottom: 1.5em;
-  font-weight: bold;
-}
+</style>
+</head>
+<body>
+<main>
+<div class="nav-links">
+  <a href="/board">&larr; Back to Board</a>
+  <a href="/add-account">+ Add Account</a>
+</div>
+<div id="settings-panel"></div>
+<noscript><p class="panel-fallback">Settings require JavaScript.</p></noscript>
+</main>
+<script type="module">
+  // A missing vendored asset must say so rather than leave a blank page.
+  import("/static/robotsix-ui.js")
+    .then((ui) => {
+      ui.mountConfigPanel(document.getElementById("settings-panel"), {
+        title: "Settings",
+      });
+    })
+    .catch(() => {
+      document.getElementById("settings-panel").innerHTML =
+        '<p class="panel-fallback">The shared config panel asset is missing. ' +
+        "It is vendored at image build time; for a local checkout run " +
+        "<code>scripts/vendor-ui.sh</code>.</p>";
+    });
+</script>
+</body>
+</html>
 """
 
 
 class _SettingsMixin:
-    """Mixin providing per-component settings read/write endpoints,
-    a settings-panel HTML page, and account deletion."""
+    """Mixin providing the standard config surface, the Settings page,
+    and account deletion."""
 
     if TYPE_CHECKING:
         from ._board_handler_protocol import BoardHandlerProtocol
 
     self: BoardHandlerProtocol
 
-    # -- GET /settings -------------------------------------------------------
+    # -- request helpers -----------------------------------------------------
 
-    def _handle_get_settings(self) -> None:
-        """Return all component settings as JSON with secrets masked.
-
-        GET /settings → ``{"settings": {"imap_host": "…", "password": "***", …}}``
-
-        The response includes a ``source`` field indicating whether the
-        settings came from the internal store (``"internal"``) or were
-        derived from the config file (``"config-file"`` — store was
-        empty, no import has run yet).
-        """
-        from robotsix_auto_mail.settings import SettingsStore
-
-        store = SettingsStore(self.db_path)
-        with _with_db(self.db_path) as conn:
-            if store.is_empty(conn):
-                # No imported settings yet — derive from the in-memory
-                # MailConfig (config file) with secrets masked.
-                if self.mail_config is not None:
-                    cfg = self.mail_config
-                    # We can't iterate fields directly on the Protocol type,
-                    # so use the concrete MailConfig fields.
-                    from robotsix_auto_mail.config.model import MailConfig
-                    from robotsix_auto_mail.settings.store import _masked_value
-
-                    settings = {
-                        field_name: _masked_value(
-                            field_name,
-                            str(getattr(cfg, field_name)),
-                        )
-                        for field_name in MailConfig.model_fields
-                    }
-                else:
-                    settings = {}
-                self._serve_json(
-                    {"settings": settings, "source": "config-file"}, status=200
-                )
-                return
-
-            settings = store.get_all(conn)
-
-        self._serve_json({"settings": settings, "source": "internal"}, status=200)
-
-    # -- PUT /settings -------------------------------------------------------
-
-    def _handle_put_settings(self) -> None:
-        """Validate and apply partial settings updates.
-
-        PUT /settings  (JSON body: ``{"imap_host": "new.example.com", …}``)
-
-        Returns ``{"ok": true, "errors": {}}`` on success, or
-        ``{"ok": false, "errors": {"bad_field": "error message", …}}``
-        on validation failure.  On partial failure valid fields are
-        still persisted (the ``errors`` dict lists only the rejected
-        keys).
-        """
-        from robotsix_auto_mail.settings import SettingsStore
-
-        # Read the raw request body.
-        length = int(self.headers.get("Content-Length", "0"))
-        if length == 0:
-            self._serve_json(
-                {"ok": False, "errors": {"_body": "empty request body"}},
-                status=400,
-            )
-            return
-
-        raw_body = self.rfile.read(length)
+    def _read_json_body(self) -> dict[str, Any] | None:
+        """Parse the body as a JSON object, or answer and return ``None``."""
         try:
-            body = json.loads(raw_body)
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if length <= 0:
+            self._config_problem("empty request body", status=400)
+            return None
+        if length > _MAX_BODY_BYTES:
+            self._config_problem("request body too large", status=413)
+            return None
+        try:
+            body = json.loads(self.rfile.read(length))
         except json.JSONDecodeError as exc:
-            self._serve_json(
-                {"ok": False, "errors": {"_body": f"invalid JSON: {exc}"}},
-                status=400,
-            )
-            return
-
+            self._config_problem(f"invalid JSON: {exc}", status=400)
+            return None
         if not isinstance(body, dict):
-            self._serve_json(
-                {"ok": False, "errors": {"_body": "expected a JSON object"}},
-                status=400,
-            )
+            self._config_problem("expected a JSON object", status=400)
+            return None
+        return body
+
+    def _config_problem(self, detail: str, status: int = 422) -> None:
+        """Answer with the fleet's standard error envelope."""
+        self._serve_json(
+            {
+                "type": "urn:robotsix:error:config-validation",
+                "title": "Config validation failed",
+                "detail": detail,
+                "instance": "/config",
+            },
+            status=status,
+        )
+
+    # -- GET /config ---------------------------------------------------------
+
+    def _handle_get_config(self) -> None:
+        """Return the effective config, its schema, and the current version.
+
+        Secrets are masked by the model itself — they are never echoed.
+        """
+        from robotsix_auto_mail.config.service import get_config
+
+        try:
+            self._serve_json(get_config(), status=200)
+        except Exception as exc:
+            logger.error("Failed to read config: %s", exc)
+            self._config_problem(f"failed to read config: {exc}", status=500)
+
+    # -- PUT /config ---------------------------------------------------------
+
+    def _handle_put_config(self) -> None:
+        """Apply a partial config update and persist it."""
+        from robotsix_auto_mail.config.service import (
+            ConfigValidationError,
+            update_config,
+        )
+
+        body = self._read_json_body()
+        if body is None:
             return
 
-        store = SettingsStore(self.db_path)
-        with _with_db(self.db_path) as conn:
-            errors = store.update(conn, body)
-
-        if errors:
-            self._serve_json({"ok": False, "errors": errors}, status=422)
+        try:
+            result = update_config(body)
+        except ConfigValidationError as exc:
+            self._config_problem(exc.detail)
+            return
+        except Exception as exc:
+            logger.error("Failed to write config: %s", exc)
+            self._config_problem(f"failed to write config: {exc}", status=500)
             return
 
-        self._serve_json({"ok": True, "errors": {}}, status=200)
+        self._refresh_accounts_cache()
+        self._serve_json(result, status=200)
 
-    # -- GET /settings-panel -------------------------------------------------
+    # -- GET /config/versions ------------------------------------------------
 
-    def _serve_settings_panel(
-        self,
-        error: str = "",
-        success: str = "",
-    ) -> None:
-        """Serve the settings-panel HTML page listing accounts with delete buttons.
+    def _handle_get_config_versions(self) -> None:
+        """Return recent config versions, newest first."""
+        from robotsix_auto_mail.config.service import list_versions
 
-        GET /settings-panel → HTML page
+        try:
+            self._serve_json(list_versions(), status=200)
+        except Exception as exc:
+            logger.error("Failed to read config versions: %s", exc)
+            self._config_problem(f"failed to read versions: {exc}", status=500)
 
-        When *error* or *success* is non-empty, a banner is rendered at
-        the top of the page (used after a failed or successful deletion).
+    # -- POST /config/rollback -----------------------------------------------
+
+    def _handle_config_rollback(self) -> None:
+        """Restore a previous version as a new version."""
+        from robotsix_auto_mail.config.service import ConfigValidationError, rollback
+
+        body = self._read_json_body()
+        if body is None:
+            return
+        version = body.get("version")
+        if not isinstance(version, int) or isinstance(version, bool):
+            self._config_problem("'version' must be an integer")
+            return
+
+        try:
+            result = rollback(version)
+        except ConfigValidationError as exc:
+            self._config_problem(exc.detail)
+            return
+        except Exception as exc:
+            logger.error("Failed to roll back config: %s", exc)
+            self._config_problem(f"failed to roll back: {exc}", status=500)
+            return
+
+        self._refresh_accounts_cache()
+        self._serve_json(result, status=200)
+
+    # -- shared --------------------------------------------------------------
+
+    def _refresh_accounts_cache(self) -> None:
+        """Re-read accounts into the handler factory after a config write.
+
+        The server keeps the loaded accounts in the handler factory's
+        keywords; without this the running process would keep serving the
+        pre-write config until it is restarted.
         """
         from robotsix_auto_mail.config import load_accounts
 
         try:
-            accounts_cfg = load_accounts()
+            accounts = load_accounts()
         except Exception:
-            accounts_cfg = None
-
-        # Build the account list HTML.
-        account_items_html = ""
-        if accounts_cfg is not None and accounts_cfg.ids():
-            for account in accounts_cfg.accounts:
-                label = (
-                    html.escape(account.label)
-                    if account.label
-                    else html.escape(account.account_id)
-                )
-                account_id = html.escape(account.account_id)
-                imap_host = html.escape(account.config.imap_host)
-                username = html.escape(account.config.username)
-                default_badge = ""
-                if account.account_id == accounts_cfg.default_account_id:
-                    default_badge = ' <span class="account-item-id">(default)</span>'
-                account_items_html += (
-                    '<li class="account-item"'
-                    f' id="account-{account_id}">\n'
-                    '  <div class="account-item-info">\n'
-                    f'   <span class="account-item-label">{label}'
-                    f"{default_badge}</span>\n"
-                    f'   <div class="account-item-detail">'
-                    f"{username} @ {imap_host}</div>\n"
-                    "  </div>\n"
-                    f'  <button class="delete-account-btn"'
-                    f' data-account-id="{account_id}"'
-                    f' onclick="deleteAccount(this)">Delete</button>\n'
-                    "</li>\n"
-                )
-        else:
-            account_items_html = (
-                '<li class="empty-message">No accounts configured.</li>\n'
+            logger.warning(
+                "Could not reload accounts after a config write", exc_info=True
             )
+            return
 
-        banner_html = ""
-        if error:
-            banner_html = f'<div class="error-banner">{html.escape(error)}</div>\n'
-        elif success:
-            banner_html = f'<div class="success-banner">{html.escape(success)}</div>\n'
+        handler_factory = getattr(self.server, "RequestHandlerClass", None)
+        keywords = getattr(handler_factory, "keywords", None)
+        if isinstance(keywords, dict):
+            if "accounts" in keywords:
+                keywords["accounts"] = accounts
+            if "default_account_id" in keywords:
+                keywords["default_account_id"] = accounts.default_account_id
 
-        body = (
-            "<!DOCTYPE html>\n"
-            '<html lang="en">\n'
-            "<head>\n"
-            '<meta charset="utf-8">\n'
-            "<title>Settings</title>\n"
-            f"<style>{_SETTINGS_PANEL_CSS}</style>\n"
-            "</head>\n"
-            "<body>\n"
-            "<h1>Settings</h1>\n"
-            f"{banner_html}"
-            "<h2>Mail Accounts</h2>\n"
-            '<ul class="account-list" id="account-list">\n'
-            f"{account_items_html}"
-            "</ul>\n"
-            '<div class="nav-links">\n'
-            '<a href="/add-account">+ Add Account</a>\n'
-            '<a href="/board">← Back to Board</a>\n'
-            "</div>\n"
-            "<script>\n"
-            "function deleteAccount(btn) {\n"
-            "  var accountId = btn.getAttribute('data-account-id');\n"
-            "  if (!confirm('Delete account \\'' + accountId +"
-            " '\\'?\\n\\nThis will remove the account from the"
-            " configuration file and cannot be undone.')) return;\n"
-            "  btn.disabled = true;\n"
-            "  btn.textContent = 'Deleting…';\n"
-            "  fetch('/delete-account', {\n"
-            "    method: 'POST',\n"
-            "    headers: { 'Content-Type':"
-            " 'application/x-www-form-urlencoded' },\n"
-            "    body: 'account_id=' + encodeURIComponent(accountId)\n"
-            "  })\n"
-            "  .then(function(r) {\n"
-            "    if (r.redirected) {\n"
-            "      window.location.href = r.url;\n"
-            "      return;\n"
-            "    }\n"
-            "    return r.json();\n"
-            "  })\n"
-            "  .then(function(data) {\n"
-            "    if (data && data.ok) {\n"
-            "      var item = document.getElementById("
-            "'account-' + CSS.escape(accountId));\n"
-            "      if (item) item.remove();\n"
-            "      var list = document.getElementById('account-list');\n"
-            "      if (list && !list.querySelector('.account-item')) {\n"
-            '        list.innerHTML = \'<li class="empty-message">'
-            "No accounts configured.</li>';\n"
-            "      }\n"
-            "    } else {\n"
-            "      btn.disabled = false;\n"
-            "      btn.textContent = 'Delete';\n"
-            "      alert((data && data.error) || 'Delete failed.');\n"
-            "    }\n"
-            "  })\n"
-            "  .catch(function() {\n"
-            "    btn.disabled = false;\n"
-            "    btn.textContent = 'Delete';\n"
-            "    alert('Network error — please try again.');\n"
-            "  });\n"
-            "}\n"
-            "</script>\n"
-            "</body>\n"
-            "</html>"
-        )
+        self._mirror_to_settings_stores(accounts)
 
-        self._send_response(body, content_type="text/html; charset=utf-8")
+    def _mirror_to_settings_stores(self, accounts: Any) -> None:
+        """Refresh each account's settings store from the saved config.
+
+        The per-account store is the recovery path used when the deploy system
+        overwrites ``config/config.json`` (it re-adds accounts the config no
+        longer lists).  Mirroring every write keeps that snapshot current
+        instead of frozen at whatever the account was created with.
+
+        Best-effort: a failure here must never fail the config write.
+        """
+        from robotsix_auto_mail.server._constants import _with_db
+        from robotsix_auto_mail.settings import SettingsStore
+
+        for account in getattr(accounts, "accounts", []):
+            db_path = account.config.db_path
+            if not db_path:
+                continue
+            try:
+                with _with_db(db_path) as conn:
+                    SettingsStore(db_path).seed_from_mail_config(conn, account.config)
+            except Exception:
+                logger.warning(
+                    "Could not mirror config to the settings store for %r",
+                    account.account_id,
+                    exc_info=True,
+                )
+
+    # -- GET /settings-panel -------------------------------------------------
+
+    def _serve_settings_panel(self) -> None:
+        """Serve the Settings page, which mounts the shared config panel."""
+        self._send_response(_SETTINGS_PAGE, content_type="text/html; charset=utf-8")
 
     # -- POST /delete-account ------------------------------------------------
 
@@ -428,7 +347,7 @@ class _SettingsMixin:
             )
             return
 
-        logger.info("Deleted account %r via settings panel", account_id)
+        logger.info("Deleted account %r via the settings page", account_id)
 
         # Update handler factory cache.
         handler_factory = getattr(self.server, "RequestHandlerClass", None)

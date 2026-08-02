@@ -139,6 +139,8 @@ modules:
       - src/robotsix_auto_mail/config/loader.py
       - src/robotsix_auto_mail/config/model.py
       - src/robotsix_auto_mail/config/schema.py
+      - src/robotsix_auto_mail/config/service.py
+      - src/robotsix_auto_mail/config/versions.py
       - src/robotsix_auto_mail/config/config_sync_agent.py
       - tests/config/__init__.py
       - tests/config/test_mailconfig_basics.py
@@ -151,6 +153,7 @@ modules:
       - tests/config/test_config_ingest.py
       - tests/config/test_config_archive.py
       - tests/config/test_config_triage.py
+      - tests/config/test_config_service.py
       - config/config.example.json
       - config/config.json
       - config/config.schema.json
@@ -359,7 +362,7 @@ modules:
       - tests/server/test_archive_structure.py
       - tests/server/test_board_adapter.py
       - tests/server/test_board_handler_root.py
-      - tests/server/test_board_handler_settings.py
+      - tests/server/test_board_handler_config.py
       - tests/server/test_board_handler_move.py
       - tests/server/test_board_handler_email_status.py
       - tests/server/test_board_handler_email_embed.py

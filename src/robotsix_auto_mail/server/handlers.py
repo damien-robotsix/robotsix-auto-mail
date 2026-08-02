@@ -104,6 +104,14 @@ class BoardHandler(
         if self.path.split("?")[0] == "/add-account":
             self._serve_add_account()
             return
+        # The config surface covers every account at once, so it must be
+        # reachable before an account is selected (and with none configured).
+        if urlsplit(self.path).path == "/config":
+            self._handle_get_config()
+            return
+        if urlsplit(self.path).path == "/config/versions":
+            self._handle_get_config_versions()
+            return
         if self.accounts is not None and not self._select_account():
             return
         # Dispatch on the bare path so ``?account=<id>`` query strings do
@@ -116,7 +124,6 @@ class BoardHandler(
             (lambda p: p == "/board-content", self._serve_board_content),
             (lambda p: p == "/health", self._serve_health),
             (lambda p: p == "/healthz", self._serve_health),
-            (lambda p: p == "/settings", self._handle_get_settings),
             (lambda p: p == "/settings-panel", self._serve_settings_panel),
             (
                 lambda p: p == "/probe-health",
@@ -163,6 +170,10 @@ class BoardHandler(
         if urlsplit(self.path).path == "/delete-account":
             self._handle_delete_account()
             return
+        # Rollback covers every account at once — same reasoning as GET /config.
+        if urlsplit(self.path).path == "/config/rollback":
+            self._handle_config_rollback()
+            return
         if self.accounts is not None and not self._select_account():
             return
         # Periodic-trigger decision — Option A (on-demand endpoint
@@ -193,7 +204,6 @@ class BoardHandler(
             "/save-draft": self._handle_save_draft,
             "/send-draft": self._handle_send_draft,
             "/generate-draft": self._handle_generate_draft,
-            "/settings": self._handle_put_settings,
         }
         # Dispatch on the bare path so ``?account=<id>`` query strings do
         # not defeat exact-match routing.
@@ -202,6 +212,15 @@ class BoardHandler(
             self._not_found()
             return
         handler()
+
+    def do_PUT(self) -> None:
+        """Route PUT requests — the config surface is the only one."""
+        if not self._check_csrf():
+            return
+        if urlsplit(self.path).path == "/config":
+            self._handle_put_config()
+            return
+        self._not_found()
 
     def _check_csrf(self) -> bool:
         """Reject cross-origin POST requests.
