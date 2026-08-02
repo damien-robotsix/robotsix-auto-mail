@@ -265,6 +265,7 @@ modules:
       - changelog/20260801T011548Z-centralize-watermark-state-sentinel-magi-fa60.misc.md
       - changelog/20260801T011548Z-remove-orphaned-ruff-per-file-ignore-and-4fab.misc.md
       - changelog/20260801T082711Z-mailbox-shows-0-mails-for-configured-acc-247a.misc.md
+      - changelog/20260801T085322Z-remove-unregistered-duplicate-changelog-5323.misc.md
       - changelog/20260801T132605Z-clean-main-part-2-fix-whole-repo-ruff-li-d0f7.misc.md
       - tests/__init__.py
       - tests/conftest.py
