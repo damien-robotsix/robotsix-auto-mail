@@ -715,9 +715,12 @@ Exit code is `0` on success, `1` when configuration cannot be loaded.
 
 ## The `serve` command
 
-For a persistent, browser-based view of ingested mail, use the `serve`
-subcommand.  This starts a long-running HTTP server that hosts a read-only
-kanban board at `/board`.
+For a persistent, browser-based view of mail, use the `serve`
+subcommand.  This starts a long-running HTTP server that hosts a
+kanban board at `/board`.  Since it also runs a background ingest
+loop, `serve` automatically fetches new mail for every configured
+account on the `ingest_interval_minutes` interval — no separate
+`ingest --watch` process is required to keep the mailbox populated.
 
 ```sh
 $ robotsix-auto-mail serve
@@ -761,6 +764,13 @@ disappears from the board picker and account lists without a restart).  If the
 deleted account is the default, the new default falls back to the first
 remaining account.  When no accounts are configured the panel shows an
 "Add Account" link to create one.
+
+**No-mail-fetched warning.**  When accounts are configured but the mailbox
+has fetched zero mails, the board shows a yellow banner ("No mail fetched
+yet") with a link to recheck connections.  This is the regression guard for
+"accounts configured but zero mails fetched" — it tells you at a glance
+whether the background ingest loop may not be running or may have failed
+silently.  The banner disappears once any mail is present.
 
 **Triage badges.**  When a mail record has a triage decision, the card displays a
 small **triage badge** showing the action label (one of `INBOX`, `HUMAN_TRIAGE`,

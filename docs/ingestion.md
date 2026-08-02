@@ -55,6 +55,17 @@ loop continues; Ctrl-C stops it cleanly.  This is the default command of the
 `robotsix-auto-mail` Docker service, so `docker compose up -d` keeps the
 board's datastore fed automatically.
 
+### Web server (`serve`) auto-ingest
+
+The `serve` web-server command now starts a **background ingest loop** in a
+daemon thread, so mails are fetched automatically on the
+`ingest_interval_minutes` interval without requiring a separate
+`ingest --watch` process.  The loop reloads accounts on every cycle, so
+accounts added via the web UI are picked up without a restart.  Accounts
+without a configured password are skipped; a cycle failure is logged and the
+loop continues to the next interval.  See [docs/connecting.md](connecting.md#the-serve-command)
+for the board UI.
+
 ### Dry-run mode
 
 ```sh
