@@ -58,7 +58,11 @@ def test_handler_board_uses_library_css_classes(single_db: str) -> None:
         assert 'class="board-column-cards"' in body
         assert 'class="board-card-title"' in body
         assert 'class="board-card-timestamps"' in body
-        assert 'class="board-card-move"' in body
+        # The library renders no move form; the only one on the page is
+        # auto-mail's own triage-action form, injected via card_extra_html.
+        assert body.count('class="board-card-move"') == 1
+        assert 'name="triage_action"' in body
+        assert 'name="target_status"' not in body
         # Auto-mail custom features
         assert 'data-message-id="m1"' in body
         assert "data-subject" in body
