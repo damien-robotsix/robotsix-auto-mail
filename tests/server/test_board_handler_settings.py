@@ -1,7 +1,5 @@
 """HTTP request-handler tests for GET /settings and PUT /settings."""
 
-# ruff: noqa: S310 — localhost test URLs
-
 from __future__ import annotations
 
 import json
