@@ -239,8 +239,14 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           MERGE_COVERAGE_FILES: false
 
+      # Posting a PR comment is reporting, not a merge gate. Without this the
+      # retry fails hard whenever the underlying failure is *persistent* rather
+      # than transient, which fails the whole CI workflow on every PR — and
+      # mill's ci_fix then loops forever pushing no-op commits at a run that
+      # can never go green.
       - name: Retry coverage PR comment on transient failure
         if: steps.coverage-comment.outcome == 'failure'
+        continue-on-error: true
         uses: py-cov-action/python-coverage-comment-action@50d15ff8768f6d897b04e5a0805bd1a98f7096c4  # v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
