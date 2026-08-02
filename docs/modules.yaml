@@ -251,7 +251,6 @@ modules:
       - changelog/20260731T024237Z-update-stale-ingest-contract-in-docs-dep-423b.misc.md
       - changelog/20260731T122824Z-re-file-check-csrf-must-honor-x-forwarde-1983.bugfix.md
       - changelog/20260731T123451Z-add-unit-tests-for-reconcile-mixin-333e.misc.md
-      - changelog/20260731T123451Z-test-gap-add-unit-tests-for-src-robotsix-333e.misc.md
       - changelog/20260731T123451Z-test-gap-add-unit-tests-for-src-robotsix-ce3f.misc.md
       - changelog/20260731T134124Z-remove-dead-set-component-setting-single-116d.removal.md
       - changelog/20260731T143240Z-remove-or-register-the-unregistered-dupl-746a.misc.md
