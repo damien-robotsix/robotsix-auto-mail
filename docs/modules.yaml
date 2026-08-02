@@ -242,6 +242,7 @@ modules:
       - changelog/20260731T123451Z-add-unit-tests-for-reconcile-mixin-333e.misc.md
       - changelog/20260731T182528Z-fix-ruff-lint-format-and-uv-audit-ci-2581.misc.md
       - changelog/20260731T213327Z-robotsix-auto-mail-enable-mypy-baseline-f349.misc.md
+      - changelog/20260801T000222Z-mail-ingester-no-longer-crash-loops-when-no-account-has-ing.bugfix.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
