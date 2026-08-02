@@ -1,1 +1,1 @@
-Clear repo-wide ruff lint debt and fix module-registration check.
+Clear repo-wide ruff lint debt (remove unused `# noqa: S310` directives).
