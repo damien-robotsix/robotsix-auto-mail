@@ -93,7 +93,6 @@ select = ["E", "F", "I", "S", "B", "N", "RUF", "ANN", "PT", "UP", "SIM"]
 ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/robotsix_auto_mail/detect.py" = ["E501"]
 # Tests are exempt from line-length (long fixture strings, docstrings, and
 # inline `# pragma: allowlist secret` comments) and from N802 (fake IMAP
 # server handlers are named after protocol verbs: _cmd_LOGIN, _cmd_LIST...).
@@ -177,7 +176,9 @@ extend_exclude = ["scripts"]
 
 [tool.deptry.per_rule_ignores]
 # pydantic_ai is pulled in transitively via robotsix-llmio[openrouter]
-# (declared in the [llm] extra); the lazy import in detect.py is intentional.
+# (declared in the [llm] extra); the lazy imports in core/_llm_agent.py,
+# triage/agent.py, server/_draft_generator.py, db/archive.py, and
+# config/config_sync_agent.py are intentional.
 DEP003 = ["pydantic_ai"]
 # structlog is no longer imported directly by this package (logging has been
 # migrated to robotsix_llmio.logging.setup_logging), but it must remain a
