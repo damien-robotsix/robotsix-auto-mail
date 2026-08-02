@@ -482,4 +482,3 @@ def _run_batch_archive_background(
             pass
         finally:
             set_watermark(conn, _BATCH_OP_STATE_KEY, _WATERMARK_IDLE)
-
