@@ -203,66 +203,82 @@ Rules enforced when the file loads:
 
 ---
 
-## Runtime settings API
+## Runtime config API
 
-The board server exposes a per-component settings API at ``/settings`` that
-reads and writes the **internal settings store** (a ``component_settings``
-table in the per-account SQLite database).  Once the store is populated —
-either via a one-time import from central-deploy on first boot or via the
-``PUT /settings`` endpoint — runtime configuration is fully self-owned by
-the component; no central-deploy call is required to change a runtime
-setting.
+The board server exposes the fleet's **standard config surface** over the one
+``config/config.json`` it already loads, per robotsix-standards
+[config-ownership](https://github.com/damien-robotsix/robotsix-standards/blob/main/docs/config-ownership.md).
+Runtime configuration is fully self-owned by the component: no central-deploy
+call is required to change a setting.
 
-The browser-side surface for *account* management (as distinct from
-per-component runtime settings) is the **Settings panel** page served at
-``/settings-panel``, linked from the board header.  It lists every
-configured mail account and lets an operator delete one via
-``POST /delete-account``, which removes the account from the persisted
-``config/config.json`` (see `docs/connecting.md` → "The board page").
+Secrets are **typed** — every field declared ``SecretStr`` on ``MailConfig`` —
+so masking is driven by the model, never guessed from a field's name.
 
-### GET /settings
+### GET /config
 
-Returns all component settings as a JSON object with secrets masked as
-``"***"``.  The response includes a ``source`` field:
-
-- ``"internal"`` — settings come from the internal store (the
-  ``component_settings`` table).
-- ``"config-file"`` — the store is empty (no import has run yet); values
-  are derived from the in-memory config file with secrets masked.
+Returns the effective config with every secret masked, the JSON Schema the UI
+renders from, and the current version.
 
 ```json
 {
-  "settings": {
-    "imap_host": "imap.gmail.com",
-    "password": "***",
-    "username": "me@gmail.com",
-    "db_path": ".data/personal/mail.db"
+  "config": {
+    "accounts": [
+      {
+        "account_id": "personal",
+        "config": {"imap_host": "imap.gmail.com", "password": "**********"}
+      }
+    ],
+    "default_account_id": "personal"
   },
-  "source": "internal"
+  "schema": {"...": "the committed config/config.schema.json"},
+  "version": 7
 }
 ```
 
-### PUT /settings
+### PUT /config
 
-Accepts a JSON object with one or more field names and their new values.
-Each field is validated against the :class:`MailConfig` model before being
-persisted.  On partial failure, valid fields are still written — the
-``errors`` map lists only the rejected keys.
+Accepts a partial update — only the keys being changed. Omitted keys keep
+their stored value. A secret submitted blank, or as the ``**********`` mask,
+is treated as unchanged; only an explicitly typed secret overwrites the
+stored one. Accounts are matched by ``account_id``, so a secret stays with
+its own account even if the list is reordered.
 
-**Request** (partial update):
+The merged result is validated against ``MailAccountsConfig`` before anything
+is written — a rejected update leaves the stored config untouched and answers
+with the fleet's error envelope:
+
 ```json
-{"imap_host": "new-imap.example.com", "ingest_interval_minutes": "10"}
+{
+  "type": "urn:robotsix:error:config-validation",
+  "title": "Config validation failed",
+  "detail": "accounts.0.config.imap_tls_mode: ...",
+  "instance": "/config"
+}
 ```
 
-**Response** (all valid):
-```json
-{"ok": true, "errors": {}}
-```
+### GET /config/versions and POST /config/rollback
 
-**Response** (partial failure):
-```json
-{"ok": false, "errors": {"bad_field": "unknown setting: 'bad_field'"}}
-```
+Every write is versioned in ``config_versions.json`` beside the config file
+(the last 20). An entry records which dotted keys changed — a secret change
+is recorded as ``"<key> (secret)"`` — and the snapshot itself **never stores
+a secret value**. Rolling back therefore restores non-secret values and
+leaves the live secrets in place.
+
+### The Settings page
+
+``/settings-panel``, linked from the board header, mounts the fleet's shared
+config panel from
+[`@robotsix/ui`](https://github.com/damien-robotsix/robotsix-ui) against that
+surface. Auto-mail ships **no settings form of its own** — that is what keeps
+this page, the deploy UI, and every other fleet UI presenting identical
+fields with identical semantics.
+
+The panel's build artifacts are vendored into the image (the ``ui`` stage in
+the Dockerfile); for a local checkout run ``scripts/vendor-ui.sh``.
+
+Account *creation* remains a separate flow (``/add-account``), because it
+validates a mailbox connection rather than just writing config;
+``POST /delete-account`` likewise stays as a one-click affordance.
 
 ### One-time import (first boot)
 

@@ -1,4 +1,25 @@
 ARG BASE_DIGEST=sha256:c845af9399020c7e562969a13689e929074a10fd057acd1b1fad06a2fb068e97
+ARG ROBOTSIX_UI_VERSION=v0.1.6
+
+# ---------------------------------------------------------------------------
+# UI stage — the shared config panel from @robotsix/ui
+#
+# The Settings page mounts the fleet's one settings renderer rather than
+# shipping a form of its own (robotsix-standards config-ownership.md).  The
+# package's `prepare` script builds dist/ on install, so no build toolchain is
+# needed here; the tag is pinned so what this image serves is verifiable.
+# ---------------------------------------------------------------------------
+FROM node:22-alpine AS ui
+
+ARG ROBOTSIX_UI_VERSION
+
+WORKDIR /ui
+# git is required: the package is distributed from git, not the npm registry
+# (robotsix-standards distribution-packaging.md), and the alpine base has none.
+# DL3016: the version is pinned through ROBOTSIX_UI_VERSION, not left floating.
+# hadolint ignore=DL3016,DL3018
+RUN apk add --no-cache git && \
+    npm install --no-save "github:damien-robotsix/robotsix-ui#${ROBOTSIX_UI_VERSION}"
 
 # ---------------------------------------------------------------------------
 # Builder stage — builds the wheel and installs the package
@@ -69,6 +90,12 @@ FROM python:3.14-slim@${BASE_DIGEST} AS production
 
 COPY --from=builder /usr/local/lib/python3.14/site-packages/ /usr/local/lib/python3.14/site-packages/
 COPY --from=builder /usr/local/bin/robotsix-auto-mail /usr/local/bin/robotsix-auto-mail
+
+# The shared config panel, served at /static/robotsix-ui.{js,css}.
+COPY --from=ui /ui/node_modules/@robotsix/ui/dist/vanilla.js \
+  /usr/local/lib/python3.14/site-packages/robotsix_auto_mail/server/static/robotsix-ui.js
+COPY --from=ui /ui/node_modules/@robotsix/ui/dist/style.css \
+  /usr/local/lib/python3.14/site-packages/robotsix_auto_mail/server/static/robotsix-ui.css
 
 RUN groupadd --gid 1000 app && \
     useradd --uid 1000 --gid 1000 --create-home --home-dir /home/app --shell /bin/bash app && \
