@@ -1287,6 +1287,7 @@ dev = [
 docs = [
     { name = "mkdocs" },
     { name = "mkdocs-material" },
+    { name = "pymdown-extensions" },
 ]
 llm = [
     { name = "robotsix-llmio", extra = ["openrouter", "tracing"] },
@@ -1306,6 +1307,7 @@ requires-dist = [
     { name = "msal", marker = "extra == 'microsoft'", specifier = ">=1.28" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "pydantic", specifier = ">=2.0" },
+    { name = "pymdown-extensions", marker = "extra == 'docs'", specifier = ">=11.0.0" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "pytest-randomly", marker = "extra == 'dev'" },
