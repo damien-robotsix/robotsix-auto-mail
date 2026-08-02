@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed an unregistered duplicate changelog fragment (`20260731T123451Z-test-gap-add-unit-tests-for-src-robotsix-333e.misc.md`) that was a near-duplicate of the already-registered reconcile-mixin fragment.
 - Fix all remaining ruff lint and format violations across the whole repository, and register all unregistered changelog fragments and test files in ``docs/modules.yaml`` so the module-registration completeness check passes on CI.
 - The ``serve`` command now starts a background ingest loop that
   automatically fetches new mail for all configured accounts on the
