@@ -54,6 +54,10 @@
   Remove the dead `--generate-notes` flag from the `gh release create` step (silently ignored when `--notes-file` is present).
 - Refactored `_run_batch_delete_background` and `_run_batch_archive_background` into thin wrappers around a new shared `_run_batch_background` parameterised driver, removing ~150 lines of duplicated IMAP orchestration code.
 - Clear repo-wide ruff lint debt (remove unused `# noqa: S310` directives).
+- Removed orphaned CLI config file-write helpers
+  (`_load_accounts_from_file`, `_existing_account_ids`,
+  `_existing_accounts_for_append`, `_find_existing_account`) that were
+  superseded by inline logic in the `detect` command.
 - Removed an unregistered duplicate changelog fragment (`20260731T123451Z-test-gap-add-unit-tests-for-src-robotsix-333e.misc.md`) that was a near-duplicate of the already-registered reconcile-mixin fragment.
 - Fix all remaining ruff lint and format violations across the whole repository, and register all unregistered changelog fragments and test files in ``docs/modules.yaml`` so the module-registration completeness check passes on CI.
 - The ``serve`` command now starts a background ingest loop that
