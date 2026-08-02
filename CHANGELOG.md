@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed a stale `per-file-ignores` entry for the non-existent `src/robotsix_auto_mail/detect.py` and updated the associated deptry comment to reference the actual lazy-import sites.
 - Enable mypy_baseline periodic workflow to track mypy baseline drift
 - Added a settings panel at `/settings-panel` listing all configured mail accounts with per-account delete buttons. Deleting an account removes it from the persisted `config/config.json` and updates the running server immediately.
 - Web UI add-account now seeds the per-account settings store and initializes the
