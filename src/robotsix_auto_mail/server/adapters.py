@@ -39,9 +39,9 @@ class _NonEmptyColumnsAdapter:
     auto-mail hides empty columns, but ``render_board`` renders one column
     per :meth:`MailBoardAdapter.columns` entry.  This thin wrapper scopes
     ``columns()`` to *status_keys* (the non-empty columns, in board order)
-    and delegates every other attribute — the ``card_*`` scaffold methods,
-    ``move_endpoint`` and the ``card_extra_html`` / ``column_extra_html``
-    raw-HTML hooks — to the wrapped :class:`MailBoardAdapter`.
+    and delegates every other attribute — the ``card_*`` scaffold methods
+    and the ``card_extra_html`` / ``column_extra_html`` raw-HTML hooks —
+    to the wrapped :class:`MailBoardAdapter`.
     """
 
     def __init__(self, adapter: MailBoardAdapter, status_keys: list[str]) -> None:

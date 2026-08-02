@@ -90,11 +90,6 @@ def test_move_endpoint() -> None:
     assert adapter.move_endpoint(record) == ("/move", "post")
 
 
-def test_move_endpoint_template() -> None:
-    adapter = _make_adapter()
-    assert adapter.move_endpoint_template() == "/move/{card_id}/{target_status}"
-
-
 def test_render_mode() -> None:
     adapter = _make_adapter()
     assert adapter.render_mode() == RenderMode.SERVER_FRAGMENTS
@@ -306,19 +301,6 @@ def test_mailboardadapter_move_endpoint() -> None:
     url, method = adapter.move_endpoint(record)
     assert url == "/move"
     assert method == "post"
-
-
-def test_mailboardadapter_move_endpoint_template() -> None:
-
-    adapter = MailBoardAdapter(
-        triage_by_mid={},
-        archive_subfolders={},
-        folder_exists={},
-        archive_root="/archive",
-        unsubscribe_suggestions={},
-        record_notes={},
-    )
-    assert adapter.move_endpoint_template() == "/move/{card_id}/{target_status}"
 
 
 def test_mailboardadapter_render_mode() -> None:

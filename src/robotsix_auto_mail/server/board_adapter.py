@@ -6,8 +6,11 @@ adapter protocol.  The server (``server/__init__.py``) drives the full
 board grid through the library's generic ``render_board()``: the adapter
 is the single source of truth for the *base* column/card scaffold —
 column order + labels (``columns``), per-card title (``card_title``),
-triage badge (``card_badges``), timestamps (``card_timestamps``) and the
-move-form endpoint (``move_endpoint``).
+triage badge (``card_badges``) and timestamps (``card_timestamps``).
+
+The library renders no move control of its own, so auto-mail's per-card
+triage-action form is built here (``_move_form``) and injected through
+``card_extra_html``.
 
 ``render_board()`` passes every base adapter return value through
 ``html.escape(..., quote=True)``.  auto-mail's custom per-card/per-column
@@ -270,12 +273,13 @@ class MailBoardAdapter:
         return {"date": _format_date(card.date)}
 
     def move_endpoint(self, card: MailRecord) -> tuple[str, str]:
-        """Return ``("/move", "post")`` — all cards share the same endpoint."""
-        return ("/move", "post")
+        """Return ``("/move", "post")`` — all cards share the same endpoint.
 
-    def move_endpoint_template(self) -> str:
-        """Return the URL template for the board config in JSON_HYDRATION mode."""
-        return "/move/{card_id}/{target_status}"
+        Not part of the ``BoardAdapter`` Protocol (the library dropped its
+        own move control); this is auto-mail's own helper, consumed by
+        :meth:`_move_form` for the per-card triage-action form.
+        """
+        return ("/move", "post")
 
     def render_mode(self) -> RenderMode:
         """Return ``RenderMode.SERVER_FRAGMENTS``.
