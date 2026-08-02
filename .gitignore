@@ -55,3 +55,7 @@ uv.tgz
 # Secret scanning artifacts (generated; never committed)
 .gitleaks-baseline.json
 *.sarif
+
+# Vendored @robotsix/ui build output (see scripts/vendor-ui.sh)
+src/robotsix_auto_mail/server/static/robotsix-ui.js
+src/robotsix_auto_mail/server/static/robotsix-ui.css

@@ -203,13 +203,26 @@ jobs:
   # INFORMATIONAL — the actual blocking coverage gate is --cov-fail-under=80
   # inside the reusable, enforced in the `ci` job above.
   #
-  # Coverage data (coverage.xml + .coverage) is produced by the reusable
-  # python-ci.yml workflow and downloaded here via the coverage-data artifact.
+  # Coverage data is produced by the reusable python-ci.yml workflow and
+  # downloaded here via the coverage-data artifact.  That artifact currently
+  # carries only coverage.xml: this repo sets `parallel = true`, so coverage
+  # writes `.coverage.<host>.<pid>.<rand>` files, nothing runs `coverage
+  # combine`, and the reusable workflow's literal `.coverage` upload path
+  # matches no file.  Both the comment action and `coverage html` need that
+  # combined database, so both fail with "No data to report".
+  #
+  # Because this job is informational it must never gate a merge.  Every step
+  # carries continue-on-error, not just the job: a job-level flag still leaves
+  # the *check-run* reported as failed, and mill classifies a failed check-run
+  # as a terminal CI failure — which is precisely what feeds the ci_fix
+  # no-op-commit loop.  Fixing the artifact itself is a robotsix-github-workflows
+  # change, tracked separately.
   coverage-comment:
     name: Coverage comment
     if: github.event_name == 'pull_request'
     needs: [ci]
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       contents: read
       pull-requests: write  # needed to post PR comment
@@ -239,21 +252,30 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           MERGE_COVERAGE_FILES: false
 
+      # Posting a PR comment is reporting, not a merge gate. Without this the
+      # retry fails hard whenever the underlying failure is *persistent* rather
+      # than transient, which fails the whole CI workflow on every PR — and
+      # mill's ci_fix then loops forever pushing no-op commits at a run that
+      # can never go green.
       - name: Retry coverage PR comment on transient failure
         if: steps.coverage-comment.outcome == 'failure'
+        continue-on-error: true
         uses: py-cov-action/python-coverage-comment-action@50d15ff8768f6d897b04e5a0805bd1a98f7096c4  # v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
           MERGE_COVERAGE_FILES: false
 
       - name: Generate HTML coverage report
+        continue-on-error: true
         env:
           UV_PROJECT_ENVIRONMENT: system
         run: uv run coverage html --directory=coverage_html
 
       - name: Upload HTML report
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: coverage-html-report
           path: coverage_html/
+          if-no-files-found: ignore
           retention-days: 7

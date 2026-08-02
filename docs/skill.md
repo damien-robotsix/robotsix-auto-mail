@@ -39,7 +39,11 @@ Append `?account=<account_id>` (e.g. `?account=main`) to any request.
 | `GET /board-content` | JSON `{"columns_html":"…","triage_running":bool,"batch_op":{"op":…,"done":…,"total":…}\|null,"health":{…}\|null,"health_alerts_html":"…","unsubscribe_suggestions":{…}}` | Board payload (rendered columns + metadata); preferred for machine reads. `batch_op` is an object (verb + progress counts) while a batch op runs, else `null`; `health` carries the account-health watermark and `health_alerts_html` the rendered red-banner markup |
 | `GET /health` | JSON `{"status":"ok"}` 200 | Liveness; returns 200 while the process is alive |
 | `GET /probe-health` | JSON `{"accounts":{"<id>":{"status":"…","error":…}}}` | On-demand IMAP+SMTP connectivity probe across all accounts; persists each result to the account's `account_health` watermark |
-| `GET /settings-panel` | HTML | Settings panel page listing all configured mail accounts with per-account Delete buttons (see also `POST /delete-account`) |
+| `GET /settings-panel` | HTML | Settings page; mounts the shared `@robotsix/ui` config panel against the config surface below |
+| `GET /config` | JSON `{"config":{…},"schema":{…},"version":N}` | Effective config with secrets masked, plus the JSON Schema the panel renders. Reachable without selecting an account |
+| `PUT /config` | JSON `{"config":{…},"version":N}` | Partial update; omitted keys keep their value, a blank/masked secret keeps the stored one. `422` `problem+json` on validation failure |
+| `GET /config/versions` | JSON `{"versions":[{"version":N,"timestamp":"…","changed_keys":[…]}]}` | Recent versions, newest first. Secret values are never stored |
+| `POST /config/rollback` | JSON `{"config":{…},"version":N}` | Body `{"version": N}`; restores that version as a new one, keeping current secrets |
 | `GET /auth-status` | JSON `{"status":"…",…}` | Polls a running OAuth2 device-code flow; `status` is `idle`/`pending_prompt`/`pending_consent`/`success`/`error`. Cross-account: takes `?account_id=<id>` and ignores the session account |
 | `GET /archive-folders` | JSON `{"delimiter":"/","folders":[…]}` | Available IMAP archive subfolders. Returns `{"delimiter":"/","folders":[]}` in aggregate mode |
 | `GET /email/{message_id}/status` | plain text — triage action name | 404 if unknown |
