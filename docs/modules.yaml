@@ -47,7 +47,6 @@ modules:
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
-      - changelog.d/*.md
 
   - id: docker
     description: >-
