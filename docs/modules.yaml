@@ -47,6 +47,7 @@ modules:
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
+      - changelog.d/*.md
 
   - id: docker
     description: >-
@@ -369,6 +370,7 @@ modules:
       - tests/server/test_board_handler_email_status.py
       - tests/server/test_board_handler_email_embed.py
       - tests/server/test_board_handler_config_sync.py
+      - tests/server/test_config_mixin.py
       - tests/server/test_board_handler_triage_display.py
       - tests/server/test_board_handler_access_log.py
       - tests/server/test_board_handler_board.py
