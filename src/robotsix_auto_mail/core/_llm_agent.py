@@ -81,6 +81,7 @@ def _run_llm_agent(  # noqa: UP047
         LEVEL2_DEFAULT,
         LEVEL3_DEFAULT,
         TierConfig,
+        TierLevelConfig,
     )
     from robotsix_llmio.core import (
         get_provider_for_identifier as _get_provider,
@@ -89,12 +90,15 @@ def _run_llm_agent(  # noqa: UP047
         run_agent,
     )
 
+    #: Level-4 default model (llmio does not yet define LEVEL4_DEFAULT).
+    _level4_default = TierLevelConfig(model="claudeSDK-opus")
+
     # -- build agent --
     _tier_config = TierConfig(
         level1=LEVEL1_DEFAULT, level2=LEVEL2_DEFAULT, level3=LEVEL3_DEFAULT
     )
     _level = level
-    _tlc = _tier_config.for_level(_level)
+    _tlc = _level4_default if _level == 4 else _tier_config.for_level(_level)
     model_id = provider_model if provider_model else _tlc.model
     model_provider = _get_provider(
         model_id, **{**_tlc.provider_kwargs, "api_key": resolved_key}

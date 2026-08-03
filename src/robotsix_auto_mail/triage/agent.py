@@ -16,7 +16,7 @@ from pathlib import Path
 from robotsix_auto_mail.config import (
     ConfigurationError,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
+    resolve_llm_tier,
 )
 from robotsix_auto_mail.core._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
@@ -231,9 +231,9 @@ def _detect_unsubscribe_for_sender(
         return None
 
     # Resolve provider: explicit arg → config-level fallback.
-    resolved_provider_model = (
-        provider_model if provider_model is not None else resolve_llm_provider_model()
-    )
+    _level, resolved_provider_model = resolve_llm_tier("triage")
+    if provider_model is not None:
+        resolved_provider_model = provider_model
 
     system_prompt = (
         "You are an unsubscribe-detection assistant. "
@@ -472,8 +472,8 @@ def run_triage_agent(
         provider_model: LLM provider-model identifier
             (e.g. ``openrouter-deepseek``).
             Resolves with the precedence ``provider_model`` argument →
-            ``llm_provider_model`` (via
-            :func:`~robotsix_auto_mail.config.resolve_llm_provider_model`).
+            ``models`` tier override (via
+            :func:`~robotsix_auto_mail.config.resolve_llm_tier`).
         level: LLM integer tier to use.  ``1`` (cheap, default).
         only_undecided: When ``True``, inbox records that already have a
             ``triage_decisions`` row (per :func:`get_triage_decision`) are
@@ -509,8 +509,12 @@ def run_triage_agent(
     except ConfigurationError as exc:
         raise TriageError(str(exc)) from exc
 
-    # -- resolve provider-model (arg → llm_provider_model) --
-    resolved_provider_model = resolve_llm_provider_model(provider_model)
+    # -- resolve tier (arg → config file) --
+    if provider_model is not None or level != 1:
+        resolved_provider_model = provider_model
+        resolved_level = level
+    else:
+        resolved_level, resolved_provider_model = resolve_llm_tier("triage")
 
     # -- read archive folder structure for the prompt --
     archive_folders = _load_archive_folders(conn)
@@ -532,7 +536,7 @@ def run_triage_agent(
     output: TriageResult = _run_llm_agent(
         api_key=resolved_key,
         provider_model=resolved_provider_model,
-        level=level,
+        level=resolved_level,
         system_prompt=system_prompt,
         output_model=TriageResult,
         user_message=user_message,

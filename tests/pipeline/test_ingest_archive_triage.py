@@ -27,8 +27,8 @@ def _llm_settings(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda *_a, **_k: _API_KEY,
     )
     monkeypatch.setattr(
-        "robotsix_auto_mail.pipeline.resolve_llm_provider_model",
-        lambda *_a, **_k: _PROVIDER_MODEL,
+        "robotsix_auto_mail.pipeline.resolve_llm_tier",
+        lambda app: (1, _PROVIDER_MODEL),
     )
 
 
@@ -173,6 +173,7 @@ def test_ingest_runs_triage_on_new_mail(
         conn,
         api_key=_API_KEY,
         provider_model=_PROVIDER_MODEL,
+        level=1,
         only_undecided=True,
         user_email=cfg.username,
         rules_path=mock.ANY,

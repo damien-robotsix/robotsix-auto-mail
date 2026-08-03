@@ -28,7 +28,7 @@ import pydantic
 from robotsix_auto_mail.config import (
     MailConfig,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
+    resolve_llm_tier,
 )
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.core.format import _effective_body_plain
@@ -216,10 +216,11 @@ def update_rules_for_action(
     with _lock_for(path):
         current = load_rules(path) or DEFAULT_RULES_HEADER
         try:
+            _level, _pm = resolve_llm_tier("rules")
             result = _run_llm_agent(
                 api_key=resolved_key,
-                provider_model=resolve_llm_provider_model(provider_model),
-                level=1,
+                provider_model=provider_model if provider_model is not None else _pm,
+                level=_level,
                 system_prompt=_build_rules_system_prompt(),
                 output_model=RulesMarkdown,
                 user_message=_build_rules_user_message(
@@ -268,7 +269,7 @@ def record_user_action(
         "body": _effective_body_plain(record),
         "subfolder": subfolder,
         "api_key": resolve_llm_api_key(raise_on_missing=False) or None,
-        "provider_model": resolve_llm_provider_model() or None,
+        "provider_model": resolve_llm_tier("rules")[1] or None,
     }
     if background:
         threading.Thread(
@@ -286,5 +287,5 @@ def record_user_action(
             body=_effective_body_plain(record),
             subfolder=subfolder,
             api_key=resolve_llm_api_key(raise_on_missing=False) or None,
-            provider_model=resolve_llm_provider_model() or None,
+            provider_model=resolve_llm_tier("rules")[1] or None,
         )

@@ -6,7 +6,7 @@ cannot drift when a config field is added, renamed, or removed.
 
 Only *per-mailbox* fields appear here.  The component-wide LLM settings
 (the canonical ``langfuse`` / ``openrouter`` blocks and
-``llm_provider_model``) live on ``MailAccountsConfig``, outside any
+``models`` tier overrides) live on ``MailAccountsConfig``, outside any
 account, and are therefore outside this map.
 """
 

@@ -9,7 +9,7 @@ import sys
 from robotsix_auto_mail.cli.commands import _load_config_or_exit, _print_header
 from robotsix_auto_mail.config import (
     MailAccountsConfig,
-    resolve_llm_provider_model,
+    resolve_llm_tier,
 )
 from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
@@ -93,10 +93,12 @@ def _cmd_triage(args: argparse.Namespace) -> int:
     config = _load_config_or_exit(args.account)
     conn = init_db(config.db_path)
     try:
+        _level, _pm = resolve_llm_tier("triage")
         decisions = run_triage_agent(
             conn,
             api_key=args.api_key,
-            provider_model=resolve_llm_provider_model(),
+            provider_model=_pm or None,
+            level=_level,
             user_email=config.username,
             rules_path=resolve_rules_path(
                 db_path=config.db_path, rules_path=config.triage_rules_path

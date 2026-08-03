@@ -16,7 +16,7 @@ import time
 from robotsix_auto_mail.config import (
     MailConfig,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
+    resolve_llm_tier,
 )
 from robotsix_auto_mail.db import (
     delete_watermark,
@@ -367,12 +367,13 @@ def ingest_mail(
     _t0 = time.perf_counter()
     if not dry_run and config.archive_enabled:
         try:
+            _level, _pm = resolve_llm_tier("classifier")
             setup_archive(
                 db_conn,
                 imap_client,
                 archive_root=config.archive_root,
                 api_key=resolve_llm_api_key(raise_on_missing=False),
-                provider_model=resolve_llm_provider_model(),
+                provider_model=_pm or None,
             )
             _logger.info("archive_setup_done")
         except Exception:
@@ -418,10 +419,12 @@ def ingest_mail(
     triaged = 0
     if not dry_run and config.triage_on_ingest:
         try:
+            _level, _pm = resolve_llm_tier("triage")
             decisions = run_triage_agent(
                 db_conn,
                 api_key=resolve_llm_api_key(raise_on_missing=False),
-                provider_model=resolve_llm_provider_model(),
+                provider_model=_pm or None,
+                level=_level,
                 only_undecided=True,
                 user_email=config.username,
                 rules_path=resolve_rules_path(

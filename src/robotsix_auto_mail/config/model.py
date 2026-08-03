@@ -264,6 +264,27 @@ class MailAccount(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# TierModelsConfig — per-level model overrides
+# ---------------------------------------------------------------------------
+
+
+class TierModelsConfig(BaseModel):
+    """Per-level model overrides for the four LLM tiers.
+
+    Each field holds a provider-model identifier
+    (e.g. ``"openrouter[deepseek]-deepseek/deepseek-v4-flash"``).
+    Empty means use the llmio tier default for that level.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    level1: str = ""
+    level2: str = ""
+    level3: str = ""
+    level4: str = ""
+
+
+# ---------------------------------------------------------------------------
 # MailAccountsConfig
 # ---------------------------------------------------------------------------
 
@@ -287,10 +308,10 @@ class MailAccountsConfig(BaseModel):
 
     Component-wide settings
     -----------------------
-    The ``langfuse`` and ``openrouter`` blocks and ``llm_provider_model``
-    sit here rather than on each :class:`MailConfig` because they describe
-    the component's one LLM function, not a mailbox.  Their shape is fixed
-    by robotsix-standards — see
+    The ``langfuse``, ``openrouter``, ``models``, and per-application level
+    fields sit here rather than on each :class:`MailConfig` because they
+    describe the component's one LLM function, not a mailbox.  Their shape
+    is fixed by robotsix-standards — see
     :mod:`robotsix_auto_mail.config.credentials`.
 
     Validation (all raise :class:`ConfigurationError`): at least one
@@ -307,10 +328,18 @@ class MailAccountsConfig(BaseModel):
     langfuse: LangfuseConfig = Field(default_factory=LangfuseConfig)
     openrouter: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
 
-    #: Provider-model identifier for every LLM call (e.g.
-    #: ``"openrouter:anthropic/claude-sonnet-4"``).  Empty means the
-    #: caller's own default.
-    llm_provider_model: str = ""
+    #: Per-level model overrides.  Each field holds a provider-model
+    #: identifier (e.g. ``"openrouter[deepseek]-deepseek/deepseek-v4-flash"``).
+    #: Empty means use the llmio tier default for that level.
+    models: TierModelsConfig = Field(default_factory=lambda: TierModelsConfig())
+
+    #: Tier level assigned to each application / task.  Different tasks
+    #: can use different tiers (e.g. triage=1 cheap, draft=3 high).
+    triage_level: int = 1
+    classifier_level: int = 1
+    rules_level: int = 1
+    detector_level: int = 1
+    draft_level: int = 1
 
     @model_validator(mode="after")
     def _validate(self) -> MailAccountsConfig:

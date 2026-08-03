@@ -72,10 +72,20 @@
       }
     }
   },
+  "models": {
+    "level1": "",
+    "level2": "",
+    "level3": "",
+    "level4": ""
+  },
+  "triage_level": 1,
+  "classifier_level": 1,
+  "rules_level": 1,
+  "detector_level": 1,
+  "draft_level": 1,
   "openrouter": {
     "keys": {
       "robotsix-auto-mail": "sk-or-..."
     }
-  },
-  "llm_provider_model": ""
+  }
 }

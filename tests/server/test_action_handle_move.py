@@ -165,8 +165,8 @@ class TestHandleMove:
                 return_value="sk-test",
             ),
             mock.patch(
-                "robotsix_auto_mail.server._action_mixin.resolve_llm_provider_model",
-                return_value="openrouter-deepseek",
+                "robotsix_auto_mail.server._action_mixin.resolve_llm_tier",
+                return_value=(1, "openrouter-deepseek"),
             ),
             mock.patch(
                 "robotsix_auto_mail.server._action_mixin.propose_archive_subfolder_llm"

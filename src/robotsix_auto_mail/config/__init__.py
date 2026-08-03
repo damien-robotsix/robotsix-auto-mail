@@ -38,6 +38,9 @@ from robotsix_auto_mail.config.loader import (
     get_config_schema as get_config_schema,
 )
 from robotsix_auto_mail.config.loader import (
+    get_resolved_models as get_resolved_models,
+)
+from robotsix_auto_mail.config.loader import (
     load as load,
 )
 from robotsix_auto_mail.config.loader import (
@@ -47,10 +50,16 @@ from robotsix_auto_mail.config.loader import (
     load_langfuse as load_langfuse,
 )
 from robotsix_auto_mail.config.loader import (
+    resolve_application_level as resolve_application_level,
+)
+from robotsix_auto_mail.config.loader import (
     resolve_llm_api_key as resolve_llm_api_key,
 )
 from robotsix_auto_mail.config.loader import (
-    resolve_llm_provider_model as resolve_llm_provider_model,
+    resolve_llm_tier as resolve_llm_tier,
+)
+from robotsix_auto_mail.config.loader import (
+    resolve_model_override as resolve_model_override,
 )
 from robotsix_auto_mail.config.loader import (
     save_accounts as save_accounts,
@@ -63,6 +72,9 @@ from robotsix_auto_mail.config.model import (
 )
 from robotsix_auto_mail.config.model import (
     MailConfig as MailConfig,
+)
+from robotsix_auto_mail.config.model import (
+    TierModelsConfig as TierModelsConfig,
 )
 from robotsix_auto_mail.config.schema import (
     _VALID_TLS_MODES as _VALID_TLS_MODES,
@@ -97,11 +109,15 @@ __all__ = [
     "MailAccountsConfig",
     "MailConfig",
     "OpenRouterConfig",
+    "TierModelsConfig",
     "get_config_schema",
+    "get_resolved_models",
     "load",
     "load_accounts",
     "load_langfuse",
+    "resolve_application_level",
     "resolve_llm_api_key",
-    "resolve_llm_provider_model",
+    "resolve_llm_tier",
+    "resolve_model_override",
     "save_accounts",
 ]
