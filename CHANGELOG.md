@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Refactored `_run_batch_delete_background` and `_run_batch_archive_background` into thin wrappers around a new shared `_run_batch_background` parameterised driver, removing ~150 lines of duplicated IMAP orchestration code.
 - Clear repo-wide ruff lint debt (remove unused `# noqa: S310` directives).
 - Removed an unregistered duplicate changelog fragment (`20260731T123451Z-test-gap-add-unit-tests-for-src-robotsix-333e.misc.md`) that was a near-duplicate of the already-registered reconcile-mixin fragment.
 - Fix all remaining ruff lint and format violations across the whole repository, and register all unregistered changelog fragments and test files in ``docs/modules.yaml`` so the module-registration completeness check passes on CI.

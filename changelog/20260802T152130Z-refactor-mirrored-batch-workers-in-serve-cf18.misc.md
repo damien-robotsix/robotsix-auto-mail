@@ -1,0 +1,1 @@
+Refactored `_run_batch_delete_background` and `_run_batch_archive_background` into thin wrappers around a new shared `_run_batch_background` parameterised driver, removing ~150 lines of duplicated IMAP orchestration code.
