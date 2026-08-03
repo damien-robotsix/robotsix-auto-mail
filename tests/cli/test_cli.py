@@ -48,11 +48,13 @@ def test_smtp_client_properties_before_connect(cfg: MailConfig) -> None:
 
 def test_version_flag(capsys: pytest.CaptureFixture[str]) -> None:
     """--version prints the version and exits."""
+    from robotsix_auto_mail import __version__
+
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
     assert exc.value.code == 0
     captured = capsys.readouterr()
-    assert "0.0.0" in captured.out
+    assert __version__ in captured.out
 
 
 # ---------------------------------------------------------------------------

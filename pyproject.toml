@@ -1,10 +1,13 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [project]
 name = "robotsix-auto-mail"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Automated mail ingestion, triage, and kanban board — IMAP fetch, SMTP send, LLM triage, SQLite storage"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -42,6 +45,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "hypothesis>=6.156.1",
     "deptry",
+    "hatch-vcs",
     "hatchling",
     # pyyaml is kept as a dev-only need for the CI helper
     # scripts/config/check_config_sync.py, which imports `yaml` directly.

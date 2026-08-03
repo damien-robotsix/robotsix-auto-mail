@@ -36,6 +36,8 @@
 - Updated `docs/configuration.md` to document the tiered model configuration (`models.level1`–`level4`) and per-application level fields (`triage_level`, `classifier_level`, `rules_level`, `detector_level`, `draft_level`), replacing the removed `llm_provider_model` field. Updated `scripts/config/check_config_sync.py` to match.
 - **Breaking:** replace flat ``llm_provider_model`` field with tier-based ``models`` config (``level1``–``level4`` overrides) and per-application level fields (``triage_level``, ``classifier_level``, ``rules_level``, ``detector_level``, ``draft_level``). Blank overrides now resolve to the llmio tier default for that level, and each task selects its tier via its configured application level. Level 4 is wired through even though llmio does not yet define ``LEVEL4_DEFAULT``.
 - Enable credit_balance periodic workflow to monitor OpenRouter credit balance.
+- Derive package version from git tags via hatch-vcs so `--version` and `__version__` track the release tag instead of reporting a hardcoded `0.0.0`.
+  Remove the dead `--generate-notes` flag from the `gh release create` step (silently ignored when `--notes-file` is present).
 - Refactored `_run_batch_delete_background` and `_run_batch_archive_background` into thin wrappers around a new shared `_run_batch_background` parameterised driver, removing ~150 lines of duplicated IMAP orchestration code.
 - Clear repo-wide ruff lint debt (remove unused `# noqa: S310` directives).
 - Removed an unregistered duplicate changelog fragment (`20260731T123451Z-test-gap-add-unit-tests-for-src-robotsix-333e.misc.md`) that was a near-duplicate of the already-registered reconcile-mixin fragment.
