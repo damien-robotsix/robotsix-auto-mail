@@ -331,7 +331,7 @@ class MailAccountsConfig(BaseModel):
     #: Per-level model overrides.  Each field holds a provider-model
     #: identifier (e.g. ``"openrouter[deepseek]-deepseek/deepseek-v4-flash"``).
     #: Empty means use the llmio tier default for that level.
-    models: TierModelsConfig = Field(default_factory=lambda: TierModelsConfig())
+    models: TierModelsConfig = Field(default_factory=TierModelsConfig)
 
     #: Tier level assigned to each application / task.  Different tasks
     #: can use different tiers (e.g. triage=1 cheap, draft=3 high).
