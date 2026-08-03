@@ -259,7 +259,8 @@ def _parse_all_md_tables(text: str) -> list[dict[str, str]]:
 # Keys documented in ``docs/configuration.md`` that are NOT individual
 # ``MailConfig`` fields: they describe the ``accounts`` list shape itself, or
 # the component-wide settings that live on ``MailAccountsConfig`` (the
-# canonical credential blocks and the shared provider-model).
+# canonical credential blocks, the tiered model overrides, and the
+# per-application level assignments).
 _CONFIGURATION_MD_CONTAINER_KEYS: frozenset[str] = frozenset(
     {
         "accounts",
@@ -269,7 +270,15 @@ _CONFIGURATION_MD_CONTAINER_KEYS: frozenset[str] = frozenset(
         "langfuse.host",
         "langfuse.projects",
         "openrouter.keys",
-        "llm_provider_model",
+        "models.level1",
+        "models.level2",
+        "models.level3",
+        "models.level4",
+        "triage_level",
+        "classifier_level",
+        "rules_level",
+        "detector_level",
+        "draft_level",
     }
 )
 

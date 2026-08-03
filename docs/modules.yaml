@@ -49,7 +49,6 @@ modules:
       - tests/test_stub.py
       - changelog.d/*.md
 
-
   - id: docker
     description: >-
       Docker image definition, Compose orchestration, and

@@ -145,7 +145,6 @@ _DOCS_YAML_TABLE = """\
 | `langfuse.host` | no | `""` | Langfuse instance base URL |
 | `langfuse.projects` | no | `{}` | Alias → Langfuse project credentials |
 | `openrouter.keys` | no | `{}` | Alias → OpenRouter API key |
-| `llm_provider_model` | no | `""` | LLM provider-model identifier |
 | `logging.level` | no | `INFO` | Log level |
 | `logging.format` | no | `console` | Log format |
 """

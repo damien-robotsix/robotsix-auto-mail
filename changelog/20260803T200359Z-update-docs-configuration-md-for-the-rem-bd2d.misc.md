@@ -1,0 +1,1 @@
+Updated `docs/configuration.md` to document the tiered model configuration (`models.level1`–`level4`) and per-application level fields (`triage_level`, `classifier_level`, `rules_level`, `detector_level`, `draft_level`), replacing the removed `llm_provider_model` field. Updated `scripts/config/check_config_sync.py` to match.
