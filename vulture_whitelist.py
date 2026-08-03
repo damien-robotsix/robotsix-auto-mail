@@ -90,6 +90,20 @@ from robotsix_auto_mail.config.model import MailAccountsConfig
 
 MailAccountsConfig.model_config
 MailAccountsConfig._validate
+MailAccountsConfig.models
+MailAccountsConfig.triage_level
+MailAccountsConfig.classifier_level
+MailAccountsConfig.rules_level
+MailAccountsConfig.detector_level
+MailAccountsConfig.draft_level
+
+from robotsix_auto_mail.config.model import TierModelsConfig
+
+TierModelsConfig.model_config
+TierModelsConfig.level1
+TierModelsConfig.level2
+TierModelsConfig.level3
+TierModelsConfig.level4
 
 # ===========================================================================
 # Config field mapping — imported by check_config_sync.py, not used directly
@@ -120,9 +134,21 @@ all((  # lgtm[py/ineffectual-statement]
 # consumers (CLI, server); vulture doesn't trace cross-module usage.
 # ===========================================================================
 
-from robotsix_auto_mail.config.loader import save_accounts
+from robotsix_auto_mail.config.loader import (
+    get_resolved_models,
+    resolve_application_level,
+    resolve_llm_tier,
+    resolve_model_override,
+    save_accounts,
+)
 
-all((save_accounts,))  # lgtm[py/ineffectual-statement]
+all((  # lgtm[py/ineffectual-statement]
+    get_resolved_models,
+    resolve_application_level,
+    resolve_llm_tier,
+    resolve_model_override,
+    save_accounts,
+))
 
 # ===========================================================================
 # SettingsStore — methods called by tests and internally; vulture doesn't

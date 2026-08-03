@@ -39,7 +39,7 @@ def register_subparser(
         "--provider-model",
         default=None,
         help="LLM provider-model identifier (e.g. openrouter-deepseek). Overrides "
-        "the config file's llm_provider_model.",
+        "the config file's models tier override.",
     )
     config_sync_parser.add_argument(
         "--output-format",

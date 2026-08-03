@@ -379,7 +379,7 @@ def detect_provider(
             (resolved from :class:`~robotsix_llmio.config.tier.TierConfig`).
             Callers that want env-var or config-file resolution should
             pre-resolve via
-            :func:`~robotsix_auto_mail.config.resolve_llm_provider_model`.
+            :func:`~robotsix_auto_mail.config.resolve_llm_tier`.
         feedback: Optional description of a previous failed attempt (which
             host was tried and how it failed).  When provided, it is added
             to the prompt so the model can propose a different, non-obvious

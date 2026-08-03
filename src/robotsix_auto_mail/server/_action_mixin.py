@@ -15,7 +15,7 @@ from robotsix_auto_mail.config import (
     DEFAULT_ARCHIVE_ROOT,
     MailConfig,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
+    resolve_llm_tier,
 )
 from robotsix_auto_mail.core._constants import _WATERMARK_RUNNING
 from robotsix_auto_mail.db import MailRecord, get_watermark, set_watermark
@@ -197,7 +197,7 @@ class _BoardActionMixin:
                             conn,
                             record,
                             resolve_llm_api_key(raise_on_missing=False),
-                            provider_model=resolve_llm_provider_model() or None,
+                            provider_model=resolve_llm_tier("classifier")[1] or None,
                             rules=rules_text_for(self.mail_config),
                         )
                 except Exception:  # noqa: S110  # nosec B110

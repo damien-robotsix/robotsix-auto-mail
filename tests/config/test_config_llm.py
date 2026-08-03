@@ -21,7 +21,7 @@ from robotsix_auto_mail.config import (
     MailConfig,
     OpenRouterConfig,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
+    resolve_llm_tier,
 )
 
 # ---------------------------------------------------------------------------
@@ -52,7 +52,6 @@ def _accounts(**kwargs: object) -> MailAccountsConfig:
 def test_credentials_are_not_per_account() -> None:
     """A mailbox is not an LLM function — MailConfig carries no credentials."""
     assert "llm_api_key" not in MailConfig.model_fields
-    assert "llm_provider_model" not in MailConfig.model_fields
     assert not [f for f in MailConfig.model_fields if f.startswith("langfuse")]
 
 
@@ -62,7 +61,10 @@ def test_blocks_default_to_unconfigured() -> None:
     assert accts.openrouter.key() == ""
     assert accts.langfuse.project() is None
     assert accts.langfuse.host == ""
-    assert accts.llm_provider_model == ""
+    assert accts.models.level1 == ""
+    assert accts.models.level2 == ""
+    assert accts.models.level3 == ""
+    assert accts.models.level4 == ""
 
 
 def test_openrouter_key_is_addressed_by_alias() -> None:
@@ -149,10 +151,28 @@ def test_resolve_llm_api_key_when_load_fails() -> None:
         assert resolve_llm_api_key(raise_on_missing=False) == ""
 
 
-def test_resolve_llm_provider_model_is_component_wide() -> None:
-    accts = _accounts(llm_provider_model="openrouter-deepseek")
+def test_resolve_llm_tier_uses_models_override() -> None:
+    """resolve_llm_tier resolves the model from models.level{N} per app."""
+    from robotsix_auto_mail.config.model import TierModelsConfig
+
+    accts = _accounts(
+        models=TierModelsConfig(level1="openrouter-deepseek"),
+        triage_level=1,
+    )
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        assert resolve_llm_provider_model() == "openrouter-deepseek"
-        assert resolve_llm_provider_model("explicit") == "explicit"
+        level, pm = resolve_llm_tier("triage")
+        assert level == 1
+        assert pm == "openrouter-deepseek"
+
+
+def test_resolve_llm_tier_falls_back_to_empty_when_no_override() -> None:
+    """When models.level{N} is empty, resolve_llm_tier returns empty string."""
+    accts = _accounts(triage_level=2)
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
+    ):
+        level, pm = resolve_llm_tier("triage")
+        assert level == 2
+        assert pm == ""

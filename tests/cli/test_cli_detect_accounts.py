@@ -17,6 +17,7 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
     OpenRouterConfig,
+    TierModelsConfig,
 )
 from robotsix_auto_mail.config.detect import MailProvider
 from tests.cli.conftest import _ok_result
@@ -356,7 +357,7 @@ def test_detect_overwrite_preserves_component_credentials(
             },
         ),
         openrouter=OpenRouterConfig(keys={MAIN_LLM_ALIAS: "sk-seed"}),
-        llm_provider_model="openai/gpt-4o",
+        models=TierModelsConfig(level1="openai/gpt-4o"),
     )
     from robotsix_config import dump_config
 
@@ -402,7 +403,7 @@ def test_detect_overwrite_preserves_component_credentials(
     assert project is not None
     assert project.public_key == "pk-seed"
     assert project.secret_key.get_secret_value() == "sk-seed-lf"
-    assert accounts.llm_provider_model == "openai/gpt-4o"
+    assert accounts.models.level1 == "openai/gpt-4o"
     # …and the transport fields were updated.
     assert accounts.get("main").config.imap_host == "imap.gmail.com"
 

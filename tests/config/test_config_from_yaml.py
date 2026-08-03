@@ -154,7 +154,8 @@ def test_credential_blocks_default_to_unconfigured() -> None:
     assert cfg.langfuse.host == ""
     assert cfg.langfuse.projects == {}
     assert cfg.openrouter.keys == {}
-    assert cfg.llm_provider_model == ""
+    assert cfg.models.level1 == ""
+    assert cfg.models.level2 == ""
 
 
 def test_mailconfig_oauth2_provider_and_tenant_defaults() -> None:
@@ -374,7 +375,7 @@ def test_model_validate_default_top_level_fields() -> None:
     }
     cfg = MailAccountsConfig.model_validate(data)
     c = cfg.default.config
-    assert cfg.llm_provider_model == ""
+    assert cfg.models.level1 == ""
     assert c.ingest_interval_minutes == 15
     assert c.archive_root == "robotsix-mail-archive"
     assert c.archive_enabled is True

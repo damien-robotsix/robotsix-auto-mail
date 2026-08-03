@@ -2,7 +2,8 @@
 
 Configuration is read exclusively from the JSON config file via
 ``robotsix_config``.  Covers load(), load_accounts(),
-resolve_llm_api_key() and resolve_llm_provider_model().
+resolve_llm_api_key(), resolve_llm_tier(), resolve_application_level(),
+resolve_model_override(), and get_resolved_models().
 """
 
 from __future__ import annotations
@@ -18,10 +19,14 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
     OpenRouterConfig,
+    TierModelsConfig,
+    get_resolved_models,
     load,
     load_accounts,
+    resolve_application_level,
     resolve_llm_api_key,
-    resolve_llm_provider_model,
+    resolve_llm_tier,
+    resolve_model_override,
 )
 
 # ---------------------------------------------------------------------------
@@ -32,13 +37,18 @@ from robotsix_auto_mail.config import (
 def _default_accounts(
     *,
     llm_api_key: str = "",
-    llm_provider_model: str = "",
+    models: TierModelsConfig | None = None,
+    triage_level: int = 1,
+    classifier_level: int = 1,
+    rules_level: int = 1,
+    detector_level: int = 1,
+    draft_level: int = 1,
 ) -> MailAccountsConfig:
     """Return a minimal single-account config.
 
     The LLM settings are component-wide: the provider key goes in the
     canonical ``openrouter`` block under the component's alias, not on the
-    account.
+    account.  Model overrides live in ``models``.
     """
     return MailAccountsConfig(
         accounts=[
@@ -54,7 +64,12 @@ def _default_accounts(
         ],
         default_account_id="default",
         openrouter=OpenRouterConfig(keys={MAIN_LLM_ALIAS: llm_api_key}),
-        llm_provider_model=llm_provider_model,
+        models=models or TierModelsConfig(),
+        triage_level=triage_level,
+        classifier_level=classifier_level,
+        rules_level=rules_level,
+        detector_level=detector_level,
+        draft_level=draft_level,
     )
 
 
@@ -141,61 +156,117 @@ def test_resolve_llm_api_key_explicit_wins_over_env(
 
 
 # ---------------------------------------------------------------------------
-# resolve_llm_provider_model()
+# resolve_application_level()
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_llm_provider_model_explicit_arg_wins() -> None:
-    """An explicit provider_model argument is the top priority."""
-    assert resolve_llm_provider_model("explicit-model") == "explicit-model"
+def test_resolve_application_level_defaults_to_1() -> None:
+    """When config is unreadable or level not set, default to 1."""
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts",
+        side_effect=ConfigurationError("no config"),
+    ):
+        assert resolve_application_level("triage") == 1
 
 
-def test_resolve_llm_provider_model_falls_back_to_file() -> None:
-    """No arg → falls back to the config file's llm_provider_model."""
-    accts = _default_accounts(llm_provider_model="yaml-model")
+def test_resolve_application_level_reads_config() -> None:
+    """Reads the configured {app}_level from the file."""
+    accts = _default_accounts(triage_level=3, draft_level=2)
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        assert resolve_llm_provider_model() == "yaml-model"
+        assert resolve_application_level("triage") == 3
+        assert resolve_application_level("draft") == 2
+        assert resolve_application_level("classifier") == 1  # default
 
 
-def test_resolve_llm_provider_model_caller_default() -> None:
-    """When nothing is configured, the caller-supplied default is used."""
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts",
-        return_value=_default_accounts(),
-    ):
-        assert resolve_llm_provider_model(default="my-default") == "my-default"
+# ---------------------------------------------------------------------------
+# resolve_model_override()
+# ---------------------------------------------------------------------------
 
 
-def test_resolve_llm_provider_model_explicit_empty_falls_through() -> None:
-    """Empty string arg falls through to the file/default."""
-    accts = _default_accounts(llm_provider_model="yaml-model")
+def test_resolve_model_override_returns_empty_when_not_set() -> None:
+    """Empty override returns empty string."""
+    accts = _default_accounts()
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        assert resolve_llm_provider_model("") == "yaml-model"
+        assert resolve_model_override(1) == ""
 
 
-def test_resolve_llm_provider_model_no_env_fallback(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """LLM_PROVIDER_MODEL env var is NOT consulted — only explicit arg and config file."""
-    monkeypatch.setenv("LLM_PROVIDER_MODEL", "env-model")
+def test_resolve_model_override_returns_configured_value() -> None:
+    """Configured override is returned."""
+    accts = _default_accounts(
+        models=TierModelsConfig(level1="my-model", level3="other-model")
+    )
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
+    ):
+        assert resolve_model_override(1) == "my-model"
+        assert resolve_model_override(2) == ""
+        assert resolve_model_override(3) == "other-model"
+
+
+def test_resolve_model_override_config_unreadable_returns_empty() -> None:
+    """When config is unreadable, return empty string."""
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts",
-        return_value=_default_accounts(),
+        side_effect=ConfigurationError("no config"),
     ):
-        # Env var is ignored; no model in config file → empty string (default).
-        assert resolve_llm_provider_model() == ""
+        assert resolve_model_override(1) == ""
 
 
-def test_resolve_llm_provider_model_explicit_wins_over_env(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """An explicit provider_model arg wins over LLM_PROVIDER_MODEL env var."""
-    monkeypatch.setenv("LLM_PROVIDER_MODEL", "env-model")
-    assert resolve_llm_provider_model("explicit-model") == "explicit-model"
+# ---------------------------------------------------------------------------
+# resolve_llm_tier()
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_llm_tier_returns_level_and_override() -> None:
+    """Returns (level, model_override) for the named application."""
+    accts = _default_accounts(
+        triage_level=2,
+        models=TierModelsConfig(level2="my-tier-model"),
+    )
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
+    ):
+        level, pm = resolve_llm_tier("triage")
+        assert level == 2
+        assert pm == "my-tier-model"
+
+
+def test_resolve_llm_tier_empty_override() -> None:
+    """When models.level{N} is empty, returns empty override string."""
+    accts = _default_accounts(draft_level=3)
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
+    ):
+        level, pm = resolve_llm_tier("draft")
+        assert level == 3
+        assert pm == ""
+
+
+# ---------------------------------------------------------------------------
+# get_resolved_models()
+# ---------------------------------------------------------------------------
+
+
+def test_get_resolved_models_includes_llmio_defaults() -> None:
+    """When overrides are blank, returns the llmio tier defaults."""
+    accts = _default_accounts()
+    with mock.patch(
+        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
+    ):
+        resolved = get_resolved_models()
+        assert resolved["level1"] != ""
+        assert resolved["level2"] != ""
+        assert resolved["level3"] != ""
+        assert resolved["level4"] != ""
+        # level1 should be the llmio default (deepseek flash)
+        assert (
+            "deepseek" in resolved["level1"].lower()
+            or "flash" in resolved["level1"].lower()
+        )
 
 
 # ---------------------------------------------------------------------------
