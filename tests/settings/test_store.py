@@ -7,7 +7,6 @@ import sqlite3
 import pytest
 
 from robotsix_auto_mail.config.model import MailConfig
-from robotsix_auto_mail.db import init_db
 from robotsix_auto_mail.settings.store import (
     SettingsStore,
     _is_secret_field,
@@ -154,16 +153,6 @@ def test_validate_field_log_level_invalid() -> None:
 # ===========================================================================
 # SettingsStore — CRUD
 # ===========================================================================
-
-
-@pytest.fixture
-def conn() -> sqlite3.Connection:
-    """Return an in-memory SQLite connection with the schema initialised."""
-    c = init_db(":memory:")
-    try:
-        yield c
-    finally:
-        c.close()
 
 
 @pytest.fixture
