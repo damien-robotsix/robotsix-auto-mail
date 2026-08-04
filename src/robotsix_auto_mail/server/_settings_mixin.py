@@ -50,16 +50,37 @@ main { max-width: 56rem; margin: 0 auto; }
   background: var(--rsu-color-error-bg, #fef2f2);
   color: var(--rsu-color-error, #b71c1c);
 }
+.add-account-section {
+  margin-top: 2rem;
+}
+.add-account-section h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  color: var(--rsu-color-text, #eee);
+}
+.add-account-section iframe {
+  width: 100%;
+  border: 1px solid var(--rsu-color-border, #3a3a6a);
+  border-radius: 4px;
+  background: var(--rsu-color-bg, #16213e);
+  /* Height auto-resizes on load. */
+  min-height: 200px;
+}
 </style>
 </head>
 <body>
 <main>
 <div class="nav-links">
   <a href="/board">&larr; Back to Board</a>
-  <a href="/add-account">+ Add Account</a>
+  <a href="/add-account">+ Add Account (standalone)</a>
 </div>
 <div id="settings-panel"></div>
 <noscript><p class="panel-fallback">Settings require JavaScript.</p></noscript>
+<div class="add-account-section">
+  <h2>Add Account</h2>
+  <iframe id="add-account-frame" src="/add-account?origin=settings"
+          title="Add mail account"></iframe>
+</div>
 </main>
 <script type="module">
   // A missing vendored asset must say so rather than leave a blank page.
@@ -75,6 +96,17 @@ main { max-width: 56rem; margin: 0 auto; }
         "It is vendored at image build time; for a local checkout run " +
         "<code>scripts/vendor-ui.sh</code>.</p>";
     });
+
+  // Auto-resize the add-account iframe to its content height.
+  const frame = document.getElementById("add-account-frame");
+  if (frame) {
+    frame.addEventListener("load", () => {
+      try {
+        const h = frame.contentDocument.body.scrollHeight;
+        if (h) frame.style.height = (h + 20) + "px";
+      } catch (_) { /* cross-origin — ignore */ }
+    });
+  }
 </script>
 </body>
 </html>
