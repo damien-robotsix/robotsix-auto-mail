@@ -195,9 +195,7 @@ class _Sanitizer(HTMLParser):
             self._skip_depth -= 1
 
     # URL schemes that are stripped from href/src attributes.
-    _DANGEROUS_SCHEMES: frozenset[str] = frozenset(
-        {"javascript", "data", "vbscript"}
-    )
+    _DANGEROUS_SCHEMES: frozenset[str] = frozenset({"javascript", "data", "vbscript"})
 
     @staticmethod
     def _url_scheme(value: str) -> str:
