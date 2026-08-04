@@ -158,3 +158,64 @@ class TestSanitizeHtml:
         result = sanitize_html(f"<{tag}>keep me</{tag}>")
         assert tag not in result
         assert "keep me" in result
+
+    # -- URL scheme filtering -------------------------------------------------
+
+    @pytest.mark.parametrize(
+        "href",
+        [
+            "javascript:alert(document.cookie)",
+            "JavaScript:alert(1)",
+            "JAVASCRIPT:void(0)",
+            "data:text/html,<script>alert(1)</script>",
+            "DATA:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+            "vbscript:msgbox(1)",
+            "VBScript:msgbox(1)",
+        ],
+    )
+    def test_strips_dangerous_href_schemes(self, href):
+        """href values with dangerous schemes are stripped entirely."""
+        result = sanitize_html(f'<a href="{href}">click</a>')
+        assert "href" not in result
+        assert "click" in result
+
+    @pytest.mark.parametrize(
+        "href",
+        [
+            "https://example.com",
+            "http://example.com/path?q=1",
+            "mailto:user@example.com",
+            "tel:+1234567890",
+            "ftp://files.example.com",
+            "/relative/path",
+            "../relative/path",
+            "#fragment",
+            "",
+        ],
+    )
+    def test_keeps_safe_href_schemes(self, href):
+        """Safe href values are preserved."""
+        result = sanitize_html(f'<a href="{href}">click</a>')
+        assert "href" in result
+        assert "click" in result
+
+    def test_strips_javascript_href_with_whitespace(self):
+        """Whitespace before the scheme is tolerated."""
+        result = sanitize_html(
+            '<a href="   javascript:alert(1)">click</a>'
+        )
+        assert "href" not in result
+
+    def test_non_url_href_not_affected(self):
+        """href values without a colon (relative paths, etc.) are kept."""
+        result = sanitize_html('<a href="about">about</a>')
+        assert 'href="about"' in result
+
+    def test_javascript_href_in_non_a_tag_ignored(self):
+        """Only <a href> is filtered; other tags with href are harmless
+        because the tag itself isn't in the allow-set."""
+        result = sanitize_html(
+            '<link href="javascript:alert(1)">text'
+        )
+        # <link> is a void strip tag, so it's removed entirely
+        assert "javascript" not in result

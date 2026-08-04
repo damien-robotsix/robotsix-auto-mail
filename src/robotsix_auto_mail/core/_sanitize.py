@@ -1,8 +1,10 @@
 """Minimal HTML sanitizer for email body rendering.
 
-Strips scripts, event handlers, ``<style>`` blocks and remote images
-to prevent XSS and tracking-pixel issues when rendering HTML email
-parts in the mail viewer.
+Strips scripts, event handlers, inline ``style`` attributes,
+``<style>`` blocks, remote images, and dangerous URL schemes
+(``javascript:``, ``data:``, ``vbscript:``) to prevent XSS and
+tracking-pixel issues when rendering HTML email parts in the mail
+viewer.
 """
 
 from __future__ import annotations
@@ -192,6 +194,23 @@ class _Sanitizer(HTMLParser):
         if self._skip_depth > 0:
             self._skip_depth -= 1
 
+    # URL schemes that are stripped from href/src attributes.
+    _DANGEROUS_SCHEMES: frozenset[str] = frozenset(
+        {"javascript", "data", "vbscript"}
+    )
+
+    @staticmethod
+    def _url_scheme(value: str) -> str:
+        """Return the lowercased scheme of *value*, or ``""``."""
+        value = value.lstrip()
+        # Match up to the first colon, allowing only scheme-legal chars.
+        for i, ch in enumerate(value):
+            if ch == ":":
+                return value[:i].lower()
+            if not (ch.isalnum() or ch in "+-."):
+                break
+        return ""
+
     def _allowed_attrs(
         self, tag: str, attrs: list[tuple[str, str | None]]
     ) -> str:
@@ -208,6 +227,11 @@ class _Sanitizer(HTMLParser):
             if value is None:
                 parts.append(name)
             else:
+                # Strip dangerous URL schemes from href attributes.
+                if tag == "a" and name_lower == "href":
+                    scheme = self._url_scheme(value)
+                    if scheme in self._DANGEROUS_SCHEMES:
+                        continue
                 parts.append(f'{name}="{html.escape(value, quote=True)}"')
         if parts:
             return " " + " ".join(parts)
