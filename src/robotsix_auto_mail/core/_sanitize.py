@@ -211,9 +211,7 @@ class _Sanitizer(HTMLParser):
                 break
         return ""
 
-    def _allowed_attrs(
-        self, tag: str, attrs: list[tuple[str, str | None]]
-    ) -> str:
+    def _allowed_attrs(self, tag: str, attrs: list[tuple[str, str | None]]) -> str:
         safe_set = _SAFE_ATTRS.get(tag, frozenset()) | _GLOBAL_ATTRS
         parts: list[str] = []
         for name, value in attrs:

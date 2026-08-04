@@ -30,10 +30,7 @@ class TestRenderBody:
         record = _make_record(
             body_plain="",
             body_html=(
-                "<div onclick='alert(1)'>"
-                "<script>bad()</script>"
-                "<p>Safe</p>"
-                "</div>"
+                "<div onclick='alert(1)'><script>bad()</script><p>Safe</p></div>"
             ),
         )
         body_html, _body_note = _render_body(record)

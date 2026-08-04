@@ -13,9 +13,7 @@ class TestSanitizeHtml:
         assert "<p>Hello <b>World</b></p>" in result
 
     def test_strips_script_tags_and_content(self):
-        result = sanitize_html(
-            "<div><script>alert('xss')</script><p>Safe</p></div>"
-        )
+        result = sanitize_html("<div><script>alert('xss')</script><p>Safe</p></div>")
         assert "script" not in result
         assert "alert" not in result
         assert "<p>Safe</p>" in result
@@ -35,16 +33,12 @@ class TestSanitizeHtml:
         assert "Safe" in result
 
     def test_strips_img_src(self):
-        result = sanitize_html(
-            '<img src="https://track.example/pixel.png" alt="pic">'
-        )
+        result = sanitize_html('<img src="https://track.example/pixel.png" alt="pic">')
         assert "src" not in result
         assert 'alt="pic"' in result
 
     def test_preserves_img_alt_width_height(self):
-        result = sanitize_html(
-            '<img src="x.png" alt="Logo" width="100" height="50">'
-        )
+        result = sanitize_html('<img src="x.png" alt="Logo" width="100" height="50">')
         assert "src" not in result
         assert 'alt="Logo"' in result
         assert 'width="100"' in result
@@ -63,9 +57,7 @@ class TestSanitizeHtml:
         assert "&amp;" in result
 
     def test_preserves_links(self):
-        result = sanitize_html(
-            '<a href="https://example.com" title="Go">Click</a>'
-        )
+        result = sanitize_html('<a href="https://example.com" title="Go">Click</a>')
         assert 'href="https://example.com"' in result
         assert 'title="Go"' in result
 
@@ -77,9 +69,7 @@ class TestSanitizeHtml:
         assert 'href="https://safe.example"' in result
 
     def test_preserves_table_structure(self):
-        result = sanitize_html(
-            "<table><tr><td>A</td><td>B</td></tr></table>"
-        )
+        result = sanitize_html("<table><tr><td>A</td><td>B</td></tr></table>")
         assert "<table>" in result
         assert "<tr>" in result
         assert "<td>A</td>" in result
@@ -201,9 +191,7 @@ class TestSanitizeHtml:
 
     def test_strips_javascript_href_with_whitespace(self):
         """Whitespace before the scheme is tolerated."""
-        result = sanitize_html(
-            '<a href="   javascript:alert(1)">click</a>'
-        )
+        result = sanitize_html('<a href="   javascript:alert(1)">click</a>')
         assert "href" not in result
 
     def test_non_url_href_not_affected(self):
@@ -214,8 +202,6 @@ class TestSanitizeHtml:
     def test_javascript_href_in_non_a_tag_ignored(self):
         """Only <a href> is filtered; other tags with href are harmless
         because the tag itself isn't in the allow-set."""
-        result = sanitize_html(
-            '<link href="javascript:alert(1)">text'
-        )
+        result = sanitize_html('<link href="javascript:alert(1)">text')
         # <link> is a void strip tag, so it's removed entirely
         assert "javascript" not in result
