@@ -129,9 +129,7 @@ class TestDiscoverAccountsFromSettingsStores:
             discovered = discover_accounts_from_settings_stores(str(data_dir))
 
         assert discovered == []
-        assert any(
-            "corrupt-account" in r.message for r in caplog.records
-        )
+        assert any("corrupt-account" in r.message for r in caplog.records)
 
     def test_missing_required_fields_skipped_with_warning(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
@@ -159,9 +157,7 @@ class TestDiscoverAccountsFromSettingsStores:
         # ``to_mail_config`` should return None (not all required fields),
         # so the account is skipped with a warning.
         assert discovered == []
-        assert any(
-            "partial-account" in r.message for r in caplog.records
-        )
+        assert any("partial-account" in r.message for r in caplog.records)
 
     def test_multiple_accounts_discovered(self, tmp_path: Path) -> None:
         """Multiple seeded accounts in the same data directory are all discovered."""
