@@ -237,9 +237,7 @@ class _Sanitizer(HTMLParser):
 
     # -- handler overrides ----------------------------------------------------
 
-    def handle_starttag(
-        self, tag: str, attrs: list[tuple[str, str | None]]
-    ) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         tag_lower = tag.lower()
         if self._should_skip():
             self._skip_enter()
