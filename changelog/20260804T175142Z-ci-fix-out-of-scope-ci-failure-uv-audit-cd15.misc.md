@@ -1,0 +1,1 @@
+Fixed out-of-scope CI failures: suppressed CodeQL false positives (py/unused-global-variable on static asset constants, py/log-injection on account deletion logging), removed unused local variable in _cmd_serve, and bumped transitive cryptography dependency to >=50.0.0 to address CVE-2026-69247.

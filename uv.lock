@@ -1252,6 +1252,7 @@ name = "robotsix-auto-mail"
 version = "0.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "robotsix-board" },
@@ -1295,6 +1296,7 @@ microsoft = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=50.0.0" },
     { name = "deptry", marker = "extra == 'dev'" },
     { name = "hatchling", marker = "extra == 'dev'" },
     { name = "httpx", specifier = ">=0.27" },
