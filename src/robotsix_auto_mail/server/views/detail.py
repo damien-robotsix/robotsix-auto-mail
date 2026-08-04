@@ -7,7 +7,8 @@ import json
 from typing import Any
 from urllib.parse import quote
 
-from robotsix_auto_mail.core.format import _effective_body_plain, _format_date
+from robotsix_auto_mail.core._sanitize import sanitize_html
+from robotsix_auto_mail.core.format import _format_date
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server.views.forms import _render_move_form
 from robotsix_auto_mail.triage import (
@@ -194,27 +195,29 @@ def _build_detail_html(
 
 
 def _render_body(record: MailRecord) -> tuple[str, str]:
-    """Return ``(body_html_render, body_html_note)`` for a record's body."""
-    body = _effective_body_plain(record)
-    from_html = not record.body_plain.strip() and record.body_html.strip()
-    if not body or not body.strip():
-        body_html_render = '<span class="detail-value"><em>(no body)</em></span>'
-    elif from_html:
-        body_html_render = (
-            f"<pre>{html.escape(body)}</pre>"
-            "<span class='body-from-html'>(from HTML)</span>"
-        )
-    else:
-        body_html_render = f"<pre>{html.escape(body)}</pre>"
+    """Return ``(body_html_render, body_html_note)`` for a record's body.
 
+    When ``body_html`` is present it is sanitised and rendered as the
+    primary body.  Otherwise the plain-text part is shown inside a
+    ``<pre>`` block.  When neither part has content ``(no body)`` is
+    displayed.
+    """
     body_html_note = ""
+
     if record.body_html.strip():
+        safe_html = sanitize_html(record.body_html)
+        body_html_render = f'<div class="email-body">{safe_html}</div>'
         body_html_note = (
             '<div class="detail-field">'
             '<div class="detail-label">HTML version</div>'
-            '<div class="detail-value"><em>HTML version available</em></div>'
+            '<div class="detail-value"><em>Rendered from HTML body</em></div>'
             "</div>"
         )
+    elif record.body_plain.strip():
+        body_html_render = f"<pre>{html.escape(record.body_plain)}</pre>"
+    else:
+        body_html_render = '<span class="detail-value"><em>(no body)</em></span>'
+
     return body_html_render, body_html_note
 
 
