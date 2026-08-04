@@ -294,6 +294,28 @@ button:hover {
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
 }
+.email-body {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+.email-body a {
+  color: var(--color-link);
+  text-decoration: underline;
+}
+.email-body img {
+  max-width: 100%;
+  height: auto;
+}
+.email-body table {
+  border-collapse: collapse;
+  max-width: 100%;
+}
+.email-body td,
+.email-body th {
+  border: 1px solid var(--color-border);
+  padding: 0.25rem 0.5rem;
+}
 .detail-form {
   margin-top: 0.25rem;
   display: flex;

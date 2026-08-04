@@ -21,6 +21,7 @@ modules:
       - src/robotsix_auto_mail/core/_constants.py
       - src/robotsix_auto_mail/core/_llm_agent.py
       - src/robotsix_auto_mail/core/_observability.py
+      - src/robotsix_auto_mail/core/_sanitize.py
       - src/robotsix_auto_mail/core/format.py
       - src/robotsix_auto_mail/core/health.py
       - tests/core/__init__.py
@@ -29,6 +30,7 @@ modules:
       - tests/core/test_llm_agent.py
       - tests/core/test_observability_logging.py
       - tests/core/test_observability_tracing.py
+      - tests/core/test_sanitize.py
       - pyproject.toml
       - uv.lock
       - vulture_whitelist.py
@@ -47,6 +49,7 @@ modules:
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
+      - changelog.d/*.md
 
   - id: docker
     description: >-
