@@ -48,7 +48,7 @@ class ConfigVersionStore:
             raw = json.loads(self._path.read_text(encoding="utf-8"))
         except FileNotFoundError:
             return []
-        except OSError, json.JSONDecodeError:
+        except (OSError, json.JSONDecodeError):
             # A corrupt history must never block reading or writing config.
             logger.warning("Unreadable config version history at %s", self._path)
             return []
