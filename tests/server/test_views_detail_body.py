@@ -71,4 +71,3 @@ class TestRenderBody:
         assert '<div class="email-body">' in body_html
         assert "<p>HTML only</p>" in body_html
         assert "Rendered from HTML body" in body_note
-

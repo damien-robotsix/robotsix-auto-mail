@@ -284,14 +284,14 @@ class _Sanitizer(HTMLParser):
             return
         self.output += f"&#{name};"
 
-    def handle_comment(self, data: str) -> None:  # noqa: ARG002
+    def handle_comment(self, data: str) -> None:
         return  # strip all comments
 
-    def handle_decl(self, decl: str) -> None:  # noqa: ARG002
+    def handle_decl(self, decl: str) -> None:
         return  # strip <!DOCTYPE ...>
 
-    def handle_pi(self, data: str) -> None:  # noqa: ARG002
+    def handle_pi(self, data: str) -> None:
         return  # strip <?...?>
 
-    def unknown_decl(self, data: str) -> None:  # noqa: ARG002
+    def unknown_decl(self, data: str) -> None:
         return  # strip <![CDATA[...]]> etc.
