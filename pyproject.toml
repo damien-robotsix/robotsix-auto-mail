@@ -187,7 +187,9 @@ DEP003 = ["pydantic_ai"]
 # structlog is no longer imported directly by this package (logging has been
 # migrated to robotsix_llmio.logging.setup_logging), but it must remain a
 # direct dependency to preserve the uv dependency resolution order.
-DEP002 = ["structlog"]
+# cryptography is a transitive dependency pinned past 49.0.0 to address
+# CVE-2026-69247; it is not imported directly by this package.
+DEP002 = ["structlog", "cryptography"]
 # pyyaml / yaml is declared as a dev dependency (used by CI helpers and the
 # migrate-config CLI command) but is imported at runtime by cli/config.py
 # for legacy config migration.
