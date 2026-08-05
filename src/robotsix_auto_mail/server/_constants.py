@@ -75,8 +75,12 @@ def _read_vendored_ui(name: str) -> str | None:
 
 #: The shared config panel and its stylesheet — the fleet's one settings
 #: renderer (robotsix-standards config-ownership.md, "cross-UI uniformity").
-_STATIC_ROBOTSIX_UI_JS = _read_vendored_ui("robotsix-ui.js")
-_STATIC_ROBOTSIX_UI_CSS = _read_vendored_ui("robotsix-ui.css")
+_STATIC_ROBOTSIX_UI_JS = _read_vendored_ui(  # lgtm[py/unused-global-variable]
+    "robotsix-ui.js"
+)
+_STATIC_ROBOTSIX_UI_CSS = _read_vendored_ui(  # lgtm[py/unused-global-variable]
+    "robotsix-ui.css"
+)
 
 # -- Constants --------------------------------------------------------------
 _BOARD_COLUMNS = TRIAGE_ACTION_ORDER  # lgtm[py/unused-global-variable]
@@ -124,7 +128,13 @@ def _is_safe_redirect_path(location: str) -> bool:
 
 
 # -- Referenced by other modules; silence py/unused-global-variable --
-_ = (_STATIC_AUTOMAIL_BOARD_CSS, _STATIC_BOARD_AUTOMAIL_JS, _BOARD_COLUMNS)
+_ = (
+    _STATIC_AUTOMAIL_BOARD_CSS,
+    _STATIC_BOARD_AUTOMAIL_JS,
+    _STATIC_ROBOTSIX_UI_JS,
+    _STATIC_ROBOTSIX_UI_CSS,
+    _BOARD_COLUMNS,
+)
 
 
 def _parse_archive_structure(

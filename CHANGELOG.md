@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Resolve pre-existing CI failures: upgrade cryptography transitive dependency from 48.0.1 to 50.0.0, fix CodeQL py/log-injection in _settings_mixin.py, fix CodeQL py/unused-global-variable in _constants.py, and remove unused local variable in commands_serve.py.
 - **Breaking:** replace flat ``llm_provider_model`` field with tier-based ``models`` config (``level1``–``level4`` overrides) and per-application level fields (``triage_level``, ``classifier_level``, ``rules_level``, ``detector_level``, ``draft_level``). Blank overrides now resolve to the llmio tier default for that level, and each task selects its tier via its configured application level. Level 4 is wired through even though llmio does not yet define ``LEVEL4_DEFAULT``.
 - Enable credit_balance periodic workflow to monitor OpenRouter credit balance.
 - Refactored `_run_batch_delete_background` and `_run_batch_archive_background` into thin wrappers around a new shared `_run_batch_background` parameterised driver, removing ~150 lines of duplicated IMAP orchestration code.

@@ -343,7 +343,10 @@ class _SettingsMixin:
             )
             return
 
-        logger.info("Deleted account %r via the settings page", account_id)
+        # Sanitize account_id before logging: strip newlines to prevent log
+        # forgery (CodeQL py/log-injection).
+        safe_account_id = account_id.replace("\n", "\\n").replace("\r", "\\r")
+        logger.info("Deleted account %r via the settings page", safe_account_id)
 
         # Update handler factory cache.
         handler_factory = getattr(self.server, "RequestHandlerClass", None)
