@@ -16,13 +16,3 @@ APP_CLASSIFIER: Final = "classifier"
 APP_RULES: Final = "rules"
 APP_DETECTOR: Final = "detector"
 APP_DRAFT: Final = "draft"
-
-_VALID_APP_NAMES: frozenset[str] = frozenset(
-    {
-        APP_TRIAGE,
-        APP_CLASSIFIER,
-        APP_RULES,
-        APP_DETECTOR,
-        APP_DRAFT,
-    }
-)

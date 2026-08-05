@@ -30,10 +30,26 @@ from robotsix_config import (
     load_config as _load_config,
 )
 
-from robotsix_auto_mail.config._constants import _VALID_APP_NAMES
+from robotsix_auto_mail.config._constants import (
+    APP_CLASSIFIER,
+    APP_DETECTOR,
+    APP_DRAFT,
+    APP_RULES,
+    APP_TRIAGE,
+)
 from robotsix_auto_mail.config.credentials import MAIN_LLM_ALIAS, LangfuseConfig
 from robotsix_auto_mail.config.model import MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.schema import ConfigurationError
+
+_VALID_APP_NAMES: frozenset[str] = frozenset(
+    {
+        APP_TRIAGE,
+        APP_CLASSIFIER,
+        APP_RULES,
+        APP_DETECTOR,
+        APP_DRAFT,
+    }
+)
 
 logger = logging.getLogger(__name__)
 
