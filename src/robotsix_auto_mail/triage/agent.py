@@ -14,6 +14,7 @@ import sqlite3
 from pathlib import Path
 
 from robotsix_auto_mail.config import (
+    APP_TRIAGE,
     ConfigurationError,
     resolve_llm_api_key,
     resolve_llm_tier,
@@ -231,7 +232,7 @@ def _detect_unsubscribe_for_sender(
         return None
 
     # Resolve provider: explicit arg → config-level fallback.
-    _level, resolved_provider_model = resolve_llm_tier("triage")
+    _level, resolved_provider_model = resolve_llm_tier(APP_TRIAGE)
     if provider_model is not None:
         resolved_provider_model = provider_model
 
@@ -514,7 +515,7 @@ def run_triage_agent(
         resolved_provider_model = provider_model
         resolved_level = level
     else:
-        resolved_level, resolved_provider_model = resolve_llm_tier("triage")
+        resolved_level, resolved_provider_model = resolve_llm_tier(APP_TRIAGE)
 
     # -- read archive folder structure for the prompt --
     archive_folders = _load_archive_folders(conn)
@@ -569,3 +570,4 @@ def run_triage_agent(
     )
 
     return decisions
+

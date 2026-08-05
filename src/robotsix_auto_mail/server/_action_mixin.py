@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.config import (
+    APP_CLASSIFIER,
     DEFAULT_ARCHIVE_ROOT,
     MailConfig,
     resolve_llm_api_key,
@@ -197,7 +198,7 @@ class _BoardActionMixin:
                             conn,
                             record,
                             resolve_llm_api_key(raise_on_missing=False),
-                            provider_model=resolve_llm_tier("classifier")[1] or None,
+                            provider_model=resolve_llm_tier(APP_CLASSIFIER)[1] or None,
                             rules=rules_text_for(self.mail_config),
                         )
                 except Exception:  # noqa: S110  # nosec B110

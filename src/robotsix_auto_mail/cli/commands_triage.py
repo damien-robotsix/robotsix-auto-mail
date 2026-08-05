@@ -8,6 +8,7 @@ import sys
 
 from robotsix_auto_mail.cli.commands import _load_config_or_exit, _print_header
 from robotsix_auto_mail.config import (
+    APP_TRIAGE,
     MailAccountsConfig,
     resolve_llm_tier,
 )
@@ -36,7 +37,7 @@ def register_subparser(
     from robotsix_auto_mail.cli import _add_account_arg
 
     triage_parser = subparsers.add_parser(
-        "triage",
+        APP_TRIAGE,
         help="Run the LLM inbox-triage agent and record advisory action "
         "statuses (does not move mail in the mailbox)",
     )
@@ -93,7 +94,7 @@ def _cmd_triage(args: argparse.Namespace) -> int:
     config = _load_config_or_exit(args.account)
     conn = init_db(config.db_path)
     try:
-        _level, _pm = resolve_llm_tier("triage")
+        _level, _pm = resolve_llm_tier(APP_TRIAGE)
         decisions = run_triage_agent(
             conn,
             api_key=args.api_key,

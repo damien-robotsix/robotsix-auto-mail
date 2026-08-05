@@ -22,6 +22,21 @@ This module re-exports the public and previously-importable symbols so
 
 from __future__ import annotations
 
+from robotsix_auto_mail.config._constants import (
+    APP_CLASSIFIER as APP_CLASSIFIER,
+)
+from robotsix_auto_mail.config._constants import (
+    APP_DETECTOR as APP_DETECTOR,
+)
+from robotsix_auto_mail.config._constants import (
+    APP_DRAFT as APP_DRAFT,
+)
+from robotsix_auto_mail.config._constants import (
+    APP_RULES as APP_RULES,
+)
+from robotsix_auto_mail.config._constants import (
+    APP_TRIAGE as APP_TRIAGE,
+)
 from robotsix_auto_mail.config.credentials import (
     MAIN_LLM_ALIAS as MAIN_LLM_ALIAS,
 )
@@ -96,6 +111,11 @@ from robotsix_auto_mail.config.schema import (
 )
 
 __all__ = [
+    "APP_CLASSIFIER",
+    "APP_DETECTOR",
+    "APP_DRAFT",
+    "APP_RULES",
+    "APP_TRIAGE",
     "DEFAULT_ARCHIVE_ROOT",
     "DEFAULT_IMAP_TLS_MODE",
     "DEFAULT_INGEST_INTERVAL_MINUTES",
