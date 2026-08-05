@@ -128,7 +128,13 @@ def _is_safe_redirect_path(location: str) -> bool:
 
 
 # -- Referenced by other modules; silence py/unused-global-variable --
-_ = (_STATIC_AUTOMAIL_BOARD_CSS, _STATIC_BOARD_AUTOMAIL_JS, _BOARD_COLUMNS)
+_ = (
+    _STATIC_AUTOMAIL_BOARD_CSS,
+    _STATIC_BOARD_AUTOMAIL_JS,
+    _STATIC_ROBOTSIX_UI_JS,
+    _STATIC_ROBOTSIX_UI_CSS,
+    _BOARD_COLUMNS,
+)
 
 
 def _parse_archive_structure(
