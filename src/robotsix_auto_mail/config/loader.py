@@ -30,9 +30,26 @@ from robotsix_config import (
     load_config as _load_config,
 )
 
+from robotsix_auto_mail.config._constants import (
+    APP_CLASSIFIER,
+    APP_DETECTOR,
+    APP_DRAFT,
+    APP_RULES,
+    APP_TRIAGE,
+)
 from robotsix_auto_mail.config.credentials import MAIN_LLM_ALIAS, LangfuseConfig
 from robotsix_auto_mail.config.model import MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.schema import ConfigurationError
+
+_VALID_APP_NAMES: frozenset[str] = frozenset(
+    {
+        APP_TRIAGE,
+        APP_CLASSIFIER,
+        APP_RULES,
+        APP_DETECTOR,
+        APP_DRAFT,
+    }
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,12 +128,21 @@ def resolve_llm_api_key(
 def resolve_application_level(app_name: str) -> int:
     """Return the configured tier level for a named application.
 
-    *app_name* is one of ``"triage"``, ``"classifier"``, ``"rules"``,
-    ``"detector"``, or ``"draft"``.
+    *app_name* must be one of the :data:`~._constants.APP_*` constants
+    (``"triage"``, ``"classifier"``, ``"rules"``, ``"detector"``, or
+    ``"draft"``).
 
     Returns the configured ``{app_name}_level`` from the config file,
     or ``1`` when the config is unreadable.
+
+    Raises:
+        ValueError: if *app_name* is not a recognised application name.
     """
+    if app_name not in _VALID_APP_NAMES:
+        raise ValueError(
+            f"Unknown application name {app_name!r}; "
+            f"expected one of {sorted(_VALID_APP_NAMES)}"
+        )
     try:
         accounts = load_accounts()
     except Exception:

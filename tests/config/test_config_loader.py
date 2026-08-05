@@ -13,6 +13,9 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import (
+    APP_CLASSIFIER,
+    APP_DRAFT,
+    APP_TRIAGE,
     MAIN_LLM_ALIAS,
     ConfigurationError,
     MailAccount,
@@ -166,7 +169,7 @@ def test_resolve_application_level_defaults_to_1() -> None:
         "robotsix_auto_mail.config.loader.load_accounts",
         side_effect=ConfigurationError("no config"),
     ):
-        assert resolve_application_level("triage") == 1
+        assert resolve_application_level(APP_TRIAGE) == 1
 
 
 def test_resolve_application_level_reads_config() -> None:
@@ -175,9 +178,15 @@ def test_resolve_application_level_reads_config() -> None:
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        assert resolve_application_level("triage") == 3
-        assert resolve_application_level("draft") == 2
-        assert resolve_application_level("classifier") == 1  # default
+        assert resolve_application_level(APP_TRIAGE) == 3
+        assert resolve_application_level(APP_DRAFT) == 2
+        assert resolve_application_level(APP_CLASSIFIER) == 1  # default
+
+
+def test_resolve_application_level_rejects_unknown_app_name() -> None:
+    """Passing an unrecognised app name raises ValueError."""
+    with pytest.raises(ValueError, match="Unknown application name"):
+        resolve_application_level("nonexistent_app")
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +239,7 @@ def test_resolve_llm_tier_returns_level_and_override() -> None:
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        level, pm = resolve_llm_tier("triage")
+        level, pm = resolve_llm_tier(APP_TRIAGE)
         assert level == 2
         assert pm == "my-tier-model"
 
@@ -241,7 +250,7 @@ def test_resolve_llm_tier_empty_override() -> None:
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        level, pm = resolve_llm_tier("draft")
+        level, pm = resolve_llm_tier(APP_DRAFT)
         assert level == 3
         assert pm == ""
 

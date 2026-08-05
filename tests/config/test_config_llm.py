@@ -12,6 +12,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import (
+    APP_TRIAGE,
     MAIN_LLM_ALIAS,
     ConfigurationError,
     LangfuseConfig,
@@ -162,7 +163,7 @@ def test_resolve_llm_tier_uses_models_override() -> None:
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        level, pm = resolve_llm_tier("triage")
+        level, pm = resolve_llm_tier(APP_TRIAGE)
         assert level == 1
         assert pm == "openrouter-deepseek"
 
@@ -173,6 +174,6 @@ def test_resolve_llm_tier_falls_back_to_empty_when_no_override() -> None:
     with mock.patch(
         "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
     ):
-        level, pm = resolve_llm_tier("triage")
+        level, pm = resolve_llm_tier(APP_TRIAGE)
         assert level == 2
         assert pm == ""

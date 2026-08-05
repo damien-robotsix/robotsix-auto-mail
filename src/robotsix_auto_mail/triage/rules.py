@@ -26,6 +26,7 @@ from pathlib import Path
 import pydantic
 
 from robotsix_auto_mail.config import (
+    APP_RULES,
     MailConfig,
     resolve_llm_api_key,
     resolve_llm_tier,
@@ -216,7 +217,7 @@ def update_rules_for_action(
     with _lock_for(path):
         current = load_rules(path) or DEFAULT_RULES_HEADER
         try:
-            _level, _pm = resolve_llm_tier("rules")
+            _level, _pm = resolve_llm_tier(APP_RULES)
             result = _run_llm_agent(
                 api_key=resolved_key,
                 provider_model=provider_model if provider_model is not None else _pm,
@@ -269,7 +270,7 @@ def record_user_action(
         "body": _effective_body_plain(record),
         "subfolder": subfolder,
         "api_key": resolve_llm_api_key(raise_on_missing=False) or None,
-        "provider_model": resolve_llm_tier("rules")[1] or None,
+        "provider_model": resolve_llm_tier(APP_RULES)[1] or None,
     }
     if background:
         threading.Thread(
@@ -287,5 +288,5 @@ def record_user_action(
             body=_effective_body_plain(record),
             subfolder=subfolder,
             api_key=resolve_llm_api_key(raise_on_missing=False) or None,
-            provider_model=resolve_llm_tier("rules")[1] or None,
+            provider_model=resolve_llm_tier(APP_RULES)[1] or None,
         )
