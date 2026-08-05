@@ -30,6 +30,7 @@ from robotsix_config import (
     load_config as _load_config,
 )
 
+from robotsix_auto_mail.config._constants import _VALID_APP_NAMES
 from robotsix_auto_mail.config.credentials import MAIN_LLM_ALIAS, LangfuseConfig
 from robotsix_auto_mail.config.model import MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.schema import ConfigurationError
@@ -121,8 +122,6 @@ def resolve_application_level(app_name: str) -> int:
     Raises:
         ValueError: if *app_name* is not a recognised application name.
     """
-    from robotsix_auto_mail.config._constants import _VALID_APP_NAMES
-
     if app_name not in _VALID_APP_NAMES:
         raise ValueError(
             f"Unknown application name {app_name!r}; "

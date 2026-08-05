@@ -570,4 +570,3 @@ def run_triage_agent(
     )
 
     return decisions
-
