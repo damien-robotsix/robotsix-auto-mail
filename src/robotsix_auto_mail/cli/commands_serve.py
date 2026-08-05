@@ -220,12 +220,9 @@ def _cmd_serve(
     via the web UI whose config-file entries were overwritten by a deploy)
     are merged into the container so they survive restarts.
     """
-    import logging
     from http.server import ThreadingHTTPServer
 
     from robotsix_auto_mail.server import make_board_handler
-
-    _logger = logging.getLogger(__name__)
 
     # Merge accounts discovered from settings stores that are not already
     # in the config file.  This ensures accounts added via the web UI

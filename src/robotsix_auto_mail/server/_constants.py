@@ -75,8 +75,12 @@ def _read_vendored_ui(name: str) -> str | None:
 
 #: The shared config panel and its stylesheet — the fleet's one settings
 #: renderer (robotsix-standards config-ownership.md, "cross-UI uniformity").
-_STATIC_ROBOTSIX_UI_JS = _read_vendored_ui("robotsix-ui.js")
-_STATIC_ROBOTSIX_UI_CSS = _read_vendored_ui("robotsix-ui.css")
+_STATIC_ROBOTSIX_UI_JS = _read_vendored_ui(  # lgtm[py/unused-global-variable]
+    "robotsix-ui.js"
+)
+_STATIC_ROBOTSIX_UI_CSS = _read_vendored_ui(  # lgtm[py/unused-global-variable]
+    "robotsix-ui.css"
+)
 
 # -- Constants --------------------------------------------------------------
 _BOARD_COLUMNS = TRIAGE_ACTION_ORDER  # lgtm[py/unused-global-variable]
