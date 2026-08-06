@@ -103,6 +103,7 @@ ignore = ["ANN401"]
 "scripts/**/*.py" = ["UP", "SIM"]
 
 [tool.pytest.ini_options]
+addopts = ["--strict-markers"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
