@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed orphaned `_VALID_CONFIDENCE_LEVELS` re-export from `triage._constants` (was imported but never used; peers route through `validate_confidence` instead).
 - Add `level` parameter to `propose_archive_subfolder_llm` (default 1) so
   the configured classifier LLM tier level is threaded from all three call
   sites (`_action_mixin.py` move/archive handlers,
