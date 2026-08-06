@@ -14,6 +14,7 @@ import sqlite3
 from pathlib import Path
 
 from robotsix_auto_mail.config import (
+    APP_CLASSIFIER,
     APP_TRIAGE,
     ConfigurationError,
     resolve_llm_api_key,
@@ -418,6 +419,7 @@ def _fill_missing_archive_hints(
     by_index: dict[int, TriageItem],
     api_key: str,
     provider_model: str | None,
+    level: int = 1,
     rules: str = "",
 ) -> None:
     """Propose a subfolder for TO_ARCHIVE records the classifier left blank.
@@ -441,7 +443,7 @@ def _fill_missing_archive_hints(
             continue
         # Persists the hint itself; swallows its own errors.
         propose_archive_subfolder_llm(
-            conn, record, api_key, provider_model, rules=rules
+            conn, record, api_key, provider_model, level=level, rules=rules
         )
 
 
@@ -558,8 +560,15 @@ def run_triage_agent(
     _update_archive_hints(conn, remaining, by_index)
     # Fill subfolders the classifier omitted, so the board renders each
     # TO_ARCHIVE destination from a cached hint (no LLM call per render).
+    classifier_level, _ = resolve_llm_tier(APP_CLASSIFIER)
     _fill_missing_archive_hints(
-        conn, remaining, by_index, resolved_key, resolved_provider_model, rules=rules
+        conn,
+        remaining,
+        by_index,
+        resolved_key,
+        resolved_provider_model,
+        level=classifier_level,
+        rules=rules,
     )
 
     # -- check TO_DELETE senders for unsubscribe options ------------------

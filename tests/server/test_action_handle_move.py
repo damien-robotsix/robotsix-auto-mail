@@ -181,8 +181,9 @@ class TestHandleMove:
         assert call_args[0][2] == "sk-test"  # api_key (pos 2)
         assert call_args[1] == {
             "provider_model": "openrouter-deepseek",
+            "level": 1,
             "rules": "",
-        }  # provider_model + rules kwargs
+        }  # provider_model + level + rules kwargs
 
     def test_to_archive_llm_exception_is_swallowed(self, single_db: str) -> None:
         _populate_db(

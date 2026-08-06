@@ -194,11 +194,15 @@ class _BoardActionMixin:
             if triage_action == TO_ARCHIVE:
                 try:
                     if self.mail_config is not None:
+                        classifier_level, classifier_model = resolve_llm_tier(
+                            APP_CLASSIFIER
+                        )
                         propose_archive_subfolder_llm(
                             conn,
                             record,
                             resolve_llm_api_key(raise_on_missing=False),
-                            provider_model=resolve_llm_tier(APP_CLASSIFIER)[1] or None,
+                            provider_model=classifier_model or None,
+                            level=classifier_level,
                             rules=rules_text_for(self.mail_config),
                         )
                 except Exception:  # noqa: S110  # nosec B110
@@ -342,11 +346,13 @@ class _BoardActionMixin:
         from robotsix_auto_mail.db import delete_record_by_message_id
 
         # Compute the effective archive subfolder.
+        classifier_level, _ = resolve_llm_tier(APP_CLASSIFIER)
         subfolder = get_archive_subfolder(
             conn,
             record.message_id,
             record,
             api_key=resolve_llm_api_key(raise_on_missing=False),
+            level=classifier_level,
             rules=rules_text_for(self.mail_config),
         )
 
