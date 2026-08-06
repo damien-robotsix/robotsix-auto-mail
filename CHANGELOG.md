@@ -5,6 +5,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Add `level` parameter to `propose_archive_subfolder_llm` (default 1) so
+  the configured classifier LLM tier level is threaded from all three call
+  sites (`_action_mixin.py` move/archive handlers,
+  `get_archive_subfolder`, `_fill_missing_archive_hints`) instead of being
+  discarded in favour of the internal hardcoded `level=1`.
 - Added `GET /chat-skill` endpoint returning `text/markdown` with YAML frontmatter and API documentation + safety rules, per the robotsix-standards chat-access standard §1.  Added `robotsix.deploy.chat-access: "true"` compose label on the board service.
 - Remove accidentally committed empty `changelog/test-file` artifact.
 - Added dedicated unit tests for ``ConfigVersionStore`` covering atomic writes, corrupt-JSON recovery, version numbering, retention trimming, snapshot retrieval, and metadata extraction.

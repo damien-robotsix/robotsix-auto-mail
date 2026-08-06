@@ -157,6 +157,7 @@ def get_archive_subfolder(
     message_id: str,
     record: MailRecord,
     api_key: str = "",
+    level: int = 1,
     rules: str = "",
 ) -> str:
     """Return the effective archive subfolder for *message_id*.
@@ -182,7 +183,7 @@ def get_archive_subfolder(
 
     # 3. On-the-fly LLM proposal (NEW)
     if api_key:
-        propose_archive_subfolder_llm(conn, record, api_key, rules=rules)
+        propose_archive_subfolder_llm(conn, record, api_key, level=level, rules=rules)
         hints = _load_llm_archive_hints(conn)  # re-read after persist
         if message_id in hints:
             return normalize_archive_subfolder(hints[message_id])
@@ -212,6 +213,7 @@ def propose_archive_subfolder_llm(
     record: MailRecord,
     api_key: str,
     provider_model: str | None = None,
+    level: int = 1,
     rules: str = "",
 ) -> None:
     """Run a cheap LLM to propose an archive subfolder for *record*
@@ -271,7 +273,7 @@ def propose_archive_subfolder_llm(
         proposed: ArchiveSubfolderProposal = _run_llm_agent(
             api_key=resolved_key,
             provider_model=provider_model,
-            level=1,
+            level=level,
             system_prompt=system_prompt,
             output_model=ArchiveSubfolderProposal,
             user_message=user_message,
