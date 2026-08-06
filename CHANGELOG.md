@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added `GET /chat-skill` endpoint returning `text/markdown` with YAML frontmatter and API documentation + safety rules, per the robotsix-standards chat-access standard §1.  Added `robotsix.deploy.chat-access: "true"` compose label on the board service.
 - Remove accidentally committed empty `changelog/test-file` artifact.
 - Added dedicated unit tests for ``ConfigVersionStore`` covering atomic writes, corrupt-JSON recovery, version numbering, retention trimming, snapshot retrieval, and metadata extraction.
 - Resolve pre-existing CI failures: upgrade cryptography transitive dependency from 48.0.1 to 50.0.0, fix CodeQL py/log-injection in _settings_mixin.py, fix CodeQL py/unused-global-variable in _constants.py, and remove unused local variable in commands_serve.py.

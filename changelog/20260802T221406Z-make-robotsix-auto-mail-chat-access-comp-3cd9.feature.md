@@ -1,0 +1,1 @@
+Added `GET /chat-skill` endpoint returning `text/markdown` with YAML frontmatter (`name`, `description`) and API documentation + safety rules, per the robotsix-standards chat-access standard §1.  Added `robotsix.deploy.chat-access: "true"` compose label on the board service so the component appears in the chat agent's roster.

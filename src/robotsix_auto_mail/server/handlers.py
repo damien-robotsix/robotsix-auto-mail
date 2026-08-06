@@ -35,7 +35,11 @@ from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
-from robotsix_auto_mail.server._constants import GLOBAL_VIEW_ACCOUNT_ID, _with_db
+from robotsix_auto_mail.server._constants import (
+    _STATIC_CHAT_SKILL_MD,
+    GLOBAL_VIEW_ACCOUNT_ID,
+    _with_db,
+)
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
@@ -122,6 +126,7 @@ class BoardHandler(
             (lambda p: p == "/", lambda: self._redirect("/board")),
             (lambda p: p == "/board", self._serve_board),
             (lambda p: p == "/board-content", self._serve_board_content),
+            (lambda p: p == "/chat-skill", self._serve_chat_skill),
             (lambda p: p == "/health", self._serve_health),
             (lambda p: p == "/healthz", self._serve_health),
             (lambda p: p == "/settings-panel", self._serve_settings_panel),
@@ -419,6 +424,13 @@ class BoardHandler(
             json.dumps(payload),
             status=status,
             content_type="application/json; charset=utf-8",
+        )
+
+    def _serve_chat_skill(self) -> None:
+        """Serve GET /chat-skill — Claude SKILL.md for the chat-access standard."""
+        self._send_response(
+            _STATIC_CHAT_SKILL_MD,
+            content_type="text/markdown; charset=utf-8",
         )
 
     def _serve_health(self) -> None:

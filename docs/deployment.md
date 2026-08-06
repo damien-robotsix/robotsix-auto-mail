@@ -321,6 +321,7 @@ wire the stack:
 | Label | Meaning |
 |---|---|
 | `robotsix.deploy.primary: "true"` | Marks `board` as the primary/ingress service the gateway routes to. |
+| `robotsix.deploy.chat-access: "true"` | Opts the `board` service into the chat-access standard: central-deploy surfaces `GET /chat-skill` (a SKILL.md describing the mail-triage API and safety rules) to the chat agent's roster. Chat access is opt-in per the standard — the operator still enables the per-component checkbox in central-deploy. |
 
 There are deliberately **no** `config-target` / `config-assist` labels:
 central-deploy's config writer only produces YAML, while the app reads JSON,
