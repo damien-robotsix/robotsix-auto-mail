@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Remove accidentally committed empty `changelog/test-file` artifact.
 - Added dedicated unit tests for ``ConfigVersionStore`` covering atomic writes, corrupt-JSON recovery, version numbering, retention trimming, snapshot retrieval, and metadata extraction.
 - Resolve pre-existing CI failures: upgrade cryptography transitive dependency from 48.0.1 to 50.0.0, fix CodeQL py/log-injection in _settings_mixin.py, fix CodeQL py/unused-global-variable in _constants.py, and remove unused local variable in commands_serve.py.
 - Grouped board header controls (Recheck connections, Add Account, Settings)
