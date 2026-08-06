@@ -704,20 +704,52 @@ button:hover {
   }
 }
 
-/* -- add-account button (board header) ---------------------------------- */
+/* -- board header toolbar ---------------------------------------------- */
 
-.add-account-btn {
-  float: right;
-  margin-top: 0.4em;
+.board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.board-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.board-header-left h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.board-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Shared header button base */
+.header-btn {
   padding: 0.35em 1em;
-  background: var(--color-bg-primary, #1976d2);
-  color: var(--color-text-on-primary, #fff);
-  border: none;
   border-radius: 4px;
   text-decoration: none;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  border: none;
+}
+.header-btn:hover {
+  opacity: 0.9;
+}
+
+/* Add Account button */
+.add-account-btn {
+  background: var(--color-bg-primary, #1976d2);
+  color: var(--color-text-on-primary, #fff);
 }
 .add-account-btn:hover {
   background: var(--color-bg-primary-hover, #1565c0);
@@ -728,9 +760,25 @@ button:hover {
   background: var(--color-bg-panel, #16213e);
   color: var(--color-text-muted, #c0c0e0);
   border: 1px solid var(--color-border-button, #3a3a6a);
-  margin-left: 0.5em;
 }
 .settings-btn:hover {
+  background: var(--color-bg-button-hover, #1f2d50);
+  color: var(--color-text-secondary, #e0e0e0);
+}
+
+/* Recheck connections button */
+#probe-health-btn {
+  padding: 0.35em 1em;
+  background: var(--color-bg-panel, #1a1e2e);
+  color: var(--color-text-muted, #c0c0e0);
+  border: 1px solid var(--color-border-button, #3a3a6a);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#probe-health-btn:hover {
   background: var(--color-bg-button-hover, #1f2d50);
   color: var(--color-text-secondary, #e0e0e0);
 }
@@ -749,10 +797,6 @@ button:hover {
 .health-alert-banner ul {
   margin: 0.5em 0 0 1.5em;
   font-weight: normal;
-}
-
-#probe-health-btn {
-  margin-bottom: 0.75em;
 }
 
 /* OAuth2 Authorize button (inline in health alert banners) */

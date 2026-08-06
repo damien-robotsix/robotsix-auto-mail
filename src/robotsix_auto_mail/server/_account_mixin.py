@@ -6,9 +6,10 @@ a new mail account through the web UI."""
 from __future__ import annotations
 
 import html
+import json
 import logging
 from typing import TYPE_CHECKING
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 from robotsix_auto_mail.config import (
     MailAccount,
@@ -169,10 +170,30 @@ class _AccountMixin:
         error: str = "",
         success: str = "",
         prefill: dict[str, str] | None = None,
+        origin: str = "",
     ) -> None:
-        """Serve the account-creation form (GET) or re-render on error (POST)."""
+        """Serve the account-creation form (GET) or re-render on error (POST).
+
+        When *origin* is ``"settings"`` the form renders without the
+        standalone page chrome (no ``<html>`` / ``<body>`` wrappers) so it
+        can be embedded inside the settings page via an iframe.  A hidden
+        ``origin`` field preserves the value across form submissions so
+        the POST handler knows where to redirect on success.
+
+        On GET the *origin* is read from the ``?origin=`` query param;
+        on POST re-render the caller passes it explicitly and the query
+        string is empty so the fallback is a no-op.
+        """
+        # On GET, read origin from the query string; on POST re-render,
+        # the caller passes it explicitly and the query string is empty.
+        path = getattr(self, "path", "")
+        qs_origin = parse_qs(urlsplit(path).query).get("origin", [""])[0]
+        if qs_origin:
+            origin = qs_origin
         p = prefill or {}
-        body = _build_add_account_form_html(error=error, success=success, prefill=p)
+        body = _build_add_account_form_html(
+            error=error, success=success, prefill=p, origin=origin,
+        )
         self._send_response(body, content_type="text/html; charset=utf-8")
 
     # -- POST /add-account -------------------------------------------------
@@ -206,7 +227,11 @@ class _AccountMixin:
                 prefill[key] = value
             fields[key] = value
 
-        # 2b. If the "Detect Settings" button was pressed, run provider
+        # 2b. Read the origin tracking field (set when embedded in
+        #     the settings page).
+        origin = (body.get("origin", [""])[0]).strip()
+
+        # 2c. If the "Detect Settings" button was pressed, run provider
         #     detection and re-render the form with the detected values
         #     (or an error).
         action = (body.get("action", [""])[0]).strip()
@@ -217,6 +242,7 @@ class _AccountMixin:
                     error="Enter an email address in the Username field,"
                     " then click Detect Settings.",
                     prefill=prefill,
+                    origin=origin,
                 )
                 return
             provider, detect_error = _detect_provider_for_email(email)
@@ -235,6 +261,7 @@ class _AccountMixin:
                         " Review and edit if needed, then click Add Account."
                     ),
                     prefill=prefill,
+                    origin=origin,
                 )
                 return
             else:
@@ -246,6 +273,7 @@ class _AccountMixin:
                         " Please enter IMAP/SMTP settings manually."
                     ),
                     prefill=prefill,
+                    origin=origin,
                 )
                 return
 
@@ -255,6 +283,7 @@ class _AccountMixin:
             self._serve_add_account(
                 error=f"Missing required fields: {', '.join(missing)}",
                 prefill=prefill,
+                origin=origin,
             )
             return
 
@@ -271,6 +300,7 @@ class _AccountMixin:
                     f" dots, underscores, and hyphens."
                 ),
                 prefill=prefill,
+                origin=origin,
             )
             return
 
@@ -281,12 +311,14 @@ class _AccountMixin:
             self._serve_add_account(
                 error=f"Invalid IMAP TLS mode: {html.escape(imap_tls)}",
                 prefill=prefill,
+                origin=origin,
             )
             return
         if smtp_tls not in _VALID_TLS_MODES:
             self._serve_add_account(
                 error=f"Invalid SMTP TLS mode: {html.escape(smtp_tls)}",
                 prefill=prefill,
+                origin=origin,
             )
             return
 
@@ -297,6 +329,7 @@ class _AccountMixin:
             self._serve_add_account(
                 error="IMAP Port must be a number.",
                 prefill=prefill,
+                origin=origin,
             )
             return
         try:
@@ -305,6 +338,7 @@ class _AccountMixin:
             self._serve_add_account(
                 error="SMTP Port must be a number.",
                 prefill=prefill,
+                origin=origin,
             )
             return
 
@@ -332,6 +366,7 @@ class _AccountMixin:
             self._serve_add_account(
                 error=f"Invalid configuration: {html.escape(str(exc))}",
                 prefill=prefill,
+                origin=origin,
             )
             return
 
@@ -353,6 +388,7 @@ class _AccountMixin:
                 self._serve_add_account(
                     error=f"Account ID '{html.escape(account_id)}' already exists.",
                     prefill=prefill,
+                    origin=origin,
                 )
                 return
             new_accounts = [*list(existing.accounts), account]
@@ -373,6 +409,7 @@ class _AccountMixin:
             self._serve_add_account(
                 error=f"Invalid configuration: {html.escape(str(exc))}",
                 prefill=prefill,
+                origin=origin,
             )
             return
 
@@ -383,6 +420,7 @@ class _AccountMixin:
             self._serve_add_account(
                 error=f"Failed to save configuration: {html.escape(str(exc))}",
                 prefill=prefill,
+                origin=origin,
             )
             return
 
@@ -411,10 +449,6 @@ class _AccountMixin:
 
         # Update the handler factory's cached accounts so the redirect
         # immediately reflects the new account without a server restart.
-        # The handler is built via functools.partial; updating its
-        # keywords dict causes the next handler instance to receive the
-        # updated config.  Also update default_account_id so the account
-        # picker and per-request resolution use the new default.
         handler_factory = getattr(self.server, "RequestHandlerClass", None)
         if handler_factory is not None and hasattr(handler_factory, "keywords"):
             kw = handler_factory.keywords
@@ -423,7 +457,19 @@ class _AccountMixin:
             if "default_account_id" in kw and new_config.default_account_id:
                 kw["default_account_id"] = new_config.default_account_id
 
-        self._redirect("/board", code=303)
+        if origin == "settings":
+            # Redirect the parent (settings page) rather than the iframe.
+            target = "/settings-panel?added=" + quote(account_id, safe="")
+            self._send_response(
+                "<!DOCTYPE html>\n"
+                "<script>window.top.location.href="
+                + json.dumps(target)
+                + ";</script>\n",
+                status=200,
+                content_type="text/html; charset=utf-8",
+            )
+        else:
+            self._redirect("/board", code=303)
 
 
 def _build_add_account_form_html(
@@ -431,8 +477,14 @@ def _build_add_account_form_html(
     error: str = "",
     success: str = "",
     prefill: dict[str, str] | None = None,
+    origin: str = "",
 ) -> str:
-    """Build the HTML page for the add-account form."""
+    """Build the HTML for the add-account form.
+
+    When *origin* is ``"settings"`` the output is a bare form fragment
+    (no ``<html>`` / ``<body>`` wrappers) suitable for embedding inside
+    the settings page via an iframe.
+    """
     p = prefill or {}
 
     def val(key: str, default: str = "") -> str:
@@ -451,20 +503,17 @@ def _build_add_account_form_html(
     imap_port = p.get("imap_port", "993")
     smtp_port = p.get("smtp_port", "587")
 
-    return (
-        "<!DOCTYPE html>\n"
-        '<html lang="en">\n'
-        "<head>\n"
-        '<meta charset="utf-8">\n'
-        "<title>Add Mail Account</title>\n"
-        f"<style>{_ADD_ACCOUNT_FORM_CSS}</style>\n"
-        "</head>\n"
-        "<body>\n"
-        "<h1>Add Mail Account</h1>\n"
-        f"{banner_html}"
+    origin_input = (
+        f'<input type="hidden" name="origin" value="{html.escape(origin, quote=True)}">\n'
+        if origin
+        else ""
+    )
+
+    form_inner = (
         '<form method="post" action="/add-account">\n'
+        + origin_input
         # account_id
-        "<label>Account ID"
+        + "<label>Account ID"
         '<input name="account_id" required'
         f' value="{val("account_id")}"'
         ' pattern="[A-Za-z0-9._-]+"'
@@ -472,35 +521,35 @@ def _build_add_account_form_html(
         ">\n"
         "</label>\n"
         # label
-        "<label>Label (optional)"
+        + "<label>Label (optional)"
         '<input name="label" value="' + val("label") + '"'
         ' placeholder="e.g. Personal Gmail">\n'
         "</label>\n"
         # imap_host
-        "<label>IMAP Host"
+        + "<label>IMAP Host"
         '<input name="imap_host" required'
         f' value="{val("imap_host")}"'
         ' placeholder="imap.example.com">\n'
         "</label>\n"
         # smtp_host
-        "<label>SMTP Host"
+        + "<label>SMTP Host"
         '<input name="smtp_host" required'
         f' value="{val("smtp_host")}"'
         ' placeholder="smtp.example.com">\n'
         "</label>\n"
         # username
-        "<label>Username"
+        + "<label>Username"
         '<input name="username" required'
         f' value="{val("username")}"'
         ' placeholder="me@example.com">\n'
         "</label>\n"
         # password
-        "<label>Password"
+        + "<label>Password"
         '<input type="password" name="password" required'
         ' placeholder="App-specific password or account password">\n'
         "</label>\n"
         # Advanced settings — collapsed by default.
-        "<details>\n"
+        + "<details>\n"
         "<summary>Advanced settings</summary>\n"
         "<label>IMAP Port"
         '<input name="imap_port" type="number"'
@@ -546,9 +595,156 @@ def _build_add_account_form_html(
         '<button type="submit" name="action" value="add">Add Account</button>\n'
         '<button type="submit" name="action" value="detect"'
         " formnovalidate>Detect Settings</button>\n"
-        '<a class="cancel-link" href="/board">Cancel</a>\n'
-        "</div>\n"
+        + (
+            '<a class="cancel-link" href="/settings-panel">Cancel</a>\n'
+            if origin == "settings"
+            else '<a class="cancel-link" href="/board">Cancel</a>\n'
+        )
+        + "</div>\n"
         "</form>\n"
+    )
+
+    # Embed mode: bare form fragment with minimal inline styles.
+    if origin == "settings":
+        embed_css = """\
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--color-text-primary, #eee);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.9rem;
+}
+h1 { display: none; }
+label {
+  display: block;
+  margin-top: 0.5rem;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary, #e0e0e0);
+}
+input, select {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.2rem;
+  padding: 0.4rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-border-button, #3a3a6a);
+  border-radius: 4px;
+  background: var(--color-bg-panel, #16213e);
+  color: var(--color-text-primary, #eee);
+}
+input:focus, select:focus {
+  outline: 1px solid var(--color-text-link, #a0c0ff);
+}
+.error-banner {
+  background: var(--color-bg-health, #fde8e8);
+  border: 2px solid var(--color-border-health, #d93025);
+  border-radius: 4px;
+  color: var(--color-text-health, #b71c1c);
+  padding: 0.6em 0.8em;
+  margin-bottom: 1em;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+.success-banner {
+  background: var(--color-bg-success-muted, #e8f5e9);
+  border: 2px solid var(--color-bg-success, #2e7d32);
+  border-radius: 4px;
+  color: var(--color-bg-success, #2e7d32);
+  padding: 0.6em 0.8em;
+  margin-bottom: 1em;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+.form-actions button[type="submit"] {
+  width: auto;
+  background: var(--color-bg-success, #2e7d32);
+  color: var(--color-text-on-success, #fff);
+  border: none;
+  padding: 0.4rem 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.form-actions button[type="submit"]:hover {
+  background: var(--color-bg-success-hover, #1b5e20);
+}
+.form-actions button[name="action"][value="detect"] {
+  width: auto;
+  background: var(--color-bg-panel, #16213e);
+  color: var(--color-text-link, #a0c0ff);
+  border: 1px solid var(--color-border-button, #3a3a6a);
+  padding: 0.4rem 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.form-actions button[name="action"][value="detect"]:hover {
+  background: var(--color-bg-button-hover, #1f2d50);
+}
+.form-actions .cancel-link {
+  color: var(--color-text-muted, #c0c0e0);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+.form-actions .cancel-link:hover {
+  text-decoration: underline;
+}
+details {
+  margin-top: 0.5rem;
+}
+details summary {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #c0c0e0);
+  cursor: pointer;
+}
+details label {
+  font-weight: 500;
+  font-size: 0.78rem;
+}
+details input, details select {
+  font-size: 0.82rem;
+  padding: 0.3rem;
+}
+"""
+        return (
+            "<!DOCTYPE html>\n"
+            '<html lang="en">\n'
+            "<head>\n"
+            '<meta charset="utf-8">\n'
+            f"<style>{embed_css}</style>\n"
+            "</head>\n"
+            "<body>\n"
+            f"{banner_html}"
+            f"{form_inner}"
+            "</body>\n"
+            "</html>"
+        )
+
+    # Standalone page: full HTML document.
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="utf-8">\n'
+        "<title>Add Mail Account</title>\n"
+        f"<style>{_ADD_ACCOUNT_FORM_CSS}</style>\n"
+        "</head>\n"
+        "<body>\n"
+        "<h1>Add Mail Account</h1>\n"
+        f"{banner_html}"
+        f"{form_inner}"
         "</body>\n"
         "</html>"
     )

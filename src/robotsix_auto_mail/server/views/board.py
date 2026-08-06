@@ -454,23 +454,25 @@ def _render_board_page_shell(
         + (health_alerts_html or '<div id="health-alerts"></div>\n')
         + (zero_mails_warning_html or "")
         + (
+            '<header class="board-header">\n'
+            '<div class="board-header-left">\n'
+            "<h1>Mail Board</h1>\n"
+            f"{picker_html}"
+            "</div>\n"
+            '<div class="board-header-right">\n'
             '<button id="probe-health-btn"'
             ' onclick="probeHealth()">'
             "Recheck connections</button>\n"
-        )
-        + "<h1>Mail Board</h1>\n"
-        + (
-            '<a href="/add-account" class="add-account-btn"'
+            '<a href="/add-account" class="header-btn add-account-btn"'
             ' title="Add a new mail account">+ Add Account</a>\n'
-        )
-        + (
-            '<a href="/settings-panel" class="add-account-btn settings-btn"'
+            '<a href="/settings-panel" class="header-btn settings-btn"'
             ' title="Manage accounts and settings">'
             "Settings</a>\n"
+            "</div>\n"
+            "</header>\n"
         )
         + f'<span id="triage-control">{triage_control_html}</span>\n'
         f'<span id="batch-control">{batch_control_html}</span>\n'
-        f"{picker_html}\n"
         '<div class="board-wrapper">\n'
         '<div class="board">\n'
         f"{columns_html}"
