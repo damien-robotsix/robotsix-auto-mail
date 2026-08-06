@@ -11,6 +11,7 @@ from unittest import mock
 
 import pydantic
 import pytest
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 
 from robotsix_auto_mail.config import ConfigurationError
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
@@ -165,3 +166,110 @@ def test_level2_completes_successfully(mock_deps):
     assert result.value == "ok"
     mock_get_prov.assert_called_once()
     mock_run.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# output_retries passthrough
+# ---------------------------------------------------------------------------
+
+
+def test_output_retries_forwarded_to_build_agent(mock_deps):
+    """When ``output_retries`` is set, it is passed as ``retries`` to
+    ``build_agent``."""
+    _mock_key, mock_get_prov, _mock_run = mock_deps
+
+    _run_llm_agent(
+        api_key=None,
+        provider_model="openrouter/deepseek",
+        level=1,
+        system_prompt="test",
+        output_model=_FakeOutput,
+        user_message="hello",
+        label="test",
+        what="testing",
+        exc_type=RuntimeError,
+        output_retries=4,
+    )
+
+    mock_get_prov.assert_called_once()
+    mock_provider = mock_get_prov.return_value
+    mock_provider.build_agent.assert_called_once()
+    _call_kwargs = mock_provider.build_agent.call_args.kwargs
+    assert _call_kwargs["retries"] == 4
+
+
+def test_output_retries_none_omits_retries_kwarg(mock_deps):
+    """When ``output_retries`` is ``None`` (default), the ``retries``
+    keyword is not passed to ``build_agent``."""
+    _mock_key, mock_get_prov, _mock_run = mock_deps
+
+    _run_llm_agent(
+        api_key=None,
+        provider_model="openrouter/deepseek",
+        level=1,
+        system_prompt="test",
+        output_model=_FakeOutput,
+        user_message="hello",
+        label="test",
+        what="testing",
+        exc_type=RuntimeError,
+    )
+
+    mock_provider = mock_get_prov.return_value
+    mock_provider.build_agent.assert_called_once()
+    assert "retries" not in mock_provider.build_agent.call_args.kwargs
+
+
+# ---------------------------------------------------------------------------
+# UnexpectedModelBehavior retry
+# ---------------------------------------------------------------------------
+
+
+def test_unexpected_model_behavior_retried_once(mock_deps):
+    """First ``UnexpectedModelBehavior`` triggers a single retry;
+    the second attempt succeeds."""
+    _mock_key, _mock_get_prov, mock_run = mock_deps
+
+    mock_run.side_effect = [
+        UnexpectedModelBehavior("format slip"),
+        mock.Mock(output=_FakeOutput(value="recovered")),
+    ]
+
+    result = _run_llm_agent(
+        api_key=None,
+        provider_model="openrouter/deepseek",
+        level=1,
+        system_prompt="test",
+        output_model=_FakeOutput,
+        user_message="hello",
+        label="test",
+        what="testing",
+        exc_type=RuntimeError,
+    )
+
+    assert isinstance(result, _FakeOutput)
+    assert result.value == "recovered"
+    assert mock_run.call_count == 2
+
+
+def test_unexpected_model_behavior_both_attempts_fail(mock_deps):
+    """When both attempts raise ``UnexpectedModelBehavior``, the
+    second is re-raised as ``exc_type``."""
+    _mock_key, _mock_get_prov, mock_run = mock_deps
+
+    mock_run.side_effect = UnexpectedModelBehavior("persistent format slip")
+
+    with pytest.raises(RuntimeError, match="persistent format slip"):
+        _run_llm_agent(
+            api_key=None,
+            provider_model="openrouter/deepseek",
+            level=1,
+            system_prompt="test",
+            output_model=_FakeOutput,
+            user_message="hello",
+            label="test",
+            what="testing",
+            exc_type=RuntimeError,
+        )
+
+    assert mock_run.call_count == 2

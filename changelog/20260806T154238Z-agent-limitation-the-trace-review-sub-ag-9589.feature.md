@@ -1,0 +1,1 @@
+Added ``output_retries`` parameter to ``_run_llm_agent``, allowing callers to control pydantic-ai output-validation retry budget.  Also added automatic single retry on ``UnexpectedModelBehavior`` (model format slips) to convert transient format flakiness from a fatal error into a recoverable one.

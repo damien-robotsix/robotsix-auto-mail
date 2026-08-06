@@ -38,6 +38,7 @@ def _run_llm_agent(  # noqa: UP047
     label: str,
     what: str,
     exc_type: type[Exception],
+    output_retries: int | None = None,
 ) -> _T:
     """Resolve credentials, build an LLM agent, run it, and return its output.
 
@@ -58,6 +59,12 @@ def _run_llm_agent(  # noqa: UP047
             ``run_agent``).
         exc_type: Exception class to raise on any failure.  Must
             accept a single string argument.
+        output_retries: Maximum retry attempts for the underlying
+            pydantic-ai agent's output validation.  ``None`` (default)
+            uses the provider's built-in default (currently ``2``).
+            Pass an integer to override — e.g. ``3`` or ``4`` for
+            inspection-style agents where model-format flakes are
+            non-fatal.
 
     Returns:
         The validated output model instance.
@@ -76,6 +83,7 @@ def _run_llm_agent(  # noqa: UP047
     # -- lazy imports so the rest of the CLI works without the
     #    LLM provider extra and so test patches can intercept --
     from pydantic_ai import PromptedOutput
+    from pydantic_ai.exceptions import UnexpectedModelBehavior
     from robotsix_llmio.config.tier import (
         LEVEL1_DEFAULT,
         LEVEL2_DEFAULT,
@@ -103,23 +111,39 @@ def _run_llm_agent(  # noqa: UP047
     model_provider = _get_provider(
         model_id, **{**_tlc.provider_kwargs, "api_key": resolved_key}
     )
-    agent_handle = model_provider.build_agent(
+    _build_kwargs: dict[str, object] = dict(
         level=_level,
         system_prompt=system_prompt,
         output_type=PromptedOutput(output_model),
     )
+    if output_retries is not None:
+        _build_kwargs["retries"] = output_retries
+    agent_handle = model_provider.build_agent(**_build_kwargs)
 
     # -- call LLM --
     result = None
-    try:
-        result = run_agent(
-            agent_handle,
-            lambda: agent_handle.run_sync(user_message),
-            label=label,
-            what=what,
-            trace_input=user_message,
-        )
-    except Exception as exc:
-        raise exc_type(str(exc)) from exc
+    for _attempt in range(2):
+        try:
+            result = run_agent(
+                agent_handle,
+                lambda: agent_handle.run_sync(user_message),
+                label=label,
+                what=what,
+                trace_input=user_message,
+            )
+        except UnexpectedModelBehavior as exc:
+            if _attempt == 0:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "UnexpectedModelBehavior on attempt 1; retrying once: %s",
+                    exc,
+                )
+                continue
+            raise exc_type(str(exc)) from exc
+        except Exception as exc:
+            raise exc_type(str(exc)) from exc
+        else:
+            break
 
     return typing.cast(_T, result.output)
