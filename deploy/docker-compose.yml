@@ -57,6 +57,7 @@ services:
       start_period: 5s
     labels:
       robotsix.deploy.primary: "true"
+      robotsix.deploy.chat-access: "true"
       robotsix.deploy.config-target: "/home/app/config/config.json"
 
 volumes:
