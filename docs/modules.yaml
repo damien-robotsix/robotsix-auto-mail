@@ -47,6 +47,7 @@ modules:
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
+      - changelog.d/*.md
 
 
   - id: docker
@@ -168,6 +169,7 @@ modules:
       - tests/config/test_accounts_config.py
       - tests/config/test_account_isolation.py
       - tests/config/test_pydantic_utils.py
+      - tests/config/test_versions.py
 
   - id: triage
     description: >-
