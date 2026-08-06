@@ -7,9 +7,6 @@ submodules can share them without risking circular imports.
 
 from __future__ import annotations
 
-from robotsix_auto_mail.config.pydantic_utils import (
-    VALID_CONFIDENCE_LEVELS as _VALID_CONFIDENCE_LEVELS,
-)
 from robotsix_auto_mail.db import VALID_TRIAGE_ACTIONS
 
 # ---------------------------------------------------------------------------
@@ -103,6 +100,5 @@ __all__ = [
     "_ARCHIVE_LLM_HINTS_WATERMARK_KEY",
     "_ARCHIVE_OVERRIDES_WATERMARK_KEY",
     "_UNSUBSCRIBE_SUGGESTIONS_KEY",
-    "_VALID_CONFIDENCE_LEVELS",
     "_VALID_TRIAGE_SOURCES",
 ]
