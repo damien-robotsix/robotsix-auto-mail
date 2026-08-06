@@ -47,6 +47,7 @@ modules:
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
+      - changelog.d/*.md
 
 
   - id: docker
@@ -444,6 +445,7 @@ modules:
       - src/robotsix_auto_mail/settings/store.py
       - tests/settings/__init__.py
       - tests/settings/test_import.py
+      - tests/settings/test_recovery.py
       - tests/settings/test_store.py
 
   - id: docs
