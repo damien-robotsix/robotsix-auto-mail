@@ -8,7 +8,6 @@ malformed-JSON-body error reporting.
 
 from __future__ import annotations
 
-import json
 from unittest import mock
 
 from tests.server._test_helpers import _FakeHandler
