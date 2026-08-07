@@ -8,6 +8,7 @@ from __future__ import annotations
 import html
 import json
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, quote, urlsplit
 
@@ -45,116 +46,13 @@ _REQUIRED_FIELDS = ("account_id", "imap_host", "smtp_host", "username", "passwor
 # /add-account is a standalone page that does not link board.css, so the
 # CSS custom properties are never defined.  The second argument to every
 # var() call is the actual colour used at runtime.
-_ADD_ACCOUNT_FORM_CSS = """\
-body {
-  background: var(--color-bg-page, #121626);
-  color: var(--color-text-primary, #eee);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  max-width: 560px;
-  margin: 3rem auto;
-  padding: 0 1rem;
-}
-h1 { margin-bottom: 1.5rem; }
-label {
-  display: block;
-  margin-top: 0.75rem;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--color-text-secondary, #e0e0e0);
-}
-input, select {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 0.25rem;
-  padding: 0.5rem;
-  font-size: 0.95rem;
-  border: 1px solid var(--color-border-button, #3a3a6a);
-  border-radius: 4px;
-  background: var(--color-bg-panel, #16213e);
-  color: var(--color-text-primary, #eee);
-}
-input:focus, select:focus {
-  outline: 1px solid var(--color-text-link, #a0c0ff);
-}
-.error-banner {
-  background: var(--color-bg-health, #fde8e8);
-  border: 2px solid var(--color-border-health, #d93025);
-  border-radius: 4px;
-  color: var(--color-text-health, #b71c1c);
-  padding: 0.75em 1em;
-  margin-bottom: 1.5em;
-  font-weight: bold;
-}
-.success-banner {
-  background: var(--color-bg-success-muted, #e8f5e9);
-  border: 2px solid var(--color-bg-success, #2e7d32);
-  border-radius: 4px;
-  color: var(--color-bg-success, #2e7d32);
-  padding: 0.75em 1em;
-  margin-bottom: 1.5em;
-  font-weight: bold;
-}
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin-top: 1.5rem;
-}
-.form-actions button[type="submit"] {
-  width: auto;
-  background: var(--color-bg-success, #2e7d32);
-  color: var(--color-text-on-success, #fff);
-  border: none;
-  padding: 0.5rem 1.5rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.form-actions button[type="submit"]:hover {
-  background: var(--color-bg-success-hover, #1b5e20);
-}
-.form-actions button[name="action"][value="detect"] {
-  width: auto;
-  background: var(--color-bg-panel, #16213e);
-  color: var(--color-text-link, #a0c0ff);
-  border: 1px solid var(--color-border-button, #3a3a6a);
-  padding: 0.5rem 1.5rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.form-actions button[name="action"][value="detect"]:hover {
-  background: var(--color-bg-button-hover, #1f2d50);
-}
-.form-actions .cancel-link {
-  color: var(--color-text-muted, #c0c0e0);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-.form-actions .cancel-link:hover {
-  text-decoration: underline;
-}
-details {
-  margin-top: 0.75rem;
-}
-details summary {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--color-text-muted, #c0c0e0);
-  cursor: pointer;
-}
-details label {
-  font-weight: 500;
-  font-size: 0.82rem;
-}
-details input, details select {
-  font-size: 0.85rem;
-  padding: 0.35rem;
-}
-"""
+_ADD_ACCOUNT_FORM_CSS = (
+    Path(__file__).parent / "static" / "add-account-standalone.css"
+).read_text()
+
+_ADD_ACCOUNT_EMBED_CSS = (
+    Path(__file__).parent / "static" / "add-account-embed.css"
+).read_text()
 
 
 class _AccountMixin:
@@ -610,124 +508,12 @@ def _build_add_account_form_html(
 
     # Embed mode: bare form fragment with minimal inline styles.
     if origin == "settings":
-        embed_css = """\
-body {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  color: var(--color-text-primary, #eee);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 0.9rem;
-}
-h1 { display: none; }
-label {
-  display: block;
-  margin-top: 0.5rem;
-  font-weight: 600;
-  font-size: 0.82rem;
-  color: var(--color-text-secondary, #e0e0e0);
-}
-input, select {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 0.2rem;
-  padding: 0.4rem;
-  font-size: 0.9rem;
-  border: 1px solid var(--color-border-button, #3a3a6a);
-  border-radius: 4px;
-  background: var(--color-bg-panel, #16213e);
-  color: var(--color-text-primary, #eee);
-}
-input:focus, select:focus {
-  outline: 1px solid var(--color-text-link, #a0c0ff);
-}
-.error-banner {
-  background: var(--color-bg-health, #fde8e8);
-  border: 2px solid var(--color-border-health, #d93025);
-  border-radius: 4px;
-  color: var(--color-text-health, #b71c1c);
-  padding: 0.6em 0.8em;
-  margin-bottom: 1em;
-  font-weight: bold;
-  font-size: 0.85rem;
-}
-.success-banner {
-  background: var(--color-bg-success-muted, #e8f5e9);
-  border: 2px solid var(--color-bg-success, #2e7d32);
-  border-radius: 4px;
-  color: var(--color-bg-success, #2e7d32);
-  padding: 0.6em 0.8em;
-  margin-bottom: 1em;
-  font-weight: bold;
-  font-size: 0.85rem;
-}
-.form-actions {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-top: 1rem;
-}
-.form-actions button[type="submit"] {
-  width: auto;
-  background: var(--color-bg-success, #2e7d32);
-  color: var(--color-text-on-success, #fff);
-  border: none;
-  padding: 0.4rem 1.2rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.form-actions button[type="submit"]:hover {
-  background: var(--color-bg-success-hover, #1b5e20);
-}
-.form-actions button[name="action"][value="detect"] {
-  width: auto;
-  background: var(--color-bg-panel, #16213e);
-  color: var(--color-text-link, #a0c0ff);
-  border: 1px solid var(--color-border-button, #3a3a6a);
-  padding: 0.4rem 1.2rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.form-actions button[name="action"][value="detect"]:hover {
-  background: var(--color-bg-button-hover, #1f2d50);
-}
-.form-actions .cancel-link {
-  color: var(--color-text-muted, #c0c0e0);
-  text-decoration: none;
-  font-size: 0.85rem;
-}
-.form-actions .cancel-link:hover {
-  text-decoration: underline;
-}
-details {
-  margin-top: 0.5rem;
-}
-details summary {
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: var(--color-text-muted, #c0c0e0);
-  cursor: pointer;
-}
-details label {
-  font-weight: 500;
-  font-size: 0.78rem;
-}
-details input, details select {
-  font-size: 0.82rem;
-  padding: 0.3rem;
-}
-"""
         return (
             "<!DOCTYPE html>\n"
             '<html lang="en">\n'
             "<head>\n"
             '<meta charset="utf-8">\n'
-            f"<style>{embed_css}</style>\n"
+            f"<style>{_ADD_ACCOUNT_EMBED_CSS}</style>\n"
             "</head>\n"
             "<body>\n"
             f"{banner_html}"
