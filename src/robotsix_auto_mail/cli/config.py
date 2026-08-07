@@ -324,6 +324,7 @@ def _detect_settings(
             try:
                 provider = detect_provider(
                     email,
+                    level=level,
                     api_key=api_key,
                     provider_model=llm_provider_model,
                     mx_hosts=mx_hosts,
@@ -375,6 +376,7 @@ def _refine_with_llm(
     email: str,
     api_key: str | None,
     llm_provider_model: str | None,
+    llm_level: int = 1,
     mx_hosts: list[str],
     detect_provider: Callable[..., MailProvider],
     _detection_error: type[Exception],
@@ -384,6 +386,7 @@ def _refine_with_llm(
     try:
         refined = detect_provider(
             email,
+            level=llm_level,
             api_key=api_key,
             provider_model=llm_provider_model,
             feedback=_verify_feedback(config, result),
@@ -420,6 +423,7 @@ def _verify_and_refine(
     email: str,
     api_key: str | None,
     llm_provider_model: str | None,
+    llm_level: int = 1,
     mx_hosts: list[str],
     password: str | None,
     password_from_args: str | None,
@@ -549,6 +553,7 @@ def _verify_and_refine(
                 email=email,
                 api_key=api_key,
                 llm_provider_model=llm_provider_model,
+                llm_level=llm_level,
                 mx_hosts=mx_hosts,
                 detect_provider=detect_provider,
                 _detection_error=_detection_error,

@@ -268,6 +268,7 @@ def test_detect_llm_api_key_from_config(
     assert rc == 0
     mock_dp.assert_called_once_with(
         "user@x.com",
+        level=1,
         api_key="sk-test",
         provider_model="",
         mx_hosts=[],

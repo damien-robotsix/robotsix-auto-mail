@@ -9,6 +9,12 @@
   ``update_calendar_correlation_id`` and ``update_calendar_event_ref`` DB write
   functions (previously defined but never invoked), so the calendar columns are
   populated instead of remaining permanently empty.
+- Thread the configured `detector_level` through the detect CLI flow so
+  `detect_provider` receives the operator-configured LLM tier instead of
+  always defaulting to level 1.  The `_detect_settings`, `_verify_and_refine`,
+  and `_refine_with_llm` helpers now accept and forward a `level` / `llm_level`
+  keyword argument, and `_cmd_detect` captures both return values of
+  `resolve_llm_tier(APP_DETECTOR)`.
 - Removed orphaned `_VALID_CONFIDENCE_LEVELS` re-export from `triage._constants` (was imported but never used; peers route through `validate_confidence` instead).
 - Add `level` parameter to `propose_archive_subfolder_llm` (default 1) so
   the configured classifier LLM tier level is threaded from all three call
