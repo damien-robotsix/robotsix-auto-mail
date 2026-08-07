@@ -102,9 +102,7 @@ class TestParseRequestBody:
         result = handler._parse_request_body("message_id", "redirect_to")
         assert result == {"message_id": "", "redirect_to": "/board"}
 
-    def test_json_body_numeric_value_coerced_to_string(
-        self, tmp_db_path: str
-    ) -> None:
+    def test_json_body_numeric_value_coerced_to_string(self, tmp_db_path: str) -> None:
         handler = _FakeHandler(tmp_db_path)
         payload = json.dumps({"message_id": 42, "triage_action": "TO_ARCHIVE"})
         handler.headers.get.return_value = len(payload)
@@ -113,9 +111,7 @@ class TestParseRequestBody:
         result = handler._parse_request_body("message_id", "triage_action")
         assert result == {"message_id": "42", "triage_action": "TO_ARCHIVE"}
 
-    def test_json_body_missing_key_yields_empty_string(
-        self, tmp_db_path: str
-    ) -> None:
+    def test_json_body_missing_key_yields_empty_string(self, tmp_db_path: str) -> None:
         handler = _FakeHandler(tmp_db_path)
         payload = json.dumps({"message_id": "abc"})
         handler.headers.get.return_value = len(payload)
@@ -133,9 +129,7 @@ class TestParseRequestBody:
         result = handler._parse_request_body("field1", "field2")
         assert result == {"field1": "hello", "field2": "world"}
 
-    def test_json_body_no_strip_preserves_whitespace(
-        self, tmp_db_path: str
-    ) -> None:
+    def test_json_body_no_strip_preserves_whitespace(self, tmp_db_path: str) -> None:
         handler = _FakeHandler(tmp_db_path)
         payload = json.dumps({"notes": "  keep spaces  ", "other": "  trim  "})
         handler.headers.get.return_value = len(payload)
