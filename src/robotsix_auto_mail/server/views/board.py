@@ -50,17 +50,17 @@ def _render_board_columns(
         return '<div class="empty-board">No mail yet.</div>'
     full = render_board(cast("Any", _NonEmptyColumnsAdapter(adapter, ordered)), cards)
     open_tag = '<div id="board" class="board">'
-    drawer = (
-        '<div id="drawer" class="drawer hidden">'
-        '<div class="drawer-content"></div>'
-        "</div>"
-    )
     inner = full
     if inner.startswith(open_tag):
         inner = inner[len(open_tag) :]
-    drawer_idx = inner.rfind(drawer)
-    if drawer_idx != -1:
-        inner = inner[:drawer_idx]
+    # Strip the library's #drawer shell and the closing </div> of #board.
+    # Use the stable prefix ``<div id="drawer"`` rather than matching the
+    # exact drawer string — the library may add attributes (role, aria-*)
+    # without notice, and an exact-match miss would leave the closing
+    # </div> stripping to consume the wrong tag.
+    drawer_start = inner.rfind('<div id="drawer"')
+    if drawer_start != -1:
+        inner = inner[:drawer_start]
     inner = inner.rstrip()
     if inner.endswith("</div>"):
         inner = inner[: -len("</div>")]

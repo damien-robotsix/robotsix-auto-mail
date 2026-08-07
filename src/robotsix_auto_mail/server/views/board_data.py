@@ -197,6 +197,14 @@ def _gather_account_board_data(
     so the global board can call it per-account.
     """
     with _with_db(db_path, skip_migrations=True) as conn:
+        # Start a read transaction so every SELECT inside this block sees
+        # the same WAL snapshot.  Without an explicit transaction each
+        # statement autocommits and can observe a different point-in-time
+        # state — the triage agent writes & commits decisions one-by-one
+        # in a background thread, so ``list_records`` and
+        # ``list_triage_decisions`` would otherwise risk seeing
+        # inconsistent snapshots (records present, decisions absent).
+        conn.execute("BEGIN")
         health, triage_running = _read_account_health(conn)
         batch_op = _parse_batch_op(conn)
         all_records, triage_by_mid, column_buckets = _load_triage_state(conn)
