@@ -103,7 +103,6 @@ def test_build_board_html_multi_account_has_picker_and_qs() -> None:
                 label="Acc B",
             ),
         ),
-        default_account_id="A",
     )
 
     with mock.patch(
@@ -153,7 +152,6 @@ def test_build_global_board_html_patches_through() -> None:
                 label="A One",
             ),
         ),
-        default_account_id="A",
     )
 
     with (
@@ -189,7 +187,6 @@ def test_build_global_board_html_data_account_and_picker() -> None:
                 label=None,
             ),
         ),
-        default_account_id="X",
     )
 
     with mock.patch(
@@ -228,7 +225,6 @@ def test_build_global_board_html_batch_banner_wired() -> None:
                 label="Z",
             ),
         ),
-        default_account_id="Z",
     )
 
     with mock.patch(

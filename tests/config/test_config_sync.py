@@ -84,7 +84,6 @@ _JSON_EXAMPLE: dict = {
             },
         },
     ],
-    "default_account_id": "personal",
 }
 
 _ACCOUNTS_EXAMPLE_JSON: dict = {
@@ -112,7 +111,6 @@ _ACCOUNTS_EXAMPLE_JSON: dict = {
             },
         },
     ],
-    "default_account_id": "personal",
 }
 
 _DOCS_YAML_TABLE = """\
@@ -353,7 +351,6 @@ def test_accounts_example_colliding_db_paths(tmp_path: Path) -> None:
                 },
             },
         ],
-        "default_account_id": "a",
     }
     path = tmp_path / "accounts.json"
     path.write_text(json.dumps(bad))

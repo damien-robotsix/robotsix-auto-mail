@@ -33,7 +33,6 @@ class _FakeHandler(_BoardAuthMixin):
         self._current_account_id = None
         self._aggregate = False
         self._account_cookie = None
-        self.default_account_id = None
         self.headers = mock.MagicMock()
         self.rfile = mock.MagicMock()
         self._send_response = mock.MagicMock()

@@ -265,7 +265,7 @@ def _load() -> MailAccountsConfig:
         return load_accounts()
     except Exception:
         logger.warning("Config file unreadable; serving an empty config", exc_info=True)
-        return MailAccountsConfig(accounts=[], default_account_id="")
+        return MailAccountsConfig(accounts=[])
 
 
 def masked_config() -> dict[str, Any]:

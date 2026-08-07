@@ -50,7 +50,7 @@ def config_file(tmp_path: Path) -> Iterator[Path]:
     path = tmp_path / "config" / "config.json"
     path.parent.mkdir(parents=True)
     path.write_text(
-        json.dumps({"accounts": [_account("work")], "default_account_id": "work"})
+        json.dumps({"accounts": [_account("work")]})
     )
     with mock.patch.dict(os.environ, {"ROBOTSIX_CONFIG_FILE": str(path)}):
         yield path
@@ -156,7 +156,6 @@ def test_secrets_stay_with_their_own_account_when_reordered(config_file: Path) -
     update_config(
         {
             "accounts": [_account("work"), _account("home")],
-            "default_account_id": "work",
         }
     )
     # Submit the same two accounts in the opposite order, with masked secrets.
@@ -165,7 +164,7 @@ def test_secrets_stay_with_their_own_account_when_reordered(config_file: Path) -
         entry = _account(account_id)
         entry["config"]["password"] = MASK
         reordered.append(entry)
-    update_config({"accounts": reordered, "default_account_id": "work"})
+    update_config({"accounts": reordered})
 
     stored = {
         a["account_id"]: a["config"]["password"]
@@ -258,7 +257,7 @@ def test_history_is_capped(config_file: Path) -> None:
 def test_strip_secrets_removes_typed_secret_leaves_only() -> None:
     stripped = strip_secrets(
         MailAccountsConfig,
-        {"accounts": [_account("work")], "default_account_id": "work"},
+        {"accounts": [_account("work")]},
     )
 
     account = stripped["accounts"][0]["config"]
@@ -271,8 +270,8 @@ def test_strip_secrets_removes_typed_secret_leaves_only() -> None:
 def test_merge_updates_leaves_unmentioned_keys_alone() -> None:
     merged = merge_updates(
         MailAccountsConfig,
-        {"accounts": [_account("work")], "default_account_id": "work"},
-        {"default_account_id": "work"},
+        {"accounts": [_account("work")], "triage_level": 2},
+        {"triage_level": 2},
     )
     assert merged["accounts"][0]["config"]["username"] == "work@example.com"
 
@@ -305,7 +304,6 @@ def config_file_with_blocks(tmp_path: Path) -> Iterator[Path]:
         json.dumps(
             {
                 "accounts": [_account("work")],
-                "default_account_id": "work",
                 **_BLOCKS,
             }
         )

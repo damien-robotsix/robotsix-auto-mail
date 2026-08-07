@@ -40,7 +40,6 @@ def _accounts(**kwargs: object) -> MailAccountsConfig:
                 ),
             )
         ],
-        default_account_id="default",
         **kwargs,  # type: ignore[arg-type]
     )
 

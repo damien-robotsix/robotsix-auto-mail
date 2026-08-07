@@ -49,7 +49,7 @@ def test_cmd_serve_starts_http_server(
             return_value=[],
         ),
     ):
-        _cmd_serve(accounts, default_account_id="default", port=8099)
+        _cmd_serve(accounts, account_id="default", port=8099)
 
     mock_server.serve_forever.assert_called_once()
 
@@ -87,7 +87,7 @@ def test_cmd_serve_clears_stale_triage_state(
             return_value=[],
         ),
     ):
-        _cmd_serve(accounts, default_account_id="default", port=8099)
+        _cmd_serve(accounts, account_id="default", port=8099)
 
     mock_clear.assert_called_once_with(accounts)
 
@@ -128,7 +128,7 @@ def test_cmd_serve_starts_reconcile_background_thread(
             return_value=[],
         ),
     ):
-        _cmd_serve(accounts, default_account_id="default", port=8099)
+        _cmd_serve(accounts, account_id="default", port=8099)
 
     # Two daemon threads are started: reconcile + ingest.
     assert mock_thread_cls.call_count == 2
@@ -171,7 +171,7 @@ def test_cmd_serve_eaddrinuse_returns_1(
             return_value=[],
         ),
     ):
-        rc = _cmd_serve(accounts, default_account_id="default", port=8099)
+        rc = _cmd_serve(accounts, account_id="default", port=8099)
 
     assert rc == 1
 
@@ -209,7 +209,7 @@ def test_cmd_serve_other_oserror_propagates(
         ),
     ):
         with pytest.raises(OSError, match="Permission denied"):
-            _cmd_serve(accounts, default_account_id="default", port=8099)
+            _cmd_serve(accounts, account_id="default", port=8099)
 
 
 def test_cmd_serve_keyboard_interrupt_returns_0(
@@ -246,7 +246,7 @@ def test_cmd_serve_keyboard_interrupt_returns_0(
             return_value=[],
         ),
     ):
-        rc = _cmd_serve(accounts, default_account_id="default", port=8099)
+        rc = _cmd_serve(accounts, account_id="default", port=8099)
 
     assert rc == 0
 
@@ -300,7 +300,7 @@ def test_cmd_serve_instantiates_threading_http_server(
             return_value=[],
         ),
     ):
-        _cmd_serve(accounts, default_account_id="default", port=8099)
+        _cmd_serve(accounts, account_id="default", port=8099)
 
     assert server_instance is not None
     assert isinstance(server_instance, ThreadingHTTPServer)

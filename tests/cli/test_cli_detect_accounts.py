@@ -54,7 +54,6 @@ def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
 
     accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
     assert accounts.ids() == ("personal",)
-    assert accounts.default_account_id == "personal"
     assert accounts.get("personal").config.db_path == ".data/personal/mail.db"
 
 
@@ -172,7 +171,7 @@ def test_detect_overwrite_existing_account(
         db_path=".data/mail.db",  # legacy single-account path — must be preserved
     )
     seed_account = MailAccount(account_id="main", config=seed_cfg, label="Main Account")
-    container = MailAccountsConfig(accounts=[seed_account], default_account_id="main")
+    container = MailAccountsConfig(accounts=[seed_account])
     from robotsix_config import dump_config
 
     dump_config(container, path=output)
@@ -235,7 +234,6 @@ def test_detect_overwrite_not_set_still_errors_on_duplicate(
     )
     container = MailAccountsConfig(
         accounts=[MailAccount(account_id="main", config=seed_cfg, label=None)],
-        default_account_id="main",
     )
     output.write_text(container.model_dump_json(indent=2))
     provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
@@ -285,7 +283,7 @@ def test_detect_overwrite_with_oauth2_flags(
         oauth2_tenant="organizations",
     )
     seed_account = MailAccount(account_id="tii", config=seed_cfg, label="TII")
-    container = MailAccountsConfig(accounts=[seed_account], default_account_id="tii")
+    container = MailAccountsConfig(accounts=[seed_account])
     output.write_text(container.model_dump_json(indent=2))
 
     mock_provider = MailProvider(
@@ -346,11 +344,13 @@ def test_detect_overwrite_preserves_component_credentials(
     seed_account = MailAccount(account_id="main", config=seed_cfg, label="Main")
     container = MailAccountsConfig(
         accounts=[seed_account],
-        default_account_id="main",
-        langfuse=_make_langfuse_config(
-            public_key="pk-seed",
-            secret_key="sk-seed-lf",
-            base_url="https://cloud.langfuse.com",
+        langfuse=LangfuseConfig(
+            host="https://cloud.langfuse.com",
+            projects={
+                MAIN_LLM_ALIAS: LangfuseProject(
+                    public_key="pk-seed", secret_key="sk-seed-lf"
+                )
+            },
         ),
         openrouter=OpenRouterConfig(keys={MAIN_LLM_ALIAS: "sk-seed"}),
         models=TierModelsConfig(level1="openai/gpt-4o"),

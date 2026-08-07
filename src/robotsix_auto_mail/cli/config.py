@@ -228,19 +228,19 @@ def _existing_account_ids(path: Path) -> set[str]:
 def _existing_accounts_for_append(
     path: Path, new_account_id: str
 ) -> tuple[list[MailAccount], str]:
-    """Return ``(other_accounts, default_account_id)`` for appending to *path*.
+    """Return ``(other_accounts, first_account_id)`` for appending to *path*.
 
     ``other_accounts`` are the accounts already in the file *excluding* one
     matching ``new_account_id``.  A deprecated mono file is converted: its
-    single config becomes a ``"default"`` account.  ``default_account_id`` is
-    the file's existing default (or ``new_account_id`` when the file is new).
+    single config becomes a ``"default"`` account.
     """
     container = _load_accounts_from_file(path)
     if container is None:
         return [], new_account_id
 
     others = [a for a in container.accounts if a.account_id != new_account_id]
-    return others, container.default_account_id
+    first_id = container.accounts[0].account_id if container.accounts else new_account_id
+    return others, first_id
 
 
 def _find_existing_account(path: Path, account_id: str) -> MailAccount | None:

@@ -14,7 +14,6 @@ class BoardHandlerProtocol(Protocol):
     _current_account_id: str | None
     _aggregate: bool
     _account_cookie: str | None
-    default_account_id: str | None
 
     def _send_response(
         self,

@@ -59,7 +59,6 @@ def _accounts() -> MailAccountsConfig:
             MailAccount(account_id="personal", config=_cfg(db_path=".data/p.db")),
             MailAccount(account_id="work", config=_cfg(db_path=".data/w.db")),
         ],
-        default_account_id="personal",
     )
 
 
@@ -67,7 +66,7 @@ def test_accounts_get_and_default_and_ids() -> None:
     cfg = _accounts()
     assert cfg.ids() == ("personal", "work")
     assert cfg.get("work").account_id == "work"
-    assert cfg.default.account_id == "personal"
+    assert cfg.accounts[0].account_id == "personal"
 
 
 def test_accounts_get_unknown_lists_valid_ids() -> None:
@@ -81,10 +80,9 @@ def test_accounts_get_unknown_lists_valid_ids() -> None:
 
 def test_accounts_empty_is_allowed() -> None:
     """Empty accounts list is allowed — fresh deploys start with zero accounts."""
-    cfg = MailAccountsConfig(accounts=[], default_account_id="")
+    cfg = MailAccountsConfig(accounts=[])
     assert cfg.ids() == ()
-    with pytest.raises(ConfigurationError):
-        _ = cfg.default
+    assert cfg.accounts == []
 
 
 def test_accounts_duplicate_id_raises() -> None:
@@ -94,7 +92,6 @@ def test_accounts_duplicate_id_raises() -> None:
                 MailAccount(account_id="dup", config=_cfg(db_path=".data/a.db")),
                 MailAccount(account_id="dup", config=_cfg(db_path=".data/b.db")),
             ],
-            default_account_id="dup",
         )
 
 
@@ -105,16 +102,8 @@ def test_accounts_duplicate_db_path_raises() -> None:
                 MailAccount(account_id="a", config=_cfg(db_path=".data/same.db")),
                 MailAccount(account_id="b", config=_cfg(db_path=".data/same.db")),
             ],
-            default_account_id="a",
         )
 
-
-def test_accounts_unknown_default_raises() -> None:
-    with pytest.raises(ConfigurationError):
-        MailAccountsConfig(
-            accounts=[MailAccount(account_id="a", config=_cfg(db_path=".data/a.db"))],
-            default_account_id="nope",
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -149,10 +138,8 @@ def test_multi_account_example_json() -> None:
                 label="Work mailbox",
             ),
         ],
-        default_account_id="personal",
     )
     assert accounts.ids() == ("personal", "work")
-    assert accounts.default_account_id == "personal"
 
     personal = accounts.get("personal")
     assert personal.label == "Personal Gmail"
@@ -164,7 +151,7 @@ def test_multi_account_example_json() -> None:
     assert work.config.imap_host == "imap.work.example.com"
     assert work.config.db_path == ".data/work/mail.db"
 
-    assert accounts.default.account_id == "personal"
+    assert accounts.accounts[0].account_id == "personal"
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +176,6 @@ def test_load_accounts_reads_multi_json(tmp_path: Path) -> None:
                         },
                     }
                 ],
-                "default_account_id": "personal",
             }
         )
     )
@@ -230,7 +216,6 @@ def test_from_json_skips_template_literal_account(tmp_path: Path) -> None:
                 },
             },
         ],
-        "default_account_id": "good-1",
     }
     # Template literal guard is in _validate_template_literals which is not
     # called automatically by pydantic — it was called from from_yaml.

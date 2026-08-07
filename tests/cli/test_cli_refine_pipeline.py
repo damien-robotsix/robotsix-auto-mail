@@ -408,7 +408,7 @@ def test_verify_and_refine_multi_account_append(
         '"imap_host": "imap.old.com", "smtp_host": "smtp.old.com",'
         '"username": "old@example.com", "password": ""'
         "}}"
-        '], "default_account_id": "existing"}'
+        ']}'
     )
     provider = MailProvider(imap_host="imap.new.com", smtp_host="smtp.new.com")
 

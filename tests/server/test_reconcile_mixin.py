@@ -53,7 +53,6 @@ def _make_accounts(
     ]
     return MailAccountsConfig(
         accounts=accounts,
-        default_account_id=accounts[0].account_id if accounts else "",
     )
 
 

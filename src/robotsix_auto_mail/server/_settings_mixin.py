@@ -236,8 +236,6 @@ class _SettingsMixin:
         if isinstance(keywords, dict):
             if "accounts" in keywords:
                 keywords["accounts"] = accounts
-            if "default_account_id" in keywords:
-                keywords["default_account_id"] = accounts.default_account_id
 
         self._mirror_to_settings_stores(accounts)
 
@@ -284,7 +282,7 @@ class _SettingsMixin:
         On success returns ``{"ok": true}``.  On failure returns
         ``{"ok": false, "error": "…"}`` with an appropriate status code.
         The handler also updates the handler factory's cached accounts
-        and default_account_id so the change is visible immediately.
+        and the account list so the change is visible immediately.
         """
         from robotsix_auto_mail.config import (
             load_accounts,
@@ -326,13 +324,8 @@ class _SettingsMixin:
         # Remove the account.
         new_accounts = [a for a in existing.accounts if a.account_id != account_id]
 
-        # Pick a new default if the deleted account was the default.
-        default_id = existing.default_account_id
-        if account_id == default_id:
-            default_id = new_accounts[0].account_id if new_accounts else ""
-
         try:
-            new_config = existing.with_accounts(new_accounts, default_id)
+            new_config = existing.with_accounts(new_accounts)
         except Exception as exc:
             self._serve_json(
                 {"ok": False, "error": f"invalid config after deletion: {exc}"},
@@ -361,7 +354,5 @@ class _SettingsMixin:
             kw = handler_factory.keywords
             if "accounts" in kw:
                 kw["accounts"] = new_config
-            if "default_account_id" in kw:
-                kw["default_account_id"] = default_id
 
         self._serve_json({"ok": True}, status=200)

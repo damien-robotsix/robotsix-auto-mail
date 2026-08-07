@@ -50,7 +50,6 @@ class TestHandleAddAccountConfigSave:
         )
         existing_config = MailAccountsConfig(
             accounts=[existing_account],
-            default_account_id="existing",
         )
 
         with mock.patch(
@@ -123,7 +122,8 @@ class TestHandleAddAccountConfigSave:
         # The keywords['accounts'] should have been updated to the new config
         assert keywords["accounts"] is not None
         assert isinstance(keywords["accounts"], MailAccountsConfig)
-        assert keywords["accounts"].default_account_id == "test"
+        # The new account should be the first (and only) account
+        assert keywords["accounts"].accounts[0].account_id == "test"
 
     def test_success_appends_to_existing_config(self) -> None:
         handler = _AccountMixinFakeHandler()
@@ -143,7 +143,6 @@ class TestHandleAddAccountConfigSave:
         )
         existing_config = MailAccountsConfig(
             accounts=[existing_account],
-            default_account_id="old-account",
         )
 
         with (
@@ -162,21 +161,17 @@ class TestHandleAddAccountConfigSave:
         assert len(saved_config.accounts) == 2
         assert saved_config.accounts[0].account_id == "old-account"
         assert saved_config.accounts[1].account_id == "new-account"
-        # default_account_id preserved from existing
-        assert saved_config.default_account_id == "old-account"
 
-    def test_empty_accounts_with_blank_default_id_adds_first_account(self) -> None:
-        """Regression: when the existing config has accounts=[] and
-        default_account_id='' (fresh-deploy seed), adding the first
-        account must succeed and set the new account as default."""
+    def test_empty_accounts_adds_first_account(self) -> None:
+        """When the existing config has accounts=[], adding the first
+        account must succeed."""
         handler = _AccountMixinFakeHandler()
         handler.server.RequestHandlerClass.keywords = {"accounts": None}
         self._setup_post(handler, _make_post_body(account_id="first-account"))
 
-        # Simulate a fresh-deploy config with zero accounts and blank default.
+        # Simulate a fresh-deploy config with zero accounts.
         existing_config = MailAccountsConfig(
             accounts=[],
-            default_account_id="",
         )
 
         with (
@@ -190,12 +185,11 @@ class TestHandleAddAccountConfigSave:
         ):
             handler._handle_add_account()
 
-        # Must succeed (no 502 crash) — the new account becomes the default.
+        # Must succeed (no 502 crash).
         mock_save.assert_called_once()
         saved_config = mock_save.call_args[0][0]
         assert len(saved_config.accounts) == 1
         assert saved_config.accounts[0].account_id == "first-account"
-        assert saved_config.default_account_id == "first-account"
 
     def test_load_accounts_failure_creates_fresh_config(self) -> None:
         """When load_accounts raises (no existing config), a fresh one is created."""
@@ -218,4 +212,3 @@ class TestHandleAddAccountConfigSave:
         saved_config = mock_save.call_args[0][0]
         assert len(saved_config.accounts) == 1
         assert saved_config.accounts[0].account_id == "sole-account"
-        assert saved_config.default_account_id == "sole-account"

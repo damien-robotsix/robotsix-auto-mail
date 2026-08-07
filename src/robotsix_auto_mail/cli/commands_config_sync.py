@@ -29,7 +29,7 @@ def register_subparser(
         help="Run the LLM config-drift advisory agent (advisory only; "
         "does not replace the deterministic check_config_sync.py CI gate)",
     )
-    _add_account_arg(config_sync_parser)
+    _add_account_arg(config_sync_parser, required=True)
     config_sync_parser.add_argument(
         "--api-key",
         default=None,
@@ -60,7 +60,7 @@ def register_subparser(
         help="Mark a config-drift finding accepted or rejected so it is "
         "suppressed by the dedup memory ledger",
     )
-    _add_account_arg(config_sync_set_parser)
+    _add_account_arg(config_sync_set_parser, required=True)
     config_sync_set_parser.add_argument(
         "fingerprint",
         help="Fingerprint of the config-drift finding.",

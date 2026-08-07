@@ -2,7 +2,7 @@
 
 Covers ``MailConfig`` field validators, ``_validate_template_literals``,
 ``MailAccount._validate_account_id``, ``MailAccountsConfig._validate`` /
-``.default`` / ``.get()`` / ``.ids()``, and ``MailConfig.__repr__`` /
+``.get()`` / ``.ids()``, and ``MailConfig.__repr__`` /
 ``__str__`` secret-field masking.
 """
 
@@ -237,42 +237,36 @@ class TestMailAccountsConfigValidate:
         """Empty accounts list is accepted (fresh-deploy friendly)."""
         cfg = MailAccountsConfig(accounts=[])
         assert cfg.accounts == []
-        assert cfg.default_account_id == ""
+        assert cfg.ids() == ()
 
     def test_duplicate_account_ids_raises(self) -> None:
         a1 = _make_account(account_id="dup")
         a2 = _make_account(account_id="dup")
         with pytest.raises(ConfigurationError, match="duplicate account_id"):
-            MailAccountsConfig(accounts=[a1, a2], default_account_id="dup")
+            MailAccountsConfig(accounts=[a1, a2])
 
     def test_duplicate_db_paths_raises(self) -> None:
         a1 = _make_account(account_id="a", db_path="/same/path.db")
         a2 = _make_account(account_id="b", db_path="/same/path.db")
         with pytest.raises(ConfigurationError, match="duplicate db_path"):
-            MailAccountsConfig(accounts=[a1, a2], default_account_id="a")
+            MailAccountsConfig(accounts=[a1, a2])
 
     def test_empty_db_paths_are_skipped(self) -> None:
         """Accounts with empty db_path are not checked for duplicates."""
         a1 = _make_account(account_id="a", db_path="")
         a2 = _make_account(account_id="b", db_path="")
-        cfg = MailAccountsConfig(accounts=[a1, a2], default_account_id="a")
+        cfg = MailAccountsConfig(accounts=[a1, a2])
         assert len(cfg.accounts) == 2
-
-    def test_unresolvable_default_account_id_raises(self) -> None:
-        a1 = _make_account(account_id="a")
-        with pytest.raises(ConfigurationError, match="not in accounts"):
-            MailAccountsConfig(accounts=[a1], default_account_id="nonexistent")
 
     def test_valid_config_passes(self) -> None:
         a1 = _make_account(account_id="a", db_path="/a.db")
         a2 = _make_account(account_id="b", db_path="/b.db")
-        cfg = MailAccountsConfig(accounts=[a1, a2], default_account_id="b")
-        assert cfg.default_account_id == "b"
+        cfg = MailAccountsConfig(accounts=[a1, a2])
         assert len(cfg.accounts) == 2
 
 
 # ---------------------------------------------------------------------------
-# MailAccountsConfig.default / .get / .ids
+# MailAccountsConfig.get / .ids
 # ---------------------------------------------------------------------------
 
 
@@ -281,13 +275,7 @@ class TestMailAccountsConfigAccessors:
     def accounts_cfg(self) -> MailAccountsConfig:
         a1 = _make_account(account_id="alpha")
         a2 = _make_account(account_id="beta")
-        return MailAccountsConfig(accounts=[a1, a2], default_account_id="alpha")
-
-    def test_default_returns_default_account(
-        self, accounts_cfg: MailAccountsConfig
-    ) -> None:
-        default = accounts_cfg.default
-        assert default.account_id == "alpha"
+        return MailAccountsConfig(accounts=[a1, a2])
 
     def test_get_valid_id(self, accounts_cfg: MailAccountsConfig) -> None:
         account = accounts_cfg.get("beta")
@@ -311,3 +299,7 @@ class TestMailAccountsConfigAccessors:
         result = accounts_cfg.ids()
         assert result == ("alpha", "beta")
         assert isinstance(result, tuple)
+
+    def test_first_account_is_alpha(self, accounts_cfg: MailAccountsConfig) -> None:
+        """The first account in configured order is accessible via accounts[0]."""
+        assert accounts_cfg.accounts[0].account_id == "alpha"

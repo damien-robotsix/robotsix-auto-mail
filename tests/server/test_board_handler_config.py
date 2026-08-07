@@ -56,7 +56,6 @@ def config_file(tmp_path: Path, single_db: str) -> Iterator[Path]:
                         },
                     }
                 ],
-                "default_account_id": "work",
             }
         )
     )

@@ -90,5 +90,4 @@ def test_detect_honours_id_in_report(
     assert "sk-test" not in content
 
     accounts = MailAccountsConfig.model_validate(json.loads(output.read_text()))
-    assert accounts.default_account_id == "personal"
-    assert accounts.default.config.imap_host == "imap.gmail.com"
+    assert accounts.accounts[0].config.imap_host == "imap.gmail.com"

@@ -41,7 +41,7 @@ def register_subparser(
         help="Run the LLM inbox-triage agent and record advisory action "
         "statuses (does not move mail in the mailbox)",
     )
-    _add_account_arg(triage_parser)
+    _add_account_arg(triage_parser, required=True)
     triage_parser.add_argument(
         "--api-key",
         default=None,
@@ -59,7 +59,7 @@ def register_subparser(
         help="Record a user triage decision for a single message "
         "(advisory; does not move mail in the mailbox)",
     )
-    _add_account_arg(triage_set_parser)
+    _add_account_arg(triage_set_parser, required=True)
     triage_set_parser.add_argument(
         "message_id",
         help="Message-ID of the mail to triage.",

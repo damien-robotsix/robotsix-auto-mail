@@ -19,10 +19,16 @@ from robotsix_auto_mail.core._constants import (
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    from robotsix_auto_mail.cli import _add_account_arg
-
     parser = subparsers.add_parser("serve", help="Start the web board server")
-    _add_account_arg(parser)
+    parser.add_argument(
+        "--account",
+        metavar="ID",
+        default=None,
+        help=(
+            "Account id for the initial board view (default: first account "
+            "in configured order)."
+        ),
+    )
     parser.add_argument(
         "--port",
         type=int,
@@ -197,20 +203,16 @@ def _import_settings_from_central_deploy(accounts: MailAccountsConfig) -> None:
 def _cmd_serve(
     accounts: MailAccountsConfig,
     *,
-    default_account_id: str,
+    account_id: str = "",
     port: int,
     host: str = "127.0.0.1",
 ) -> int:
     """Run the serve subcommand: start the web board HTTP server.
 
     The full *accounts* container drives per-request account resolution;
-    *default_account_id* names the account whose config is used for
-    server startup (initial ``db_path``); it
-    is also the per-request fallback for single-account setups.  For
-    multi-account setups the board always defaults to the aggregate
-    (``__all__``) view — ``default_account_id`` is not consulted for the
-    initial board view.  Returns 0 on clean shutdown, 1 if the port is
-    already in use.
+    *account_id* names the account whose config is used for
+    server startup (initial ``db_path``).  When empty or unspecified,
+    the first account in configured order is used.
 
     When no accounts are configured (fresh deploy) the server starts with
     an in-memory database so the add-account form and health endpoints
@@ -230,11 +232,15 @@ def _cmd_serve(
     from robotsix_auto_mail.settings import merge_settings_store_accounts
 
     accounts = merge_settings_store_accounts(accounts)
-    if not default_account_id and accounts.default_account_id:
-        default_account_id = accounts.default_account_id
 
     if accounts.accounts:
-        default = accounts.get(default_account_id)
+        if account_id:
+            try:
+                default = accounts.get(account_id)
+            except Exception:
+                default = accounts.accounts[0]
+        else:
+            default = accounts.accounts[0]
         db_path = default.config.db_path
         mail_config = default.config
     else:
@@ -251,7 +257,6 @@ def _cmd_serve(
         db_path,
         mail_config=mail_config,
         accounts=accounts,
-        default_account_id=default_account_id if accounts.accounts else None,
     )
 
     # Self-heal any orphaned ``triage_run:state == "running"`` watermark left

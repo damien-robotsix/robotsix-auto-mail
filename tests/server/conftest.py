@@ -54,7 +54,7 @@ def db_accounts_no_triage_b() -> Generator[tuple[str, str, MailAccountsConfig]]:
     os.close(fd_a)
     os.close(fd_b)
     try:
-        accounts = _two_account_setup(db_a, db_b, default_account_id="B")
+        accounts = _two_account_setup(db_a, db_b)
         yield db_a, db_b, accounts
     finally:
         os.unlink(db_a)

@@ -38,7 +38,6 @@ class _FakeHandler(_BoardViewMixin):
         self.accounts = accounts
         self._current_account_id = _current_account_id
         self._account_cookie = _account_cookie
-        self.default_account_id = None
         self._send_response = mock.MagicMock()
         self._redirect = mock.MagicMock()
         self._not_found = mock.MagicMock()

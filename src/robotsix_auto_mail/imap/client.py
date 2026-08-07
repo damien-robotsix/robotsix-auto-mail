@@ -91,7 +91,7 @@ class ImapClient(_ProtocolClient):
 
     Typical usage::
 
-        cfg = load_accounts().default.config
+        cfg = load_accounts().accounts[0].config
         with ImapClient(cfg) as client:
             folders = client.list_folders()
             count = client.select_folder("INBOX")

@@ -82,7 +82,7 @@ def register_subparser(
     """Register the ``ingest`` subcommand and its arguments.
 
     The subcommand fetches new mail from IMAP, parses it, stores it in the
-    local database, and updates the watermark.  Supports single-account or
+    local database, and updates the watermark.  Supports single or
     all-accounts operation, dry-run mode, and a watch loop with liveness
     heartbeat file.
 
@@ -95,10 +95,7 @@ def register_subparser(
         "--account",
         metavar="ID",
         default=None,
-        help=(
-            "Account id to ingest. Optional when only one account is "
-            "configured; without it every configured account is ingested."
-        ),
+        help="Account id to ingest.",
     )
     ingest_account_group.add_argument(
         "--all-accounts",
@@ -210,10 +207,8 @@ def _cmd_ingest(
 
     When *account_id* is given, only that account is processed (exiting 1
     with the valid ids on an unknown id).  Otherwise every configured account
-    is processed in order, regardless of *all_accounts* (a single-account
-    container yields exactly one account, so single-account usage is
-    unchanged).  A per-account header is printed only when more than one
-    account is processed.
+    is processed in order.  A per-account header is printed only when more
+    than one account is processed.
 
     In watch mode it loops forever, running an ingest cycle for each selected
     account every interval.  A failed cycle is logged and the loop continues;
@@ -319,6 +314,7 @@ def _cmd_ingest(
                         f" reloaded config; falling back to all"
                         f" {len(fresh.accounts)} configured accounts."
                         " Restart with --account to resume a"
+                        "Restart with --account to resume a"
                         " single-account watch.\n"
                     )
                     fresh_selected = list(fresh.accounts)

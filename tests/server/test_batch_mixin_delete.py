@@ -91,7 +91,6 @@ class TestHandleBatchDelete:
                 MailAccount(account_id="A", config=cfg_a),
                 MailAccount(account_id="B", config=cfg_b),
             ],
-            default_account_id="A",
         )
 
         with mock.patch.object(

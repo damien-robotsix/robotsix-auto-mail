@@ -48,8 +48,7 @@ diagnose() {
 # config.json to the temp dir and point ROBOTSIX_CONFIG_FILE at it. Dummy
 # IMAP/SMTP values are fine because no mail connection is made at boot.
 # Shape must match MailAccountsConfig (config/model.py):
-#   {"accounts": [{"account_id":..., "label":..., "config": {MailConfig}}],
-#    "default_account_id": ...}
+#   {"accounts": [{"account_id":..., "label":..., "config": {MailConfig}}]}
 CONFIG_FILE="${TMP_DIR}/config.json"
 cat >"${CONFIG_FILE}" <<EOF
 {
@@ -65,8 +64,7 @@ cat >"${CONFIG_FILE}" <<EOF
         "db_path": "${TMP_DIR}/smoke.db"
       }
     }
-  ],
-  "default_account_id": "smoke"
+  ]
 }
 EOF
 export ROBOTSIX_CONFIG_FILE="${CONFIG_FILE}"

@@ -293,17 +293,15 @@ class _AccountMixin:
                 )
                 return
             new_accounts = [*list(existing.accounts), account]
-            default_id = existing.default_account_id or new_accounts[0].account_id
         else:
             new_accounts = [account]
-            default_id = account_id
 
         try:
             new_config = (
-                existing.with_accounts(new_accounts, default_id)
+                existing.with_accounts(new_accounts)
                 if existing is not None
                 else MailAccountsConfig(
-                    accounts=new_accounts, default_account_id=default_id
+                    accounts=new_accounts,
                 )
             )
         except Exception as exc:
@@ -350,13 +348,14 @@ class _AccountMixin:
 
         # Update the handler factory's cached accounts so the redirect
         # immediately reflects the new account without a server restart.
+        # The handler is built via functools.partial; updating its
+        # keywords dict causes the next handler instance to receive the
+        # updated config.
         handler_factory = getattr(self.server, "RequestHandlerClass", None)
         if handler_factory is not None and hasattr(handler_factory, "keywords"):
             kw = handler_factory.keywords
             if "accounts" in kw:
                 kw["accounts"] = new_config
-            if "default_account_id" in kw and new_config.default_account_id:
-                kw["default_account_id"] = new_config.default_account_id
 
         if origin == "settings":
             # Redirect the parent (settings page) rather than the iframe.

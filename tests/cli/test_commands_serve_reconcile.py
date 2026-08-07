@@ -226,7 +226,6 @@ def test_reconcile_loop_respects_ingest_interval(
                 label=None,
             ),
         ),
-        default_account_id="a",
     )
 
     mock_load_accounts = mock.Mock(return_value=accounts)

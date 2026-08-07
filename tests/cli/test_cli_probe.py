@@ -18,7 +18,6 @@ def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfi
     """Wrap a single ``MailConfig`` in a one-element accounts container."""
     return MailAccountsConfig(
         accounts=(MailAccount(account_id=account_id, config=cfg, label=None),),
-        default_account_id=account_id,
     )
 
 
@@ -37,7 +36,7 @@ def test_probe_success(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) -> N
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        rc = main(["probe"])
+        rc = main(["probe", "--account", "default"])
 
     assert rc == 0
     captured = capsys.readouterr()
@@ -80,7 +79,7 @@ def test_probe_imap_failure_smtp_ok(
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        rc = main(["probe"])
+        rc = main(["probe", "--account", "default"])
 
     assert rc == 1
     captured = capsys.readouterr()
@@ -115,7 +114,7 @@ def test_probe_smtp_failure_imap_ok(
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        rc = main(["probe"])
+        rc = main(["probe", "--account", "default"])
 
     assert rc == 1
     captured = capsys.readouterr()
@@ -149,7 +148,7 @@ def test_probe_both_fail(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) ->
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        rc = main(["probe"])
+        rc = main(["probe", "--account", "default"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -174,7 +173,7 @@ def test_probe_never_calls_send_message(
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        main(["probe"])
+        main(["probe", "--account", "default"])
 
     mock_smtp.send_message.assert_not_called()
 
@@ -198,7 +197,7 @@ def test_probe_imap_connection_refused(
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        rc = main(["probe"])
+        rc = main(["probe", "--account", "default"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -225,7 +224,7 @@ def test_probe_smtp_connection_refused(
         ),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        rc = main(["probe"])
+        rc = main(["probe", "--account", "default"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -265,7 +264,7 @@ def test_probe_imap_tls_failure(
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        rc = main(["probe"])
+        rc = main(["probe", "--account", "default"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -292,7 +291,7 @@ def test_probe_smtp_tls_failure(
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        rc = main(["probe"])
+        rc = main(["probe", "--account", "default"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -322,7 +321,7 @@ def test_probe_imap_auth_failure(
         mock.patch("smtplib.SMTP", return_value=mock_smtp),
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
     ):
-        rc = main(["probe"])
+        rc = main(["probe", "--account", "default"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -344,7 +343,7 @@ def test_probe_config_load_failure(
         side_effect=RuntimeError("boom"),
     ):
         with pytest.raises(SystemExit) as exc:
-            main(["probe"])
+            main(["probe", "--account", "default"])
 
     assert exc.value.code == 1
     err = capsys.readouterr().err

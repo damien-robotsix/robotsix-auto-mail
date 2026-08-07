@@ -96,10 +96,8 @@ def test_make_board_handler_with_accounts_adds_keywords(
         db_a,
         mail_config=accounts.get("A").config,
         accounts=accounts,
-        default_account_id="A",
     )
     assert handler.keywords["accounts"] is accounts
-    assert handler.keywords["default_account_id"] == "A"
 
 
 def test_query_string_tolerant_routing(
@@ -108,7 +106,7 @@ def test_query_string_tolerant_routing(
     """GET /board?account=A and POST /move?account=A dispatch (not 404)."""
 
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, _body, _hdrs = _get(f"http://127.0.0.1:{port}/board?account=A")
         assert status == 200
@@ -134,7 +132,7 @@ def test_get_routing_isolates_accounts(
 ) -> None:
     """GET /board-content?account=<id> serves only that account's records."""
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         _s, body_a, _h = _get(f"http://127.0.0.1:{port}/board-content?account=A")
         assert "alice@a.com" in body_a
@@ -152,7 +150,7 @@ def test_get_default_account_no_param(
 ) -> None:
     """GET /board-content with no param and ≥2 accounts defaults to aggregate."""
     _db_a, _db_b, accounts = db_accounts_no_triage_b
-    server, port = _start_test_server_with_accounts(accounts, "B")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         _s, body, _h = _get(f"http://127.0.0.1:{port}/board-content")
         # Aggregate view shows cards from both accounts.
@@ -168,7 +166,7 @@ def test_post_move_isolates_accounts(
     """POST /move?account=B writes only to B's DB; A's DB is untouched."""
 
     db_a, db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         data = b"message_id=msg-b&triage_action=TO_ANSWER"
         req = Request(
@@ -193,7 +191,7 @@ def test_unknown_explicit_account_is_404(
     from urllib.error import HTTPError
 
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         with pytest.raises(HTTPError) as exc_info:
             urlopen(f"http://127.0.0.1:{port}/board?account=bogus").close()
@@ -216,7 +214,7 @@ def test_stale_cookie_falls_back_to_default(
 ) -> None:
     """A stale/unknown id from the cookie is ignored — default served, no 404."""
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, body, _h = _get(
             f"http://127.0.0.1:{port}/board-content",
@@ -233,7 +231,7 @@ def test_cookie_persistence(
 ) -> None:
     """GET /board?account=B sets the cookie; a cookie-only request serves B."""
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         _s, _body, headers = _get(f"http://127.0.0.1:{port}/board?account=B")
         assert headers.get("Set-Cookie") == "account=B; Path=/; HttpOnly; SameSite=Lax"
@@ -253,7 +251,7 @@ def test_picker_visible_multi_account(
 ) -> None:
     """A 2-account board defaults to aggregate with 'All mailboxes' selected."""
     _db_a, _db_b, accounts = db_accounts_with_labels_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, body, _h = _get(f"http://127.0.0.1:{port}/board")
         assert status == 200
@@ -275,7 +273,7 @@ def test_picker_reflects_selection(
 ) -> None:
     """GET /board?account=B marks the B option selected (not A)."""
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, body, _h = _get(f"http://127.0.0.1:{port}/board?account=B")
         assert status == 200
@@ -293,7 +291,7 @@ def test_picker_onchange_navigates(
 ) -> None:
     """The picker reload handler navigates to ?account=."""
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         _s, body, _h = _get(f"http://127.0.0.1:{port}/board")
         assert "window.location.href='/board?account='" in body
@@ -306,7 +304,7 @@ def test_account_threaded_into_js_urls(
 ) -> None:
     """At ?account=B the detail iframe + content fetch carry account=B."""
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         _s, body, _h = _get(f"http://127.0.0.1:{port}/board?account=B")
         # The account query strings are now carried in the #board-config
@@ -322,7 +320,7 @@ def test_detail_panel_shows_selected_account_data(
 ) -> None:
     """GET /email/<msg-in-B>?embed=1&account=B returns B's data."""
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, body, _h = _get(
             f"http://127.0.0.1:{port}/email/msg-b?embed=1&account=B"
@@ -354,9 +352,8 @@ def test_single_account_container_renders_no_picker(single_db: str) -> None:
                 account_id="default", config=_account_config(single_db), label=None
             ),
         ),
-        default_account_id="default",
     )
-    server, port = _start_test_server_with_accounts(accounts, "default")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         _s, body, _h = _get(f"http://127.0.0.1:{port}/board")
         assert '<select id="account-picker"' not in body

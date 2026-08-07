@@ -112,7 +112,6 @@ def test_ingest_all_accounts_isolates_records_and_watermark(
             MailAccount(account_id="personal", config=personal, label=None),
             MailAccount(account_id="work", config=work, label=None),
         ],
-        default_account_id="personal",
     )
 
     # Each account fetches a *different* set of messages with distinct UID
@@ -238,7 +237,6 @@ def test_single_account_ingest_is_unchanged(
 
     accounts = MailAccountsConfig(
         accounts=[MailAccount(account_id="default", config=cfg, label=None)],
-        default_account_id="default",
     )
 
     def fake_fetch(
@@ -306,7 +304,6 @@ def test_per_account_default_folder_layout() -> None:
                 ),
             ),
         ],
-        default_account_id="personal",
     )
     assert accounts.get("personal").config.db_path == ".data/personal/mail.db"
     assert accounts.get("work").config.db_path == ".data/work/mail.db"
@@ -337,3 +334,4 @@ def test_imap_client_is_pure_protocol_client(cfg: MailConfig) -> None:
         ImapClient(cfg)
     mock_load.assert_not_called()
     mock_connect.assert_not_called()
+

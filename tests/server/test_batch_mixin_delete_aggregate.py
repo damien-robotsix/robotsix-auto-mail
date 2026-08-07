@@ -48,7 +48,6 @@ class TestHandleBatchDeleteAggregate:
                 MailAccount(account_id="A", config=cfg_a),
                 MailAccount(account_id="B", config=cfg_b),
             ],
-            default_account_id="A",
         )
 
         with mock.patch.object(handler, "_launch_background_worker") as mock_launch:
@@ -91,7 +90,6 @@ class TestHandleBatchDeleteAggregate:
         handler = _BatchFakeHandler(tmp_db_path)
         handler.accounts = MailAccountsConfig(
             accounts=[MailAccount(account_id="A", config=cfg)],
-            default_account_id="A",
         )
 
         # Don't mock _launch_background_worker — let the real

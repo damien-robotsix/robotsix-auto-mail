@@ -208,7 +208,6 @@ def test_cmd_detect_stdout_path() -> None:
     assert rc == 0
     stdout_text = stdout.getvalue()
     parsed = json.loads(stdout_text)
-    assert parsed["default_account_id"] is not None
     assert len(parsed["accounts"]) == 1
 
 
@@ -367,7 +366,6 @@ def test_cmd_detect_account_exists_no_overwrite(tmp_path: Path) -> None:
     )
     existing = MailAccountsConfig(
         accounts=[existing_account],
-        default_account_id="my-acct",
     )
     output_path.write_text(existing.model_dump_json())
 
@@ -436,7 +434,6 @@ def test_cmd_detect_account_exists_overwrite_merge(tmp_path: Path) -> None:
     )
     existing = MailAccountsConfig(
         accounts=[existing_account],
-        default_account_id="my-acct",
     )
     output_path.write_text(existing.model_dump_json())
 

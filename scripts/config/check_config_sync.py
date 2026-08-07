@@ -8,9 +8,9 @@ Cross-references the canonical ``MailConfig`` field list (obtained via
 2. ``docs/configuration.md`` (the config-key table)
 
 The JSON example is validated structurally against ``MailAccountsConfig``
-(>= 2 accounts, unique non-empty ids, unique per-account ``db_path``s, a
-valid ``default_account_id``, and no account silently falling back to a
-legacy ``.data/mail.db`` / ``.data/mail-<id>.db`` default).  Every
+(>= 2 accounts, unique non-empty ids, unique per-account ``db_path``s, and
+no account silently falling back to a legacy ``.data/mail.db`` /
+``.data/mail-<id>.db`` default).  Every
 ``MailConfig`` field must appear in the example's first account.
 
 Exits 0 when in sync, 1 when drift is found, 2 on a script-level error.
@@ -266,7 +266,6 @@ _CONFIGURATION_MD_CONTAINER_KEYS: frozenset[str] = frozenset(
         "accounts",
         "accounts[].id",
         "accounts[].label",
-        "default_account",
         "langfuse.host",
         "langfuse.projects",
         "openrouter.keys",
@@ -471,18 +470,6 @@ def _check_accounts_path(load_path: Path, label: str) -> list[dict[str, Any]]:
                 "artifact": label,
                 "type": "accounts-duplicate-db-path",
                 "key": str(duplicate_paths),
-            }
-        )
-
-    # The default account id must resolve to a real account.
-    try:
-        _ = config.default
-    except ConfigurationError as exc:
-        findings.append(
-            {
-                "artifact": label,
-                "type": "accounts-bad-default",
-                "message": str(exc),
             }
         )
 

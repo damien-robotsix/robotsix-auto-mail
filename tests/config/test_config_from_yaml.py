@@ -39,11 +39,9 @@ def _acct(account_id: str = "default", **overrides: object) -> MailAccount:
 
 def _accounts(
     *accts: MailAccount,
-    default_account_id: str = "default",
 ) -> MailAccountsConfig:
     return MailAccountsConfig(
         accounts=list(accts),
-        default_account_id=default_account_id,
     )
 
 
@@ -149,7 +147,7 @@ def test_mailconfig_defaults_for_missing_fields() -> None:
 def test_credential_blocks_default_to_unconfigured() -> None:
     """A config with no `langfuse` / `openrouter` block loads and traces nothing."""
     cfg = MailAccountsConfig(
-        accounts=[_acct("a", imap_host="i")], default_account_id="a"
+        accounts=[_acct("a", imap_host="i")]
     )
     assert cfg.langfuse.host == ""
     assert cfg.langfuse.projects == {}
@@ -248,7 +246,7 @@ def test_mailconfig_wrong_type_for_field() -> None:
 def test_accounts_validation_single() -> None:
     """Single account is valid."""
     cfg = _accounts(_acct("default"))
-    assert cfg.default.account_id == "default"
+    assert cfg.accounts[0].account_id == "default"
     assert len(cfg.accounts) == 1
 
 
@@ -256,7 +254,7 @@ def test_accounts_validation_empty_allowed() -> None:
     """Empty accounts list is accepted (fresh-deploy friendly)."""
     cfg = MailAccountsConfig(accounts=[])
     assert cfg.accounts == []
-    assert cfg.default_account_id == ""
+    assert cfg.ids() == ()
 
 
 def test_accounts_duplicate_id_raises() -> None:
@@ -267,17 +265,8 @@ def test_accounts_duplicate_id_raises() -> None:
                 _acct("dup", db_path=".data/a.db"),
                 _acct("dup", db_path=".data/b.db"),
             ],
-            default_account_id="dup",
         )
 
-
-def test_accounts_unknown_default_raises() -> None:
-    """Unknown default_account_id → ConfigurationError."""
-    with pytest.raises(ConfigurationError):
-        MailAccountsConfig(
-            accounts=[_acct("a", db_path=".data/a.db")],
-            default_account_id="nope",
-        )
 
 
 def test_accounts_duplicate_db_path_raises() -> None:
@@ -288,7 +277,6 @@ def test_accounts_duplicate_db_path_raises() -> None:
                 _acct("a", db_path=".data/same.db"),
                 _acct("b", db_path=".data/same.db"),
             ],
-            default_account_id="a",
         )
 
 
@@ -296,18 +284,16 @@ def test_accounts_get_and_default_and_ids() -> None:
     cfg = _accounts(
         _acct("personal", db_path=".data/p.db"),
         _acct("work", db_path=".data/w.db"),
-        default_account_id="personal",
     )
     assert cfg.ids() == ("personal", "work")
     assert cfg.get("work").account_id == "work"
-    assert cfg.default.account_id == "personal"
+    assert cfg.accounts[0].account_id == "personal"
 
 
 def test_accounts_get_unknown_lists_valid_ids() -> None:
     cfg = _accounts(
         _acct("personal", db_path=".data/p.db"),
         _acct("work", db_path=".data/w.db"),
-        default_account_id="personal",
     )
     with pytest.raises(ConfigurationError) as exc:
         cfg.get("missing")
@@ -347,11 +333,10 @@ def test_model_validate_multi_account() -> None:
                 },
             },
         ],
-        "default_account_id": "personal",
     }
     cfg = MailAccountsConfig.model_validate(data)
     assert cfg.ids() == ("personal", "work")
-    assert cfg.default.account_id == "personal"
+    assert cfg.accounts[0].account_id == "personal"
     assert cfg.get("personal").label == "Personal Gmail"
     assert cfg.get("personal").config.imap_host == "imap.gmail.com"
     assert cfg.get("work").config.imap_host == "imap.work.example.com"
@@ -371,10 +356,9 @@ def test_model_validate_default_top_level_fields() -> None:
                 },
             }
         ],
-        "default_account_id": "a",
     }
     cfg = MailAccountsConfig.model_validate(data)
-    c = cfg.default.config
+    c = cfg.accounts[0].config
     assert cfg.models.level1 == ""
     assert c.ingest_interval_minutes == 15
     assert c.archive_root == "robotsix-mail-archive"
@@ -397,7 +381,6 @@ def test_model_validate_wrong_type() -> None:
                 },
             }
         ],
-        "default_account_id": "a",
     }
     with pytest.raises(pydantic.ValidationError):
         MailAccountsConfig.model_validate(data)
@@ -418,7 +401,6 @@ def test_model_validate_invalid_tls_mode() -> None:
                 },
             }
         ],
-        "default_account_id": "a",
     }
     with pytest.raises(pydantic.ValidationError):
         MailAccountsConfig.model_validate(data)

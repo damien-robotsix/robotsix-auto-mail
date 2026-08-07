@@ -61,12 +61,18 @@ def load_accounts() -> MailAccountsConfig:
 
 
 def load() -> MailConfig:
-    """Return the **default account's** :class:`MailConfig` from the config file.
+    """Return the **first account's** :class:`MailConfig` from the config file.
 
     A thin convenience for callers that only need one representative account's
     settings (e.g. the best-effort Langfuse tracing init in ``cli.main()``).
     """
-    return load_accounts().default.config
+    accounts = load_accounts()
+    if not accounts.accounts:
+        raise ConfigurationError(
+            "No accounts configured — add an account via the web UI "
+            "(/add-account) or config file before using this command."
+        )
+    return accounts.accounts[0].config
 
 
 def save_accounts(

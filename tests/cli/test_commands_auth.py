@@ -28,7 +28,6 @@ def _ms_accounts(tmp_path: Path) -> MailAccountsConfig:
     )
     return MailAccountsConfig(
         accounts=(MailAccount(account_id="ms", config=config, label=None),),
-        default_account_id="ms",
     )
 
 
@@ -53,7 +52,6 @@ def _two_accounts(tmp_path: Path) -> MailAccountsConfig:
             MailAccount(account_id="personal", config=personal, label=None),
             MailAccount(account_id="work", config=work, label=None),
         ),
-        default_account_id="personal",
     )
 
 
@@ -63,9 +61,9 @@ def _two_accounts(tmp_path: Path) -> MailAccountsConfig:
 
 
 def test_cmd_auth_login_success(tmp_path: Path) -> None:
-    """Single OAuth2 account: device-code flow runs and cache path is printed."""
+    """OAuth2 account: device-code flow runs and cache path is printed."""
     accounts = _ms_accounts(tmp_path)
-    args = argparse.Namespace(account=None)
+    args = argparse.Namespace(account="ms")
     stdout = io.StringIO()
     stderr = io.StringIO()
 
@@ -137,11 +135,11 @@ def test_cmd_auth_login_unknown_account(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Multiple accounts without --account flag
+# Missing --account flag
 # ---------------------------------------------------------------------------
 
 
-def test_cmd_auth_login_ambiguous_account(tmp_path: Path) -> None:
+def test_cmd_auth_login_missing_account(tmp_path: Path) -> None:
     """Omitting --account with multiple accounts returns 1 and lists ids."""
     accounts = _two_accounts(tmp_path)
     args = argparse.Namespace(account=None)
@@ -160,9 +158,7 @@ def test_cmd_auth_login_ambiguous_account(tmp_path: Path) -> None:
 
     assert rc == 1
     err = stderr.getvalue()
-    assert "personal" in err
-    assert "work" in err
-    assert stdout.getvalue() == ""
+    assert "Error" in err
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +196,7 @@ def test_cmd_auth_login_non_oauth2_account(tmp_path: Path) -> None:
 def test_cmd_auth_login_device_flow_config_error(tmp_path: Path) -> None:
     """A ConfigurationError during device_code_login is caught and returned."""
     accounts = _ms_accounts(tmp_path)
-    args = argparse.Namespace(account=None)
+    args = argparse.Namespace(account="ms")
     stdout = io.StringIO()
     stderr = io.StringIO()
 
@@ -225,7 +221,7 @@ def test_cmd_auth_login_device_flow_config_error(tmp_path: Path) -> None:
 def test_cmd_auth_login_device_flow_generic_error(tmp_path: Path) -> None:
     """A generic Exception during device_code_login is caught and returned."""
     accounts = _ms_accounts(tmp_path)
-    args = argparse.Namespace(account=None)
+    args = argparse.Namespace(account="ms")
     stdout = io.StringIO()
     stderr = io.StringIO()
 

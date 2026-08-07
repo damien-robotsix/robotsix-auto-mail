@@ -22,7 +22,6 @@ def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfi
     """Wrap a single ``MailConfig`` in a one-element accounts container."""
     return MailAccountsConfig(
         accounts=(MailAccount(account_id=account_id, config=cfg, label=None),),
-        default_account_id=account_id,
     )
 
 
@@ -84,7 +83,7 @@ def _cfg_with_inbox(tmp_path: Path, message_id: str = "<a@x.com>") -> MailConfig
 
 def test_parser_has_triage_subcommand() -> None:
     """The parser knows the triage subcommand with expected defaults."""
-    args = build_parser().parse_args(["triage", "--output-format", "json"])
+    args = build_parser().parse_args(["triage", "--account", "default", "--output-format", "json"])
     assert args.command == "triage"
     assert args.output_format == "json"
     assert args.api_key is None
@@ -92,7 +91,7 @@ def test_parser_has_triage_subcommand() -> None:
 
 def test_parser_has_triage_set_subcommand() -> None:
     """The parser knows the triage-set subcommand with positional args."""
-    args = build_parser().parse_args(["triage-set", "<a@x.com>", "TO_ANSWER"])
+    args = build_parser().parse_args(["triage-set", "--account", "default", "<a@x.com>", "TO_ANSWER"])
     assert args.command == "triage-set"
     assert args.message_id == "<a@x.com>"
     assert args.action == "TO_ANSWER"
@@ -110,7 +109,7 @@ def test_triage_text_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),
     ):
-        rc = main(["triage", "--api-key", "sk-test"])
+        rc = main(["triage", "--account", "default", "--api-key", "sk-test"])
 
     assert rc == 0
     out = capsys.readouterr().out
@@ -132,7 +131,7 @@ def test_triage_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),
     ):
-        rc = main(["triage", "--output-format", "json", "--api-key", "sk-test"])
+        rc = main(["triage", "--account", "default", "--output-format", "json", "--api-key", "sk-test"])
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
@@ -157,7 +156,7 @@ def test_triage_empty_inbox(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),
     ):
-        rc = main(["triage"])
+        rc = main(["triage", "--account", "default"])
 
     assert rc == 0
     assert "No inbox mail to triage." in capsys.readouterr().out
@@ -176,7 +175,7 @@ def test_triage_error_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),
     ):
-        rc = main(["triage"])
+        rc = main(["triage", "--account", "default"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -196,7 +195,7 @@ def test_triage_set_success(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
         ),
         mock.patch("robotsix_auto_mail.triage.record_user_action") as mock_record,
     ):
-        rc = main(["triage-set", "<a@x.com>", "TO_ARCHIVE"])
+        rc = main(["triage-set", "--account", "default", "<a@x.com>", "TO_ARCHIVE"])
 
     assert rc == 0
     assert "Recorded user triage decision" in capsys.readouterr().out
@@ -225,7 +224,7 @@ def test_triage_set_invalid_action(
     with mock.patch(
         "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
     ):
-        rc = main(["triage-set", "<a@x.com>", "banana"])
+        rc = main(["triage-set", "--account", "default", "<a@x.com>", "banana"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -241,7 +240,7 @@ def test_triage_set_unknown_message_id(
     with mock.patch(
         "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
     ):
-        rc = main(["triage-set", "<missing@x.com>", "TO_ANSWER"])
+        rc = main(["triage-set", "--account", "default", "<missing@x.com>", "TO_ANSWER"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -295,7 +294,6 @@ def test_clear_stale_triage_state_resets_running_flags(
                 label=None,
             ),
         ),
-        default_account_id="a",
     )
 
     # Must not raise even though account C's DB cannot be opened.
@@ -352,7 +350,6 @@ def test_clear_stale_triage_state_resets_stale_batch_op(
                 label=None,
             ),
         ),
-        default_account_id="a",
     )
 
     _clear_stale_triage_state(accounts)

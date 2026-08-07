@@ -25,7 +25,6 @@ def _account(**overrides: object) -> MailAccount:
 def _accounts(**overrides: object) -> MailAccountsConfig:
     return MailAccountsConfig(
         accounts=[_account(**overrides)],
-        default_account_id="default",
     )
 
 
@@ -39,7 +38,7 @@ def test_archive_defaults() -> None:
 def test_archive_defaults_when_unset() -> None:
     """An account without archive overrides keeps the archive defaults."""
     accts = _accounts()
-    cfg = accts.default.config
+    cfg = accts.accounts[0].config
     assert cfg.archive_root == "robotsix-mail-archive"
     assert cfg.archive_enabled is True
 
@@ -47,7 +46,7 @@ def test_archive_defaults_when_unset() -> None:
 def test_archive_custom_values() -> None:
     """archive_root / archive_enabled can be set explicitly."""
     accts = _accounts(archive_root="custom-archive", archive_enabled=False)
-    cfg = accts.default.config
+    cfg = accts.accounts[0].config
     assert cfg.archive_root == "custom-archive"
     assert cfg.archive_enabled is False
 

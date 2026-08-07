@@ -51,7 +51,7 @@ def _patch_config_sync_llm(
 
 def test_parser_has_config_sync_subcommand() -> None:
     """The parser knows the config-sync subcommand with expected defaults."""
-    args = build_parser().parse_args(["config-sync", "--output-format", "json"])
+    args = build_parser().parse_args(["config-sync", "--account", "default", "--output-format", "json"])
     assert args.command == "config-sync"
     assert args.output_format == "json"
     assert args.dedup is False
@@ -78,7 +78,7 @@ def test_config_sync_text_output(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
     ):
-        rc = main(["config-sync", "--api-key", "sk-test"])
+        rc = main(["config-sync", "--account", "default", "--api-key", "sk-test"])
 
     assert rc == 0
     out = capsys.readouterr().out
@@ -107,7 +107,7 @@ def test_config_sync_json_output(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
     ):
-        rc = main(["config-sync", "--api-key", "sk-test", "--output-format", "json"])
+        rc = main(["config-sync", "--account", "default", "--api-key", "sk-test", "--output-format", "json"])
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
@@ -127,7 +127,7 @@ def test_config_sync_no_drift(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
     ):
-        rc = main(["config-sync", "--api-key", "sk-test"])
+        rc = main(["config-sync", "--account", "default", "--api-key", "sk-test"])
 
     assert rc == 0
     assert "No config drift detected." in capsys.readouterr().out
@@ -141,7 +141,7 @@ def test_config_sync_error_path(
         "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
         side_effect=ConfigSyncError("surface read failed"),
     ):
-        rc = main(["config-sync", "--api-key", "sk-test"])
+        rc = main(["config-sync", "--account", "default", "--api-key", "sk-test"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -159,7 +159,7 @@ def test_config_sync_api_key_precedence(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-env"
         ),
     ):
-        rc = main(["config-sync", "--api-key", "sk-cli"])
+        rc = main(["config-sync", "--account", "default", "--api-key", "sk-cli"])
 
     assert rc == 0
     cls.assert_called_once()
@@ -186,7 +186,7 @@ def test_config_sync_dedup_forwards_conn(
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_with_db)
         ),
     ):
-        rc = main(["config-sync", "--dedup"])
+        rc = main(["config-sync", "--account", "default", "--dedup"])
 
     assert rc == 0
     assert mock_agent.call_args.kwargs["conn"] is not None
@@ -194,7 +194,7 @@ def test_config_sync_dedup_forwards_conn(
 
 def test_parser_has_config_sync_set_subcommand() -> None:
     """The parser knows the config-sync-set subcommand with positional args."""
-    args = build_parser().parse_args(["config-sync-set", "abc123", "accepted"])
+    args = build_parser().parse_args(["config-sync-set", "--account", "default", "abc123", "accepted"])
     assert args.command == "config-sync-set"
     assert args.fingerprint == "abc123"
     assert args.state == "accepted"
@@ -234,7 +234,7 @@ def test_config_sync_set_success(
     with mock.patch(
         "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
     ):
-        rc = main(["config-sync-set", fingerprint, "accepted"])
+        rc = main(["config-sync-set", "--account", "default", fingerprint, "accepted"])
 
     assert rc == 0
     assert "Recorded config-drift finding state" in capsys.readouterr().out
@@ -261,7 +261,7 @@ def test_config_sync_set_invalid_state(
     with mock.patch(
         "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
     ):
-        rc = main(["config-sync-set", "abc123", "banana"])
+        rc = main(["config-sync-set", "--account", "default", "abc123", "banana"])
 
     assert rc == 1
     err = capsys.readouterr().err
@@ -283,7 +283,7 @@ def test_config_sync_set_unknown_fingerprint(
     with mock.patch(
         "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
     ):
-        rc = main(["config-sync-set", "deadbeef", "accepted"])
+        rc = main(["config-sync-set", "--account", "default", "deadbeef", "accepted"])
 
     assert rc == 1
     err = capsys.readouterr().err
