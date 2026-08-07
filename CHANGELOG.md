@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Wire the calendar write path: moving a card to ``TO_CALENDAR`` now calls the
+  ``update_calendar_correlation_id`` and ``update_calendar_event_ref`` DB write
+  functions (previously defined but never invoked), so the calendar columns are
+  populated instead of remaining permanently empty.
 - Removed orphaned `_VALID_CONFIDENCE_LEVELS` re-export from `triage._constants` (was imported but never used; peers route through `validate_confidence` instead).
 - Add `level` parameter to `propose_archive_subfolder_llm` (default 1) so
   the configured classifier LLM tier level is threaded from all three call

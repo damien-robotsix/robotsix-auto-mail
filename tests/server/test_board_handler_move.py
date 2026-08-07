@@ -354,3 +354,44 @@ def test_move_to_other_column_skips_llm(single_db: str) -> None:
             mock_provider_cls.assert_not_called()
         finally:
             server.shutdown()
+
+
+def test_move_to_calendar_writes_calendar_columns(single_db: str) -> None:
+    """Moving to TO_CALENDAR populates the calendar DB columns."""
+
+    _populate_db(
+        single_db,
+        [
+            {
+                "message_id": "cal-write",
+                "sender": "x@x.com",
+                "subject": "Calendar event",
+                "date": "2025-06-01T12:00:00",
+                "body_plain": "Meet on 2025-06-15",
+                "status": "to_read",
+            },
+        ],
+    )
+
+    server, port = _start_test_server(single_db)
+    try:
+        status, body = _post_form(
+            port,
+            {"message_id": "cal-write", "triage_action": "TO_CALENDAR"},
+        )
+        assert status == 302, f"Expected 302, got {status}: {body}"
+
+        import sqlite3
+
+        conn = sqlite3.connect(single_db)
+        row = conn.execute(
+            "SELECT calendar_correlation_id, calendar_event_ref "
+            "FROM mail_records WHERE message_id = ?",
+            ("cal-write",),
+        ).fetchone()
+        conn.close()
+        assert row is not None
+        assert row[0] != "", "calendar_correlation_id should be set"
+        assert row[1] == "pending", f"calendar_event_ref: {row[1]!r}"
+    finally:
+        server.shutdown()

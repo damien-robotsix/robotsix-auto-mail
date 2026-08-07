@@ -47,6 +47,7 @@ modules:
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
+      - run_tests.sh
 
   - id: docker
     description: >-
