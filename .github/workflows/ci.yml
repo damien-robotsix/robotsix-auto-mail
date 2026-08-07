@@ -42,7 +42,15 @@ jobs:
       mypy-advisory: false        # auto-mail runs `mypy --strict` as a BLOCKING gate; it must NOT become advisory
       run-deptry: true
       run-bandit: true
-      pytest-args: --hypothesis-profile=ci -m "not docker" --cov-report=xml:coverage.xml --randomly-seed=last
+      # No --randomly-seed=last here. `last` resolves the seed from
+      # .pytest_cache, which CI never persists, so each xdist worker resolved
+      # its own — intermittently producing different collection orders and
+      # tripping xdist's own consistency guard ("Different tests were collected
+      # between gw1 and gw3", same 1,882 tests). With `-x` in the shared
+      # workflow that surfaced as a misleading coverage failure. Omitting the
+      # flag lets pytest-randomly pick one seed on the controller and propagate
+      # it, which keeps order randomisation without the divergence.
+      pytest-args: --hypothesis-profile=ci -m "not docker" --cov-report=xml:coverage.xml
 
   # auto-mail-specific checks with no equivalent in the reusable spine. They
   # keep their own steps and stay blocking on every push + PR.
