@@ -307,6 +307,12 @@ ingress are not configured here.
   serves no HTTP.
 - TLS termination and HTTP basic auth are handled by the **central-deploy
   gateway** in front of the board; the board itself has no authentication.
+  The board server conditionally adds the `Secure` flag to the account session
+  cookie when the gateway sets `X-Forwarded-Proto: https` — ensure your reverse
+  proxy forwards this header so the cookie is marked `Secure` over TLS
+  connections. All responses also include `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and a
+  `Content-Security-Policy` restricting resource loading to same-origin.
 - Configuration is **not** managed by central-deploy. The app reads the JSON
   file at `ROBOTSIX_CONFIG_FILE` (`/home/app/config/config.json`), seeded
   manually into the `auto-mail-config` volume — see

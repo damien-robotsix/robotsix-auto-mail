@@ -1,0 +1,1 @@
+Add HTTP security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Content-Security-Policy`) to all board server responses via `_send_response` and `_redirect`. Harden the account session cookie with `HttpOnly` and `SameSite=Lax` attributes (and `Secure` when behind an HTTPS-terminating reverse proxy).

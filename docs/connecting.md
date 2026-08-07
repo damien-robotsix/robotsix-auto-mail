@@ -750,8 +750,10 @@ the card's status column via `POST /move`.
 dropdown appears in the page header. The dropdown
 shows each configured account with its `label` (or `id` if no label is set), and
 you can click to switch accounts. Switching navigates to `/board?account=<id>` and
-sets an `account` cookie (via `Set-Cookie: account=<id>; Path=/`) so every
-subsequent request on the page routes to the chosen account. The selected account
+sets an `account` cookie (via `Set-Cookie: account=<id>; Path=/; HttpOnly; SameSite=Lax`) so every
+subsequent request on the page routes to the chosen account. The cookie includes `HttpOnly` (blocks JavaScript access) and
+`SameSite=Lax` (prevents CSRF on state-changing requests); when the server is behind a TLS-terminating reverse proxy that
+sets `X-Forwarded-Proto: https`, the `Secure` flag is also added. The selected account
 is also threaded into the detail iframe and content refresh requests so deep-links
 and cookie-less clients maintain account context. When only one account is
 configured, the picker does not appear and the board behaves as a single-account
@@ -911,11 +913,11 @@ database and mail config are used to handle each request.
 2. **Cookie** — an `account` cookie set by a prior successful query param selection
 3. **Aggregate view** — when no query param or cookie is present and multiple
    accounts are configured, the server returns the `__all__` aggregate view
-   (all accounts combined). A `Set-Cookie: account=__all__` header is sent so
+   (all accounts combined). A `Set-Cookie: account=__all__; Path=/; HttpOnly; SameSite=Lax` header is sent so
    the aggregate preference persists. For single-account configurations the
    lone account is served directly.
 
-When the HTTP response succeeds with an explicit `?account=<id>`, a `Set-Cookie: account=<id>; Path=/` header is sent so the selection persists across the board's cookie-less JavaScript fetches and POST→redirect flows. This allows the browser to stay on the chosen account without explicit URL parameters on every request.
+When the HTTP response succeeds with an explicit `?account=<id>`, a `Set-Cookie: account=<id>; Path=/; HttpOnly; SameSite=Lax` header is sent so the selection persists across the board's cookie-less JavaScript fetches and POST→redirect flows. This allows the browser to stay on the chosen account without explicit URL parameters on every request.
 
 **Error handling:**
 

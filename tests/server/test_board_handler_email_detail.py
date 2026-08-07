@@ -236,7 +236,7 @@ def test_cookie_persistence(
     server, port = _start_test_server_with_accounts(accounts, "A")
     try:
         _s, _body, headers = _get(f"http://127.0.0.1:{port}/board?account=B")
-        assert headers.get("Set-Cookie") == "account=B; Path=/"
+        assert headers.get("Set-Cookie") == "account=B; Path=/; HttpOnly; SameSite=Lax"
 
         _s, body, _h = _get(
             f"http://127.0.0.1:{port}/board-content",
