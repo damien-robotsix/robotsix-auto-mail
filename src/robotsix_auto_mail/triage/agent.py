@@ -179,6 +179,45 @@ def _build_user_message(records: list) -> str:  # type: ignore[type-arg]
 # ---------------------------------------------------------------------------
 
 
+def _extract_preferred_unsubscribe_uri(raw_header: str) -> str:
+    """Extract the best URI from an RFC 2369 ``List-Unsubscribe`` header.
+
+    The header may contain multiple comma-separated URIs, each wrapped in
+    angle brackets (``<https://...>, <mailto:...>``).  Returns the first
+    ``https://`` or ``http://`` URI found; if none, returns the first
+    ``mailto:`` URI; if neither, returns the first non-empty URI after
+    angle-bracket stripping.  Returns ``""`` when no URI can be extracted.
+    """
+    header = raw_header.strip()
+    if not header:
+        return ""
+
+    # Split on commas (RFC 2369 allows multiple URIs).
+    parts = header.split(",")
+
+    mailto_candidate = ""
+    first_candidate = ""
+
+    for part in parts:
+        part = part.strip()
+        # Strip surrounding angle brackets.
+        if part.startswith("<") and part.endswith(">"):
+            part = part[1:-1].strip()
+        if not part:
+            continue
+
+        if not first_candidate:
+            first_candidate = part
+
+        if part.lower().startswith(("https://", "http://")):
+            return part
+
+        if not mailto_candidate and part.lower().startswith("mailto:"):
+            mailto_candidate = part
+
+    return mailto_candidate or first_candidate
+
+
 def _detect_unsubscribe_for_sender(
     conn: sqlite3.Connection | None,
     sender: str,
@@ -206,15 +245,17 @@ def _detect_unsubscribe_for_sender(
 
     # -- mechanical fast path: List-Unsubscribe header present -----------
     header = (recent.unsubscribe_header or "").strip()
-    # Strip angle brackets (RFC 2369 format: <mailto:...> or <https://...>).
-    if header.startswith("<") and header.endswith(">"):
-        header = header[1:-1].strip()
-    if header:
-        method = "mailto" if header.lower().startswith("mailto:") else "header"
+    # Parse RFC 2369 List-Unsubscribe header, which may contain multiple
+    # comma-separated URIs each wrapped in angle brackets, e.g.:
+    #   <https://example.com/unsub>, <mailto:unsub@example.com>
+    # Extract individual URIs and prefer https/http over mailto.
+    uri = _extract_preferred_unsubscribe_uri(header)
+    if uri:
+        method = "mailto" if uri.lower().startswith("mailto:") else "header"
         return UnsubscribeDetection(
             has_unsubscribe=True,
             method=method,
-            url=header,
+            url=uri,
             description=(
                 "List-Unsubscribe header found"
                 if method == "header"

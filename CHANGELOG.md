@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Fix unsubscribe link failing with Bad Request when ``List-Unsubscribe`` header contains multiple comma-separated URIs (e.g. ``<https://...>, <mailto:...>``). The header is now parsed per RFC 2369 to extract a single preferred URI (https/http over mailto).
 - Removed ``default_account_id`` setting and all single-account-fallback code paths.
   The account a request/CLI command operates on is now mandatory and explicit.
   The initial board view defaults to the first account in configured order.

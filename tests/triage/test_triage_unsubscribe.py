@@ -23,6 +23,9 @@ from robotsix_auto_mail.triage import (
 from robotsix_auto_mail.triage._constants import (
     _UNSUBSCRIBE_SUGGESTIONS_KEY,
 )
+from robotsix_auto_mail.triage.agent import (
+    _extract_preferred_unsubscribe_uri,
+)
 from tests.conftest import _make_record
 
 # ---------------------------------------------------------------------------
@@ -53,6 +56,68 @@ def test_unsubscribe_detection_rejects_invalid_method() -> None:
 
     with pytest.raises(pydantic.ValidationError):
         UnsubscribeDetection(has_unsubscribe=True, method="banana")
+
+
+# ---------------------------------------------------------------------------
+# _extract_preferred_unsubscribe_uri — RFC 2369 header parsing
+# ---------------------------------------------------------------------------
+
+
+def test_extract_preferred_unsubscribe_uri_empty() -> None:
+    """Empty or blank header returns ''."""
+    assert _extract_preferred_unsubscribe_uri("") == ""
+    assert _extract_preferred_unsubscribe_uri("   ") == ""
+
+
+def test_extract_preferred_unsubscribe_uri_single_https() -> None:
+    """Single https URI with angle brackets."""
+    result = _extract_preferred_unsubscribe_uri("<https://example.com/unsub>")
+    assert result == "https://example.com/unsub"
+
+
+def test_extract_preferred_unsubscribe_uri_single_mailto() -> None:
+    """Single mailto URI with angle brackets."""
+    result = _extract_preferred_unsubscribe_uri("<mailto:unsub@example.com>")
+    assert result == "mailto:unsub@example.com"
+
+
+def test_extract_preferred_unsubscribe_uri_multi_value_https_first() -> None:
+    """Multiple URIs — prefer https over mailto."""
+    result = _extract_preferred_unsubscribe_uri(
+        "<https://links.example.com/s/uh/abc>, "
+        "<mailto:unsub+12345@unsubscribe.example.com>"
+    )
+    assert result == "https://links.example.com/s/uh/abc"
+
+
+def test_extract_preferred_unsubscribe_uri_multi_value_mailto_first() -> None:
+    """Multiple URIs — when https is second, still prefer it over mailto."""
+    result = _extract_preferred_unsubscribe_uri(
+        "<mailto:unsub@example.com>, <https://example.com/optout>"
+    )
+    assert result == "https://example.com/optout"
+
+
+def test_extract_preferred_unsubscribe_uri_multi_value_mailto_only() -> None:
+    """Multiple mailto URIs — return the first one."""
+    result = _extract_preferred_unsubscribe_uri(
+        "<mailto:one@example.com>, <mailto:two@example.com>"
+    )
+    assert result == "mailto:one@example.com"
+
+
+def test_extract_preferred_unsubscribe_uri_no_brackets() -> None:
+    """URI without angle brackets still works."""
+    result = _extract_preferred_unsubscribe_uri("https://example.com/unsub")
+    assert result == "https://example.com/unsub"
+
+
+def test_extract_preferred_unsubscribe_uri_whitespace_insensitive() -> None:
+    """Extra whitespace around commas and brackets is handled."""
+    result = _extract_preferred_unsubscribe_uri(
+        " < https://example.com/unsub > , < mailto:unsub@example.com > "
+    )
+    assert result == "https://example.com/unsub"
 
 
 # ---------------------------------------------------------------------------
@@ -117,6 +182,32 @@ def test_detect_unsubscribe_fast_path_mailto(
     assert result.method == "mailto"
     assert "mailto:" in result.url
     assert result.url == "mailto:unsub@example.com"
+    cls.assert_not_called()
+
+
+def test_detect_unsubscribe_fast_path_multi_value_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Multi-value List-Unsubscribe header: prefer https over mailto."""
+    records = [
+        _make_record(
+            message_id="<1@x.com>",
+            sender="sender@example.com",
+            subject="Newsletter",
+            date="2025-06-01T12:00:00",
+            body_plain="Hello",
+            unsubscribe_header=(
+                "<https://links.iterable.com/s/uh/abc>, "
+                "<mailto:unsub+12345@unsubscribe.iterable.com>"
+            ),
+        ),
+    ]
+    with mock.patch("robotsix_llmio.core.factory.get_provider_for_identifier") as cls:
+        result = _detect_unsubscribe_for_sender(None, "sender@example.com", records)
+    assert result is not None
+    assert result.has_unsubscribe is True
+    assert result.method == "header"
+    assert result.url == "https://links.iterable.com/s/uh/abc"
     cls.assert_not_called()
 
 
