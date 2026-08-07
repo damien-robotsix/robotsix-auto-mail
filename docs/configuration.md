@@ -77,8 +77,9 @@ accounts:
 - **Per-account sections** — `imap`, `smtp`, `auth`, `store`, `ingest`,
   `archive`, and `triage` — live under each `accounts:`
   entry.
-- **Application-wide sections** — `openrouter`, `langfuse`, `llm_provider_model`
-  and `logging` — are top-level and apply to every account.
+- **Application-wide sections** — `openrouter`, `langfuse`, `models`,
+  `logging`, and the per-application level fields — are top-level and apply
+  to every account.
 - The single-account ("mono") shape (top-level `imap:` / `smtp:` / `auth:`
   with no `accounts:` key) is **no longer loaded**. Run
   edit the `accounts:` block directly, or run
@@ -181,7 +182,17 @@ what makes the breakage easy to miss.
       "robotsix-auto-mail": "sk-or-…"
     }
   },
-  "llm_provider_model": ""
+  "models": {
+    "level1": "",
+    "level2": "",
+    "level3": "",
+    "level4": ""
+  },
+  "triage_level": 1,
+  "classifier_level": 1,
+  "rules_level": 1,
+  "detector_level": 1,
+  "draft_level": 1
 }
 ```
 
@@ -198,7 +209,15 @@ therefore fund exactly one function.
 | `langfuse.host` | `""` | string | no | Langfuse instance base URL. When empty, the `robotsix-llmio` default (`https://cloud.langfuse.com`) is used. |
 | `langfuse.projects` | `{}` | map | no | Alias → `{public_key, secret_key, project_id}`. Tracing is enabled once both keys of an alias are set; `project_id` is optional and only used by consumers that address a project by id. Secret keys are masked in logs and `repr`. |
 | `openrouter.keys` | `{}` | map | no | Alias → OpenRouter API key. Get one at <https://openrouter.ai/keys>. Masked in logs and `repr`. |
-| `llm_provider_model` | `""` | string | no | LLM backend name. When empty, the `robotsix-llmio` library's tier default is used. See its README for available backends. |
+| `models.level1` | `""` | string | no | Per-level model override for tier 1 (used by triage, classifier, rules, and detector by default). Holds a provider-model identifier (e.g. ``"openrouter[deepseek]-deepseek/deepseek-v4-flash"``). Empty means use the llmio tier-1 default. |
+| `models.level2` | `""` | string | no | Per-level model override for tier 2. |
+| `models.level3` | `""` | string | no | Per-level model override for tier 3 (used by the draft agent by default). |
+| `models.level4` | `""` | string | no | Per-level model override for tier 4. Wired through even though llmio does not yet define a `LEVEL4_DEFAULT`. |
+| `triage_level` | `1` | integer | no | Tier level assigned to the inbox triage agent. |
+| `classifier_level` | `1` | integer | no | Tier level assigned to the message classifier. |
+| `rules_level` | `1` | integer | no | Tier level assigned to the rules-maintenance agent. |
+| `detector_level` | `1` | integer | no | Tier level assigned to the account-type detector. |
+| `draft_level` | `1` | integer | no | Tier level assigned to the draft-generation agent. |
 
 ### `logging` — observability
 
