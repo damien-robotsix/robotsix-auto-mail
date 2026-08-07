@@ -21,7 +21,6 @@ def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfi
     """Wrap a single ``MailConfig`` in a one-element accounts container."""
     return MailAccountsConfig(
         accounts=(MailAccount(account_id=account_id, config=cfg, label=None),),
-        default_account_id=account_id,
     )
 
 

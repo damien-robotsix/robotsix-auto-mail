@@ -355,7 +355,7 @@ class BoardHandler(
             self.db_path = account.config.db_path
             self.mail_config = account.config
             self._current_account_id = account.account_id
-            self._account_cookie = f"account={account.account_id}; Path=/"
+            self._account_cookie = self._build_account_cookie(account.account_id)
             return True
 
         # -- cookie-based resolution ------------------------------------
