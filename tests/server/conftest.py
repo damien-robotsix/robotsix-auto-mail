@@ -79,6 +79,6 @@ def db_accounts_with_labels_no_triage() -> Generator[
 
 
 @pytest.fixture
-def single_db(tmp_db_path: str) -> Generator[str]:
-    """Yield a temp DB path; delegates to root tmp_db_path fixture."""
-    yield tmp_db_path
+def single_db(tmp_db_path: str) -> str:
+    """Return a temp DB path; delegates to root tmp_db_path fixture."""
+    return tmp_db_path
