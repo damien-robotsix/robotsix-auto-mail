@@ -169,7 +169,7 @@ class TestHandleForceTriageColumn:
 
     def test_triage_error_returns_400(self, tmp_db_path: str) -> None:
         """When delete_triage_decisions_by_action raises TriageError,
-        _bad_request is called with the error message and the worker is
+        _bad_request is called with a generic message and the worker is
         not launched."""
         handler = _FakeHandler(tmp_db_path)
         handler._parse_request_body.return_value = {"action": "TO_ARCHIVE"}
@@ -180,7 +180,7 @@ class TestHandleForceTriageColumn:
         ):
             handler._handle_force_triage_column()
 
-        handler._bad_request.assert_called_once_with("no decisions to clear")
+        handler._bad_request.assert_called_once_with("Invalid request")
         handler._launch_background_worker.assert_not_called()
 
     # -- generic Exception from delete_triage_decisions_by_action ----------

@@ -257,7 +257,7 @@ def test_force_triage_column_inbox_action_returns_400(
             port, {"action": "INBOX"}, path="/force-triage-column"
         )
         assert status == 400
-        assert "Cannot delete triage decisions for action='INBOX'" in body
+        assert "Invalid request" in body
     finally:
         server.shutdown()
 

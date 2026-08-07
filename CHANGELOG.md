@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Sanitize HTTP 400 error responses in ``_action_mixin.py`` and
+  ``_triage_mixin.py``: replace raw ``str(exc)`` disclosure with
+  generic ``"Invalid request"`` message and server-side
+  ``logger.exception`` traceback logging.
 - Added testing convention to AGENT.md: novel functions in fix/recovery paths must have positive-path unit tests exercising the real function body, mocking at dependencies, not the function itself.
 - Wrap ``sys.path.insert(0, …)`` in ``_load_field_mappings`` inside a
   ``try/finally`` block that restores the original ``sys.path`` so the

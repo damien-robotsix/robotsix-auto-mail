@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import TYPE_CHECKING
 
 from robotsix_auto_mail.core._constants import _TRIAGE_RUN_STATE_KEY
@@ -13,6 +14,8 @@ from robotsix_auto_mail.server.adapters import (
     _run_triage_background,
 )
 from robotsix_auto_mail.triage import resolve_rules_path
+
+logger = logging.getLogger(__name__)
 
 
 def _rules_path_str(mail_config: object | None, db_path: str) -> str | None:
@@ -81,8 +84,9 @@ class _TriageMixin:
         try:
             with _with_db(self.db_path) as conn:
                 delete_triage_decisions_by_action(conn, action)
-        except TriageError as exc:
-            self._bad_request(str(exc))
+        except TriageError:
+            logger.exception("Triage handler failed")
+            self._bad_request("Invalid request")
             return
         except Exception as exc:
             self._send_response(
