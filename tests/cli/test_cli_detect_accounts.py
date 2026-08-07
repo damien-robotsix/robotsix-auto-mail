@@ -348,7 +348,9 @@ def test_detect_overwrite_preserves_component_credentials(
         accounts=[seed_account],
         default_account_id="main",
         langfuse=_make_langfuse_config(
-            public_key="pk-seed", secret_key="sk-seed-lf", base_url="https://cloud.langfuse.com"
+            public_key="pk-seed",
+            secret_key="sk-seed-lf",
+            base_url="https://cloud.langfuse.com",
         ),
         openrouter=OpenRouterConfig(keys={MAIN_LLM_ALIAS: "sk-seed"}),
         models=TierModelsConfig(level1="openai/gpt-4o"),
