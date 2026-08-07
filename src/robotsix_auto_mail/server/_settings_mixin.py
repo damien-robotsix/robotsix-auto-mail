@@ -26,9 +26,7 @@ logger = logging.getLogger(__name__)
 #: Cap on a config request body — the panel sends only changed keys.
 _MAX_BODY_BYTES = 1_000_000
 
-_SETTINGS_CSS = (
-    Path(__file__).parent / "static" / "settings-panel.css"
-).read_text()
+_SETTINGS_CSS = (Path(__file__).parent / "static" / "settings-panel.css").read_text()
 
 _SETTINGS_PAGE = (
     """\

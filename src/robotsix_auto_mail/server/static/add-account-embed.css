@@ -30,6 +30,10 @@ input, select {
   background: var(--color-bg-panel, #16213e);
   color: var(--color-text-primary, #eee);
 }
+details input, details select {
+  font-size: 0.82rem;
+  padding: 0.3rem;
+}
 input:focus, select:focus {
   outline: 1px solid var(--color-text-link, #a0c0ff);
 }
@@ -107,8 +111,4 @@ details summary {
 details label {
   font-weight: 500;
   font-size: 0.78rem;
-}
-details input, details select {
-  font-size: 0.82rem;
-  padding: 0.3rem;
 }
