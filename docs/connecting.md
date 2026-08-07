@@ -757,9 +757,7 @@ every configured mail account (label/id, username, IMAP host), with a
 **Delete** button per account.  Deleting an
 account prompts for confirmation and removes it from the persisted
 `config/config.json`, updating the running server immediately (so the account
-disappears from the board picker and account lists without a restart).  If the
-deleted account is the default, the new default falls back to the first
-remaining account.  When no accounts are configured the panel shows an
+disappears from the board picker and account lists without a restart).  When no accounts are configured the panel shows an
 "Add Account" link to create one.
 
 **No-mail-fetched warning.**  When accounts are configured but the mailbox
