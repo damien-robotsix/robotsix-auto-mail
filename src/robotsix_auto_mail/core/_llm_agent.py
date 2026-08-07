@@ -111,14 +111,12 @@ def _run_llm_agent(  # noqa: UP047
     model_provider = _get_provider(
         model_id, **{**_tlc.provider_kwargs, "api_key": resolved_key}
     )
-    _build_kwargs: dict[str, object] = dict(
+    agent_handle = model_provider.build_agent(
         level=_level,
         system_prompt=system_prompt,
         output_type=PromptedOutput(output_model),
+        retries=output_retries if output_retries is not None else 2,
     )
-    if output_retries is not None:
-        _build_kwargs["retries"] = output_retries
-    agent_handle = model_provider.build_agent(**_build_kwargs)
 
     # -- call LLM --
     result = None
@@ -146,4 +144,5 @@ def _run_llm_agent(  # noqa: UP047
         else:
             break
 
+    assert result is not None  # the loop body always sets result before exit
     return typing.cast(_T, result.output)
