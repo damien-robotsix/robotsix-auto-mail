@@ -198,9 +198,9 @@ def test_output_retries_forwarded_to_build_agent(mock_deps):
     assert _call_kwargs["retries"] == 4
 
 
-def test_output_retries_none_omits_retries_kwarg(mock_deps):
-    """When ``output_retries`` is ``None`` (default), the ``retries``
-    keyword is not passed to ``build_agent``."""
+def test_output_retries_none_passes_default_retries(mock_deps):
+    """When ``output_retries`` is ``None`` (default), ``retries=2``
+    (the provider default) is passed explicitly to ``build_agent``."""
     _mock_key, mock_get_prov, _mock_run = mock_deps
 
     _run_llm_agent(
@@ -217,7 +217,7 @@ def test_output_retries_none_omits_retries_kwarg(mock_deps):
 
     mock_provider = mock_get_prov.return_value
     mock_provider.build_agent.assert_called_once()
-    assert "retries" not in mock_provider.build_agent.call_args.kwargs
+    assert mock_provider.build_agent.call_args.kwargs["retries"] == 2
 
 
 # ---------------------------------------------------------------------------
