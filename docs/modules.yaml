@@ -43,11 +43,11 @@ modules:
       - SECURITY.md
       - ROADMAP.md
       - changelog/.gitkeep
-      - changelog/20260803T200359Z-update-docs-configuration-md-for-the-rem-bd2d.misc.md
       - changelog/*.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
+
   - id: docker
     description: >-
       Docker image definition, Compose orchestration, and

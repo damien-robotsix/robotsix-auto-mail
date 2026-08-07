@@ -79,11 +79,6 @@ def db_accounts_with_labels_no_triage() -> Generator[
 
 
 @pytest.fixture
-def single_db() -> Generator[str]:
-    """Yield a single temp DB path; cleanup after."""
-    fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    try:
-        yield db_path
-    finally:
-        os.unlink(db_path)
+def single_db(tmp_db_path: str) -> str:
+    """Return a temp DB path; delegates to root tmp_db_path fixture."""
+    return tmp_db_path
