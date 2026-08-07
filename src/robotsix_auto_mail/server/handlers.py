@@ -336,7 +336,7 @@ class BoardHandler(
         # -- aggregate-mode resolution -----------------------------------
         if query_id == GLOBAL_VIEW_ACCOUNT_ID:
             self._aggregate = True
-            self._account_cookie = f"account={GLOBAL_VIEW_ACCOUNT_ID}; Path=/"
+            self._account_cookie = self._build_account_cookie(GLOBAL_VIEW_ACCOUNT_ID)
             self._current_account_id = GLOBAL_VIEW_ACCOUNT_ID
             return True
 
@@ -348,7 +348,7 @@ class BoardHandler(
         # No query param, no cookie, ≥2 accounts → default to aggregate.
         if not query_id and not cookie_id and len(accounts.ids()) >= 2:
             self._aggregate = True
-            self._account_cookie = f"account={GLOBAL_VIEW_ACCOUNT_ID}; Path=/"
+            self._account_cookie = self._build_account_cookie(GLOBAL_VIEW_ACCOUNT_ID)
             self._current_account_id = GLOBAL_VIEW_ACCOUNT_ID
             return True
 
@@ -370,8 +370,21 @@ class BoardHandler(
         self.mail_config = account.config
         self._current_account_id = account.account_id
         if query_id is not None:
-            self._account_cookie = f"account={account.account_id}; Path=/"
+            self._account_cookie = self._build_account_cookie(account.account_id)
         return True
+
+    def _build_account_cookie(self, account_id: str) -> str:
+        """Return a ``Set-Cookie`` value for *account_id*.
+
+        Always includes ``HttpOnly`` (block JavaScript access) and
+        ``SameSite=Lax`` (prevent CSRF on state-changing requests).
+        ``Secure`` is added when the request arrived via a TLS-terminating
+        reverse proxy that sets ``X-Forwarded-Proto: https``.
+        """
+        suffix = "; Path=/; HttpOnly; SameSite=Lax"
+        if self.headers.get("X-Forwarded-Proto") == "https":
+            suffix += "; Secure"
+        return f"account={account_id}{suffix}"
 
     def _send_response(
         self,
@@ -389,6 +402,13 @@ class BoardHandler(
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(encoded)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; style-src 'self' 'unsafe-inline'",
+        )
         if self._account_cookie is not None:
             self.send_header("Set-Cookie", self._account_cookie)
         self.end_headers()
@@ -406,6 +426,13 @@ class BoardHandler(
             location = "/board"
         self.send_response(code)
         self.send_header("Location", location)
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; style-src 'self' 'unsafe-inline'",
+        )
         if self._account_cookie is not None:
             self.send_header("Set-Cookie", self._account_cookie)
         self.end_headers()
