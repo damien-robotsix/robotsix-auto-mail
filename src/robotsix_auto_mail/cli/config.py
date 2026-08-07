@@ -282,6 +282,8 @@ def _detect_settings(
     provider_from_mx: Callable[[list[str]], MailProvider | None],
     detect_provider: Callable[..., MailProvider],
     _detection_error: type[Exception],
+    *,
+    level: int = 1,
 ) -> tuple[MailProvider | None, list[str]]:
     """Run the provider-detection ladder for *email*.
 
@@ -325,6 +327,7 @@ def _detect_settings(
                     api_key=api_key,
                     provider_model=llm_provider_model,
                     mx_hosts=mx_hosts,
+                    level=level,
                 )
             except _detection_error as exc:
                 sys.stderr.write(f"Error: {exc}\n")
