@@ -18,7 +18,6 @@ def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfi
     """Wrap a single ``MailConfig`` in a one-element accounts container."""
     return MailAccountsConfig(
         accounts=(MailAccount(account_id=account_id, config=cfg, label=None),),
-        default_account_id=account_id,
     )
 
 
@@ -71,7 +70,7 @@ def test_parser_has_version() -> None:
 def test_parser_has_probe_subcommand() -> None:
     """The parser knows the probe subcommand."""
     parser = build_parser()
-    args = parser.parse_args(["probe"])
+    args = parser.parse_args(["probe", "--account", "test"])
     assert args.command == "probe"
 
 
@@ -79,7 +78,7 @@ def test_probe_takes_no_extra_args() -> None:
     """probe rejects extra arguments."""
     parser = build_parser()
     with pytest.raises(SystemExit):
-        parser.parse_args(["probe", "--foo"])
+        parser.parse_args(["probe", "--account", "test", "--foo"])
 
 
 def test_no_subcommand_prints_help_and_exits_1(
@@ -114,7 +113,6 @@ def test_no_subcommand_no_watch_accounts_enters_idle(
     )
     accounts = MailAccountsConfig(
         accounts=(MailAccount(account_id="default", config=cfg, label=None),),
-        default_account_id="default",
     )
     with (
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
@@ -190,7 +188,6 @@ def _two_accounts(tmp_path: Path) -> MailAccountsConfig:
             MailAccount(account_id="personal", config=personal, label=None),
             MailAccount(account_id="work", config=work, label=None),
         ),
-        default_account_id="personal",
     )
 
 
@@ -285,7 +282,6 @@ def _ms_accounts(tmp_path: Path) -> MailAccountsConfig:
     )
     return MailAccountsConfig(
         accounts=(MailAccount(account_id="ms", config=config, label=None),),
-        default_account_id="ms",
     )
 
 
@@ -317,17 +313,17 @@ def test_auth_without_subcommand_prints_help_and_exits_1(
     assert "login" in err
 
 
-def test_auth_login_single_account_runs_flow(
+def test_auth_login_with_account_runs_flow(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """With one account and no --account, the device-code flow runs and the
+    """With --account given, the device-code flow runs and the
     cache location is printed."""
     accounts = _ms_accounts(tmp_path)
     with (
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
     ):
-        rc = main(["auth", "login"])
+        rc = main(["auth", "login", "--account", "ms"])
 
     assert rc == 0
     mock_login.assert_called_once_with(accounts.get("ms").config)
@@ -335,18 +331,16 @@ def test_auth_login_single_account_runs_flow(
     assert "msal_cache.json" in out
 
 
-def test_auth_login_ambiguous_account_errors(
+def test_auth_login_missing_account_errors(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Omitting --account with multiple accounts errors and lists the ids."""
+    """Omitting --account causes argparse to error out."""
     accounts = _two_accounts(tmp_path)
-    with mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts):
-        rc = main(["auth", "login"])
-
-    assert rc == 1
-    err = capsys.readouterr().err
-    assert "personal" in err
-    assert "work" in err
+    with (
+        mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts),
+        pytest.raises(SystemExit),
+    ):
+        main(["auth", "login"])
 
 
 def test_auth_login_unknown_account_errors(

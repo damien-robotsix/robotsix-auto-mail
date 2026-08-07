@@ -224,7 +224,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             )
         account = MailAccount(account_id=account_id, config=stdout_config, label=label)
         container = MailAccountsConfig(
-            accounts=[account], default_account_id=account_id
+            accounts=[account],
         )
         # model_dump_json masks SecretStr fields ("**********"); the
         # password is intentionally empty for --stdout output, so the
@@ -282,12 +282,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
                 )
 
         # Merge the new account with existing accounts.
-        if existing is not None:
-            accounts_list = list(existing.accounts)
-            default_id = existing.default_account_id or account_id
-        else:
-            accounts_list = []
-            default_id = account_id
+        accounts_list = list(existing.accounts) if existing is not None else []
         existing_idx = next(
             (i for i, a in enumerate(accounts_list) if a.account_id == account_id),
             None,
@@ -329,10 +324,10 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         # list alone would drop the component-wide credential blocks the file
         # already holds.
         container = (
-            existing.with_accounts(accounts_list, default_id)
+            existing.with_accounts(accounts_list)
             if existing is not None
             else MailAccountsConfig(
-                accounts=accounts_list, default_account_id=default_id
+                accounts=accounts_list,
             )
         )
         save_accounts(container, path=output_path)

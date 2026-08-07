@@ -274,7 +274,7 @@
       "type": "object"
     }
   },
-  "description": "An ordered collection of :class:`MailAccount`s plus a default id.\n\nOne SQLite DB per account\n-------------------------\nMultiple accounts are modelled as N independent :class:`MailConfig`\ninstances, each carrying its **own** ``db_path``, rather than adding an\n``account_id`` column to every table.  The rationale:\n\n- Per-account state (triage decisions, archive watermarks \u2014 all keyed\n  by ``message_id`` in each DB, plus the per-account ``triage_rules.md``\n  file) is naturally isolated with zero schema migration.\n- Each :class:`MailConfig` already owns a ``db_path`` field, so no new\n  per-row plumbing is required.\n- The cost is one SQLite file per account; uniqueness of ``db_path``\n  across accounts is therefore enforced at load time.\n\nComponent-wide settings\n-----------------------\nThe ``langfuse``, ``openrouter``, ``models``, and per-application level\nfields sit here rather than on each :class:`MailConfig` because they\ndescribe the component's one LLM function, not a mailbox.  Their shape\nis fixed by robotsix-standards \u2014 see\n:mod:`robotsix_auto_mail.config.credentials`.\n\nValidation (all raise :class:`ConfigurationError`): at least one\naccount; all ``account_id``s unique; all ``MailConfig.db_path``s unique\nacross accounts; ``default_account_id`` resolves to a known account.",
+  "description": "An ordered collection of :class:`MailAccount`s.\n\nOne SQLite DB per account\n-------------------------\nMultiple accounts are modelled as N independent :class:`MailConfig`\ninstances, each carrying its **own** ``db_path``, rather than adding an\n``account_id`` column to every table.  The rationale:\n\n- Per-account state (triage decisions, archive watermarks \u2014 all keyed\n  by ``message_id`` in each DB, plus the per-account ``triage_rules.md``\n  file) is naturally isolated with zero schema migration.\n- Each :class:`MailConfig` already owns a ``db_path`` field, so no new\n  per-row plumbing is required.\n- The cost is one SQLite file per account; uniqueness of ``db_path``\n  across accounts is therefore enforced at load time.\n\nComponent-wide settings\n-----------------------\nThe ``langfuse``, ``openrouter``, ``models``, and per-application level\nfields sit here rather than on each :class:`MailConfig` because they\ndescribe the component's one LLM function, not a mailbox.  Their shape\nis fixed by robotsix-standards \u2014 see\n:mod:`robotsix_auto_mail.config.credentials`.\n\nValidation (all raise :class:`ConfigurationError`): all ``account_id``s\nunique; all ``MailConfig.db_path``s unique across accounts.",
   "properties": {
     "accounts": {
       "items": {
@@ -282,11 +282,6 @@
       },
       "title": "Accounts",
       "type": "array"
-    },
-    "default_account_id": {
-      "default": "",
-      "title": "Default Account Id",
-      "type": "string"
     },
     "langfuse": {
       "$ref": "#/$defs/LangfuseConfig"

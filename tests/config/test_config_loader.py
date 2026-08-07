@@ -65,7 +65,6 @@ def _default_accounts(
                 ),
             )
         ],
-        default_account_id="default",
         openrouter=OpenRouterConfig(keys={MAIN_LLM_ALIAS: llm_api_key}),
         models=models or TierModelsConfig(),
         triage_level=triage_level,
@@ -291,7 +290,7 @@ def test_load_accounts_returns_config() -> None:
     ):
         accounts = load_accounts()
     assert isinstance(accounts, MailAccountsConfig)
-    cfg = accounts.default.config
+    cfg = accounts.accounts[0].config
     assert cfg.imap_host == "imap.example.com"
     assert cfg.username == "user@example.com"
 

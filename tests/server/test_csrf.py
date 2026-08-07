@@ -242,7 +242,6 @@ class TestCmdServeHost:
             cfg = _account_config(db_path)
             accounts = MailAccountsConfig(
                 accounts=(MailAccount(account_id="A", config=cfg, label=None),),
-                default_account_id="A",
             )
             with (
                 mock.patch("http.server.ThreadingHTTPServer") as m,
@@ -252,7 +251,7 @@ class TestCmdServeHost:
             ):
                 instance = mock.MagicMock()
                 m.return_value = instance
-                _cmd_serve(accounts, default_account_id="A", port=9999)
+                _cmd_serve(accounts, port=9999)
                 m.assert_called_once_with(("127.0.0.1", 9999), mock.ANY)
         finally:
             os.unlink(db_path)
@@ -265,7 +264,6 @@ class TestCmdServeHost:
             cfg = _account_config(db_path)
             accounts = MailAccountsConfig(
                 accounts=(MailAccount(account_id="A", config=cfg, label=None),),
-                default_account_id="A",
             )
             with (
                 mock.patch("http.server.ThreadingHTTPServer") as m,
@@ -277,7 +275,6 @@ class TestCmdServeHost:
                 m.return_value = instance
                 _cmd_serve(
                     accounts,
-                    default_account_id="A",
                     port=9999,
                     host="0.0.0.0",  # noqa: S104  # nosec B104
                 )

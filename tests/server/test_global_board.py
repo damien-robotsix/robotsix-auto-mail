@@ -116,7 +116,7 @@ def test_global_batch_delete_fans_out_across_accounts(
     )
     _seed_triage_decision(db_b, "msg-b-delete", action="TO_DELETE")
 
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         resp = _post_to_path(port, "/batch-delete?account=__all__", {})
         assert resp.status == 302
@@ -150,7 +150,7 @@ def test_global_board_page_all_accounts_param(
     """GET /board?account=__all__ renders aggregate with data-account,
     account badge, and per-card ?account= actions."""
     _db_a, _db_b, accounts = db_accounts
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, body, _h = _get(f"http://127.0.0.1:{port}/board?account=__all__")
         assert status == 200
@@ -189,25 +189,17 @@ def test_global_board_default_landing_multi_account(
     db_accounts: tuple[str, str, MailAccountsConfig],
 ) -> None:
     """GET /board with ≥2 accounts and no ?account=/cookie defaults
-    to aggregate view (cards from all accounts present) and sets
-    the ``account=__all__`` cookie so the aggregate preference
-    persists across subsequent requests."""
+    to the first account in configured order (A)."""
     _db_a, _db_b, accounts = db_accounts
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
-        status, body, hdrs = _get(f"http://127.0.0.1:{port}/board")
+        status, body, _hdrs = _get(f"http://127.0.0.1:{port}/board")
         assert status == 200
-        # Aggregate view (both accounts present).
+        # First account's cards only (A).
         assert "msg-a-inbox" in body
-        assert "msg-b-inbox" in body
-        # Account badge + data-account present.
-        assert 'class="card-account"' in body
-        assert 'data-account="A"' in body
-        assert 'data-account="B"' in body
-        # Fresh visit sets the aggregate cookie.
-        assert (
-            hdrs.get("Set-Cookie") == "account=__all__; Path=/; HttpOnly; SameSite=Lax"
-        )
+        assert "msg-b-inbox" not in body
+        # No account badges in single-account view.
+        assert 'class="card-account"' not in body
     finally:
         server.shutdown()
 
@@ -218,7 +210,7 @@ def test_global_board_picker_all_mailboxes_option(
     """The account picker in aggregate mode lists 'All mailboxes' first,
     selected by default."""
     _db_a, _db_b, accounts = db_accounts_no_triage
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, body, _h = _get(f"http://127.0.0.1:{port}/board?account=__all__")
         assert status == 200
@@ -236,7 +228,7 @@ def test_global_board_single_account_query_still_works(
 ) -> None:
     """GET /board?account=<real id> still renders single-account board."""
     _db_a, _db_b, accounts = db_accounts
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, body, _h = _get(f"http://127.0.0.1:{port}/board?account=A")
         assert status == 200
@@ -257,7 +249,7 @@ def test_global_board_content_json_aggregate(
 ) -> None:
     """GET /board-content?account=__all__ returns JSON aggregating all accounts."""
     _db_a, _db_b, accounts = db_accounts
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, body, _h = _get(
             f"http://127.0.0.1:{port}/board-content?account=__all__"
@@ -279,7 +271,7 @@ def test_global_board_move_routes_to_correct_account(
 ) -> None:
     """POST /move?account=A from an aggregate card mutates only A's DB."""
     db_a, db_b, accounts = db_accounts
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         import urllib.parse
 
@@ -305,7 +297,7 @@ def test_global_board_detail_routes_to_correct_account(
 ) -> None:
     """GET /email/<mid>?account=A returns the detail for A's record."""
     _db_a, _db_b, accounts = db_accounts
-    server, port = _start_test_server_with_accounts(accounts, "A")
+    server, port = _start_test_server_with_accounts(accounts)
     try:
         status, body, _h = _get(
             f"http://127.0.0.1:{port}/email/msg-a-inbox?embed=1&account=A"

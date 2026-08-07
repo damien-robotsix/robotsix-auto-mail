@@ -314,9 +314,6 @@ def merge_settings_store_accounts(
     watch loop, and the background reconcile loop so that accounts added via
     the web UI survive a deploy-system overwrite of ``config/config.json``
     in every code path, not just the board.
-
-    When *accounts* has no ``default_account_id`` and the merge adds the
-    first account, that account becomes the default.
     """
     import logging
 
@@ -338,11 +335,7 @@ def merge_settings_store_accounts(
     )
 
     merged_accounts = list(accounts.accounts) + new_discovered
-    default_id = accounts.default_account_id
-    if not default_id and merged_accounts:
-        default_id = merged_accounts[0].account_id
 
     return MailAccountsConfig(
         accounts=merged_accounts,
-        default_account_id=default_id,
     )

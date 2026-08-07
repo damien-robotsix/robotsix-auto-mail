@@ -37,7 +37,6 @@ def _default_accounts() -> MailAccountsConfig:
                 ),
             )
         ],
-        default_account_id="default",
     )
 
 

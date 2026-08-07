@@ -382,7 +382,6 @@ def _account_config(db_path: str) -> MailConfig:
 
 def _start_test_server_with_accounts(
     accounts: MailAccountsConfig,
-    default_account_id: str,
     port: int = 0,
 ) -> tuple[HTTPServer, int]:
     """Start an HTTPServer wired to a multi-account container."""
@@ -391,12 +390,11 @@ def _start_test_server_with_accounts(
 
     from robotsix_auto_mail.server import make_board_handler
 
-    default = accounts.get(default_account_id)
+    default = accounts.accounts[0]
     handler = make_board_handler(
         default.config.db_path,
         mail_config=default.config,
         accounts=accounts,
-        default_account_id=default_account_id,
     )
     server = HTTPServer(("127.0.0.1", port), handler)
     assigned_port = server.server_address[1]
@@ -406,9 +404,7 @@ def _start_test_server_with_accounts(
     return server, assigned_port
 
 
-def _two_account_setup(
-    db_a: str, db_b: str, default_account_id: str = "A"
-) -> MailAccountsConfig:
+def _two_account_setup(db_a: str, db_b: str) -> MailAccountsConfig:
     """Build a two-account container with seeded, distinct records per DB."""
     _populate_db(
         db_a,
@@ -441,7 +437,6 @@ def _two_account_setup(
             MailAccount(account_id="A", config=_account_config(db_a), label=None),
             MailAccount(account_id="B", config=_account_config(db_b), label=None),
         ),
-        default_account_id=default_account_id,
     )
 
 
@@ -473,11 +468,8 @@ def _triage_action(db_path: str, message_id: str) -> str | None:
         conn.close()
 
 
-def _two_account_setup_with_labels(
-    db_a: str, db_b: str, default_account_id: str = "A"
-) -> MailAccountsConfig:
+def _two_account_setup_with_labels(db_a: str, db_b: str) -> MailAccountsConfig:
     """Two-account container with a non-None label on account ``A``."""
-    base = _two_account_setup(db_a, db_b, default_account_id=default_account_id)
     return MailAccountsConfig(
         accounts=(
             MailAccount(
@@ -485,7 +477,6 @@ def _two_account_setup_with_labels(
             ),
             MailAccount(account_id="B", config=_account_config(db_b), label=None),
         ),
-        default_account_id=base.default_account_id,
     )
 
 
@@ -553,5 +544,4 @@ def _two_account_setup_with_triage(
             MailAccount(account_id="A", config=_account_config(db_a), label="Acc A"),
             MailAccount(account_id="B", config=_account_config(db_b), label="Acc B"),
         ),
-        default_account_id="A",
     )

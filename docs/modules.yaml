@@ -109,6 +109,7 @@ modules:
       - tests/cli/test_cli_board.py
       - tests/cli/test_cli_config.py
       - tests/cli/test_cli_config_sync.py
+      - tests/cli/test_cli_config_sync_test.tmp
       - tests/cli/test_cli_detect_accounts.py
       - tests/cli/test_cli_detect_basic.py
       - tests/cli/test_cli_detect_flags.py

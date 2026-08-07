@@ -290,7 +290,7 @@ class TierModelsConfig(BaseModel):
 
 
 class MailAccountsConfig(BaseModel):
-    """An ordered collection of :class:`MailAccount`s plus a default id.
+    """An ordered collection of :class:`MailAccount`s.
 
     One SQLite DB per account
     -------------------------
@@ -314,15 +314,13 @@ class MailAccountsConfig(BaseModel):
     is fixed by robotsix-standards — see
     :mod:`robotsix_auto_mail.config.credentials`.
 
-    Validation (all raise :class:`ConfigurationError`): at least one
-    account; all ``account_id``s unique; all ``MailConfig.db_path``s unique
-    across accounts; ``default_account_id`` resolves to a known account.
+    Validation (all raise :class:`ConfigurationError`): all ``account_id``s
+    unique; all ``MailConfig.db_path``s unique across accounts.
     """
 
     model_config = ConfigDict(frozen=True)
 
     accounts: list[MailAccount]
-    default_account_id: str = ""
 
     #: The canonical credential blocks, shared by every account.
     langfuse: LangfuseConfig = Field(default_factory=LangfuseConfig)
@@ -349,48 +347,25 @@ class MailAccountsConfig(BaseModel):
         paths = [a.config.db_path for a in self.accounts if a.config.db_path]
         if len(paths) != len(set(paths)):
             raise ConfigurationError("duplicate db_path values")
-        if ids and self.default_account_id not in ids:
-            # Only validate default_account_id when accounts is non-empty;
-            # a fresh deploy starts with zero accounts and an empty default.
-            raise ConfigurationError(
-                f"default_account_id {self.default_account_id!r} not in accounts"
-            )
         return self
 
-    def with_accounts(
-        self, accounts: list[MailAccount], default_account_id: str
-    ) -> MailAccountsConfig:
+    def with_accounts(self, accounts: list[MailAccount]) -> MailAccountsConfig:
         """Return a copy with a new account list, keeping everything else.
 
         Every flow that adds, removes or re-detects an account has to go
         through this rather than constructing a fresh container: a bare
-        ``MailAccountsConfig(accounts=…, default_account_id=…)`` silently
+        ``MailAccountsConfig(accounts=…)`` silently
         resets the component-wide blocks, which would wipe the operator's
         Langfuse and OpenRouter credentials on the next account edit.
 
         Validation runs exactly as it does on construction, so callers keep
-        catching the same errors for a duplicate id or an unknown default.
+        catching the same errors for a duplicate id.
         """
         # Shallow field mapping, so any field added later is carried over
         # without another edit here.
         data = dict(self)
         data["accounts"] = accounts
-        data["default_account_id"] = default_account_id
         return type(self).model_validate(data)
-
-    @property
-    def default(self) -> MailAccount:
-        """Return the :class:`MailAccount` for ``default_account_id``.
-
-        Raises:
-            ConfigurationError: When no accounts are configured.
-        """
-        if not self.accounts:
-            raise ConfigurationError(
-                "No accounts configured — add an account via the web UI "
-                "(/add-account) or config file before using this command."
-            )
-        return next(a for a in self.accounts if a.account_id == self.default_account_id)
 
     def get(self, account_id: str) -> MailAccount:
         """Return the account with *account_id*.

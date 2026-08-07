@@ -19,7 +19,6 @@ def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfi
     """Wrap a single ``MailConfig`` in a one-element accounts container."""
     return MailAccountsConfig(
         accounts=(MailAccount(account_id=account_id, config=cfg, label=None),),
-        default_account_id=account_id,
     )
 
 
@@ -44,7 +43,6 @@ def _two_accounts(tmp_path: Path) -> MailAccountsConfig:
             MailAccount(account_id="personal", config=personal, label=None),
             MailAccount(account_id="work", config=work, label=None),
         ),
-        default_account_id="personal",
     )
 
 
@@ -176,17 +174,23 @@ def test_ingest_watch_heartbeat_file_omitted_no_file_written(
 # ---------------------------------------------------------------------------
 
 
-def test_command_defaults_to_default_account_when_multiple(
+def test_command_uses_first_account_when_multiple(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A command with multiple accounts and no --account uses the default."""
+    """_load_config_or_exit(None) exits with error listing available accounts."""
+    import pytest
+
     from robotsix_auto_mail.cli import _load_config_or_exit
 
     accounts = _two_accounts(tmp_path)
     with mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=accounts):
-        config = _load_config_or_exit(None)
-
-    assert config is accounts.default.config
+        with pytest.raises(SystemExit) as exc_info:
+            _load_config_or_exit(None)
+        assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "--account is required" in captured.err
+    assert "personal" in captured.err
+    assert "work" in captured.err
 
 
 def test_ingest_all_accounts_runs_each_cycle(

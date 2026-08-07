@@ -14,11 +14,10 @@ from robotsix_auto_mail.cli import build_parser, main
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 
 
-def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfig:
+def _accounts(cfg: MailConfig, account_id: str = "test") -> MailAccountsConfig:
     """Wrap a single ``MailConfig`` in a one-element accounts container."""
     return MailAccountsConfig(
         accounts=(MailAccount(account_id=account_id, config=cfg, label=None),),
-        default_account_id=account_id,
     )
 
 
@@ -30,7 +29,7 @@ def _accounts(cfg: MailConfig, account_id: str = "default") -> MailAccountsConfi
 def test_parser_has_board_subcommand() -> None:
     """The parser knows the board subcommand."""
     parser = build_parser()
-    args = parser.parse_args(["board"])
+    args = parser.parse_args(["board", "--account", "test"])
     assert args.command == "board"
 
 
@@ -38,7 +37,7 @@ def test_board_takes_no_extra_args() -> None:
     """board rejects extra arguments."""
     parser = build_parser()
     with pytest.raises(SystemExit):
-        parser.parse_args(["board", "--foo"])
+        parser.parse_args(["board", "--account", "test", "--foo"])
 
 
 def test_board_empty_inbox(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) -> None:
@@ -52,7 +51,7 @@ def test_board_empty_inbox(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) 
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
         mock.patch("robotsix_auto_mail.cli.commands_board.init_db", return_value=conn),
     ):
-        rc = main(["board"])
+        rc = main(["board", "--account", "test"])
 
     assert rc == 0
     captured = capsys.readouterr()
@@ -119,7 +118,7 @@ VALUES
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
         mock.patch("robotsix_auto_mail.cli.commands_board.init_db", return_value=conn),
     ):
-        rc = main(["board"])
+        rc = main(["board", "--account", "test"])
 
     assert rc == 0
     captured = capsys.readouterr()
@@ -205,7 +204,7 @@ VALUES
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
         mock.patch("robotsix_auto_mail.cli.commands_board.init_db", return_value=conn),
     ):
-        rc = main(["board"])
+        rc = main(["board", "--account", "test"])
 
     assert rc == 0
     out = capsys.readouterr().out
@@ -229,7 +228,7 @@ def test_board_config_load_failure(
         side_effect=RuntimeError("boom"),
     ):
         with pytest.raises(SystemExit) as exc:
-            main(["board"])
+            main(["board", "--account", "test"])
 
     assert exc.value.code == 1
     err = capsys.readouterr().err
@@ -250,7 +249,7 @@ def test_board_header_uses_print_header(
         mock.patch("robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg)),
         mock.patch("robotsix_auto_mail.cli.commands_board.init_db", return_value=conn),
     ):
-        main(["board"])
+        main(["board", "--account", "test"])
 
     captured = capsys.readouterr()
     # _print_header produces:
@@ -346,7 +345,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         with mock.patch(
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_with_db)
         ):
-            rc = main(["board"])
+            rc = main(["board", "--account", "test"])
 
         assert rc == 0
 

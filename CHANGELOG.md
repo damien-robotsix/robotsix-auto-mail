@@ -5,6 +5,11 @@
 
 ## 0.0.0 (unreleased)
 
+- Removed ``default_account_id`` setting and all single-account-fallback code paths.
+  The account a request/CLI command operates on is now mandatory and explicit.
+  The initial board view defaults to the first account in configured order.
+  CLI ``--account`` is now required on ``board``, ``probe``, ``triage``, and
+  ``config-sync`` subcommands.
 - Sanitize HTTP 400 error responses in ``_action_mixin.py`` and
   ``_triage_mixin.py``: replace raw ``str(exc)`` disclosure with
   generic ``"Invalid request"`` message and server-side

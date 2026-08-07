@@ -26,8 +26,8 @@ this layer — the server listens on `0.0.0.0`.
 
 Append `?account=<account_id>` (e.g. `?account=main`) to any request.
 
-- Without `?account=`, the server uses a per-session cookie, then falls
-  back to the default account.
+- Without `?account=`, the server uses a per-session cookie, then selects
+  the first account in configured order.
 - Use `?account=__all__` for the aggregate multi-account board view.
 
 ## GET endpoints

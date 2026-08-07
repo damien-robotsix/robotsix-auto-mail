@@ -151,7 +151,7 @@ Read them through ``resolve_llm_api_key`` / ``resolve_llm_provider_model`` /
 
 Any flow that adds, removes or re-detects an account MUST rebuild the
 container with ``MailAccountsConfig.with_accounts()``.  Constructing a fresh
-``MailAccountsConfig(accounts=…, default_account_id=…)`` silently resets
+``MailAccountsConfig(accounts=…)`` silently resets
 every component-wide block, wiping the operator's credentials on the next
 account edit.
 

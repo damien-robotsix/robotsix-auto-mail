@@ -67,9 +67,7 @@ def _account(account_id: str = "work") -> dict[str, Any]:
 def config_file(tmp_path: Path) -> Iterator[Path]:
     path = tmp_path / "config" / "config.json"
     path.parent.mkdir(parents=True)
-    path.write_text(
-        json.dumps({"accounts": [_account()], "default_account_id": "work"})
-    )
+    path.write_text(json.dumps({"accounts": [_account()]}))
     with mock.patch.dict(os.environ, {"ROBOTSIX_CONFIG_FILE": str(path)}):
         yield path
 
@@ -110,7 +108,7 @@ def test_get_config_never_echoes_a_secret(config_file: Path) -> None:
 def test_put_config_applies_the_update_and_refreshes_the_cache(
     config_file: Path,
 ) -> None:
-    server = _FakeServer({"accounts": None, "default_account_id": ""})
+    server = _FakeServer({"accounts": None})
     handler = _FakeConfigHandler(
         _json_body(
             {"accounts": [{"account_id": "work", "config": {"imap_folder": "Later"}}]}

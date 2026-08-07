@@ -24,7 +24,7 @@ def register_subparser(
     parser = subparsers.add_parser(
         "board", help="Display ingested mail in a read-only board view"
     )
-    _add_account_arg(parser)
+    _add_account_arg(parser, required=True)
 
 
 _SEPARATOR = "-" * 60 + "\n"

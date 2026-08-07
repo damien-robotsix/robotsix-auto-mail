@@ -102,8 +102,8 @@ def test_verify_result_defaults() -> None:
         ("user+tag@domain.com", "user-tag-domain.com"),
         ("spaces in@domain.com", "spaces-in-domain.com"),
         ("@domain.com", "domain.com"),
-        ("!!!@!!!", "default"),
-        ("", "default"),
+        ("!!!@!!!", "unknown"),
+        ("", "unknown"),
     ],
 )
 def test_account_id_from_email(email: str, expected: str) -> None:

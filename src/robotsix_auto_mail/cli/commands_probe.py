@@ -20,7 +20,7 @@ def register_subparser(
     parser = subparsers.add_parser(
         "probe", help="Probe IMAP and SMTP servers for diagnostics"
     )
-    _add_account_arg(parser)
+    _add_account_arg(parser, required=True)
 
 
 def _cmd_probe(config: MailConfig) -> int:

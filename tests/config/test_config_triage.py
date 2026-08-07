@@ -22,7 +22,6 @@ def _account(**overrides: object) -> MailAccount:
 def _accounts(**overrides: object) -> MailAccountsConfig:
     return MailAccountsConfig(
         accounts=[_account(**overrides)],
-        default_account_id="default",
     )
 
 
@@ -35,10 +34,10 @@ def test_triage_on_ingest_default() -> None:
 def test_triage_on_ingest_default_when_unset() -> None:
     """An account without an explicit triage_on_ingest keeps it True."""
     accts = _accounts()
-    assert accts.default.config.triage_on_ingest is True
+    assert accts.accounts[0].config.triage_on_ingest is True
 
 
 def test_triage_on_ingest_custom() -> None:
     """triage_on_ingest can be set to False explicitly."""
     accts = _accounts(triage_on_ingest=False)
-    assert accts.default.config.triage_on_ingest is False
+    assert accts.accounts[0].config.triage_on_ingest is False

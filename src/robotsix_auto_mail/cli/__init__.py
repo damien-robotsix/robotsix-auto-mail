@@ -81,16 +81,16 @@ __all__ = [
 ]
 
 
-def _add_account_arg(parser: argparse.ArgumentParser) -> None:
+def _add_account_arg(
+    parser: argparse.ArgumentParser, *, required: bool = False
+) -> None:
     """Add the shared ``--account`` selection flag to *parser*."""
     parser.add_argument(
         "--account",
         metavar="ID",
+        required=required,
         default=None,
-        help=(
-            "Account id to operate on. Optional when only one account is "
-            "configured; required when multiple exist."
-        ),
+        help="Account id to operate on.",
     )
 
 
@@ -205,12 +205,11 @@ def main(argv: list[str] | None = None) -> int:
                     sys.stderr.write(f"Error: {exc}\n")
                     return 1
             else:
-                # When no accounts are configured the default id is empty;
-                # _cmd_serve handles the zero-account case gracefully.
-                resolved = accounts.default_account_id
+                # No --account given: use the first account in configured order.
+                resolved = accounts.accounts[0].account_id if accounts.accounts else ""
             return _cmd_serve(
                 accounts,
-                default_account_id=resolved,
+                account_id=resolved,
                 port=args.port,
                 host=args.host,
             )

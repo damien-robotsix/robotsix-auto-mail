@@ -160,8 +160,6 @@ existing mono file to the multi-account `accounts:` shape, edit the file to
 wrap your settings in an `accounts:` list:
 
 ```yaml
-default_account: default
-
 accounts:
   - id: default
     imap:
@@ -211,7 +209,6 @@ IMAP/SMTP. The simplest working setup needs no OAuth2 client registration — an
 
    ```json
    {
-     "default_account_id": "default",
      "accounts": [
        {
          "account_id": "default",
@@ -465,16 +462,13 @@ instead of the single-account top-level sections. Each list entry is a
 mapping with a required string `id`, an optional `label`, and the usual
 nested `imap` / `smtp` / `auth` / `store` (and optional `llm` / `ingest` /
 `archive` / `triage`) sections — parsed exactly as in the single-account
-file. An optional top-level `default_account:` names the default account;
-when omitted, the first entry is the default (when accounts are present).
-A fresh deploy starts with `"accounts": []` and `"default_account_id": ""`
+file. A fresh deploy starts with `"accounts": []`
 — the server boots with an in-memory database and the add-account form
 is available to create accounts through the web UI. The canonical example
 ships in `config/config.example.json`:
 
 ```json
 {
-  "default_account_id": "personal",
   "accounts": [
     {
       "account_id": "personal",
@@ -566,7 +560,6 @@ component-wide.
 ```json
 // config/config.json (git-ignored)
 {
-  "default_account_id": "main",
   "accounts": [
     {
       "account_id": "main",
@@ -734,7 +727,7 @@ $ robotsix-auto-mail serve
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--account` | – | Account id to serve; when omitted, the container's default account is served. This account is used as the default for requests that omit `?account=`. |
+| `--account` | – | Account id for the initial board view. When omitted, the first account in configured order is used. |
 | `--port` | `8080` | Port to listen on |
 
 ### The board page
@@ -756,18 +749,15 @@ subsequent request on the page routes to the chosen account. The cookie includes
 sets `X-Forwarded-Proto: https`, the `Secure` flag is also added. The selected account
 is also threaded into the detail iframe and content refresh requests so deep-links
 and cookie-less clients maintain account context. When only one account is
-configured, the picker does not appear and the board behaves as a single-account
-view.
+configured, the picker shows that single account in the dropdown.
 
 **Settings panel.**  The board page header includes a **Settings** button
 (alongside **+ Add Account**) that opens `/settings-panel`.  This page lists
-every configured mail account (label/id, username, IMAP host) and marks the
-current default account, with a **Delete** button per account.  Deleting an
+every configured mail account (label/id, username, IMAP host), with a
+**Delete** button per account.  Deleting an
 account prompts for confirmation and removes it from the persisted
 `config/config.json`, updating the running server immediately (so the account
-disappears from the board picker and account lists without a restart).  If the
-deleted account is the default, the new default falls back to the first
-remaining account.  When no accounts are configured the panel shows an
+disappears from the board picker and account lists without a restart).  When no accounts are configured the panel shows an
 "Add Account" link to create one.
 
 **No-mail-fetched warning.**  When accounts are configured but the mailbox
@@ -911,23 +901,25 @@ database and mail config are used to handle each request.
 
 1. **Explicit query parameter** — `?account=<id>` (e.g. `/board?account=work`)
 2. **Cookie** — an `account` cookie set by a prior successful query param selection
-3. **Aggregate view** — when no query param or cookie is present and multiple
-   accounts are configured, the server returns the `__all__` aggregate view
-   (all accounts combined). A `Set-Cookie: account=__all__; Path=/; HttpOnly; SameSite=Lax` header is sent so
-   the aggregate preference persists. For single-account configurations the
-   lone account is served directly.
+3. **Initial view** — when no query param or cookie is present, the server
+   serves the **first account** in configured order (the initial board view).
 
 When the HTTP response succeeds with an explicit `?account=<id>`, a `Set-Cookie: account=<id>; Path=/; HttpOnly; SameSite=Lax` header is sent so the selection persists across the board's cookie-less JavaScript fetches and POST→redirect flows. This allows the browser to stay on the chosen account without explicit URL parameters on every request.
+
+When the aggregate view (`__all__`) is explicitly requested via
+`?account=__all__`, a `Set-Cookie: account=__all__; Path=/` header is sent so
+the aggregate preference persists across subsequent requests.
 
 **Error handling:**
 
 - An explicit `?account=<unknown-id>` returns a 404 (hard failure).
 - A stale or unknown id supplied only via cookie is silently ignored — the
-  aggregate view is served instead (cookies must never hard-fail a request).
+  first account in configured order is served instead (cookies must never
+  hard-fail a request).
 
-**Single-account behavior:** When only one account is configured, the
-precedence is satisfied immediately (the single account is always the
-default); multi-account selection is invisible to the user.
+**Initial view:** The first account in configured order is the initial
+board view. The aggregate (`__all__`) view is only entered when explicitly
+requested via `?account=__all__` or a pre-existing cookie.
 
 **Example multi-account setup:**
 
@@ -935,14 +927,13 @@ default); multi-account selection is invisible to the user.
 # Config with two accounts
 cat config/config.json
 # {
-#   "default_account_id": "personal",
 #   "accounts": [
 #     { "account_id": "personal", ... },
 #     { "account_id": "work", ... }
 #   ]
 # }
 
-# Start the server (personal is the default)
+# Start the server (the first account, "personal", is the initial view)
 robotsix-auto-mail serve
 # Listening on http://0.0.0.0:8080/board
 

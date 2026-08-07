@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, Callable
 from unittest import mock
 
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 
 # ---------------------------------------------------------------------------
@@ -26,14 +26,15 @@ class _FakeHandler(_BoardAuthMixin):
         self,
         db_path: str,
         mail_config: MailConfig | None = None,
+        *,
+        accounts: object | None = None,
     ) -> None:
         self.db_path = db_path
         self.mail_config = mail_config
-        self.accounts = None
+        self.accounts = accounts
         self._current_account_id = None
         self._aggregate = False
         self._account_cookie = None
-        self.default_account_id = None
         self.headers = mock.MagicMock()
         self.rfile = mock.MagicMock()
         self._send_response = mock.MagicMock()
@@ -127,9 +128,12 @@ class TestPostAuthAutoProbe:
         """After device_code_login returns, probe_account must be called
         and write_account_health must receive status="ok"."""
         cfg = _make_microsoft_config(tmp_db_path)
-        handler = _FakeHandler(tmp_db_path, mail_config=cfg)
+        accounts = MailAccountsConfig(
+            accounts=(MailAccount(account_id="test", config=cfg, label=None),),
+        )
+        handler = _FakeHandler(tmp_db_path, mail_config=cfg, accounts=accounts)
         handler.headers.get.return_value = 0
-        handler.rfile.read.return_value = b""
+        handler.rfile.read.return_value = b"account_id=test"
 
         mock_write = mock.MagicMock()
         mock_conn = mock.MagicMock()
@@ -162,15 +166,18 @@ class TestPostAuthAutoProbe:
         assert call_kwargs.get("error") is None
 
         # Assert the flow ended in "success".
-        assert _BoardAuthMixin._AUTH_FLOWS["single"]["status"] == "success"
+        assert _BoardAuthMixin._AUTH_FLOWS["test"]["status"] == "success"
 
     def test_auth_success_probe_failure_still_succeeds(self, tmp_db_path: str) -> None:
         """When probe_account raises, the flow still finishes with
         status="success" — probe failure is non-fatal."""
         cfg = _make_microsoft_config(tmp_db_path)
-        handler = _FakeHandler(tmp_db_path, mail_config=cfg)
+        accounts = MailAccountsConfig(
+            accounts=(MailAccount(account_id="test", config=cfg, label=None),),
+        )
+        handler = _FakeHandler(tmp_db_path, mail_config=cfg, accounts=accounts)
         handler.headers.get.return_value = 0
-        handler.rfile.read.return_value = b""
+        handler.rfile.read.return_value = b"account_id=test"
 
         with (
             mock.patch(
@@ -197,4 +204,4 @@ class TestPostAuthAutoProbe:
         mock_write.assert_not_called()
 
         # The flow must still succeed.
-        assert _BoardAuthMixin._AUTH_FLOWS["single"]["status"] == "success"
+        assert _BoardAuthMixin._AUTH_FLOWS["test"]["status"] == "success"

@@ -160,7 +160,6 @@ def test_ingest_loop_respects_ingest_interval() -> None:
                 label=None,
             ),
         ),
-        default_account_id="a",
     )
 
     mock_load_accounts = mock.Mock(return_value=accounts)
@@ -232,7 +231,6 @@ def test_ingest_loop_handles_empty_accounts() -> None:
 
     accounts = MailAccountsConfig(
         accounts=(),
-        default_account_id="",
     )
 
     mock_load_accounts = mock.Mock(return_value=accounts)

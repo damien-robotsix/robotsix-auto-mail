@@ -73,7 +73,6 @@ class BoardHandler(
         db_path: str,
         mail_config: MailConfig | None = None,
         accounts: MailAccountsConfig | None = None,
-        default_account_id: str | None = None,
         **kwargs: object,
     ) -> None:
         # Set attributes BEFORE calling ``super().__init__`` because
@@ -82,14 +81,13 @@ class BoardHandler(
         self.db_path = db_path
         self.mail_config = mail_config
         self.accounts = accounts
-        self.default_account_id = default_account_id
         # ``Set-Cookie`` value emitted by the response sinks when a
         # request selected an account via ``?account=`` (set by
         # ``_select_account``); ``None`` means no cookie is written.
         self._account_cookie: str | None = None
         # Resolved current account id for the in-flight request (set by
-        # ``_select_account``); ``None`` in legacy single-account mode
-        # because ``_select_account`` is never called there.
+        # ``_select_account``); ``None`` when ``_select_account`` is not
+        # called (accounts is ``None``).
         self._current_account_id: str | None = None
         # Aggregate mode flag — set to ``True`` when the request resolves to
         # the global (all-accounts) board view.
@@ -296,16 +294,17 @@ class BoardHandler(
 
         Only invoked when ``self.accounts is not None``.  Resolution
         precedence: ``?account=`` query param → ``account`` request
-        cookie → for multi-account setups with neither, defaults to
-        aggregate (``__all__``) and sets the cookie; for single-account
-        setups, falls back to ``self.default_account_id``.
+        cookie → first account in configured order (initial view).
 
         The reserved sentinel ``GLOBAL_VIEW_ACCOUNT_ID`` (``"__all__"``)
-        selects the aggregate view instead of a single account.  When
-        there is no ``?account=``, no cookie, and at least two accounts
-        are configured, the handler defaults to the aggregate view and
-        sets the ``account`` cookie to ``__all__`` so the aggregate
-        preference persists across subsequent requests.
+        selects the aggregate view instead of a single account.  The
+        aggregate view is only entered when explicitly requested via
+        ``?account=__all__`` or a pre-existing ``account=__all__`` cookie.
+
+        When there is no ``?account=``, no cookie, and at least one account
+        is configured, the handler defaults to the first account in
+        configured order and sets the ``account`` cookie so the selection
+        persists across subsequent requests.
 
         An explicit ``?account=<id>`` that is unknown is a hard 404
         (returns ``False`` so the caller skips dispatch).  A stale id
@@ -345,32 +344,38 @@ class BoardHandler(
             self._current_account_id = GLOBAL_VIEW_ACCOUNT_ID
             return True
 
-        # No query param, no cookie, ≥2 accounts → default to aggregate.
-        if not query_id and not cookie_id and len(accounts.ids()) >= 2:
-            self._aggregate = True
-            self._account_cookie = self._build_account_cookie(GLOBAL_VIEW_ACCOUNT_ID)
-            self._current_account_id = GLOBAL_VIEW_ACCOUNT_ID
-            return True
-
-        # -- single-account resolution -----------------------------------
-        fallback_id = self.default_account_id or accounts.default_account_id
-        account_id = query_id or cookie_id or fallback_id
-
-        try:
-            account = accounts.get(account_id)
-        except ConfigurationError:
-            if query_id is not None:
+        # -- explicit account resolution via query param -----------------
+        if query_id is not None:
+            try:
+                account = accounts.get(query_id)
+            except ConfigurationError:
                 # Explicit, unknown account → hard 404.
                 self._not_found()
                 return False
-            # Stale/unknown cookie id → fall back to the default account.
-            account = accounts.get(fallback_id)
-
-        self.db_path = account.config.db_path
-        self.mail_config = account.config
-        self._current_account_id = account.account_id
-        if query_id is not None:
+            self.db_path = account.config.db_path
+            self.mail_config = account.config
+            self._current_account_id = account.account_id
             self._account_cookie = self._build_account_cookie(account.account_id)
+            return True
+
+        # -- cookie-based resolution ------------------------------------
+        if cookie_id is not None:
+            try:
+                account = accounts.get(cookie_id)
+            except ConfigurationError:
+                # Stale/unknown cookie id → fall through to first account.
+                pass
+            else:
+                self.db_path = account.config.db_path
+                self.mail_config = account.config
+                self._current_account_id = account.account_id
+                return True
+
+        # -- fallback: first account in configured order -----------------
+        first_account = accounts.accounts[0]
+        self.db_path = first_account.config.db_path
+        self.mail_config = first_account.config
+        self._current_account_id = first_account.account_id
         return True
 
     def _build_account_cookie(self, account_id: str) -> str:
@@ -509,7 +514,6 @@ def make_board_handler(
     mail_config: MailConfig | None = None,
     *,
     accounts: MailAccountsConfig | None = None,
-    default_account_id: str | None = None,
 ) -> functools.partial[BoardHandler]:
     """Return a callable that builds a ``BoardHandler`` wired to *db_path*.
 
@@ -519,11 +523,11 @@ def make_board_handler(
     args still flow through to ``BoardHandler.__init__``.
 
     When *accounts* is provided, the handler additionally resolves the
-    target account per request (query param / cookie / default), and
-    *db_path*/*mail_config* act as the pre-resolution defaults.  In the
-    legacy single-account mode (*accounts* ``None``) the partial binds
-    only ``db_path`` and ``mail_config`` so existing callers and tests
-    observe an unchanged keyword set.
+    target account per request (query param / cookie / first account),
+    and *db_path*/*mail_config* act as the pre-resolution defaults.  When
+    *accounts* is ``None`` the partial binds only ``db_path`` and
+    ``mail_config`` so existing callers and tests observe an unchanged
+    keyword set.
 
     """
     if accounts is None:
@@ -537,5 +541,4 @@ def make_board_handler(
         db_path=db_path,
         mail_config=mail_config,
         accounts=accounts,
-        default_account_id=default_account_id,
     )

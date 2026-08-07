@@ -22,7 +22,7 @@ def register_subparser(
     login_parser.add_argument(
         "--account",
         metavar="ID",
-        default=None,
+        required=True,
         help="Account id to authenticate.",
     )
 
@@ -44,19 +44,10 @@ def _cmd_auth_login(args: argparse.Namespace) -> int:
     )
 
     accounts = _load_accounts_or_exit()
-    if args.account is not None:
-        try:
-            account = accounts.get(args.account)
-        except ConfigurationError as exc:
-            sys.stderr.write(f"Error: {exc}\n")
-            return 1
-    elif len(accounts.accounts) == 1:
-        account = accounts.accounts[0]
-    else:
-        sys.stderr.write(
-            "Error: multiple accounts configured; pass --account <id>. "
-            f"Available ids: {list(accounts.ids())!r}\n"
-        )
+    try:
+        account = accounts.get(args.account)
+    except ConfigurationError as exc:
+        sys.stderr.write(f"Error: {exc}\n")
         return 1
 
     config = account.config

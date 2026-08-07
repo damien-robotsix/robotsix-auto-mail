@@ -53,7 +53,6 @@ class _DraftMixinFakeHandler(_DraftMixin, _BoardActionMixin):
         self._current_account_id = None
         self._aggregate = False
         self._account_cookie = None
-        self.default_account_id = None
         self.headers = mock.MagicMock()
         self.rfile = mock.MagicMock()
         self._send_response = mock.MagicMock()
@@ -81,7 +80,6 @@ class _BatchFakeHandler(_BatchActionMixin, _BoardActionMixin):
         self._aggregate: bool = False
         self._current_account_id: str | None = None
         self._account_cookie: str | None = None
-        self.default_account_id: str | None = None
         self.headers: Any = mock.MagicMock()
         self.rfile: Any = mock.MagicMock()
         self._send_response: Any = mock.MagicMock()
@@ -136,7 +134,6 @@ class _AccountMixinFakeHandler(_AccountMixin):
         self._current_account_id = None
         self._aggregate = False
         self._account_cookie = None
-        self.default_account_id = None
         self.headers = mock.MagicMock()
         self.rfile = mock.MagicMock()
         self._send_response = mock.MagicMock()

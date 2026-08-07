@@ -22,7 +22,6 @@ def _account(**overrides: object) -> MailAccount:
 def _accounts(**overrides: object) -> MailAccountsConfig:
     return MailAccountsConfig(
         accounts=[_account(**overrides)],
-        default_account_id="default",
     )
 
 
@@ -35,10 +34,10 @@ def test_ingest_interval_default() -> None:
 def test_ingest_interval_default_when_unset() -> None:
     """An account without an explicit interval keeps the default."""
     accts = _accounts()
-    assert accts.default.config.ingest_interval_minutes == 15
+    assert accts.accounts[0].config.ingest_interval_minutes == 15
 
 
 def test_ingest_interval_custom() -> None:
     """ingest_interval_minutes can be set explicitly."""
     accts = _accounts(ingest_interval_minutes=5)
-    assert accts.default.config.ingest_interval_minutes == 5
+    assert accts.accounts[0].config.ingest_interval_minutes == 5

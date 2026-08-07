@@ -53,7 +53,6 @@ def _accounts_ingest(cfg: MailConfig) -> MailAccountsConfig:
     """Wrap a single ``MailConfig`` in a one-element accounts container."""
     return MailAccountsConfig(
         accounts=(MailAccount(account_id="default", config=cfg, label=None),),
-        default_account_id="default",
     )
 
 
@@ -323,7 +322,6 @@ def test_cli_ingest_skips_passwordless_account_but_runs_credentialed(
             MailAccount(account_id="good", config=cfg_pw, label=None),
             MailAccount(account_id="nopw", config=cfg_no_pw, label=None),
         ),
-        default_account_id="good",
     )
 
     with mock.patch(

@@ -31,8 +31,7 @@ file — it carries no configuration values itself.
 ## File shape
 
 The config file has a top-level `accounts:` list — one entry per mailbox — plus
-optional application-wide `openrouter:`, `langfuse:`, and `logging:` sections
-and an optional `default_account:` key.
+optional application-wide `openrouter:`, `langfuse:`, and `logging:` sections.
 
 ```yaml
 # Application-wide (top-level) sections
@@ -44,9 +43,6 @@ langfuse:
   projects: {}
 logging:
   level: INFO
-
-# The default account for CLI operations (absent → the first account below)
-default_account: personal
 
 accounts:
   - id: personal          # required, stable, filesystem/URL-safe id
@@ -235,7 +231,6 @@ therefore fund exactly one function.
 | `accounts` | *(none)* | list | yes | List of per-account mappings. Each entry requires a stable `id` and the `imap` / `smtp` / `auth` sections above; other per-account sections are optional. |
 | `accounts[].id` | *(none)* | string | yes | Stable, filesystem/URL-safe identifier for the account (e.g. `personal`). Must match `^[A-Za-z0-9._-]+$` and be unique across accounts. |
 | `accounts[].label` | *(none)* | string | no | Human-friendly display name (e.g. `Personal Gmail`). |
-| `default_account` | *(first account)* | string | no | The `id` of the default account for CLI operations. When absent, the first `accounts:` entry is the default. |
 
 Rules enforced when the file loads:
 
@@ -245,7 +240,6 @@ Rules enforced when the file loads:
   form is available to create accounts through the web UI.
 - Every account's resolved `store.path` must be unique (one SQLite database per
   account).
-- `default_account`, when set, must name an existing account `id`.
 
 ---
 
@@ -273,8 +267,7 @@ renders from, and the current version.
         "account_id": "personal",
         "config": {"imap_host": "imap.gmail.com", "password": "**********"}
       }
-    ],
-    "default_account_id": "personal"
+    ]
   },
   "schema": {"...": "the committed config/config.schema.json"},
   "version": 7
