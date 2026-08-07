@@ -144,5 +144,6 @@ def _run_llm_agent(  # noqa: UP047
         else:
             break
 
-    assert result is not None  # the loop body always sets result before exit
+    if result is None:  # pragma: no cover — loop body always sets result
+        raise exc_type("LLM call returned no result after all retries")
     return typing.cast(_T, result.output)
