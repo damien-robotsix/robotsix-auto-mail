@@ -9,6 +9,10 @@
   ``update_calendar_correlation_id`` and ``update_calendar_event_ref`` DB write
   functions (previously defined but never invoked), so the calendar columns are
   populated instead of remaining permanently empty.
+- Added AGENT.md rule: when adding, removing, or renaming a config field on
+  ``MailAccountsConfig`` or ``MailConfig``, update ``docs/configuration.md`` and
+  keep ``scripts/config/check_config_sync.py``'s ``_CONFIGURATION_MD_CONTAINER_KEYS``
+  in lockstep.
 - Thread the configured `detector_level` through the detect CLI flow so
   `detect_provider` receives the operator-configured LLM tier instead of
   always defaulting to level 1.  The `_detect_settings`, `_verify_and_refine`,
