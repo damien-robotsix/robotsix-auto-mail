@@ -328,7 +328,6 @@ def _detect_settings(
                     api_key=api_key,
                     provider_model=llm_provider_model,
                     mx_hosts=mx_hosts,
-                    level=level,
                 )
             except _detection_error as exc:
                 sys.stderr.write(f"Error: {exc}\n")

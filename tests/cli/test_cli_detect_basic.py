@@ -272,7 +272,6 @@ def test_detect_llm_api_key_from_config(
         api_key="sk-test",
         provider_model="",
         mx_hosts=[],
-        level=1,
     )
 
 
