@@ -404,9 +404,9 @@ def _build_add_account_form_html(
     imap_port = p.get("imap_port", "993")
     smtp_port = p.get("smtp_port", "587")
 
+    origin_val = html.escape(origin, quote=True)
     origin_input = (
-        f'<input type="hidden" name="origin"'
-        f' value="{html.escape(origin, quote=True)}">\n'
+        f'<input type="hidden" name="origin" value="{origin_val}">\n'
         if origin
         else ""
     )
