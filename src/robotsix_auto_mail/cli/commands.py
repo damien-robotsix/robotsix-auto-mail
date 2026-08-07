@@ -56,7 +56,7 @@ def _load_config_or_exit(account_id: str | None = None) -> MailConfig:
             return accounts.get(account_id).config
         except ConfigurationError as exc:
             sys.stderr.write(f"Error: {exc}\n")
-            raise SystemExit(1)
+            raise SystemExit(1) from exc
     if not accounts.accounts:
         sys.stderr.write(
             "Error: no accounts configured. Add an account via the web UI "
