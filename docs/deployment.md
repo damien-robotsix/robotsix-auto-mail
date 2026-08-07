@@ -76,7 +76,7 @@ in `.gitignore`), so your credentials stay local and never land in the repo.
 docker compose build
 ```
 
-The [`Dockerfile`](../Dockerfile) has two stages:
+The [`Dockerfile`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/Dockerfile) has two stages:
 
 | Stage | What it does |
 |---|---|
@@ -238,7 +238,7 @@ interactive process.
 
 ### Pull the published image
 
-On every `v*` git tag, the [`release.yml`](../.github/workflows/release.yml)
+On every `v*` git tag, the [`release.yml`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/.github/workflows/release.yml)
 workflow delegates to the shared
 [`docker-release.yml`](https://github.com/damien-robotsix/robotsix-github-workflows/blob/main/.github/workflows/docker-release.yml)
 reusable workflow from `robotsix-github-workflows`, which builds the `Dockerfile` and
@@ -281,8 +281,8 @@ docker push registry.example.com/robotsix-auto-mail:v1.0.0
 
 The always-on production deployment is operated by the external
 **central-deploy** system and reachable at `https://deploy.robotsix.net/mail`.
-The [`deploy/`](../deploy/) directory holds the central-deploy **contract** —
-[`deploy/docker-compose.yml`](../deploy/docker-compose.yml), marked
+The [`deploy/`](https://github.com/damien-robotsix/robotsix-auto-mail/tree/main/deploy/) directory holds the central-deploy **contract** —
+[`deploy/docker-compose.yml`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/deploy/docker-compose.yml), marked
 `central-deploy-contract-version: 1`. central-deploy consumes it to **pull**
 the published image and run the stack, rather than building from source. The
 orchestrator itself lives outside this repo, so server provisioning, TLS, and
@@ -316,7 +316,7 @@ ingress are not configured here.
 - Configuration is **not** managed by central-deploy. The app reads the JSON
   file at `ROBOTSIX_CONFIG_FILE` (`/home/app/config/config.json`), seeded
   manually into the `auto-mail-config` volume — see
-  [`config/config.example.json`](../config/config.example.json) for the shape,
+  [`config/config.example.json`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/config/config.example.json) for the shape,
   or generate one with `robotsix-auto-mail detect`.
 
 #### `robotsix.deploy.*` labels
@@ -384,7 +384,7 @@ docker run --rm \
 
 ### What the entrypoint does
 
-Before the Python interpreter starts, [`entrypoint.sh`](../entrypoint.sh)
+Before the Python interpreter starts, [`entrypoint.sh`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/entrypoint.sh)
 validates that a readable JSON config file exists at
 `${ROBOTSIX_CONFIG_FILE:-config/config.json}`.
 
@@ -568,4 +568,4 @@ docker compose run robotsix-auto-mail ingest
   reference.
 - **[docs/ingestion.md](ingestion.md)** — ingestion pipeline, schema,
   idempotency guarantees, and `ingest` CLI usage.
-- **[README.md](../README.md)** — project overview, layout, and status.
+- **[README.md](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/README.md)** — project overview, layout, and status.

@@ -12,7 +12,7 @@ built-in default; any field you omit keeps its default.
 
 For a guided setup and the `detect` auto-configuration command, see
 [Connecting](connecting.md). The canonical template ships in
-[`config/config.example.json`](../config/config.example.json).
+[`config/config.example.json`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/config/config.example.json).
 
 ---
 
