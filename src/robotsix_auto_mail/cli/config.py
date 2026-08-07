@@ -173,7 +173,6 @@ def _account_id_from_email(email: str) -> str:
     return cleaned
 
 
-
 def _get_password(args: argparse.Namespace) -> str | None:
     """Get password from args or interactive prompt.
 
