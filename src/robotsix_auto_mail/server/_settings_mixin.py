@@ -304,6 +304,7 @@ class _SettingsMixin:
             self._serve_json({"ok": False, "error": "missing account_id"}, status=400)
             return
         account_id = account_id_vals[0].strip()
+        account_id = account_id.replace("\n", "").replace("\r", "")
 
         # Load existing config.
         try:
