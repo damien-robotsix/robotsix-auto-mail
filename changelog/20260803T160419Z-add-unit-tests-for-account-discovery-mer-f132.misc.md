@@ -1,0 +1,1 @@
+Add unit tests for `discover_accounts_from_settings_stores` and `merge_settings_store_accounts` — the critical config-recovery path that lets accounts added via the web UI survive a deploy-system overwrite of config/config.json.
