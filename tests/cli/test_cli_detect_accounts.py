@@ -11,8 +11,6 @@ import pytest
 from robotsix_auto_mail.cli import main
 from robotsix_auto_mail.config import (
     MAIN_LLM_ALIAS,
-    LangfuseConfig,
-    LangfuseProject,
     MailAccount,
     MailAccountsConfig,
     MailConfig,
@@ -21,6 +19,7 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.config.detect import MailProvider
 from tests.cli.conftest import _ok_result
+from tests.conftest import _make_langfuse_config
 
 
 def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
@@ -348,13 +347,8 @@ def test_detect_overwrite_preserves_component_credentials(
     container = MailAccountsConfig(
         accounts=[seed_account],
         default_account_id="main",
-        langfuse=LangfuseConfig(
-            host="https://cloud.langfuse.com",
-            projects={
-                MAIN_LLM_ALIAS: LangfuseProject(
-                    public_key="pk-seed", secret_key="sk-seed-lf"
-                )
-            },
+        langfuse=_make_langfuse_config(
+            public_key="pk-seed", secret_key="sk-seed-lf", base_url="https://cloud.langfuse.com"
         ),
         openrouter=OpenRouterConfig(keys={MAIN_LLM_ALIAS: "sk-seed"}),
         models=TierModelsConfig(level1="openai/gpt-4o"),
