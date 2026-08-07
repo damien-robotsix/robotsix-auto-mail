@@ -67,9 +67,7 @@ def _account(account_id: str = "work") -> dict[str, Any]:
 def config_file(tmp_path: Path) -> Iterator[Path]:
     path = tmp_path / "config" / "config.json"
     path.parent.mkdir(parents=True)
-    path.write_text(
-        json.dumps({"accounts": [_account()]})
-    )
+    path.write_text(json.dumps({"accounts": [_account()]}))
     with mock.patch.dict(os.environ, {"ROBOTSIX_CONFIG_FILE": str(path)}):
         yield path
 

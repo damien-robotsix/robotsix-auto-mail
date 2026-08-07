@@ -51,7 +51,9 @@ def _patch_config_sync_llm(
 
 def test_parser_has_config_sync_subcommand() -> None:
     """The parser knows the config-sync subcommand with expected defaults."""
-    args = build_parser().parse_args(["config-sync", "--account", "default", "--output-format", "json"])
+    args = build_parser().parse_args(
+        ["config-sync", "--account", "default", "--output-format", "json"]
+    )
     assert args.command == "config-sync"
     assert args.output_format == "json"
     assert args.dedup is False
@@ -107,7 +109,17 @@ def test_config_sync_json_output(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
     ):
-        rc = main(["config-sync", "--account", "default", "--api-key", "sk-test", "--output-format", "json"])
+        rc = main(
+            [
+                "config-sync",
+                "--account",
+                "default",
+                "--api-key",
+                "sk-test",
+                "--output-format",
+                "json",
+            ]
+        )
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
@@ -194,7 +206,9 @@ def test_config_sync_dedup_forwards_conn(
 
 def test_parser_has_config_sync_set_subcommand() -> None:
     """The parser knows the config-sync-set subcommand with positional args."""
-    args = build_parser().parse_args(["config-sync-set", "--account", "default", "abc123", "accepted"])
+    args = build_parser().parse_args(
+        ["config-sync-set", "--account", "default", "abc123", "accepted"]
+    )
     assert args.command == "config-sync-set"
     assert args.fingerprint == "abc123"
     assert args.state == "accepted"

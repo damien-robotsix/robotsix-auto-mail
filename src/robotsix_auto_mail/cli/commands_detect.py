@@ -282,10 +282,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
                 )
 
         # Merge the new account with existing accounts.
-        if existing is not None:
-            accounts_list = list(existing.accounts)
-        else:
-            accounts_list = []
+        accounts_list = list(existing.accounts) if existing is not None else []
         existing_idx = next(
             (i for i, a in enumerate(accounts_list) if a.account_id == account_id),
             None,

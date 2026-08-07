@@ -81,7 +81,9 @@ __all__ = [
 ]
 
 
-def _add_account_arg(parser: argparse.ArgumentParser, *, required: bool = False) -> None:
+def _add_account_arg(
+    parser: argparse.ArgumentParser, *, required: bool = False
+) -> None:
     """Add the shared ``--account`` selection flag to *parser*."""
     parser.add_argument(
         "--account",

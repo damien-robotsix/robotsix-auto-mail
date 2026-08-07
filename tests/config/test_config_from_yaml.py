@@ -146,9 +146,7 @@ def test_mailconfig_defaults_for_missing_fields() -> None:
 
 def test_credential_blocks_default_to_unconfigured() -> None:
     """A config with no `langfuse` / `openrouter` block loads and traces nothing."""
-    cfg = MailAccountsConfig(
-        accounts=[_acct("a", imap_host="i")]
-    )
+    cfg = MailAccountsConfig(accounts=[_acct("a", imap_host="i")])
     assert cfg.langfuse.host == ""
     assert cfg.langfuse.projects == {}
     assert cfg.openrouter.keys == {}
@@ -266,7 +264,6 @@ def test_accounts_duplicate_id_raises() -> None:
                 _acct("dup", db_path=".data/b.db"),
             ],
         )
-
 
 
 def test_accounts_duplicate_db_path_raises() -> None:

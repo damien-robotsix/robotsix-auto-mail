@@ -83,7 +83,9 @@ def _cfg_with_inbox(tmp_path: Path, message_id: str = "<a@x.com>") -> MailConfig
 
 def test_parser_has_triage_subcommand() -> None:
     """The parser knows the triage subcommand with expected defaults."""
-    args = build_parser().parse_args(["triage", "--account", "default", "--output-format", "json"])
+    args = build_parser().parse_args(
+        ["triage", "--account", "default", "--output-format", "json"]
+    )
     assert args.command == "triage"
     assert args.output_format == "json"
     assert args.api_key is None
@@ -91,7 +93,9 @@ def test_parser_has_triage_subcommand() -> None:
 
 def test_parser_has_triage_set_subcommand() -> None:
     """The parser knows the triage-set subcommand with positional args."""
-    args = build_parser().parse_args(["triage-set", "--account", "default", "<a@x.com>", "TO_ANSWER"])
+    args = build_parser().parse_args(
+        ["triage-set", "--account", "default", "<a@x.com>", "TO_ANSWER"]
+    )
     assert args.command == "triage-set"
     assert args.message_id == "<a@x.com>"
     assert args.action == "TO_ANSWER"
@@ -131,7 +135,17 @@ def test_triage_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
             "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
         ),
     ):
-        rc = main(["triage", "--account", "default", "--output-format", "json", "--api-key", "sk-test"])
+        rc = main(
+            [
+                "triage",
+                "--account",
+                "default",
+                "--output-format",
+                "json",
+                "--api-key",
+                "sk-test",
+            ]
+        )
 
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
@@ -240,7 +254,9 @@ def test_triage_set_unknown_message_id(
     with mock.patch(
         "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
     ):
-        rc = main(["triage-set", "--account", "default", "<missing@x.com>", "TO_ANSWER"])
+        rc = main(
+            ["triage-set", "--account", "default", "<missing@x.com>", "TO_ANSWER"]
+        )
 
     assert rc == 1
     err = capsys.readouterr().err

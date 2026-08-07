@@ -47,9 +47,8 @@ def _load_config_or_exit(account_id: str | None = None) -> MailConfig:
     """Select one account's :class:`MailConfig`, or exit 1 on failure.
 
     With *account_id* given, returns that account's config (exiting 1 with the
-    valid ids on an unknown id).  With *account_id* ``None`` the **first
-    account** in configured order is returned.  If no accounts are configured,
-    exits 1 with an error.
+    valid ids on an unknown id).  With *account_id* ``None`` exits 1 with an
+    error listing available accounts — there is no default account.
     """
     accounts = _load_accounts_or_exit()
     if account_id is not None:
@@ -64,4 +63,8 @@ def _load_config_or_exit(account_id: str | None = None) -> MailConfig:
             "(/add-account) or the config file.\n"
         )
         sys.exit(1)
-    return accounts.accounts[0].config
+    sys.stderr.write(
+        f"Error: --account is required. Available accounts: "
+        f"{', '.join(accounts.ids())}\n"
+    )
+    sys.exit(1)

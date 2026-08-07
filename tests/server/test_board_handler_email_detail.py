@@ -148,14 +148,14 @@ def test_get_routing_isolates_accounts(
 def test_get_default_account_no_param(
     db_accounts_no_triage_b: tuple[str, str, MailAccountsConfig],
 ) -> None:
-    """GET /board-content with no param and ≥2 accounts defaults to aggregate."""
+    """GET /board-content with no param defaults to the first account."""
     _db_a, _db_b, accounts = db_accounts_no_triage_b
     server, port = _start_test_server_with_accounts(accounts)
     try:
         _s, body, _h = _get(f"http://127.0.0.1:{port}/board-content")
-        # Aggregate view shows cards from both accounts.
-        assert "bob@b.com" in body
+        # First account in configured order (A) is selected.
         assert "alice@a.com" in body
+        assert "bob@b.com" not in body
     finally:
         server.shutdown()
 
@@ -259,9 +259,9 @@ def test_picker_visible_multi_account(
         assert '<option value="__all__"' in body
         assert '<option value="A"' in body
         assert '<option value="B"' in body
-        # Default (no query, no cookie, ≥2 accounts) → aggregate.
-        assert '<option value="__all__" selected>' in body
-        assert '<option value="A" selected>' not in body
+        # Default (no query, no cookie) → first account in configured order.
+        assert '<option value="A" selected>' in body
+        assert '<option value="__all__" selected>' not in body
         # Non-None label renders escaped as the option text.
         assert "Alice &lt;Work&gt;" in body
     finally:

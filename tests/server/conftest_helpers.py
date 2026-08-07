@@ -404,9 +404,7 @@ def _start_test_server_with_accounts(
     return server, assigned_port
 
 
-def _two_account_setup(
-    db_a: str, db_b: str
-) -> MailAccountsConfig:
+def _two_account_setup(db_a: str, db_b: str) -> MailAccountsConfig:
     """Build a two-account container with seeded, distinct records per DB."""
     _populate_db(
         db_a,
@@ -470,11 +468,8 @@ def _triage_action(db_path: str, message_id: str) -> str | None:
         conn.close()
 
 
-def _two_account_setup_with_labels(
-    db_a: str, db_b: str
-) -> MailAccountsConfig:
+def _two_account_setup_with_labels(db_a: str, db_b: str) -> MailAccountsConfig:
     """Two-account container with a non-None label on account ``A``."""
-    base = _two_account_setup(db_a, db_b)
     return MailAccountsConfig(
         accounts=(
             MailAccount(

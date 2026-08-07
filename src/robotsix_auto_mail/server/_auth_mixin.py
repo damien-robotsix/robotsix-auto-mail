@@ -22,7 +22,7 @@ class _BoardAuthMixin:
     if TYPE_CHECKING:
         self: BoardHandlerProtocol
 
-    #: Per-flow state keyed by ``flow_key`` (``account_id`` or ``"single"``).
+    #: Per-flow state keyed by ``flow_key`` (``account_id``).
     _AUTH_FLOWS: dict[str, dict[str, Any]] = {}  # noqa: RUF012
 
     #: Per-flow ``threading.Event`` so POST /auth-start can block until
@@ -39,18 +39,22 @@ class _BoardAuthMixin:
         body = parse_qs(raw)
         account_id = (body.get("account_id", [""])[0]).strip()
 
-        # 2. Resolve the MailConfig for the target account.
-        if self.accounts is not None:
-            try:
-                config = self.accounts.get(account_id).config
-            except Exception as exc:
-                self._serve_json({"error": f"Unknown account: {exc}"}, status=400)
-                return
-        else:
-            config = self.mail_config
-            account_id = ""  # ignored; flow_key becomes "single"
+        # 2. Multi-account is the only model; an account id is mandatory.
+        if not account_id:
+            self._serve_json({"error": "No account id specified"}, status=400)
+            return
 
-        # 3. Only Microsoft OAuth2 accounts are supported.
+        # 3. Resolve the MailConfig for the target account.
+        if self.accounts is None:
+            self._serve_json({"error": "No accounts configured"}, status=400)
+            return
+        try:
+            config = self.accounts.get(account_id).config
+        except Exception as exc:
+            self._serve_json({"error": f"Unknown account: {exc}"}, status=400)
+            return
+
+        # 4. Only Microsoft OAuth2 accounts are supported.
         if (
             config is None
             or getattr(config, "oauth2_provider", "") != MICROSOFT_PROVIDER
@@ -61,8 +65,8 @@ class _BoardAuthMixin:
             )
             return
 
-        # 4. Compute the flow key.
-        flow_key = account_id or "single"
+        # 5. Compute the flow key.
+        flow_key = account_id
 
         # 5. Idempotent guard — if a flow is already running, return the
         #    current state so the board JS can resume polling.
@@ -148,8 +152,13 @@ class _BoardAuthMixin:
         qs = parse_qs(parsed.query)
         account_id = (qs.get("account_id", [""])[0]).strip()
 
-        # 2. Compute flow key.
-        flow_key = account_id or "single"
+        # 2. An account id is mandatory.
+        if not account_id:
+            self._serve_json({"status": _WATERMARK_IDLE})
+            return
+
+        # 3. Compute flow key.
+        flow_key = account_id
 
         # 3. Look up state.
         state = _BoardAuthMixin._AUTH_FLOWS.get(flow_key)

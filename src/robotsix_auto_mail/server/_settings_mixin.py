@@ -233,9 +233,8 @@ class _SettingsMixin:
 
         handler_factory = getattr(self.server, "RequestHandlerClass", None)
         keywords = getattr(handler_factory, "keywords", None)
-        if isinstance(keywords, dict):
-            if "accounts" in keywords:
-                keywords["accounts"] = accounts
+        if isinstance(keywords, dict) and "accounts" in keywords:
+            keywords["accounts"] = accounts
 
         self._mirror_to_settings_stores(accounts)
 

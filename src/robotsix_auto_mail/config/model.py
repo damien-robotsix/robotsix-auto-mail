@@ -349,9 +349,7 @@ class MailAccountsConfig(BaseModel):
             raise ConfigurationError("duplicate db_path values")
         return self
 
-    def with_accounts(
-        self, accounts: list[MailAccount]
-    ) -> MailAccountsConfig:
+    def with_accounts(self, accounts: list[MailAccount]) -> MailAccountsConfig:
         """Return a copy with a new account list, keeping everything else.
 
         Every flow that adds, removes or re-detects an account has to go

@@ -334,4 +334,3 @@ def test_imap_client_is_pure_protocol_client(cfg: MailConfig) -> None:
         ImapClient(cfg)
     mock_load.assert_not_called()
     mock_connect.assert_not_called()
-

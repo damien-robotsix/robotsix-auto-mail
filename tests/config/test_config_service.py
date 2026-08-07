@@ -49,9 +49,7 @@ def config_file(tmp_path: Path) -> Iterator[Path]:
     """Point the config library at a throwaway config file."""
     path = tmp_path / "config" / "config.json"
     path.parent.mkdir(parents=True)
-    path.write_text(
-        json.dumps({"accounts": [_account("work")]})
-    )
+    path.write_text(json.dumps({"accounts": [_account("work")]}))
     with mock.patch.dict(os.environ, {"ROBOTSIX_CONFIG_FILE": str(path)}):
         yield path
 

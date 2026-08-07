@@ -166,13 +166,16 @@ def _account_id_from_email(email: str) -> str:
 
     The local part and domain are joined and any character outside
     ``[A-Za-z0-9._-]`` is collapsed to ``-`` (matching the account-id charset
-    enforced by :class:`MailAccount`).  Falls back to ``"default"`` when the
-    address yields no usable characters.
+    enforced by :class:`MailAccount`).
     """
     local, _, domain = email.partition("@")
     base = f"{local}-{domain}" if domain else local
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", base).strip("-._")
-    return cleaned or "default"
+    if not cleaned:
+        # Edge case: email yields no usable characters — derive from the
+        # original string with maximal sanitisation.
+        cleaned = re.sub(r"[^A-Za-z0-9]", "-", email).strip("-") or "unknown"
+    return cleaned
 
 
 def _load_accounts_from_file(path: Path) -> MailAccountsConfig | None:
@@ -231,15 +234,17 @@ def _existing_accounts_for_append(
     """Return ``(other_accounts, first_account_id)`` for appending to *path*.
 
     ``other_accounts`` are the accounts already in the file *excluding* one
-    matching ``new_account_id``.  A deprecated mono file is converted: its
-    single config becomes a ``"default"`` account.
+    matching ``new_account_id``.  ``first_account_id`` is the id of the first
+    account in the file (or ``new_account_id`` when the file is new).
     """
     container = _load_accounts_from_file(path)
     if container is None:
         return [], new_account_id
 
     others = [a for a in container.accounts if a.account_id != new_account_id]
-    first_id = container.accounts[0].account_id if container.accounts else new_account_id
+    first_id = (
+        container.accounts[0].account_id if container.accounts else new_account_id
+    )
     return others, first_id
 
 
