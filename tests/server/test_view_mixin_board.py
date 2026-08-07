@@ -11,9 +11,9 @@ pytest_plugins = ["tests.server._view_mixin_helpers"]
 
 class TestServeBoard:
     def test_aggregate_success(
-        self, tmp_db_path: str, mock_build_global_board_html: mock.MagicMock
+        self, _fake_db_path: str, mock_build_global_board_html: mock.MagicMock
     ) -> None:
-        handler = _FakeHandler(tmp_db_path, _aggregate=True)
+        handler = _FakeHandler(_fake_db_path, _aggregate=True)
         handler.accounts = mock.MagicMock()
         handler._serve_board()
         handler._send_response.assert_called_once_with(
@@ -22,10 +22,10 @@ class TestServeBoard:
         )
 
     def test_aggregate_503_on_exception(
-        self, tmp_db_path: str, mock_build_global_board_html: mock.MagicMock
+        self, _fake_db_path: str, mock_build_global_board_html: mock.MagicMock
     ) -> None:
         mock_build_global_board_html.side_effect = RuntimeError("boom")
-        handler = _FakeHandler(tmp_db_path, _aggregate=True)
+        handler = _FakeHandler(_fake_db_path, _aggregate=True)
         handler.accounts = mock.MagicMock()
         handler._serve_board()
         handler._send_response.assert_called_once_with(
@@ -33,9 +33,9 @@ class TestServeBoard:
         )
 
     def test_single_account_success(
-        self, tmp_db_path: str, mock_build_board_html: mock.MagicMock
+        self, _fake_db_path: str, mock_build_board_html: mock.MagicMock
     ) -> None:
-        handler = _FakeHandler(tmp_db_path, _aggregate=False)
+        handler = _FakeHandler(_fake_db_path, _aggregate=False)
         handler._serve_board()
         handler._send_response.assert_called_once_with(
             mock_build_board_html.return_value,
@@ -43,10 +43,10 @@ class TestServeBoard:
         )
 
     def test_single_account_503_on_exception(
-        self, tmp_db_path: str, mock_build_board_html: mock.MagicMock
+        self, _fake_db_path: str, mock_build_board_html: mock.MagicMock
     ) -> None:
         mock_build_board_html.side_effect = RuntimeError("boom")
-        handler = _FakeHandler(tmp_db_path, _aggregate=False)
+        handler = _FakeHandler(_fake_db_path, _aggregate=False)
         handler._serve_board()
         handler._send_response.assert_called_once_with(
             "Database unavailable", status=503
@@ -55,9 +55,9 @@ class TestServeBoard:
 
 class TestServeBoardContent:
     def test_aggregate_success(
-        self, tmp_db_path: str, mock_build_global_board_content: mock.MagicMock
+        self, _fake_db_path: str, mock_build_global_board_content: mock.MagicMock
     ) -> None:
-        handler = _FakeHandler(tmp_db_path, _aggregate=True)
+        handler = _FakeHandler(_fake_db_path, _aggregate=True)
         handler.accounts = mock.MagicMock()
         handler._serve_board_content()
         handler._serve_json.assert_called_once_with(
@@ -65,10 +65,10 @@ class TestServeBoardContent:
         )
 
     def test_aggregate_503_on_exception(
-        self, tmp_db_path: str, mock_build_global_board_content: mock.MagicMock
+        self, _fake_db_path: str, mock_build_global_board_content: mock.MagicMock
     ) -> None:
         mock_build_global_board_content.side_effect = RuntimeError("boom")
-        handler = _FakeHandler(tmp_db_path, _aggregate=True)
+        handler = _FakeHandler(_fake_db_path, _aggregate=True)
         handler.accounts = mock.MagicMock()
         handler._serve_board_content()
         handler._serve_json.assert_called_once_with(
@@ -76,19 +76,19 @@ class TestServeBoardContent:
         )
 
     def test_single_account_success(
-        self, tmp_db_path: str, mock_build_board_content: mock.MagicMock
+        self, _fake_db_path: str, mock_build_board_content: mock.MagicMock
     ) -> None:
-        handler = _FakeHandler(tmp_db_path, _aggregate=False)
+        handler = _FakeHandler(_fake_db_path, _aggregate=False)
         handler._serve_board_content()
         handler._serve_json.assert_called_once_with(
             mock_build_board_content.return_value
         )
 
     def test_single_account_503_on_exception(
-        self, tmp_db_path: str, mock_build_board_content: mock.MagicMock
+        self, _fake_db_path: str, mock_build_board_content: mock.MagicMock
     ) -> None:
         mock_build_board_content.side_effect = RuntimeError("boom")
-        handler = _FakeHandler(tmp_db_path, _aggregate=False)
+        handler = _FakeHandler(_fake_db_path, _aggregate=False)
         handler._serve_board_content()
         handler._serve_json.assert_called_once_with(
             {"error": "Database unavailable"}, status=503

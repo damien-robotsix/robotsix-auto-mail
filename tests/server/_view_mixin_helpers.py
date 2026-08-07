@@ -50,13 +50,6 @@ class _FakeHandler(_BoardViewMixin):
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(autouse=True)
-def _patch_serve_board_deps() -> None:
-    """Globally mock the board-rendering functions used by _serve_board
-    and _serve_board_content so no real DB/rendering work occurs."""
-    pass
-
-
 @pytest.fixture
 def mock_build_board_html() -> "mock._patch":
     with mock.patch(
@@ -189,6 +182,6 @@ def mock_parse_archive_structure() -> "mock._patch":
 
 
 @pytest.fixture
-def tmp_db_path() -> str:
+def _fake_db_path() -> str:
     """A throwaway DB path string — no real file created."""
     return "test_view_mixin.db"
