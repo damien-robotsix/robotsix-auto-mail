@@ -37,7 +37,12 @@ try:
 except ImportError:
     _has_hypothesis = False
 
-from robotsix_auto_mail.config import MailConfig  # noqa: E402
+from robotsix_auto_mail.config import (  # noqa: E402
+    MAIN_LLM_ALIAS,
+    LangfuseConfig,
+    LangfuseProject,
+    MailConfig,
+)
 from robotsix_auto_mail.db import MailRecord, init_db  # noqa: E402
 
 if _has_hypothesis:
@@ -198,6 +203,30 @@ def _make_record(**overrides: str | int | None) -> MailRecord:
         attachments_json=_opt_str("attachments_json", "[]"),
         unsubscribe_header=_opt_str("unsubscribe_header", ""),
         notes=_opt_str("notes", ""),
+    )
+
+
+def _make_langfuse_config(
+    *,
+    public_key: str = "",
+    secret_key: str = "",
+    base_url: str = "",
+    alias: str = MAIN_LLM_ALIAS,
+) -> LangfuseConfig:
+    """Build the canonical ``langfuse`` block for tests.
+
+    Centralised here so every test file that needs a ``LangfuseConfig``
+    delegates to a single definition instead of duplicating the inline
+    ``LangfuseProject`` construction.
+    """
+    return LangfuseConfig(
+        host=base_url,
+        projects={
+            alias: LangfuseProject(
+                public_key=public_key,
+                secret_key=secret_key,
+            )
+        },
     )
 
 

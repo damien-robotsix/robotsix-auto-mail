@@ -15,7 +15,6 @@ from robotsix_auto_mail.config import (
     APP_TRIAGE,
     MAIN_LLM_ALIAS,
     ConfigurationError,
-    LangfuseConfig,
     LangfuseProject,
     MailAccount,
     MailAccountsConfig,
@@ -24,6 +23,7 @@ from robotsix_auto_mail.config import (
     resolve_llm_api_key,
     resolve_llm_tier,
 )
+from tests.conftest import _make_langfuse_config
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -86,13 +86,10 @@ def test_openrouter_key_is_masked_in_dumps() -> None:
 
 def test_langfuse_project_is_addressed_by_alias() -> None:
     accts = _accounts(
-        langfuse=LangfuseConfig(
-            host="https://langfuse.example.net",
-            projects={
-                MAIN_LLM_ALIAS: LangfuseProject(
-                    public_key="pk-lf", secret_key="sk-lf", project_id="cm1"
-                )
-            },
+        langfuse=_make_langfuse_config(
+            public_key="pk-lf",
+            secret_key="sk-lf",
+            base_url="https://langfuse.example.net",
         )
     )
     project = accts.langfuse.project()
