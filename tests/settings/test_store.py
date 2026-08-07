@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
+from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail.config.model import MailConfig
+from robotsix_auto_mail.config.model import (
+    MailAccount,
+    MailAccountsConfig,
+    MailConfig,
+)
 from robotsix_auto_mail.db import init_db
 from robotsix_auto_mail.settings.store import (
     SettingsStore,
     _is_secret_field,
     _masked_value,
     _validate_field,
+    discover_accounts_from_settings_stores,
+    merge_settings_store_accounts,
 )
 
 # ===========================================================================
@@ -300,3 +308,256 @@ class TestSettingsStoreSeeded:
         assert result.archive_enabled == original.archive_enabled
         # Secret fields round-trip correctly.
         assert result.password.get_secret_value() == "s3cret"
+
+
+# ===========================================================================
+# discover_accounts_from_settings_stores
+# ===========================================================================
+
+
+def _seed_account_db(db_path: str) -> MailConfig:
+    """Create a DB at *db_path* seeded with a minimal valid MailConfig.
+
+    Returns the seeded MailConfig for assertions.
+    """
+    conn = init_db(db_path)
+    try:
+        store = SettingsStore(db_path)
+        cfg = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="user@example.com",
+            password="s3cret",
+        )
+        store.seed_from_mail_config(conn, cfg)
+        return cfg
+    finally:
+        conn.close()
+
+
+class TestDiscoverAccountsFromSettingsStores:
+    """Tests for ``discover_accounts_from_settings_stores``."""
+
+    def test_empty_when_data_dir_missing(self, tmp_path: Path) -> None:
+        """Non-existent data_dir returns an empty list."""
+        result = discover_accounts_from_settings_stores(
+            str(tmp_path / "nonexistent")
+        )
+        assert result == []
+
+    def test_empty_when_no_subdirectories(self, tmp_path: Path) -> None:
+        """A data_dir with files but no subdirectories returns empty."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "some_file.txt").touch()
+        result = discover_accounts_from_settings_stores(str(data_dir))
+        assert result == []
+
+    def test_subdir_without_mail_db_is_skipped(self, tmp_path: Path) -> None:
+        """A subdirectory without a mail.db is silently skipped."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "account-1").mkdir()
+        result = discover_accounts_from_settings_stores(str(data_dir))
+        assert result == []
+
+    def test_empty_store_is_skipped(self, tmp_path: Path) -> None:
+        """A mail.db with an empty component_settings table is skipped."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        account_dir = data_dir / "account-1"
+        account_dir.mkdir()
+        db_path = str(account_dir / "mail.db")
+        # Create DB with schema but no settings.
+        conn = init_db(db_path)
+        conn.close()
+        result = discover_accounts_from_settings_stores(str(data_dir))
+        assert result == []
+
+    def test_single_valid_account(self, tmp_path: Path) -> None:
+        """A subdirectory with a seeded mail.db returns a MailAccount."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        account_dir = data_dir / "myaccount"
+        account_dir.mkdir()
+        db_path = str(account_dir / "mail.db")
+        seeded = _seed_account_db(db_path)
+
+        result = discover_accounts_from_settings_stores(str(data_dir))
+        assert len(result) == 1
+        account = result[0]
+        assert account.account_id == "myaccount"
+        assert account.config.imap_host == seeded.imap_host
+        assert account.config.smtp_host == seeded.smtp_host
+        assert account.config.username == seeded.username
+        assert account.config.password.get_secret_value() == "s3cret"
+        # db_path is updated to reflect the actual file location.
+        assert account.config.db_path == db_path
+
+    def test_multiple_valid_accounts(self, tmp_path: Path) -> None:
+        """Multiple subdirectories with valid mail.db files are all returned."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        for name in ("a-account", "b-account", "c-account"):
+            account_dir = data_dir / name
+            account_dir.mkdir()
+            db_path = str(account_dir / "mail.db")
+            _seed_account_db(db_path)
+
+        result = discover_accounts_from_settings_stores(str(data_dir))
+        assert len(result) == 3
+        ids = {a.account_id for a in result}
+        assert ids == {"a-account", "b-account", "c-account"}
+
+    def test_corrupt_db_is_skipped(self, tmp_path: Path) -> None:
+        """A subdirectory with a corrupt (non-SQLite) mail.db is skipped."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        account_dir = data_dir / "bad-account"
+        account_dir.mkdir()
+        db_file = account_dir / "mail.db"
+        db_file.write_bytes(b"not a valid sqlite database")
+
+        result = discover_accounts_from_settings_stores(str(data_dir))
+        assert result == []
+
+    def test_mixed_valid_and_invalid(self, tmp_path: Path) -> None:
+        """Only valid accounts are returned; invalid ones are skipped."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+
+        # Valid account.
+        good_dir = data_dir / "good-account"
+        good_dir.mkdir()
+        _seed_account_db(str(good_dir / "mail.db"))
+
+        # Corrupt DB.
+        bad_dir = data_dir / "bad-account"
+        bad_dir.mkdir()
+        (bad_dir / "mail.db").write_bytes(b"garbage")
+
+        # Missing mail.db.
+        missing_dir = data_dir / "missing-db"
+        missing_dir.mkdir()
+
+        result = discover_accounts_from_settings_stores(str(data_dir))
+        assert len(result) == 1
+        assert result[0].account_id == "good-account"
+
+
+# ===========================================================================
+# merge_settings_store_accounts
+# ===========================================================================
+
+
+def _make_accounts_config(
+    *accounts: MailAccount, default_account_id: str | None = None
+) -> MailAccountsConfig:
+    """Build a MailAccountsConfig from MailAccount instances."""
+    if default_account_id is None:
+        default_account_id = accounts[0].account_id if accounts else ""
+    return MailAccountsConfig(
+        accounts=list(accounts),
+        default_account_id=default_account_id,
+    )
+
+
+def _make_account(account_id: str) -> MailAccount:
+    """Build a minimal MailAccount for merge tests."""
+    return MailAccount(
+        account_id=account_id,
+        config=MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username=f"{account_id}@example.com",
+            password="s3cret",
+        ),
+    )
+
+
+class TestMergeSettingsStoreAccounts:
+    """Tests for ``merge_settings_store_accounts``."""
+
+    def test_no_discovered_returns_original(self) -> None:
+        """When no accounts are discovered, the original is returned unchanged."""
+        original = _make_accounts_config(_make_account("existing"))
+        with mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[],
+        ):
+            result = merge_settings_store_accounts(original)
+        assert result is original
+
+    def test_discovered_already_present_returns_original(self) -> None:
+        """When discovered accounts are already in the config, original returned."""
+        existing = _make_account("existing")
+        original = _make_accounts_config(existing)
+        discovered = [existing]
+        with mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=discovered,
+        ):
+            result = merge_settings_store_accounts(original)
+        assert result is original
+
+    def test_new_account_is_merged(self) -> None:
+        """A discovered account not in the config is merged in."""
+        existing = _make_account("existing")
+        original = _make_accounts_config(existing)
+        new_account = _make_account("new-account")
+        with mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[new_account],
+        ):
+            result = merge_settings_store_accounts(original)
+        assert result is not original
+        assert result.ids() == ("existing", "new-account")
+
+    def test_multiple_new_accounts_merged(self) -> None:
+        """Multiple new accounts are all merged in."""
+        existing = _make_account("existing")
+        original = _make_accounts_config(existing)
+        new_a = _make_account("new-a")
+        new_b = _make_account("new-b")
+        with mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[new_a, new_b],
+        ):
+            result = merge_settings_store_accounts(original)
+        assert result.ids() == ("existing", "new-a", "new-b")
+
+    def test_merge_sets_default_when_none(self) -> None:
+        """When there is no default and the first account is merged, it becomes default."""
+        original = _make_accounts_config()  # empty
+        new_account = _make_account("first-account")
+        with mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[new_account],
+        ):
+            result = merge_settings_store_accounts(original)
+        assert result.default_account_id == "first-account"
+
+    def test_merge_preserves_existing_default(self) -> None:
+        """An existing default_account_id is preserved after merging."""
+        existing = _make_account("existing")
+        original = _make_accounts_config(existing, default_account_id="existing")
+        new_account = _make_account("new-account")
+        with mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[new_account],
+        ):
+            result = merge_settings_store_accounts(original)
+        assert result.default_account_id == "existing"
+
+    def test_merge_with_existing_and_new_preserves_order(self) -> None:
+        """Existing accounts stay first; new accounts are appended."""
+        a1 = _make_account("alpha")
+        a2 = _make_account("beta")
+        original = _make_accounts_config(a1, a2)
+        new_account = _make_account("gamma")
+        with mock.patch(
+            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            return_value=[new_account],
+        ):
+            result = merge_settings_store_accounts(original)
+        assert result.ids() == ("alpha", "beta", "gamma")
