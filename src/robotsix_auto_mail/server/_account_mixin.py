@@ -406,16 +406,14 @@ def _build_add_account_form_html(
 
     origin_val = html.escape(origin, quote=True)
     origin_input = (
-        f'<input type="hidden" name="origin" value="{origin_val}">\n'
-        if origin
-        else ""
+        f'<input type="hidden" name="origin" value="{origin_val}">\n' if origin else ""
     )
 
     form_inner = (
         '<form method="post" action="/add-account">\n'
         + origin_input
         # account_id
-        + "<label>Account ID"
+         + "<label>Account ID"
         '<input name="account_id" required'
         f' value="{val("account_id")}"'
         ' pattern="[A-Za-z0-9._-]+"'
@@ -502,7 +500,7 @@ def _build_add_account_form_html(
             if origin == "settings"
             else '<a class="cancel-link" href="/board">Cancel</a>\n'
         )
-        + "</div>\n"
+         + "</div>\n"
         "</form>\n"
     )
 
