@@ -9,7 +9,7 @@ import html
 import json
 import logging
 from typing import TYPE_CHECKING
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 from robotsix_auto_mail.config import (
     MailAccount,
@@ -504,7 +504,8 @@ def _build_add_account_form_html(
     smtp_port = p.get("smtp_port", "587")
 
     origin_input = (
-        f'<input type="hidden" name="origin" value="{html.escape(origin, quote=True)}">\n'
+        f'<input type="hidden" name="origin"'
+        f' value="{html.escape(origin, quote=True)}">\n'
         if origin
         else ""
     )
