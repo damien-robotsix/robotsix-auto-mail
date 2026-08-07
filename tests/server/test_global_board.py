@@ -205,7 +205,9 @@ def test_global_board_default_landing_multi_account(
         assert 'data-account="A"' in body
         assert 'data-account="B"' in body
         # Fresh visit sets the aggregate cookie.
-        assert hdrs.get("Set-Cookie") == "account=__all__; Path=/; HttpOnly; SameSite=Lax"
+        assert (
+            hdrs.get("Set-Cookie") == "account=__all__; Path=/; HttpOnly; SameSite=Lax"
+        )
     finally:
         server.shutdown()
 
