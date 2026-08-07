@@ -54,8 +54,10 @@ Append `?account=<account_id>` (e.g. `?account=main`) to any request.
 ## POST endpoints
 
 All POST endpoints accept `Content-Type: application/x-www-form-urlencoded`
-(standard HTML form encoding).  Most return a `302` redirect to the
-`redirect_to` field value (if supplied) or a hardcoded default.  Exception:
+(standard HTML form encoding) **and** `Content-Type: application/json`.
+When sending JSON, use the same field names as the form-encoded version
+(see the table below).  Most return a `302` redirect to the `redirect_to`
+field value (if supplied) or a hardcoded default.  Exception:
 `/config-sync` returns JSON directly.
 
 | Path | Form fields | Default redirect | Notes |
