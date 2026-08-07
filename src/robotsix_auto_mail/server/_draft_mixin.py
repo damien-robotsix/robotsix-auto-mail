@@ -213,11 +213,13 @@ class _DraftMixin:
 
         with _with_db(self.db_path) as conn:
             try:
+                draft_level, draft_model = resolve_llm_tier(APP_DRAFT)
                 generate_draft_reply(
                     conn,
                     message_id,
                     api_key=resolve_llm_api_key(raise_on_missing=False) or None,
-                    provider_model=resolve_llm_tier(APP_DRAFT)[1] or None,
+                    provider_model=draft_model or None,
+                    level=draft_level,
                 )
             except DraftGenerationError:
                 # Generation failed — degrade gracefully (existing draft /

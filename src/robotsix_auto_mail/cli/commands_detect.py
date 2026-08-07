@@ -165,7 +165,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         return 1
 
     api_key = resolve_llm_api_key(None, raise_on_missing=False)
-    llm_provider_model_str = resolve_llm_tier(APP_DETECTOR)[1]
+    detector_level, llm_provider_model_str = resolve_llm_tier(APP_DETECTOR)
     provider, mx_hosts = _detect_settings(
         args.email,
         api_key,
@@ -175,6 +175,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         provider_from_mx,
         detect_provider,
         DetectionError,
+        level=detector_level,
     )
     if provider is None:
         return 1

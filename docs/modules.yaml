@@ -48,7 +48,6 @@ modules:
       - tests/conftest.py
       - tests/test_stub.py
       - run_tests.sh
-
   - id: docker
     description: >-
       Docker image definition, Compose orchestration, and
