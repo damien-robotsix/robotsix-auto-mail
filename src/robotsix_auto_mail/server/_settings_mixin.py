@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
@@ -25,7 +26,12 @@ logger = logging.getLogger(__name__)
 #: Cap on a config request body — the panel sends only changed keys.
 _MAX_BODY_BYTES = 1_000_000
 
-_SETTINGS_PAGE = """\
+_SETTINGS_CSS = (
+    Path(__file__).parent / "static" / "settings-panel.css"
+).read_text()
+
+_SETTINGS_PAGE = (
+    """\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,40 +39,9 @@ _SETTINGS_PAGE = """\
 <title>Settings</title>
 <link rel="stylesheet" href="/static/robotsix-ui.css">
 <style>
-body {
-  margin: 0;
-  padding: 2rem 1rem;
-  font-family: var(--rsu-font-family, system-ui, sans-serif);
-  background: var(--rsu-color-bg-secondary, #121626);
-  color: var(--rsu-color-text, #eee);
-}
-main { max-width: 56rem; margin: 0 auto; }
-.nav-links { display: flex; gap: 1.5rem; margin: 1.5rem 0; }
-.nav-links a { color: var(--rsu-color-primary, #a0c0ff); text-decoration: none; }
-.nav-links a:hover { text-decoration: underline; }
-.panel-fallback {
-  padding: 1rem;
-  border-radius: 4px;
-  background: var(--rsu-color-error-bg, #fef2f2);
-  color: var(--rsu-color-error, #b71c1c);
-}
-.add-account-section {
-  margin-top: 2rem;
-}
-.add-account-section h2 {
-  font-size: 1.1rem;
-  margin-bottom: 0.75rem;
-  color: var(--rsu-color-text, #eee);
-}
-.add-account-section iframe {
-  width: 100%;
-  border: 1px solid var(--rsu-color-border, #3a3a6a);
-  border-radius: 4px;
-  background: var(--rsu-color-bg, #16213e);
-  /* Height auto-resizes on load. */
-  min-height: 200px;
-}
-</style>
+"""
+    + _SETTINGS_CSS
+    + """</style>
 </head>
 <body>
 <main>
@@ -111,6 +86,7 @@ main { max-width: 56rem; margin: 0 auto; }
 </body>
 </html>
 """
+)
 
 
 class _SettingsMixin:

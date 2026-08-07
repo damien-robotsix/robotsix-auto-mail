@@ -341,8 +341,11 @@ modules:
       - src/robotsix_auto_mail/server/views/board_data.py
       - src/robotsix_auto_mail/server/views/detail.py
       - src/robotsix_auto_mail/server/views/forms.py
+      - src/robotsix_auto_mail/server/static/add-account-embed.css
+      - src/robotsix_auto_mail/server/static/add-account-standalone.css
       - src/robotsix_auto_mail/server/static/board.css
       - src/robotsix_auto_mail/server/static/board-auto-mail.js
+      - src/robotsix_auto_mail/server/static/settings-panel.css
       - src/robotsix_auto_mail/server/static/skill.md
       - src/robotsix_auto_mail/server/board_adapter.py
       - tests/server/__init__.py
