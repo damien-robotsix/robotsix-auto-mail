@@ -178,5 +178,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" sbom.cdx.json \
             --title "$GITHUB_REF_NAME" \
-            --notes-file /tmp/release_body.md \
-            --generate-notes
+            --notes-file /tmp/release_body.md
