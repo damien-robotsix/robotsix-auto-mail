@@ -5,6 +5,10 @@
 
 ## 0.0.0 (unreleased)
 
+- Wrap ``sys.path.insert(0, …)`` in ``_load_field_mappings`` inside a
+  ``try/finally`` block that restores the original ``sys.path`` so the
+  mutation is scoped to the import and does not permanently pollute the
+  global import path.
 - Wire the calendar write path: moving a card to ``TO_CALENDAR`` now calls the
   ``update_calendar_correlation_id`` and ``update_calendar_event_ref`` DB write
   functions (previously defined but never invoked), so the calendar columns are

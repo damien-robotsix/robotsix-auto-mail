@@ -19,6 +19,7 @@ from robotsix_auto_mail.config.config_sync_agent import (
     ConfigSyncResult,
     DriftProposal,
     LedgerEntry,
+    _load_field_mappings,
     _load_ledger,
     _proposal_fingerprint,
     record_and_filter_proposals,
@@ -475,3 +476,42 @@ def test_run_config_sync_agent_with_conn_dedups(
         handle.close.assert_called()
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# _load_field_mappings — sys.path restoration
+# ---------------------------------------------------------------------------
+
+
+def test_load_field_mappings_restores_sys_path_on_success() -> None:
+    """After _load_field_mappings, sys.path equals its pre-call value."""
+    import sys
+
+    saved = list(sys.path)
+    try:
+        _load_field_mappings(_REPO_ROOT)
+    finally:
+        assert list(sys.path) == saved
+
+
+def test_load_field_mappings_restores_sys_path_on_import_error() -> None:
+    """If the import raises, sys.path is still restored via finally."""
+    import sys
+
+    saved = list(sys.path)
+    with mock.patch("importlib.import_module", side_effect=ImportError("fake")):
+        try:
+            _load_field_mappings(_REPO_ROOT)
+        except ConfigSyncError:
+            pass
+    assert list(sys.path) == saved
+
+
+def test_load_field_mappings_import_resolves_from_scripts_dir() -> None:
+    """While inside _load_field_mappings, the module is importable."""
+    # The real call exercises the import path — if sys.path weren't
+    # properly augmented, this would raise ConfigSyncError.
+    result = _load_field_mappings(_REPO_ROOT)
+    assert isinstance(result, dict)
+    # Sanity: at least one known field mapping exists.
+    assert "imap_host" in result

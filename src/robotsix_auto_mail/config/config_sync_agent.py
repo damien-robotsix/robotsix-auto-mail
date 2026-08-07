@@ -254,16 +254,22 @@ def _load_field_mappings(
     the same bootstrap ``tests/config/test_config_sync.py`` uses.
     """
     scripts_dir = repo_root / "scripts" / "config"
-    if str(scripts_dir) not in sys.path:
-        sys.path.insert(0, str(scripts_dir))
+    scripts_dir_str = str(scripts_dir)
+    # Snapshot sys.path before mutation so we can restore it unconditionally
+    # in the ``finally`` block, even if the import or attribute access raises.
+    saved_path = list(sys.path)
+    if scripts_dir_str not in sys.path:
+        sys.path.insert(0, scripts_dir_str)
     try:
         module = importlib.import_module("check_config_sync")
+        field_to_yaml: dict[str, str] = module.FIELD_TO_YAML
+        return field_to_yaml
     except ImportError as exc:
         raise ConfigSyncError(
             f"Cannot import check_config_sync from {scripts_dir}: {exc}"
         ) from exc
-    field_to_yaml: dict[str, str] = module.FIELD_TO_YAML
-    return field_to_yaml
+    finally:
+        sys.path[:] = saved_path
 
 
 # ---------------------------------------------------------------------------
