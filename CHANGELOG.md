@@ -5,6 +5,7 @@
 
 ## 0.0.0 (unreleased)
 
+- Added testing convention to AGENT.md: novel functions in fix/recovery paths must have positive-path unit tests exercising the real function body, mocking at dependencies, not the function itself.
 - Wrap ``sys.path.insert(0, …)`` in ``_load_field_mappings`` inside a
   ``try/finally`` block that restores the original ``sys.path`` so the
   mutation is scoped to the import and does not permanently pollute the

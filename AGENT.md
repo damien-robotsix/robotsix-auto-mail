@@ -94,6 +94,18 @@ When adding or editing multiple test cases in a single test file,
 This avoids N× full-suite runs (one per incremental edit), saving
 significant LLM input-token cost by keeping the context window small.
 
+### Novel functions in fix/recovery paths — mock dependencies, not the function
+
+Every novel function that ships as part of a fix or recovery path
+(e.g. `discover_accounts_from_settings_stores`) MUST have positive-path
+unit tests that exercise the real function body — do **not** satisfy
+coverage with a `return_value=[]` no-op mock patch on the
+module-under-test.  When a function contains real I/O or merge logic,
+mock at its **dependencies**, not the function itself.
+
+This prevents a regression in a restart-survival path from shipping
+undetected just because the module was patched away in every test.
+
 ---
 
 ## Configuration conventions
