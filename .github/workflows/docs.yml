@@ -7,8 +7,12 @@ on:
 
 permissions: {}
 
+# The shared spine deliberately sets no workflow-level concurrency: inside a
+# called workflow `github.workflow` resolves to the CALLER's name, so a group
+# built from it would deadlock against this one. Concurrency is the caller's
+# job, and `pages` matches the deployment it actually serialises.
 concurrency:
-  group: docs-deploy
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -21,6 +25,15 @@ jobs:
     name: Deploy docs
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-docs.yml@e94a9aad6c4d6753c860520ba49b6a94a59ceb55  # main
     permissions:
-      contents: write  # needed to push gh-pages branch
+      # A caller-job permissions map REPLACES the token scopes for the called
+      # workflow — anything unlisted is zeroed. The shared spine deploys via the
+      # Pages Actions (build type "workflow"), so its build job needs
+      # contents:read for the checkout and its deploy job needs pages:write plus
+      # id-token:write for OIDC. Granting contents:write instead left all three
+      # unmet, and an unmet request fails the run at STARTUP: no logs, no
+      # checks, nothing on the PR. This workflow had therefore never once run.
+      contents: read
+      pages: write
+      id-token: write
     with:
       docs-install-args: "--extra docs"
