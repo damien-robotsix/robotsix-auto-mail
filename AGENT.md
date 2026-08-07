@@ -284,3 +284,12 @@ in documentation (`README.md`, `docs/`), ALL cross-references to that
 file MUST be updated in the same PR.  Use `git grep <old-filename>`
 across `README.md` and `docs/` to identify stale references before
 merging.
+
+When you add, remove, or rename a config field on ``MailAccountsConfig`` or
+``MailConfig`` (including the component-wide blocks), you MUST update
+``docs/configuration.md`` in the same PR — both the "Application-wide
+sections" prose and the key tables — and keep
+``scripts/config/check_config_sync.py``'s ``_CONFIGURATION_MD_CONTAINER_KEYS``
+in lockstep.  That script parses the documentation table; a stale key left
+documented after a removal produces a misleading operator doc with no CI
+gate to catch it.
