@@ -117,7 +117,7 @@ use case and the outcome you want.
 
 ## Code of Conduct
 
-This project is governed by a [Code of Conduct](../.github/CODE_OF_CONDUCT.md).
+This project is governed by a [Code of Conduct](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/.github/CODE_OF_CONDUCT.md).
 By participating, you agree to uphold its terms. Report unacceptable behavior
 to damien.robotsix@gmail.com.
 

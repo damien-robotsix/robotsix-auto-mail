@@ -180,7 +180,7 @@ scratch with provider auto-detection.
 For the full configuration-key reference — including every key, its type,
 default value, and detailed descriptions — see the
 [Configuration Reference](configuration.md).  The canonical template file
-ships at [`config/config.example.json`](../config/config.example.json).
+ships at [`config/config.example.json`](https://github.com/damien-robotsix/robotsix-auto-mail/blob/main/config/config.example.json).
 
 ## Trace ID injection
 
