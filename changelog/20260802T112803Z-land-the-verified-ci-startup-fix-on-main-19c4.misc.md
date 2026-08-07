@@ -1,0 +1,1 @@
+Add `permissions: contents: read` to the `sbom` caller job in `.github/workflows/ci.yml` to satisfy the reusable `sbom.yml` workflow's permission requirement, preventing GitHub from rejecting the workflow at startup.
