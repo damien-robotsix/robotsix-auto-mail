@@ -23,6 +23,7 @@ from robotsix_auto_mail.db import MailRecord, get_watermark, set_watermark
 from robotsix_auto_mail.server._constants import _is_safe_redirect_path, _with_db
 from robotsix_auto_mail.triage import (
     TO_ARCHIVE,
+    TO_CALENDAR,
     VALID_TRIAGE_ACTIONS,
     get_archive_subfolder,
     propose_archive_subfolder_llm,
@@ -207,6 +208,20 @@ class _BoardActionMixin:
                         )
                 except Exception:  # noqa: S110  # nosec B110
                     pass  # Non-fatal: board falls back to deterministic proposal
+            elif triage_action == TO_CALENDAR:
+                import uuid
+
+                from robotsix_auto_mail.db import (
+                    update_calendar_correlation_id,
+                    update_calendar_event_ref,
+                )
+
+                correlation_id = str(uuid.uuid4())
+                try:
+                    update_calendar_correlation_id(conn, message_id, correlation_id)
+                    update_calendar_event_ref(conn, message_id, "pending")
+                except Exception:  # noqa: S110  # nosec B110
+                    pass  # Non-fatal: calendar write is best-effort
             return True
 
         self._handle_post_action(
