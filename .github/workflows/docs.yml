@@ -32,8 +32,8 @@ jobs:
       # id-token:write for OIDC. Granting contents:write instead left all three
       # unmet, and an unmet request fails the run at STARTUP: no logs, no
       # checks, nothing on the PR. This workflow had therefore never once run.
-      contents: read
-      pages: write
-      id-token: write
+      contents: read  # the spine's build job checks out this repo
+      pages: write  # the spine's deploy job publishes the Pages artifact
+      id-token: write  # OIDC auth for actions/deploy-pages
     with:
       docs-install-args: "--extra docs"
