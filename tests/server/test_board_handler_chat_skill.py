@@ -44,9 +44,13 @@ def test_chat_skill_has_frontmatter(single_db: str) -> None:
         assert len(parts) >= 3, f"expected frontmatter + body, got {len(parts)} parts"
         frontmatter_text = parts[1]
         frontmatter = yaml.safe_load(frontmatter_text)
-        assert isinstance(frontmatter, dict), f"frontmatter is not a dict: {frontmatter}"
+        assert isinstance(frontmatter, dict), (
+            f"frontmatter is not a dict: {frontmatter}"
+        )
         assert "name" in frontmatter, f"missing 'name' in frontmatter: {frontmatter}"
-        assert "description" in frontmatter, f"missing 'description' in frontmatter: {frontmatter}"
+        assert "description" in frontmatter, (
+            f"missing 'description' in frontmatter: {frontmatter}"
+        )
         assert frontmatter["name"] == "robotsix-auto-mail"
         assert isinstance(frontmatter["description"], str)
         assert len(frontmatter["description"]) > 0

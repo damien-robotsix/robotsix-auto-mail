@@ -192,7 +192,10 @@ class _AccountMixin:
             origin = qs_origin
         p = prefill or {}
         body = _build_add_account_form_html(
-            error=error, success=success, prefill=p, origin=origin,
+            error=error,
+            success=success,
+            prefill=p,
+            origin=origin,
         )
         self._send_response(body, content_type="text/html; charset=utf-8")
 
@@ -522,35 +525,35 @@ def _build_add_account_form_html(
         ">\n"
         "</label>\n"
         # label
-        + "<label>Label (optional)"
+         + "<label>Label (optional)"
         '<input name="label" value="' + val("label") + '"'
         ' placeholder="e.g. Personal Gmail">\n'
         "</label>\n"
         # imap_host
-        + "<label>IMAP Host"
+         + "<label>IMAP Host"
         '<input name="imap_host" required'
         f' value="{val("imap_host")}"'
         ' placeholder="imap.example.com">\n'
         "</label>\n"
         # smtp_host
-        + "<label>SMTP Host"
+         + "<label>SMTP Host"
         '<input name="smtp_host" required'
         f' value="{val("smtp_host")}"'
         ' placeholder="smtp.example.com">\n'
         "</label>\n"
         # username
-        + "<label>Username"
+         + "<label>Username"
         '<input name="username" required'
         f' value="{val("username")}"'
         ' placeholder="me@example.com">\n'
         "</label>\n"
         # password
-        + "<label>Password"
+         + "<label>Password"
         '<input type="password" name="password" required'
         ' placeholder="App-specific password or account password">\n'
         "</label>\n"
         # Advanced settings — collapsed by default.
-        + "<details>\n"
+         + "<details>\n"
         "<summary>Advanced settings</summary>\n"
         "<label>IMAP Port"
         '<input name="imap_port" type="number"'
