@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import sqlite3
 import threading
 from collections.abc import Callable
@@ -31,6 +32,8 @@ from robotsix_auto_mail.triage import (
     rules_text_for,
     set_triage_decision,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class _BoardActionMixin:
@@ -394,8 +397,9 @@ class _BoardActionMixin:
                     source_folder=record.source_folder,
                     message_id=record.message_id,
                 )
-            except ValueError as exc:
-                self._bad_request(str(exc))
+            except ValueError:
+                logger.exception("Action handler failed")
+                self._bad_request("Invalid request")
                 return False
             except ImapMessageNotFoundError:
                 from robotsix_auto_mail.server.adapters import (
