@@ -11,6 +11,8 @@ import pytest
 from robotsix_auto_mail.cli import main
 from robotsix_auto_mail.config import (
     MAIN_LLM_ALIAS,
+    LangfuseConfig,
+    LangfuseProject,
     MailAccount,
     MailAccountsConfig,
     MailConfig,
@@ -19,7 +21,6 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.config.detect import MailProvider
 from tests.cli.conftest import _ok_result
-from tests.conftest import _make_langfuse_config
 
 
 def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
