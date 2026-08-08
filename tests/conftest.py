@@ -96,8 +96,10 @@ def _isolate_settings_store_merge() -> Generator[None, None, None]:
     Without this mock, accounts discovered from on-disk settings stores
     (``.data/<id>/mail.db``) created by other tests leak into tests that
     call ``_cmd_ingest`` or ``_cmd_serve``, causing spurious failures.
-    No test exercises the merge path directly — the settings-store tests
-    cover ``merge_settings_store_accounts`` via its own unit tests.
+    The settings-store tests in ``tests/settings/test_discover_accounts.py``
+    cover ``merge_settings_store_accounts`` via its own unit tests; the
+    integration tests in ``tests/cli/test_commands_serve.py`` do not need to
+    exercise the merge path directly.
 
     The function is patched on ``robotsix_auto_mail.settings`` (the public
     re-export) because every caller does a local ``from robotsix_auto_mail.
