@@ -88,7 +88,11 @@
     // Using location.hash = "" would trigger hashchange, whose handler
     // calls closeDetail() again — a re-entrant loop that prevents the
     // panel from closing reliably (observed on Firefox).
-    history.replaceState(null, "", window.location.pathname + window.location.search);
+    history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
   }
 
   /* ==================================================================
