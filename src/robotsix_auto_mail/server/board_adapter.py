@@ -523,7 +523,7 @@ class MailBoardAdapter:
             batch_delete_form = (
                 f'<form class="delete-form" method="post" action="{delete_action}"'
                 ' data-confirm="Permanently delete ALL mail in this column'
-                f' {delete_scope}'
+                f" {delete_scope}"
                 ' from mailbox and database?">\n'
                 '<button type="submit" class="delete-btn">Delete All</button>'
                 "</form>"

@@ -251,9 +251,9 @@ def test_handler_board_inline_handlers_are_absent(
         )
 
         # Verify the CSP-safe event delegation script is loaded.
-        assert (
-            '<script src="/static/board-events.js"></script>' in board_html
-        ), "board-events.js must be loaded on the board page"
+        assert '<script src="/static/board-events.js"></script>' in board_html, (
+            "board-events.js must be loaded on the board page"
+        )
     finally:
         server.shutdown()
 
