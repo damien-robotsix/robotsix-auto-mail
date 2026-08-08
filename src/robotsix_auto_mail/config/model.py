@@ -264,8 +264,7 @@ class MailConfig(BaseModel):
     log_level: str = Field(
         default="INFO",
         description=(
-            "Application log level: `DEBUG`, `INFO`, "
-            "`WARNING`, `ERROR`, or `CRITICAL`."
+            "Application log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`."
         ),
     )
     log_format: str = Field(
