@@ -14,7 +14,7 @@ New users can also run `robotsix-auto-mail detect` to auto-generate the config f
 file from just an email address — see [Auto-detection with
 `detect`](#auto-detection-with-detect).
 
-## Quick start — Docker Compose (recommended)
+## Quick start — Docker Compose (recommended) {#quick-start-docker-compose}
 
 > Prefer a native (non-Docker) setup? See the
 > [Quick start (native)](index.md#quick-start-native) guide.
