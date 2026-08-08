@@ -82,6 +82,7 @@
   "rules_level": 1,
   "detector_level": 1,
   "draft_level": 1,
+  "trusted_origins": [],
   "openrouter": {
     "keys": {
       "robotsix-auto-mail": "sk-or-..."

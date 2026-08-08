@@ -278,6 +278,7 @@ _CONFIGURATION_MD_CONTAINER_KEYS: frozenset[str] = frozenset(
         "rules_level",
         "detector_level",
         "draft_level",
+        "trusted_origins",
     }
 )
 
