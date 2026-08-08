@@ -1,0 +1,1 @@
+Bump the `uv` binary used by the container build from 0.5.11 to 0.12.1. `uv.lock` is now written at `revision = 3`, which 0.5.11 cannot parse — the image build failed with `error: Failed to parse uv.lock` as soon as a dependency update regenerated the lock. Every other repo in the fleet already pins uv 0.11.x or newer.
