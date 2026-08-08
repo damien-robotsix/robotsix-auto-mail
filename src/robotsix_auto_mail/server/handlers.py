@@ -244,7 +244,10 @@ class BoardHandler(
           the reverse proxy rewrites ``Host`` but forwards the public
           host here;
         * the ``host=`` parameter of the first ``Forwarded`` (RFC 7239)
-          header element.
+          header element;
+        * the ``trusted_origins`` list in :class:`MailAccountsConfig` —
+          explicit full-origin URLs (e.g. ``https://mail.deploy.robotsix.net``)
+          for proxies that rewrite ``Host`` without setting forwarding headers.
 
         Requests without an ``Origin`` header (same-origin page navigation,
         ``curl``, CLI tools) are allowed — malicious cross-site forms cannot
@@ -286,6 +289,13 @@ class BoardHandler(
                     if origin_netloc == fwd_host:
                         return True
                     break
+        # Explicitly configured trusted origins — the operator can list
+        # the public origin(s) (e.g. ``https://mail.deploy.robotsix.net``)
+        # when the reverse proxy rewrites ``Host`` without setting
+        # ``X-Forwarded-Host``.
+        trusted = (self.accounts.trusted_origins if self.accounts is not None else ())
+        if origin in trusted:
+            return True
         self._send_response("Forbidden: cross-origin request rejected", status=403)
         return False
 

@@ -188,7 +188,8 @@ what makes the breakage easy to miss.
   "classifier_level": 1,
   "rules_level": 1,
   "detector_level": 1,
-  "draft_level": 1
+  "draft_level": 1,
+  "trusted_origins": []
 }
 ```
 
@@ -214,6 +215,7 @@ therefore fund exactly one function.
 | `rules_level` | `1` | integer | no | Tier level assigned to the rules-maintenance agent. |
 | `detector_level` | `1` | integer | no | Tier level assigned to the account-type detector. |
 | `draft_level` | `1` | integer | no | Tier level assigned to the draft-generation agent. |
+| `trusted_origins` | `[]` | list of strings | no | Public origin URLs (e.g. `"https://mail.deploy.robotsix.net"`) trusted for CSRF when the server runs behind a reverse proxy that rewrites ``Host`` without setting ``X-Forwarded-Host``. Each entry must be a full origin (``scheme://host[:port]``). |
 
 ### `logging` — observability
 
