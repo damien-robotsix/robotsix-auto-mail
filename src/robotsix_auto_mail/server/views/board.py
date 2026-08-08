@@ -463,7 +463,7 @@ def _render_board_page_shell(
             '<button id="probe-health-btn"'
             ' onclick="probeHealth()">'
             "Recheck connections</button>\n"
-            '<a href="/settings-panel#add-account" class="header-btn add-account-btn"'
+            '<a href="/add-account" class="header-btn add-account-btn"'
             ' title="Add a new mail account">+ Add Account</a>\n'
             '<a href="/settings-panel" class="header-btn settings-btn"'
             ' title="Manage accounts and settings">'
