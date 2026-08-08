@@ -102,7 +102,10 @@ class MailConfig(BaseModel):
     )
     password: SecretStr = Field(
         default=SecretStr(""),
-        description="Mailbox password or app-specific password. Leave empty when using OAuth2.",
+        description=(
+            "Mailbox password or app-specific password. "
+            "Leave empty when using OAuth2."
+        ),
     )
 
     imap_port: int = Field(
@@ -149,7 +152,10 @@ class MailConfig(BaseModel):
     # Minutes between automatic ingest cycles (`ingest --watch`).
     ingest_interval_minutes: int = Field(
         default=DEFAULT_INGEST_INTERVAL_MINUTES,
-        description="Minutes between automatic ingest cycles when `ingest_mode` is `watch`.",
+        description=(
+            "Minutes between automatic ingest cycles "
+            "when `ingest_mode` is `watch`."
+        ),
         json_schema_extra={"advanced": True},
     )
 
@@ -187,14 +193,20 @@ class MailConfig(BaseModel):
     )
     archive_enabled: bool = Field(
         default=True,
-        description="When true, processed messages are moved into the archive; when false they stay in the inbox.",
+        description=(
+            "When true, processed messages are moved into "
+            "the archive; when false they stay in the inbox."
+        ),
         json_schema_extra={"advanced": True},
     )
 
     # Run the inbox triage agent automatically at the end of each ingest.
     triage_on_ingest: bool = Field(
         default=True,
-        description="When true, the inbox triage agent runs automatically after each ingest cycle.",
+        description=(
+            "When true, the inbox triage agent runs "
+            "automatically after each ingest cycle."
+        ),
         json_schema_extra={"advanced": True},
     )
 
@@ -203,7 +215,10 @@ class MailConfig(BaseModel):
     # (``<db-dir>/triage_rules.md``).
     triage_rules_path: str = Field(
         default="",
-        description="Path to the human-readable triage rules file. Empty means derive from db_path.",
+        description=(
+            "Path to the human-readable triage rules file. "
+            "Empty means derive from db_path."
+        ),
         json_schema_extra={"advanced": True},
     )
 
@@ -219,7 +234,10 @@ class MailConfig(BaseModel):
     )
     oauth2_client_id: str = Field(
         default="",
-        description="OAuth2 client id (application registration id). Only needed for MSAL-managed OAuth2.",
+        description=(
+            "OAuth2 client id (application registration id). "
+            "Only needed for MSAL-managed OAuth2."
+        ),
     )
     oauth2_client_secret: SecretStr = Field(
         default=SecretStr(""),
@@ -232,23 +250,36 @@ class MailConfig(BaseModel):
     # AD tenant (default ``organizations``).
     oauth2_provider: str = Field(
         default="",
-        description="OAuth2 provider identifier. Set to `microsoft` for MSAL-managed Microsoft 365 tokens; empty means disabled.",
+        description=(
+            "OAuth2 provider identifier. Set to `microsoft` "
+            "for MSAL-managed Microsoft 365 tokens; "
+            "empty means disabled."
+        ),
         json_schema_extra={"advanced": True},
     )
     oauth2_tenant: str = Field(
         default="organizations",
-        description="Azure AD tenant for MSAL OAuth2, e.g. `organizations`, `common`, or a tenant id.",
+        description=(
+            "Azure AD tenant for MSAL OAuth2, e.g. "
+            "`organizations`, `common`, or a tenant id."
+        ),
         json_schema_extra={"advanced": True},
     )
 
     # Logging configuration — application-wide (global).
     log_level: str = Field(
         default="INFO",
-        description="Application log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`.",
+        description=(
+            "Application log level: `DEBUG`, `INFO`, "
+            "`WARNING`, `ERROR`, or `CRITICAL`."
+        ),
     )
     log_format: str = Field(
         default="console",
-        description="Log output format: `console` (human-readable) or `json` (structured).",
+        description=(
+            "Log output format: `console` (human-readable) "
+            "or `json` (structured)."
+        ),
         json_schema_extra={"advanced": True},
     )
 
@@ -445,17 +476,26 @@ class MailAccountsConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     accounts: list[MailAccount] = Field(
-        description="Ordered list of mailbox accounts. Each entry has an account_id and its MailConfig.",
+        description=(
+            "Ordered list of mailbox accounts. Each entry "
+            "has an account_id and its MailConfig."
+        ),
     )
 
     #: The canonical credential blocks, shared by every account.
     langfuse: LangfuseConfig = Field(
         default_factory=LangfuseConfig,
-        description="Langfuse tracing configuration: instance host and per-project credentials.",
+        description=(
+            "Langfuse tracing configuration: instance host "
+            "and per-project credentials."
+        ),
     )
     openrouter: OpenRouterConfig = Field(
         default_factory=OpenRouterConfig,
-        description="OpenRouter provider keys, keyed by the same aliases as langfuse.projects.",
+        description=(
+            "OpenRouter provider keys, keyed by the same "
+            "aliases as langfuse.projects."
+        ),
     )
 
     #: Per-level model overrides.  Each field holds a provider-model

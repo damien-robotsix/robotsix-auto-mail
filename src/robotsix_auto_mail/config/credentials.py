@@ -59,7 +59,10 @@ class LangfuseProject(BaseModel):
     #: name; the component itself never uses it.
     project_id: str = Field(
         default="",
-        description="Langfuse project id. Only needed by consumers that address the project by id; the component itself never uses it.",
+        description=(
+            "Langfuse project id. Only needed by consumers that address "
+            "the project by id; the component itself never uses it."
+        ),
         json_schema_extra={"advanced": True},
     )
 
