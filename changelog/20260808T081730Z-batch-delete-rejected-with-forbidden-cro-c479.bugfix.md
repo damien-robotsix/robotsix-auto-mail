@@ -1,1 +1,0 @@
-Add ``trusted_origins`` configuration field to ``MailAccountsConfig`` for explicit CSRF origin allowlisting when the server runs behind a reverse proxy that rewrites ``Host`` without setting ``X-Forwarded-Host``. Fixes ``Forbidden: cross-origin request rejected`` on batch-delete and other POST actions from the board UI at ``https://mail.deploy.robotsix.net``.
