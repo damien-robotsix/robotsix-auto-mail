@@ -21,6 +21,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
+from robotsix_auto_mail.server._constants import _update_handler_factory_cache
+
 logger = logging.getLogger(__name__)
 
 #: Cap on a config request body — the panel sends only changed keys.
@@ -353,10 +355,6 @@ class _SettingsMixin:
         logger.info("Deleted account %r via the settings page", safe_account_id)
 
         # Update handler factory cache.
-        handler_factory = getattr(self.server, "RequestHandlerClass", None)
-        if handler_factory is not None and hasattr(handler_factory, "keywords"):
-            kw = handler_factory.keywords
-            if "accounts" in kw:
-                kw["accounts"] = new_config
+        _update_handler_factory_cache(self.server, new_config)
 
         self._serve_json({"ok": True}, status=200)
