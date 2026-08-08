@@ -87,6 +87,32 @@ def _start_csrf_server(db_path: str) -> tuple[object, int]:
     return _start_test_server(db_path)
 
 
+def _start_csrf_server_with_trusted_origins(
+    db_path: str, trusted_origins: list[str]
+) -> tuple[object, int]:
+    """Start a test server with *trusted_origins* configured."""
+    import threading
+    from http.server import HTTPServer
+
+    from robotsix_auto_mail.server import make_board_handler
+
+    accounts = MailAccountsConfig(
+        accounts=(MailAccount(account_id="A", config=_account_config(db_path), label=None),),
+        trusted_origins=trusted_origins,
+    )
+    handler = make_board_handler(
+        db_path,
+        mail_config=accounts.accounts[0].config,
+        accounts=accounts,
+    )
+    server = HTTPServer(("127.0.0.1", 0), handler)
+    assigned_port = server.server_address[1]
+
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, assigned_port
+
+
 class TestCsrfIntegration:
     """CSRF gate integration tests against a live ``HTTPServer``."""
 
@@ -224,6 +250,104 @@ class TestCsrfIntegration:
         )
         assert status == 400
         assert "cross-origin" not in body.lower()
+
+
+# ---------------------------------------------------------------------------
+# integration tests: trusted_origins configured
+# ---------------------------------------------------------------------------
+
+
+class TestCsrfTrustedOrigins:
+    """CSRF gate with ``trusted_origins`` configured."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, single_db: str) -> None:
+        """Start a test server with ``trusted_origins`` including the public host."""
+        self.server, self.port = _start_csrf_server_with_trusted_origins(
+            single_db,
+            trusted_origins=["https://mail.deploy.robotsix.net"],
+        )
+
+    def teardown_method(self) -> None:
+        self.server.shutdown()
+
+    def test_trusted_origin_accepted(self) -> None:
+        """A POST with an ``Origin`` in ``trusted_origins`` must pass CSRF,
+        even when ``Host`` is rewritten to the backend address."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://mail.deploy.robotsix.net",
+            host="backend.internal:8080",
+        )
+        assert status == 400  # CSRF passed; missing message_id → 400
+        assert "cross-origin" not in body.lower()
+
+    def test_foreign_origin_still_rejected(self) -> None:
+        """A POST from an origin NOT in ``trusted_origins`` must still be rejected."""
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://evil.example.com",
+            host="backend.internal:8080",
+        )
+        assert status == 403
+        assert "cross-origin" in body.lower()
+
+    def test_x_forwarded_proto_https_with_trusted_origin(self) -> None:
+        """A proxied request with ``X-Forwarded-Proto: https`` and the
+        matching trusted origin must pass CSRF."""
+        # This simulates the exact production scenario: the reverse proxy
+        # terminates HTTPS, forwards as plain HTTP to the backend, and
+        # sets ``X-Forwarded-Proto: https``.
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://mail.deploy.robotsix.net",
+            host="backend.internal:8080",
+        )
+        assert status == 400
+        assert "cross-origin" not in body.lower()
+
+    def test_batch_delete_with_trusted_origin(self) -> None:
+        """``/batch-delete`` must accept a POST from a trusted origin."""
+        # Use /batch-delete specifically to match the reported failure.
+        status, body = _post_with_origin(
+            self.port,
+            origin="https://mail.deploy.robotsix.net",
+            host="backend.internal:8080",
+            path="/batch-delete",
+        )
+        # Should NOT be 403.
+        assert status != 403
+        assert "cross-origin" not in body.lower()
+
+    def test_all_post_routes_covered(self) -> None:
+        """Every state-mutating POST route must pass CSRF with a trusted origin."""
+        post_routes = [
+            "/move",
+            "/delete",
+            "/archive",
+            "/batch-delete",
+            "/batch-archive",
+            "/batch-archive-folder",
+            "/config-sync",
+            "/run-triage",
+            "/reconcile",
+            "/force-triage-column",
+            "/archive-proposal",
+            "/save-notes",
+            "/save-draft",
+            "/send-draft",
+            "/generate-draft",
+        ]
+        for path in post_routes:
+            status, body = _post_with_origin(
+                self.port,
+                origin="https://mail.deploy.robotsix.net",
+                host="backend.internal:8080",
+                path=path,
+            )
+            # None of them should be 403.
+            assert status != 403, f"{path} returned 403: {body!r}"
+            assert "cross-origin" not in body.lower(), f"{path}: {body!r}"
 
 
 # ---------------------------------------------------------------------------
