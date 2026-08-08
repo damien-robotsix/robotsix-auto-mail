@@ -48,6 +48,7 @@ modules:
       - tests/conftest.py
       - tests/test_stub.py
       - run_tests.sh
+      - changelog.d/*.md
 
   - id: docker
     description: >-
@@ -448,6 +449,7 @@ modules:
       - src/robotsix_auto_mail/settings/import_.py
       - src/robotsix_auto_mail/settings/store.py
       - tests/settings/__init__.py
+      - tests/settings/test_discover_accounts.py
       - tests/settings/test_import.py
       - tests/settings/test_store.py
 
