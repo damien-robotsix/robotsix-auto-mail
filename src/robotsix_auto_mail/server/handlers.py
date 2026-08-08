@@ -293,7 +293,7 @@ class BoardHandler(
         # the public origin(s) (e.g. ``https://mail.deploy.robotsix.net``)
         # when the reverse proxy rewrites ``Host`` without setting
         # ``X-Forwarded-Host``.
-        trusted = (self.accounts.trusted_origins if self.accounts is not None else ())
+        trusted = self.accounts.trusted_origins if self.accounts is not None else ()
         if origin in trusted:
             return True
         self._send_response("Forbidden: cross-origin request rejected", status=403)

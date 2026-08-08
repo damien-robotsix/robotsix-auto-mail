@@ -97,7 +97,9 @@ def _start_csrf_server_with_trusted_origins(
     from robotsix_auto_mail.server import make_board_handler
 
     accounts = MailAccountsConfig(
-        accounts=(MailAccount(account_id="A", config=_account_config(db_path), label=None),),
+        accounts=(
+            MailAccount(account_id="A", config=_account_config(db_path), label=None),
+        ),
         trusted_origins=trusted_origins,
     )
     handler = make_board_handler(
