@@ -161,6 +161,12 @@ jobs:
       # Full-checkout secret scan, matching the previous `path: ./` (no PR diff).
       run-trufflehog: true
       trufflehog-pr-diff: false
+      # Exclude TruffleHog's Lob detector: this repo has no Lob integration.
+      # The full git-history scan flags a stale test-fixture string from an
+      # earlier branch commit as a "verified" Lob test-mode key — a false
+      # positive (Lob test keys are non-sensitive by design). Mirrors
+      # .gitleaks.toml, which already treats tests/ as fixture-only.
+      trufflehog-extra-args: "--exclude-detectors=lob"
       # Locked-requirements audit: export uv.lock to this file, then run
       # `pip-audit -r`. Drops the four first-party VCS packages, which are not
       # on PyPI and break pip's --require-hashes mode. Also drops the root
