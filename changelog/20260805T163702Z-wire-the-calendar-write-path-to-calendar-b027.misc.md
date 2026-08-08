@@ -1,1 +1,0 @@
-Wire the calendar write path: `TO_CALENDAR` action has no dispatch branch in `move_action`, leaving `update_calendar_event_ref`/`update_calendar_correlation_id` (re-exported, documented as the column writers) with zero callers so the read surfaces render empty

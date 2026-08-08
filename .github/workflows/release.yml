@@ -60,21 +60,6 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Derive the package version
-        id: pkgver
-        env:
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
-          SHA: ${{ github.sha }}
-        run: |
-          # The build context excludes .git, so hatch-vcs cannot read the tag
-          # itself. Pass the version the workflow already knows.
-          if [ "$REF_TYPE" = "tag" ]; then
-            echo "version=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=0.0.0.dev0+${SHA:0:7}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build and push
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
@@ -83,8 +68,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            PACKAGE_VERSION=${{ steps.pkgver.outputs.version }}
 
   trivy:
     name: Scan image with Trivy

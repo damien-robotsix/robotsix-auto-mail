@@ -1,1 +1,0 @@
-Fix crash when adding the first account to a fresh-deploy config with ``accounts=[]`` and ``default_account_id=''`` — the handler now falls back to the first account's id when the existing default is empty, and wraps ``MailAccountsConfig`` construction in try/except so validation errors render the form with an error message instead of crashing the request handler.

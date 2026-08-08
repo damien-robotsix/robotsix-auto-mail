@@ -1,1 +1,0 @@
-Fix all remaining ruff lint and format violations across the whole repository, and register all unregistered changelog fragments and test files in ``docs/modules.yaml`` so the module-registration completeness check passes on CI.

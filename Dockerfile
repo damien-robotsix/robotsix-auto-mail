@@ -48,15 +48,6 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.1 /uv /uvx /bin/
 
 ENV UV_MALWARE_CHECK=1
 
-# The package takes its version from git via hatch-vcs, but the build
-# context deliberately excludes .git — copying history in just to read a
-# tag would bloat every layer and force a full-depth checkout. The
-# release workflow passes the version it already knows instead.
-ARG PACKAGE_VERSION=0.0.0
-# hatch-vcs delegates to setuptools-scm, which reads the SETUPTOOLS_SCM_
-# variable; HATCH_VCS_PRETEND_VERSION alone is not enough on this version.
-ENV SETUPTOOLS_SCM_PRETEND_VERSION=${PACKAGE_VERSION} \
-    HATCH_VCS_PRETEND_VERSION=${PACKAGE_VERSION}
 
 # uv.lock is the committed single source of truth for resolved git
 # revs; it MUST be in the build context so the export step below reads

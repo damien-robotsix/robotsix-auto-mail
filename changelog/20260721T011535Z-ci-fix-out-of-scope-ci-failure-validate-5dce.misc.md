@@ -1,1 +1,0 @@
-ci_fix: out-of-scope CI failure — validate-pyproject (pre-commit hook) in .pre-commit-config.yaml or pyproject.toml (to fix or suppress the validate-pyproject hook bug, which is unrelated to this PR)

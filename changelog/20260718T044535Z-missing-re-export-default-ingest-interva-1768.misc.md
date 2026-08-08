@@ -1,1 +1,0 @@
-Missing re-export: `DEFAULT_INGEST_INTERVAL_MINUTES` not exposed through `config/__init__.py`

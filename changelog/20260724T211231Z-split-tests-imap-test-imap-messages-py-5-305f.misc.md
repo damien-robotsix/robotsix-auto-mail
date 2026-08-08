@@ -1,1 +1,0 @@
-Split tests/imap/test_imap_messages.py (538 lines) into four per-operation modules: test_imap_search_uids.py, test_imap_fetch_message.py, test_imap_delete_message.py, and test_imap_move_message.py. Moved the shared ``_uid_side_effect`` helper to tests/imap/conftest.py.

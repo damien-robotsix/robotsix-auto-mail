@@ -1,1 +1,0 @@
-Extract shared _force_refresh method to eliminate IMAP/SMTP token-refresh duplication

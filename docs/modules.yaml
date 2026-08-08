@@ -36,14 +36,14 @@ modules:
       - .python-version
       - .github/CODE_OF_CONDUCT.md
       - CHANGELOG.md
+      - release-please-config.json
+      - .release-please-manifest.json
       - CONTRIBUTING.md
       - LICENSE
       - AGENT.md
       - README.md
       - SECURITY.md
       - ROADMAP.md
-      - changelog/.gitkeep
-      - changelog/*.md
       - tests/__init__.py
       - tests/conftest.py
       - tests/test_stub.py
@@ -488,6 +488,7 @@ modules:
       - .github/workflows/lockfile.yml
       - .github/workflows/pre-commit.yml
       - .github/workflows/release.yml
+      - .github/workflows/release-please.yml
       - .github/workflows/sbom.yml
       - .github/workflows/lint-workflows.yml
       - .github/workflows/scan-container.yml

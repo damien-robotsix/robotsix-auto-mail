@@ -1,1 +1,0 @@
-Remove Dependabot for ecosystems already covered by Renovate to eliminate duplicate dependency PRs

@@ -1,1 +1,0 @@
-Fix unsubscribe link failing with Bad Request when ``List-Unsubscribe`` header contains multiple comma-separated URIs. The header is now parsed per RFC 2369 to extract a single preferred URI (https/http over mailto).
