@@ -30,6 +30,7 @@ from robotsix_auto_mail.config.schema import (
     DEFAULT_IMAP_TLS_MODE,
     DEFAULT_SMTP_TLS_MODE,
 )
+from robotsix_auto_mail.server._constants import _update_handler_factory_cache
 
 if TYPE_CHECKING:
     from ._board_handler_protocol import BoardHandlerProtocol
@@ -351,11 +352,7 @@ class _AccountMixin:
         # The handler is built via functools.partial; updating its
         # keywords dict causes the next handler instance to receive the
         # updated config.
-        handler_factory = getattr(self.server, "RequestHandlerClass", None)
-        if handler_factory is not None and hasattr(handler_factory, "keywords"):
-            kw = handler_factory.keywords
-            if "accounts" in kw:
-                kw["accounts"] = new_config
+        _update_handler_factory_cache(self.server, new_config)
 
         if origin == "settings":
             # Redirect the parent (settings page) rather than the iframe.

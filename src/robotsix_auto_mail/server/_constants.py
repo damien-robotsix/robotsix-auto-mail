@@ -144,6 +144,23 @@ _ = (
 )
 
 
+def _update_handler_factory_cache(
+    server: object,
+    accounts: object,
+    default_account_id: str | None = None,
+) -> None:
+    """Update the handler factory's functools.partial keywords dict
+    so the next handler instance picks up the new config without
+    a server restart."""
+    handler_factory = getattr(server, "RequestHandlerClass", None)
+    if handler_factory is not None and hasattr(handler_factory, "keywords"):
+        kw = handler_factory.keywords
+        if "accounts" in kw:
+            kw["accounts"] = accounts
+        if "default_account_id" in kw and default_account_id:
+            kw["default_account_id"] = default_account_id
+
+
 def _parse_archive_structure(
     raw: str | None, archive_root: str
 ) -> tuple[set[str], str, str]:
