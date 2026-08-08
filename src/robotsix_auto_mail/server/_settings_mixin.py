@@ -45,11 +45,10 @@ _SETTINGS_PAGE = (
 <main>
 <div class="nav-links">
   <a href="/board">&larr; Back to Board</a>
-  <a href="/add-account">+ Add Account (standalone)</a>
 </div>
 <div id="settings-panel"></div>
 <noscript><p class="panel-fallback">Settings require JavaScript.</p></noscript>
-<div class="add-account-section">
+<div class="add-account-section" style="display:none">
   <h2>Add Account</h2>
   <iframe id="add-account-frame" src="/add-account?origin=settings"
           title="Add mail account"></iframe>
@@ -69,6 +68,12 @@ _SETTINGS_PAGE = (
         "It is vendored at image build time; for a local checkout run " +
         "<code>scripts/vendor-ui.sh</code>.</p>";
     });
+
+  // Show the add-account section when the URL hash is "#add-account".
+  if (window.location.hash === "#add-account") {
+    const section = document.querySelector(".add-account-section");
+    if (section) section.style.display = "block";
+  }
 
   // Auto-resize the add-account iframe to its content height.
   const frame = document.getElementById("add-account-frame");
