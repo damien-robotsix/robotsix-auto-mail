@@ -100,6 +100,19 @@ wheels = [
 ]
 
 [[package]]
+name = "beautifulsoup4"
+version = "4.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "soupsieve" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/43/65/318323f98dbee45d42dff61d8f047181bc6f2268a9068cfad035a46be5af/beautifulsoup4-4.15.0.tar.gz", hash = "sha256:288e3ca7d54b06f2ac191970bc275c1939cb46d450b255bf6718b04aa37ab4f7", size = 632571, upload-time = "2026-06-07T16:44:20.453Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/c6/92fcd42f1ba33e1184263f25bfabf3d27c383410470f169e4b8163bf9c17/beautifulsoup4-4.15.0-py3-none-any.whl", hash = "sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9", size = 109924, upload-time = "2026-06-07T16:44:21.566Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.5.20"
 source = { registry = "https://pypi.org/simple" }
@@ -720,6 +733,21 @@ wheels = [
 ]
 
 [[package]]
+name = "mkdocs-htmlproofer-plugin"
+version = "1.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "markdown" },
+    { name = "mkdocs" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bb/61/abc777ca61055948b694202839ce1f6679a5882f37e0a12707e2d6a50704/mkdocs_htmlproofer_plugin-1.5.0.tar.gz", hash = "sha256:09e04388fdaabcc345dda8be8f7b4f95005bd502c2d51c1f827b5b258822519d", size = 9855, upload-time = "2026-02-23T15:20:47.849Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/67/e9/b70076eb18a356f0f17c115b20cbd0e52b5145b972eb1443feef516fb483/mkdocs_htmlproofer_plugin-1.5.0-py3-none-any.whl", hash = "sha256:4ff5a9bb4505e5b6332ca8a301cf77cfc548e5680b48fffb421eb95d72b07390", size = 9938, upload-time = "2026-02-23T15:20:45.023Z" },
+]
+
+[[package]]
 name = "mkdocs-material"
 version = "9.7.6"
 source = { registry = "https://pypi.org/simple" }
@@ -1297,6 +1325,7 @@ dev = [
 ]
 docs = [
     { name = "mkdocs" },
+    { name = "mkdocs-htmlproofer-plugin" },
     { name = "mkdocs-material" },
     { name = "pymdown-extensions" },
 ]
@@ -1316,6 +1345,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.156.1" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6" },
+    { name = "mkdocs-htmlproofer-plugin", marker = "extra == 'docs'" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.5" },
     { name = "msal", marker = "extra == 'microsoft'", specifier = ">=1.28" },
     { name = "mypy", marker = "extra == 'dev'" },
@@ -1535,6 +1565,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e8/c4/ba2f8066cceb6f23394729afe52f3bf7adec04bf9ed2c820b39e19299111/sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88", size = 30594, upload-time = "2021-05-16T22:03:42.897Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/32/46/9cb0e58b2deb7f82b84065f37f3bffeb12413f947f9388e4cac22c4621ce/sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0", size = 29575, upload-time = "2021-05-16T22:03:41.177Z" },
+]
+
+[[package]]
+name = "soupsieve"
+version = "2.9.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/99/a6ca3beb3ccacb41fb3321d8a60e5566f9e6467601ef8eba6a17e1b89778/soupsieve-2.9.2.tar.gz", hash = "sha256:4a55d8cf158a9c2e587fa4922f1bbb91d68ac829e2d6f25403a85747c71daf74", size = 122445, upload-time = "2026-08-07T00:57:24.801Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/dc/ad025c1ee131eba60c69f4dd5779b18fcf1e6b21a343e2162a84d5d133c7/soupsieve-2.9.2-py3-none-any.whl", hash = "sha256:8089a26fd974ca7a1f30276d3d8492ab266ab15af581642dfe8aa162e0c1c823", size = 37370, upload-time = "2026-08-07T00:57:23.524Z" },
 ]
 
 [[package]]
