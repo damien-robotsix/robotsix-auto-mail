@@ -408,11 +408,12 @@ class BoardHandler(
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(encoded)))
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'self'; style-src 'self' 'unsafe-inline'",
+            "default-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "frame-ancestors 'self'",
         )
         if self._account_cookie is not None:
             self.send_header("Set-Cookie", self._account_cookie)
@@ -432,11 +433,12 @@ class BoardHandler(
         self.send_response(code)
         self.send_header("Location", location)
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'self'; style-src 'self' 'unsafe-inline'",
+            "default-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "frame-ancestors 'self'",
         )
         if self._account_cookie is not None:
             self.send_header("Set-Cookie", self._account_cookie)
