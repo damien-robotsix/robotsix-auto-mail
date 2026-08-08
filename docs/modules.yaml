@@ -48,6 +48,7 @@ modules:
       - tests/conftest.py
       - tests/test_stub.py
       - run_tests.sh
+      - changelog.d/*.md
 
   - id: docker
     description: >-
@@ -483,6 +484,7 @@ modules:
       - .github/dependabot.yml
       - .github/workflows/ci.yml
       - .github/workflows/codeql.yml
+      - .github/workflows/docs-check.yml
       - .github/workflows/docs.yml
       - .github/workflows/lockfile.yml
       - .github/workflows/pre-commit.yml

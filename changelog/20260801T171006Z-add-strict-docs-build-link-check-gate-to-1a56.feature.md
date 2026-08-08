@@ -1,0 +1,1 @@
+Add strict docs build + link-check gate: `mkdocs.yml` now enables `strict: true` and native `validation:` for internal link checking, and a new `docs-check` CI workflow runs `mkdocs build --strict` on every PR that touches documentation. The `docs` extra now includes `mkdocs-htmlproofer-plugin` for rendered-HTML link validation.
