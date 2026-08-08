@@ -51,9 +51,11 @@ ENV UV_MALWARE_CHECK=1
 # uv.lock is the committed single source of truth for resolved git
 # revs; it MUST be in the build context so the export step below reads
 # the pinned commits instead of re-resolving `@main` at build time.
-COPY pyproject.toml uv.lock README.md ./
-COPY src/ src/
-
+# Layer 1 — third-party dependencies (cached until pyproject.toml or uv.lock changes).
+# This layer is the slow one (git clones, PyPI downloads); Docker caches it
+# across rebuilds when only src/ changes, so most image rebuilds are a few
+# seconds rather than minutes.
+#
 # Install the EXACT revisions pinned in uv.lock (no fresh resolution),
 # so two builds with no repo change install identical git revs — closing
 # the unpinned-`@main` drift. Plain `uv pip install ".[llm]"` re-resolves
@@ -64,24 +66,27 @@ COPY src/ src/
 #     hash/VCS conflict (uv cannot hash a git checkout); --extra llm and
 #     --extra microsoft select both the `.[llm]` and `.[microsoft]`
 #     extras (the latter pulls in msal for Microsoft OAuth2).
-#   - the project itself is then installed with --no-deps so its deps are
-#     NOT re-resolved.
-#   - the two `uv pip install` commands are wrapped in a retry loop
-#     (5 attempts with exponential backoff) to survive transient PyPI
-#     connection failures (e.g. broken pipe mid-download); already-
-#     installed packages are skipped, so retries are idempotent.
+#   - the retry loop (5 attempts with exponential backoff) survives
+#     transient PyPI connection failures (e.g. broken pipe mid-download);
+#     already-installed packages are skipped, so retries are idempotent.
 # --system installs into the image's system Python (the same
 # /usr/local/lib/python3.14/site-packages/ path the production
 # stage copies from), matching the previous `pip install` layout.
+COPY pyproject.toml uv.lock README.md ./
 RUN uv export --frozen --no-emit-project --no-hashes --extra llm --extra microsoft -o /tmp/requirements.txt && \
     for attempt in 1 2 3 4 5; do \
       uv pip install --system --no-cache-dir -r /tmp/requirements.txt && \
-      uv pip install --system --no-cache-dir --no-deps . && \
       { success=1; break; }; \
       echo "uv install attempt ${attempt} failed; retrying in $((attempt * 5))s"; \
       sleep $((attempt * 5)); \
     done; \
     [ -n "${success:-}" ]
+
+# Layer 2 — project source (fast, re-runs on every src/ change).
+# --no-deps skips the already-installed third-party packages, so this is a
+# trivial filesystem operation that needs no retry loop.
+COPY src/ src/
+RUN uv pip install --system --no-cache-dir --no-deps .
 
 # ---------------------------------------------------------------------------
 # Production stage — minimal runtime image with only the installed artifacts
