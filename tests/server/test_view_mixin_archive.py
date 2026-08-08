@@ -32,7 +32,9 @@ class TestServeArchiveProposal:
         mock_get_record_by_message_id: mock.MagicMock,
     ) -> None:
         mock_get_record_by_message_id.return_value = None
-        handler = _FakeHandler(fake_db_path, path="/archive-proposal/test%40example.com")
+        handler = _FakeHandler(
+            fake_db_path, path="/archive-proposal/test%40example.com"
+        )
         handler._serve_archive_proposal()
         handler._not_found.assert_called_once()
 
