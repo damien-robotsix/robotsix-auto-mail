@@ -46,6 +46,33 @@ def register_subparser(
     )
 
 
+def _reload_accounts_and_interval(
+    accounts: MailAccountsConfig,
+    *,
+    fallback_minutes: int = 15,
+) -> tuple[MailAccountsConfig, int]:
+    """Reload accounts from config and compute the shared sleep interval."""
+    from robotsix_auto_mail.config import load_accounts
+
+    try:
+        accounts = load_accounts()
+        from robotsix_auto_mail.settings import merge_settings_store_accounts
+
+        accounts = merge_settings_store_accounts(accounts)
+    except Exception:  # noqa: S110
+        pass
+
+    if accounts.accounts:
+        interval_minutes = max(
+            1,
+            min(acct.config.ingest_interval_minutes for acct in accounts.accounts),
+        )
+    else:
+        interval_minutes = fallback_minutes
+
+    return accounts, interval_minutes
+
+
 def _reconcile_loop(accounts: MailAccountsConfig) -> None:
     """Periodically reconcile every account in a background daemon thread.
 
@@ -61,32 +88,12 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
     """
     import threading
 
-    from robotsix_auto_mail.config import load_accounts
     from robotsix_auto_mail.db import get_watermark, init_db, set_watermark
     from robotsix_auto_mail.server.adapters import _run_reconcile_background
 
-    _default_fallback_minutes = 15
-
     while True:
-        # Reload accounts from the config file on every cycle so accounts
-        # added via the web UI are picked up without a restart.
-        try:
-            accounts = load_accounts()
-            from robotsix_auto_mail.settings import merge_settings_store_accounts
+        accounts, interval_minutes = _reload_accounts_and_interval(accounts)
 
-            accounts = merge_settings_store_accounts(accounts)
-        except Exception:  # noqa: S110
-            # Keep using the last-known snapshot when the config file
-            # is temporarily unreadable.
-            pass
-
-        if accounts.accounts:
-            interval_minutes = max(
-                1,
-                min(acct.config.ingest_interval_minutes for acct in accounts.accounts),
-            )
-        else:
-            interval_minutes = _default_fallback_minutes
         for acct in accounts.accounts:
             if not acct.config.password.get_secret_value():
                 continue
@@ -126,32 +133,11 @@ def _ingest_loop(accounts: MailAccountsConfig) -> None:
     import logging
 
     from robotsix_auto_mail.cli.commands_ingest import _ingest_cycle
-    from robotsix_auto_mail.config import load_accounts
 
     logger = logging.getLogger(__name__)
 
-    _default_fallback_minutes = 15
-
     while True:
-        # Reload accounts from the config file on every cycle so accounts
-        # added via the web UI are picked up without a restart.
-        try:
-            accounts = load_accounts()
-            from robotsix_auto_mail.settings import merge_settings_store_accounts
-
-            accounts = merge_settings_store_accounts(accounts)
-        except Exception:  # noqa: S110
-            # Keep using the last-known snapshot when the config file
-            # is temporarily unreadable.
-            pass
-
-        if accounts.accounts:
-            interval_minutes = max(
-                1,
-                min(acct.config.ingest_interval_minutes for acct in accounts.accounts),
-            )
-        else:
-            interval_minutes = _default_fallback_minutes
+        accounts, interval_minutes = _reload_accounts_and_interval(accounts)
 
         for acct in accounts.accounts:
             if not acct.config.password.get_secret_value():
