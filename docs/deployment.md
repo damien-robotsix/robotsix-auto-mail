@@ -199,7 +199,7 @@ The Compose file defines two services that share the same image and data:
 |---|---|---|
 | `build.context` | `.` | Build from the repo root. |
 | `build.dockerfile` | `Dockerfile` | The multi-stage Dockerfile. |
-| `command` | `ingest` | Default: run the periodic ingester. Watch mode and heartbeat file are driven by the first account's `ingest_mode` / `heartbeat_file` config values (see [Configuration](#configuration)). |
+| `command` | `ingest` | Default: run the periodic ingester. Watch mode and heartbeat file are driven by the first account's `ingest_mode` / `heartbeat_file` config values (see [Configuration](#configuration-quick-reference)). |
 | `stdin_open` | `true` | Keeps stdin open so one-shot interactive commands (e.g. `detect`'s password prompt) work. |
 | `tty` | `false` | No pseudo-TTY allocation; output is plain streams. |
 | `restart` | `unless-stopped` | The default command is a long-running daemon, so it should stay up. |
