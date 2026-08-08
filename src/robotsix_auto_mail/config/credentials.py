@@ -47,11 +47,24 @@ class LangfuseProject(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    public_key: str = ""
-    secret_key: SecretStr = SecretStr("")
+    public_key: str = Field(
+        default="",
+        description="Langfuse project public key (pk-...).",
+    )
+    secret_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="Langfuse project secret key (sk-...).",
+    )
     #: Only needed by consumers that address the project by id rather than
     #: name; the component itself never uses it.
-    project_id: str = Field(default="", json_schema_extra={"advanced": True})
+    project_id: str = Field(
+        default="",
+        description=(
+            "Langfuse project id. Only needed by consumers that address "
+            "the project by id; the component itself never uses it."
+        ),
+        json_schema_extra={"advanced": True},
+    )
 
     def is_configured(self) -> bool:
         """True when both keys are set — a half-filled project traces nothing."""

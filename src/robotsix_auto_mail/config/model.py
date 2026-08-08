@@ -91,28 +91,66 @@ class MailConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    imap_host: str
-    smtp_host: str
-    username: str
-    password: SecretStr = SecretStr("")
-
-    imap_port: int = Field(default=993, json_schema_extra={"advanced": True})
-    imap_tls_mode: str = Field(
-        default=DEFAULT_IMAP_TLS_MODE, json_schema_extra={"advanced": True}
+    imap_host: str = Field(description="IMAP server hostname, e.g. `imap.gmail.com`.")
+    smtp_host: str = Field(description="SMTP server hostname, e.g. `smtp.gmail.com`.")
+    username: str = Field(
+        description="Mailbox username (usually the full email address)."
     )
-    smtp_port: int = Field(default=587, json_schema_extra={"advanced": True})
+    password: SecretStr = Field(
+        default=SecretStr(""),
+        description=(
+            "Mailbox password or app-specific password. Leave empty when using OAuth2."
+        ),
+    )
+
+    imap_port: int = Field(
+        default=993,
+        description="IMAP server port (993 for direct TLS, 143 for STARTTLS).",
+        json_schema_extra={"advanced": True},
+    )
+    imap_tls_mode: str = Field(
+        default=DEFAULT_IMAP_TLS_MODE,
+        description=(
+            "TLS negotiation mode for IMAP: `direct-tls` (connect then TLS, "
+            "default), `starttls` (upgrade after connect), or `none`."
+        ),
+        json_schema_extra={"advanced": True},
+    )
+    smtp_port: int = Field(
+        default=587,
+        description="SMTP server port (587 for STARTTLS, 465 for direct TLS).",
+        json_schema_extra={"advanced": True},
+    )
     smtp_tls_mode: str = Field(
-        default=DEFAULT_SMTP_TLS_MODE, json_schema_extra={"advanced": True}
+        default=DEFAULT_SMTP_TLS_MODE,
+        description=(
+            "TLS negotiation mode for SMTP: `direct-tls`, `starttls` "
+            "(default), or `none`."
+        ),
+        json_schema_extra={"advanced": True},
     )
 
     # Empty by default; the accounts loader derives ``.data/<id>/mail.db``
     # per account when ``store.path`` is absent.
-    db_path: str = ""
-    imap_folder: str = "INBOX"
+    db_path: str = Field(
+        default="",
+        description=(
+            "Path to the per-account SQLite database file. "
+            "Empty means derive `<data-dir>/<account_id>/mail.db`."
+        ),
+    )
+    imap_folder: str = Field(
+        default="INBOX",
+        description="IMAP folder to monitor, e.g. `INBOX`.",
+    )
 
     # Minutes between automatic ingest cycles (`ingest --watch`).
     ingest_interval_minutes: int = Field(
-        default=DEFAULT_INGEST_INTERVAL_MINUTES, json_schema_extra={"advanced": True}
+        default=DEFAULT_INGEST_INTERVAL_MINUTES,
+        description=(
+            "Minutes between automatic ingest cycles when `ingest_mode` is `watch`."
+        ),
+        json_schema_extra={"advanced": True},
     )
 
     # Ingest mode: ``"once"`` (single pass, the default) or ``"watch"``
@@ -121,47 +159,121 @@ class MailConfig(BaseModel):
     # ``"watch"``.  The ``ingest`` CLI subcommand also merges this field
     # with its ``--watch`` flag.
     ingest_mode: Literal["watch", "once"] = Field(
-        default="once", json_schema_extra={"advanced": True}
+        default="once",
+        description=(
+            "Ingest behaviour: `once` runs a single poll then exits, "
+            "`watch` loops forever on `ingest_interval_minutes`."
+        ),
+        json_schema_extra={"advanced": True},
     )
 
     # Heartbeat file path — touched at the end of each poll cycle in
     # ``--watch`` mode so a Docker HEALTHCHECK can verify the loop is
     # alive.  An empty string means no file is written.
-    heartbeat_file: str = Field(default="", json_schema_extra={"advanced": True})
+    heartbeat_file: str = Field(
+        default="",
+        description=(
+            "File touched at the end of each poll cycle in watch mode "
+            "for Docker HEALTHCHECK. Empty means no heartbeat."
+        ),
+        json_schema_extra={"advanced": True},
+    )
 
     # Self-managed archive folder structure.
     archive_root: str = Field(
-        default=DEFAULT_ARCHIVE_ROOT, json_schema_extra={"advanced": True}
+        default=DEFAULT_ARCHIVE_ROOT,
+        description="Root directory for the self-managed archive folder structure.",
+        json_schema_extra={"advanced": True},
     )
-    archive_enabled: bool = Field(default=True, json_schema_extra={"advanced": True})
+    archive_enabled: bool = Field(
+        default=True,
+        description=(
+            "When true, processed messages are moved into "
+            "the archive; when false they stay in the inbox."
+        ),
+        json_schema_extra={"advanced": True},
+    )
 
     # Run the inbox triage agent automatically at the end of each ingest.
-    triage_on_ingest: bool = Field(default=True, json_schema_extra={"advanced": True})
+    triage_on_ingest: bool = Field(
+        default=True,
+        description=(
+            "When true, the inbox triage agent runs "
+            "automatically after each ingest cycle."
+        ),
+        json_schema_extra={"advanced": True},
+    )
 
     # Path to the human-readable triage rules file maintained by the flash
     # LLM from user actions.  Empty means "derive from db_path"
     # (``<db-dir>/triage_rules.md``).
-    triage_rules_path: str = Field(default="", json_schema_extra={"advanced": True})
+    triage_rules_path: str = Field(
+        default="",
+        description=(
+            "Path to the human-readable triage rules file. "
+            "Empty means derive from db_path."
+        ),
+        json_schema_extra={"advanced": True},
+    )
 
     # OAuth2 / XOAUTH2 credentials (Gmail, Microsoft 365, etc.).
     # Optional; when ``oauth2_token`` is set, SASL XOAUTH2 is used
     # instead of password-based ``login()``.
-    oauth2_token: SecretStr = SecretStr("")
-    oauth2_client_id: str = ""
-    oauth2_client_secret: SecretStr = SecretStr("")
+    oauth2_token: SecretStr = Field(
+        default=SecretStr(""),
+        description=(
+            "Static OAuth2 access token for SASL XOAUTH2 authentication. "
+            "Leave empty for password auth or MSAL-managed tokens."
+        ),
+    )
+    oauth2_client_id: str = Field(
+        default="",
+        description=(
+            "OAuth2 client id (application registration id). "
+            "Only needed for MSAL-managed OAuth2."
+        ),
+    )
+    oauth2_client_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description="OAuth2 client secret. Only needed for MSAL-managed OAuth2.",
+    )
 
     # MSAL-managed OAuth2 (Microsoft 365). When ``oauth2_provider`` is set
     # to ``"microsoft"``, access tokens are acquired and refreshed via MSAL
     # instead of password/static-token auth. ``oauth2_tenant`` is the Azure
     # AD tenant (default ``organizations``).
-    oauth2_provider: str = Field(default="", json_schema_extra={"advanced": True})
+    oauth2_provider: str = Field(
+        default="",
+        description=(
+            "OAuth2 provider identifier. Set to `microsoft` "
+            "for MSAL-managed Microsoft 365 tokens; "
+            "empty means disabled."
+        ),
+        json_schema_extra={"advanced": True},
+    )
     oauth2_tenant: str = Field(
-        default="organizations", json_schema_extra={"advanced": True}
+        default="organizations",
+        description=(
+            "Azure AD tenant for MSAL OAuth2, e.g. "
+            "`organizations`, `common`, or a tenant id."
+        ),
+        json_schema_extra={"advanced": True},
     )
 
     # Logging configuration — application-wide (global).
-    log_level: str = "INFO"
-    log_format: str = Field(default="console", json_schema_extra={"advanced": True})
+    log_level: str = Field(
+        default="INFO",
+        description=(
+            "Application log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`."
+        ),
+    )
+    log_format: str = Field(
+        default="console",
+        description=(
+            "Log output format: `console` (human-readable) or `json` (structured)."
+        ),
+        json_schema_extra={"advanced": True},
+    )
 
     # -- validators --------------------------------------------------------
 
@@ -247,9 +359,19 @@ class MailAccount(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    account_id: str
-    config: MailConfig
-    label: str | None = None
+    account_id: str = Field(
+        description=(
+            "Stable identifier for this mailbox, used in filenames and "
+            "selectors. Must match `^[A-Za-z0-9._-]+$`."
+        ),
+    )
+    config: MailConfig = Field(
+        description="Per-mailbox connection and behaviour settings.",
+    )
+    label: str | None = Field(
+        default=None,
+        description="Optional human-friendly display name for this account.",
+    )
 
     @field_validator("account_id")
     @classmethod
@@ -278,10 +400,33 @@ class TierModelsConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    level1: str = ""
-    level2: str = ""
-    level3: str = ""
-    level4: str = ""
+    level1: str = Field(
+        default="",
+        description=(
+            "Provider-model identifier for tier 1 (cheapest), "
+            "e.g. `openrouter[deepseek]-deepseek/deepseek-chat`. "
+            "Empty uses the llmio tier default."
+        ),
+    )
+    level2: str = Field(
+        default="",
+        description=(
+            "Provider-model identifier for tier 2. Empty uses the llmio tier default."
+        ),
+    )
+    level3: str = Field(
+        default="",
+        description=(
+            "Provider-model identifier for tier 3. Empty uses the llmio tier default."
+        ),
+    )
+    level4: str = Field(
+        default="",
+        description=(
+            "Provider-model identifier for tier 4 (most capable). "
+            "Empty uses the llmio tier default."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -320,24 +465,63 @@ class MailAccountsConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    accounts: list[MailAccount]
+    accounts: list[MailAccount] = Field(
+        description=(
+            "Ordered list of mailbox accounts. Each entry "
+            "has an account_id and its MailConfig."
+        ),
+    )
 
     #: The canonical credential blocks, shared by every account.
-    langfuse: LangfuseConfig = Field(default_factory=LangfuseConfig)
-    openrouter: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
+    langfuse: LangfuseConfig = Field(
+        default_factory=LangfuseConfig,
+        description=(
+            "Langfuse tracing configuration: instance host and per-project credentials."
+        ),
+    )
+    openrouter: OpenRouterConfig = Field(
+        default_factory=OpenRouterConfig,
+        description=(
+            "OpenRouter provider keys, keyed by the same aliases as langfuse.projects."
+        ),
+    )
 
     #: Per-level model overrides.  Each field holds a provider-model
     #: identifier (e.g. ``"openrouter[deepseek]-deepseek/deepseek-v4-flash"``).
     #: Empty means use the llmio tier default for that level.
-    models: TierModelsConfig = Field(default_factory=TierModelsConfig)
+    models: TierModelsConfig = Field(
+        default_factory=TierModelsConfig,
+        description=(
+            "Per-tier model overrides. Each field holds a provider-model "
+            "identifier; empty uses the llmio tier default."
+        ),
+    )
 
     #: Tier level assigned to each application / task.  Different tasks
     #: can use different tiers (e.g. triage=1 cheap, draft=3 high).
-    triage_level: int = 1
-    classifier_level: int = 1
-    rules_level: int = 1
-    detector_level: int = 1
-    draft_level: int = 1
+    triage_level: int = Field(
+        default=1,
+        description=(
+            "Tier level (1-4) assigned to the inbox triage agent. "
+            "Higher tiers use more capable (and expensive) models."
+        ),
+    )
+    classifier_level: int = Field(
+        default=1,
+        description="Tier level (1-4) assigned to the message classifier agent.",
+    )
+    rules_level: int = Field(
+        default=1,
+        description="Tier level (1-4) assigned to the triage-rules synthesis agent.",
+    )
+    detector_level: int = Field(
+        default=1,
+        description="Tier level (1-4) assigned to the provider-detection agent.",
+    )
+    draft_level: int = Field(
+        default=1,
+        description="Tier level (1-4) assigned to the draft-reply agent.",
+    )
 
     @model_validator(mode="after")
     def _validate(self) -> MailAccountsConfig:
