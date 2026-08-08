@@ -1,0 +1,1 @@
+Fix mail board side-panel close button (×) not closing the panel. The `closeDetail` function used `location.hash = ""` to clear the URL fragment, which triggered a `hashchange` event whose handler called `closeDetail` again — creating a re-entrant cycle that prevented the panel from closing. Replaced with `history.replaceState` which clears the hash without firing `hashchange`.
