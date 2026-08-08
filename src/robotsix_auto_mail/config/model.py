@@ -148,8 +148,7 @@ class MailConfig(BaseModel):
     ingest_interval_minutes: int = Field(
         default=DEFAULT_INGEST_INTERVAL_MINUTES,
         description=(
-            "Minutes between automatic ingest cycles "
-            "when `ingest_mode` is `watch`."
+            "Minutes between automatic ingest cycles when `ingest_mode` is `watch`."
         ),
         json_schema_extra={"advanced": True},
     )
@@ -413,8 +412,7 @@ class TierModelsConfig(BaseModel):
     level2: str = Field(
         default="",
         description=(
-            "Provider-model identifier for tier 2. "
-            "Empty uses the llmio tier default."
+            "Provider-model identifier for tier 2. Empty uses the llmio tier default."
         ),
     )
     level3: str = Field(
