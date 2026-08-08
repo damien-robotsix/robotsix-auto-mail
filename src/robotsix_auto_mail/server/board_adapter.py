@@ -175,8 +175,7 @@ def _delete_form(
     return (
         '<form class="delete-form" method="post"'
         f' action="/delete{account_qs}"'
-        ' onsubmit="return confirm('
-        "'Permanently delete this mail from mailbox and database?')\">"
+        ' data-confirm="Permanently delete this mail from mailbox and database?">\n'
         f'<input type="hidden" name="message_id" value="{escaped_mid}">'
         f"{aggregate_redirect}"
         '<button type="submit" class="delete-btn">Delete</button>'
@@ -374,8 +373,9 @@ class MailBoardAdapter:
             "</form>"
             '<form class="archive-confirm-form" method="post"'
             f' action="/archive{account_qs}"'
-            ' onsubmit="return confirm('
-            f"'Archive this mail to {display_path}?')\">"
+            ' data-confirm="Archive this mail to '
+            f"{html.escape(display_path)}"
+            '?">\n'
             f'<input type="hidden" name="message_id" value="{escaped_mid}">'
             f"{aggregate_redirect}"
             '<button type="submit" class="archive-btn">Archive</button>'
@@ -522,9 +522,9 @@ class MailBoardAdapter:
                 delete_scope = ""
             batch_delete_form = (
                 f'<form class="delete-form" method="post" action="{delete_action}"'
-                ' onsubmit="return confirm('
-                f"'Permanently delete ALL mail in this column {delete_scope}"
-                " from mailbox and database?')\">"
+                ' data-confirm="Permanently delete ALL mail in this column'
+                f' {delete_scope}'
+                ' from mailbox and database?">\n'
                 '<button type="submit" class="delete-btn">Delete All</button>'
                 "</form>"
             )
@@ -536,9 +536,8 @@ class MailBoardAdapter:
         if status_key == TO_ARCHIVE and not self._batch_running and not aggregate:
             batch_archive_form = (
                 '<form class="archive-form" method="post" action="/batch-archive"'
-                ' onsubmit="return confirm('
-                "'Archive ALL mail in this column to their proposed"
-                " folders?')\">"
+                ' data-confirm="Archive ALL mail in this column to their proposed'
+                ' folders?">\n'
                 '<button type="submit" class="archive-btn">Archive All</button>'
                 "</form>"
             )
@@ -565,8 +564,7 @@ class MailBoardAdapter:
             force_triage_form = (
                 '<form class="force-triage-form" method="post"'
                 ' action="/force-triage-column"'
-                ' onsubmit="return confirm('
-                f"'Re-triage all {count} items in {html.escape(label)}?')\">"
+                f' data-confirm="Re-triage all {count} items in {html.escape(label)}?">\n'
                 f'<input type="hidden" name="action" value="{html.escape(status_key)}">'
                 '<button type="submit" class="force-triage-btn">Force Triage</button>'
                 "</form>"

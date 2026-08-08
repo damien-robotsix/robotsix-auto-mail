@@ -289,12 +289,18 @@ def test_picker_reflects_selection(
 def test_picker_onchange_navigates(
     db_accounts_no_triage: tuple[str, str, MailAccountsConfig],
 ) -> None:
-    """The picker reload handler navigates to ?account=."""
+    """The picker has no inline onchange handler — navigation is now
+    delegated via board-events.js addEventListener."""
     _db_a, _db_b, accounts = db_accounts_no_triage
     server, port = _start_test_server_with_accounts(accounts)
     try:
         _s, body, _h = _get(f"http://127.0.0.1:{port}/board")
-        assert "window.location.href='/board?account='" in body
+        # The picker must NOT have an inline onchange handler.
+        assert 'onchange="' not in body
+        # The picker must still be present with the correct id.
+        assert '<select id="account-picker">' in body
+        # board-events.js must be loaded for the delegated handler.
+        assert '<script src="/static/board-events.js"></script>' in body
     finally:
         server.shutdown()
 

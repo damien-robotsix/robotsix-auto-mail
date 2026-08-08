@@ -153,9 +153,7 @@
     form.className = "archive-group-form";
     form.method = "post";
     form.action = "/batch-archive-folder" + fetchQs;
-    form.onsubmit = function () {
-      return confirm("Archive " + count + " mail to " + label + "?");
-    };
+    form.setAttribute("data-confirm", "Archive " + count + " mail to " + label + "?");
     const input = document.createElement("input");
     input.type = "hidden";
     input.name = "folder";
