@@ -1,3 +1,44 @@
+# Changelog
+
+## [0.2.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.1.0...v0.2.0) (2026-08-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* **config:** own LLM credentials in the canonical component-wide blocks ([#1054](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1054))
+* **config:** load configuration only from the YAML file; remove env-based config ([#718](https://github.com/damien-robotsix/robotsix-auto-mail/issues/718))
+
+### Features
+
+* adopt the standard config surface and the shared settings panel ([#1051](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1051)) ([622017d](https://github.com/damien-robotsix/robotsix-auto-mail/commit/622017df2cc40bc1e8d1aae93c634103deb9b674))
+* **config:** load configuration only from the YAML file; remove env-based config ([#718](https://github.com/damien-robotsix/robotsix-auto-mail/issues/718)) ([2af4c47](https://github.com/damien-robotsix/robotsix-auto-mail/commit/2af4c47d87e5162a0adaa9b26fd9df571e9f468e))
+* **config:** own LLM credentials in the canonical component-wide blocks ([#1054](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1054)) ([f65fea1](https://github.com/damien-robotsix/robotsix-auto-mail/commit/f65fea1f42a301aa37584b7dd754690f6514993b))
+* **release:** static version and release-please, drop hatch-vcs ([#1123](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1123)) ([63e1ef4](https://github.com/damien-robotsix/robotsix-auto-mail/commit/63e1ef48605c1521d7a54f2b6f1b62f775e0bac3))
+* **triage:** replace JSON memory ledgers with a flash-LLM-maintained triage_rules.md ([#704](https://github.com/damien-robotsix/robotsix-auto-mail/issues/704)) ([8e1d4e1](https://github.com/damien-robotsix/robotsix-auto-mail/commit/8e1d4e145962f0a3878a7c726dcfa7877ea78280))
+
+
+### Bug Fixes
+
+* bind board server to 0.0.0.0 in compose so the gateway can reach it ([#765](https://github.com/damien-robotsix/robotsix-auto-mail/issues/765)) ([20686e9](https://github.com/damien-robotsix/robotsix-auto-mail/commit/20686e953d878c7ab26970c9cee8ad5a2319561c))
+* **board:** adopt robotsix-board's move-control removal ([#1050](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1050)) ([83e3e7a](https://github.com/damien-robotsix/robotsix-auto-mail/commit/83e3e7a79bcf2d7038f7d563ebfe8531703e5017))
+* **ci:** a failed coverage comment must not fail CI ([#1053](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1053)) ([5d2cd8b](https://github.com/damien-robotsix/robotsix-auto-mail/commit/5d2cd8b55fa380a10d5e44f7fb190099f3895a71))
+* **ci:** drop the phantom 'not docker' marker filter, enforce strict markers ([#1116](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1116)) ([4e08498](https://github.com/damien-robotsix/robotsix-auto-mail/commit/4e0849851da6c539ea53cd13449528985574a53c))
+* **ci:** grant the Docs caller the permissions the Pages spine needs ([#1095](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1095)) ([00b65dc](https://github.com/damien-robotsix/robotsix-auto-mail/commit/00b65dced5dc4b46b994e019623af6f8a7ac63e6))
+* **deploy:** run the ingester in watch mode so it stops restart-looping ([#1026](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1026)) ([60b194f](https://github.com/damien-robotsix/robotsix-auto-mail/commit/60b194f0bf573b3e3be0f4e833e890d2abecff1e))
+* **docker:** bump uv to 0.12.1 so it can parse uv.lock revision 3 ([#1106](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1106)) ([3ee66f2](https://github.com/damien-robotsix/robotsix-auto-mail/commit/3ee66f218b73043f17a0fb924727466228e894ca))
+* **docker:** supply the package version the build context cannot derive ([#1108](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1108)) ([0fc63d5](https://github.com/damien-robotsix/robotsix-auto-mail/commit/0fc63d540d1c6f733e30de07e843c004815887dd))
+* **release:** mint an App token so release PRs get CI ([#1125](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1125)) ([51a5218](https://github.com/damien-robotsix/robotsix-auto-mail/commit/51a521873f3f55e9434364ac1d69f275779c9fd9))
+* **release:** regenerate uv.lock on the release branch ([#1127](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1127)) ([552a2ee](https://github.com/damien-robotsix/robotsix-auto-mail/commit/552a2eec400d5382a4b333af76392ca6eca0b037))
+* **server:** allow same-origin framing so the dashboard iframe renders ([#1110](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1110)) ([1a31efd](https://github.com/damien-robotsix/robotsix-auto-mail/commit/1a31efda75df6fec0c6604527dd20bdb3c40f4bb))
+* **server:** serve requests account-less when zero accounts are configured ([#970](https://github.com/damien-robotsix/robotsix-auto-mail/issues/970)) ([efdf69e](https://github.com/damien-robotsix/robotsix-auto-mail/commit/efdf69e0bfe6ed49e7bff7234ae7fd658b10caac))
+
+
+### Documentation
+
+* audit and correct docs/ against current code; drop obsolete docs ([#697](https://github.com/damien-robotsix/robotsix-auto-mail/issues/697)) ([686c455](https://github.com/damien-robotsix/robotsix-auto-mail/commit/686c455972d8ded2621151b07f0f001b5affd5cb))
+* consolidate deploy docs into docs/deployment.md, drop deploy/README ([#688](https://github.com/damien-robotsix/robotsix-auto-mail/issues/688)) ([91cd9b1](https://github.com/damien-robotsix/robotsix-auto-mail/commit/91cd9b18dc9972664044665ab9ad62e1febe54e3))
+* point out-of-docs links at GitHub instead of relative paths ([#1097](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1097)) ([31fd46b](https://github.com/damien-robotsix/robotsix-auto-mail/commit/31fd46b0827002a7cc24e8f2e78a616e1c132551))
+
 ## 0.1.0 (2026-08-08)
 
 ### Features
