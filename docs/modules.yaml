@@ -48,6 +48,7 @@ modules:
       - tests/conftest.py
       - tests/test_stub.py
       - run_tests.sh
+      - changelog/*.md
 
   - id: docker
     description: >-
@@ -346,6 +347,7 @@ modules:
       - src/robotsix_auto_mail/server/static/add-account-standalone.css
       - src/robotsix_auto_mail/server/static/board.css
       - src/robotsix_auto_mail/server/static/board-auto-mail.js
+      - src/robotsix_auto_mail/server/static/board-events.js
       - src/robotsix_auto_mail/server/static/settings-panel.css
       - src/robotsix_auto_mail/server/static/skill.md
       - src/robotsix_auto_mail/server/board_adapter.py

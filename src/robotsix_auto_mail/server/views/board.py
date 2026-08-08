@@ -352,7 +352,7 @@ def _health_alerts_html(
             btn = (
                 f' <button class="auth-btn"'
                 f' data-account-id="{html.escape(account_id_key)}"'
-                ' onclick="authorizeAccount(this)">Authorize / Reconnect</button>'
+                ">Authorize / Reconnect</button>"
                 if needs_auth
                 else ""
             )
@@ -461,8 +461,7 @@ def _render_board_page_shell(
             "</div>\n"
             '<div class="board-header-right">\n'
             '<button id="probe-health-btn"'
-            ' onclick="probeHealth()">'
-            "Recheck connections</button>\n"
+            ">Recheck connections</button>\n"
             '<a href="/add-account" class="header-btn add-account-btn"'
             ' title="Add a new mail account">+ Add Account</a>\n'
             '<a href="/settings-panel" class="header-btn settings-btn"'
@@ -483,7 +482,7 @@ def _render_board_page_shell(
         '<div class="side-panel" id="side-panel">\n'
         '<div class="panel-header">\n'
         '<span class="panel-title"></span>\n'
-        '<button class="close-btn" onclick="closeDetail()">&times;</button>\n'
+        '<button class="close-btn">&times;</button>\n'
         "</div>\n"
         '<iframe src="" title="Mail detail"></iframe>\n'
         "</div>\n"
@@ -492,20 +491,16 @@ def _render_board_page_shell(
         '<script id="board-config" type="application/json">'
         f"{json.dumps(board_config)}"
         "</script>\n"
-        # probeHealth() on-demand connection recheck (referenced by the
-        # inline onclick on #probe-health-btn).
-        "<script>\n"
-        "function probeHealth() {\n"
-        "  fetch('/probe-health').then(function() {\n"
-        "    window.location.reload();\n"
-        "  });\n"
-        "}\n"
-        "</script>\n"
         '<script src="/static/board.js"></script>\n'
         # App-specific overlay — must load after board.js so the
         # capture-phase interceptor can override board.js's bubble
         # handler for card clicks.
         '<script src="/static/board-auto-mail.js"></script>\n'
+        # CSP-safe event delegation — replaces all inline
+        # onclick/onsubmit/onchange handlers.  Must load after
+        # board-auto-mail.js so it can reference window.closeDetail
+        # and window.authorizeAccount.
+        '<script src="/static/board-events.js"></script>\n'
         "</body>\n"
         "</html>"
     )
@@ -584,9 +579,7 @@ def _build_board_html(
             )
         picker_html = (
             '<label class="account-picker-label">Mailbox:&nbsp;'
-            '<select id="account-picker"'
-            " onchange=\"window.location.href='/board?account='"
-            '+encodeURIComponent(this.value)">'
+            '<select id="account-picker">'
             f"{''.join(options_parts)}"
             "</select></label>"
         )
@@ -644,9 +637,7 @@ def _build_global_board_html(
         )
     picker_html = (
         '<label class="account-picker-label">Mailbox:&nbsp;'
-        '<select id="account-picker"'
-        " onchange=\"window.location.href='/board?account='"
-        '+encodeURIComponent(this.value)">'
+        '<select id="account-picker">'
         f"{''.join(options_parts)}"
         "</select></label>"
     )

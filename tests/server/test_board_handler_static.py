@@ -212,17 +212,12 @@ def test_handler_email_detail_standalone_has_no_parent_refresh(single_db: str) -
         server.shutdown()
 
 
-def test_handler_board_inline_handlers_resolve_to_defined_functions(
+def test_handler_board_inline_handlers_are_absent(
     single_db: str,
 ) -> None:
-    """Regression guard: every inline onclick/onchange/onsubmit handler on
-    /board must invoke a function that is defined somewhere reachable by the
-    page — an inline ``<script>`` block or a served script — excluding
-    native browser built-ins (e.g. ``confirm``).
-
-    This passes today (only ``openDetail``/``closeDetail`` are custom, both
-    defined inline) and fails if a future change emits a handler referencing
-    an undefined global.
+    """Regression guard: /board must have NO inline onclick/onchange/onsubmit
+    handlers.  All event handling must be via addEventListener in external
+    JS files served from 'self' (CSP compliance).
     """
     # Seed a TO_DELETE card so delete/batch-delete/force-triage handlers are
     # all present in the rendered HTML alongside the drawer handlers.
@@ -245,53 +240,32 @@ def test_handler_board_inline_handlers_resolve_to_defined_functions(
     try:
         resp = urlopen(f"http://127.0.0.1:{port}/board")
         board_html = resp.read().decode("utf-8")
-        # Collect the JS reachable by the page: every inline <script>
-        # block (no src) plus every served script the page references.
-        inline_scripts = re.findall(r"<script>(.*?)</script>", board_html, re.DOTALL)
-        served_srcs = re.findall(r'<script src="([^"]+)"', board_html)
-        defined_sources = list(inline_scripts)
-        for src in served_srcs:
-            served = urlopen(f"http://127.0.0.1:{port}{src}")
-            defined_sources.append(served.read().decode("utf-8"))
-        defined_js = "\n".join(defined_sources)
-
-        # Top-level function identifiers defined in the reachable JS.
-        defined_names = set(re.findall(r"function\s+([A-Za-z_$][\w$]*)", defined_js))
-
-        # Native browser built-ins that need no definition.
-        native = {
-            "confirm",
-            "alert",
-            "prompt",
-            "fetch",
-            "setInterval",
-            "clearInterval",
-            "setTimeout",
-            "clearTimeout",
-        }
 
         # Every inline event-handler reference on the page.
         handler_values = re.findall(
             r'(?:onclick|onchange|onsubmit)="([^"]*)"', board_html
         )
-        assert handler_values, "expected at least one inline handler on /board"
-
-        invoked: set[str] = set()
-        for value in handler_values:
-            for ident in re.findall(r"([A-Za-z_$][\w$]*)\s*\(", value):
-                invoked.add(ident)
-
-        # openDetail/closeDetail must be among the invoked identifiers.
-        assert {"openDetail", "closeDetail"} & invoked
-
-        unresolved = {
-            ident
-            for ident in invoked
-            if ident not in native and ident not in defined_names
-        }
-        assert not unresolved, (
-            f"inline handlers reference undefined functions: {unresolved}"
+        assert not handler_values, (
+            f"expected zero inline handlers on /board, "
+            f"found {len(handler_values)}: {handler_values}"
         )
+
+        # Verify the CSP-safe event delegation script is loaded.
+        assert '<script src="/static/board-events.js"></script>' in board_html, (
+            "board-events.js must be loaded on the board page"
+        )
+    finally:
+        server.shutdown()
+
+
+def test_handler_board_events_js_serves() -> None:
+    """Verify /static/board-events.js can be served."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/static/board-events.js")
+        body = resp.read().decode("utf-8")
+        assert "addEventListener" in body
+        assert resp.status == 200
     finally:
         server.shutdown()
 
