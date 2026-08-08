@@ -49,6 +49,7 @@ modules:
       - tests/test_stub.py
       - run_tests.sh
       - changelog/*.md
+      - changelog.d/*.md
 
   - id: docker
     description: >-

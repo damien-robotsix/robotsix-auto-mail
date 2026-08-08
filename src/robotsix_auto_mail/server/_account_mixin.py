@@ -364,9 +364,7 @@ class _AccountMixin:
             self._send_response(
                 "<!DOCTYPE html>\n"
                 '<meta charset="utf-8">\n'
-                "<body data-redirect='"
-                + html.escape(target, quote=True)
-                + "'>\n"
+                "<body data-redirect='" + html.escape(target, quote=True) + "'>\n"
                 '<script src="/static/add-account-redirect.js"></script>\n',
                 status=200,
                 content_type="text/html; charset=utf-8",
