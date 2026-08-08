@@ -1,1 +1,1 @@
-Add positive-path tests for `discover_accounts_from_settings_stores` covering populated stores, empty stores, corrupt databases, missing data directories, and the `_cmd_serve` merge/integration path.
+Removed spurious `changelog.d/*.md` glob from the `core` module in `docs/modules.yaml`. No `changelog.d/` directory exists in the repo; changelog fragments are already covered by `changelog/*.md`. Updated stale comment in `tests/conftest.py` to reference the new merge tests in `tests/settings/test_discover_accounts.py`.
