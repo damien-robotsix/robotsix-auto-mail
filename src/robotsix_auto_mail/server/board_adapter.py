@@ -564,7 +564,8 @@ class MailBoardAdapter:
             force_triage_form = (
                 '<form class="force-triage-form" method="post"'
                 ' action="/force-triage-column"'
-                f' data-confirm="Re-triage all {count} items in {html.escape(label)}?">\n'
+                f' data-confirm="Re-triage all {count} items in'
+                f' {html.escape(label)}?">\n'
                 f'<input type="hidden" name="action" value="{html.escape(status_key)}">'
                 '<button type="submit" class="force-triage-btn">Force Triage</button>'
                 "</form>"
