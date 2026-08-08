@@ -84,7 +84,15 @@
     }
     const wrapper = document.querySelector(".board-wrapper");
     if (wrapper) wrapper.classList.remove("panel-open");
-    location.hash = "";
+    // Clear the hash via replaceState so no hashchange event fires.
+    // Using location.hash = "" would trigger hashchange, whose handler
+    // calls closeDetail() again — a re-entrant loop that prevents the
+    // panel from closing reliably (observed on Firefox).
+    history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
   }
 
   /* ==================================================================
