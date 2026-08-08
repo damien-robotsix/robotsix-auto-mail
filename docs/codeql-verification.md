@@ -32,7 +32,7 @@ Separately, the `maintenance` agent's sandbox has **no `gh` CLI and no
 network access**, so it cannot query the code-scanning API regardless of
 whether scanning is enabled. The agent's toolset and sandbox are defined
 upstream in the `robotsix-mill` framework, not in this repository — see
-[Operator / framework steps](#operator--framework-steps-out-of-repo)
+[Operator / framework steps](#operator-framework-steps-out-of-repo)
 below.
 
 ## How CodeQL runs here

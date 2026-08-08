@@ -50,10 +50,16 @@ Then open http://localhost:8000 in your browser. The site will auto-reload as yo
 To build a static copy of the site (e.g., before committing documentation changes):
 
 ```sh
-uv run --frozen mkdocs build
+uv run --frozen mkdocs build --strict
 ```
 
-This generates a `site/` directory with the built HTML (which is not committed to the repository).
+The `--strict` flag mirrors CI's `docs-check` workflow and turns any
+warning (broken internal links, missing anchors, unrecognised relative
+links) into a hard error.  CI enforces this gate on every pull request
+that touches documentation, so running it locally before pushing catches
+issues early.
+
+The build generates a `site/` directory with the built HTML (which is not committed to the repository).
 
 ## Code style and quality gate
 

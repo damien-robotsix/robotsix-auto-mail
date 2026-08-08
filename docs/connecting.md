@@ -14,7 +14,7 @@ New users can also run `robotsix-auto-mail detect` to auto-generate the config f
 file from just an email address — see [Auto-detection with
 `detect`](#auto-detection-with-detect).
 
-## Quick start — Docker Compose (recommended)
+## Quick start — Docker Compose (recommended) {#quick-start-docker-compose}
 
 > Prefer a native (non-Docker) setup? See the
 > [Quick start (native)](index.md#quick-start-native) guide.
@@ -257,7 +257,7 @@ reminder to use an App Password.
 Microsoft 365 has deprecated basic auth and now requires **SASL XOAUTH2** — an
 industry-standard OAuth2-based SASL mechanism. Gmail also rejects your normal
 account password, but accepts either an
-[App Password](#gmail-app-password--simplest) (simplest — see above) or
+[App Password](#gmail-app-password-simplest) (simplest — see above) or
 XOAUTH2.
 
 When ``oauth2_token`` is set in the JSON config, the IMAP and SMTP clients
