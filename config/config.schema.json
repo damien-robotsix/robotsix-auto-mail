@@ -26,11 +26,13 @@
       "properties": {
         "public_key": {
           "default": "",
+          "description": "Langfuse project public key (pk-...).",
           "title": "Public Key",
           "type": "string"
         },
         "secret_key": {
           "default": "",
+          "description": "Langfuse project secret key (sk-...).",
           "format": "password",
           "title": "Secret Key",
           "type": "string",
@@ -39,6 +41,7 @@
         "project_id": {
           "advanced": true,
           "default": "",
+          "description": "Langfuse project id. Only needed by consumers that address the project by id; the component itself never uses it.",
           "title": "Project Id",
           "type": "string"
         }
@@ -50,11 +53,13 @@
       "description": "One named mailbox: a stable ``account_id`` plus its ``MailConfig``.\n\n``label`` is an optional human-friendly display name.  ``account_id`` is\na stable identifier (e.g. ``\"personal\"``) used in the account's SQLite\nfilename and, later in the epic, in URLs / board selectors \u2014 so it must\nbe non-empty and match ``^[A-Za-z0-9._-]+$``.",
       "properties": {
         "account_id": {
+          "description": "Stable identifier for this mailbox, used in filenames and selectors. Must match `^[A-Za-z0-9._-]+$`.",
           "title": "Account Id",
           "type": "string"
         },
         "config": {
-          "$ref": "#/$defs/MailConfig"
+          "$ref": "#/$defs/MailConfig",
+          "description": "Per-mailbox connection and behaviour settings."
         },
         "label": {
           "anyOf": [
@@ -66,6 +71,7 @@
             }
           ],
           "default": null,
+          "description": "Optional human-friendly display name for this account.",
           "title": "Label"
         }
       },
@@ -80,19 +86,23 @@
       "description": "Immutable per-mailbox settings: mail server connection parameters.\n\nSensitive fields (``password``, ``oauth2_token``,\n``oauth2_client_secret``) are typed as :class:`pydantic.SecretStr` so\nthe JSON schema emits ``writeOnly`` and the values are masked in\n``repr`` / ``str``.\n\nLLM and Langfuse credentials are deliberately **not** here: they belong\nto the component, not to a mailbox, and live in the canonical\n``langfuse`` / ``openrouter`` blocks on :class:`MailAccountsConfig`\n(see :mod:`robotsix_auto_mail.config.credentials`).",
       "properties": {
         "imap_host": {
+          "description": "IMAP server hostname, e.g. `imap.gmail.com`.",
           "title": "Imap Host",
           "type": "string"
         },
         "smtp_host": {
+          "description": "SMTP server hostname, e.g. `smtp.gmail.com`.",
           "title": "Smtp Host",
           "type": "string"
         },
         "username": {
+          "description": "Mailbox username (usually the full email address).",
           "title": "Username",
           "type": "string"
         },
         "password": {
           "default": "",
+          "description": "Mailbox password or app-specific password. Leave empty when using OAuth2.",
           "format": "password",
           "title": "Password",
           "type": "string",
@@ -101,46 +111,54 @@
         "imap_port": {
           "advanced": true,
           "default": 993,
+          "description": "IMAP server port (993 for direct TLS, 143 for STARTTLS).",
           "title": "Imap Port",
           "type": "integer"
         },
         "imap_tls_mode": {
           "advanced": true,
           "default": "direct-tls",
+          "description": "TLS negotiation mode for IMAP: `direct-tls` (connect then TLS, default), `starttls` (upgrade after connect), or `none`.",
           "title": "Imap Tls Mode",
           "type": "string"
         },
         "smtp_port": {
           "advanced": true,
           "default": 587,
+          "description": "SMTP server port (587 for STARTTLS, 465 for direct TLS).",
           "title": "Smtp Port",
           "type": "integer"
         },
         "smtp_tls_mode": {
           "advanced": true,
           "default": "starttls",
+          "description": "TLS negotiation mode for SMTP: `direct-tls`, `starttls` (default), or `none`.",
           "title": "Smtp Tls Mode",
           "type": "string"
         },
         "db_path": {
           "default": "",
+          "description": "Path to the per-account SQLite database file. Empty means derive `<data-dir>/<account_id>/mail.db`.",
           "title": "Db Path",
           "type": "string"
         },
         "imap_folder": {
           "default": "INBOX",
+          "description": "IMAP folder to monitor, e.g. `INBOX`.",
           "title": "Imap Folder",
           "type": "string"
         },
         "ingest_interval_minutes": {
           "advanced": true,
           "default": 15,
+          "description": "Minutes between automatic ingest cycles when `ingest_mode` is `watch`.",
           "title": "Ingest Interval Minutes",
           "type": "integer"
         },
         "ingest_mode": {
           "advanced": true,
           "default": "once",
+          "description": "Ingest behaviour: `once` runs a single poll then exits, `watch` loops forever on `ingest_interval_minutes`.",
           "enum": [
             "watch",
             "once"
@@ -151,35 +169,41 @@
         "heartbeat_file": {
           "advanced": true,
           "default": "",
+          "description": "File touched at the end of each poll cycle in watch mode for Docker HEALTHCHECK. Empty means no heartbeat.",
           "title": "Heartbeat File",
           "type": "string"
         },
         "archive_root": {
           "advanced": true,
           "default": "robotsix-mail-archive",
+          "description": "Root directory for the self-managed archive folder structure.",
           "title": "Archive Root",
           "type": "string"
         },
         "archive_enabled": {
           "advanced": true,
           "default": true,
+          "description": "When true, processed messages are moved into the archive; when false they stay in the inbox.",
           "title": "Archive Enabled",
           "type": "boolean"
         },
         "triage_on_ingest": {
           "advanced": true,
           "default": true,
+          "description": "When true, the inbox triage agent runs automatically after each ingest cycle.",
           "title": "Triage On Ingest",
           "type": "boolean"
         },
         "triage_rules_path": {
           "advanced": true,
           "default": "",
+          "description": "Path to the human-readable triage rules file. Empty means derive from db_path.",
           "title": "Triage Rules Path",
           "type": "string"
         },
         "oauth2_token": {
           "default": "",
+          "description": "Static OAuth2 access token for SASL XOAUTH2 authentication. Leave empty for password auth or MSAL-managed tokens.",
           "format": "password",
           "title": "Oauth2 Token",
           "type": "string",
@@ -187,11 +211,13 @@
         },
         "oauth2_client_id": {
           "default": "",
+          "description": "OAuth2 client id (application registration id). Only needed for MSAL-managed OAuth2.",
           "title": "Oauth2 Client Id",
           "type": "string"
         },
         "oauth2_client_secret": {
           "default": "",
+          "description": "OAuth2 client secret. Only needed for MSAL-managed OAuth2.",
           "format": "password",
           "title": "Oauth2 Client Secret",
           "type": "string",
@@ -200,23 +226,27 @@
         "oauth2_provider": {
           "advanced": true,
           "default": "",
+          "description": "OAuth2 provider identifier. Set to `microsoft` for MSAL-managed Microsoft 365 tokens; empty means disabled.",
           "title": "Oauth2 Provider",
           "type": "string"
         },
         "oauth2_tenant": {
           "advanced": true,
           "default": "organizations",
+          "description": "Azure AD tenant for MSAL OAuth2, e.g. `organizations`, `common`, or a tenant id.",
           "title": "Oauth2 Tenant",
           "type": "string"
         },
         "log_level": {
           "default": "INFO",
+          "description": "Application log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`.",
           "title": "Log Level",
           "type": "string"
         },
         "log_format": {
           "advanced": true,
           "default": "console",
+          "description": "Log output format: `console` (human-readable) or `json` (structured).",
           "title": "Log Format",
           "type": "string"
         }
@@ -251,21 +281,25 @@
       "properties": {
         "level1": {
           "default": "",
+          "description": "Provider-model identifier for tier 1 (cheapest), e.g. `openrouter[deepseek]-deepseek/deepseek-chat`. Empty uses the llmio tier default.",
           "title": "Level1",
           "type": "string"
         },
         "level2": {
           "default": "",
+          "description": "Provider-model identifier for tier 2. Empty uses the llmio tier default.",
           "title": "Level2",
           "type": "string"
         },
         "level3": {
           "default": "",
+          "description": "Provider-model identifier for tier 3. Empty uses the llmio tier default.",
           "title": "Level3",
           "type": "string"
         },
         "level4": {
           "default": "",
+          "description": "Provider-model identifier for tier 4 (most capable). Empty uses the llmio tier default.",
           "title": "Level4",
           "type": "string"
         }
@@ -277,6 +311,7 @@
   "description": "An ordered collection of :class:`MailAccount`s.\n\nOne SQLite DB per account\n-------------------------\nMultiple accounts are modelled as N independent :class:`MailConfig`\ninstances, each carrying its **own** ``db_path``, rather than adding an\n``account_id`` column to every table.  The rationale:\n\n- Per-account state (triage decisions, archive watermarks \u2014 all keyed\n  by ``message_id`` in each DB, plus the per-account ``triage_rules.md``\n  file) is naturally isolated with zero schema migration.\n- Each :class:`MailConfig` already owns a ``db_path`` field, so no new\n  per-row plumbing is required.\n- The cost is one SQLite file per account; uniqueness of ``db_path``\n  across accounts is therefore enforced at load time.\n\nComponent-wide settings\n-----------------------\nThe ``langfuse``, ``openrouter``, ``models``, and per-application level\nfields sit here rather than on each :class:`MailConfig` because they\ndescribe the component's one LLM function, not a mailbox.  Their shape\nis fixed by robotsix-standards \u2014 see\n:mod:`robotsix_auto_mail.config.credentials`.\n\nValidation (all raise :class:`ConfigurationError`): all ``account_id``s\nunique; all ``MailConfig.db_path``s unique across accounts.",
   "properties": {
     "accounts": {
+      "description": "Ordered list of mailbox accounts. Each entry has an account_id and its MailConfig.",
       "items": {
         "$ref": "#/$defs/MailAccount"
       },
@@ -284,36 +319,44 @@
       "type": "array"
     },
     "langfuse": {
-      "$ref": "#/$defs/LangfuseConfig"
+      "$ref": "#/$defs/LangfuseConfig",
+      "description": "Langfuse tracing configuration: instance host and per-project credentials."
     },
     "openrouter": {
-      "$ref": "#/$defs/OpenRouterConfig"
+      "$ref": "#/$defs/OpenRouterConfig",
+      "description": "OpenRouter provider keys, keyed by the same aliases as langfuse.projects."
     },
     "models": {
-      "$ref": "#/$defs/TierModelsConfig"
+      "$ref": "#/$defs/TierModelsConfig",
+      "description": "Per-tier model overrides. Each field holds a provider-model identifier; empty uses the llmio tier default."
     },
     "triage_level": {
       "default": 1,
+      "description": "Tier level (1-4) assigned to the inbox triage agent. Higher tiers use more capable (and expensive) models.",
       "title": "Triage Level",
       "type": "integer"
     },
     "classifier_level": {
       "default": 1,
+      "description": "Tier level (1-4) assigned to the message classifier agent.",
       "title": "Classifier Level",
       "type": "integer"
     },
     "rules_level": {
       "default": 1,
+      "description": "Tier level (1-4) assigned to the triage-rules synthesis agent.",
       "title": "Rules Level",
       "type": "integer"
     },
     "detector_level": {
       "default": 1,
+      "description": "Tier level (1-4) assigned to the provider-detection agent.",
       "title": "Detector Level",
       "type": "integer"
     },
     "draft_level": {
       "default": 1,
+      "description": "Tier level (1-4) assigned to the draft-reply agent.",
       "title": "Draft Level",
       "type": "integer"
     }
