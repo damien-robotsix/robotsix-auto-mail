@@ -6,7 +6,6 @@ a new mail account through the web UI."""
 from __future__ import annotations
 
 import html
-import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -356,12 +355,19 @@ class _AccountMixin:
 
         if origin == "settings":
             # Redirect the parent (settings page) rather than the iframe.
+            # We cannot emit an inline <script>window.top.location.href=…</script>
+            # because a strict Content-Security-Policy blocks it.  Instead we
+            # set a data-redirect attribute on <body> and load an external JS
+            # file (add-account-redirect.js) that reads the attribute and
+            # performs the parent-frame navigation.
             target = "/settings-panel?added=" + quote(account_id, safe="")
             self._send_response(
                 "<!DOCTYPE html>\n"
-                "<script>window.top.location.href="
-                + json.dumps(target)
-                + ";</script>\n",
+                '<meta charset="utf-8">\n'
+                "<body data-redirect='"
+                + html.escape(target, quote=True)
+                + "'>\n"
+                '<script src="/static/add-account-redirect.js"></script>\n',
                 status=200,
                 content_type="text/html; charset=utf-8",
             )

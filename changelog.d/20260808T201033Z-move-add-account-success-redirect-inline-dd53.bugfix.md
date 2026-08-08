@@ -1,0 +1,1 @@
+Replace inline `<script>window.top.location.href=…</script>` in the add-account success redirect with an external JS file (`add-account-redirect.js`) that reads a `data-redirect` attribute on `<body>`, so the redirect works under a strict Content-Security-Policy that blocks `'unsafe-inline'`.
