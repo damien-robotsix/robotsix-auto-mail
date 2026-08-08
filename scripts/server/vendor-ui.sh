@@ -7,7 +7,7 @@
 set -euo pipefail
 
 VERSION="${ROBOTSIX_UI_VERSION:-v0.1.7}"
-DEST="$(dirname "$0")/../src/robotsix_auto_mail/server/static"
+DEST="$(dirname "$0")/../../src/robotsix_auto_mail/server/static"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
