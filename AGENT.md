@@ -267,19 +267,13 @@ must be a ``.md`` file whose name follows the towncrier convention
 categories: ``feature``, ``bugfix``, ``removal``, or ``misc``.  The
 `towncrier check` CI gate in `ci.yml` verifies this on pull requests.
 
-When you create a new changelog fragment file under `changelog/`, you
-MUST also register its path in `docs/modules.yaml` under the `core`
-module's `paths` list.  This prevents the `robotsix-modules
-check-registration` pre-commit gate from failing on the new file.
-Insert the entry alphabetically among the existing `changelog/` entries
-in the `core` module's `paths` block.  **This applies to EVERY PR that
-creates a fragment — even when no Python source files are touched**
-(docs-only, config-only, test-only, changelog-only, CI-only PRs).
-
-**Self-check (mandatory):** before the implement stage declares
-completion, run ``git grep "<fragment-filename>" docs/modules.yaml``.
-The command must return a matching line.  If it does not, the
-registration step was missed — add the entry and re-check.
+**Rule:** Changelog fragments are claimed in `docs/modules.yaml` (core
+module) via the single glob entry `- changelog/*.md` (plus
+`- changelog/.gitkeep`) — NOT per-fragment path entries.  Do not
+append an individual `changelog/<id>.<type>.md` line when you add a
+fragment; the glob already covers it.  The `robotsix-modules
+check-registration` gate passes because the glob claims every
+`changelog/` file.
 
 ---
 
