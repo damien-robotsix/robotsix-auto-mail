@@ -17,9 +17,9 @@ from robotsix_auto_mail.config import (
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.oauth2 import MICROSOFT_PROVIDER
 from robotsix_auto_mail.server._constants import (
-    _BOARD_COLUMNS,
-    BATCH_OP_VERB_LABELS,
     BATCH_OP_VERBS,
+    BATCH_OP_VERB_LABELS,
+    _BOARD_COLUMNS,
     _with_db,
 )
 from robotsix_auto_mail.server.adapters import _NonEmptyColumnsAdapter
