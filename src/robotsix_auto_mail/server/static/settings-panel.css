@@ -17,5 +17,3 @@ main { max-width: 56rem; margin: 0 auto; }
   background: var(--rsu-color-error-bg, #fef2f2);
   color: var(--rsu-color-error, #b71c1c);
 }
-
-
