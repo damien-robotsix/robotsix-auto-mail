@@ -182,6 +182,6 @@ def mock_parse_archive_structure() -> "mock._patch":
 
 
 @pytest.fixture
-def _fake_db_path() -> str:
+def fake_db_path() -> str:
     """A throwaway DB path string — no real file created."""
     return "test_view_mixin.db"
