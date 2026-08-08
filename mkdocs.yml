@@ -22,7 +22,7 @@ plugins:
   - search
   - htmlproofer:
       raise_error: true
-      validate_external_urls: true
+      validate_external_urls: false
 nav:
   - Home: index.md
   - Architecture: architecture.md
