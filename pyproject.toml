@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "robotsix-auto-mail"
-version = "0.1.0"
+version = "0.2.0"
 description = "Automated mail ingestion, triage, and kanban board — IMAP fetch, SMTP send, LLM triage, SQLite storage"
 readme = "README.md"
 requires-python = ">=3.14"
