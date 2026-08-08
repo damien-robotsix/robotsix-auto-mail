@@ -65,8 +65,6 @@ _SETTINGS_PAGE = (
         "It is vendored at image build time; for a local checkout run " +
         "<code>scripts/vendor-ui.sh</code>.</p>";
     });
-
-
 </script>
 </body>
 </html>

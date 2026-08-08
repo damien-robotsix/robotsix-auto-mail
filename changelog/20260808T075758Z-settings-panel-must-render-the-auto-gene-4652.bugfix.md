@@ -1,1 +1,1 @@
-Settings panel (`/settings-panel`) now renders only the auto-generated config settings panel. The embedded Add Account form and the `#add-account` hash-based toggle have been removed. The "Add Account" button on the board header now links directly to `/add-account`.
+Fixed review feedback: removed stale `changelog.d/*.md` glob from `docs/modules.yaml` and cleaned up trailing whitespace in the settings page script block.
