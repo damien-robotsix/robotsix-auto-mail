@@ -359,6 +359,14 @@
       "description": "Tier level (1-4) assigned to the draft-reply agent.",
       "title": "Draft Level",
       "type": "integer"
+    },
+    "trusted_origins": {
+      "description": "Public origin URLs (e.g. 'https://mail.deploy.robotsix.net') trusted for CSRF when the server runs behind a reverse proxy.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Trusted Origins",
+      "type": "array"
     }
   },
   "required": [
