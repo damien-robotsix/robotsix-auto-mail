@@ -28,6 +28,8 @@ FROM python:3.14-slim@${BASE_DIGEST} AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+ARG VERSION=0.0.0.dev0+unknown
+
 WORKDIR /build
 
 # git is required at build time: the only non-PyPI dep
@@ -40,6 +42,12 @@ WORKDIR /build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git && \
     rm -rf /var/lib/apt/lists/*
+
+# setuptools-scm (used by hatch-vcs) needs a version.  The .git directory
+# is not copied into the build context, so we supply the version via the
+# standard env var.  Defaults to a dev0 placeholder so local `docker build`
+# without --build-arg still works.
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}
 
 # Bring in the `uv` binary so the install step can honour
 # [tool.uv.sources] in pyproject.toml — pip cannot, and the

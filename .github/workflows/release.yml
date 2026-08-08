@@ -49,6 +49,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute package version
+        id: version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="0.0.0.dev0+g${GITHUB_SHA::7}"
+          fi
+          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Compute Docker metadata
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
@@ -85,6 +95,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             PACKAGE_VERSION=${{ steps.pkgver.outputs.version }}
+            VERSION=${{ steps.version.outputs.value }}
 
   trivy:
     name: Scan image with Trivy

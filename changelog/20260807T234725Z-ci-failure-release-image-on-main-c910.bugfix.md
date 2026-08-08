@@ -1,0 +1,1 @@
+Fix container image build failure caused by missing git metadata when hatch-vcs tries to determine the package version. The Dockerfile now accepts a `VERSION` build arg and sets `SETUPTOOLS_SCM_PRETEND_VERSION` so the build works without a `.git` directory in the build context.
