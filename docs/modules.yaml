@@ -48,6 +48,7 @@ modules:
       - tests/conftest.py
       - tests/test_stub.py
       - run_tests.sh
+      - changelog/*.md
 
   - id: docker
     description: >-
