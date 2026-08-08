@@ -50,7 +50,7 @@ jobs:
       # workflow that surfaced as a misleading coverage failure. Omitting the
       # flag lets pytest-randomly pick one seed on the controller and propagate
       # it, which keeps order randomisation without the divergence.
-      pytest-args: --hypothesis-profile=ci -m "not docker" --cov-report=xml:coverage.xml
+      pytest-args: --hypothesis-profile=ci --cov-report=xml:coverage.xml
 
   # auto-mail-specific checks with no equivalent in the reusable spine. They
   # keep their own steps and stay blocking on every push + PR.

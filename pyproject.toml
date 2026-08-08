@@ -110,6 +110,10 @@ ignore = ["ANN401"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+# --strict-markers: an unregistered @pytest.mark.<name> is an error, not a
+# silently-ignored warning — prevents phantom markers like the dead
+# `-m "not docker"` filter this config once carried.
+addopts = ["--strict-markers"]
 markers = [
     "integration: tests that require a real or emulated network service (IMAP, SMTP, HTTP)",
     "slow: heavier property-based / fuzz tests (large example counts)",
