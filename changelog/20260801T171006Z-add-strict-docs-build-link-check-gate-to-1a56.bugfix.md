@@ -1,1 +1,1 @@
-Fix htmlproofer plugin config to `raise_error: true` for proper rendered-HTML link validation; remove dead `changelog.d/*.md` glob from `docs/modules.yaml` (no such directory exists).
+Fix htmlproofer plugin config to `raise_error: true` for proper rendered-HTML link validation; remove dead `changelog.d/*.md` glob from `docs/modules.yaml` (no such directory exists); fix YAML structural corruption in `docs/modules.yaml` that absorbed the `docker` module entry into the `core` module's paths list.
