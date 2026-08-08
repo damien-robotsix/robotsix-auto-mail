@@ -21,8 +21,8 @@ markdown_extensions:
 plugins:
   - search
   - htmlproofer:
-      raise_error: false
-      validate_external_urls: false
+      raise_error: true
+      validate_external_urls: true
 nav:
   - Home: index.md
   - Architecture: architecture.md
