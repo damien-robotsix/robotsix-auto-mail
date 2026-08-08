@@ -51,8 +51,10 @@ jobs:
 
       - name: Compute package version
         id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
+          if [ "$REF_TYPE" = "tag" ]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
             VERSION="0.0.0.dev0+g${GITHUB_SHA::7}"
