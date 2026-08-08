@@ -212,7 +212,6 @@ modules:
       - src/robotsix_auto_mail/db/queries.py
       - tests/db/__init__.py
       - tests/db/test_archive.py
-      - tests/db/conftest.py
       - tests/db/test_db_mailrecord.py
       - tests/db/test_db_init.py
       - tests/db/test_db_crud.py

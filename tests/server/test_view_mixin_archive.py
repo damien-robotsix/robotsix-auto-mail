@@ -28,17 +28,19 @@ class TestServeArchiveProposal:
 
     def test_404_when_record_not_found(
         self,
-        tmp_db_path: str,
+        fake_db_path: str,
         mock_get_record_by_message_id: mock.MagicMock,
     ) -> None:
         mock_get_record_by_message_id.return_value = None
-        handler = _FakeHandler(tmp_db_path, path="/archive-proposal/test%40example.com")
+        handler = _FakeHandler(
+            fake_db_path, path="/archive-proposal/test%40example.com"
+        )
         handler._serve_archive_proposal()
         handler._not_found.assert_called_once()
 
     def test_override_source(
         self,
-        tmp_db_path: str,
+        fake_db_path: str,
         mock_get_record_by_message_id: mock.MagicMock,
         mock_get_archive_subfolder: mock.MagicMock,
         mock_load_archive_overrides: mock.MagicMock,
@@ -58,7 +60,7 @@ class TestServeArchiveProposal:
             "Root",
         )
         handler = _FakeHandler(
-            tmp_db_path,
+            fake_db_path,
             path=f"/archive-proposal/{mid}",
         )
         handler._serve_archive_proposal()
@@ -74,7 +76,7 @@ class TestServeArchiveProposal:
 
     def test_llm_source(
         self,
-        tmp_db_path: str,
+        fake_db_path: str,
         mock_get_record_by_message_id: mock.MagicMock,
         mock_get_archive_subfolder: mock.MagicMock,
         mock_load_archive_overrides: mock.MagicMock,
@@ -96,7 +98,7 @@ class TestServeArchiveProposal:
             "Root",
         )
         handler = _FakeHandler(
-            tmp_db_path,
+            fake_db_path,
             path=f"/archive-proposal/{mid}",
         )
         handler._serve_archive_proposal()
@@ -112,7 +114,7 @@ class TestServeArchiveProposal:
 
     def test_rule_source(
         self,
-        tmp_db_path: str,
+        fake_db_path: str,
         mock_get_record_by_message_id: mock.MagicMock,
         mock_get_archive_subfolder: mock.MagicMock,
         mock_load_archive_overrides: mock.MagicMock,
@@ -134,7 +136,7 @@ class TestServeArchiveProposal:
             "Root",
         )
         handler = _FakeHandler(
-            tmp_db_path,
+            fake_db_path,
             path=f"/archive-proposal/{mid}",
         )
         handler._serve_archive_proposal()
@@ -150,7 +152,7 @@ class TestServeArchiveProposal:
 
     def test_folder_exists_with_custom_delimiter(
         self,
-        tmp_db_path: str,
+        fake_db_path: str,
         mock_get_record_by_message_id: mock.MagicMock,
         mock_get_archive_subfolder: mock.MagicMock,
         mock_load_archive_overrides: mock.MagicMock,
@@ -172,7 +174,7 @@ class TestServeArchiveProposal:
             "Root",
         )
         handler = _FakeHandler(
-            tmp_db_path,
+            fake_db_path,
             path=f"/archive-proposal/{mid}",
         )
         handler._serve_archive_proposal()
@@ -188,7 +190,7 @@ class TestServeArchiveProposal:
 
     def test_none_subfolder(
         self,
-        tmp_db_path: str,
+        fake_db_path: str,
         mock_get_record_by_message_id: mock.MagicMock,
         mock_get_archive_subfolder: mock.MagicMock,
         mock_load_archive_overrides: mock.MagicMock,
@@ -206,7 +208,7 @@ class TestServeArchiveProposal:
             "/",
             "Root",
         )
-        handler = _FakeHandler(tmp_db_path, path="/archive-proposal/any@example.com")
+        handler = _FakeHandler(fake_db_path, path="/archive-proposal/any@example.com")
         handler._serve_archive_proposal()
         call_args = handler._serve_json.call_args[0][0]
         assert call_args["subfolder"] == ""
@@ -225,14 +227,14 @@ class TestServeArchiveFolders:
     ) -> None:
         pass
 
-    def test_aggregate_short_circuit(self, tmp_db_path: str) -> None:
-        handler = _FakeHandler(tmp_db_path, _aggregate=True)
+    def test_aggregate_short_circuit(self, fake_db_path: str) -> None:
+        handler = _FakeHandler(fake_db_path, _aggregate=True)
         handler._serve_archive_folders()
         handler._serve_json.assert_called_once_with({"delimiter": "/", "folders": []})
 
     def test_returns_sorted_subfolders(
         self,
-        tmp_db_path: str,
+        fake_db_path: str,
         mock_get_watermark: mock.MagicMock,
         mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
@@ -242,7 +244,7 @@ class TestServeArchiveFolders:
             "/",
             "Root",
         )
-        handler = _FakeHandler(tmp_db_path, _aggregate=False)
+        handler = _FakeHandler(fake_db_path, _aggregate=False)
         handler._serve_archive_folders()
         handler._serve_json.assert_called_once_with(
             {"delimiter": "/", "folders": ["2023", "2024", "2024/Q1"]}
@@ -250,7 +252,7 @@ class TestServeArchiveFolders:
 
     def test_strips_effective_root_and_translates_delimiter(
         self,
-        tmp_db_path: str,
+        fake_db_path: str,
         mock_get_watermark: mock.MagicMock,
         mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
@@ -260,7 +262,7 @@ class TestServeArchiveFolders:
             ".",
             "INBOX.Archive",
         )
-        handler = _FakeHandler(tmp_db_path, _aggregate=False)
+        handler = _FakeHandler(fake_db_path, _aggregate=False)
         handler._serve_archive_folders()
         handler._serve_json.assert_called_once_with(
             {"delimiter": "/", "folders": ["2024", "2024/Q1"]}
@@ -268,7 +270,7 @@ class TestServeArchiveFolders:
 
     def test_empty_folders(
         self,
-        tmp_db_path: str,
+        fake_db_path: str,
         mock_get_watermark: mock.MagicMock,
         mock_parse_archive_structure: mock.MagicMock,
     ) -> None:
@@ -278,6 +280,6 @@ class TestServeArchiveFolders:
             "/",
             "Root",
         )
-        handler = _FakeHandler(tmp_db_path, _aggregate=False)
+        handler = _FakeHandler(fake_db_path, _aggregate=False)
         handler._serve_archive_folders()
         handler._serve_json.assert_called_once_with({"delimiter": "/", "folders": []})

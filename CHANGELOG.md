@@ -33,6 +33,7 @@
   and `_refine_with_llm` helpers now accept and forward a `level` / `llm_level`
   keyword argument, and `_cmd_detect` captures both return values of
   `resolve_llm_tier(APP_DETECTOR)`.
+- Removed dead `_patch_serve_board_deps` autouse fixture and renamed `tmp_db_path` to `_fake_db_path` in `tests/server/_view_mixin_helpers.py` to eliminate collision with root conftest. Deleted empty `tests/db/conftest.py`.
 - Removed orphaned `_VALID_CONFIDENCE_LEVELS` re-export from `triage._constants` (was imported but never used; peers route through `validate_confidence` instead).
 - Add `level` parameter to `propose_archive_subfolder_llm` (default 1) so
   the configured classifier LLM tier level is threaded from all three call
