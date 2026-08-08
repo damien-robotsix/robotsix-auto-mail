@@ -75,7 +75,7 @@ class TestBuildDetailHtml:
         assert result is not None
         assert "<!DOCTYPE html>" not in result
         assert '<link rel="stylesheet" href="/static/automail/board.css">' in result
-        assert "refreshBoard" in result
+        assert "/static/automail/detail-embed.js" in result
 
     def test_record_none_returns_none(self):
         fake_conn = mock.Mock()

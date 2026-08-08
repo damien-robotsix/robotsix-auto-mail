@@ -182,8 +182,7 @@ def test_handler_email_detail_embed_notifies_parent_board(single_db: str) -> Non
     try:
         resp = urlopen(f"http://127.0.0.1:{port}/email/notify-embed?embed=1")
         body = resp.read().decode("utf-8")
-        assert "window.parent.refreshBoard(true)" in body
-        assert "typeof window.parent.refreshBoard === 'function'" in body
+        assert "/static/automail/detail-embed.js" in body
     finally:
         server.shutdown()
 

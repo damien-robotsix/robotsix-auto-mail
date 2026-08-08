@@ -160,15 +160,10 @@ def _build_detail_html(
         # iframe, so it links the app stylesheet to stay styled.
         return (
             '<link rel="stylesheet" href="/static/automail/board.css">\n'
+            '<script src="/static/automail/detail-embed.js"></script>\n'
             '<div class="embed-detail">\n'
             f"{fields_html}"
             "</div>\n"
-            "<script>\n"
-            "if (window.parent && window.parent !== window\n"
-            "    && typeof window.parent.refreshBoard === 'function') {\n"
-            "  window.parent.refreshBoard(true);\n"
-            "}\n"
-            "</script>\n"
         )
 
     # Full standalone detail page.
