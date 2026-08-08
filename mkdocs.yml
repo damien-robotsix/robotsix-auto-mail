@@ -1,6 +1,13 @@
 site_name: robotsix-auto-mail
 site_description: Automated mail ingestion, triage, and board for robotsix-auto-mail.
 repo_url: https://github.com/damien-robotsix/robotsix-auto-mail
+strict: true
+validation:
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: warn
+    unrecognized_links: warn
 theme:
   name: material
   features:
@@ -11,6 +18,11 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.superfences
+plugins:
+  - search
+  - htmlproofer:
+      raise_error: false
+      validate_external_urls: false
 nav:
   - Home: index.md
   - Architecture: architecture.md

@@ -76,6 +76,7 @@ microsoft = [
 ]
 docs = [
     "mkdocs>=1.6",
+    "mkdocs-htmlproofer-plugin",
     "mkdocs-material>=9.5",
     # Floor pinned for GHSA-9xwg-3r6f-jcx2 (path traversal in the b64
     # extension).  A transitive of mkdocs-material, which does not pin it.
