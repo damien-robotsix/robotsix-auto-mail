@@ -91,20 +91,15 @@ class MailConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    imap_host: str = Field(
-        description="IMAP server hostname, e.g. `imap.gmail.com`."
-    )
-    smtp_host: str = Field(
-        description="SMTP server hostname, e.g. `smtp.gmail.com`."
-    )
+    imap_host: str = Field(description="IMAP server hostname, e.g. `imap.gmail.com`.")
+    smtp_host: str = Field(description="SMTP server hostname, e.g. `smtp.gmail.com`.")
     username: str = Field(
         description="Mailbox username (usually the full email address)."
     )
     password: SecretStr = Field(
         default=SecretStr(""),
         description=(
-            "Mailbox password or app-specific password. "
-            "Leave empty when using OAuth2."
+            "Mailbox password or app-specific password. Leave empty when using OAuth2."
         ),
     )
 
@@ -277,8 +272,7 @@ class MailConfig(BaseModel):
     log_format: str = Field(
         default="console",
         description=(
-            "Log output format: `console` (human-readable) "
-            "or `json` (structured)."
+            "Log output format: `console` (human-readable) or `json` (structured)."
         ),
         json_schema_extra={"advanced": True},
     )
@@ -426,8 +420,7 @@ class TierModelsConfig(BaseModel):
     level3: str = Field(
         default="",
         description=(
-            "Provider-model identifier for tier 3. "
-            "Empty uses the llmio tier default."
+            "Provider-model identifier for tier 3. Empty uses the llmio tier default."
         ),
     )
     level4: str = Field(
@@ -486,15 +479,13 @@ class MailAccountsConfig(BaseModel):
     langfuse: LangfuseConfig = Field(
         default_factory=LangfuseConfig,
         description=(
-            "Langfuse tracing configuration: instance host "
-            "and per-project credentials."
+            "Langfuse tracing configuration: instance host and per-project credentials."
         ),
     )
     openrouter: OpenRouterConfig = Field(
         default_factory=OpenRouterConfig,
         description=(
-            "OpenRouter provider keys, keyed by the same "
-            "aliases as langfuse.projects."
+            "OpenRouter provider keys, keyed by the same aliases as langfuse.projects."
         ),
     )
 
