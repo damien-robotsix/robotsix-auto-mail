@@ -191,7 +191,7 @@ stamped as a 32-character lowercase hexadecimal string; when no trace is active
 configuration is needed — and applies to both `json` and `console` log
 formats.
 
-### Gmail (app password — simplest) {#gmail-app-password--simplest}
+### Gmail (app password — simplest)
 
 Gmail supports IMAP, but Google rejects your **normal account password** over
 IMAP/SMTP. The simplest working setup needs no OAuth2 client registration — an
@@ -257,7 +257,7 @@ reminder to use an App Password.
 Microsoft 365 has deprecated basic auth and now requires **SASL XOAUTH2** — an
 industry-standard OAuth2-based SASL mechanism. Gmail also rejects your normal
 account password, but accepts either an
-[App Password](#gmail-app-password--simplest) (simplest — see above) or
+[App Password](#gmail-app-password-simplest) (simplest — see above) or
 XOAUTH2.
 
 When ``oauth2_token`` is set in the JSON config, the IMAP and SMTP clients
