@@ -91,10 +91,6 @@ jobs:
           UV_MALWARE_CHECK: 1
         run: uv sync --frozen --extra dev
 
-      - name: Check for missing changelog fragment
-        run: uv run --with towncrier towncrier check --compare-with HEAD^1
-        if: github.event_name == 'pull_request'
-
       - name: Dependency vulnerability audit
         run: UV_PREVIEW=1 uv audit --frozen
 

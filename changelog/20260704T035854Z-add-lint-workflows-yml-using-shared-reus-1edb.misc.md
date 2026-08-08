@@ -1,1 +1,0 @@
-Add lint-workflows.yml using shared reusable to robotsix-auto-mail

@@ -1,1 +1,0 @@
-Serve `X-Frame-Options: SAMEORIGIN` and add `frame-ancestors 'self'` to the Content-Security-Policy, so the mail UI renders inside the central-deploy dashboard's same-origin iframe. It previously sent `X-Frame-Options: DENY`, which browsers honour by rendering the frame blank with no visible error.

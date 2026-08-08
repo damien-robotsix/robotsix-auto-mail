@@ -1,1 +1,0 @@
-CodeQL inline lgtm suppressions and query-filters config not respected in PR checks

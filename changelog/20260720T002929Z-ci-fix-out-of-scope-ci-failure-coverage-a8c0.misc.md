@@ -1,1 +1,0 @@
-ci_fix: out-of-scope CI failure — Coverage comment (python-coverage-comment-action HTTP 503 from GitHub API) in .github/workflows/ci.yml — the coverage-comment job needs retry logic for the python-coverage-comment-action step to handle transient GitHub API errors.

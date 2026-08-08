@@ -1,1 +1,0 @@
-Extract shared plain-socket helper from _connect_plain and _connect_starttls in imap/client.py

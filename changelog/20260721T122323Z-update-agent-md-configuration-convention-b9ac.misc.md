@@ -1,1 +1,0 @@
-Update AGENT.md Configuration conventions for typed-JSON config contract

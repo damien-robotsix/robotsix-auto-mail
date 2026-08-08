@@ -1,13 +1,10 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.version]
-source = "vcs"
 
 [project]
 name = "robotsix-auto-mail"
-dynamic = ["version"]
+version = "0.1.0"
 description = "Automated mail ingestion, triage, and kanban board — IMAP fetch, SMTP send, LLM triage, SQLite storage"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -46,7 +43,6 @@ dev = [
     "pytest-cov>=7.1.0",
     "hypothesis>=6.156.1",
     "deptry",
-    "hatch-vcs",
     "hatchling",
     # pyyaml is kept as a dev-only need for the CI helper
     # scripts/config/check_config_sync.py, which imports `yaml` directly.
@@ -63,8 +59,6 @@ dev = [
     "vulture>=2.16",
     # zizmor: GitHub Actions security scanning (CI + pre-commit gate).
     "zizmor",
-    # towncrier: changelog fragment management (dev/release tooling).
-    "towncrier",
     # pytest-timeout: kills hung tests instead of waiting for the job timeout
     # (default 6 hours on GitHub Actions). Configured under [tool.pytest.ini_options].
     "pytest-timeout",
@@ -219,32 +213,3 @@ robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git"
 robotsix-config = { git = "https://github.com/damien-robotsix/robotsix-config.git", rev = "424f8ec5140e14e9699b92d5c3755d929625b570" }  # pragma: allowlist secret
 robotsix-http = { git = "https://github.com/damien-robotsix/robotsix-http.git", rev = "a3b4d2280bea1acd858759e564aa22963c616111" }  # pragma: allowlist secret
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "d56fd5d0ae36e2226a471ef276a38faa5d611e6b" }  # pragma: allowlist secret
-
-[tool.towncrier]
-package = "robotsix_auto_mail"
-package_dir = "src"
-filename = "CHANGELOG.md"
-directory = "changelog"
-title_format = "## {version} ({project_date})"
-underlines = ["", "", ""]
-issue_format = "https://github.com/damien-robotsix/robotsix-auto-mail/issues/{issue}"
-
-  [[tool.towncrier.type]]
-  directory = "feature"
-  name = "Features"
-  showcontent = true
-
-  [[tool.towncrier.type]]
-  directory = "bugfix"
-  name = "Bug fixes"
-  showcontent = true
-
-  [[tool.towncrier.type]]
-  directory = "removal"
-  name = "Removals and deprecations"
-  showcontent = true
-
-  [[tool.towncrier.type]]
-  directory = "misc"
-  name = "Miscellaneous"
-  showcontent = true

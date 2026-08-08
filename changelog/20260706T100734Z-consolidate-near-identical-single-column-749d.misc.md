@@ -1,1 +1,0 @@
-Consolidate near-identical single-column UPDATE functions in db/queries.py into a shared helper

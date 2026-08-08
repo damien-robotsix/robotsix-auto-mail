@@ -1,1 +1,0 @@
-ci_fix: out-of-scope CI failure — Python CI / tests (ruff check), Repository checks (uv audit), CodeQL py/mixed-returns in 26 Python source/test files with ruff violations (pre-existing), pymdown-extensions dependency upgrade (pre-existing), src/robotsix_auto_mail/cli/commands.py CodeQL (pre-existing)

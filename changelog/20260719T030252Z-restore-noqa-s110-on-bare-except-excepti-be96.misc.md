@@ -1,1 +1,0 @@
-Restore `# noqa: S110` on bare `except Exception: pass` clauses OR narrow the exceptions properly

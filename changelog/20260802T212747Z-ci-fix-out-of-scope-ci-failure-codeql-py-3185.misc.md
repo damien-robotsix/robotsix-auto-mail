@@ -1,1 +1,0 @@
-Fix three CodeQL alerts: remove unused `_logger` in `commands_serve.py`, register `_STATIC_ROBOTSIX_UI_JS`/`_STATIC_ROBOTSIX_UI_CSS` in the suppression tuple, and sanitize newlines from `account_id` before logging.

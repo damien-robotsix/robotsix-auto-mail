@@ -389,19 +389,6 @@ wheels = [
 ]
 
 [[package]]
-name = "hatch-vcs"
-version = "0.5.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "hatchling" },
-    { name = "setuptools-scm" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/b0/4cc743d38adbee9d57d786fa496ed1daadb17e48589b6da8fa55717a0746/hatch_vcs-0.5.0.tar.gz", hash = "sha256:0395fa126940340215090c344a2bf4e2a77bcbe7daab16f41b37b98c95809ff9", size = 11424, upload-time = "2025-05-27T05:16:04.49Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/48/1f85cee4b7b4f40b9b814b1febbc661bda6ced9649e410a0b74f6e415dd0/hatch_vcs-0.5.0-py3-none-any.whl", hash = "sha256:b49677dbdc597460cc22d01b27ab3696f5e16a21ecf2700fb01bc28e1f2a04a7", size = 8507, upload-time = "2025-05-27T05:16:03.184Z" },
-]
-
-[[package]]
 name = "hatchling"
 version = "1.29.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1262,6 +1249,7 @@ wheels = [
 
 [[package]]
 name = "robotsix-auto-mail"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
@@ -1277,7 +1265,6 @@ dependencies = [
 [package.optional-dependencies]
 dev = [
     { name = "deptry" },
-    { name = "hatch-vcs" },
     { name = "hatchling" },
     { name = "hypothesis" },
     { name = "mypy" },
@@ -1290,7 +1277,6 @@ dev = [
     { name = "robotsix-llmio", extra = ["openrouter", "tracing"] },
     { name = "robotsix-modules" },
     { name = "ruff" },
-    { name = "towncrier" },
     { name = "types-pyyaml" },
     { name = "vulture" },
     { name = "zizmor" },
@@ -1311,7 +1297,6 @@ microsoft = [
 requires-dist = [
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "deptry", marker = "extra == 'dev'" },
-    { name = "hatch-vcs", marker = "extra == 'dev'" },
     { name = "hatchling", marker = "extra == 'dev'" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.156.1" },
@@ -1336,12 +1321,11 @@ requires-dist = [
     { name = "robotsix-modules", marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-modules.git?rev=d56fd5d0ae36e2226a471ef276a38faa5d611e6b" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "structlog", specifier = ">=24.1" },
-    { name = "towncrier", marker = "extra == 'dev'" },
     { name = "types-pyyaml", marker = "extra == 'dev'" },
     { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.16" },
     { name = "zizmor", marker = "extra == 'dev'" },
 ]
-provides-extras = ["dev", "docs", "llm", "microsoft"]
+provides-extras = ["dev", "llm", "microsoft", "docs"]
 
 [[package]]
 name = "robotsix-board"
@@ -1488,29 +1472,6 @@ wheels = [
 ]
 
 [[package]]
-name = "setuptools"
-version = "83.0.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/34/26/f5d29e25ffdb535afef2d35cdb55b325298f96debd670da4c325e08d70f4/setuptools-83.0.0.tar.gz", hash = "sha256:025bccbbf0fa05b6192bc64ae1e7b16e001fd6d6d4d5de03c97b1c1ade523bef", size = 1154254, upload-time = "2026-07-04T15:31:22.699Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/40/e1e72872c6354b306daef1703549e8e83b4d43cfea356311bf722a043752/setuptools-83.0.0-py3-none-any.whl", hash = "sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3", size = 1008090, upload-time = "2026-07-04T15:31:20.885Z" },
-]
-
-[[package]]
-name = "setuptools-scm"
-version = "10.2.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-    { name = "setuptools" },
-    { name = "vcs-versioning" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/b1/d0b97ffd2856a7d19c63024a89fb84813cb9d2ed7fa8fdbedf9e2f13a9ab/setuptools_scm-10.2.1.tar.gz", hash = "sha256:4fa7dd82cf8c800df59c9a288c90299b1657ff1ecfc3f5cc00287c5dbf5e27a9", size = 154237, upload-time = "2026-07-21T08:08:04.553Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/b4/02ac1d9833b882c87b3a4e82703e70eac4ab33d0d15fb123e60bb01f3bc1/setuptools_scm-10.2.1-py3-none-any.whl", hash = "sha256:b7c82f4102d389ee57dc66ccdb4f9b4bca3c40ba83b43f1f63d68ccd72db2580", size = 29078, upload-time = "2026-07-21T08:08:03.293Z" },
-]
-
-[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1586,19 +1547,6 @@ wheels = [
 ]
 
 [[package]]
-name = "towncrier"
-version = "25.8.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "click" },
-    { name = "jinja2" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/eb/5bf25a34123698d3bbab39c5bc5375f8f8bcbcc5a136964ade66935b8b9d/towncrier-25.8.0.tar.gz", hash = "sha256:eef16d29f831ad57abb3ae32a0565739866219f1ebfbdd297d32894eb9940eb1", size = 76322, upload-time = "2025-08-30T11:41:55.393Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/06/8ba22ec32c74ac1be3baa26116e3c28bc0e76a5387476921d20b6fdade11/towncrier-25.8.0-py3-none-any.whl", hash = "sha256:b953d133d98f9aeae9084b56a3563fd2519dfc6ec33f61c9cd2c61ff243fb513", size = 65101, upload-time = "2025-08-30T11:41:53.644Z" },
-]
-
-[[package]]
 name = "tqdm"
 version = "4.67.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1656,18 +1604,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
-]
-
-[[package]]
-name = "vcs-versioning"
-version = "2.2.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e9/bb/5270e8ffd3123051ac4fbbaabf61afb8f27819ac8ced0f0cc4b24137d30e/vcs_versioning-2.2.3.tar.gz", hash = "sha256:c21e284aa98c8269996791a19d6173baf953cf9996ef42ec3ebcbdc151e18b9b", size = 143653, upload-time = "2026-07-28T21:07:36.045Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/2e/83be70d0379bbe17034e5d5960fae2a23cc136d466786607d2615ac2612b/vcs_versioning-2.2.3-py3-none-any.whl", hash = "sha256:4f7873af76f5cc24e701608354f376f5eb70b317d663787ace57a7edd7a27506", size = 108180, upload-time = "2026-07-28T21:07:33.842Z" },
 ]
 
 [[package]]
