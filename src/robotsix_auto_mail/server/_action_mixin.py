@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 import sqlite3
 import threading
@@ -34,6 +35,21 @@ from robotsix_auto_mail.triage import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _json_field_value(data: dict[str, Any], field: str) -> str:
+    """Return *field* from *data* coerced to ``str``.
+
+    ``None`` / missing keys yield the empty string so that
+    downstream validation can produce a clear error message
+    rather than a spurious ``"None"`` literal.
+    """
+    val = data.get(field)
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        return val
+    return str(val)
 
 
 class _BoardActionMixin:
@@ -103,11 +119,15 @@ class _BoardActionMixin:
         Returns a dict mapping each requested *field* name to its
         first value.  Values are stripped of leading/trailing
         whitespace *unless* the field name appears in *no_strip*.
+
+        When form parsing yields only empty values, falls back to
+        JSON parsing so that clients sending ``Content-Type:
+        application/json`` receive the same behaviour.
         """
         content_length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(content_length).decode("utf-8")
         parsed = parse_qs(raw)
-        return {
+        result = {
             field: (
                 (parsed.get(field) or [""])[0].strip()
                 if field not in no_strip
@@ -115,6 +135,25 @@ class _BoardActionMixin:
             )
             for field in fields
         }
+
+        # JSON fallback: when form parsing yields only empty values,
+        # try to parse the body as JSON.
+        if all(v == "" for v in result.values()):
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                pass
+            else:
+                if isinstance(data, dict):
+                    result = {
+                        field: (
+                            _json_field_value(data, field).strip()
+                            if field not in no_strip
+                            else _json_field_value(data, field)
+                        )
+                        for field in fields
+                    }
+        return result
 
     def _handle_post_action(
         self,
@@ -141,7 +180,11 @@ class _BoardActionMixin:
         redirect_to = f.get("redirect_to", "")
 
         if not message_id:
-            self._bad_request("Missing message_id")
+            content_type = self.headers.get("Content-Type", "")
+            if isinstance(content_type, str) and "application/json" in content_type:
+                self._bad_request("Malformed JSON body")
+            else:
+                self._bad_request("Missing message_id")
             return
 
         with _with_db(self.db_path) as conn:

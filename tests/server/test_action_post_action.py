@@ -2,7 +2,8 @@
 
 Covers missing-message-id (400), record-not-found (404),
 action-returning-false skips redirect, safe redirect honoured,
-unsafe redirect fallback, and empty redirect fallback.
+unsafe redirect fallback, empty redirect fallback, and
+malformed-JSON-body error reporting.
 """
 
 from __future__ import annotations
@@ -126,3 +127,17 @@ class TestHandlePostAction:
 
         handler._handle_post_action("message_id", "redirect_to", action=action)
         handler._redirect.assert_called_once_with("/board", code=302)
+
+    def test_malformed_json_body_returns_400(self, tmp_db_path: str) -> None:
+        handler = _FakeHandler(tmp_db_path)
+        payload = b"{not valid json"
+        handler.headers.get.side_effect = lambda key, default="": {
+            "Content-Length": str(len(payload)),
+            "Content-Type": "application/json",
+        }.get(key, default)
+        handler.rfile.read.return_value = payload
+        action = mock.MagicMock()
+
+        handler._handle_post_action("message_id", "redirect_to", action=action)
+        handler._bad_request.assert_called_once_with("Malformed JSON body")
+        action.assert_not_called()

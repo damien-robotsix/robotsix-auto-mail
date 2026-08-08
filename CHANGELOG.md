@@ -10,6 +10,11 @@
   The initial board view defaults to the first account in configured order.
   CLI ``--account`` is now required on ``board``, ``probe``, ``triage``, and
   ``config-sync`` subcommands.
+- POST action endpoints (`/move`, `/archive`, `/delete`, `/save-notes`, batch
+  operations, etc.) now accept JSON request bodies in addition to form-encoded
+  data, so clients sending ``Content-Type: application/json`` receive the same
+  behaviour as the board UI. Malformed JSON with a JSON content type returns a
+  clear 400 error.
 - Sanitize HTTP 400 error responses in ``_action_mixin.py`` and
   ``_triage_mixin.py``: replace raw ``str(exc)`` disclosure with
   generic ``"Invalid request"`` message and server-side
