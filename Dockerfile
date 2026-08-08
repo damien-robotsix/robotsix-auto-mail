@@ -44,7 +44,7 @@ RUN apt-get update && \
 # Bring in the `uv` binary so the install step can honour
 # [tool.uv.sources] in pyproject.toml — pip cannot, and the
 # only non-PyPI dep (robotsix-llmio) is declared there.
-COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.1 /uv /uvx /bin/
 
 ENV UV_MALWARE_CHECK=1
 
