@@ -1,0 +1,1 @@
+Split the Dockerfile builder stage into two layers: a dependency-install layer (cached until `pyproject.toml` or `uv.lock` changes) and a project-source layer that copies `src/` and installs with `--no-deps`. This keeps third-party dependency installs cached across source-only rebuilds, cutting image build time from minutes to seconds in the common case.
