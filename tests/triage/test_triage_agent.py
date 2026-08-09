@@ -277,9 +277,7 @@ def test_restart_retriage_preserves_manual_decisions(
             out = run_triage_agent(conn, api_key="sk-test")
 
         # Only the undecided record should be returned.
-        assert [(d.message_id, d.action) for d in out] == [
-            ("<c@x.com>", "TO_ARCHIVE")
-        ]
+        assert [(d.message_id, d.action) for d in out] == [("<c@x.com>", "TO_ARCHIVE")]
 
         # <a@x.com> — manual TO_DELETE decision preserved.
         a = get_triage_decision(conn, "<a@x.com>")
