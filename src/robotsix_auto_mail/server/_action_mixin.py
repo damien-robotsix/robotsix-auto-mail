@@ -631,7 +631,7 @@ class _BoardActionMixin:
         if uid_raw is not None:
             try:
                 uid = int(uid_raw)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 self._bad_request("uid must be an integer")
                 return
 
@@ -802,9 +802,7 @@ class _BoardActionMixin:
             return
 
         if not confirm:
-            self._bad_request(
-                "confirm must be true — folder deletion is irreversible"
-            )
+            self._bad_request("confirm must be true — folder deletion is irreversible")
             return
 
         if self.mail_config is None:
@@ -957,14 +955,12 @@ class _BoardActionMixin:
         if uid_raw is not None:
             try:
                 uid = int(uid_raw)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 self._bad_request("uid must be an integer")
                 return
 
         if uid is None and not message_id:
-            self._bad_request(
-                "At least one of uid or message_id is required"
-            )
+            self._bad_request("At least one of uid or message_id is required")
             return
 
         if not source_folder:
@@ -972,9 +968,7 @@ class _BoardActionMixin:
             return
 
         if not confirm:
-            self._bad_request(
-                "confirm must be true — message deletion is irreversible"
-            )
+            self._bad_request("confirm must be true — message deletion is irreversible")
             return
 
         if self.mail_config is None:
@@ -1033,17 +1027,13 @@ class _BoardActionMixin:
                         resolved_uid = uid
                     elif message_id:
                         # Stale UID — fallback to Message-ID search.
-                        found = client.search_uids(
-                            f'HEADER Message-ID "{message_id}"'
-                        )
+                        found = client.search_uids(f'HEADER Message-ID "{message_id}"')
                         if found:
                             resolved_uid = found[0]
                 else:
                     # No UID — resolve by Message-ID within source_folder.
                     assert message_id  # noqa: S101 # nosec B101
-                    found = client.search_uids(
-                        f'HEADER Message-ID "{message_id}"'
-                    )
+                    found = client.search_uids(f'HEADER Message-ID "{message_id}"')
                     if found:
                         resolved_uid = found[0]
 
@@ -1123,9 +1113,7 @@ class _BoardActionMixin:
             return
 
         if not confirm:
-            self._bad_request(
-                "confirm must be true — folder rename is irreversible"
-            )
+            self._bad_request("confirm must be true — folder rename is irreversible")
             return
 
         # target_path takes precedence over target_name.
@@ -1206,8 +1194,7 @@ class _BoardActionMixin:
                     self._serve_json(
                         {
                             "error": (
-                                f"Target folder '{effective_target}' "
-                                f"already exists"
+                                f"Target folder '{effective_target}' already exists"
                             ),
                         },
                         status=409,

@@ -370,7 +370,7 @@ class _BoardViewMixin:
                 limit_str = qs.get("limit", ["500"])[0]
                 try:
                     limit = min(max(int(limit_str), 1), 2000)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     limit = 500
 
                 uids = all_uids[:limit]

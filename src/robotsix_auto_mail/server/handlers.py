@@ -526,7 +526,7 @@ class BoardHandler(
 
         try:
             limit = int(limit_str)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             self._bad_request("limit must be an integer")
             return
 
