@@ -240,6 +240,93 @@ def delete_record_by_message_id(conn: sqlite3.Connection, message_id: str) -> bo
     return cur.rowcount > 0
 
 
+# ---------------------------------------------------------------------------
+# Archive audit log
+# ---------------------------------------------------------------------------
+
+
+def write_archive_audit_entry(
+    conn: sqlite3.Connection,
+    *,
+    message_id: str,
+    subject: str,
+    sender: str,
+    date: str,
+    source_column: str,
+    source_folder: str,
+    dest_folder: str,
+    proposal_source: str,
+) -> int | None:
+    """Insert a row into the ``archive_audit_log`` table.
+
+    Returns the ``rowid`` of the new row.  Always commits.
+    """
+    cur = conn.execute(
+        """\
+INSERT INTO archive_audit_log
+    (message_id, subject, sender, date, source_column, source_folder,
+     dest_folder, proposal_source)
+VALUES
+    (:message_id, :subject, :sender, :date, :source_column, :source_folder,
+     :dest_folder, :proposal_source)
+""",
+        {
+            "message_id": message_id,
+            "subject": subject,
+            "sender": sender,
+            "date": date,
+            "source_column": source_column,
+            "source_folder": source_folder,
+            "dest_folder": dest_folder,
+            "proposal_source": proposal_source,
+        },
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def list_archive_audit_entries(
+    conn: sqlite3.Connection,
+    *,
+    limit: int = 100,
+    since: str | None = None,
+    folder: str | None = None,
+) -> list[dict[str, object]]:
+    """Return archive audit entries, most recent first.
+
+    Read-only — does **not** call ``conn.commit()``.
+
+    Parameters
+    ----------
+    limit:
+        Maximum number of rows to return (default 100).
+    since:
+        ISO-8601 timestamp — only rows with ``archived_at >= since``
+        are included.
+    folder:
+        Only rows whose ``dest_folder`` matches *folder* (exact match).
+    """
+    conditions: list[str] = []
+    params: list[object] = []
+    if since is not None:
+        conditions.append("archived_at >= ?")
+        params.append(since)
+    if folder is not None:
+        conditions.append("dest_folder = ?")
+        params.append(folder)
+
+    where = ""
+    if conditions:
+        where = " WHERE " + " AND ".join(conditions)
+
+    cur = conn.execute(
+        f"SELECT * FROM archive_audit_log{where} ORDER BY id DESC LIMIT ?",  # noqa: S608  # nosec B608
+        (*params, limit),
+    )
+    col_names = [desc[0] for desc in cur.description]
+    return [dict(zip(col_names, row, strict=True)) for row in cur.fetchall()]
+
+
 def get_watermark(conn: sqlite3.Connection, key: str) -> str | None:
     """Return the watermark value for *key*, or ``None`` if it hasn't been set."""
     cur = conn.execute("SELECT value FROM watermark WHERE key = ?", (key,))

@@ -121,6 +121,19 @@ CREATE TABLE IF NOT EXISTS component_settings (
     value       TEXT NOT NULL,
     updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS archive_audit_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id      TEXT    NOT NULL,
+    subject         TEXT    NOT NULL,
+    sender          TEXT    NOT NULL,
+    date            TEXT    NOT NULL,
+    source_column   TEXT    NOT NULL DEFAULT 'TO_ARCHIVE',
+    source_folder   TEXT    NOT NULL,
+    dest_folder     TEXT    NOT NULL,
+    proposal_source TEXT    NOT NULL,
+    archived_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 

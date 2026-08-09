@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from typing import Any
 
@@ -501,7 +502,14 @@ def _run_batch_archive_background(
         group_key: tuple[str, str],
         group_records: list[MailRecord],
     ) -> int:
+        from robotsix_auto_mail.db import write_archive_audit_entry
+        from robotsix_auto_mail.triage import (
+            TO_ARCHIVE,
+            get_archive_subfolder_with_source,
+        )
+
         source_folder, dest = group_key
+        api_key = resolve_llm_api_key(raise_on_missing=False)
         # Resolve UIDs in source_folder.
         resolved_uids: list[int] = []
         for r in group_records:
@@ -535,6 +543,27 @@ def _run_batch_archive_background(
             client.move_messages(resolved_uids, dest)
 
         for record in group_records:
+            # Write audit entry before deleting the local row.
+            subfolder, proposal_source = get_archive_subfolder_with_source(
+                conn,
+                record.message_id,
+                record,
+                api_key=api_key,
+                rules=rules,
+            )
+            with contextlib.suppress(Exception):
+                # Non-fatal: archive succeeds even if audit write fails
+                write_archive_audit_entry(
+                    conn,
+                    message_id=record.message_id,
+                    subject=record.subject,
+                    sender=record.sender,
+                    date=record.date,
+                    source_column=TO_ARCHIVE,
+                    source_folder=record.source_folder,
+                    dest_folder=subfolder,
+                    proposal_source=proposal_source,
+                )
             delete_record_by_message_id(conn, record.message_id)
         conn.commit()
         return len(group_records)

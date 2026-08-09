@@ -76,6 +76,9 @@ from .queries import (
     insert_record as insert_record,
 )
 from .queries import (
+    list_archive_audit_entries as list_archive_audit_entries,
+)
+from .queries import (
     list_records as list_records,
 )
 from .queries import (
@@ -117,6 +120,9 @@ from .queries import (
 from .queries import (
     write_account_health as write_account_health,
 )
+from .queries import (
+    write_archive_audit_entry as write_archive_audit_entry,
+)
 
 __all__ = [
     "ARCHIVE_ROOT",
@@ -136,6 +142,7 @@ __all__ = [
     "get_watermark",
     "init_db",
     "insert_record",
+    "list_archive_audit_entries",
     "list_records",
     "list_untriaged_records",
     "load_json_watermark",
@@ -151,4 +158,5 @@ __all__ = [
     "update_record_source",
     "update_sent_reply_text",
     "write_account_health",
+    "write_archive_audit_entry",
 ]

@@ -99,6 +99,9 @@ from robotsix_auto_mail.triage.classifier import (
     get_archive_subfolder as get_archive_subfolder,
 )
 from robotsix_auto_mail.triage.classifier import (
+    get_archive_subfolder_with_source as get_archive_subfolder_with_source,
+)
+from robotsix_auto_mail.triage.classifier import (
     normalize_archive_subfolder as normalize_archive_subfolder,
 )
 from robotsix_auto_mail.triage.classifier import (
@@ -197,6 +200,7 @@ __all__ = [
     "delete_triage_decision",
     "delete_triage_decisions_by_action",
     "get_archive_subfolder",
+    "get_archive_subfolder_with_source",
     "get_triage_decision",
     "list_triage_decisions",
     "load_rules",
