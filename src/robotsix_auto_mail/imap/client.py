@@ -486,11 +486,6 @@ class ImapClient(_ProtocolClient):
             return
         with contextlib.suppress(Exception):
             self._imap.unsubscribe(_encode_mailbox(name))
-        """Subscribe to *name*; ignore failure silently."""
-        if self._imap is None:
-            return
-        with contextlib.suppress(Exception):
-            self._imap.subscribe(_encode_mailbox(name))
 
     def search_uids(self, criteria: str = "ALL") -> list[int]:
         """Issue ``UID SEARCH`` and return matching UIDs.
