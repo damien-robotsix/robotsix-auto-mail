@@ -178,18 +178,23 @@ def setup_archive(
     provider_model: str | None = None,
     level: int = 1,
 ) -> list[str]:
-    """Ensure the managed archive folder structure exists and is remembered.
+    """Determine and persist the managed archive folder layout.
 
     On the first run (no persisted structure) this lists the mailbox's
-    folders, asks the LLM for an appropriate layout under the effective
-    root, creates the missing folders, and persists the resulting
-    full-name list in the ``watermark`` table.  On subsequent runs
-    the persisted list is returned directly without listing folders, calling
-    the LLM, or creating anything.
+    folders, optionally asks the LLM for an appropriate layout under the
+    effective root, and persists the resulting full-name list in the
+    ``watermark`` table.  On subsequent runs the persisted list is
+    returned directly without listing folders or calling the LLM.
 
-    When no LLM API key is resolvable the LLM is never called — the archive
-    falls back to just the effective root folder so ingestion is never
-    blocked.
+    **No IMAP folders are created here.**  The watermark records the
+    proposed layout so the triage agent can reference it, but actual
+    folder creation happens lazily when a message is archived into a
+    destination (via ``_ensure_folder_hierarchy`` in the board-server
+    adapters).
+
+    When no LLM API key is resolvable the LLM is never called — the
+    archive falls back to just the effective root folder so ingestion
+    is never blocked.
 
     Args:
         conn: Open SQLite connection.
@@ -202,7 +207,7 @@ def setup_archive(
         level: See :data:`_LLM_PARAM_DOCS`.
 
     Returns:
-        The list of full archive folder names that exist after setup.
+        The list of full archive folder names that were persisted.
     """
     effective_root = archive_root
 
@@ -237,22 +242,111 @@ def setup_archive(
     else:
         subpaths = []
 
-    # -- build the full set of folder names to ensure --
+    # -- build the full set of folder names for the watermark --
     structure: list[str] = [effective_root]
     for subpath in subpaths:
         translated = subpath.replace("/", delimiter)
         structure.append(effective_root + delimiter + translated)
 
-    # -- create only the missing targets --
-    existing_names = {f.name for f in existing}
-    for name in structure:
-        if name not in existing_names:
-            client.create_folder(name)
-
-    # -- persist and return --
+    # -- persist and return (NO eager IMAP folder creation) --
     set_watermark(
         conn,
         _ARCHIVE_WATERMARK_KEY,
         json.dumps({"delimiter": delimiter, "folders": structure}),
     )
     return structure
+
+
+# ---------------------------------------------------------------------------
+# Cleanup — remove empty auto-created archive subfolders
+# ---------------------------------------------------------------------------
+
+
+def cleanup_empty_archive_folders(
+    client: ImapClient,
+    *,
+    archive_root: str = ARCHIVE_ROOT,
+) -> tuple[int, int]:
+    """Remove empty subfolders under *archive_root*, bottom-up.
+
+    Lists every folder under the archive root, builds a parent→children
+    tree, then walks from the deepest leaves upward.  A folder is deleted
+    only when it is **empty** (``SELECT`` reports 0 messages) AND all of
+    its child folders have already been deleted (or were empty and are
+    being deleted in the same pass).  The archive root itself is never
+    deleted.
+
+    Args:
+        client: Connected IMAP client.
+        archive_root: Logical root folder name (e.g.
+            ``"robotsix-mail-archive"``).
+
+    Returns:
+        ``(deleted, skipped)`` — the number of folders deleted and the
+        number of folders examined but kept (non-empty or root).
+    """
+    # 1. List all folders; filter to those under (or equal to) the root.
+    all_folders = client.list_folders()
+    delimiter = next((f.delimiter for f in all_folders if f.delimiter), "/")
+    root_prefix = f"{archive_root}{delimiter}"
+
+    archive_names: set[str] = set()
+    for f in all_folders:
+        if f.name == archive_root or f.name.startswith(root_prefix):
+            archive_names.add(f.name)
+
+    if not archive_names or archive_names == {archive_root}:
+        return (0, 0)
+
+    # 2. Build a parent→children tree keyed by full folder name.
+    children: dict[str, set[str]] = {}
+    for name in archive_names:
+        children.setdefault(name, set())
+        parent_delim = name.rfind(delimiter)
+        if parent_delim >= 0:
+            parent = name[:parent_delim]
+            if parent in archive_names:
+                children.setdefault(parent, set()).add(name)
+
+    # 3. Compute depth for each folder so we can walk bottom-up.
+    depth: dict[str, int] = {
+        name: name.count(delimiter) + (1 if name == archive_root else 0)
+        for name in archive_names
+    }
+    # The root itself gets the shallowest depth.
+    depth[archive_root] = 0
+    by_depth = sorted(archive_names - {archive_root}, key=lambda n: -depth[n])
+
+    # 4. Walk deepest-first; delete empty folders.
+    deleted = 0
+    skipped = 0
+    for name in by_depth:
+        # Skip if any child still exists (hasn't been deleted).
+        if children.get(name):
+            skipped += 1
+            continue
+        # Check message count.
+        try:
+            count = client.select_folder(name)
+        except Exception:
+            skipped += 1
+            continue
+        if count > 0:
+            skipped += 1
+            continue
+        # Folder is empty with no children — delete it.
+        try:
+            client.delete_folder(name)
+        except Exception:
+            skipped += 1
+            continue
+        deleted += 1
+        # Remove this folder from its parent's child set so the parent
+        # can be considered for deletion if it becomes childless.
+        parent_delim = name.rfind(delimiter)
+        if parent_delim >= 0:
+            parent = name[:parent_delim]
+            if parent in children:
+                children[parent].discard(name)
+
+    return (deleted, skipped)

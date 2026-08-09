@@ -96,6 +96,10 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
     Opens its own SQLite connection and IMAP connection so it never shares
     a connection with the HTTP request-serve thread.  The ``reconcile:state``
     watermark is always set back to ``"idle"`` in a ``finally`` block.
+
+    After healing/removing stale mail records, also cleans up empty
+    auto-created archive subfolders (see
+    :func:`~robotsix_auto_mail.db.archive.cleanup_empty_archive_folders`).
     """
     import logging
 
@@ -115,6 +119,26 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
                         conn, client, monitored_folder=mail_config.imap_folder
                     )
                     logger.info("reconcile_done healed=%s removed=%s", healed, removed)
+
+                    # Clean up empty archive subfolders.
+                    if mail_config.archive_enabled:
+                        try:
+                            from robotsix_auto_mail.db.archive import (
+                                cleanup_empty_archive_folders,
+                            )
+
+                            deleted, skipped = cleanup_empty_archive_folders(
+                                client,
+                                archive_root=mail_config.archive_root,
+                            )
+                            if deleted:
+                                logger.info(
+                                    "archive_cleanup_done deleted=%s skipped=%s",
+                                    deleted,
+                                    skipped,
+                                )
+                        except Exception:
+                            logger.exception("archive_cleanup_failed")
             except ImapError as exc:
                 logger.warning("reconcile_imap_error error=%s", str(exc))
         except Exception:  # noqa: S110  # nosec B110

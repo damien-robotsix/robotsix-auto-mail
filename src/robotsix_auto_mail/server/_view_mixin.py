@@ -235,9 +235,9 @@ class _BoardViewMixin:
     def _serve_archive_folders(self) -> None:
         """Serve GET /archive-folders — JSON with delimiter + flat subfolder list.
 
-        Reads the ``archive_structure`` watermark, strips the effective-root
-        prefix, translates the IMAP hierarchy delimiter to ``/``, and returns
-        the sorted list of relative subfolder paths.
+        Lists the real IMAP folder tree under the effective archive root.
+        Falls back to the ``archive_structure`` watermark when IMAP is
+        unreachable or *mail_config* is not available.
 
         Short-circuits in aggregate (``?account=__all__``) mode — the JS
         already suppresses the fetch, but a direct ``curl`` must not leak
@@ -251,15 +251,38 @@ class _BoardViewMixin:
 
         archive_root = self._effective_archive_root
 
+        # -- try IMAP first -------------------------------------------------
+        if self.mail_config is not None:
+            try:
+                from robotsix_auto_mail.imap import ImapClient
+
+                with ImapClient(self.mail_config) as client:
+                    all_folders = client.list_folders()
+                    delimiter = next(
+                        (f.delimiter for f in all_folders if f.delimiter), "/"
+                    )
+                    _root_prefix = f"{archive_root}{delimiter}"
+                    folders: list[str] = []
+                    for f in sorted(all_folders, key=lambda f: f.name):
+                        if f.name.startswith(_root_prefix) and f.name != archive_root:
+                            rel = f.name[len(_root_prefix) :]
+                            if delimiter != "/":
+                                rel = rel.replace(delimiter, "/")
+                            folders.append(rel)
+                    self._serve_json({"delimiter": "/", "folders": folders})
+                    return
+            except Exception:
+                pass  # Fall through to watermark fallback.
+
+        # -- watermark fallback ---------------------------------------------
         with _with_db(self.db_path) as conn:
             archive_raw = get_watermark(conn, "archive_structure")
             existing_folders, delimiter, effective_root = _parse_archive_structure(
                 archive_raw, archive_root
             )
 
-        # Strip effective-root prefix and translate IMAP delimiter to "/".
         _root_prefix = f"{effective_root}{delimiter}"
-        folders: list[str] = []
+        folders = []
         for name in sorted(existing_folders):
             if name.startswith(_root_prefix) and name != effective_root:
                 rel = name[len(_root_prefix) :]
