@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from typing import Any
 
@@ -550,7 +551,8 @@ def _run_batch_archive_background(
                 api_key=api_key,
                 rules=rules,
             )
-            try:
+            with contextlib.suppress(Exception):
+                # Non-fatal: archive succeeds even if audit write fails
                 write_archive_audit_entry(
                     conn,
                     message_id=record.message_id,
@@ -562,8 +564,6 @@ def _run_batch_archive_background(
                     dest_folder=subfolder,
                     proposal_source=proposal_source,
                 )
-            except Exception:  # noqa: S110  # nosec B110
-                pass  # Non-fatal: archive succeeds even if audit write fails
             delete_record_by_message_id(conn, record.message_id)
         conn.commit()
         return len(group_records)

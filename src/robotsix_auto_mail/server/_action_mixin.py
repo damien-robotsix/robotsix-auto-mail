@@ -27,7 +27,6 @@ from robotsix_auto_mail.triage import (
     TO_ARCHIVE,
     TO_CALENDAR,
     VALID_TRIAGE_ACTIONS,
-    get_archive_subfolder,
     propose_archive_subfolder_llm,
     record_user_action,
     rules_text_for,
@@ -405,8 +404,10 @@ class _BoardActionMixin:
         502 and returns ``False`` — in both error cases the local record is
         left intact.
         """
-        from robotsix_auto_mail.db import delete_record_by_message_id
-        from robotsix_auto_mail.db import write_archive_audit_entry
+        from robotsix_auto_mail.db import (
+            delete_record_by_message_id,
+            write_archive_audit_entry,
+        )
         from robotsix_auto_mail.triage import get_archive_subfolder_with_source
 
         # Compute the effective archive subfolder.
@@ -479,7 +480,7 @@ class _BoardActionMixin:
                         return False
                 # Mail gone or healed — write audit entry and delete
                 # the local record in both cases.
-                try:
+                with contextlib.suppress(Exception):
                     write_archive_audit_entry(
                         conn,
                         message_id=record.message_id,
@@ -491,8 +492,6 @@ class _BoardActionMixin:
                         dest_folder=subfolder,
                         proposal_source=proposal_source,
                     )
-                except Exception:  # noqa: S110  # nosec B110
-                    pass
                 delete_record_by_message_id(conn, record.message_id)
                 return True
             except (ImapError, OSError) as exc:
@@ -512,7 +511,8 @@ class _BoardActionMixin:
                 )
 
         # -- write audit-log entry before deleting the local row --
-        try:
+        with contextlib.suppress(Exception):
+            # Non-fatal: archive succeeds even if audit write fails
             write_archive_audit_entry(
                 conn,
                 message_id=record.message_id,
@@ -524,8 +524,6 @@ class _BoardActionMixin:
                 dest_folder=subfolder,
                 proposal_source=proposal_source,
             )
-        except Exception:  # noqa: S110  # nosec B110
-            pass  # Non-fatal: archive succeeds even if audit write fails
 
         # -- local DB cleanup --
         delete_record_by_message_id(conn, record.message_id)
