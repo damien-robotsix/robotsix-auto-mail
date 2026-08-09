@@ -4,8 +4,8 @@
  *
  * Composes on top of robotsix-board's board.js public API, following
  * the same overlay pattern as mill's board-mill.js.  Reads custom
- * configuration from the #board-config <script> element emitted by
- * the Python server.
+ * configuration from the data-board-config attribute of the
+ * #board-config element emitted by the Python server.
  *
  * Responsibilities:
  *   • openDetail / closeDetail — iframe-based side-panel
