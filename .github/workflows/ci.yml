@@ -10,6 +10,16 @@ on:
       - 'requirements*.txt'
       - 'src/**'
       - 'tests/**'
+      # `Repository checks` validates the registration of EVERY file, not
+      # just Python ones. Without these, a failure caused by a non-Python
+      # file cannot be cleared by removing that file: the fix does not
+      # match the filter, CI never re-runs, and main keeps the stale red
+      # while mill parks every ticket as main-debt.
+      - 'docs/modules.yaml'
+      - 'changelog.d/**'
+      - '.github/workflows/**'
+  # Lets a stale failure be cleared without an empty commit.
+  workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
