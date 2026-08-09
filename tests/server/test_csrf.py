@@ -31,6 +31,7 @@ def _post_with_origin(
     host: str | None = None,
     x_forwarded_host: str | None = None,
     forwarded: str | None = None,
+    sec_fetch_site: str | None = None,
 ) -> tuple[int, str]:
     """POST url-encoded *fields* to *path* with an optional ``Origin`` header.
 
@@ -56,6 +57,8 @@ def _post_with_origin(
         headers["X-Forwarded-Host"] = x_forwarded_host
     if forwarded is not None:
         headers["Forwarded"] = forwarded
+    if sec_fetch_site is not None:
+        headers["Sec-Fetch-Site"] = sec_fetch_site
     req = urllib.request.Request(url, data=data, headers=headers)  # noqa: S310
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
@@ -127,6 +130,36 @@ class TestCsrfIntegration:
         self.server.shutdown()
 
     # -- cross-origin -------------------------------------------------------
+
+    def test_firefox_null_origin_same_site_allowed(self) -> None:
+        """A same-origin form POST reporting ``Origin: null`` must pass.
+
+        This server sends ``Referrer-Policy: no-referrer``; Firefox then sends
+        ``Origin: null`` on a same-origin form submission. Judged on ``Origin``
+        alone that is indistinguishable from a sandboxed cross-site POST, so
+        the add-account form was rejecting its own submissions with 403.
+        ``Sec-Fetch-Site`` is set by the browser and settles it.
+        """
+        status, body = _post_with_origin(
+            self.port,
+            origin="null",
+            sec_fetch_site="same-origin",
+        )
+        assert status != 403, body
+
+    def test_null_origin_cross_site_still_rejected(self) -> None:
+        """``Origin: null`` without a same-origin fetch signal stays rejected.
+
+        A sandboxed iframe on an attacker's page also produces ``Origin:
+        null`` — but it reports ``Sec-Fetch-Site: cross-site``.
+        """
+        status, body = _post_with_origin(
+            self.port,
+            origin="null",
+            sec_fetch_site="cross-site",
+        )
+        assert status == 403
+        assert "cross-origin" in body.lower()
 
     def test_cross_origin_rejected(self) -> None:
         """A POST with an external Origin header must receive 403."""
