@@ -30,7 +30,7 @@
     // rendered by an older robotsix-board that still emits a
     // <script type="application/json"> block.
     const raw =
-      el.dataset && el.dataset.boardConfig != null
+      el.dataset && typeof el.dataset.boardConfig === "string"
         ? el.dataset.boardConfig
         : el.textContent;
     try {
