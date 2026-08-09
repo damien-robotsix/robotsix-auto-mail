@@ -749,6 +749,47 @@ To delete, To calendar, To answer, Draft ready — each with a card
 count badge.  Every mail card has a **Move** dropdown that lets you change
 the card's status column via `POST /move`.
 
+**Archive audit log (`GET /archive-log`).**  Every archive operation (individual
+archive via the **Archive** button, batch archive via "Archive All" or "Archive
+this folder", and the auto-archive on send-draft) writes an entry to the
+`archive_audit_log` SQLite table.  The `GET /archive-log` endpoint exposes this
+trail as read-only JSON, most recent first:
+
+```sh
+# Get the last 100 archive entries (default)
+GET /archive-log
+
+# Get the last 20 entries
+GET /archive-log?limit=20
+
+# Get entries since an ISO-8601 timestamp
+GET /archive-log?since=2026-08-08T12:00:00
+
+# Filter by destination folder
+GET /archive-log?folder=Lists/github
+
+# Combine filters
+GET /archive-log?limit=50&since=2026-08-08&folder=Lists/github
+```
+
+Each entry contains:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `int` | Auto-increment primary key |
+| `message_id` | `str` | The Message-ID of the archived mail |
+| `subject` | `str` | Subject line of the archived mail |
+| `sender` | `str` | Sender of the archived mail |
+| `date` | `str` | Date of the archived mail (ISO 8601) |
+| `source_column` | `str` | Board column the mail was archived from (always `TO_ARCHIVE`) |
+| `source_folder` | `str` | IMAP folder the mail was in before archiving |
+| `dest_folder` | `str` | Archive subfolder the mail was moved to |
+| `proposal_source` | `str` | How the subfolder was chosen: `"override"`, `"llm"`, or `"rule"` |
+| `archived_at` | `str` | Timestamp of the archive operation (ISO 8601) |
+
+The chat agent and operator can use this endpoint to review recent batch-archives,
+group them by destination folder, and selectively undo mistakes.
+
 **Account picker (multi-account mode).**  When two or more accounts are configured
 (via `config/config.json`), an account picker
 dropdown appears in the page header. The dropdown

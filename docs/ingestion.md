@@ -156,6 +156,30 @@ On every ingest that fetched at least one message, the `imap_uid` row is
 advanced to the maximum UID fetched in the batch — regardless of whether each
 individual message stored successfully (an errored message still advances it).
 
+### `archive_audit_log` — archive operation audit trail
+
+Records every archive/move operation (individual archive, batch archive, or
+auto-archive on send-draft) so the operator or chat agent can review what was
+archived where, when, and why.
+
+| Column | Type | Role |
+|---|---|---|
+| `id` | `INTEGER PRIMARY KEY AUTOINCREMENT` | Auto-increment row ID. |
+| `message_id` | `TEXT NOT NULL` | The Message-ID of the archived mail. |
+| `subject` | `TEXT NOT NULL` | Subject line of the archived mail. |
+| `sender` | `TEXT NOT NULL` | Sender of the archived mail. |
+| `date` | `TEXT NOT NULL` | Date of the archived mail (ISO 8601). |
+| `source_column` | `TEXT NOT NULL DEFAULT 'TO_ARCHIVE'` | Board column the mail was archived from. |
+| `source_folder` | `TEXT NOT NULL` | IMAP folder the mail was in before archiving. |
+| `dest_folder` | `TEXT NOT NULL` | Archive subfolder the mail was moved to. |
+| `proposal_source` | `TEXT NOT NULL` | How the subfolder was chosen: `"override"`, `"llm"`, or `"rule"`. |
+| `archived_at` | `TEXT NOT NULL DEFAULT (datetime('now'))` | ISO-8601 timestamp of the archive operation. |
+
+The table is populated by `write_archive_audit_entry()` in `queries.py` and
+queried via `list_archive_audit_entries()` — exposed over HTTP as
+`GET /archive-log` (see [docs/connecting.md](connecting.md#the-serve-command)).
+Entries persist across component restarts (SQLite, not in-memory).
+
 ### `triage_decisions` — per-message triage state
 
 Holds the triage classification for each message, keyed by `message_id`
