@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.2.2...v0.3.0) (2026-08-09)
+
+
+### Features
+
+* Add chat-facing archive folder-delete endpoint (20260809T084012Z-add-chat-facing-archive-folder-delete-en-8f2f) ([#1144](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1144)) ([cb6a2da](https://github.com/damien-robotsix/robotsix-auto-mail/commit/cb6a2dacdc888905864fc1efcd16d932acf3e78b))
+* Mail viewer: render HTML body when plain-text part is only a stub (re-filed on current main) (20260808T194425Z-mail-viewer-render-html-body-when-plain-b893) ([#1145](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1145)) ([68b533f](https://github.com/damien-robotsix/robotsix-auto-mail/commit/68b533f3aba4198f74a6fbdb21dbdddb5486e2f1))
+
+
+### Bug Fixes
+
+* **board:** carry board config in a data- attribute, not a script block ([#1142](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1142)) ([fccb8aa](https://github.com/damien-robotsix/robotsix-auto-mail/commit/fccb8aa61cc4b2064e1a649da4ba0a0e9859c05b))
+* **board:** emit board config in both carriers, not just the attribute ([#1143](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1143)) ([1196840](https://github.com/damien-robotsix/robotsix-auto-mail/commit/1196840dc7f1bd83f6114bd8981362334ebb3703))
+* **server:** accept same-origin POSTs that report Origin: null ([#1140](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1140)) ([6846a96](https://github.com/damien-robotsix/robotsix-auto-mail/commit/6846a96e5b6842b00add1f4fb02ca22db267b0af))
+
 ## [0.2.2](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.2.1...v0.2.2) (2026-08-09)
 
 
