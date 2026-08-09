@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from unittest import mock
 
-import pytest
-
 from tests.server._test_helpers import _FakeHandler
 
 

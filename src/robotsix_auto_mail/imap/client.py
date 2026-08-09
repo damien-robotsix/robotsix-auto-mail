@@ -988,10 +988,8 @@ def _parse_inline_fetch_attrs(line: bytes) -> dict[str, object] | None:
             i = j
 
             if key == "RFC822.SIZE":
-                try:
+                with contextlib.suppress(ValueError):
                     result["size"] = int(val_text)
-                except ValueError:
-                    pass
 
     return result
 

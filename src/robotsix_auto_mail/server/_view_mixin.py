@@ -320,7 +320,6 @@ class _BoardViewMixin:
             return
 
         archive_root = self._effective_archive_root
-        delimiter = "/"
 
         # Reject ".." segments in the folder path.
         if ".." in folder.split("/"):
@@ -328,13 +327,10 @@ class _BoardViewMixin:
             return
 
         # Resolve the full IMAP folder path.
-        if folder:
-            # Translate "/" in the URL path to the IMAP delimiter.
-            # We'll discover the actual delimiter from the server, but
-            # the URL always uses "/".
-            full_path = f"{archive_root}/{folder}"
-        else:
-            full_path = archive_root
+        # Translate "/" in the URL path to the IMAP delimiter.
+        # We'll discover the actual delimiter from the server, but
+        # the URL always uses "/".
+        full_path = f"{archive_root}/{folder}" if folder else archive_root
 
         from robotsix_auto_mail.imap import ImapClient, ImapError
 

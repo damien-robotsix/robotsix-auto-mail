@@ -708,7 +708,7 @@ class _BoardActionMixin:
                     resolved_uid = uid
                 else:
                     # message_id — search all archive folders.
-                    assert message_id
+                    assert message_id  # noqa: S101 # nosec B101 — guard: message_id must be set when uid/source_folder are absent
                     resolved = _find_message_in_archive(
                         client, message_id, archive_root, delimiter
                     )
