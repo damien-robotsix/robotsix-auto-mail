@@ -14,7 +14,21 @@ from html.parser import HTMLParser
 
 # -- Tag / attribute allow-lists ------------------------------------------------
 
-_VOID_ELEMENTS: frozenset[str] = frozenset({"br", "hr", "img", "input", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr"})
+_VOID_ELEMENTS: frozenset[str] = frozenset({
+    "area",
+    "base",
+    "br",
+    "col",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "link",
+    "meta",
+    "source",
+    "track",
+    "wbr",
+})
 
 _ALLOWED_TAGS: frozenset[str] = frozenset({
     "a",
@@ -90,10 +104,7 @@ def _is_safe_url(value: str) -> bool:
     if _DANGEROUS_URL_RE.match(value):
         return False
     lower = value.strip().lower()
-    for scheme in _SAFE_URL_SCHEMES:
-        if lower.startswith(scheme):
-            return True
-    return False
+    return any(lower.startswith(scheme) for scheme in _SAFE_URL_SCHEMES)
 
 
 class _SanitizingParser(HTMLParser):
@@ -127,9 +138,8 @@ class _SanitizingParser(HTMLParser):
                 continue
             if name_lower not in allowed_attr_names:
                 continue
-            if name_lower == "href" and tag_lower == "a":
-                if not _is_safe_url(value):
-                    continue
+            if name_lower == "href" and tag_lower == "a" and not _is_safe_url(value):
+                continue
             if name_lower == "src" and tag_lower == "img":
                 # Block remote images by stripping the src attribute entirely.
                 continue

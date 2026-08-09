@@ -115,7 +115,7 @@ class TestSanitizeHtml:
         assert "<p>" in result
 
     @pytest.mark.parametrize(
-        "input_html,expected_text",
+        ("input_html", "expected_text"),
         [
             ("<p>Hello</p>", "Hello"),
             ("<p>Hello <b>world</b></p>", "<p>Hello <b>world</b></p>"),

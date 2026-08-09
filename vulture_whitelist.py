@@ -149,6 +149,19 @@ all((  # lgtm[py/ineffectual-statement]
 ))
 
 # ===========================================================================
+# HTMLParser callback methods — called by the parent class's feed() method,
+# never invoked directly by application code.
+# ===========================================================================
+
+from robotsix_auto_mail.core._sanitize import _SanitizingParser
+
+_SanitizingParser.handle_starttag
+_SanitizingParser.handle_endtag
+_SanitizingParser.handle_data
+_SanitizingParser.handle_entityref
+_SanitizingParser.handle_charref
+
+# ===========================================================================
 # Canonical credential blocks — ``project_id`` is part of the storage shape
 # robotsix-standards fixes for every component; it exists for the fleet
 # consumers that address a Langfuse project by id, and this component never
