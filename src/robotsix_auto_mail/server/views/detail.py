@@ -201,11 +201,7 @@ def _render_body(record: MailRecord) -> tuple[str, str]:
     if record.body_html.strip():
         # Render sanitised HTML as the primary body.
         safe_html = sanitize_html(record.body_html)
-        body_html_render = (
-            '<div class="email-body">'
-            f"{safe_html}"
-            "</div>"
-        )
+        body_html_render = f'<div class="email-body">{safe_html}</div>'
         body_html_note = (
             '<div class="detail-field">'
             '<div class="detail-label">HTML version</div>'

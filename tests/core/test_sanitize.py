@@ -47,7 +47,9 @@ class TestSanitizeHtml:
         assert "javascript:" not in result
 
     def test_strips_data_url_href(self) -> None:
-        result = sanitize_html('<a href="data:text/html,<script>alert(1)</script>">X</a>')
+        result = sanitize_html(
+            '<a href="data:text/html,<script>alert(1)</script>">X</a>'
+        )
         assert "data:" not in result.lower()
 
     def test_keeps_mailto_href(self) -> None:
@@ -55,7 +57,9 @@ class TestSanitizeHtml:
         assert 'href="mailto:user@example.com"' in result
 
     def test_strips_img_src(self) -> None:
-        result = sanitize_html('<img src="http://tracker.example.com/pixel.png" alt="pic">')
+        result = sanitize_html(
+            '<img src="http://tracker.example.com/pixel.png" alt="pic">'
+        )
         assert "src=" not in result
         assert 'alt="pic"' in result
 
@@ -69,7 +73,9 @@ class TestSanitizeHtml:
         assert "Hello &amp; welcome" in result
 
     def test_nested_skip_tags(self) -> None:
-        result = sanitize_html('<div><script>var x = "<b>bold</b>";</script><p>safe</p></div>')
+        result = sanitize_html(
+            '<div><script>var x = "<b>bold</b>";</script><p>safe</p></div>'
+        )
         assert "<b>" not in result
         assert "<p>safe</p>" in result
 

@@ -14,60 +14,64 @@ from html.parser import HTMLParser
 
 # -- Tag / attribute allow-lists ------------------------------------------------
 
-_VOID_ELEMENTS: frozenset[str] = frozenset({
-    "area",
-    "base",
-    "br",
-    "col",
-    "embed",
-    "hr",
-    "img",
-    "input",
-    "link",
-    "meta",
-    "source",
-    "track",
-    "wbr",
-})
+_VOID_ELEMENTS: frozenset[str] = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "source",
+        "track",
+        "wbr",
+    }
+)
 
-_ALLOWED_TAGS: frozenset[str] = frozenset({
-    "a",
-    "b",
-    "blockquote",
-    "br",
-    "code",
-    "dd",
-    "div",
-    "dl",
-    "dt",
-    "em",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "hr",
-    "i",
-    "img",
-    "li",
-    "ol",
-    "p",
-    "pre",
-    "span",
-    "strong",
-    "sub",
-    "sup",
-    "table",
-    "tbody",
-    "td",
-    "tfoot",
-    "th",
-    "thead",
-    "tr",
-    "u",
-    "ul",
-})
+_ALLOWED_TAGS: frozenset[str] = frozenset(
+    {
+        "a",
+        "b",
+        "blockquote",
+        "br",
+        "code",
+        "dd",
+        "div",
+        "dl",
+        "dt",
+        "em",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "hr",
+        "i",
+        "img",
+        "li",
+        "ol",
+        "p",
+        "pre",
+        "span",
+        "strong",
+        "sub",
+        "sup",
+        "table",
+        "tbody",
+        "td",
+        "tfoot",
+        "th",
+        "thead",
+        "tr",
+        "u",
+        "ul",
+    }
+)
 
 # Per-tag allowed attributes.  Tags not in this dict get NO attributes.
 _ALLOWED_ATTRS: dict[str, frozenset[str]] = {
@@ -78,17 +82,19 @@ _ALLOWED_ATTRS: dict[str, frozenset[str]] = {
 }
 
 # Tags whose entire element tree is stripped (element + all descendants).
-_SKIP_TAGS: frozenset[str] = frozenset({
-    "script",
-    "style",
-    "iframe",
-    "object",
-    "embed",
-    "link",
-    "meta",
-    "noscript",
-    "applet",
-})
+_SKIP_TAGS: frozenset[str] = frozenset(
+    {
+        "script",
+        "style",
+        "iframe",
+        "object",
+        "embed",
+        "link",
+        "meta",
+        "noscript",
+        "applet",
+    }
+)
 
 _SAFE_URL_SCHEMES: frozenset[str] = frozenset({"http:", "https:", "mailto:"})
 
