@@ -246,6 +246,122 @@ def test_run_triage_agent_only_undecided_all_decided_no_llm() -> None:
         conn.close()
 
 
+def test_restart_retriage_preserves_manual_decisions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A re-triage run (only_undecided=False) must not overwrite user decisions.
+
+    Simulates the restart-triggered re-triage scenario: the operator has
+    already moved some cards on the board (creating ``source='user'``
+    decisions), then a background triage runs — it must leave those
+    manual decisions untouched.
+    """
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        _insert_inbox(conn, "<b@x.com>")
+        _insert_inbox(conn, "<c@x.com>")
+        # Operator manually moved <a@x.com> to TO_DELETE and <b@x.com> to TO_ANSWER.
+        set_triage_decision(
+            conn, "<a@x.com>", "TO_DELETE", source="user", reason="spam"
+        )
+        set_triage_decision(
+            conn, "<b@x.com>", "TO_ANSWER", source="user", reason="needs reply"
+        )
+        # <c@x.com> is untriaged — only it should go to the LLM at index 1.
+        result_obj = TriageResult(
+            items=[TriageItem(index=1, action="TO_ARCHIVE", confidence="high")]
+        )
+        _handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            out = run_triage_agent(conn, api_key="sk-test")
+
+        # Only the undecided record should be returned.
+        assert [(d.message_id, d.action) for d in out] == [
+            ("<c@x.com>", "TO_ARCHIVE")
+        ]
+
+        # <a@x.com> — manual TO_DELETE decision preserved.
+        a = get_triage_decision(conn, "<a@x.com>")
+        assert a is not None
+        assert a.action == "TO_DELETE"
+        assert a.source == "user"
+        assert a.reason == "spam"
+
+        # <b@x.com> — manual TO_ANSWER decision preserved.
+        b = get_triage_decision(conn, "<b@x.com>")
+        assert b is not None
+        assert b.action == "TO_ANSWER"
+        assert b.source == "user"
+        assert b.reason == "needs reply"
+    finally:
+        conn.close()
+
+
+def test_set_triage_decision_agent_never_overwrites_user() -> None:
+    """An agent-sourced upsert must never overwrite an existing user decision."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        # Operator sets a manual decision.
+        set_triage_decision(
+            conn, "<a@x.com>", "TO_ANSWER", source="user", reason="manual"
+        )
+        # Agent tries to overwrite it — the upsert WHERE clause blocks it.
+        set_triage_decision(
+            conn, "<a@x.com>", "TO_ARCHIVE", source="agent", reason="auto"
+        )
+        d = get_triage_decision(conn, "<a@x.com>")
+        assert d is not None
+        assert d.action == "TO_ANSWER"
+        assert d.source == "user"
+        assert d.reason == "manual"
+    finally:
+        conn.close()
+
+
+def test_set_triage_decision_user_can_overwrite_agent() -> None:
+    """A user-sourced upsert must be able to overwrite an existing agent decision."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        # Agent sets an initial decision.
+        set_triage_decision(
+            conn, "<a@x.com>", "TO_ARCHIVE", source="agent", reason="auto"
+        )
+        # User overrides it.
+        set_triage_decision(
+            conn, "<a@x.com>", "TO_DELETE", source="user", reason="spam"
+        )
+        d = get_triage_decision(conn, "<a@x.com>")
+        assert d is not None
+        assert d.action == "TO_DELETE"
+        assert d.source == "user"
+        assert d.reason == "spam"
+    finally:
+        conn.close()
+
+
+def test_set_triage_decision_user_can_overwrite_user() -> None:
+    """A user can change their own decision (same source, different action)."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        set_triage_decision(
+            conn, "<a@x.com>", "TO_ARCHIVE", source="user", reason="first"
+        )
+        set_triage_decision(
+            conn, "<a@x.com>", "TO_ANSWER", source="user", reason="changed mind"
+        )
+        d = get_triage_decision(conn, "<a@x.com>")
+        assert d is not None
+        assert d.action == "TO_ANSWER"
+        assert d.source == "user"
+        assert d.reason == "changed mind"
+    finally:
+        conn.close()
+
+
 def test_run_triage_agent_missing_api_key(
     monkeypatch: pytest.MonkeyPatch, tmp_path: object
 ) -> None:

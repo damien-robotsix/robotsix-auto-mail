@@ -83,7 +83,12 @@ def _run_triage_background(
                 )
             except ImportError:
                 return
-            run_triage_agent(conn, user_email=user_email, rules_path=rules_path)
+            run_triage_agent(
+                conn,
+                user_email=user_email,
+                rules_path=rules_path,
+                only_undecided=True,
+            )
         except Exception:  # noqa: S110  # nosec B110
             # Swallow all exceptions — the watermark is always cleared.
             pass

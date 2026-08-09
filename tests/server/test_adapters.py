@@ -145,7 +145,10 @@ class TestRunTriageBackground:
             _run_triage_background("/fake/db.sqlite", user_email="x@y.com")
 
         mock_run_triage.assert_called_once_with(
-            mock_conn, user_email="x@y.com", rules_path=None
+            mock_conn,
+            user_email="x@y.com",
+            rules_path=None,
+            only_undecided=True,
         )
 
     def test_passes_none_user_email_by_default(self) -> None:
@@ -160,7 +163,7 @@ class TestRunTriageBackground:
             _run_triage_background("/fake/db.sqlite")
 
         mock_run_triage.assert_called_once_with(
-            mock_conn, user_email=None, rules_path=None
+            mock_conn, user_email=None, rules_path=None, only_undecided=True
         )
 
 

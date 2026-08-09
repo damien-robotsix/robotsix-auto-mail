@@ -177,6 +177,10 @@ def set_triage_decision(
     against ``{"agent", "user"}`` (raising :class:`TriageError` otherwise),
     then upserts keyed on ``message_id`` and commits.  ``updated_at`` is set
     to an ISO-8601 UTC timestamp.
+
+    An existing ``source='user'`` decision is **never** overwritten by an
+    incoming ``source='agent'`` upsert — operator decisions are
+    authoritative and survive any subsequent automated re-triage.
     """
     if action not in VALID_TRIAGE_ACTIONS:
         raise TriageError(
@@ -198,6 +202,7 @@ ON CONFLICT(message_id) DO UPDATE SET
     reason = excluded.reason,
     confidence = excluded.confidence,
     updated_at = excluded.updated_at
+WHERE NOT (source = 'user' AND excluded.source = 'agent')
 """,
         {
             "message_id": message_id,
