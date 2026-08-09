@@ -488,9 +488,14 @@ def _render_board_page_shell(
         "</div>\n"
         # board.js configuration — enables the library's public API and
         # harmless internal handlers (no #board element → all no-ops).
-        '<script id="board-config" type="application/json">'
-        f"{json.dumps(board_config)}"
-        "</script>\n"
+        # Carried in a data- attribute rather than a
+        # <script type="application/json"> block: that block is never executed,
+        # but Firefox applies script-src-elem to any <script> element, so this
+        # server's own CSP (no 'unsafe-inline') logged a violation for it on
+        # every board load. Escaped with quote=True so a value inside the config
+        # cannot terminate the attribute.
+        '<div id="board-config" hidden data-board-config="'
+        f'{html.escape(json.dumps(board_config), quote=True)}"></div>\n'
         '<script src="/static/board.js"></script>\n'
         # App-specific overlay — must load after board.js so the
         # capture-phase interceptor can override board.js's bubble

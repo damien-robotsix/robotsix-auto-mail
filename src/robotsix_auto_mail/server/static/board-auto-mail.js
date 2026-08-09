@@ -4,8 +4,8 @@
  *
  * Composes on top of robotsix-board's board.js public API, following
  * the same overlay pattern as mill's board-mill.js.  Reads custom
- * configuration from the #board-config <script> element emitted by
- * the Python server.
+ * configuration from the data-board-config attribute of the
+ * #board-config element emitted by the Python server.
  *
  * Responsibilities:
  *   • openDetail / closeDetail — iframe-based side-panel
@@ -26,8 +26,15 @@
   function bootConfig() {
     const el = document.getElementById("board-config");
     if (!el) return false;
+    // Prefer the data- attribute; fall back to element text for a board
+    // rendered by an older robotsix-board that still emits a
+    // <script type="application/json"> block.
+    let raw = el.textContent;
+    if (el.dataset && typeof el.dataset.boardConfig === "string") {
+      raw = el.dataset.boardConfig;
+    }
     try {
-      CFG = JSON.parse(el.textContent || "{}");
+      CFG = JSON.parse(raw || "{}");
     } catch (_err) {
       return false;
     }
