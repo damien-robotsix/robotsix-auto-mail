@@ -4,8 +4,11 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 from urllib.parse import unquote
+
+logger = logging.getLogger(__name__)
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, resolve_llm_api_key
 from robotsix_auto_mail.server._constants import (
@@ -272,7 +275,8 @@ class _BoardViewMixin:
                     self._serve_json({"delimiter": "/", "folders": folders})
                     return
             except Exception:
-                pass  # Fall through to watermark fallback.
+                logger.debug("IMAP folder list fallback to watermark", exc_info=True)
+                # Fall through to watermark fallback.
 
         # -- watermark fallback ---------------------------------------------
         with _with_db(self.db_path) as conn:

@@ -585,7 +585,7 @@ def test_cleanup_empty_archive_folders_never_deletes_root() -> None:
             ARCHIVE_ROOT: 0,
         },
     )
-    deleted, skipped = cleanup_empty_archive_folders(
+    deleted, _skipped = cleanup_empty_archive_folders(
         cast(ImapClient, client),
         archive_root=ARCHIVE_ROOT,
     )
@@ -606,7 +606,7 @@ def test_cleanup_empty_archive_folders_custom_root() -> None:
             f"{root}/Empty": 0,
         },
     )
-    deleted, skipped = cleanup_empty_archive_folders(
+    deleted, _skipped = cleanup_empty_archive_folders(
         cast(ImapClient, client),
         archive_root=root,
     )
