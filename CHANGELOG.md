@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.2.0...v0.2.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **changelog:** drop the fragment that reddened main ([#1132](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1132)) ([f02229c](https://github.com/damien-robotsix/robotsix-auto-mail/commit/f02229cf78cd3f06f3e480f0bc253489e5f623b6))
+* Chat-facing archive browse & move endpoints (list archived mails per folder, move mail between archive folders) (20260808T232819Z-chat-facing-archive-browse-move-endpoint-9c6b) ([#1136](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1136)) ([c1758ba](https://github.com/damien-robotsix/robotsix-auto-mail/commit/c1758baef166ab01363c6d43f6d8530a3e5cab5b))
+* **ci:** let a non-Python fix actually clear main ([#1134](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1134)) ([664780e](https://github.com/damien-robotsix/robotsix-auto-mail/commit/664780e5fcc7fe2b45ffd7d8e4a53905c555dc14))
+* Re-triage on restart/update must not clobber operator decisions (20260808T235207Z-re-triage-on-restart-update-must-not-clo-6fbe) ([#1137](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1137)) ([85950f7](https://github.com/damien-robotsix/robotsix-auto-mail/commit/85950f73337794fd9dbd94f969e75693a5e210f1))
+
 ## [0.2.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.1.0...v0.2.0) (2026-08-08)
 
 
