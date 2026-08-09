@@ -1,0 +1,1 @@
+Emit the board configuration in both the `data-board-config` attribute and the element's text. `robotsix-board` is pinned by git rev, so the vendored `board.js` can predate the attribute and read only `textContent` — emitting the payload only in the attribute made that `board.js` parse `{}` and silently bail out of `json_hydration` mode.

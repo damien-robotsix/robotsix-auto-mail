@@ -488,14 +488,21 @@ def _render_board_page_shell(
         "</div>\n"
         # board.js configuration — enables the library's public API and
         # harmless internal handlers (no #board element → all no-ops).
-        # Carried in a data- attribute rather than a
-        # <script type="application/json"> block: that block is never executed,
-        # but Firefox applies script-src-elem to any <script> element, so this
-        # server's own CSP (no 'unsafe-inline') logged a violation for it on
-        # every board load. Escaped with quote=True so a value inside the config
-        # cannot terminate the attribute.
+        # Carried on a <div>, not a <script type="application/json"> block:
+        # that block is never executed, but Firefox applies script-src-elem to
+        # any <script> element, so this server's own CSP (no 'unsafe-inline')
+        # logged a violation for it on every board load.
+        #
+        # The payload is emitted TWICE, in the data- attribute and as the
+        # element's text. robotsix-board is pinned by git rev in pyproject.toml,
+        # so the vendored board.js may predate the data- attribute and read only
+        # textContent; a newer one prefers the attribute. Emitting both keeps
+        # the two independent of the pin. Escaped with quote=True so a value in
+        # the config can neither terminate the attribute nor close the div;
+        # both `dataset` and `textContent` decode the entities on read.
         '<div id="board-config" hidden data-board-config="'
-        f'{html.escape(json.dumps(board_config), quote=True)}"></div>\n'
+        f'{html.escape(json.dumps(board_config), quote=True)}">'
+        f"{html.escape(json.dumps(board_config), quote=True)}</div>\n"
         '<script src="/static/board.js"></script>\n'
         # App-specific overlay — must load after board.js so the
         # capture-phase interceptor can override board.js's bubble
