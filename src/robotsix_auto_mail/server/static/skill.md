@@ -56,6 +56,9 @@ All GET endpoints below are read-only and safe to call without confirmation.
   - Deleting or archiving individual messages (`POST /delete`,
     `POST /archive`).
   - Moving messages between archive folders (`POST /archive-move`).
+  - Deleting archive folders (`POST /archive-delete`).
+  - Deleting archived messages (`POST /archive-message-delete`).
+  - Renaming archive folders (`POST /archive-rename`).
   - Triggering triage or reconcile runs (`POST /run-triage`,
     `POST /reconcile`, `POST /force-triage-column`).
   - Saving or generating drafts (`POST /save-draft`, `POST /generate-draft`).
@@ -96,3 +99,98 @@ All GET endpoints below are read-only and safe to call without confirmation.
 
   Errors: 400 (invalid/missing parameters, path escapes archive root),
   404 (message not found), 502 (IMAP error).
+
+## Archive folder-delete (state-mutating, requires confirmation)
+
+- **`POST /archive-delete`** — Delete an archive subfolder.  By default
+  only empty folders (no messages, no child folders) can be deleted; use
+  `force: true` to override.  Requires operator confirmation per the
+  safety rules above.
+
+  JSON request body:
+  ```json
+  {
+    "source_folder": "<archive subfolder path>",
+    "confirm": true,
+    "force": false
+  }
+  ```
+
+  Response (200):
+  ```json
+  {
+    "status": "deleted",
+    "source_folder": "<folder>"
+  }
+  ```
+
+  Errors: 400 (missing `source_folder`, `confirm` not true, folder not
+  empty without `force:true`, path escapes archive root), 404 (folder
+  not found), 502 (IMAP error).
+
+## Archive message-delete (state-mutating, requires confirmation)
+
+- **`POST /archive-message-delete`** — Permanently delete a single
+  archived message.  Requires `source_folder` and at least one of `uid`
+  or `message_id`.  When `uid` is omitted the server resolves by
+  Message-ID within `source_folder`; when `uid` is provided but stale,
+  `message_id` (if supplied) is used as a fallback.  Marks the message
+  `\Deleted` and `EXPUNGE`s — this is irreversible.  Requires operator
+  confirmation per the safety rules above.
+
+  JSON request body:
+  ```json
+  {
+    "uid": 42,
+    "source_folder": "<archive subfolder path>",
+    "confirm": true,
+    "message_id": "<Message-ID header (optional, may be used alone)>"
+  }
+  ```
+
+  Response (200):
+  ```json
+  {
+    "status": "deleted",
+    "uid": 42,
+    "source_folder": "<folder>"
+  }
+  ```
+
+  Errors: 400 (missing `source_folder`, neither `uid` nor `message_id`
+  supplied, `confirm` not true, path escapes archive root), 404 (uid
+  not found in source_folder), 502 (IMAP error).
+
+  The existing `POST /delete` endpoint (board messages by Message-ID)
+  is unchanged — this endpoint fills the gap for archive-scoped
+  uid+folder deletion.
+
+## Archive folder-rename (state-mutating, requires confirmation)
+
+- **`POST /archive-rename`** — Rename an archive subfolder in place.
+  Performs an IMAP `RENAME` — O(1), preserves all contained messages.
+  Requires operator confirmation per the safety rules above.
+
+  JSON request body:
+  ```json
+  {
+    "source_folder": "<current archive subfolder path>",
+    "target_name": "<new folder name (last component)>",
+    "confirm": true
+  }
+  ```
+  Use `target_path` instead of `target_name` to reparent the folder
+  (move it under a different parent).
+
+  Response (200):
+  ```json
+  {
+    "status": "renamed",
+    "source_folder": "<old path>",
+    "target": "<new path>"
+  }
+  ```
+
+  Errors: 400 (missing parameters, `confirm` not true, path escapes
+  archive root), 404 (source folder not found), 409 (target already
+  exists — no silent merge), 502 (IMAP error).
