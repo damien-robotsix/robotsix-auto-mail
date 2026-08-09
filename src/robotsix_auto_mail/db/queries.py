@@ -256,7 +256,7 @@ def write_archive_audit_entry(
     source_folder: str,
     dest_folder: str,
     proposal_source: str,
-) -> int:
+) -> int | None:
     """Insert a row into the ``archive_audit_log`` table.
 
     Returns the ``rowid`` of the new row.  Always commits.
