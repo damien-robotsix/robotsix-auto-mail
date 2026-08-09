@@ -8,8 +8,6 @@ import logging
 from typing import TYPE_CHECKING
 from urllib.parse import unquote
 
-logger = logging.getLogger(__name__)
-
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, resolve_llm_api_key
 from robotsix_auto_mail.server._constants import (
     _STATIC_ADD_ACCOUNT_REDIRECT_JS,
@@ -37,6 +35,8 @@ from robotsix_auto_mail.triage import (
     get_triage_decision,
     rules_text_for,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class _BoardViewMixin:
