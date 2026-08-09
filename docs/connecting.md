@@ -527,6 +527,17 @@ folders; the resulting folder list is then persisted in the SQLite
 every subsequent run — no folders are listed, no LLM is called, and nothing
 is recreated.
 
+**IMAP folders are created lazily, not eagerly.** Proposing a destination
+folder (via the LLM or triage agent) never creates the IMAP folder on the
+server. The folder is only created when a message is actually archived into
+it (via the board's "Archive" action or the batch archive). This prevents
+empty, auto-created subfolders from accumulating in the archive root.
+
+A cleanup routine runs during the reconcile phase (triggered periodically
+by the `serve` command) that removes empty subfolders under the archive root
+bottom-up — folders that contain no messages and have no non-empty children
+are deleted. The archive root itself is never deleted.
+
 Set `archive.enabled` to `false` to disable
 archive management entirely: `setup_archive` is never called, no watermark is
 written, and ingestion proceeds normally. Re-enabling it later runs setup on

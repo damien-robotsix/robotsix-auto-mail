@@ -25,6 +25,9 @@ from .archive import (
     ArchiveStructure as ArchiveStructure,
 )
 from .archive import (
+    cleanup_empty_archive_folders as cleanup_empty_archive_folders,
+)
+from .archive import (
     determine_archive_structure as determine_archive_structure,
 )
 from .archive import (
@@ -121,6 +124,7 @@ __all__ = [
     "ArchiveError",
     "ArchiveStructure",
     "MailRecord",
+    "cleanup_empty_archive_folders",
     "component_settings_count",
     "delete_record_by_message_id",
     "delete_watermark",

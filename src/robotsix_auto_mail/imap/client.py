@@ -449,12 +449,43 @@ class ImapClient(_ProtocolClient):
                 return
         raise ImapError(f"CREATE '{name}' failed: {status} — {response_text}")
 
+    def delete_folder(self, name: str) -> None:
+        """Delete a mailbox (folder) on the server.
+
+        Issues an IMAP ``DELETE``.  The folder must be empty (contain
+        no messages and no sub-folders) — most servers reject deletion
+        of non-empty folders.  Unsubscribes on success.
+
+        Args:
+            name: Mailbox name to delete (e.g.
+                ``"robotsix-mail-archive/empty-folder"``).
+
+        Raises:
+            ImapError: If the client is not connected, or the server
+                returns a non-OK status.
+        """
+        if self._imap is None:
+            raise ImapError("Not connected")
+        status, _data = self._imap.delete(_encode_mailbox(name))
+        if status == "OK":
+            self._unsubscribe(name)
+            return
+        response_text = b"".join(_data).decode("utf-8", errors="replace").strip()
+        raise ImapError(f"DELETE '{name}' failed: {status} — {response_text}")
+
     def _subscribe(self, name: str) -> None:
         """Subscribe to *name*; ignore failure silently."""
         if self._imap is None:
             return
         with contextlib.suppress(Exception):
             self._imap.subscribe(_encode_mailbox(name))
+
+    def _unsubscribe(self, name: str) -> None:
+        """Unsubscribe from *name*; ignore failure silently."""
+        if self._imap is None:
+            return
+        with contextlib.suppress(Exception):
+            self._imap.unsubscribe(_encode_mailbox(name))
 
     def search_uids(self, criteria: str = "ALL") -> list[int]:
         """Issue ``UID SEARCH`` and return matching UIDs.

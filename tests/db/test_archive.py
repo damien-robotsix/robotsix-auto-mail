@@ -16,6 +16,7 @@ from robotsix_auto_mail.db.archive import (
     ArchiveError,
     ArchiveStructure,
     _build_archive_system_prompt,
+    cleanup_empty_archive_folders,
     determine_archive_structure,
     setup_archive,
 )
@@ -164,8 +165,8 @@ def test_determine_archive_structure_llm_error_wrapped() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_setup_archive_first_run_creates_and_persists() -> None:
-    """First run lists folders, creates archive folders, persists, returns."""
+def test_setup_archive_first_run_persists_without_creating() -> None:
+    """First run persists the proposed layout but does not create IMAP folders."""
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX"), _folder("Sent")])
@@ -178,7 +179,8 @@ def test_setup_archive_first_run_creates_and_persists() -> None:
             f"{ARCHIVE_ROOT}/Work/2024",
         ]
         assert result == expected
-        assert client.created == expected
+        # No IMAP folders should be created eagerly.
+        assert client.created == []
         stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
         assert stored is not None
         assert json.loads(stored)["folders"] == expected
@@ -187,34 +189,37 @@ def test_setup_archive_first_run_creates_and_persists() -> None:
 
 
 def test_setup_archive_translates_delimiter() -> None:
-    """Sub-path separators are translated to the server delimiter."""
+    """Sub-path separators are translated to the server delimiter in the watermark."""
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX", delimiter=".")])
         with _patch_llm(["Work/2024"]):
             result = setup_archive(conn, cast(ImapClient, client), api_key="sk-test")
         assert result == [ARCHIVE_ROOT, f"{ARCHIVE_ROOT}.Work.2024"]
-        assert client.created == result
+        assert client.created == []
+        stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
+        assert stored is not None
+        assert json.loads(stored)["folders"] == result
     finally:
         conn.close()
 
 
 def test_setup_archive_skips_existing_folders() -> None:
-    """Folders already present on the server are not recreated."""
+    """Folders already present on the server are not recreated (never created eagerly)."""
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX"), _folder(ARCHIVE_ROOT)])
         with _patch_llm(["Receipts"]):
             result = setup_archive(conn, cast(ImapClient, client), api_key="sk-test")
         assert result == [ARCHIVE_ROOT, f"{ARCHIVE_ROOT}/Receipts"]
-        # ARCHIVE_ROOT already existed → only the sub-folder is created.
-        assert client.created == [f"{ARCHIVE_ROOT}/Receipts"]
+        # No folders are created eagerly — watermark is persisted only.
+        assert client.created == []
     finally:
         conn.close()
 
 
-def test_setup_archive_custom_root_creates_and_persists() -> None:
-    """A custom archive_root is used for created/persisted folder names."""
+def test_setup_archive_custom_root_persists_without_creating() -> None:
+    """A custom archive_root is persisted without eager IMAP folder creation."""
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX"), _folder("Sent")])
@@ -232,7 +237,7 @@ def test_setup_archive_custom_root_creates_and_persists() -> None:
             "custom-archive/Work/2024",
         ]
         assert result == expected
-        assert client.created == expected
+        assert client.created == []
         # The default root is not used anywhere.
         assert ARCHIVE_ROOT not in result
         stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
@@ -340,7 +345,7 @@ def test_setup_archive_subsequent_run_short_circuits() -> None:
 
 
 def test_setup_archive_no_api_key_falls_back_to_root() -> None:
-    """Without an LLM key, only the root is created and persisted."""
+    """Without an LLM key, only the root is persisted (no eager creation)."""
     conn = init_db(":memory:")
     try:
         client = _FakeImapClient([_folder("INBOX")])
@@ -349,7 +354,7 @@ def test_setup_archive_no_api_key_falls_back_to_root() -> None:
         ) as cls:
             result = setup_archive(conn, cast(ImapClient, client))
         assert result == [ARCHIVE_ROOT]
-        assert client.created == [ARCHIVE_ROOT]
+        assert client.created == []
         cls.assert_not_called()
         stored = get_watermark(conn, _ARCHIVE_WATERMARK_KEY)
         assert stored is not None
@@ -363,18 +368,21 @@ def test_setup_archive_no_api_key_falls_back_to_root() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_setup_archive_create_folder_error_propagates_and_does_not_persist() -> None:
-    """A create_folder ImapError propagates and leaves no watermark."""
+def test_setup_archive_llm_error_propagates_and_does_not_persist() -> None:
+    """An LLM failure propagates and leaves no watermark."""
     conn = init_db(":memory:")
     try:
+        client = _FakeImapClient([_folder("INBOX")])
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as cls:
+            mock_provider = mock.MagicMock()
+            mock_handle = mock.MagicMock()
+            mock_handle.run_sync.side_effect = RuntimeError("llm timeout")
+            mock_provider.build_agent.return_value = mock_handle
+            cls.return_value = mock_provider
 
-        class _FailingCreateClient(_FakeImapClient):
-            def create_folder(self, name: str) -> None:
-                raise ImapError("CREATE failed: NO")
-
-        client = _FailingCreateClient([_folder("INBOX")])
-        with _patch_llm(["Receipts"]):
-            with pytest.raises(ImapError):
+            with pytest.raises(ArchiveError):
                 setup_archive(conn, cast(ImapClient, client), api_key="sk-test")
         assert get_watermark(conn, _ARCHIVE_WATERMARK_KEY) is None
     finally:
@@ -430,3 +438,177 @@ def test_archive_and_triage_prompts_share_taxonomy() -> None:
     triage_prompt = _build_triage_system_prompt(archive_folders=["Newsletters/LWN"])
     assert _ARCHIVE_TAXONOMY_GUIDANCE in archive_prompt
     assert _ARCHIVE_TAXONOMY_GUIDANCE in triage_prompt
+
+
+# ---------------------------------------------------------------------------
+# cleanup_empty_archive_folders
+# ---------------------------------------------------------------------------
+
+
+class _FakeCleanupClient:
+    """Fake IMAP client for testing cleanup_empty_archive_folders.
+
+    Supports list_folders(), select_folder() → message count, and
+    delete_folder().
+    """
+
+    def __init__(
+        self,
+        folders: list[MailboxInfo],
+        message_counts: dict[str, int] | None = None,
+    ) -> None:
+        self._folders = folders
+        self._message_counts: dict[str, int] = dict(message_counts or {})
+        self.deleted: list[str] = []
+
+    def list_folders(self) -> list[MailboxInfo]:
+        return self._folders
+
+    def select_folder(self, name: str) -> int:
+        return self._message_counts.get(name, 0)
+
+    def delete_folder(self, name: str) -> None:
+        self.deleted.append(name)
+
+
+def test_cleanup_empty_archive_folders_no_archive_folders() -> None:
+    """No folders under archive root → nothing deleted."""
+    client = _FakeCleanupClient(
+        [_folder("INBOX"), _folder("Sent")],
+    )
+    deleted, skipped = cleanup_empty_archive_folders(
+        cast(ImapClient, client),
+        archive_root=ARCHIVE_ROOT,
+    )
+    assert deleted == 0
+    assert skipped == 0
+    assert client.deleted == []
+
+
+def test_cleanup_empty_archive_folders_only_root_exists() -> None:
+    """Only the root folder → nothing deleted, root is skipped."""
+    client = _FakeCleanupClient(
+        [_folder(ARCHIVE_ROOT)],
+    )
+    deleted, skipped = cleanup_empty_archive_folders(
+        cast(ImapClient, client),
+        archive_root=ARCHIVE_ROOT,
+    )
+    assert deleted == 0
+    assert skipped == 0
+    assert client.deleted == []
+
+
+def test_cleanup_empty_archive_folders_deletes_empty_leaves() -> None:
+    """Empty leaf folders are deleted."""
+    client = _FakeCleanupClient(
+        [
+            _folder(ARCHIVE_ROOT),
+            _folder(f"{ARCHIVE_ROOT}/Empty"),
+            _folder(f"{ARCHIVE_ROOT}/NotEmpty"),
+        ],
+        message_counts={
+            ARCHIVE_ROOT: 5,
+            f"{ARCHIVE_ROOT}/Empty": 0,
+            f"{ARCHIVE_ROOT}/NotEmpty": 3,
+        },
+    )
+    deleted, skipped = cleanup_empty_archive_folders(
+        cast(ImapClient, client),
+        archive_root=ARCHIVE_ROOT,
+    )
+    assert deleted == 1
+    assert skipped == 1
+    assert client.deleted == [f"{ARCHIVE_ROOT}/Empty"]
+
+
+def test_cleanup_empty_archive_folders_keeps_parents_with_children() -> None:
+    """A parent folder with non-empty children is kept."""
+    client = _FakeCleanupClient(
+        [
+            _folder(ARCHIVE_ROOT),
+            _folder(f"{ARCHIVE_ROOT}/Parent"),
+            _folder(f"{ARCHIVE_ROOT}/Parent/NotEmpty"),
+        ],
+        message_counts={
+            ARCHIVE_ROOT: 0,
+            f"{ARCHIVE_ROOT}/Parent": 0,
+            f"{ARCHIVE_ROOT}/Parent/NotEmpty": 5,
+        },
+    )
+    deleted, skipped = cleanup_empty_archive_folders(
+        cast(ImapClient, client),
+        archive_root=ARCHIVE_ROOT,
+    )
+    # Parent/NotEmpty has messages → kept, so Parent is also kept
+    # (has non-empty child).
+    assert deleted == 0
+    assert skipped == 2
+    assert client.deleted == []
+
+
+def test_cleanup_empty_archive_folders_deletes_cascade() -> None:
+    """Empty parent folders are deleted after their empty children are removed."""
+    client = _FakeCleanupClient(
+        [
+            _folder(ARCHIVE_ROOT),
+            _folder(f"{ARCHIVE_ROOT}/Parent"),
+            _folder(f"{ARCHIVE_ROOT}/Parent/Empty"),
+        ],
+        message_counts={
+            ARCHIVE_ROOT: 0,
+            f"{ARCHIVE_ROOT}/Parent": 0,
+            f"{ARCHIVE_ROOT}/Parent/Empty": 0,
+        },
+    )
+    deleted, skipped = cleanup_empty_archive_folders(
+        cast(ImapClient, client),
+        archive_root=ARCHIVE_ROOT,
+    )
+    # Empty leaf deleted → Parent becomes childless and empty → deleted too.
+    # Root is never deleted (excluded from by_depth).
+    assert deleted == 2
+    assert skipped == 0
+    assert client.deleted == [
+        f"{ARCHIVE_ROOT}/Parent/Empty",
+        f"{ARCHIVE_ROOT}/Parent",
+    ]
+
+
+def test_cleanup_empty_archive_folders_never_deletes_root() -> None:
+    """The archive root is never deleted even if empty."""
+    client = _FakeCleanupClient(
+        [
+            _folder(ARCHIVE_ROOT),
+        ],
+        message_counts={
+            ARCHIVE_ROOT: 0,
+        },
+    )
+    deleted, _skipped = cleanup_empty_archive_folders(
+        cast(ImapClient, client),
+        archive_root=ARCHIVE_ROOT,
+    )
+    assert deleted == 0
+    assert ARCHIVE_ROOT not in client.deleted
+
+
+def test_cleanup_empty_archive_folders_custom_root() -> None:
+    """Works with a custom archive root."""
+    root = "my-archive"
+    client = _FakeCleanupClient(
+        [
+            _folder(root),
+            _folder(f"{root}/Empty"),
+        ],
+        message_counts={
+            root: 3,
+            f"{root}/Empty": 0,
+        },
+    )
+    deleted, _skipped = cleanup_empty_archive_folders(
+        cast(ImapClient, client),
+        archive_root=root,
+    )
+    assert deleted == 1
+    assert client.deleted == [f"{root}/Empty"]

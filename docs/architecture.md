@@ -96,7 +96,10 @@ OAuth2 access token presented over SASL XOAUTH2:
 ### Archive layout
 
 - `db/archive.py` — the self-managed archive folder structure, with a first-run
-  LLM layout proposal remembered via the `watermark` table.
+  LLM layout proposal remembered via the `watermark` table. IMAP folders are
+  created **lazily** when a message is archived into a destination, not during
+  setup. Includes a cleanup routine that removes empty subfolders bottom-up
+  during reconcile.
 
 ### LLM-driven agents
 
