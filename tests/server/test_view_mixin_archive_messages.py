@@ -41,9 +41,7 @@ class TestServeArchiveMessages:
             status=503,
         )
 
-    def test_lists_messages_in_folder(
-        self, fake_db_path: str, cfg: object
-    ) -> None:
+    def test_lists_messages_in_folder(self, fake_db_path: str, cfg: object) -> None:
         """Returns envelope metadata for messages in the folder."""
         from robotsix_auto_mail.imap.client import ImapClient
 
@@ -86,9 +84,7 @@ class TestServeArchiveMessages:
         assert call_args["total"] == 3
         assert len(call_args["messages"]) == 1
 
-    def test_empty_folder(
-        self, fake_db_path: str, cfg: object
-    ) -> None:
+    def test_empty_folder(self, fake_db_path: str, cfg: object) -> None:
         """An empty archive folder returns an empty message list."""
         from robotsix_auto_mail.imap.client import ImapClient
 
@@ -120,9 +116,7 @@ class TestServeArchiveMessages:
         assert call_args["total"] == 0
         assert call_args["messages"] == []
 
-    def test_folder_not_found_returns_404(
-        self, fake_db_path: str, cfg: object
-    ) -> None:
+    def test_folder_not_found_returns_404(self, fake_db_path: str, cfg: object) -> None:
         """Returns 404 when the requested folder does not exist on IMAP."""
         from robotsix_auto_mail.imap.client import ImapClient
 
@@ -149,9 +143,7 @@ class TestServeArchiveMessages:
 
         handler._not_found.assert_called_once()
 
-    def test_path_escape_returns_400(
-        self, fake_db_path: str, cfg: object
-    ) -> None:
+    def test_path_escape_returns_400(self, fake_db_path: str, cfg: object) -> None:
         """Returns 400 when the folder path contains '..' escape attempt."""
         from robotsix_auto_mail.imap.client import ImapClient
 
@@ -179,9 +171,7 @@ class TestServeArchiveMessages:
         handler._bad_request.assert_called_once()
         assert "escapes" in str(handler._bad_request.call_args[0][0])
 
-    def test_imap_error_returns_502(
-        self, fake_db_path: str, cfg: object
-    ) -> None:
+    def test_imap_error_returns_502(self, fake_db_path: str, cfg: object) -> None:
         """Returns 502 on IMAP errors."""
         from robotsix_auto_mail.imap.client import ImapClient
         from robotsix_auto_mail.imap.errors import ImapError
@@ -207,9 +197,7 @@ class TestServeArchiveMessages:
         assert call_args[1]["status"] == 502
         assert "IMAP error" in str(call_args[0][0])
 
-    def test_respects_limit_query_param(
-        self, fake_db_path: str, cfg: object
-    ) -> None:
+    def test_respects_limit_query_param(self, fake_db_path: str, cfg: object) -> None:
         """The ?limit=N query param caps the number of messages returned."""
         from robotsix_auto_mail.imap.client import ImapClient
 
@@ -223,7 +211,14 @@ class TestServeArchiveMessages:
         # 50 messages, but limit=10.
         mock_client.search_uids.return_value = list(range(1, 51))
         mock_client.fetch_envelopes.return_value = [
-            {"uid": i, "subject": f"Msg {i}", "from": "", "date": "", "size": 0, "flags": []}
+            {
+                "uid": i,
+                "subject": f"Msg {i}",
+                "from": "",
+                "date": "",
+                "size": 0,
+                "flags": [],
+            }
             for i in range(1, 11)
         ]
         mock_client.__enter__ = mock.MagicMock(return_value=mock_client)

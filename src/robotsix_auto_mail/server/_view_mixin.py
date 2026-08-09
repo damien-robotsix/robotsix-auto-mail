@@ -348,19 +348,14 @@ class _BoardViewMixin:
 
                 # Security: validate the path is under the archive root.
                 root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
-                if (
-                    translated_path != archive_root.replace("/", delimiter)
-                    and not translated_path.startswith(root_prefix)
-                ):
-                    self._bad_request(
-                        "Folder path escapes archive root"
-                    )
+                if translated_path != archive_root.replace(
+                    "/", delimiter
+                ) and not translated_path.startswith(root_prefix):
+                    self._bad_request("Folder path escapes archive root")
                     return
 
                 # Verify the folder exists.
-                matching = [
-                    f for f in existing if f.name == translated_path
-                ]
+                matching = [f for f in existing if f.name == translated_path]
                 if not matching:
                     self._not_found()
                     return
@@ -375,7 +370,7 @@ class _BoardViewMixin:
                 limit_str = qs.get("limit", ["500"])[0]
                 try:
                     limit = min(max(int(limit_str), 1), 2000)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     limit = 500
 
                 uids = all_uids[:limit]

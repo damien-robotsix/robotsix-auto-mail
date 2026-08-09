@@ -80,9 +80,7 @@ class TestHandleArchiveMove:
         assert result["status"] == "moved"
         assert result["target_subfolder"] == "Keep"
 
-    def test_move_by_uid_and_source_folder(
-        self, tmp_path: str, cfg: object
-    ) -> None:
+    def test_move_by_uid_and_source_folder(self, tmp_path: str, cfg: object) -> None:
         """Successful move using uid + source_folder."""
         from robotsix_auto_mail.imap.client import ImapClient
 
@@ -186,9 +184,7 @@ class TestHandleArchiveMove:
         handler._bad_request.assert_called_once()
         assert ".." in str(handler._bad_request.call_args[0][0])
 
-    def test_missing_target_subfolder(
-        self, tmp_path: str, cfg: object
-    ) -> None:
+    def test_missing_target_subfolder(self, tmp_path: str, cfg: object) -> None:
         """Returns 400 when target_subfolder is missing."""
         body = _json_body(
             {
@@ -206,9 +202,7 @@ class TestHandleArchiveMove:
         handler._bad_request.assert_called_once()
         assert "target_subfolder" in str(handler._bad_request.call_args[0][0])
 
-    def test_missing_message_id_and_uid(
-        self, tmp_path: str, cfg: object
-    ) -> None:
+    def test_missing_message_id_and_uid(self, tmp_path: str, cfg: object) -> None:
         """Returns 400 when neither message_id nor uid is provided."""
         body = _json_body(
             {
@@ -226,9 +220,7 @@ class TestHandleArchiveMove:
         handler._bad_request.assert_called_once()
         assert "message_id" in str(handler._bad_request.call_args[0][0])
 
-    def test_uid_without_source_folder(
-        self, tmp_path: str, cfg: object
-    ) -> None:
+    def test_uid_without_source_folder(self, tmp_path: str, cfg: object) -> None:
         """Returns 400 when uid is provided without source_folder."""
         body = _json_body(
             {
@@ -247,9 +239,7 @@ class TestHandleArchiveMove:
         handler._bad_request.assert_called_once()
         assert "source_folder" in str(handler._bad_request.call_args[0][0])
 
-    def test_no_mail_config_returns_503(
-        self, tmp_path: str
-    ) -> None:
+    def test_no_mail_config_returns_503(self, tmp_path: str) -> None:
         """Returns 503 when IMAP is not configured."""
         body = _json_body(
             {
@@ -281,9 +271,7 @@ class TestHandleArchiveMove:
         handler._bad_request.assert_called_once()
         assert "Malformed" in str(handler._bad_request.call_args[0][0])
 
-    def test_imap_error_returns_502(
-        self, tmp_path: str, cfg: object
-    ) -> None:
+    def test_imap_error_returns_502(self, tmp_path: str, cfg: object) -> None:
         """Returns 502 on IMAP errors."""
         from robotsix_auto_mail.imap.client import ImapClient
         from robotsix_auto_mail.imap.errors import ImapError
@@ -315,9 +303,7 @@ class TestHandleArchiveMove:
         call_args = handler._send_response.call_args
         assert call_args[1]["status"] == 502
 
-    def test_imap_message_not_found_error(
-        self, tmp_path: str, cfg: object
-    ) -> None:
+    def test_imap_message_not_found_error(self, tmp_path: str, cfg: object) -> None:
         """Returns 404 on ImapMessageNotFoundError."""
         from robotsix_auto_mail.imap.client import ImapClient
         from robotsix_auto_mail.imap.errors import ImapMessageNotFoundError

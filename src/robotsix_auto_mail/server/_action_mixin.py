@@ -50,13 +50,9 @@ def _find_message_in_archive(
     """
     root_prefix = f"{archive_root}{delimiter}"
     for folder in client.list_folders():
-        if any(
-            attr.lower() == "\\noselect" for attr in folder.attributes
-        ):
+        if any(attr.lower() == "\\noselect" for attr in folder.attributes):
             continue
-        if folder.name != archive_root and not folder.name.startswith(
-            root_prefix
-        ):
+        if folder.name != archive_root and not folder.name.startswith(root_prefix):
             continue
         client.select_folder(folder.name)
         uids = client.search_uids(f'HEADER Message-ID "{message_id}"')
@@ -635,14 +631,12 @@ class _BoardActionMixin:
         if uid_raw is not None:
             try:
                 uid = int(uid_raw)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 self._bad_request("uid must be an integer")
                 return
 
         if not message_id and uid is None:
-            self._bad_request(
-                "At least one of message_id or uid is required"
-            )
+            self._bad_request("At least one of message_id or uid is required")
             return
 
         if not target_subfolder:
@@ -690,8 +684,8 @@ class _BoardActionMixin:
 
                 if uid is not None and source_folder:
                     # Explicit uid + source_folder: use directly.
-                    translated_source = (
-                        f"{archive_root}/{source_folder}".replace("/", delimiter)
+                    translated_source = f"{archive_root}/{source_folder}".replace(
+                        "/", delimiter
                     )
                     # Validate under archive root.
                     root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
@@ -700,9 +694,7 @@ class _BoardActionMixin:
                         translated_source != ar_translated
                         and not translated_source.startswith(root_prefix)
                     ):
-                        self._bad_request(
-                            "source_folder escapes archive root"
-                        )
+                        self._bad_request("source_folder escapes archive root")
                         return
                     resolved_source_folder = translated_source
                     resolved_uid = uid
@@ -722,8 +714,8 @@ class _BoardActionMixin:
                     return
 
                 # Compute the destination folder path.
-                translated_target = (
-                    f"{archive_root}/{target_subfolder}".replace("/", delimiter)
+                translated_target = f"{archive_root}/{target_subfolder}".replace(
+                    "/", delimiter
                 )
                 root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
                 ar_translated = archive_root.replace("/", delimiter)
@@ -731,9 +723,7 @@ class _BoardActionMixin:
                     translated_target != ar_translated
                     and not translated_target.startswith(root_prefix)
                 ):
-                    self._bad_request(
-                        "target_subfolder escapes archive root"
-                    )
+                    self._bad_request("target_subfolder escapes archive root")
                     return
 
                 # Ensure destination folder hierarchy exists.

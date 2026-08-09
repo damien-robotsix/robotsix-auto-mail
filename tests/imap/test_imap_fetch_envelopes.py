@@ -46,9 +46,9 @@ def _envelope_fetch_response(
 
         # Build the inline FETCH response line.
         line = (
-            f"1 (UID {uid} FLAGS (\\Seen) INTERNALDATE \"{date_str}\" "
+            f'1 (UID {uid} FLAGS (\\Seen) INTERNALDATE "{date_str}" '
             f"RFC822.SIZE 1234 ENVELOPE "
-            f"(\"{date_str}\" \"{subject}\" ({addr_part}) "
+            f'("{date_str}" "{subject}" ({addr_part}) '
             f"NIL NIL NIL NIL NIL NIL NIL))"
         )
         items.append(line.encode())

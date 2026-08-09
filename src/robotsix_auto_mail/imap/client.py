@@ -588,9 +588,7 @@ class ImapClient(_ProtocolClient):
 
         return result
 
-    def fetch_envelopes(
-        self, uids: list[int]
-    ) -> list[dict[str, object]]:
+    def fetch_envelopes(self, uids: list[int]) -> list[dict[str, object]]:
         """Fetch envelope metadata for *uids* without full bodies.
 
         Uses ``UID FETCH ... (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE)``
