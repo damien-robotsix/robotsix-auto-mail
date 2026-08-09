@@ -857,18 +857,29 @@ class _BoardActionMixin:
                 if not force:
                     count = client.select_folder(translated_source)
                     if count > 0:
-                        self._bad_request(
-                            f"Folder '{source_folder}' is not empty "
-                            f"({count} message(s)). Use force: true to override."
+                        self._serve_json(
+                            {
+                                "error": (
+                                    f"Folder '{source_folder}' is not empty "
+                                    f"({count} message(s)). Use force: true "
+                                    f"to override."
+                                ),
+                            },
+                            status=409,
                         )
                         return
                     # Also check for child folders.
                     child_prefix = f"{translated_source}{delimiter}"
                     for fname in folder_names:
                         if fname.startswith(child_prefix):
-                            self._bad_request(
-                                f"Folder '{source_folder}' has child "
-                                f"folders. Use force: true to override."
+                            self._serve_json(
+                                {
+                                    "error": (
+                                        f"Folder '{source_folder}' has child "
+                                        f"folders. Use force: true to override."
+                                    ),
+                                },
+                                status=409,
                             )
                             return
 
