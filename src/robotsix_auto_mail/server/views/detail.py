@@ -7,6 +7,7 @@ import json
 from typing import Any
 from urllib.parse import quote
 
+from robotsix_auto_mail.core._sanitize import sanitize_html
 from robotsix_auto_mail.core.format import _effective_body_plain, _format_date
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server.views.forms import _render_move_form
@@ -189,27 +190,36 @@ def _build_detail_html(
 
 
 def _render_body(record: MailRecord) -> tuple[str, str]:
-    """Return ``(body_html_render, body_html_note)`` for a record's body."""
-    body = _effective_body_plain(record)
-    from_html = not record.body_plain.strip() and record.body_html.strip()
-    if not body or not body.strip():
-        body_html_render = '<span class="detail-value"><em>(no body)</em></span>'
-    elif from_html:
-        body_html_render = (
-            f"<pre>{html.escape(body)}</pre>"
-            "<span class='body-from-html'>(from HTML)</span>"
-        )
-    else:
-        body_html_render = f"<pre>{html.escape(body)}</pre>"
+    """Return ``(body_html_render, body_html_note)`` for a record's body.
 
+    When an ``text/html`` alternative is present the sanitised HTML is
+    rendered as the primary body.  Plain-text-only emails are
+    unaffected.
+    """
     body_html_note = ""
+
     if record.body_html.strip():
+        # Render sanitised HTML as the primary body.
+        safe_html = sanitize_html(record.body_html)
+        body_html_render = (
+            '<div class="email-body">'
+            f"{safe_html}"
+            "</div>"
+        )
         body_html_note = (
             '<div class="detail-field">'
             '<div class="detail-label">HTML version</div>'
-            '<div class="detail-value"><em>HTML version available</em></div>'
+            '<div class="detail-value"><em>Rendered from HTML (sanitised)</em></div>'
             "</div>"
         )
+        return body_html_render, body_html_note
+
+    # No HTML body — fall back to plain text.
+    body = _effective_body_plain(record)
+    if not body or not body.strip():
+        body_html_render = '<span class="detail-value"><em>(no body)</em></span>'
+    else:
+        body_html_render = f"<pre>{html.escape(body)}</pre>"
     return body_html_render, body_html_note
 
 

@@ -287,6 +287,15 @@ button:hover {
   white-space: pre-wrap;
   font-family: inherit;
 }
+.detail-value .email-body {
+  /* Rendered HTML body — inherit detail typography. */
+  font-size: inherit;
+  line-height: 1.5;
+}
+.detail-value .email-body img {
+  /* Block remote images: hide any <img> that slips through. */
+  display: none;
+}
 .detail-value code {
   font-size: 0.85rem;
   background: var(--color-bg-button);

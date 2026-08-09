@@ -21,12 +21,14 @@ modules:
       - src/robotsix_auto_mail/core/_constants.py
       - src/robotsix_auto_mail/core/_llm_agent.py
       - src/robotsix_auto_mail/core/_observability.py
+      - src/robotsix_auto_mail/core/_sanitize.py
       - src/robotsix_auto_mail/core/format.py
       - src/robotsix_auto_mail/core/health.py
       - tests/core/__init__.py
       - tests/core/test_format.py
       - tests/core/test_health.py
       - tests/core/test_llm_agent.py
+      - tests/core/test_sanitize.py
       - tests/core/test_observability_logging.py
       - tests/core/test_observability_tracing.py
       - pyproject.toml
