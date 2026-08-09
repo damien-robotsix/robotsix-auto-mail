@@ -29,10 +29,10 @@
     // Prefer the data- attribute; fall back to element text for a board
     // rendered by an older robotsix-board that still emits a
     // <script type="application/json"> block.
-    const raw =
-      el.dataset && typeof el.dataset.boardConfig === "string"
-        ? el.dataset.boardConfig
-        : el.textContent;
+    let raw = el.textContent;
+    if (el.dataset && typeof el.dataset.boardConfig === "string") {
+      raw = el.dataset.boardConfig;
+    }
     try {
       CFG = JSON.parse(raw || "{}");
     } catch (_err) {
