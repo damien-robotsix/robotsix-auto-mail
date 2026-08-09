@@ -261,6 +261,7 @@ modules:
       - tests/imap/test_imap_move_message.py
       - tests/imap/test_imap_search_uids.py
       - tests/imap/test_imap_utils.py
+      - tests/imap/test_imap_fetch_envelopes.py
 
   - id: oauth2
     description: >-

@@ -1017,8 +1017,6 @@ def _parse_envelope_inline(text: str) -> dict[str, str]:
 
     def _read_field(s: str, pos: int) -> tuple[str, int]:
         """Read one field value starting at *pos*, return (value, next_pos)."""
-        s = s.lstrip(" ", )
-        # Recalculate pos from remaining
         while pos < len(s) and s[pos] == " ":
             pos += 1
         if pos >= len(s):

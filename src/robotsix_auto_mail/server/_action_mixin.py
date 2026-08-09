@@ -607,8 +607,6 @@ class _BoardActionMixin:
         Creates the target folder hierarchy if needed (per the lazy-creation
         convention).  Returns JSON on success.
         """
-        from urllib.parse import urlsplit
-
         from robotsix_auto_mail.imap import (
             ImapClient,
             ImapError,
@@ -659,6 +657,11 @@ class _BoardActionMixin:
             return
 
         archive_root = self._effective_archive_root
+
+        # Validate source_folder is under archive root (no ".." segments).
+        if source_folder and ".." in source_folder.split("/"):
+            self._bad_request("source_folder must not contain '..'")
+            return
 
         # Validate target_subfolder is under archive root (no ".." segments).
         if ".." in target_subfolder.split("/"):
