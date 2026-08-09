@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.request import Request, urlopen
 
 import pytest
@@ -28,6 +28,23 @@ from tests.server.conftest_helpers import (
 # ===========================================================================
 # Email detail page tests (new patterns)
 # ===========================================================================
+
+
+def _board_config(markup: str) -> dict[str, Any]:
+    """Decode the JSON carried by the #board-config element.
+
+    The payload lives in a ``data-board-config`` attribute (HTML-escaped)
+    rather than a ``<script type="application/json">`` block, so assertions
+    must decode it instead of matching raw JSON text.
+    """
+    import html as _html
+    import json as _json
+    import re as _re
+
+    m = _re.search(r'data-board-config="([^"]*)"', markup)
+    assert m is not None, "no #board-config data attribute in markup"
+    parsed: dict[str, Any] = _json.loads(_html.unescape(m.group(1)))
+    return parsed
 
 
 def test_handler_email_detail_has_board_css(single_db: str) -> None:
@@ -315,8 +332,9 @@ def test_account_threaded_into_js_urls(
         _s, body, _h = _get(f"http://127.0.0.1:{port}/board?account=B")
         # The account query strings are now carried in the #board-config
         # JSON element, consumed by board-auto-mail.js at runtime.
-        assert '"account_qs": "&account=B"' in body
-        assert '"fetch_qs": "?account=B"' in body
+        cfg = _board_config(body)
+        assert cfg["account_qs"] == "&account=B"
+        assert cfg["fetch_qs"] == "?account=B"
     finally:
         server.shutdown()
 
@@ -389,6 +407,7 @@ def test_build_board_html_legacy_no_accounts_kwarg(single_db: str) -> None:
     assert '<select id="account-picker"' not in body
     # The board-auto-mail.js overlay handles URL construction; the
     # #board-config carries the query-string fragments.
-    assert '"fetch_qs": ""' in body
-    assert '"account_qs": ""' in body
-    assert '"data_account_js": false' in body
+    cfg = _board_config(body)
+    assert cfg["fetch_qs"] == ""
+    assert cfg["account_qs"] == ""
+    assert cfg["data_account_js"] is False

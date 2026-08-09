@@ -26,8 +26,15 @@
   function bootConfig() {
     const el = document.getElementById("board-config");
     if (!el) return false;
+    // Prefer the data- attribute; fall back to element text for a board
+    // rendered by an older robotsix-board that still emits a
+    // <script type="application/json"> block.
+    const raw =
+      el.dataset && el.dataset.boardConfig != null
+        ? el.dataset.boardConfig
+        : el.textContent;
     try {
-      CFG = JSON.parse(el.textContent || "{}");
+      CFG = JSON.parse(raw || "{}");
     } catch (_err) {
       return false;
     }

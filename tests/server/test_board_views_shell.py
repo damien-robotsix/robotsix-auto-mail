@@ -11,6 +11,23 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 
+def _board_config(markup: str) -> dict[str, Any]:
+    """Decode the JSON carried by the #board-config element.
+
+    The payload lives in a ``data-board-config`` attribute (HTML-escaped)
+    rather than a ``<script type="application/json">`` block, so assertions
+    must decode it instead of matching raw JSON text.
+    """
+    import html as _html
+    import json as _json
+    import re as _re
+
+    m = _re.search(r'data-board-config="([^"]*)"', markup)
+    assert m is not None, "no #board-config data attribute in markup"
+    parsed: dict[str, Any] = _json.loads(_html.unescape(m.group(1)))
+    return parsed
+
+
 def _page_shell_sentinels(**overrides: Any) -> str:
     """Call ``_render_board_page_shell`` with sentinel defaults for each
     keyword argument, overridden by *overrides*."""
@@ -70,25 +87,25 @@ def test_page_shell_data_account_js_true() -> None:
     """data_account_js is True in the JS config when the arg is True."""
     result = _page_shell_sentinels(data_account_js=True)
     # The board-config JSON payload.
-    assert '"data_account_js": true' in result
+    assert _board_config(result)["data_account_js"] is True
 
 
 def test_page_shell_data_account_js_false() -> None:
     """data_account_js is False in the JS config when the arg is False."""
     result = _page_shell_sentinels(data_account_js=False)
-    assert '"data_account_js": false' in result
+    assert _board_config(result)["data_account_js"] is False
 
 
 def test_page_shell_account_qs_wired() -> None:
     """The account_qs is reflected in the JS config."""
     result = _page_shell_sentinels(account_qs="&account=xyz")
-    assert '"account_qs": "&account=xyz"' in result
+    assert _board_config(result)["account_qs"] == "&account=xyz"
 
 
 def test_page_shell_fetch_qs_wired() -> None:
     """The fetch_qs is reflected in the JS config."""
     result = _page_shell_sentinels(fetch_qs="?account=__all__")
-    assert '"fetch_qs": "?account=__all__"' in result
+    assert _board_config(result)["fetch_qs"] == "?account=__all__"
 
 
 def test_page_shell_html5_doctype() -> None:
