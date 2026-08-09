@@ -243,6 +243,11 @@ class BoardHandler(
         form POSTs that do not trigger a CORS preflight).  When the header
         is present the request is accepted only if it matches one of:
 
+        * ``Sec-Fetch-Site: same-origin`` or ``none`` — set by the browser
+          itself and unforgeable by a cross-site page, checked before
+          ``Origin`` because this server sends ``Referrer-Policy:
+          no-referrer`` and Firefox then reports ``Origin: null`` even for a
+          same-origin submission;
         * the server's own loopback origin (``127.0.0.1`` / ``localhost``
           on the bound port) — covers local dev / CLI use;
         * the request's own ``Host`` header — the standard proxy-aware
@@ -263,6 +268,16 @@ class BoardHandler(
         ``curl``, CLI tools) are allowed — malicious cross-site forms cannot
         suppress the header.
         """
+        # ``Sec-Fetch-Site`` is the purpose-built signal and is decided by the
+        # browser, not by the page, so a cross-site attacker cannot forge it.
+        # Check it first: this server sends ``Referrer-Policy: no-referrer``,
+        # and Firefox then sends ``Origin: null`` on a *same-origin* form POST,
+        # which every check below would reject. That combination made the
+        # add-account form reject its own submission.
+        fetch_site = self.headers.get("Sec-Fetch-Site")
+        if fetch_site in ("same-origin", "none"):
+            return True
+
         origin = self.headers.get("Origin")
         if origin is None:
             return True
