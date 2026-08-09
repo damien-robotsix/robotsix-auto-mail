@@ -131,7 +131,10 @@ All GET endpoints below are read-only and safe to call without confirmation.
 ## Archive message-delete (state-mutating, requires confirmation)
 
 - **`POST /archive-message-delete`** — Permanently delete a single
-  archived message by `uid` + `source_folder`.  Marks the message
+  archived message.  Requires `source_folder` and at least one of `uid`
+  or `message_id`.  When `uid` is omitted the server resolves by
+  Message-ID within `source_folder`; when `uid` is provided but stale,
+  `message_id` (if supplied) is used as a fallback.  Marks the message
   `\Deleted` and `EXPUNGE`s — this is irreversible.  Requires operator
   confirmation per the safety rules above.
 
@@ -141,7 +144,7 @@ All GET endpoints below are read-only and safe to call without confirmation.
     "uid": 42,
     "source_folder": "<archive subfolder path>",
     "confirm": true,
-    "message_id": "<Message-ID header (optional fallback)>"
+    "message_id": "<Message-ID header (optional, may be used alone)>"
   }
   ```
 
@@ -154,9 +157,9 @@ All GET endpoints below are read-only and safe to call without confirmation.
   }
   ```
 
-  Errors: 400 (missing `uid`/`source_folder`, `confirm` not true, path
-  escapes archive root), 404 (uid not found in source_folder), 502
-  (IMAP error).
+  Errors: 400 (missing `source_folder`, neither `uid` nor `message_id`
+  supplied, `confirm` not true, path escapes archive root), 404 (uid
+  not found in source_folder), 502 (IMAP error).
 
   The existing `POST /delete` endpoint (board messages by Message-ID)
   is unchanged — this endpoint fills the gap for archive-scoped

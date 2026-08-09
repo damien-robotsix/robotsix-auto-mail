@@ -631,7 +631,7 @@ class _BoardActionMixin:
         if uid_raw is not None:
             try:
                 uid = int(uid_raw)
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 self._bad_request("uid must be an integer")
                 return
 
@@ -946,12 +946,14 @@ class _BoardActionMixin:
         if uid_raw is not None:
             try:
                 uid = int(uid_raw)
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 self._bad_request("uid must be an integer")
                 return
 
-        if uid is None:
-            self._bad_request("uid is required")
+        if uid is None and not message_id:
+            self._bad_request(
+                "At least one of uid or message_id is required"
+            )
             return
 
         if not source_folder:
@@ -984,6 +986,8 @@ class _BoardActionMixin:
             ImapMessageNotFoundError,
         )
 
+        resolved_uid: int | None = None
+
         try:
             with ImapClient(self.mail_config) as client:
                 # Discover the server's hierarchy delimiter.
@@ -1008,25 +1012,35 @@ class _BoardActionMixin:
                     self._bad_request("source_folder escapes archive root")
                     return
 
-                # Select the folder and resolve the UID.
+                # Select the folder.
                 client.select_folder(translated_source)
 
-                # Verify the UID exists in the selected folder.
-                if not client.search_uids(f"UID {uid}"):
-                    # Fallback: try Message-ID search when message_id is provided.
-                    resolved_uid: int | None = None
-                    if message_id:
+                # Resolve the UID.
+                if uid is not None:
+                    # Verify the provided UID exists.
+                    if client.search_uids(f"UID {uid}"):
+                        resolved_uid = uid
+                    elif message_id:
+                        # Stale UID — fallback to Message-ID search.
                         found = client.search_uids(
                             f'HEADER Message-ID "{message_id}"'
                         )
                         if found:
                             resolved_uid = found[0]
-                    if resolved_uid is None:
-                        self._not_found()
-                        return
-                    uid = resolved_uid
+                else:
+                    # No UID — resolve by Message-ID within source_folder.
+                    assert message_id  # noqa: S101 # nosec B101
+                    found = client.search_uids(
+                        f'HEADER Message-ID "{message_id}"'
+                    )
+                    if found:
+                        resolved_uid = found[0]
 
-                client.delete_message(uid)
+                if resolved_uid is None:
+                    self._not_found()
+                    return
+
+                client.delete_message(resolved_uid)
 
         except ImapMessageNotFoundError:
             self._not_found()
@@ -1047,7 +1061,7 @@ class _BoardActionMixin:
         self._serve_json(
             {
                 "status": "deleted",
-                "uid": uid,
+                "uid": resolved_uid,
                 "source_folder": source_folder,
             }
         )
