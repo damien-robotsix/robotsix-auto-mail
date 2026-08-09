@@ -397,7 +397,8 @@ class _BoardActionMixin:
         Shared by :meth:`_handle_archive` and :meth:`_handle_send_draft`.
         Computes the effective archive root + subfolder, performs the IMAP
         move (only when IMAP is configured and the record has a tracked
-        UID), then removes the local database record.
+        UID), writes an archive-audit-log entry, then removes the local
+        database record.
 
         Returns ``True`` on success.  On a security-policy violation it
         sends a 400 and returns ``False``; on an IMAP/IO failure it sends a
@@ -405,10 +406,12 @@ class _BoardActionMixin:
         left intact.
         """
         from robotsix_auto_mail.db import delete_record_by_message_id
+        from robotsix_auto_mail.db import write_archive_audit_entry
+        from robotsix_auto_mail.triage import get_archive_subfolder_with_source
 
         # Compute the effective archive subfolder.
         classifier_level, _ = resolve_llm_tier(APP_CLASSIFIER)
-        subfolder = get_archive_subfolder(
+        subfolder, proposal_source = get_archive_subfolder_with_source(
             conn,
             record.message_id,
             record,
@@ -474,8 +477,22 @@ class _BoardActionMixin:
                             status=502,
                         )
                         return False
-                # Mail gone or healed — delete the local record
-                # in both cases.
+                # Mail gone or healed — write audit entry and delete
+                # the local record in both cases.
+                try:
+                    write_archive_audit_entry(
+                        conn,
+                        message_id=record.message_id,
+                        subject=record.subject,
+                        sender=record.sender,
+                        date=record.date,
+                        source_column=TO_ARCHIVE,
+                        source_folder=record.source_folder,
+                        dest_folder=subfolder,
+                        proposal_source=proposal_source,
+                    )
+                except Exception:  # noqa: S110  # nosec B110
+                    pass
                 delete_record_by_message_id(conn, record.message_id)
                 return True
             except (ImapError, OSError) as exc:
@@ -493,6 +510,22 @@ class _BoardActionMixin:
                 record_user_action(
                     record, TO_ARCHIVE, config=self.mail_config, subfolder=subfolder
                 )
+
+        # -- write audit-log entry before deleting the local row --
+        try:
+            write_archive_audit_entry(
+                conn,
+                message_id=record.message_id,
+                subject=record.subject,
+                sender=record.sender,
+                date=record.date,
+                source_column=TO_ARCHIVE,
+                source_folder=record.source_folder,
+                dest_folder=subfolder,
+                proposal_source=proposal_source,
+            )
+        except Exception:  # noqa: S110  # nosec B110
+            pass  # Non-fatal: archive succeeds even if audit write fails
 
         # -- local DB cleanup --
         delete_record_by_message_id(conn, record.message_id)

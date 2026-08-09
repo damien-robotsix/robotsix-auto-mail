@@ -152,6 +152,49 @@ def _save_llm_archive_hints(conn: sqlite3.Connection, hints: dict[str, str]) -> 
     )
 
 
+def get_archive_subfolder_with_source(
+    conn: sqlite3.Connection,
+    message_id: str,
+    record: MailRecord,
+    api_key: str = "",
+    level: int = 1,
+    rules: str = "",
+) -> tuple[str, str]:
+    """Return ``(subfolder, source)`` for *message_id*.
+
+    The ``source`` is one of ``"override"``, ``"llm"``, or ``"rule"``,
+    reflecting which tier of the priority chain produced the result.
+
+    Priority chain:
+    1. User override (from ``archive_subfolder_overrides`` watermark).
+    2. LLM hint (previously persisted in ``archive_subfolder_llm_hints``).
+    3. On-the-fly LLM proposal — only when *api_key* is non-empty; calls
+       :func:`propose_archive_subfolder_llm` (passing *rules* for guidance)
+       and re-reads hints so a successful proposal also populates the hint
+       for next time.
+    4. Deterministic proposal via :func:`propose_archive_subfolder`.
+    """
+    # 1. User override
+    overrides = _load_archive_overrides(conn)
+    if message_id in overrides:
+        return normalize_archive_subfolder(overrides[message_id]), "override"
+
+    # 2. LLM hint (previously persisted)
+    hints = _load_llm_archive_hints(conn)
+    if message_id in hints:
+        return normalize_archive_subfolder(hints[message_id]), "llm"
+
+    # 3. On-the-fly LLM proposal (NEW)
+    if api_key:
+        propose_archive_subfolder_llm(conn, record, api_key, level=level, rules=rules)
+        hints = _load_llm_archive_hints(conn)  # re-read after persist
+        if message_id in hints:
+            return normalize_archive_subfolder(hints[message_id]), "llm"
+
+    # 4. Deterministic fallback (stripped-down)
+    return normalize_archive_subfolder(propose_archive_subfolder(record)), "rule"
+
+
 def get_archive_subfolder(
     conn: sqlite3.Connection,
     message_id: str,
@@ -171,25 +214,10 @@ def get_archive_subfolder(
        for next time.
     4. Deterministic proposal via :func:`propose_archive_subfolder`.
     """
-    # 1. User override
-    overrides = _load_archive_overrides(conn)
-    if message_id in overrides:
-        return normalize_archive_subfolder(overrides[message_id])
-
-    # 2. LLM hint (previously persisted)
-    hints = _load_llm_archive_hints(conn)
-    if message_id in hints:
-        return normalize_archive_subfolder(hints[message_id])
-
-    # 3. On-the-fly LLM proposal (NEW)
-    if api_key:
-        propose_archive_subfolder_llm(conn, record, api_key, level=level, rules=rules)
-        hints = _load_llm_archive_hints(conn)  # re-read after persist
-        if message_id in hints:
-            return normalize_archive_subfolder(hints[message_id])
-
-    # 4. Deterministic fallback (stripped-down)
-    return normalize_archive_subfolder(propose_archive_subfolder(record))
+    subfolder, _ = get_archive_subfolder_with_source(
+        conn, message_id, record, api_key=api_key, level=level, rules=rules
+    )
+    return subfolder
 
 
 def set_archive_subfolder_override(

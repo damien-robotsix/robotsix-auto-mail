@@ -136,6 +136,7 @@ class BoardHandler(
                 lambda p: p == "/archive-folders",
                 self._serve_archive_folders,
             ),
+            (lambda p: p == "/archive-log", self._serve_archive_log),
             (lambda p: p.startswith("/static/"), self._serve_static),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
@@ -480,6 +481,37 @@ class BoardHandler(
     def _serve_health(self) -> None:
         """Serve GET /health — liveness check."""
         self._serve_json({"status": "ok"}, status=200)
+
+    def _serve_archive_log(self) -> None:
+        """Serve GET /archive-log — read-only archive audit trail.
+
+        Query params:
+        - ``limit`` (int, default 100): max entries to return.
+        - ``since`` (ISO 8601): only entries archived at or after this time.
+        - ``folder`` (str): only entries whose ``dest_folder`` equals this value.
+        """
+        from robotsix_auto_mail.db import list_archive_audit_entries
+
+        params = parse_qs(urlsplit(self.path).query)
+        limit_str = params.get("limit", ["100"])[0]
+        since = params.get("since", [None])[0]
+        folder = params.get("folder", [None])[0]
+
+        try:
+            limit = int(limit_str)
+        except (ValueError, TypeError):
+            self._bad_request("limit must be an integer")
+            return
+
+        if limit < 1 or limit > 1000:
+            self._bad_request("limit must be between 1 and 1000")
+            return
+
+        with _with_db(self.db_path) as conn:
+            entries = list_archive_audit_entries(
+                conn, limit=limit, since=since, folder=folder
+            )
+        self._serve_json({"entries": entries}, status=200)
 
     def _serve_probe_health(self) -> None:
         """Serve GET /probe-health — on-demand IMAP + SMTP connectivity probe.
