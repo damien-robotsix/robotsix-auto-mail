@@ -10,8 +10,10 @@ database.
 archive setup → connect → fetch → parse → store → update watermark → triage
 ```
 
-0. **Archive setup** — on the first run, `setup_archive` proposes and creates
-   the archive folder hierarchy. This step
+0. **Archive setup** — on the first run, `setup_archive` proposes and persists
+   the archive folder layout. Actual IMAP folders are created
+   **lazily** when a message is first archived into a destination
+   (not from the proposal alone). This step
    is guarded by `not dry_run and config.archive_enabled` and runs best-effort:
    any failure (LLM, network, IMAP) is logged but never aborts ingestion.
 1. **Connect** — open an authenticated IMAP connection using the configured
