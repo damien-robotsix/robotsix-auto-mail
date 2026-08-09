@@ -322,6 +322,11 @@ class _BoardViewMixin:
         archive_root = self._effective_archive_root
         delimiter = "/"
 
+        # Reject ".." segments in the folder path.
+        if ".." in folder.split("/"):
+            self._bad_request("Folder path escapes archive root")
+            return
+
         # Resolve the full IMAP folder path.
         if folder:
             # Translate "/" in the URL path to the IMAP delimiter.

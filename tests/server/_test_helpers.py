@@ -30,6 +30,9 @@ class _FakeHandler(_BoardActionMixin):
     ) -> None:
         self.db_path = db_path
         self.mail_config = mail_config
+        self._effective_archive_root = (
+            mail_config.archive_root if mail_config else "Archive"
+        )
         self.headers = mock.MagicMock()
         self.rfile = mock.MagicMock()
         self._send_response = mock.MagicMock()

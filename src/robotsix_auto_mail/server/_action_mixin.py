@@ -665,6 +665,13 @@ class _BoardActionMixin:
             self._bad_request("target_subfolder must not contain '..'")
             return
 
+        # Validate that uid requires source_folder when message_id is absent.
+        if uid is not None and not source_folder and not message_id:
+            self._bad_request(
+                "source_folder is required when uid is provided without message_id"
+            )
+            return
+
         try:
             with ImapClient(self.mail_config) as client:
                 # Discover the server's hierarchy delimiter.
@@ -696,8 +703,9 @@ class _BoardActionMixin:
                         return
                     resolved_source_folder = translated_source
                     resolved_uid = uid
-                elif message_id:
-                    # Search all archive folders for the message.
+                else:
+                    # message_id — search all archive folders.
+                    assert message_id
                     resolved = _find_message_in_archive(
                         client, message_id, archive_root, delimiter
                     )
@@ -705,11 +713,6 @@ class _BoardActionMixin:
                         self._not_found()
                         return
                     resolved_source_folder, resolved_uid = resolved
-                else:
-                    self._bad_request(
-                        "source_folder is required when uid is provided without message_id"
-                    )
-                    return
 
                 if resolved_source_folder is None or resolved_uid is None:
                     self._not_found()

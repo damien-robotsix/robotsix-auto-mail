@@ -41,12 +41,12 @@ class TestHandleArchiveMove:
         from robotsix_auto_mail.imap.client import ImapClient
 
         fake_folder = mock.MagicMock()
-        fake_folder.name = "Archive/Projects"
+        fake_folder.name = "robotsix-mail-archive/Projects"
         fake_folder.delimiter = "/"
         fake_folder.attributes = ()
 
         target_folder = mock.MagicMock()
-        target_folder.name = "Archive/Keep"
+        target_folder.name = "robotsix-mail-archive/Keep"
         target_folder.delimiter = "/"
         target_folder.attributes = ()
 
@@ -67,7 +67,7 @@ class TestHandleArchiveMove:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.server._action_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _make_fake_handler(
@@ -89,7 +89,7 @@ class TestHandleArchiveMove:
         from robotsix_auto_mail.imap.client import ImapClient
 
         fake_folder = mock.MagicMock()
-        fake_folder.name = "Archive/Projects"
+        fake_folder.name = "robotsix-mail-archive/Projects"
         fake_folder.delimiter = "/"
         fake_folder.attributes = ()
 
@@ -107,7 +107,7 @@ class TestHandleArchiveMove:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.server._action_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _make_fake_handler(
@@ -145,7 +145,7 @@ class TestHandleArchiveMove:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.server._action_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _make_fake_handler(
@@ -175,7 +175,7 @@ class TestHandleArchiveMove:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.server._action_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _make_fake_handler(
@@ -303,7 +303,7 @@ class TestHandleArchiveMove:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.server._action_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _make_fake_handler(
@@ -339,7 +339,7 @@ class TestHandleArchiveMove:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.server._action_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _make_fake_handler(

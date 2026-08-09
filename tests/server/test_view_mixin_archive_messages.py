@@ -8,6 +8,8 @@ import pytest
 
 from tests.server._view_mixin_helpers import _FakeHandler
 
+pytest_plugins = ["tests.server._view_mixin_helpers"]
+
 
 class TestServeArchiveMessages:
     @pytest.fixture(autouse=True)
@@ -47,7 +49,7 @@ class TestServeArchiveMessages:
 
         # Build fake folder list.
         fake_folder = mock.MagicMock()
-        fake_folder.name = "Archive/Projects"
+        fake_folder.name = "robotsix-mail-archive/Projects"
         fake_folder.delimiter = "/"
         fake_folder.attributes = ()
 
@@ -68,7 +70,7 @@ class TestServeArchiveMessages:
         mock_client.__exit__ = mock.MagicMock(return_value=None)
 
         with mock.patch(
-            "robotsix_auto_mail.server._view_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _FakeHandler(
@@ -91,7 +93,7 @@ class TestServeArchiveMessages:
         from robotsix_auto_mail.imap.client import ImapClient
 
         fake_folder = mock.MagicMock()
-        fake_folder.name = "Archive/Empty"
+        fake_folder.name = "robotsix-mail-archive/Empty"
         fake_folder.delimiter = "/"
         fake_folder.attributes = ()
 
@@ -103,7 +105,7 @@ class TestServeArchiveMessages:
         mock_client.__exit__ = mock.MagicMock(return_value=None)
 
         with mock.patch(
-            "robotsix_auto_mail.server._view_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _FakeHandler(
@@ -125,7 +127,7 @@ class TestServeArchiveMessages:
         from robotsix_auto_mail.imap.client import ImapClient
 
         fake_folder = mock.MagicMock()
-        fake_folder.name = "Archive/Other"
+        fake_folder.name = "robotsix-mail-archive/Other"
         fake_folder.delimiter = "/"
         fake_folder.attributes = ()
 
@@ -135,7 +137,7 @@ class TestServeArchiveMessages:
         mock_client.__exit__ = mock.MagicMock(return_value=None)
 
         with mock.patch(
-            "robotsix_auto_mail.server._view_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _FakeHandler(
@@ -154,7 +156,7 @@ class TestServeArchiveMessages:
         from robotsix_auto_mail.imap.client import ImapClient
 
         fake_folder = mock.MagicMock()
-        fake_folder.name = "Archive"
+        fake_folder.name = "robotsix-mail-archive"
         fake_folder.delimiter = "/"
         fake_folder.attributes = ()
 
@@ -164,7 +166,7 @@ class TestServeArchiveMessages:
         mock_client.__exit__ = mock.MagicMock(return_value=None)
 
         with mock.patch(
-            "robotsix_auto_mail.server._view_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _FakeHandler(
@@ -190,7 +192,7 @@ class TestServeArchiveMessages:
         mock_client.list_folders.side_effect = ImapError("connection refused")
 
         with mock.patch(
-            "robotsix_auto_mail.server._view_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _FakeHandler(
@@ -212,7 +214,7 @@ class TestServeArchiveMessages:
         from robotsix_auto_mail.imap.client import ImapClient
 
         fake_folder = mock.MagicMock()
-        fake_folder.name = "Archive/Projects"
+        fake_folder.name = "robotsix-mail-archive/Projects"
         fake_folder.delimiter = "/"
         fake_folder.attributes = ()
 
@@ -228,7 +230,7 @@ class TestServeArchiveMessages:
         mock_client.__exit__ = mock.MagicMock(return_value=None)
 
         with mock.patch(
-            "robotsix_auto_mail.server._view_mixin.ImapClient",
+            "robotsix_auto_mail.imap.ImapClient",
             return_value=mock_client,
         ):
             handler = _FakeHandler(
