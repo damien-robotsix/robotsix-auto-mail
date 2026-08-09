@@ -83,6 +83,42 @@ def test_page_shell_triage_running_false() -> None:
     assert "Triage is currently running" not in result
 
 
+def test_board_config_readable_by_both_carriers() -> None:
+    """The config must be readable by attribute AND by element text.
+
+    robotsix-board is pinned by git rev, so the vendored board.js may predate
+    the data- attribute and read only textContent. Emitting the payload only
+    in the attribute made that board.js parse "{}" and silently bail out of
+    json_hydration mode.
+    """
+    import html as _html
+    import json as _json
+    import re as _re
+
+    result = _page_shell_sentinels(data_account_js=True)
+
+    attr = _re.search(r'data-board-config="([^"]*)"', result)
+    assert attr is not None, "no data-board-config attribute"
+    text = _re.search(r'<div id="board-config"[^>]*>(.*?)</div>', result, _re.DOTALL)
+    assert text is not None, "no #board-config element text"
+
+    from_attr = _json.loads(_html.unescape(attr.group(1)))
+    from_text = _json.loads(_html.unescape(text.group(1)))
+    assert from_attr == from_text
+    assert from_attr["data_account_js"] is True
+
+
+def test_board_config_uses_no_script_element() -> None:
+    """The carrier must not be a <script> element.
+
+    Firefox applies script-src-elem to any <script>, including a never-executed
+    JSON block, so a strict CSP logged a violation on every board load.
+    """
+    result = _page_shell_sentinels(data_account_js=True)
+    assert 'id="board-config"' in result
+    assert "<script id=" not in result
+
+
 def test_page_shell_data_account_js_true() -> None:
     """data_account_js is True in the JS config when the arg is True."""
     result = _page_shell_sentinels(data_account_js=True)
