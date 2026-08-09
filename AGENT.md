@@ -287,9 +287,12 @@ output).
 
 When a PR removes or renames a file that is hyperlinked or referenced
 in documentation (`README.md`, `docs/`), ALL cross-references to that
-file MUST be updated in the same PR.  Use `git grep <old-filename>`
-across `README.md` and `docs/` to identify stale references before
-merging.
+file MUST be updated in the same PR.  The automated `docs-check`
+workflow (`.github/workflows/docs-check.yml`) enforces this by running
+`mkdocs build --strict` on every PR that touches documentation; it
+catches broken internal links, missing anchors, and unrecognised
+relative links so the manual `git grep <old-filename>` rule is no
+longer the sole safeguard.
 
 When you add, remove, or rename a config field on ``MailAccountsConfig`` or
 ``MailConfig`` (including the component-wide blocks), you MUST update

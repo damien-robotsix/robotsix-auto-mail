@@ -63,5 +63,5 @@ each message.
 ---
 
 For the Docker-based workflow, see the
-[Quick start — Docker Compose](connecting.md#quick-start--docker-compose-recommended)
+[Quick start — Docker Compose](connecting.md#quick-start-docker-compose)
 section in the connecting guide.
