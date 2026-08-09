@@ -494,6 +494,7 @@ modules:
       - .github/codeql/codeql-config.yml
       - .github/dependabot.yml
       - .github/workflows/ci.yml
+      - .github/workflows/dependabot-auto-merge.yml
       - .github/workflows/codeql.yml
       - .github/workflows/docs-check.yml
       - .github/workflows/docs.yml
