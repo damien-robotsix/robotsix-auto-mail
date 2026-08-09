@@ -762,3 +762,452 @@ class _BoardActionMixin:
                 "target_subfolder": target_subfolder,
             }
         )
+
+    # -- archive folder-delete -----------------------------------------------
+
+    def _handle_archive_delete(self) -> None:
+        """Process POST /archive-delete — delete an archive subfolder.
+
+        Accepts a JSON body with:
+
+        - ``source_folder`` (str): the archive subfolder path to delete
+          (relative to the archive root).
+        - ``confirm`` (bool): must be ``true`` — the operation is
+          irreversible and requires explicit opt-in.
+        - ``force`` (bool, optional): when ``true``, deletes the folder
+          even when it contains messages (the default, ``false``, only
+          deletes empty folders).
+
+        Returns JSON on success.  The folder must be under the archive
+        root; path-escaping attempts (``..`` segments) are rejected.
+        """
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            self._bad_request("Malformed JSON body")
+            return
+
+        if not isinstance(data, dict):
+            self._bad_request("JSON body must be an object")
+            return
+
+        source_folder = _json_field_value(data, "source_folder")
+        confirm = data.get("confirm", False)
+        force = data.get("force", False)
+
+        if not source_folder:
+            self._bad_request("source_folder is required")
+            return
+
+        if not confirm:
+            self._bad_request(
+                "confirm must be true — folder deletion is irreversible"
+            )
+            return
+
+        if self.mail_config is None:
+            self._serve_json(
+                {"error": "IMAP not configured for this account"},
+                status=503,
+            )
+            return
+
+        archive_root = self._effective_archive_root
+
+        # Validate source_folder does not contain ".." segments.
+        if ".." in source_folder.split("/"):
+            self._bad_request("source_folder must not contain '..'")
+            return
+
+        from robotsix_auto_mail.imap import ImapClient, ImapError
+
+        try:
+            with ImapClient(self.mail_config) as client:
+                # Discover the server's hierarchy delimiter.
+                existing = client.list_folders()
+                delimiter = next(
+                    (f.delimiter for f in existing if f.delimiter),
+                    "/",
+                )
+
+                # Translate the source folder to the IMAP namespace.
+                translated_source = f"{archive_root}/{source_folder}".replace(
+                    "/", delimiter
+                )
+
+                # Validate the translated path is under the archive root.
+                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
+                ar_translated = archive_root.replace("/", delimiter)
+                if (
+                    translated_source != ar_translated
+                    and not translated_source.startswith(root_prefix)
+                ):
+                    self._bad_request("source_folder escapes archive root")
+                    return
+
+                # Verify the folder exists.
+                folder_names = {f.name for f in existing}
+                if translated_source not in folder_names:
+                    self._not_found()
+                    return
+
+                # Check emptiness (unless force is True).
+                if not force:
+                    count = client.select_folder(translated_source)
+                    if count > 0:
+                        self._bad_request(
+                            f"Folder '{source_folder}' is not empty "
+                            f"({count} message(s)). Use force: true to override."
+                        )
+                        return
+                    # Also check for child folders.
+                    child_prefix = f"{translated_source}{delimiter}"
+                    for fname in folder_names:
+                        if fname.startswith(child_prefix):
+                            self._bad_request(
+                                f"Folder '{source_folder}' has child "
+                                f"folders. Use force: true to override."
+                            )
+                            return
+
+                # Non-empty force-delete: expunge all messages first.
+                if force:
+                    client.select_folder(translated_source)
+                    all_uids = client.search_uids("ALL")
+                    if all_uids:
+                        client.delete_messages(all_uids)
+
+                client.delete_folder(translated_source)
+
+        except ImapError as exc:
+            self._send_response(
+                f"IMAP error during folder delete: {exc}",
+                status=502,
+            )
+            return
+        except OSError as exc:
+            self._send_response(
+                f"IMAP connection error: {exc}",
+                status=502,
+            )
+            return
+
+        self._serve_json(
+            {
+                "status": "deleted",
+                "source_folder": source_folder,
+            }
+        )
+
+    # -- archive message-delete ----------------------------------------------
+
+    def _handle_archive_message_delete(self) -> None:
+        """Process POST /archive-message-delete — permanently delete an
+        archived message.
+
+        Accepts a JSON body with:
+
+        - ``uid`` (int): the IMAP UID within ``source_folder``.
+        - ``source_folder`` (str): the archive subfolder path (relative
+          to the archive root).
+        - ``confirm`` (bool): must be ``true`` — the operation is
+          irreversible and requires explicit opt-in.
+        - ``message_id`` (str, optional): fallback selector when *uid*
+          is stale; used for a ``HEADER Message-ID`` search.
+
+        Marks the message ``\\Deleted`` and ``EXPUNGE``s — the message is
+        permanently removed from the server.  The existing ``/delete``
+        endpoint (board messages by Message-ID) is left unchanged; this
+        endpoint fills the gap for archive-scoped uid+folder deletion.
+
+        Returns JSON on success; 404 when the uid is not found in
+        *source_folder*.
+        """
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            self._bad_request("Malformed JSON body")
+            return
+
+        if not isinstance(data, dict):
+            self._bad_request("JSON body must be an object")
+            return
+
+        uid_raw = data.get("uid")
+        source_folder = _json_field_value(data, "source_folder")
+        confirm = data.get("confirm", False)
+        message_id = _json_field_value(data, "message_id")
+
+        uid: int | None = None
+        if uid_raw is not None:
+            try:
+                uid = int(uid_raw)
+            except ValueError, TypeError:
+                self._bad_request("uid must be an integer")
+                return
+
+        if uid is None:
+            self._bad_request("uid is required")
+            return
+
+        if not source_folder:
+            self._bad_request("source_folder is required")
+            return
+
+        if not confirm:
+            self._bad_request(
+                "confirm must be true — message deletion is irreversible"
+            )
+            return
+
+        if self.mail_config is None:
+            self._serve_json(
+                {"error": "IMAP not configured for this account"},
+                status=503,
+            )
+            return
+
+        archive_root = self._effective_archive_root
+
+        # Validate source_folder does not contain ".." segments.
+        if ".." in source_folder.split("/"):
+            self._bad_request("source_folder must not contain '..'")
+            return
+
+        from robotsix_auto_mail.imap import (
+            ImapClient,
+            ImapError,
+            ImapMessageNotFoundError,
+        )
+
+        try:
+            with ImapClient(self.mail_config) as client:
+                # Discover the server's hierarchy delimiter.
+                existing = client.list_folders()
+                delimiter = next(
+                    (f.delimiter for f in existing if f.delimiter),
+                    "/",
+                )
+
+                # Translate the source folder to the IMAP namespace.
+                translated_source = f"{archive_root}/{source_folder}".replace(
+                    "/", delimiter
+                )
+
+                # Validate the translated path is under the archive root.
+                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
+                ar_translated = archive_root.replace("/", delimiter)
+                if (
+                    translated_source != ar_translated
+                    and not translated_source.startswith(root_prefix)
+                ):
+                    self._bad_request("source_folder escapes archive root")
+                    return
+
+                # Select the folder and resolve the UID.
+                client.select_folder(translated_source)
+
+                # Verify the UID exists in the selected folder.
+                if not client.search_uids(f"UID {uid}"):
+                    # Fallback: try Message-ID search when message_id is provided.
+                    resolved_uid: int | None = None
+                    if message_id:
+                        found = client.search_uids(
+                            f'HEADER Message-ID "{message_id}"'
+                        )
+                        if found:
+                            resolved_uid = found[0]
+                    if resolved_uid is None:
+                        self._not_found()
+                        return
+                    uid = resolved_uid
+
+                client.delete_message(uid)
+
+        except ImapMessageNotFoundError:
+            self._not_found()
+            return
+        except ImapError as exc:
+            self._send_response(
+                f"IMAP error during message delete: {exc}",
+                status=502,
+            )
+            return
+        except OSError as exc:
+            self._send_response(
+                f"IMAP connection error: {exc}",
+                status=502,
+            )
+            return
+
+        self._serve_json(
+            {
+                "status": "deleted",
+                "uid": uid,
+                "source_folder": source_folder,
+            }
+        )
+
+    # -- archive folder-rename -----------------------------------------------
+
+    def _handle_archive_rename(self) -> None:
+        """Process POST /archive-rename — rename an archive subfolder in place.
+
+        Accepts a JSON body with:
+
+        - ``source_folder`` (str): the current archive subfolder path
+          (relative to the archive root).
+        - ``target_name`` (str): the new name for the folder (last path
+          component).  The renamed folder remains under the same parent.
+        - ``target_path`` (str, optional): full target path relative to
+          the archive root, for reparenting.  When provided, *target_name*
+          is ignored.
+        - ``confirm`` (bool): must be ``true`` — the operation is
+          irreversible and requires explicit opt-in.
+
+        Performs an in-place IMAP ``RENAME`` — O(1) operation that
+        preserves all contained messages.  Reuses the same path-escape
+        guard as ``/archive-move`` on both source and target.  Returns
+        409 when the target already exists (no silent merge).
+
+        Returns JSON on success.
+        """
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            self._bad_request("Malformed JSON body")
+            return
+
+        if not isinstance(data, dict):
+            self._bad_request("JSON body must be an object")
+            return
+
+        source_folder = _json_field_value(data, "source_folder")
+        target_name = _json_field_value(data, "target_name")
+        target_path = _json_field_value(data, "target_path")
+        confirm = data.get("confirm", False)
+
+        if not source_folder:
+            self._bad_request("source_folder is required")
+            return
+
+        if not confirm:
+            self._bad_request(
+                "confirm must be true — folder rename is irreversible"
+            )
+            return
+
+        # target_path takes precedence over target_name.
+        if target_path:
+            effective_target = target_path
+        elif target_name:
+            # Derive target_path from source_folder's parent + target_name.
+            parts = source_folder.rsplit("/", 1)
+            if len(parts) == 2:
+                effective_target = f"{parts[0]}/{target_name}"
+            else:
+                effective_target = target_name
+        else:
+            self._bad_request("target_name or target_path is required")
+            return
+
+        if self.mail_config is None:
+            self._serve_json(
+                {"error": "IMAP not configured for this account"},
+                status=503,
+            )
+            return
+
+        archive_root = self._effective_archive_root
+
+        # Validate neither source nor target contain ".." segments.
+        if ".." in source_folder.split("/"):
+            self._bad_request("source_folder must not contain '..'")
+            return
+        if ".." in effective_target.split("/"):
+            self._bad_request("target_name/target_path must not contain '..'")
+            return
+
+        from robotsix_auto_mail.imap import ImapClient, ImapError
+
+        try:
+            with ImapClient(self.mail_config) as client:
+                # Discover the server's hierarchy delimiter.
+                existing = client.list_folders()
+                delimiter = next(
+                    (f.delimiter for f in existing if f.delimiter),
+                    "/",
+                )
+
+                # Translate source and target to the IMAP namespace.
+                translated_source = f"{archive_root}/{source_folder}".replace(
+                    "/", delimiter
+                )
+                translated_target = f"{archive_root}/{effective_target}".replace(
+                    "/", delimiter
+                )
+
+                # Validate both paths are under the archive root.
+                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
+                ar_translated = archive_root.replace("/", delimiter)
+
+                if (
+                    translated_source != ar_translated
+                    and not translated_source.startswith(root_prefix)
+                ):
+                    self._bad_request("source_folder escapes archive root")
+                    return
+                if (
+                    translated_target != ar_translated
+                    and not translated_target.startswith(root_prefix)
+                ):
+                    self._bad_request("target_name/target_path escapes archive root")
+                    return
+
+                # Verify the source folder exists.
+                folder_names = {f.name for f in existing}
+                if translated_source not in folder_names:
+                    self._not_found()
+                    return
+
+                # Reject when target already exists (no silent merge).
+                if translated_target in folder_names:
+                    self._serve_json(
+                        {
+                            "error": (
+                                f"Target folder '{effective_target}' "
+                                f"already exists"
+                            ),
+                        },
+                        status=409,
+                    )
+                    return
+
+                client.rename_folder(translated_source, translated_target)
+
+        except ImapError as exc:
+            self._send_response(
+                f"IMAP error during folder rename: {exc}",
+                status=502,
+            )
+            return
+        except OSError as exc:
+            self._send_response(
+                f"IMAP connection error: {exc}",
+                status=502,
+            )
+            return
+
+        self._serve_json(
+            {
+                "status": "renamed",
+                "source_folder": source_folder,
+                "target": effective_target,
+            }
+        )
