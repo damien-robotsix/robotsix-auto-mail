@@ -70,6 +70,13 @@ _STATIC_ADD_ACCOUNT_REDIRECT_JS = (  # lgtm[py/unused-global-variable]
     / "add-account-redirect.js"
 ).read_text()
 
+# CSP-safe Settings panel bootstrap (replaces inline <script type="module">).
+_STATIC_SETTINGS_LOADER_JS = (  # lgtm[py/unused-global-variable]
+    importlib.resources.files("robotsix_auto_mail.server")
+    / "static"
+    / "settings-loader.js"
+).read_text()
+
 # Chat-access SKILL.md — served at GET /chat-skill per the
 # robotsix-standards chat-access standard §1.
 _STATIC_CHAT_SKILL_MD = (  # lgtm[py/unused-global-variable]
@@ -153,6 +160,7 @@ _ = (
     _STATIC_BOARD_AUTOMAIL_JS,
     _STATIC_BOARD_EVENTS_JS,
     _STATIC_ADD_ACCOUNT_REDIRECT_JS,
+    _STATIC_SETTINGS_LOADER_JS,
     _STATIC_CHAT_SKILL_MD,
     _STATIC_ROBOTSIX_UI_JS,
     _STATIC_ROBOTSIX_UI_CSS,
