@@ -36,6 +36,35 @@ from robotsix_auto_mail.triage import (
 logger = logging.getLogger(__name__)
 
 
+def _find_message_in_archive(
+    client: Any,
+    message_id: str,
+    archive_root: str,
+    delimiter: str,
+) -> tuple[str, int] | None:
+    """Search all folders under *archive_root* for *message_id*.
+
+    Returns ``(folder_name, uid)`` or ``None`` when not found.
+    Only searches folders whose name starts with *archive_root*.
+    Skips folders with ``\\Noselect`` attribute.
+    """
+    root_prefix = f"{archive_root}{delimiter}"
+    for folder in client.list_folders():
+        if any(
+            attr.lower() == "\\noselect" for attr in folder.attributes
+        ):
+            continue
+        if folder.name != archive_root and not folder.name.startswith(
+            root_prefix
+        ):
+            continue
+        client.select_folder(folder.name)
+        uids = client.search_uids(f'HEADER Message-ID "{message_id}"')
+        if uids:
+            return (folder.name, uids[0])
+    return None
+
+
 def _json_field_value(data: dict[str, Any], field: str) -> str:
     """Return *field* from *data* coerced to ``str``.
 
@@ -559,4 +588,181 @@ class _BoardActionMixin:
             "notes",
             no_strip=frozenset({"notes"}),
             action=save_notes_action,
+        )
+
+    def _handle_archive_move(self) -> None:
+        """Process POST /archive-move — move a message between archive folders.
+
+        Accepts a JSON body with:
+
+        - ``message_id`` (str): the Message-ID header of the mail to move.
+        - ``uid`` (int): the IMAP UID within ``source_folder`` (alternative
+          to ``message_id``; at least one of ``message_id`` / ``uid`` required).
+        - ``source_folder`` (str): the current archive subfolder path
+          (required when ``uid`` is provided; used as a hint when only
+          ``message_id`` is provided).
+        - ``target_subfolder`` (str): the destination archive subfolder.
+
+        Validates that both source and target are under the archive root.
+        Creates the target folder hierarchy if needed (per the lazy-creation
+        convention).  Returns JSON on success.
+        """
+        from urllib.parse import urlsplit
+
+        from robotsix_auto_mail.imap import (
+            ImapClient,
+            ImapError,
+            ImapMessageNotFoundError,
+        )
+
+        # Parse the JSON body.
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            self._bad_request("Malformed JSON body")
+            return
+
+        if not isinstance(data, dict):
+            self._bad_request("JSON body must be an object")
+            return
+
+        message_id = _json_field_value(data, "message_id")
+        uid_raw = data.get("uid")
+        source_folder = _json_field_value(data, "source_folder")
+        target_subfolder = _json_field_value(data, "target_subfolder")
+
+        uid: int | None = None
+        if uid_raw is not None:
+            try:
+                uid = int(uid_raw)
+            except (ValueError, TypeError):
+                self._bad_request("uid must be an integer")
+                return
+
+        if not message_id and uid is None:
+            self._bad_request(
+                "At least one of message_id or uid is required"
+            )
+            return
+
+        if not target_subfolder:
+            self._bad_request("target_subfolder is required")
+            return
+
+        if self.mail_config is None:
+            self._serve_json(
+                {"error": "IMAP not configured for this account"},
+                status=503,
+            )
+            return
+
+        archive_root = self._effective_archive_root
+
+        # Validate target_subfolder is under archive root (no ".." segments).
+        if ".." in target_subfolder.split("/"):
+            self._bad_request("target_subfolder must not contain '..'")
+            return
+
+        try:
+            with ImapClient(self.mail_config) as client:
+                # Discover the server's hierarchy delimiter.
+                existing = client.list_folders()
+                delimiter = next(
+                    (f.delimiter for f in existing if f.delimiter),
+                    "/",
+                )
+
+                # Resolve the full source folder path.
+                resolved_source_folder: str | None = None
+                resolved_uid: int | None = None
+
+                if uid is not None and source_folder:
+                    # Explicit uid + source_folder: use directly.
+                    translated_source = (
+                        f"{archive_root}/{source_folder}".replace("/", delimiter)
+                    )
+                    # Validate under archive root.
+                    root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
+                    ar_translated = archive_root.replace("/", delimiter)
+                    if (
+                        translated_source != ar_translated
+                        and not translated_source.startswith(root_prefix)
+                    ):
+                        self._bad_request(
+                            "source_folder escapes archive root"
+                        )
+                        return
+                    resolved_source_folder = translated_source
+                    resolved_uid = uid
+                elif message_id:
+                    # Search all archive folders for the message.
+                    resolved = _find_message_in_archive(
+                        client, message_id, archive_root, delimiter
+                    )
+                    if resolved is None:
+                        self._not_found()
+                        return
+                    resolved_source_folder, resolved_uid = resolved
+                else:
+                    self._bad_request(
+                        "source_folder is required when uid is provided without message_id"
+                    )
+                    return
+
+                if resolved_source_folder is None or resolved_uid is None:
+                    self._not_found()
+                    return
+
+                # Compute the destination folder path.
+                translated_target = (
+                    f"{archive_root}/{target_subfolder}".replace("/", delimiter)
+                )
+                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
+                ar_translated = archive_root.replace("/", delimiter)
+                if (
+                    translated_target != ar_translated
+                    and not translated_target.startswith(root_prefix)
+                ):
+                    self._bad_request(
+                        "target_subfolder escapes archive root"
+                    )
+                    return
+
+                # Ensure destination folder hierarchy exists.
+                from robotsix_auto_mail.server.adapters import (
+                    _ensure_folder_hierarchy,
+                )
+
+                _ensure_folder_hierarchy(client, translated_target, delimiter)
+
+                # Select the source folder and perform the move.
+                client.select_folder(resolved_source_folder)
+                client.move_message(resolved_uid, translated_target)
+
+        except ImapMessageNotFoundError:
+            self._not_found()
+            return
+        except ImapError as exc:
+            self._send_response(
+                f"IMAP error during archive move: {exc}",
+                status=502,
+            )
+            return
+        except OSError as exc:
+            self._send_response(
+                f"IMAP connection error: {exc}",
+                status=502,
+            )
+            return
+
+        self._serve_json(
+            {
+                "status": "moved",
+                "message_id": message_id or "",
+                "uid": resolved_uid,
+                "source_folder": resolved_source_folder,
+                "target_subfolder": target_subfolder,
+            }
         )

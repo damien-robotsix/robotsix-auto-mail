@@ -296,6 +296,114 @@ class _BoardViewMixin:
 
         self._serve_json({"delimiter": "/", "folders": folders})
 
+    def _serve_archive_messages(self, folder: str = "") -> None:
+        """Serve GET /archive/<folder>/messages — list messages in an archive folder.
+
+        Connects to IMAP, resolves the folder path under the effective
+        archive root, selects it, and returns envelope metadata for every
+        message present.  Returns an empty list when the folder is empty.
+
+        Supports an optional ``?limit=N`` query parameter (default 500,
+        max 2000) to cap the number of messages returned.
+
+        Short-circuits in aggregate (``?account=__all__``) mode.
+        """
+        if self._aggregate:
+            self._serve_json({"messages": [], "folder": folder or ""})
+            return
+
+        if self.mail_config is None:
+            self._serve_json(
+                {"error": "IMAP not configured for this account"},
+                status=503,
+            )
+            return
+
+        archive_root = self._effective_archive_root
+        delimiter = "/"
+
+        # Resolve the full IMAP folder path.
+        if folder:
+            # Translate "/" in the URL path to the IMAP delimiter.
+            # We'll discover the actual delimiter from the server, but
+            # the URL always uses "/".
+            full_path = f"{archive_root}/{folder}"
+        else:
+            full_path = archive_root
+
+        from robotsix_auto_mail.imap import ImapClient, ImapError
+
+        try:
+            with ImapClient(self.mail_config) as client:
+                # Discover the server's hierarchy delimiter.
+                existing = client.list_folders()
+                delimiter = next(
+                    (f.delimiter for f in existing if f.delimiter),
+                    "/",
+                )
+
+                # Translate "/" in full_path to the server delimiter.
+                translated_path = full_path.replace("/", delimiter)
+
+                # Security: validate the path is under the archive root.
+                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
+                if (
+                    translated_path != archive_root.replace("/", delimiter)
+                    and not translated_path.startswith(root_prefix)
+                ):
+                    self._bad_request(
+                        "Folder path escapes archive root"
+                    )
+                    return
+
+                # Verify the folder exists.
+                matching = [
+                    f for f in existing if f.name == translated_path
+                ]
+                if not matching:
+                    self._not_found()
+                    return
+
+                client.select_folder(translated_path)
+                all_uids = client.search_uids("ALL")
+
+                # Parse limit query parameter.
+                from urllib.parse import parse_qs, urlsplit
+
+                qs = parse_qs(urlsplit(self.path).query)
+                limit_str = qs.get("limit", ["500"])[0]
+                try:
+                    limit = min(max(int(limit_str), 1), 2000)
+                except (ValueError, TypeError):
+                    limit = 500
+
+                uids = all_uids[:limit]
+
+                envelopes = client.fetch_envelopes(uids)
+        except ImapError as exc:
+            self._send_response(
+                f"IMAP error listing archive folder: {exc}",
+                status=502,
+            )
+            return
+        except OSError as exc:
+            self._send_response(
+                f"IMAP connection error: {exc}",
+                status=502,
+            )
+            return
+
+        # Build response — include the effective path for clarity.
+        self._serve_json(
+            {
+                "folder": folder if folder else archive_root,
+                "full_path": full_path,
+                "total": len(all_uids),
+                "shown": len(envelopes),
+                "messages": envelopes,
+            }
+        )
+
     def _serve_email_status(self) -> None:
         """Serve GET /email/{message_id}/status — return triage action as text.
 

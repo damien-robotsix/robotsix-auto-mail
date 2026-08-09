@@ -34,6 +34,9 @@ All GET endpoints below are read-only and safe to call without confirmation.
 - **`GET /archive-proposal/<message_id>`** → JSON `{"subfolder":"…","archive_root":"…","folder_exists":bool,"overridden":bool,"source":"…"}`.
   Shows the effective archive subfolder for a message (source: `override`, `llm`, or `rule`).
 
+- **`GET /archive/<folder>/messages`** → JSON `{"folder":"…","total":N,"shown":N,"messages":[…]}`.
+  Lists messages inside an archive subfolder. Each message object contains `uid`, `subject`, `from`, `date`, `size`, and `flags`.  Accepts optional `?limit=N` (default 500, max 2000).  Returns 404 when the folder does not exist.
+
 ### Liveness
 
 - **`GET /health`** → JSON `{"status":"ok"}` 200. Liveness check only.
@@ -52,6 +55,7 @@ All GET endpoints below are read-only and safe to call without confirmation.
     `POST /batch-archive-folder`).
   - Deleting or archiving individual messages (`POST /delete`,
     `POST /archive`).
+  - Moving messages between archive folders (`POST /archive-move`).
   - Triggering triage or reconcile runs (`POST /run-triage`,
     `POST /reconcile`, `POST /force-triage-column`).
   - Saving or generating drafts (`POST /save-draft`, `POST /generate-draft`).
@@ -60,3 +64,35 @@ All GET endpoints below are read-only and safe to call without confirmation.
 
   Before executing any POST/PUT, confirm with the user and explain what
   the operation will do.
+
+## Archive move (state-mutating, requires confirmation)
+
+- **`POST /archive-move`** — Move a single message from one archive
+  subfolder to another.  Requires operator confirmation per the safety
+  rules above.
+
+  JSON request body:
+  ```json
+  {
+    "message_id": "<Message-ID header>",
+    "source_folder": "<current archive subfolder path>",
+    "target_subfolder": "<destination archive subfolder path>"
+  }
+  ```
+  At least one of `message_id` or `uid` is required.  When `uid` is
+  provided, `source_folder` is also required.  When only `message_id`
+  is provided the server searches all archive folders.
+
+  Response (200):
+  ```json
+  {
+    "status": "moved",
+    "message_id": "<id>",
+    "uid": 42,
+    "source_folder": "<IMAP folder>",
+    "target_subfolder": "<target>"
+  }
+  ```
+
+  Errors: 400 (invalid/missing parameters, path escapes archive root),
+  404 (message not found), 502 (IMAP error).
