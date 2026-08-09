@@ -261,6 +261,7 @@ modules:
       - tests/imap/test_imap_move_message.py
       - tests/imap/test_imap_search_uids.py
       - tests/imap/test_imap_utils.py
+      - tests/imap/test_imap_fetch_envelopes.py
 
   - id: oauth2
     description: >-
@@ -360,6 +361,7 @@ modules:
       - tests/server/test_csrf.py
       - tests/server/_test_helpers.py
       - tests/server/test_action_archive_and_delete.py
+      - tests/server/test_action_archive_move.py
       - tests/server/test_action_background_worker.py
       - tests/server/test_action_handle_archive.py
       - tests/server/test_action_handle_delete.py
@@ -422,6 +424,7 @@ modules:
       - tests/server/_view_helpers.py
       - tests/server/_view_mixin_helpers.py
       - tests/server/test_view_mixin_archive.py
+      - tests/server/test_view_mixin_archive_messages.py
       - tests/server/test_view_mixin_board.py
       - tests/server/test_view_mixin_email.py
       - tests/server/test_view_mixin_static.py

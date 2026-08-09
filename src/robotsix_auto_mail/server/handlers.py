@@ -23,7 +23,7 @@ import json
 from collections.abc import Callable, Mapping
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from robotsix_auto_mail.config import (
     ConfigurationError,
@@ -137,6 +137,14 @@ class BoardHandler(
                 self._serve_archive_folders,
             ),
             (lambda p: p == "/archive-log", self._serve_archive_log),
+            (
+                lambda p: p.startswith("/archive/") and p.endswith("/messages"),
+                lambda: self._serve_archive_messages(
+                    folder=unquote(
+                        urlsplit(self.path).path[len("/archive/") : -len("/messages")]
+                    )
+                ),
+            ),
             (lambda p: p.startswith("/static/"), self._serve_static),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
@@ -196,6 +204,7 @@ class BoardHandler(
             "/move": self._handle_move,
             "/delete": self._handle_delete,
             "/archive": self._handle_archive,
+            "/archive-move": self._handle_archive_move,
             "/batch-delete": self._handle_batch_delete,
             "/batch-archive": self._handle_batch_archive,
             "/batch-archive-folder": self._handle_batch_archive_folder,

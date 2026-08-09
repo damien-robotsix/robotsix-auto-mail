@@ -588,6 +588,62 @@ class ImapClient(_ProtocolClient):
 
         return result
 
+    def fetch_envelopes(self, uids: list[int]) -> list[dict[str, object]]:
+        """Fetch envelope metadata for *uids* without full bodies.
+
+        Uses ``UID FETCH ... (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE)``
+        so the server returns subject, from, date, size, and flags for
+        each message — no body data.  Suitable for listing folder
+        contents without downloading every message.
+
+        Returns:
+            List of dicts, each with keys ``"uid"`` (int),
+            ``"subject"`` (str), ``"from"`` (str), ``"date"`` (str),
+            ``"size"`` (int), and ``"flags"`` (list[str]).
+            UIDs that no longer exist on the server are silently omitted.
+
+        Raises:
+            ImapError: If not connected or the server returns non-OK.
+        """
+        if self._imap is None:
+            raise ImapError("Not connected")
+        if not uids:
+            return []
+
+        uid_set = ",".join(str(uid) for uid in uids)
+        status, data = self._imap.uid(
+            "FETCH", uid_set, "(FLAGS INTERNALDATE RFC822.SIZE ENVELOPE)"
+        )
+        if status != "OK":
+            raise ImapError(f"UID FETCH (ENVELOPE) failed: {status}")
+
+        result: list[dict[str, object]] = []
+        for item in data:
+            # For inline responses (no literals), imaplib returns bytes.
+            if isinstance(item, bytes):
+                uid = self._parse_uid_from_fetch_header(item)
+                if uid is None:
+                    continue
+                msg = _parse_inline_fetch_attrs(item)
+                if msg is not None:
+                    msg["uid"] = uid
+                    result.append(msg)
+            elif isinstance(item, tuple) and len(item) == 2:
+                # Some servers may split the response — handle gracefully.
+                header, payload = item
+                uid = self._parse_uid_from_fetch_header(
+                    header if isinstance(header, bytes) else b""
+                )
+                if uid is None:
+                    continue
+                if isinstance(payload, bytes):
+                    msg = _parse_inline_fetch_attrs(payload)
+                    if msg is not None:
+                        msg["uid"] = uid
+                        result.append(msg)
+
+        return result
+
     def delete_message(self, uid: int) -> None:
         """Mark *uid* as ``\\Deleted`` and expunge the selected mailbox.
 
@@ -826,3 +882,236 @@ class ImapClient(_ProtocolClient):
             return int(match.group(1))
         except (ValueError, TypeError):  # fmt: skip
             return None
+
+
+# ---------------------------------------------------------------------------
+# Module-level helpers for inline fetch-attribute parsing
+# ---------------------------------------------------------------------------
+
+
+def _parse_inline_fetch_attrs(line: bytes) -> dict[str, object] | None:
+    """Parse an inline IMAP FETCH response line into a flat dict.
+
+    ``imaplib`` returns inline FETCH responses (no literals) as bare
+    ``bytes`` items, e.g.::
+
+        b'1 (FLAGS (\\Seen) INTERNALDATE "01-Jan-2024 ..." '
+        b'RFC822.SIZE 1234 ENVELOPE ("01-Jan-2024 ..." "Hello" '
+        b'(("Alice" NIL "user" "example.com")) NIL NIL NIL NIL NIL NIL NIL))'
+
+    This function parses the key-value pairs from the parenthesised
+    part after the sequence number.  Returns a dict with keys
+    ``"flags"``, ``"internal_date"``, ``"size"``, ``"subject"``,
+    ``"from"``, ``"date"``, or ``None`` on parse failure.
+    """
+    text = line.decode("utf-8", errors="replace")
+    # Strip the sequence number prefix: "1 (FLAGS ...)"
+    idx = text.find("(")
+    if idx < 0:
+        return None
+    text = text[idx:]  # "(FLAGS ...)"
+    if not text.startswith("(") or not text.endswith(")"):
+        return None
+    inner = text[1:-1]  # FLAGS (\Seen) INTERNALDATE "..." ENVELOPE (...)
+
+    result: dict[str, object] = {
+        "flags": [],
+        "internal_date": "",
+        "size": 0,
+        "subject": "",
+        "from": "",
+        "date": "",
+    }
+
+    i = 0
+    while i < len(inner):
+        ch = inner[i]
+        if ch == " ":
+            i += 1
+            continue
+        # Read the key (atom).
+        j = i
+        while j < len(inner) and inner[j] not in (" ", ")"):
+            j += 1
+        key = inner[i:j].upper()
+        i = j
+
+        # Skip whitespace before value.
+        while i < len(inner) and inner[i] == " ":
+            i += 1
+
+        if i >= len(inner):
+            break
+
+        # Parse the value.
+        if inner[i] == "(":
+            # Parenthesised value — read matching close paren.
+            depth = 1
+            j = i + 1
+            while j < len(inner) and depth > 0:
+                if inner[j] == "(":
+                    depth += 1
+                elif inner[j] == ")":
+                    depth -= 1
+                j += 1
+            val_text = inner[i + 1 : j - 1]  # content between outer parens
+            i = j
+
+            if key == "FLAGS":
+                result["flags"] = _parse_flags(val_text)
+            elif key == "ENVELOPE":
+                env = _parse_envelope_inline(val_text)
+                if env:
+                    result["subject"] = env.get("subject", "")
+                    result["from"] = env.get("from", "")
+                    result["date"] = env.get("date", "")
+        elif inner[i] == '"':
+            # Quoted string.
+            j = i + 1
+            while j < len(inner) and inner[j] != '"':
+                j += 1
+            val_text = inner[i + 1 : j]
+            i = j + 1
+
+            if key == "INTERNALDATE":
+                result["internal_date"] = val_text
+                if not result["date"]:
+                    result["date"] = val_text
+        else:
+            # Bare atom (like RFC822.SIZE value, or NIL).
+            j = i
+            while j < len(inner) and inner[j] not in (" ", ")"):
+                j += 1
+            val_text = inner[i:j]
+            i = j
+
+            if key == "RFC822.SIZE":
+                with contextlib.suppress(ValueError):
+                    result["size"] = int(val_text)
+
+    return result
+
+
+def _parse_flags(text: str) -> list[str]:
+    """Parse a FLAGS list like ``\\Seen \\Answered`` into a list of strings."""
+    flags: list[str] = []
+    for token in text.split():
+        token = token.strip()
+        if token:
+            flags.append(token)
+    return flags
+
+
+def _parse_envelope_inline(text: str) -> dict[str, str]:
+    """Parse an inline ENVELOPE structure into a dict with subject/from/date.
+
+    The ENVELOPE is: ``date subject from sender reply-to to cc bcc
+    in-reply-to message-id`` where each field is either a quoted
+    string, NIL, or a parenthesised address list.
+    """
+    result: dict[str, str] = {}
+
+    def _read_field(s: str, pos: int) -> tuple[str, int]:
+        """Read one field value starting at *pos*, return (value, next_pos)."""
+        while pos < len(s) and s[pos] == " ":
+            pos += 1
+        if pos >= len(s):
+            return "", pos
+        if s[pos] == '"':
+            # Quoted string.
+            j = pos + 1
+            while j < len(s) and s[j] != '"':
+                j += 1
+            val = s[pos + 1 : j]
+            return val, j + 1
+        elif s[pos : pos + 3] == "NIL":
+            return "", pos + 3
+        elif s[pos] == "(":
+            # Address list: ((personal NIL mailbox host) ...)
+            depth = 1
+            j = pos + 1
+            while j < len(s) and depth > 0:
+                if s[j] == "(":
+                    depth += 1
+                elif s[j] == ")":
+                    depth -= 1
+                j += 1
+            addr_text = s[pos + 1 : j - 1]
+            return _format_first_address(addr_text), j
+        else:
+            # Bare atom — read until space or end.
+            j = pos
+            while j < len(s) and s[j] != " ":
+                j += 1
+            return s[pos:j], j
+
+    s = text
+    pos = 0
+    date_str, pos = _read_field(s, pos)
+    result["date"] = date_str
+    subject, pos = _read_field(s, pos)
+    result["subject"] = subject
+    from_str, pos = _read_field(s, pos)
+    result["from"] = from_str
+
+    return result
+
+
+def _format_first_address(addr_text: str) -> str:
+    """Parse the first address from an IMAP address list and format it.
+
+    An address list looks like: ``("Personal" NIL "mailbox" "host")``
+    or multiple: ``(...)(...)``.
+    """
+    if not addr_text.strip():
+        return ""
+    # Find the first address tuple.
+    text = addr_text.strip()
+    if text.startswith("("):
+        # Find the matching close paren for the first address.
+        depth = 1
+        j = 1
+        while j < len(text) and depth > 0:
+            if text[j] == "(":
+                depth += 1
+            elif text[j] == ")":
+                depth -= 1
+            j += 1
+        addr_inner = text[1 : j - 1]
+    else:
+        addr_inner = text
+
+    # addr_inner: "personal" NIL "mailbox" "host"
+    parts: list[str] = []
+    i = 0
+    while i < len(addr_inner):
+        if addr_inner[i] == " ":
+            i += 1
+            continue
+        if addr_inner[i] == '"':
+            j = i + 1
+            while j < len(addr_inner) and addr_inner[j] != '"':
+                j += 1
+            parts.append(addr_inner[i + 1 : j])
+            i = j + 1
+        elif addr_inner[i : i + 3] == "NIL":
+            parts.append("")
+            i += 3
+        else:
+            # Bare atom.
+            j = i
+            while j < len(addr_inner) and addr_inner[j] != " ":
+                j += 1
+            parts.append(addr_inner[i:j])
+            i = j
+
+    # Address tuple is (personal, at_domain, mailbox, host)
+    if len(parts) >= 4:
+        personal = parts[0]
+        mailbox = parts[2]
+        host = parts[3]
+        if personal:
+            return f"{personal} <{mailbox}@{host}>"
+        if mailbox and host:
+            return f"{mailbox}@{host}"
+    return ""
