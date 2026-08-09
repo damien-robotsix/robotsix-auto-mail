@@ -51,21 +51,7 @@ _SETTINGS_PAGE = (
 <div id="settings-panel"></div>
 <noscript><p class="panel-fallback">Settings require JavaScript.</p></noscript>
 </main>
-<script type="module">
-  // A missing vendored asset must say so rather than leave a blank page.
-  import("/static/robotsix-ui.js")
-    .then((ui) => {
-      ui.mountConfigPanel(document.getElementById("settings-panel"), {
-        title: "Settings",
-      });
-    })
-    .catch(() => {
-      document.getElementById("settings-panel").innerHTML =
-        '<p class="panel-fallback">The shared config panel asset is missing. ' +
-        "It is vendored at image build time; for a local checkout run " +
-        "<code>scripts/vendor-ui.sh</code>.</p>";
-    });
-</script>
+<script type="module" src="/static/settings-loader.js"></script>
 </body>
 </html>
 """

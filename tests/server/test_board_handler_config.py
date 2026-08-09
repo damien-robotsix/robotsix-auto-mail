@@ -169,7 +169,7 @@ def test_settings_page_serves_the_shared_panel(single_db: str) -> None:
         resp = urllib.request.urlopen(f"http://127.0.0.1:{port}/settings-panel")
         body = resp.read().decode("utf-8")
         assert resp.status == 200
-        assert "mountConfigPanel" in body
+        assert "/static/settings-loader.js" in body
     finally:
         server.shutdown()
 

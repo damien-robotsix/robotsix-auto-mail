@@ -17,6 +17,7 @@ from robotsix_auto_mail.server._constants import (
     _STATIC_BOARD_JS,
     _STATIC_ROBOTSIX_UI_CSS,
     _STATIC_ROBOTSIX_UI_JS,
+    _STATIC_SETTINGS_LOADER_JS,
     _parse_archive_structure,
     _with_db,
 )
@@ -137,6 +138,11 @@ class _BoardViewMixin:
         elif self.path == "/static/add-account-redirect.js":
             self._send_response(
                 _STATIC_ADD_ACCOUNT_REDIRECT_JS,
+                content_type="text/javascript; charset=utf-8",
+            )
+        elif self.path == "/static/settings-loader.js":
+            self._send_response(
+                _STATIC_SETTINGS_LOADER_JS,
                 content_type="text/javascript; charset=utf-8",
             )
         elif self.path == "/static/robotsix-ui.js":

@@ -229,9 +229,9 @@ def test_settings_page_mounts_the_shared_panel() -> None:
     handler._serve_settings_panel()
 
     body = handler._send_response.call_args[0][0]
-    # No bespoke form: the page mounts the shared renderer against the surface.
-    assert "/static/robotsix-ui.js" in body
-    assert "mountConfigPanel" in body
+    # No bespoke form: the page mounts the shared renderer via an external
+    # module script (CSP-safe — no 'unsafe-inline').
+    assert "/static/settings-loader.js" in body
     assert "<input" not in body
 
 
