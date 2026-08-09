@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.2.1...v0.2.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **release:** don't fail lock-sync when the release branch is gone ([#1138](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1138)) ([3d7c5bb](https://github.com/damien-robotsix/robotsix-auto-mail/commit/3d7c5bba4a594b142d5596ee0c78cbd788c955f2))
+
 ## [0.2.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.2.0...v0.2.1) (2026-08-09)
 
 
