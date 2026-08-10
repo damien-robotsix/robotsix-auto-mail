@@ -124,6 +124,7 @@ class BoardHandler(
             (lambda p: p == "/", lambda: self._redirect("/board")),
             (lambda p: p == "/board", self._serve_board),
             (lambda p: p == "/board-content", self._serve_board_content),
+            (lambda p: p == "/board-cards", self._serve_board_cards),
             (lambda p: p == "/chat-skill", self._serve_chat_skill),
             (lambda p: p == "/health", self._serve_health),
             (lambda p: p == "/healthz", self._serve_health),
