@@ -34,16 +34,16 @@ from .archive import (
     setup_archive as setup_archive,
 )
 from .models import (
-    _SCHEMA as _SCHEMA,
-)
-from .models import (
-    _TRIAGE_ACTION_CHECK_VALUES as _TRIAGE_ACTION_CHECK_VALUES,
+    MailRecord as MailRecord,
 )
 from .models import (
     VALID_TRIAGE_ACTIONS as VALID_TRIAGE_ACTIONS,
 )
 from .models import (
-    MailRecord as MailRecord,
+    _SCHEMA as _SCHEMA,
+)
+from .models import (
+    _TRIAGE_ACTION_CHECK_VALUES as _TRIAGE_ACTION_CHECK_VALUES,
 )
 from .queries import (
     component_settings_count as component_settings_count,
@@ -79,9 +79,6 @@ from .queries import (
     list_archive_audit_entries as list_archive_audit_entries,
 )
 from .queries import (
-    resolve_db_path as resolve_db_path,
-)
-from .queries import (
     list_records as list_records,
 )
 from .queries import (
@@ -92,6 +89,9 @@ from .queries import (
 )
 from .queries import (
     record_exists as record_exists,
+)
+from .queries import (
+    resolve_db_path as resolve_db_path,
 )
 from .queries import (
     save_json_watermark as save_json_watermark,
