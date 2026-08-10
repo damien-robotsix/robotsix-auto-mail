@@ -347,34 +347,26 @@ def test_resolve_db_path_absolute_is_not_rerooted() -> None:
 
 def test_check_data_root_is_mount_raises_on_nonexistent(tmp_path, monkeypatch):
     """SystemExit when mail_data_root does not exist."""
-    import os
 
     from robotsix_auto_mail.db.queries import _check_data_root_is_mount
 
     monkeypatch.delenv("ROBOTSIX_SKIP_MOUNT_CHECK", raising=False)
     nonexistent = str(tmp_path / "nonexistent")
-    try:
+    with pytest.raises(SystemExit) as exc_info:
         _check_data_root_is_mount(nonexistent)
-    except SystemExit as exc:
-        assert exc.code == 1
-    else:
-        pytest.fail("Expected SystemExit")
+    assert exc_info.value.code == 1
 
 
 def test_check_data_root_is_mount_raises_on_non_mount(tmp_path, monkeypatch):
     """SystemExit when mail_data_root is not a mount point."""
-    import os
 
     from robotsix_auto_mail.db.queries import _check_data_root_is_mount
 
     monkeypatch.delenv("ROBOTSIX_SKIP_MOUNT_CHECK", raising=False)
     # tmp_path is a regular directory, not a mount point.
-    try:
+    with pytest.raises(SystemExit) as exc_info:
         _check_data_root_is_mount(str(tmp_path))
-    except SystemExit as exc:
-        assert exc.code == 1
-    else:
-        pytest.fail("Expected SystemExit")
+    assert exc_info.value.code == 1
 
 
 def test_check_data_root_is_mount_passes_on_actual_mount(monkeypatch):

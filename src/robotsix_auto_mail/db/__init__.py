@@ -73,13 +73,13 @@ from .queries import (
     init_db as init_db,
 )
 from .queries import (
-    resolve_db_path as resolve_db_path,
-)
-from .queries import (
     insert_record as insert_record,
 )
 from .queries import (
     list_archive_audit_entries as list_archive_audit_entries,
+)
+from .queries import (
+    resolve_db_path as resolve_db_path,
 )
 from .queries import (
     list_records as list_records,
@@ -144,13 +144,13 @@ __all__ = [
     "get_record_by_message_id",
     "get_watermark",
     "init_db",
-    "resolve_db_path",
     "insert_record",
     "list_archive_audit_entries",
     "list_records",
     "list_untriaged_records",
     "load_json_watermark",
     "record_exists",
+    "resolve_db_path",
     "save_json_watermark",
     "set_component_settings",
     "set_watermark",
