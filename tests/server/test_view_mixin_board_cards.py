@@ -182,24 +182,22 @@ class TestServeBoardCards:
         assert subs["<m2@x.com>"] == "Finance"
         assert subs["<m3@x.com>"] == "Vendors"
 
-    def test_db_unavailable_returns_503(self, fake_db_path: str) -> None:
+    def test_db_unavailable_returns_503(
+        self, fake_db_path: str, request: pytest.FixtureRequest
+    ) -> None:
         """When _gather_account_board_data raises, return 503."""
+        gather = request.getfixturevalue("_mock_gather")
+        gather.side_effect = Exception("DB connection lost")
+
         handler = _FakeHandler(
             fake_db_path,
             _aggregate=False,
             path="/board-cards",
         )
-        # Even when the fixture mocks _gather_account_board_data globally,
-        # we can override it for this test to simulate a failure.
         handler._serve_board_cards()
-        # Reset the mock to raise — but that would conflict with the
-        # fixture.  Instead, test the error path by running the real
-        # method against the fake handler without a DB: _gather calls
-        # _with_db which uses init_db on a non-existent file.
-        # But our fixture globally patches _gather_account_board_data,
-        # so this test validates the normal path.  For completeness,
-        # we validate the 503 path via an integration test below.
-        pass  # Covered by test_board_cards_endpoint_* integration tests.
+        handler._serve_json.assert_called_once_with(
+            {"error": "Database unavailable"}, status=503
+        )
 
     def test_main_fallback_account_id(self, fake_db_path: str) -> None:
         """When _current_account_id is None, account field is 'main'."""
