@@ -261,19 +261,19 @@ or the pre-commit gate will fail.
 ### Changelog fragments (towncrier)
 
 Every PR that adds or modifies source, test, or configuration files
-MUST include a changelog fragment file under `changelog/`.  The fragment
+MUST include a changelog fragment file under `changelog.d/`.  The fragment
 must be a ``.md`` file whose name follows the towncrier convention
 (``<ID>.<type>.md``) and whose type matches one of the configured
 categories: ``feature``, ``bugfix``, ``removal``, or ``misc``.  The
 `towncrier check` CI gate in `ci.yml` verifies this on pull requests.
 
 **Rule:** Changelog fragments are claimed in `docs/modules.yaml` (core
-module) via the single glob entry `- changelog/*.md` (plus
-`- changelog/.gitkeep`) — NOT per-fragment path entries.  Do not
-append an individual `changelog/<id>.<type>.md` line when you add a
+module) via the single glob entry `- changelog.d/*.md` (plus
+`- changelog.d/.gitkeep`) — NOT per-fragment path entries.  Do not
+append an individual `changelog.d/<id>.<type>.md` line when you add a
 fragment; the glob already covers it.  The `robotsix-modules
 check-registration` gate passes because the glob claims every
-`changelog/` file.
+`changelog.d/` file.
 
 ---
 
