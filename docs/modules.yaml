@@ -364,6 +364,7 @@ modules:
       - tests/server/test_csrf.py
       - tests/server/_test_helpers.py
       - tests/server/test_action_archive_and_delete.py
+      - tests/server/test_action_archive_delete.py
       - tests/server/test_action_archive_move.py
       - tests/server/test_action_background_worker.py
       - tests/server/test_action_handle_archive.py

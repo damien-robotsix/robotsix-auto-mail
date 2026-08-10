@@ -881,8 +881,23 @@ class _BoardActionMixin:
                             )
                             return
 
-                # Non-empty force-delete: expunge all messages first.
+                # Non-empty force-delete: expunge all messages first,
+                # and recursively delete child folders (deepest-first)
+                # so the IMAP DELETE of the target folder succeeds.
                 if force:
+                    child_prefix = f"{translated_source}{delimiter}"
+                    child_folders = sorted(
+                        (f for f in folder_names if f.startswith(child_prefix)),
+                        key=lambda f: f.count(delimiter),
+                        reverse=True,
+                    )
+                    for child in child_folders:
+                        client.select_folder(child)
+                        child_uids = client.search_uids("ALL")
+                        if child_uids:
+                            client.delete_messages(child_uids)
+                        client.delete_folder(child)
+
                     client.select_folder(translated_source)
                     all_uids = client.search_uids("ALL")
                     if all_uids:
