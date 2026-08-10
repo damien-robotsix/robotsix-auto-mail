@@ -888,8 +888,7 @@ class _BoardActionMixin:
                     child_prefix = f"{translated_source}{delimiter}"
                     child_folders = sorted(
                         (f for f in folder_names if f.startswith(child_prefix)),
-                        key=lambda f: f.count(delimiter),
-                        reverse=True,
+                        key=lambda f: (-f.count(delimiter), f),
                     )
                     for child in child_folders:
                         client.select_folder(child)
