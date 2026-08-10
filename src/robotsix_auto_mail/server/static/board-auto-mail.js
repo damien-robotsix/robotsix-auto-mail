@@ -558,6 +558,21 @@
           }
         }
 
+        const ic = document.getElementById("ingest-control");
+        if (ic) {
+          if (data.ingest_running) {
+            ic.innerHTML =
+              '<div class="ingest-banner banner-base">Ingesting mail\u2026</div>';
+          } else if (data.last_ingest_at) {
+            ic.innerHTML =
+              '<div class="ingest-banner banner-base">Last fetched: ' +
+              data.last_ingest_at +
+              "</div>";
+          } else {
+            ic.innerHTML = "";
+          }
+        }
+
         const bc = document.getElementById("batch-control");
         if (bc) {
           const op = data.batch_op;

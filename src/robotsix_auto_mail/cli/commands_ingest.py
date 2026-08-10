@@ -15,7 +15,13 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
 )
+from robotsix_auto_mail.core._constants import (
+    _INGEST_RUN_STATE_KEY,
+    _WATERMARK_IDLE,
+    _WATERMARK_RUNNING,
+)
 from robotsix_auto_mail.core.health import probe_account, utcnow
+from robotsix_auto_mail.db import set_watermark
 from robotsix_auto_mail.db.queries import write_account_health
 from robotsix_auto_mail.pipeline import IngestResult, reconcile_records
 
@@ -138,6 +144,7 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
     """
     result: IngestResult | None = None
     conn = _cli.init_db(config.db_path)
+    set_watermark(conn, _INGEST_RUN_STATE_KEY, _WATERMARK_RUNNING)
     success = False
     try:
         with _cli.ImapClient(config) as imap_client:
@@ -166,6 +173,14 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
         # but the connection itself succeeded).
         success = not dry_run and result is not None
     finally:
+        # Record ingest-complete watermarks so the board UI can show
+        # ingest liveness (running/idle, last-run timestamps).
+        with contextlib.suppress(Exception):
+            set_watermark(conn, _INGEST_RUN_STATE_KEY, _WATERMARK_IDLE)
+            now_iso = utcnow().isoformat()
+            set_watermark(conn, "ingest_run:last_at", now_iso)
+            if success:
+                set_watermark(conn, "ingest_run:last_success_at", now_iso)
         if success:
             with contextlib.suppress(Exception):
                 write_account_health(conn, status="ok", error=None, checked_at=utcnow())

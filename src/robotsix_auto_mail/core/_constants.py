@@ -9,6 +9,7 @@ _ARCHIVE_ROOT = "robotsix-mail-archive"
 _TRIAGE_RUN_STATE_KEY = "triage_run:state"
 _BATCH_OP_STATE_KEY = "batch_op:state"
 _RECONCILE_STATE_KEY = "reconcile:state"
+_INGEST_RUN_STATE_KEY = "ingest_run:state"
 
 #: Watermark sentinel values — the two canonical states for single-flight guards.
 _WATERMARK_RUNNING: Final = "running"
@@ -34,6 +35,7 @@ _ = (
     _TRIAGE_RUN_STATE_KEY,
     _BATCH_OP_STATE_KEY,
     _RECONCILE_STATE_KEY,
+    _INGEST_RUN_STATE_KEY,
     _WATERMARK_RUNNING,
     _WATERMARK_IDLE,
     _ARCHIVE_TAXONOMY_GUIDANCE,
