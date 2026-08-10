@@ -436,7 +436,7 @@ def _zero_mails_warning_html(
         "  &#9888; <strong>No mail fetched yet.</strong>"
         f" {account_count} account(s) configured but ingest has never run"
         " or appears stalled."
-        ' Check that the ingest process is running or'
+        " Check that the ingest process is running or"
         ' <a href="/probe-health">recheck connections</a>.\n'
         "</div>"
     )
@@ -476,9 +476,7 @@ def _render_board_page_shell(
     ingest_control_html: str
     if ingest_running:
         ingest_control_html = (
-            '<div class="ingest-banner banner-base">'
-            "Ingesting mail\u2026"
-            "</div>"
+            '<div class="ingest-banner banner-base">Ingesting mail\u2026</div>'
         )
     elif last_ingest_at:
         ingest_control_html = (

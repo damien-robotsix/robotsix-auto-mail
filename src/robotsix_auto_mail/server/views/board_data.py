@@ -59,9 +59,7 @@ def _read_ingest_state(
     ``last_success_ingest_at``, and ``last_error_ingest_at``.
     All timestamp values are ISO-format strings or ``None``.
     """
-    ingest_running = (
-        get_watermark(conn, _INGEST_RUN_STATE_KEY) == _WATERMARK_RUNNING
-    )
+    ingest_running = get_watermark(conn, _INGEST_RUN_STATE_KEY) == _WATERMARK_RUNNING
     return {
         "ingest_running": ingest_running,
         "last_ingest_at": get_watermark(conn, "ingest_run:last_at"),
