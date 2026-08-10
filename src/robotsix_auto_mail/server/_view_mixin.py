@@ -235,6 +235,73 @@ class _BoardViewMixin:
             }
         )
 
+    def _serve_board_cards(self) -> None:
+        """Serve GET /board-cards — structured JSON list of board cards.
+
+        Returns a flat JSON array of cards, each with message_id, uid (if
+        available), subject, from, date, column, proposed_archive_subfolder,
+        and account. No HTML anywhere in the response.
+
+        Query params:
+        - ``account`` — resolved by ``_select_account`` before dispatch;
+          an unknown account returns 404.
+        - ``column`` / ``status`` — optional filter to a single triage
+          action (e.g. ``TO_ARCHIVE``, ``INBOX``).
+        """
+        from urllib.parse import parse_qs, urlsplit
+
+        from robotsix_auto_mail.server.views.board_data import (
+            _gather_account_board_data,
+        )
+
+        if self._aggregate:
+            self._serve_json(
+                {"error": "board-cards is per-account; use ?account=<id>"},
+                status=400,
+            )
+            return
+
+        archive_root = self._effective_archive_root
+        try:
+            data = _gather_account_board_data(self.db_path, archive_root=archive_root)
+        except Exception:
+            self._serve_json({"error": "Database unavailable"}, status=503)
+            return
+
+        column_buckets = data["column_buckets"]
+        archive_subfolders = data.get("archive_subfolders", {})
+
+        # Parse optional column filter.
+        qs = parse_qs(urlsplit(self.path).query)
+        column_filter = qs.get("column")
+        if column_filter is None:
+            column_filter = qs.get("status")
+        column_value = column_filter[0] if column_filter else None
+
+        account_id = self._current_account_id or "main"
+        cards: list[dict[str, object]] = []
+
+        for column, records in column_buckets.items():
+            if column_value is not None and column != column_value:
+                continue
+            for record in records:
+                cards.append(
+                    {
+                        "message_id": record.message_id,
+                        "uid": record.imap_uid,
+                        "subject": record.subject,
+                        "from": record.sender,
+                        "date": record.date,
+                        "column": column,
+                        "proposed_archive_subfolder": archive_subfolders.get(
+                            record.message_id, ""
+                        ),
+                        "account": account_id,
+                    }
+                )
+
+        self._serve_json({"cards": cards, "account": account_id})
+
     def _serve_archive_folders(self) -> None:
         """Serve GET /archive-folders — JSON with delimiter + flat subfolder list.
 

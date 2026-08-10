@@ -430,6 +430,7 @@ modules:
       - tests/server/test_view_mixin_archive.py
       - tests/server/test_view_mixin_archive_messages.py
       - tests/server/test_view_mixin_board.py
+      - tests/server/test_view_mixin_board_cards.py
       - tests/server/test_view_mixin_email.py
       - tests/server/test_view_mixin_static.py
       - tests/server/test_views_detail_attachments.py

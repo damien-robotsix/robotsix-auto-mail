@@ -18,6 +18,17 @@ All GET endpoints below are read-only and safe to call without confirmation.
   Returns the full board payload: rendered column HTML, triage-agent status,
   batch-operation progress (if any), and per-account health watermark.
 
+- **`GET /board-cards?account=<id>`** → JSON `{"cards":[…],"account":"<id>"}`.
+  Returns a flat JSON array of every board card with structured fields:
+  `message_id`, `uid` (nullable), `subject`, `from`, `date`, `column`
+  (triage action), `proposed_archive_subfolder`, and `account`.
+  The `?account=` query parameter is **required** — an unknown/mistyped
+  account returns 404 (never silently falls back to the default account).
+  Optional `?column=<action>` (or `?status=<action>`) filters to a single
+  triage column (e.g. `TO_ARCHIVE`, `INBOX`, `TO_ANSWER`).
+  No HTML anywhere in the response — this is the preferred endpoint for
+  programmatic triage (chat agent, scripts, grouping by destination).
+
 ### Email inspection
 
 - **`GET /email/<message_id>`** → HTML detail page for one message.
