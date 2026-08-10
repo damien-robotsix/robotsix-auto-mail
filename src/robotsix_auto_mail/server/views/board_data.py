@@ -16,6 +16,7 @@ from typing import Any, cast
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
 from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
+    _INGEST_RUN_STATE_KEY,
     _TRIAGE_RUN_STATE_KEY,
     _WATERMARK_IDLE,
     _WATERMARK_RUNNING,
@@ -47,6 +48,24 @@ def _read_account_health(
     health = get_account_health(conn)
     triage_running = get_watermark(conn, _TRIAGE_RUN_STATE_KEY) == _WATERMARK_RUNNING
     return health, triage_running
+
+
+def _read_ingest_state(
+    conn: sqlite3.Connection,
+) -> dict[str, Any]:
+    """Read ingest-liveness watermarks from the database.
+
+    Returns a dict with keys ``ingest_running``, ``last_ingest_at``,
+    ``last_success_ingest_at``, and ``last_error_ingest_at``.
+    All timestamp values are ISO-format strings or ``None``.
+    """
+    ingest_running = get_watermark(conn, _INGEST_RUN_STATE_KEY) == _WATERMARK_RUNNING
+    return {
+        "ingest_running": ingest_running,
+        "last_ingest_at": get_watermark(conn, "ingest_run:last_at"),
+        "last_success_ingest_at": get_watermark(conn, "ingest_run:last_success_at"),
+        "last_error_ingest_at": get_watermark(conn, "ingest_run:last_error_at"),
+    }
 
 
 def _parse_batch_op(conn: sqlite3.Connection) -> dict[str, Any] | None:
@@ -206,6 +225,7 @@ def _gather_account_board_data(
         # inconsistent snapshots (records present, decisions absent).
         conn.execute("BEGIN")
         health, triage_running = _read_account_health(conn)
+        ingest_state = _read_ingest_state(conn)
         batch_op = _parse_batch_op(conn)
         all_records, triage_by_mid, column_buckets = _load_triage_state(conn)
         archive_ctx = _load_archive_context(conn, archive_root, column_buckets)
@@ -216,6 +236,7 @@ def _gather_account_board_data(
         "triage_running": triage_running,
         "batch_op": batch_op,
         "health": health,
+        "ingest_state": ingest_state,
         "triage_by_mid": triage_by_mid,
         "column_buckets": column_buckets,
         "total_mail_count": len(all_records),

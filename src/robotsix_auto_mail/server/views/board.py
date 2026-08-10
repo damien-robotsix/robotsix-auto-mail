@@ -91,6 +91,7 @@ def _build_board_content(
     triage_running = gathered["triage_running"]
     batch_op = gathered["batch_op"]
     health = gathered["health"]
+    ingest_state: dict[str, Any] = gathered["ingest_state"]
     total_mail_count: int = gathered["total_mail_count"]
     triage_by_mid: dict[str, TriageDecision] = gathered["triage_by_mid"]
     column_buckets: dict[str, list[MailRecord]] = gathered["column_buckets"]
@@ -138,7 +139,14 @@ def _build_board_content(
     zero_mails_warning_html = _zero_mails_warning_html(
         total_mail_count=total_mail_count,
         account_count=1,
+        last_ingest_at=ingest_state.get("last_ingest_at"),
+        ingest_has_run=ingest_state.get("last_ingest_at") is not None,
     )
+
+    # Per-account ingest mode from config (None when no config is available).
+    ingest_mode: str | None = None
+    if mail_config is not None:
+        ingest_mode = getattr(mail_config, "ingest_mode", None)
 
     return {
         "columns_html": columns_html,
@@ -148,6 +156,11 @@ def _build_board_content(
         "health_alerts_html": health_alerts_html,
         "zero_mails_warning_html": zero_mails_warning_html,
         "unsubscribe_suggestions": unsubscribe_suggestions,
+        "ingest_running": ingest_state["ingest_running"],
+        "last_ingest_at": ingest_state["last_ingest_at"],
+        "last_success_ingest_at": ingest_state["last_success_ingest_at"],
+        "last_error_ingest_at": ingest_state["last_error_ingest_at"],
+        "ingest_mode": ingest_mode,
     }
 
 
@@ -183,6 +196,10 @@ def _build_global_board_content(
     account_health: dict[str, dict[str, Any] | None] = {}
     triage_running: bool = False
     total_mail_count: int = 0
+    # Aggregate ingest state across accounts.
+    ingest_running: bool = False
+    # Most recent last_ingest_at across all accounts.
+    last_ingest_at: str | None = None
     # Aggregate batch-op progress across accounts.  Each account runs its
     # own worker against its own DB; we sum their done/total so the banner
     # shows combined progress for the fanned-out "Delete All".
@@ -203,6 +220,14 @@ def _build_global_board_content(
 
         triage_running = triage_running or gathered["triage_running"]
         account_health[aid] = gathered["health"]
+
+        # Aggregate ingest state: running if ANY account is running;
+        # last_ingest_at is the most recent across all accounts.
+        ingest_state: dict[str, Any] = gathered["ingest_state"]
+        ingest_running = ingest_running or ingest_state["ingest_running"]
+        account_last = ingest_state.get("last_ingest_at")
+        if account_last and (last_ingest_at is None or account_last > last_ingest_at):
+            last_ingest_at = account_last
 
         account_total: int = gathered.get("total_mail_count", 0)
         total_mail_count += account_total
@@ -273,6 +298,8 @@ def _build_global_board_content(
     zero_mails_warning_html = _zero_mails_warning_html(
         total_mail_count=total_mail_count,
         account_count=len(accounts.accounts),
+        last_ingest_at=last_ingest_at,
+        ingest_has_run=last_ingest_at is not None,
     )
 
     return {
@@ -283,6 +310,8 @@ def _build_global_board_content(
         "health_alerts_html": health_alerts_html,
         "zero_mails_warning_html": zero_mails_warning_html,
         "account_health": account_health,
+        "ingest_running": ingest_running,
+        "last_ingest_at": last_ingest_at,
     }
 
 
@@ -376,6 +405,9 @@ def _health_alerts_html(
 def _zero_mails_warning_html(
     total_mail_count: int,
     account_count: int,
+    *,
+    last_ingest_at: str | None = None,
+    ingest_has_run: bool = False,
 ) -> str:
     """Return a yellow warning banner when accounts are configured but no mails
     have been fetched yet, or ``""`` when mails are present / no accounts exist.
@@ -383,13 +415,27 @@ def _zero_mails_warning_html(
     This is the regression guard for "accounts configured but zero mails
     fetched" — it tells the operator at a glance that the ingest process
     may not be running or may have failed silently.
+
+    When *last_ingest_at* or *ingest_has_run* is available the message is
+    nuanced: "ingest last ran <time>, found no new mail" vs. "ingest has
+    never run / appears stalled".
     """
     if total_mail_count > 0 or account_count == 0:
         return ""
+    if ingest_has_run and last_ingest_at:
+        return (
+            '<div class="zero-mails-banner banner-base" role="alert">\n'
+            "  &#9888; <strong>No mail fetched yet.</strong>"
+            f" Ingest last ran {html.escape(last_ingest_at)}, found no new mail."
+            f" {account_count} account(s) configured."
+            ' <a href="/probe-health">Recheck connections</a>.\n'
+            "</div>"
+        )
     return (
         '<div class="zero-mails-banner banner-base" role="alert">\n'
         "  &#9888; <strong>No mail fetched yet.</strong>"
-        f" {account_count} account(s) configured but the mailbox is empty."
+        f" {account_count} account(s) configured but ingest has never run"
+        " or appears stalled."
         " Check that the ingest process is running or"
         ' <a href="/probe-health">recheck connections</a>.\n'
         "</div>"
@@ -407,6 +453,8 @@ def _render_board_page_shell(
     data_account_js: bool,
     health_alerts_html: str = "",
     zero_mails_warning_html: str = "",
+    ingest_running: bool = False,
+    last_ingest_at: str | None = None,
 ) -> str:
     """Shared HTML page shell + JS for both single-account and global boards.
 
@@ -423,6 +471,21 @@ def _render_board_page_shell(
         )
     else:
         triage_control_html = ""
+
+    # Ingest status indicator — analogous to the triage banner.
+    ingest_control_html: str
+    if ingest_running:
+        ingest_control_html = (
+            '<div class="ingest-banner banner-base">Ingesting mail\u2026</div>'
+        )
+    elif last_ingest_at:
+        ingest_control_html = (
+            '<div class="ingest-banner banner-base">'
+            f"Last fetched: {html.escape(last_ingest_at)}"
+            "</div>"
+        )
+    else:
+        ingest_control_html = ""
 
     # Build the #board-config JSON payload so robotsix-board's board.js
     # can activate and expose its public API (robotsixBoardRefresh, etc.).
@@ -471,6 +534,7 @@ def _render_board_page_shell(
             "</header>\n"
         )
         + f'<span id="triage-control">{triage_control_html}</span>\n'
+        f'<span id="ingest-control">{ingest_control_html}</span>\n'
         f'<span id="batch-control">{batch_control_html}</span>\n'
         '<div class="board-wrapper">\n'
         '<div class="board">\n'
@@ -611,6 +675,8 @@ def _build_board_html(
         data_account_js=False,
         health_alerts_html=content.get("health_alerts_html", ""),
         zero_mails_warning_html=content.get("zero_mails_warning_html", ""),
+        ingest_running=content.get("ingest_running", False),
+        last_ingest_at=content.get("last_ingest_at"),
     )
 
 
@@ -670,4 +736,6 @@ def _build_global_board_html(
         data_account_js=True,
         health_alerts_html=content.get("health_alerts_html", ""),
         zero_mails_warning_html=content.get("zero_mails_warning_html", ""),
+        ingest_running=content.get("ingest_running", False),
+        last_ingest_at=content.get("last_ingest_at"),
     )

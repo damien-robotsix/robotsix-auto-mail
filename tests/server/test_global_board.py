@@ -64,6 +64,8 @@ def test_global_content_builder_returns_correct_keys(
         "health_alerts_html",
         "zero_mails_warning_html",
         "account_health",
+        "ingest_running",
+        "last_ingest_at",
     }
     # No batch op running → aggregated batch_op is None.
     assert result["batch_op"] is None
