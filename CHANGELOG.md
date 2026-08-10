@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.3.0...v0.4.0) (2026-08-10)
+
+
+### Features
+
+* Add a live ingest-status indicator to the mail board UI (20260809T101618Z-add-a-live-ingest-status-indicator-to-th-347e) ([#1153](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1153)) ([a26bcc8](https://github.com/damien-robotsix/robotsix-auto-mail/commit/a26bcc8a20b2a4a2a9bbe0822237c80394307c01))
+* Add structured JSON board-cards endpoint for machine triage (no HTML parsing) (20260809T220827Z-add-structured-json-board-cards-endpoint-4b7e) ([#1157](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1157)) ([dc05179](https://github.com/damien-robotsix/robotsix-auto-mail/commit/dc05179908e814f17b932d94b42fe74b7cc0ebcf))
+* Clean up dead code: 3 unused functions in cli/config.py and unused attribute in settings/store.py (20260807T233036Z-clean-up-dead-code-3-unused-functions-in-f791) ([#1148](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1148)) ([a983a22](https://github.com/damien-robotsix/robotsix-auto-mail/commit/a983a221e8c74d6ed222ecbfc9b0ae9ef393ead9))
+* robotsix-auto-mail: Enable roadmap_sync periodic workflow (20260809T052516Z-robotsix-auto-mail-enable-roadmap-sync-p-94b2) ([#1150](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1150)) ([0386382](https://github.com/damien-robotsix/robotsix-auto-mail/commit/0386382d1195426bd0c8fc42255a42a96d3c4388))
+
+
+### Bug Fixes
+
+* Fix force-delete to handle child folders in POST /archive-delete (20260809T112506Z-fix-force-delete-to-handle-child-folders-5b90) ([#1154](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1154)) ([3f5f0db](https://github.com/damien-robotsix/robotsix-auto-mail/commit/3f5f0dbeec1b634f70c029cfb76fbd185354f473))
+
 ## [0.3.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.2.2...v0.3.0) (2026-08-09)
 
 
