@@ -7,33 +7,67 @@ on:
 
 permissions: {}
 
-# The shared spine deliberately sets no workflow-level concurrency: inside a
-# called workflow `github.workflow` resolves to the CALLER's name, so a group
-# built from it would deadlock against this one. Concurrency is the caller's
-# job, and `pages` matches the deployment it actually serialises.
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  # Reusable Python-docs spine shared across robotsix repos. This single call
-  # replaces the inline checkout / setup-uv / `uv sync` / git-identity / retry
-  # `mkdocs gh-deploy` steps that used to be hand-rolled here. Unlike mill's own
-  # caller (which installs a `docs` group), auto-mail's docs deps live in the
-  # `docs` extra, so the install args pull `--extra docs`.
-  deploy:
-    name: Deploy docs
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-docs.yml@e94a9aad6c4d6753c860520ba49b6a94a59ceb55  # main
+  build:
+    name: Build
+    runs-on: ubuntu-latest
     permissions:
-      # A caller-job permissions map REPLACES the token scopes for the called
-      # workflow — anything unlisted is zeroed. The shared spine deploys via the
-      # Pages Actions (build type "workflow"), so its build job needs
-      # contents:read for the checkout and its deploy job needs pages:write plus
-      # id-token:write for OIDC. Granting contents:write instead left all three
-      # unmet, and an unmet request fails the run at STARTUP: no logs, no
-      # checks, nothing on the PR. This workflow had therefore never once run.
-      contents: read  # the spine's build job checks out this repo
-      pages: write  # the spine's deploy job publishes the Pages artifact
-      id-token: write  # OIDC auth for actions/deploy-pages
-    with:
-      docs-install-args: "--extra docs"
+      contents: read
+      pages: read  # needed by configure-pages to detect deployment settings
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d  # v6.0.0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.14"
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Install docs deps
+        env:
+          UV_PROJECT_ENVIRONMENT: system
+        run: |
+          for i in $(seq 1 4); do
+            echo "Attempt $i/4..."
+            if uv sync --frozen --extra docs; then
+              echo "Install succeeded on attempt $i/4"
+              exit 0
+            fi
+            if [ "$i" -lt 4 ]; then
+              echo "Attempt $i/4 failed — retrying in 10s..."
+              sleep 10
+            fi
+          done
+          echo "All 4 attempts failed."
+          exit 1
+
+      - name: Build site
+        env:
+          UV_PROJECT_ENVIRONMENT: system
+        run: uv run --frozen mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128  # v5.0.0
