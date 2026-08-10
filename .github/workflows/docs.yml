@@ -63,8 +63,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
+      pages: write  # required by deploy-pages to publish the site
+      id-token: write  # required by deploy-pages to authenticate via OIDC
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
