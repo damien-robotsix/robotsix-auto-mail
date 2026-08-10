@@ -74,6 +74,7 @@ export ROBOTSIX_CONFIG_FILE="${CONFIG_FILE}"
 # `uv` binary, so fall back to launching via the installed package layout with
 # PYTHONPATH pointing at the repo source and relying on the sandbox-installed
 # runtime packages for dependencies.
+export ROBOTSIX_SKIP_MOUNT_CHECK=1
 if command -v uv >/dev/null 2>&1; then
     uv run --frozen robotsix-auto-mail serve --port "${PORT}" >"${LOG_FILE}" 2>&1 &
 else

@@ -5,6 +5,12 @@ from typing import Final
 #: Root folder under which all managed archive folders live.
 _ARCHIVE_ROOT = "robotsix-mail-archive"
 
+#: Default absolute root directory for all persisted mail data
+#: (SQLite databases, heartbeat files, etc.).  Relative ``db_path``
+#: values are resolved against this root rather than the process CWD
+#: so a container restart never silently discards mail databases.
+_MAIL_DATA_ROOT: Final[str] = "/data"
+
 #: Watermark keys used by background worker single-flight guards.
 _TRIAGE_RUN_STATE_KEY = "triage_run:state"
 _BATCH_OP_STATE_KEY = "batch_op:state"
@@ -32,6 +38,7 @@ _ARCHIVE_TAXONOMY_GUIDANCE = (
 # -- Referenced by other modules; silence py/unused-global-variable --
 _ = (
     _ARCHIVE_ROOT,
+    _MAIL_DATA_ROOT,
     _TRIAGE_RUN_STATE_KEY,
     _BATCH_OP_STATE_KEY,
     _RECONCILE_STATE_KEY,

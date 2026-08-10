@@ -216,6 +216,7 @@ therefore fund exactly one function.
 | `detector_level` | `1` | integer | no | Tier level assigned to the account-type detector. |
 | `draft_level` | `1` | integer | no | Tier level assigned to the draft-generation agent. |
 | `trusted_origins` | `[]` | list of strings | no | Public origin URLs (e.g. `"https://mail.deploy.robotsix.net"`) trusted for CSRF when the server runs behind a reverse proxy that rewrites ``Host`` without setting ``X-Forwarded-Host``. Each entry must be a full origin (``scheme://host[:port]``). |
+| `mail_data_root` | `/data` | string | no | Absolute root directory for all persisted mail data (SQLite databases, heartbeat files, etc.). Relative ``db_path`` values on each account are resolved against this root so a container restart never silently discards mail databases that were written outside the mounted volume. |
 
 ### `logging` — observability
 

@@ -31,6 +31,68 @@ from .models import (
 # ---------------------------------------------------------------------------
 
 
+def resolve_db_path(
+    account_id: str,
+    db_path: str,
+    mail_data_root: str,
+) -> str:
+    """Resolve *db_path* to an absolute path.
+
+    Resolution rules (in order):
+    1. If *db_path* is ``":memory:"``, return it unchanged.
+    2. If *db_path* is already absolute, return it unchanged.
+    3. If *db_path* is non-empty and relative, resolve it against
+       *mail_data_root*.
+    4. If *db_path* is empty, derive
+       ``<mail_data_root>/<account_id>/mail.db``.
+
+    This ensures every database lands on the mounted volume rather
+    than in the container's writable layer, preventing silent data
+    loss on container recreation.
+    """
+    if db_path == ":memory:":
+        return db_path
+    if db_path and Path(db_path).is_absolute():
+        return db_path
+    if db_path:
+        return str(Path(mail_data_root) / db_path)
+    return str(Path(mail_data_root) / account_id / "mail.db")
+
+
+def _check_data_root_is_mount(mail_data_root: str) -> None:
+    """Verify *mail_data_root* is a mount point; raise ``SystemExit`` if not.
+
+    In a container the data volume is mounted at a well-known path
+    (e.g. ``/data``).  When that mount is missing every mail database
+    lands in the container's writable layer and is silently destroyed
+    on recreation.  This check makes that failure mode loud and
+    immediate rather than silent and discovered only after data loss.
+
+    Set ``ROBOTSIX_SKIP_MOUNT_CHECK=1`` to bypass this check (e.g. in
+    development or CI where persistent volumes are not mounted).
+    """
+    import os
+    import sys
+
+    if os.environ.get("ROBOTSIX_SKIP_MOUNT_CHECK"):
+        return
+
+    root = Path(mail_data_root)
+    if not root.exists():
+        sys.stderr.write(
+            f"STARTUP FATAL: mail data root {mail_data_root!r} does not exist. "
+            f"Ensure the persistent volume is mounted before starting.\n"
+        )
+        sys.exit(1)
+    if not os.path.ismount(str(root)):
+        sys.stderr.write(
+            f"STARTUP FATAL: mail data root {mail_data_root!r} is not a mount point. "
+            f"Mail databases would be written to the container's writable layer "
+            f"and lost on restart. Mount a persistent volume at this path.\n"
+        )
+        sys.exit(1)
+
+
 def init_db(
     path: str,
     *,

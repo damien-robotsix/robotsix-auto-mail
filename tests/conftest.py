@@ -12,6 +12,11 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+# The mount-point check in db.queries._check_data_root_is_mount exits
+# the process when /data is not a mount, which is always true in test
+# and CI environments.  Skip it globally for the test suite.
+os.environ.setdefault("ROBOTSIX_SKIP_MOUNT_CHECK", "1")
+
 # ---------------------------------------------------------------------------
 # Ensure the venv site-packages are on sys.path so that git-sourced
 # dependencies (like robotsix-http) are importable even when the bare

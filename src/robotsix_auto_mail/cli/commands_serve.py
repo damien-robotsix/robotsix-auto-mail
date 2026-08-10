@@ -98,13 +98,14 @@ def _reconcile_loop(accounts: MailAccountsConfig) -> None:
             if not acct.config.password.get_secret_value():
                 continue
             try:
-                conn = init_db(acct.config.db_path, skip_migrations=True)
+                db_path = acct.config.db_path
+                conn = init_db(db_path, skip_migrations=True)
                 try:
                     if get_watermark(conn, _RECONCILE_STATE_KEY) != _WATERMARK_RUNNING:
                         set_watermark(conn, _RECONCILE_STATE_KEY, _WATERMARK_RUNNING)
                         threading.Thread(
                             target=_run_reconcile_background,
-                            args=(acct.config.db_path, acct.config),
+                            args=(db_path, acct.config),
                             daemon=True,
                         ).start()
                 finally:
@@ -218,6 +219,14 @@ def _cmd_serve(
     from robotsix_auto_mail.settings import merge_settings_store_accounts
 
     accounts = merge_settings_store_accounts(accounts)
+
+    # Verify the data root is on a mounted volume before opening any
+    # database.  A missing mount means every mail database silently
+    # lands in the container's writable layer and is destroyed on
+    # recreation.
+    from robotsix_auto_mail.db.queries import _check_data_root_is_mount
+
+    _check_data_root_is_mount(accounts.mail_data_root)
 
     if accounts.accounts:
         if account_id:

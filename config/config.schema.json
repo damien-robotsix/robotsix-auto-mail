@@ -138,7 +138,7 @@
         },
         "db_path": {
           "default": "",
-          "description": "Path to the per-account SQLite database file. Empty means derive `<data-dir>/<account_id>/mail.db`.",
+          "description": "Path to the per-account SQLite database file. Empty means derive `<mail_data_root>/<account_id>/mail.db`. Relative paths are resolved against mail_data_root.",
           "title": "Db Path",
           "type": "string"
         },
@@ -176,7 +176,7 @@
         "archive_root": {
           "advanced": true,
           "default": "robotsix-mail-archive",
-          "description": "Root directory for the self-managed archive folder structure.",
+          "description": "IMAP folder prefix for the self-managed archive hierarchy (e.g. 'robotsix-mail-archive'). This is an IMAP folder name, not a filesystem path \u2014 archived messages are moved between IMAP folders and remain on the mail server.",
           "title": "Archive Root",
           "type": "string"
         },
@@ -367,6 +367,12 @@
       },
       "title": "Trusted Origins",
       "type": "array"
+    },
+    "mail_data_root": {
+      "default": "/data",
+      "description": "Absolute root directory for persisted mail data. Relative db_path values are resolved against this root.",
+      "title": "Mail Data Root",
+      "type": "string"
     }
   },
   "required": [

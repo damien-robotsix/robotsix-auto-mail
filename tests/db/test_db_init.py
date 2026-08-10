@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import sqlite3
 
+import pytest
+
 from robotsix_auto_mail.db import init_db
 
 # ---------------------------------------------------------------------------
@@ -291,3 +293,103 @@ def test_init_db_status_migration_skips_existing_decisions(
         assert row == ("TO_DELETE", "agent", "spam")
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# resolve_db_path
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_db_path_empty_derives_from_account_id() -> None:
+    """Empty db_path derives <mail_data_root>/<account_id>/mail.db."""
+    from robotsix_auto_mail.db.queries import resolve_db_path
+
+    result = resolve_db_path("myaccount", "", "/data")
+    assert result == "/data/myaccount/mail.db"
+
+
+def test_resolve_db_path_relative_resolves_against_root() -> None:
+    """Relative db_path is resolved against mail_data_root."""
+    from robotsix_auto_mail.db.queries import resolve_db_path
+
+    result = resolve_db_path("acct", ".data/custom/mail.db", "/data")
+    assert result == "/data/.data/custom/mail.db"
+
+
+def test_resolve_db_path_absolute_passes_through() -> None:
+    """Already-absolute db_path is returned unchanged."""
+    from robotsix_auto_mail.db.queries import resolve_db_path
+
+    result = resolve_db_path("acct", "/custom/path/mail.db", "/data")
+    assert result == "/custom/path/mail.db"
+
+
+def test_resolve_db_path_memory_passes_through() -> None:
+    """:memory: is always returned unchanged."""
+    from robotsix_auto_mail.db.queries import resolve_db_path
+
+    result = resolve_db_path("acct", ":memory:", "/data")
+    assert result == ":memory:"
+
+
+def test_resolve_db_path_absolute_is_not_rerooted() -> None:
+    """An absolute path is returned as-is regardless of mail_data_root."""
+    from robotsix_auto_mail.db.queries import resolve_db_path
+
+    result = resolve_db_path("acct", "/home/user/db.sqlite", "/data")
+    assert result == "/home/user/db.sqlite"
+
+
+# ---------------------------------------------------------------------------
+# _check_data_root_is_mount
+# ---------------------------------------------------------------------------
+
+
+def test_check_data_root_is_mount_raises_on_nonexistent(tmp_path, monkeypatch):
+    """SystemExit when mail_data_root does not exist."""
+    import os
+
+    from robotsix_auto_mail.db.queries import _check_data_root_is_mount
+
+    monkeypatch.delenv("ROBOTSIX_SKIP_MOUNT_CHECK", raising=False)
+    nonexistent = str(tmp_path / "nonexistent")
+    try:
+        _check_data_root_is_mount(nonexistent)
+    except SystemExit as exc:
+        assert exc.code == 1
+    else:
+        pytest.fail("Expected SystemExit")
+
+
+def test_check_data_root_is_mount_raises_on_non_mount(tmp_path, monkeypatch):
+    """SystemExit when mail_data_root is not a mount point."""
+    import os
+
+    from robotsix_auto_mail.db.queries import _check_data_root_is_mount
+
+    monkeypatch.delenv("ROBOTSIX_SKIP_MOUNT_CHECK", raising=False)
+    # tmp_path is a regular directory, not a mount point.
+    try:
+        _check_data_root_is_mount(str(tmp_path))
+    except SystemExit as exc:
+        assert exc.code == 1
+    else:
+        pytest.fail("Expected SystemExit")
+
+
+def test_check_data_root_is_mount_passes_on_actual_mount(monkeypatch):
+    """_check_data_root_is_mount passes when the path is a mount point.
+
+    /proc is always a mount point on Linux — this test is correct
+    on every Linux host.
+    """
+    import os
+
+    if not os.path.exists("/proc"):
+        pytest.skip("/proc not available")
+
+    from robotsix_auto_mail.db.queries import _check_data_root_is_mount
+
+    monkeypatch.delenv("ROBOTSIX_SKIP_MOUNT_CHECK", raising=False)
+    # This must not raise.
+    _check_data_root_is_mount("/proc")

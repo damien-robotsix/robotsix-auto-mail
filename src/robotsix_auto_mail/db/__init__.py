@@ -73,6 +73,9 @@ from .queries import (
     init_db as init_db,
 )
 from .queries import (
+    resolve_db_path as resolve_db_path,
+)
+from .queries import (
     insert_record as insert_record,
 )
 from .queries import (
@@ -141,6 +144,7 @@ __all__ = [
     "get_record_by_message_id",
     "get_watermark",
     "init_db",
+    "resolve_db_path",
     "insert_record",
     "list_archive_audit_entries",
     "list_records",
