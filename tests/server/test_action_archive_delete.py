@@ -75,9 +75,7 @@ class TestHandleArchiveDeleteForce:
             archive_root="Archive",
         )
         handler = _make_handler(tmp_db_path, mail_config)
-        _make_archive_delete_request(
-            handler, source_folder="Newsletters", force=True
-        )
+        _make_archive_delete_request(handler, source_folder="Newsletters", force=True)
 
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_client = mock_cls.return_value.__enter__.return_value
@@ -113,9 +111,7 @@ class TestHandleArchiveDeleteForce:
             archive_root="Archive",
         )
         handler = _make_handler(tmp_db_path, mail_config)
-        _make_archive_delete_request(
-            handler, source_folder="Newsletters", force=True
-        )
+        _make_archive_delete_request(handler, source_folder="Newsletters", force=True)
 
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_client = mock_cls.return_value.__enter__.return_value
@@ -157,9 +153,7 @@ class TestHandleArchiveDeleteForce:
             {"status": "deleted", "source_folder": "Newsletters"}
         )
 
-    def test_force_delete_with_non_default_delimiter(
-        self, tmp_db_path: str
-    ) -> None:
+    def test_force_delete_with_non_default_delimiter(self, tmp_db_path: str) -> None:
         """Force-delete respects the server's hierarchy delimiter (e.g. '.')."""
         mail_config = MailConfig(
             imap_host="imap.example.com",
@@ -169,9 +163,7 @@ class TestHandleArchiveDeleteForce:
             archive_root="Archive",
         )
         handler = _make_handler(tmp_db_path, mail_config)
-        _make_archive_delete_request(
-            handler, source_folder="Newsletters", force=True
-        )
+        _make_archive_delete_request(handler, source_folder="Newsletters", force=True)
 
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_client = mock_cls.return_value.__enter__.return_value
@@ -211,9 +203,7 @@ class TestHandleArchiveDeleteForce:
             archive_root="Archive",
         )
         handler = _make_handler(tmp_db_path, mail_config)
-        _make_archive_delete_request(
-            handler, source_folder="Parent", force=True
-        )
+        _make_archive_delete_request(handler, source_folder="Parent", force=True)
 
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_client = mock_cls.return_value.__enter__.return_value
@@ -258,9 +248,7 @@ class TestHandleArchiveDeleteNonForce:
             archive_root="Archive",
         )
         handler = _make_handler(tmp_db_path, mail_config)
-        _make_archive_delete_request(
-            handler, source_folder="Parent", force=False
-        )
+        _make_archive_delete_request(handler, source_folder="Parent", force=False)
 
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_client = mock_cls.return_value.__enter__.return_value
@@ -291,9 +279,7 @@ class TestHandleArchiveDeleteNonForce:
             archive_root="Archive",
         )
         handler = _make_handler(tmp_db_path, mail_config)
-        _make_archive_delete_request(
-            handler, source_folder="Inbox", force=False
-        )
+        _make_archive_delete_request(handler, source_folder="Inbox", force=False)
 
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_client = mock_cls.return_value.__enter__.return_value
