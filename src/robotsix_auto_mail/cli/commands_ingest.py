@@ -177,7 +177,7 @@ def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
         # ingest liveness (running/idle, last-run timestamps).
         with contextlib.suppress(Exception):
             set_watermark(conn, _INGEST_RUN_STATE_KEY, _WATERMARK_IDLE)
-            now_iso = utcnow().isoformat()
+            now_iso = utcnow()
             set_watermark(conn, "ingest_run:last_at", now_iso)
             if success:
                 set_watermark(conn, "ingest_run:last_success_at", now_iso)
