@@ -26,8 +26,6 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, unquote, urlsplit
 
-logger = logging.getLogger(__name__)
-
 from robotsix_auto_mail.config import (
     ConfigurationError,
     MailAccountsConfig,
@@ -48,6 +46,8 @@ from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
 from robotsix_auto_mail.server._triage_mixin import _TriageMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
+
+logger = logging.getLogger(__name__)
 
 
 class BoardHandler(
