@@ -617,8 +617,6 @@ class BoardHandler(
 
     def log_message(self, format: str, *args: object) -> None:
         """Log HTTP access via the structlog-enabled logger."""
-        import logging
-
         logging.getLogger("robotsix_auto_mail.http.access").info(
             "%s - %s",
             self.client_address[0],
