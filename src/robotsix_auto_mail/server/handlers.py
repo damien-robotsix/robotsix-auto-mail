@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import functools
 import json
+import logging
 from collections.abc import Callable, Mapping
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
@@ -45,6 +46,8 @@ from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
 from robotsix_auto_mail.server._triage_mixin import _TriageMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
+
+logger = logging.getLogger(__name__)
 
 
 class BoardHandler(
@@ -105,6 +108,11 @@ class BoardHandler(
         # _select_account() so account creation works even with zero accounts.
         if self.path.split("?")[0] == "/add-account":
             self._serve_add_account()
+            return
+        # /accounts is cross-account by design — list every configured
+        # mailbox regardless of the session account.
+        if urlsplit(self.path).path == "/accounts":
+            self._serve_accounts()
             return
         # The config surface covers every account at once, so it must be
         # reachable before an account is selected (and with none configured).
@@ -506,6 +514,43 @@ class BoardHandler(
             content_type="text/markdown; charset=utf-8",
         )
 
+    def _serve_accounts(self) -> None:
+        """Serve GET /accounts — list configured mail accounts as JSON.
+
+        Returns ``{"accounts": [{"id": …, "address": …, "label": …,
+        "healthy": …}, …]}``.  Read-only — no side effects.
+        """
+        from robotsix_auto_mail.db.queries import get_account_health
+
+        if self.accounts is None:
+            self._serve_json({"accounts": []})
+            return
+
+        result: list[dict[str, object]] = []
+        for account in self.accounts.accounts:
+            healthy: bool | None = None
+            try:
+                with _with_db(account.config.db_path, skip_migrations=True) as conn:
+                    health = get_account_health(conn)
+                if health is not None:
+                    healthy = health.get("status") == "ok"
+            except Exception:
+                logger.debug(
+                    "Could not check health for account %s",
+                    account.account_id,
+                    exc_info=True,
+                )
+            result.append(
+                {
+                    "id": account.account_id,
+                    "address": account.config.username,
+                    "label": account.label,
+                    "healthy": healthy,
+                }
+            )
+
+        self._serve_json({"accounts": result})
+
     def _serve_health(self) -> None:
         """Serve GET /health — liveness check."""
         self._serve_json({"status": "ok"}, status=200)
@@ -572,8 +617,6 @@ class BoardHandler(
 
     def log_message(self, format: str, *args: object) -> None:
         """Log HTTP access via the structlog-enabled logger."""
-        import logging
-
         logging.getLogger("robotsix_auto_mail.http.access").info(
             "%s - %s",
             self.client_address[0],

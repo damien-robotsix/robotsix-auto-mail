@@ -110,7 +110,7 @@ RUN groupadd --gid 1000 app && \
 
 COPY --chown=app:app entrypoint.sh /usr/local/bin/entrypoint.sh
 
-USER app
+USER 1000
 
 # Run from the home directory so relative defaults resolve under it:
 # the config file (config/config.json) and the SQLite store

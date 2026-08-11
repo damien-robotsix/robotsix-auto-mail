@@ -86,7 +86,57 @@ class _BoardViewMixin:
         self._send_response(body, content_type="text/html; charset=utf-8")
 
     def _serve_board_content(self) -> None:
-        """Render and serve the board content as JSON."""
+        """Render and serve the board content as JSON.
+
+        Supports ``?format=json`` for structured card data (no HTML).
+        When ``format=json`` is present:
+        - Omitted ``?account=`` → all configured accounts.
+        - ``?account=<id>`` → single account; unknown id → 404.
+        """
+        from urllib.parse import parse_qs, urlsplit
+
+        qs = parse_qs(urlsplit(self.path).query)
+
+        # -- structured JSON mode ---------------------------------------
+        if qs.get("format") == ["json"]:
+            # Omitted ?account= → aggregate (all accounts).
+            if (
+                "account" not in qs
+                and self.accounts is not None
+                and self.accounts.ids()
+            ):
+                try:
+                    payload = self._build_board_json_aggregate()
+                except Exception:
+                    self._serve_json({"error": "Database unavailable"}, status=503)
+                    return
+                self._serve_json(payload)
+                return
+
+            if self._aggregate and self.accounts is not None:
+                try:
+                    payload = self._build_board_json_aggregate()
+                except Exception:
+                    self._serve_json({"error": "Database unavailable"}, status=503)
+                    return
+                self._serve_json(payload)
+                return
+
+            # Single account (already resolved by _select_account).
+            archive_root = self._effective_archive_root
+            try:
+                payload = self._build_board_json_single(
+                    self.db_path,
+                    archive_root,
+                    account_id=self._current_account_id or "main",
+                )
+            except Exception:
+                self._serve_json({"error": "Database unavailable"}, status=503)
+                return
+            self._serve_json(payload)
+            return
+
+        # -- existing HTML mode -----------------------------------------
         if self._aggregate and self.accounts is not None:
             try:
                 payload = _build_global_board_content(self.accounts)
@@ -110,6 +160,95 @@ class _BoardViewMixin:
             return
 
         self._serve_json(payload)
+
+    # -- JSON board helpers -----------------------------------------------
+
+    def _build_board_json_single(
+        self, db_path: str, archive_root: str, *, account_id: str
+    ) -> dict[str, object]:
+        """Build structured JSON board content for a single account.
+
+        Returns ``{"columns": {<action>: [cards…], …}, "triage_running": bool}``.
+        Each card has ``message_id``, ``subject``, ``from``, ``date``,
+        ``status`` (triage column), and ``account``.
+        """
+        from robotsix_auto_mail.server.views.board_data import (
+            _gather_account_board_data,
+        )
+
+        gathered = _gather_account_board_data(db_path, archive_root=archive_root)
+        column_buckets = gathered["column_buckets"]
+        triage_running: bool = gathered["triage_running"]
+
+        columns: dict[str, list[dict[str, object]]] = {}
+        for column, records in column_buckets.items():
+            if not records:
+                continue
+            cards: list[dict[str, object]] = []
+            for record in records:
+                cards.append(
+                    {
+                        "message_id": record.message_id,
+                        "subject": record.subject,
+                        "from": record.sender,
+                        "date": record.date,
+                        "status": column,
+                        "account": account_id,
+                    }
+                )
+            columns[column] = cards
+
+        return {"columns": columns, "triage_running": triage_running}
+
+    def _build_board_json_aggregate(self) -> dict[str, object]:
+        """Build structured JSON board content for all configured accounts.
+
+        Merges per-account column buckets; each card carries its owning
+        ``account`` id.
+        """
+        from robotsix_auto_mail.server.views.board_data import (
+            _gather_account_board_data,
+        )
+
+        accounts = self.accounts
+        if accounts is None:
+            return {}
+
+        merged_columns: dict[str, list[dict[str, object]]] = {}
+        triage_running = False
+
+        for account in accounts.accounts:
+            aid = account.account_id
+            try:
+                gathered = _gather_account_board_data(
+                    account.config.db_path,
+                    archive_root=account.config.archive_root,
+                )
+            except Exception:
+                logger.debug(
+                    "Could not gather board data for account %s",
+                    aid,
+                    exc_info=True,
+                )
+                continue
+
+            triage_running = triage_running or gathered["triage_running"]
+            for column, records in gathered["column_buckets"].items():
+                if column not in merged_columns:
+                    merged_columns[column] = []
+                for record in records:
+                    merged_columns[column].append(
+                        {
+                            "message_id": record.message_id,
+                            "subject": record.subject,
+                            "from": record.sender,
+                            "date": record.date,
+                            "status": column,
+                            "account": aid,
+                        }
+                    )
+
+        return {"columns": merged_columns, "triage_running": triage_running}
 
     def _serve_static(self) -> None:
         """Serve static assets from the robotsix_board package."""
