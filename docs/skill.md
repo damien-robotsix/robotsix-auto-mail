@@ -36,7 +36,9 @@ Append `?account=<account_id>` (e.g. `?account=main`) to any request.
 |------|----------|-------|
 | `GET /` | 301 → `/board` | |
 | `GET /board` | HTML | Full board UI |
+| `GET /accounts` | JSON `{"accounts":[{"id":"…","address":"…","label":"…","healthy":true\|false\|null},…]}` | Lists every configured mail account with its id, email address, human-readable label, and health status. `healthy` is `true` when the last IMAP/SMTP connectivity probe succeeded, `false` when it failed, `null` when no probe has run. Read-only — no side effects |
 | `GET /board-content` | JSON `{"columns_html":"…","triage_running":bool,"batch_op":{"op":…,"done":…,"total":…}\|null,"health":{…}\|null,"health_alerts_html":"…","unsubscribe_suggestions":{…}}` | Board payload (rendered columns + metadata); preferred for machine reads. `batch_op` is an object (verb + progress counts) while a batch op runs, else `null`; `health` carries the account-health watermark and `health_alerts_html` the rendered red-banner markup |
+| `GET /board-content?format=json` | JSON `{"columns":{…},"triage_running":bool}` | Same board data but in structured form (no HTML). Each card has `message_id`, `subject`, `from`, `date`, `status` (triage column), and `account` (owning account id). Cards grouped by triage column. Optional `?account=<id>` filters to one account; unknown id returns 404. Omitted `?account=` returns all accounts |
 | `GET /health` | JSON `{"status":"ok"}` 200 | Liveness; returns 200 while the process is alive |
 | `GET /probe-health` | JSON `{"accounts":{"<id>":{"status":"…","error":…}}}` | On-demand IMAP+SMTP connectivity probe across all accounts; persists each result to the account's `account_health` watermark |
 | `GET /settings-panel` | HTML | Settings page; mounts the shared `@robotsix/ui` config panel against the config surface below |
@@ -171,12 +173,24 @@ curl -s -u <user>:<pass> -X POST \
 curl -s -u <user>:<pass> -X POST \
   'https://deploy.robotsix.net/mail/config-sync?account=main'
 ```
-mail/batch-archive?account=main'
-```
 
-### 10. Config sync (returns JSON, not a redirect)
+### 11. List configured accounts
 
 ```bash
-curl -s -u <user>:<pass> -X POST \
-  'https://deploy.robotsix.net/mail/config-sync?account=main'
+curl -s -u <user>:<pass> \
+  'https://deploy.robotsix.net/mail/accounts'
+```
+
+### 12. Structured board data (all accounts)
+
+```bash
+curl -s -u <user>:<pass> \
+  'https://deploy.robotsix.net/mail/board-content?format=json'
+```
+
+### 13. Structured board data (single account)
+
+```bash
+curl -s -u <user>:<pass> \
+  'https://deploy.robotsix.net/mail/board-content?format=json&account=main'
 ```
