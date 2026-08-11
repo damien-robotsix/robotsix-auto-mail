@@ -50,6 +50,13 @@ from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_value(value: object) -> object:
+    """Return *value* with control characters escaped for safe logging."""
+    if isinstance(value, str):
+        return value.replace("\n", "\\n").replace("\r", "\\r")
+    return value
+
+
 class BoardHandler(
     _BoardViewMixin,
     _BoardActionMixin,
@@ -334,14 +341,14 @@ class BoardHandler(
         if origin in trusted:
             return True
         logger.debug(
-            "CSRF rejection: Origin=%r Sec-Fetch-Site=%r Host=%r "
-            "X-Forwarded-Host=%r Forwarded=%r trusted_origins=%s",
-            origin,
-            fetch_site,
-            self.headers.get("Host"),
-            self.headers.get("X-Forwarded-Host"),
-            self.headers.get("Forwarded"),
-            sorted(trusted) if trusted else [],
+            "CSRF rejection: Origin=%s Sec-Fetch-Site=%s Host=%s "
+            "X-Forwarded-Host=%s Forwarded=%s trusted_origins=%s",
+            _sanitize_log_value(origin),
+            _sanitize_log_value(fetch_site),
+            _sanitize_log_value(self.headers.get("Host")),
+            _sanitize_log_value(self.headers.get("X-Forwarded-Host")),
+            _sanitize_log_value(self.headers.get("Forwarded")),
+            _sanitize_log_value(sorted(trusted) if trusted else []),
         )
         self._send_response("Forbidden: cross-origin request rejected", status=403)
         return False
