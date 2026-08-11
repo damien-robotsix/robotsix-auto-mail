@@ -333,6 +333,16 @@ class BoardHandler(
         trusted = self.accounts.trusted_origins if self.accounts is not None else ()
         if origin in trusted:
             return True
+        logger.debug(
+            "CSRF rejection: Origin=%r Sec-Fetch-Site=%r Host=%r "
+            "X-Forwarded-Host=%r Forwarded=%r trusted_origins=%s",
+            origin,
+            fetch_site,
+            self.headers.get("Host"),
+            self.headers.get("X-Forwarded-Host"),
+            self.headers.get("Forwarded"),
+            sorted(trusted) if trusted else [],
+        )
         self._send_response("Forbidden: cross-origin request rejected", status=403)
         return False
 
