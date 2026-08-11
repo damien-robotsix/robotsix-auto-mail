@@ -20,10 +20,13 @@ from __future__ import annotations
 
 import functools
 import json
+import logging
 from collections.abc import Callable, Mapping
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, unquote, urlsplit
+
+logger = logging.getLogger(__name__)
 
 from robotsix_auto_mail.config import (
     ConfigurationError,
@@ -532,7 +535,11 @@ class BoardHandler(
                 if health is not None:
                     healthy = health.get("status") == "ok"
             except Exception:
-                pass
+                logger.debug(
+                    "Could not check health for account %s",
+                    account.account_id,
+                    exc_info=True,
+                )
             result.append(
                 {
                     "id": account.account_id,

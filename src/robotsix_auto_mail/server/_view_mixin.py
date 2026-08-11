@@ -100,7 +100,11 @@ class _BoardViewMixin:
         # -- structured JSON mode ---------------------------------------
         if qs.get("format") == ["json"]:
             # Omitted ?account= → aggregate (all accounts).
-            if "account" not in qs and self.accounts is not None and self.accounts.ids():
+            if (
+                "account" not in qs
+                and self.accounts is not None
+                and self.accounts.ids()
+            ):
                 try:
                     payload = self._build_board_json_aggregate()
                 except Exception:
@@ -207,7 +211,8 @@ class _BoardViewMixin:
         )
 
         accounts = self.accounts
-        assert accounts is not None
+        if accounts is None:
+            return {}
 
         merged_columns: dict[str, list[dict[str, object]]] = {}
         triage_running = False
@@ -220,6 +225,11 @@ class _BoardViewMixin:
                     archive_root=account.config.archive_root,
                 )
             except Exception:
+                logger.debug(
+                    "Could not gather board data for account %s",
+                    aid,
+                    exc_info=True,
+                )
                 continue
 
             triage_running = triage_running or gathered["triage_running"]
