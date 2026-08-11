@@ -130,13 +130,17 @@ class MailConfig(BaseModel):
         json_schema_extra={"advanced": True},
     )
 
-    # Empty by default; the accounts loader derives ``.data/<id>/mail.db``
-    # per account when ``store.path`` is absent.
+    # Empty by default; the path resolver derives
+    # ``<mail_data_root>/<account_id>/mail.db`` per account when empty.
+    # Relative paths are resolved against ``mail_data_root`` so they
+    # always land on the mounted volume, never in the container's
+    # writable layer.
     db_path: str = Field(
         default="",
         description=(
             "Path to the per-account SQLite database file. "
-            "Empty means derive `<data-dir>/<account_id>/mail.db`."
+            "Empty means derive `<mail_data_root>/<account_id>/mail.db`. "
+            "Relative paths are resolved against mail_data_root."
         ),
     )
     imap_folder: str = Field(
@@ -182,7 +186,12 @@ class MailConfig(BaseModel):
     # Self-managed archive folder structure.
     archive_root: str = Field(
         default=DEFAULT_ARCHIVE_ROOT,
-        description="Root directory for the self-managed archive folder structure.",
+        description=(
+            "IMAP folder prefix for the self-managed archive hierarchy "
+            "(e.g. 'robotsix-mail-archive'). This is an IMAP folder name, "
+            "not a filesystem path — archived messages are moved between "
+            "IMAP folders and remain on the mail server."
+        ),
         json_schema_extra={"advanced": True},
     )
     archive_enabled: bool = Field(
@@ -535,6 +544,19 @@ class MailAccountsConfig(BaseModel):
         description=(
             "Public origin URLs (e.g. 'https://mail.deploy.robotsix.net') "
             "trusted for CSRF when the server runs behind a reverse proxy."
+        ),
+    )
+
+    #: Absolute root directory for all persisted mail data (SQLite
+    #: databases, heartbeat files, etc.).  Relative ``db_path`` values
+    #: on each :class:`MailConfig` are resolved against this root so a
+    #: container restart never silently discards mail databases that
+    #: were written outside the mounted volume.
+    mail_data_root: str = Field(
+        default="/data",
+        description=(
+            "Absolute root directory for persisted mail data. "
+            "Relative db_path values are resolved against this root."
         ),
     )
 

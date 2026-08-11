@@ -136,14 +136,20 @@ def register_subparser(
     )
 
 
-def _ingest_cycle(config: MailConfig, *, dry_run: bool = False) -> int:
+def _ingest_cycle(
+    config: MailConfig,
+    *,
+    dry_run: bool = False,
+    db_path: str | None = None,
+) -> int:
     """Run a single ingest pass: fetch, parse, store, and update watermark.
 
     Returns 0 when the pipeline runs (including per-message errors),
     or 1 for a fatal connection failure (ImapClient raise).
     """
     result: IngestResult | None = None
-    conn = _cli.init_db(config.db_path)
+    resolved = db_path if db_path is not None else config.db_path
+    conn = _cli.init_db(resolved)
     set_watermark(conn, _INGEST_RUN_STATE_KEY, _WATERMARK_RUNNING)
     success = False
     try:
@@ -244,6 +250,12 @@ def _cmd_ingest(
     from robotsix_auto_mail.settings import merge_settings_store_accounts
 
     accounts = merge_settings_store_accounts(accounts)
+
+    # Verify the data root is on a mounted volume before opening any
+    # database.
+    from robotsix_auto_mail.db.queries import _check_data_root_is_mount
+
+    _check_data_root_is_mount(accounts.mail_data_root)
 
     if account_id is not None:
         try:

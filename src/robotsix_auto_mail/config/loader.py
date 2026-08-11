@@ -38,7 +38,7 @@ from robotsix_auto_mail.config._constants import (
     APP_TRIAGE,
 )
 from robotsix_auto_mail.config.credentials import MAIN_LLM_ALIAS, LangfuseConfig
-from robotsix_auto_mail.config.model import MailAccountsConfig, MailConfig
+from robotsix_auto_mail.config.model import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.config.schema import ConfigurationError
 
 _VALID_APP_NAMES: frozenset[str] = frozenset(
@@ -56,8 +56,45 @@ logger = logging.getLogger(__name__)
 
 def load_accounts() -> MailAccountsConfig:
     """Load :class:`MailAccountsConfig` from ``config/config.json``
-    (``ROBOTSIX_CONFIG_FILE``)."""
-    return _load_config(MailAccountsConfig)
+    (``ROBOTSIX_CONFIG_FILE``).
+
+    Every account's ``db_path`` is resolved against ``mail_data_root``
+    before returning, so relative paths never land in the container's
+    writable layer.
+    """
+    accounts = _load_config(MailAccountsConfig)
+    return _resolve_all_db_paths(accounts)
+
+
+def _resolve_all_db_paths(accounts: MailAccountsConfig) -> MailAccountsConfig:
+    """Resolve every account's ``db_path`` against ``mail_data_root``.
+
+    Returns *accounts* unchanged when all paths are already absolute
+    and match the resolved form (the common case).  Otherwise returns
+    a new :class:`MailAccountsConfig` with updated :class:`MailConfig`
+    copies so callers always receive absolute, volume-rooted paths.
+    """
+    from robotsix_auto_mail.db.queries import resolve_db_path
+
+    resolved_accounts: list[MailAccount] = []
+    changed = False
+    for account in accounts.accounts:
+        resolved_path = resolve_db_path(
+            account.account_id,
+            account.config.db_path,
+            accounts.mail_data_root,
+        )
+        if resolved_path != account.config.db_path:
+            changed = True
+            new_config = account.config.model_copy(update={"db_path": resolved_path})
+            resolved_accounts.append(account.model_copy(update={"config": new_config}))
+        else:
+            resolved_accounts.append(account)
+
+    if not changed:
+        return accounts
+
+    return accounts.model_copy(update={"accounts": resolved_accounts})
 
 
 def load() -> MailConfig:

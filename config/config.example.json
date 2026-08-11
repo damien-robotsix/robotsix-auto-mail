@@ -82,6 +82,7 @@
   "rules_level": 1,
   "detector_level": 1,
   "draft_level": 1,
+  "mail_data_root": "/data",
   "trusted_origins": [],
   "openrouter": {
     "keys": {

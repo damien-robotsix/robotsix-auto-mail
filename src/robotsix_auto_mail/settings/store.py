@@ -336,6 +336,22 @@ def merge_settings_store_accounts(
 
     merged_accounts = list(accounts.accounts) + new_discovered
 
-    return MailAccountsConfig(
+    result = MailAccountsConfig(
         accounts=merged_accounts,
+        langfuse=accounts.langfuse,
+        openrouter=accounts.openrouter,
+        models=accounts.models,
+        triage_level=accounts.triage_level,
+        classifier_level=accounts.classifier_level,
+        rules_level=accounts.rules_level,
+        detector_level=accounts.detector_level,
+        draft_level=accounts.draft_level,
+        trusted_origins=accounts.trusted_origins,
+        mail_data_root=accounts.mail_data_root,
     )
+
+    # Resolve every account's db_path against mail_data_root so
+    # relative paths never escape the mounted volume.
+    from robotsix_auto_mail.config.loader import _resolve_all_db_paths
+
+    return _resolve_all_db_paths(result)

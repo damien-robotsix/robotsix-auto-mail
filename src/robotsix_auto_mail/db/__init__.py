@@ -91,6 +91,9 @@ from .queries import (
     record_exists as record_exists,
 )
 from .queries import (
+    resolve_db_path as resolve_db_path,
+)
+from .queries import (
     save_json_watermark as save_json_watermark,
 )
 from .queries import (
@@ -147,6 +150,7 @@ __all__ = [
     "list_untriaged_records",
     "load_json_watermark",
     "record_exists",
+    "resolve_db_path",
     "save_json_watermark",
     "set_component_settings",
     "set_watermark",

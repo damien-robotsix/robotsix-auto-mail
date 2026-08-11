@@ -279,6 +279,7 @@ _CONFIGURATION_MD_CONTAINER_KEYS: frozenset[str] = frozenset(
         "detector_level",
         "draft_level",
         "trusted_origins",
+        "mail_data_root",
     }
 )
 
