@@ -1,0 +1,4 @@
+- `GET /accounts` — new read-only JSON endpoint listing configured mail accounts with id, address, label, and health status (AC-1).
+- `GET /board-content?format=json` — new structured JSON mode returning per-account card data with `message_id`, `subject`, `from`, `date`, `status`, and `account` fields; supports `?account=<id>` filtering (unknown id → 404) (AC-2, AC-3).
+- Both endpoints documented in `docs/skill.md` and `src/robotsix_auto_mail/server/static/skill.md` as read-only/safe (AC-4).
+- Existing HTML `/board-content` behaviour is unchanged (AC-5).
