@@ -120,7 +120,7 @@ def _run_llm_agent(  # noqa: UP047
 
     # -- call LLM --
     result = None
-    for _attempt in range(2):
+    for _attempt in range(4):
         try:
             result = run_agent(
                 agent_handle,
@@ -130,11 +130,12 @@ def _run_llm_agent(  # noqa: UP047
                 trace_input=user_message,
             )
         except UnexpectedModelBehavior as exc:
-            if _attempt == 0:
+            if _attempt < 3:
                 import logging
 
                 logging.getLogger(__name__).warning(
-                    "UnexpectedModelBehavior on attempt 1; retrying once: %s",
+                    "UnexpectedModelBehavior on attempt %d; retrying: %s",
+                    _attempt + 1,
                     exc,
                 )
                 continue

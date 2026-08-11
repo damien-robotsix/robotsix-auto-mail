@@ -225,12 +225,14 @@ def test_output_retries_none_passes_default_retries(mock_deps):
 # ---------------------------------------------------------------------------
 
 
-def test_unexpected_model_behavior_retried_once(mock_deps):
-    """First ``UnexpectedModelBehavior`` triggers a single retry;
-    the second attempt succeeds."""
+def test_unexpected_model_behavior_retried_up_to_thrice(mock_deps):
+    """First ``UnexpectedModelBehavior`` triggers retries (up to 3);
+    the fourth attempt succeeds."""
     _mock_key, _mock_get_prov, mock_run = mock_deps
 
     mock_run.side_effect = [
+        UnexpectedModelBehavior("format slip"),
+        UnexpectedModelBehavior("format slip"),
         UnexpectedModelBehavior("format slip"),
         mock.Mock(output=_FakeOutput(value="recovered")),
     ]
@@ -249,12 +251,12 @@ def test_unexpected_model_behavior_retried_once(mock_deps):
 
     assert isinstance(result, _FakeOutput)
     assert result.value == "recovered"
-    assert mock_run.call_count == 2
+    assert mock_run.call_count == 4
 
 
-def test_unexpected_model_behavior_both_attempts_fail(mock_deps):
-    """When both attempts raise ``UnexpectedModelBehavior``, the
-    second is re-raised as ``exc_type``."""
+def test_unexpected_model_behavior_all_attempts_fail(mock_deps):
+    """When all four attempts raise ``UnexpectedModelBehavior``, the
+    last is re-raised as ``exc_type``."""
     _mock_key, _mock_get_prov, mock_run = mock_deps
 
     mock_run.side_effect = UnexpectedModelBehavior("persistent format slip")
@@ -272,4 +274,4 @@ def test_unexpected_model_behavior_both_attempts_fail(mock_deps):
             exc_type=RuntimeError,
         )
 
-    assert mock_run.call_count == 2
+    assert mock_run.call_count == 4
