@@ -21,6 +21,7 @@ from __future__ import annotations
 import functools
 import json
 import logging
+import re
 from collections.abc import Callable, Mapping
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
@@ -336,12 +337,12 @@ class BoardHandler(
         logger.debug(
             "CSRF rejection: Origin=%s Sec-Fetch-Site=%s Host=%s "
             "X-Forwarded-Host=%s Forwarded=%s trusted_origins=%s",
-            json.dumps(origin),
-            json.dumps(fetch_site),
-            json.dumps(self.headers.get("Host")),
-            json.dumps(self.headers.get("X-Forwarded-Host")),
-            json.dumps(self.headers.get("Forwarded")),
-            json.dumps(sorted(trusted) if trusted else []),
+            re.escape(origin),
+            re.escape(fetch_site or ""),
+            re.escape(self.headers.get("Host") or ""),
+            re.escape(self.headers.get("X-Forwarded-Host") or ""),
+            re.escape(self.headers.get("Forwarded") or ""),
+            sorted(trusted) if trusted else [],
         )
         self._send_response("Forbidden: cross-origin request rejected", status=403)
         return False
