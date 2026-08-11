@@ -12,11 +12,29 @@ exposes a web board where operators can review and act on triage decisions.
 
 All GET endpoints below are read-only and safe to call without confirmation.
 
+### Account listing
+
+- **`GET /accounts`** → JSON `{"accounts":[{"id":"ROBOTSIX","address":"…","label":"…","healthy":true},…]}`.
+  Lists every configured mail account with its id, email address, optional
+  human-readable label, and health status.  `healthy` is `true` when the
+  last IMAP/SMTP connectivity probe succeeded, `false` when it failed, and
+  `null` when no probe has run yet.  Read-only — no side effects.
+
 ### Board state
 
 - **`GET /board-content`** → JSON `{"columns_html":"…","triage_running":bool,"batch_op":…,"health":…}`
   Returns the full board payload: rendered column HTML, triage-agent status,
   batch-operation progress (if any), and per-account health watermark.
+
+- **`GET /board-content?format=json`** → JSON `{"columns":{…},"triage_running":bool}`.
+  Same board data as ``/board-content`` but in structured form (no HTML).
+  Each card object carries ``message_id``, ``subject``, ``from``, ``date``,
+  ``status`` (the triage column, e.g. ``INBOX``, ``TO_ARCHIVE``), and
+  ``account`` (the owning account id).  Cards are grouped by triage column.
+  Optional ``?account=<id>`` filters to a single account; an unknown id
+  returns 404.  Omitted ``?account=`` returns all accounts.  Read-only —
+  no side effects.  This is the preferred endpoint for programmatic triage
+  when per-column grouping is needed.
 
 - **`GET /board-cards?account=<id>`** → JSON `{"cards":[…],"account":"<id>"}`.
   Returns a flat JSON array of every board card with structured fields:

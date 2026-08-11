@@ -106,6 +106,11 @@ class BoardHandler(
         if self.path.split("?")[0] == "/add-account":
             self._serve_add_account()
             return
+        # /accounts is cross-account by design — list every configured
+        # mailbox regardless of the session account.
+        if urlsplit(self.path).path == "/accounts":
+            self._serve_accounts()
+            return
         # The config surface covers every account at once, so it must be
         # reachable before an account is selected (and with none configured).
         if urlsplit(self.path).path == "/config":
@@ -505,6 +510,39 @@ class BoardHandler(
             _STATIC_CHAT_SKILL_MD,
             content_type="text/markdown; charset=utf-8",
         )
+
+    def _serve_accounts(self) -> None:
+        """Serve GET /accounts — list configured mail accounts as JSON.
+
+        Returns ``{"accounts": [{"id": …, "address": …, "label": …,
+        "healthy": …}, …]}``.  Read-only — no side effects.
+        """
+        from robotsix_auto_mail.db.queries import get_account_health
+
+        if self.accounts is None:
+            self._serve_json({"accounts": []})
+            return
+
+        result: list[dict[str, object]] = []
+        for account in self.accounts.accounts:
+            healthy: bool | None = None
+            try:
+                with _with_db(account.config.db_path, skip_migrations=True) as conn:
+                    health = get_account_health(conn)
+                if health is not None:
+                    healthy = health.get("status") == "ok"
+            except Exception:
+                pass
+            result.append(
+                {
+                    "id": account.account_id,
+                    "address": account.config.username,
+                    "label": account.label,
+                    "healthy": healthy,
+                }
+            )
+
+        self._serve_json({"accounts": result})
 
     def _serve_health(self) -> None:
         """Serve GET /health — liveness check."""
