@@ -86,12 +86,8 @@ def _resolve_all_db_paths(accounts: MailAccountsConfig) -> MailAccountsConfig:
         )
         if resolved_path != account.config.db_path:
             changed = True
-            new_config = account.config.model_copy(
-                update={"db_path": resolved_path}
-            )
-            resolved_accounts.append(
-                account.model_copy(update={"config": new_config})
-            )
+            new_config = account.config.model_copy(update={"db_path": resolved_path})
+            resolved_accounts.append(account.model_copy(update={"config": new_config}))
         else:
             resolved_accounts.append(account)
 
