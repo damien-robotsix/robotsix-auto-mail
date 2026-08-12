@@ -536,6 +536,7 @@ modules:
       - .robotsix-mill/periodic/module_curator.yaml
       - .robotsix-mill/periodic/module_size.yaml
       - .robotsix-mill/periodic/mypy_baseline.yaml
+      - .robotsix-mill/periodic/pin_bump.yaml
       - .robotsix-mill/periodic/repo_description_sync.yaml
       - .robotsix-mill/periodic/roadmap_sync.yaml
       - .robotsix-mill/periodic/survey.yaml
