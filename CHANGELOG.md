@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.4.0...v0.5.0) (2026-08-12)
+
+
+### Features
+
+* Debug logging on CSRF middleware should emit rejection reason (20260809T064352Z-debug-logging-on-csrf-middleware-should-e4ee) ([#1169](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1169)) ([85d92e9](https://github.com/damien-robotsix/robotsix-auto-mail/commit/85d92e9cc4e6c6de0fea700fd2b3b12f1c070e0e))
+* JSON API: list accounts + per-account board content (20260811T075940Z-json-api-list-accounts-per-account-board-9f31) ([#1168](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1168)) ([281bf0a](https://github.com/damien-robotsix/robotsix-auto-mail/commit/281bf0a833f6144a478820bb6eaae0c893da1c79))
+
+
+### Bug Fixes
+
+* Mail databases are written outside the mounted volume and are lost on every container recreation (20260809T124347Z-mail-databases-are-written-outside-the-m-9b4f) ([#1156](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1156)) ([8a49259](https://github.com/damien-robotsix/robotsix-auto-mail/commit/8a49259cfe4c8bc8f281e8b1121b237f7fc579f1))
+* trace-review: 3 finding(s) for trace `aa7e8ea6` (session: 20260809T062412Z-fix-startup-failure-on-main-ci-docs-code-7d2b) (20260811T131822Z-trace-review-3-finding-s-for-trace-aa7e8-4ac1) ([#1172](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1172)) ([54f0fe8](https://github.com/damien-robotsix/robotsix-auto-mail/commit/54f0fe84d8870470b6cf9db569336ed8a76884f4))
+
 ## [0.4.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.3.0...v0.4.0) (2026-08-10)
 
 
