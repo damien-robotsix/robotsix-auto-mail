@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.5.0...v0.5.1) (2026-08-15)
+
+
+### Bug Fixes
+
+* CI failure: CI on main (20260815T181549Z-ci-failure-ci-on-main-b04e) ([#1175](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1175)) ([68f8175](https://github.com/damien-robotsix/robotsix-auto-mail/commit/68f8175870fe13f2bf4b2383056f730f6797c73c))
+
 ## [0.5.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.4.0...v0.5.0) (2026-08-12)
 
 
