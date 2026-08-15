@@ -20,6 +20,10 @@ dependencies = [
     "cryptography>=50.0.0",
     "httpx>=0.27",
     "pydantic>=2.0",
+    # Floor-pinned to address CVE-2026-54249: pydantic-ai-slim < 1.106.0 is
+    # vulnerable to unvalidated UploadedFile references. It is imported directly
+    # (lazy imports) and pulled transitively via robotsix-llmio.
+    "pydantic-ai-slim>=1.106.0,<2.0.0",
     "robotsix-board",
     "robotsix-http",
     "robotsix-llmio",
@@ -182,11 +186,6 @@ known_first_party = ["robotsix_auto_mail"]
 extend_exclude = ["scripts"]
 
 [tool.deptry.per_rule_ignores]
-# pydantic_ai is pulled in transitively via robotsix-llmio[openrouter]
-# (declared in the [llm] extra); the lazy imports in core/_llm_agent.py,
-# triage/agent.py, server/_draft_generator.py, db/archive.py, and
-# config/config_sync_agent.py are intentional.
-DEP003 = ["pydantic_ai"]
 # structlog is no longer imported directly by this package (logging has been
 # migrated to robotsix_llmio.logging.setup_logging), but it must remain a
 # direct dependency to preserve the uv dependency resolution order.
