@@ -83,7 +83,7 @@ repos:
     rev: v8.30.1
     hooks:
       - id: gitleaks-docker
-        args: [--baseline-path, .gitleaks-baseline.json, --verbose]
+        args: [--verbose]
 
   - repo: https://github.com/hadolint/hadolint
     rev: 2eece55955ced00200be9729e9728cb7dacca505  # frozen: v2.15.1
