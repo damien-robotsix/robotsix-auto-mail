@@ -6,6 +6,8 @@ import json
 import sqlite3
 from urllib.request import urlopen
 
+import pytest
+
 from tests.server.conftest_helpers import (
     _populate_db,
     _post_form,
@@ -153,6 +155,54 @@ def test_healthz_content_type_is_json() -> None:
     server, port = _start_test_server(":memory:")
     try:
         resp = urlopen(f"http://127.0.0.1:{port}/healthz")
+        content_type = resp.headers.get("Content-Type", "")
+        assert "application/json" in content_type
+    finally:
+        server.shutdown()
+
+
+# ===========================================================================
+# GET /readyz tests
+# ===========================================================================
+
+
+def test_readyz_valid_db_returns_200(single_db: str) -> None:
+    """GET /readyz with a valid DB returns 200 and {"status": "ready"}."""
+    server, port = _start_test_server(single_db)
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/readyz")
+        assert resp.status == 200
+        content_type = resp.headers.get("Content-Type", "")
+        assert "application/json" in content_type
+        body = resp.read().decode("utf-8")
+        payload = json.loads(body)
+        assert payload == {"status": "ready"}
+    finally:
+        server.shutdown()
+
+
+def test_readyz_missing_db_returns_503() -> None:
+    """GET /readyz with a missing/unreadable DB returns 503 and an error."""
+    import urllib.error
+
+    server, port = _start_test_server("/dev/null/nonexistent.db")
+    try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urlopen(f"http://127.0.0.1:{port}/readyz")
+        assert exc_info.value.code == 503
+        body = exc_info.value.read().decode("utf-8")
+        payload = json.loads(body)
+        assert payload["status"] == "unavailable"
+        assert "error" in payload
+    finally:
+        server.shutdown()
+
+
+def test_readyz_content_type_is_json() -> None:
+    """GET /readyz response Content-Type is application/json."""
+    server, port = _start_test_server(":memory:")
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/readyz")
         content_type = resp.headers.get("Content-Type", "")
         assert "application/json" in content_type
     finally:

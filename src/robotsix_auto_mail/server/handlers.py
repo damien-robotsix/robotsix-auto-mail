@@ -137,6 +137,8 @@ class BoardHandler(
             (lambda p: p == "/chat-skill", self._serve_chat_skill),
             (lambda p: p == "/health", self._serve_health),
             (lambda p: p == "/healthz", self._serve_health),
+            (lambda p: p == "/ready", self._serve_ready),
+            (lambda p: p == "/readyz", self._serve_ready),
             (lambda p: p == "/settings-panel", self._serve_settings_panel),
             (
                 lambda p: p == "/probe-health",
@@ -565,6 +567,18 @@ class BoardHandler(
     def _serve_health(self) -> None:
         """Serve GET /health — liveness check."""
         self._serve_json({"status": "ok"}, status=200)
+
+    def _serve_ready(self) -> None:
+        """Serve GET /readyz — readiness check (verifies the SQLite store)."""
+        try:
+            with _with_db(self.db_path) as conn:
+                conn.execute("SELECT 1")
+        except Exception as exc:  # datastore unreachable
+            self._serve_json(
+                {"status": "unavailable", "error": str(exc)}, status=503
+            )
+            return
+        self._serve_json({"status": "ready"}, status=200)
 
     def _serve_archive_log(self) -> None:
         """Serve GET /archive-log — read-only archive audit trail.
