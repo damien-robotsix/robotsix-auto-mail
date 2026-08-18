@@ -17,7 +17,6 @@ from robotsix_auto_mail.db.archive import (
 from robotsix_auto_mail.imap import ImapClient, ImapError, MailboxInfo
 from tests.db.conftest import _FakeImapClient, _folder, _patch_llm, _special_folder
 
-
 # ---------------------------------------------------------------------------
 # setup_archive — first run
 # ---------------------------------------------------------------------------

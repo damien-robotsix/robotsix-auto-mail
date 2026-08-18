@@ -13,7 +13,6 @@ from robotsix_auto_mail.db.archive import (
 )
 from tests.db.conftest import _patch_llm
 
-
 # ---------------------------------------------------------------------------
 # determine_archive_structure
 # ---------------------------------------------------------------------------

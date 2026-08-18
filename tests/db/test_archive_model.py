@@ -2,7 +2,6 @@
 
 from robotsix_auto_mail.db.archive import ArchiveError, ArchiveStructure
 
-
 # ---------------------------------------------------------------------------
 # ArchiveStructure
 # ---------------------------------------------------------------------------
