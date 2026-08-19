@@ -574,9 +574,7 @@ class BoardHandler(
             with _with_db(self.db_path) as conn:
                 conn.execute("SELECT 1")
         except Exception as exc:  # datastore unreachable
-            self._serve_json(
-                {"status": "unavailable", "error": str(exc)}, status=503
-            )
+            self._serve_json({"status": "unavailable", "error": str(exc)}, status=503)
             return
         self._serve_json({"status": "ready"}, status=200)
 
