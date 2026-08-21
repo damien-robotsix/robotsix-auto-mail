@@ -23,7 +23,7 @@ dependencies = [
     # Floor-pinned to address CVE-2026-54249: pydantic-ai-slim < 1.106.0 is
     # vulnerable to unvalidated UploadedFile references. It is imported directly
     # (lazy imports) and pulled transitively via robotsix-llmio.
-    "pydantic-ai-slim>=1.106.0,<2.0.0",
+    "pydantic-ai-slim>=1.106.0,<3.0.0",
     "robotsix-board",
     "robotsix-http",
     "robotsix-llmio",
