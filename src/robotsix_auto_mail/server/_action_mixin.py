@@ -382,4 +382,3 @@ class _BoardActionMixin:
             no_strip=frozenset({"notes"}),
             action=save_notes_action,
         )
-
