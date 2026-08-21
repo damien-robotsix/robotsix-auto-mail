@@ -201,7 +201,7 @@ def _post_config_sync(port: int) -> tuple[int, str]:
     url = f"http://127.0.0.1:{port}/config-sync"
 
     opener = urllib.request.build_opener(CaptureError())
-    req = urllib.request.Request(url, data=b"", method="POST")  # noqa: S310
+    req = urllib.request.Request(url, data=b"", method="POST")
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
     return resp.status, body
