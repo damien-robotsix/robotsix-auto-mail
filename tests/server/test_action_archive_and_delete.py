@@ -29,7 +29,7 @@ def record_user_action_mock() -> Iterator[mock.MagicMock]:
     stay deterministic and never touch the network.
     """
     with mock.patch(
-        "robotsix_auto_mail.server._action_archive_mixin.record_user_action"
+        "robotsix_auto_mail.server._archive_action_mixin.record_user_action"
     ) as patched:
         yield patched
 

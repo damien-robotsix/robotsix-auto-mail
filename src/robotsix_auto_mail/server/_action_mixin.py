@@ -33,31 +33,6 @@ from robotsix_auto_mail.triage import (
 logger = logging.getLogger(__name__)
 
 
-def _find_message_in_archive(
-    client: Any,
-    message_id: str,
-    archive_root: str,
-    delimiter: str,
-) -> tuple[str, int] | None:
-    """Search all folders under *archive_root* for *message_id*.
-
-    Returns ``(folder_name, uid)`` or ``None`` when not found.
-    Only searches folders whose name starts with *archive_root*.
-    Skips folders with ``\\Noselect`` attribute.
-    """
-    root_prefix = f"{archive_root}{delimiter}"
-    for folder in client.list_folders():
-        if any(attr.lower() == "\\noselect" for attr in folder.attributes):
-            continue
-        if folder.name != archive_root and not folder.name.startswith(root_prefix):
-            continue
-        client.select_folder(folder.name)
-        uids = client.search_uids(f'HEADER Message-ID "{message_id}"')
-        if uids:
-            return (folder.name, uids[0])
-    return None
-
-
 def _json_field_value(data: dict[str, Any], field: str) -> str:
     """Return *field* from *data* coerced to ``str``.
 

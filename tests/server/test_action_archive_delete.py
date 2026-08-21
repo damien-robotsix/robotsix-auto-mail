@@ -56,7 +56,7 @@ def _make_archive_delete_request(
 def record_user_action_mock() -> Iterator[mock.MagicMock]:
     """Patch ``record_user_action`` so no background flash-LLM thread runs."""
     with mock.patch(
-        "robotsix_auto_mail.server._action_archive_mixin.record_user_action"
+        "robotsix_auto_mail.server._archive_action_mixin.record_user_action"
     ) as patched:
         yield patched
 

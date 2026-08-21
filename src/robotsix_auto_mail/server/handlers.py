@@ -5,7 +5,8 @@ inheritance; each mixin lives in its own module under ``server/``:
 
 - ``_view_mixin`` — GET view methods (``_serve_board``, …)
 - ``_action_mixin`` — POST action methods (``_handle_move``, …)
-- ``_action_archive_mixin`` — archive-related POST methods (``_handle_archive``, …)
+- ``_archive_action_mixin`` — archive POST action methods
+  (``_handle_archive_move``, ``_handle_archive_delete``, …)
 - ``_batch_mixin`` — batch delete / archive handlers
 - ``_triage_mixin`` — triage launcher and rule-action handlers
 - ``_draft_mixin`` — draft save / send / generate handlers
@@ -34,8 +35,8 @@ from robotsix_auto_mail.config import (
     MailConfig,
 )
 from robotsix_auto_mail.server._account_mixin import _AccountMixin
-from robotsix_auto_mail.server._action_archive_mixin import _BoardArchiveActionMixin
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
+from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
 from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
@@ -56,7 +57,7 @@ logger = logging.getLogger(__name__)
 class BoardHandler(
     _BoardViewMixin,
     _BoardActionMixin,
-    _BoardArchiveActionMixin,
+    _ArchiveActionMixin,
     _BatchActionMixin,
     _ReconcileMixin,
     _TriageMixin,

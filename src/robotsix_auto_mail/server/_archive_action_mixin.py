@@ -1,4 +1,4 @@
-"""Archive-action mixin for the board server."""
+"""Archive-action-handler mixin for the board server."""
 
 # mypy: disable-error-code="attr-defined"
 
@@ -17,17 +17,43 @@ from robotsix_auto_mail.config import (
     resolve_llm_tier,
 )
 from robotsix_auto_mail.db import MailRecord
-from robotsix_auto_mail.server._action_mixin import (
-    _find_message_in_archive,
-    _json_field_value,
+from robotsix_auto_mail.server._action_mixin import _json_field_value
+from robotsix_auto_mail.triage import (
+    TO_ARCHIVE,
+    record_user_action,
+    rules_text_for,
 )
-from robotsix_auto_mail.triage import TO_ARCHIVE, record_user_action, rules_text_for
 
 logger = logging.getLogger(__name__)
 
 
-class _BoardArchiveActionMixin:
-    """Mixin providing archive-related POST action handlers."""
+def _find_message_in_archive(
+    client: Any,
+    message_id: str,
+    archive_root: str,
+    delimiter: str,
+) -> tuple[str, int] | None:
+    """Search all folders under *archive_root* for *message_id*.
+
+    Returns ``(folder_name, uid)`` or ``None`` when not found.
+    Only searches folders whose name starts with *archive_root*.
+    Skips folders with ``\\Noselect`` attribute.
+    """
+    root_prefix = f"{archive_root}{delimiter}"
+    for folder in client.list_folders():
+        if any(attr.lower() == "\\noselect" for attr in folder.attributes):
+            continue
+        if folder.name != archive_root and not folder.name.startswith(root_prefix):
+            continue
+        client.select_folder(folder.name)
+        uids = client.search_uids(f'HEADER Message-ID "{message_id}"')
+        if uids:
+            return (folder.name, uids[0])
+    return None
+
+
+class _ArchiveActionMixin:
+    """Mixin providing archive-action handlers for the board server."""
 
     if TYPE_CHECKING:
         from ._board_handler_protocol import BoardHandlerProtocol
