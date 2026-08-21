@@ -14,12 +14,13 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.server._account_mixin import _AccountMixin
+from robotsix_auto_mail.server._action_archive_mixin import _BoardArchiveActionMixin
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
 
 
-class _FakeHandler(_BoardActionMixin):
+class _FakeHandler(_BoardArchiveActionMixin, _BoardActionMixin):
     """Concrete handler that wires the ``BoardHandlerProtocol`` attributes
     to MagicMock defaults so mixin methods can be called directly."""
 
