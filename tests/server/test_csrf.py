@@ -59,7 +59,7 @@ def _post_with_origin(
         headers["Forwarded"] = forwarded
     if sec_fetch_site is not None:
         headers["Sec-Fetch-Site"] = sec_fetch_site
-    req = urllib.request.Request(url, data=data, headers=headers)  # noqa: S310
+    req = urllib.request.Request(url, data=data, headers=headers)
     resp = opener.open(req)
     body = resp.read().decode("utf-8")
     return resp.status, body
