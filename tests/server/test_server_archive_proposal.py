@@ -241,7 +241,7 @@ def test_archive_records_archive_folder_memory_before_delete(single_db: str) -> 
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
             mock.patch(
-                "robotsix_auto_mail.server._action_archive_mixin.record_user_action"
+                "robotsix_auto_mail.server._archive_action_mixin.record_user_action"
             ) as mock_record,
         ):
             mock_client = mock_cls.return_value.__enter__.return_value

@@ -335,8 +335,8 @@ modules:
       - src/robotsix_auto_mail/server/handlers.py
       - tests/server/test_frame_headers.py
       - src/robotsix_auto_mail/server/_account_mixin.py
-      - src/robotsix_auto_mail/server/_action_archive_mixin.py
       - src/robotsix_auto_mail/server/_action_mixin.py
+      - src/robotsix_auto_mail/server/_archive_action_mixin.py
       - src/robotsix_auto_mail/server/_auth_mixin.py
       - src/robotsix_auto_mail/server/_batch_mixin.py
       - src/robotsix_auto_mail/server/_board_handler_protocol.py
