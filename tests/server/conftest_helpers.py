@@ -118,7 +118,7 @@ def _build_opener(
     url = f"http://127.0.0.1:{port}{path}"
 
     opener = urllib.request.build_opener(NoRedirect(), CaptureError())
-    req = urllib.request.Request(  # noqa: S310
+    req = urllib.request.Request(
         url,
         data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
