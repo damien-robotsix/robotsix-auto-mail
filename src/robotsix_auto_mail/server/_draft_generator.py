@@ -112,7 +112,7 @@ def generate_draft_reply(
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → config file (via
             :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
-        provider_model: LLM provider-model identifier (e.g. ``openrouter-deepseek``).
+        provider_model: LLM provider-model identifier (e.g. ``"<provider>-<model>"``).
             ``None`` falls back to the tier-level default model (via
             :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
         level: LLM integer tier to use.  ``1`` (cheap, default).

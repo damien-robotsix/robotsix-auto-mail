@@ -403,7 +403,7 @@ class TierModelsConfig(BaseModel):
     """Per-level model overrides for the four LLM tiers.
 
     Each field holds a provider-model identifier
-    (e.g. ``"openrouter[deepseek]-deepseek/deepseek-v4-flash"``).
+    (e.g. ``"<provider>-<model>"``).
     Empty means use the llmio tier default for that level.
     """
 
@@ -413,7 +413,7 @@ class TierModelsConfig(BaseModel):
         default="",
         description=(
             "Provider-model identifier for tier 1 (cheapest), "
-            "e.g. `openrouter[deepseek]-deepseek/deepseek-chat`. "
+            "e.g. `<provider>-<model>`. "
             "Empty uses the llmio tier default."
         ),
     )
@@ -496,7 +496,7 @@ class MailAccountsConfig(BaseModel):
     )
 
     #: Per-level model overrides.  Each field holds a provider-model
-    #: identifier (e.g. ``"openrouter[deepseek]-deepseek/deepseek-v4-flash"``).
+    #: identifier (e.g. ``"<provider>-<model>"``).
     #: Empty means use the llmio tier default for that level.
     models: TierModelsConfig = Field(
         default_factory=TierModelsConfig,

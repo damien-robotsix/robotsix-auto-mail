@@ -52,7 +52,7 @@ _LLM_PARAM_DOCS = """\
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → config file.
         provider_model: LLM provider-model identifier
-            (e.g. ``openrouter-deepseek``).  ``None`` (the default) falls
+            (e.g. ``"<provider>-<model>"``).  ``None`` (the default) falls
             back to the tier-level default model.
         level: LLM integer tier to use.  ``1`` (cheap, default)."""
 
