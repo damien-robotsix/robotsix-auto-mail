@@ -532,21 +532,6 @@ class MailAccountsConfig(BaseModel):
         description="Tier level (1-4) assigned to the draft-reply agent.",
     )
 
-    #: Public origin URLs trusted for CSRF when the server runs behind a
-    #: reverse proxy that rewrites ``Host`` without setting
-    #: ``X-Forwarded-Host``.  Each entry must be a full origin
-    #: (``scheme://host[:port]``).  The ``Origin`` header is compared
-    #: against this list after the ``Host`` / ``X-Forwarded-Host`` /
-    #: ``Forwarded`` header checks.  For example:
-    #: ``["https://mail.deploy.robotsix.net"]``.
-    trusted_origins: list[str] = Field(
-        default_factory=list,
-        description=(
-            "Public origin URLs (e.g. 'https://mail.deploy.robotsix.net') "
-            "trusted for CSRF when the server runs behind a reverse proxy."
-        ),
-    )
-
     #: Absolute root directory for all persisted mail data (SQLite
     #: databases, heartbeat files, etc.).  Relative ``db_path`` values
     #: on each :class:`MailConfig` are resolved against this root so a

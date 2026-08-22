@@ -360,14 +360,6 @@
       "title": "Draft Level",
       "type": "integer"
     },
-    "trusted_origins": {
-      "description": "Public origin URLs (e.g. 'https://mail.deploy.robotsix.net') trusted for CSRF when the server runs behind a reverse proxy.",
-      "items": {
-        "type": "string"
-      },
-      "title": "Trusted Origins",
-      "type": "array"
-    },
     "mail_data_root": {
       "default": "/data",
       "description": "Absolute root directory for persisted mail data. Relative db_path values are resolved against this root.",

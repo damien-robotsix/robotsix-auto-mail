@@ -23,7 +23,6 @@ from __future__ import annotations
 import functools
 import json
 import logging
-import re
 from collections.abc import Callable, Mapping
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
@@ -180,8 +179,6 @@ class BoardHandler(
 
     def do_POST(self) -> None:
         """Route POST requests via an exact-match table."""
-        if not self._check_csrf():
-            return
         # /auth-start is cross-account by design — handle before
         # _select_account() so it works regardless of the session account.
         if urlsplit(self.path).path == "/auth-start":
@@ -247,111 +244,10 @@ class BoardHandler(
 
     def do_PUT(self) -> None:
         """Route PUT requests — the config surface is the only one."""
-        if not self._check_csrf():
-            return
         if urlsplit(self.path).path == "/config":
             self._handle_put_config()
             return
         self._not_found()
-
-    def _check_csrf(self) -> bool:
-        """Reject cross-origin POST requests.
-
-        Modern browsers always include an ``Origin`` header on cross-origin
-        requests (including simple ``application/x-www-form-urlencoded``
-        form POSTs that do not trigger a CORS preflight).  When the header
-        is present the request is accepted only if it matches one of:
-
-        * ``Sec-Fetch-Site: same-origin`` or ``none`` — set by the browser
-          itself and unforgeable by a cross-site page, checked before
-          ``Origin`` because this server sends ``Referrer-Policy:
-          no-referrer`` and Firefox then reports ``Origin: null`` even for a
-          same-origin submission;
-        * the server's own loopback origin (``127.0.0.1`` / ``localhost``
-          on the bound port) — covers local dev / CLI use;
-        * the request's own ``Host`` header — the standard proxy-aware
-          same-origin check: when the server runs behind a reverse proxy
-          the browser sets ``Origin`` and ``Host`` to the same public
-          authority (e.g. ``mail.deploy.robotsix.net``);
-        * the ``X-Forwarded-Host`` header — first value when
-          comma-separated, stripped of whitespace, for environments where
-          the reverse proxy rewrites ``Host`` but forwards the public
-          host here;
-        * the ``host=`` parameter of the first ``Forwarded`` (RFC 7239)
-          header element;
-        * the ``trusted_origins`` list in :class:`MailAccountsConfig` —
-          explicit full-origin URLs (e.g. ``https://mail.deploy.robotsix.net``)
-          for proxies that rewrite ``Host`` without setting forwarding headers.
-
-        Requests without an ``Origin`` header (same-origin page navigation,
-        ``curl``, CLI tools) are allowed — malicious cross-site forms cannot
-        suppress the header.
-        """
-        # ``Sec-Fetch-Site`` is the purpose-built signal and is decided by the
-        # browser, not by the page, so a cross-site attacker cannot forge it.
-        # Check it first: this server sends ``Referrer-Policy: no-referrer``,
-        # and Firefox then sends ``Origin: null`` on a *same-origin* form POST,
-        # which every check below would reject. That combination made the
-        # add-account form reject its own submission.
-        fetch_site = self.headers.get("Sec-Fetch-Site")
-        if fetch_site in ("same-origin", "none"):
-            return True
-
-        origin = self.headers.get("Origin")
-        if origin is None:
-            return True
-        server_port = self.server.server_address[1]  # type: ignore[index]
-        allowed = {
-            f"http://127.0.0.1:{server_port}",
-            f"http://localhost:{server_port}",
-        }
-        if origin in allowed:
-            return True
-        origin_netloc = urlsplit(origin).netloc
-        # Proxy-aware same-origin check: when the server runs behind a
-        # reverse proxy the browser sends Origin and Host set to the
-        # same public authority (e.g. ``mail.deploy.robotsix.net``).
-        host = self.headers.get("Host")
-        if host is not None and origin_netloc == host:
-            return True
-        # ``X-Forwarded-Host``: first value when comma-separated.
-        xfh = self.headers.get("X-Forwarded-Host")
-        if xfh is not None:
-            first_xfh = xfh.split(",")[0].strip()
-            if origin_netloc == first_xfh:
-                return True
-        # ``Forwarded`` (RFC 7239): ``host=`` parameter of first element.
-        fwd = self.headers.get("Forwarded")
-        if fwd is not None:
-            first_element = fwd.split(",")[0].strip()
-            for param in first_element.split(";"):
-                param = param.strip()
-                if param.startswith("host="):
-                    fwd_host = param[len("host=") :].strip()
-                    if fwd_host.startswith('"') and fwd_host.endswith('"'):
-                        fwd_host = fwd_host[1:-1]
-                    if origin_netloc == fwd_host:
-                        return True
-                    break
-        # Explicitly configured trusted origins — the operator can list
-        # the public origin(s) (e.g. ``https://mail.deploy.robotsix.net``)
-        # when the reverse proxy rewrites ``Host`` without setting
-        # ``X-Forwarded-Host``.
-        trusted = self.accounts.trusted_origins if self.accounts is not None else ()
-        if origin in trusted:
-            return True
-        logger.debug(
-            "CSRF rejection: Origin=%s Sec-Fetch-Site=%s Host=%s "
-            "X-Forwarded-Host=%s Forwarded=%s trusted_origins=%s",
-            re.escape(origin),
-            re.escape(fetch_site or ""),
-            re.escape(self.headers.get("Host") or ""),
-            re.escape(self.headers.get("X-Forwarded-Host") or ""),
-            re.escape(self.headers.get("Forwarded") or ""),
-            sorted(trusted) if trusted else [],
-        )
-        self._send_response("Forbidden: cross-origin request rejected", status=403)
-        return False
 
     def _select_account(self) -> bool:
         """Resolve the per-request account and bind its DB / mail config.

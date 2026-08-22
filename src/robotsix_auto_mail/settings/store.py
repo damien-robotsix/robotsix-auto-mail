@@ -346,7 +346,6 @@ def merge_settings_store_accounts(
         rules_level=accounts.rules_level,
         detector_level=accounts.detector_level,
         draft_level=accounts.draft_level,
-        trusted_origins=accounts.trusted_origins,
         mail_data_root=accounts.mail_data_root,
     )
 
