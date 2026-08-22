@@ -31,7 +31,7 @@ def _post(port: int, *, origin: str | None, path: str = "/move") -> tuple[int, s
         f"http://127.0.0.1:{port}{path}",
         data=urllib.parse.urlencode({}).encode("utf-8"),
         headers=headers,
-    )  # noqa: S310
+    )
     resp = opener.open(req)
     return resp.status, resp.read().decode("utf-8")
 
