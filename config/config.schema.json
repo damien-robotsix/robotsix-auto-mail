@@ -277,11 +277,11 @@
       "type": "object"
     },
     "TierModelsConfig": {
-      "description": "Per-level model overrides for the four LLM tiers.\n\nEach field holds a provider-model identifier\n(e.g. ``\"openrouter[deepseek]-deepseek/deepseek-v4-flash\"``).\nEmpty means use the llmio tier default for that level.",
+      "description": "Per-level model overrides for the four LLM tiers.\n\nEach field holds a provider-model identifier\n(e.g. ``\"<provider>-<model>\"``).\nEmpty means use the llmio tier default for that level.",
       "properties": {
         "level1": {
           "default": "",
-          "description": "Provider-model identifier for tier 1 (cheapest), e.g. `openrouter[deepseek]-deepseek/deepseek-chat`. Empty uses the llmio tier default.",
+          "description": "Provider-model identifier for tier 1 (cheapest), e.g. `<provider>-<model>`. Empty uses the llmio tier default.",
           "title": "Level1",
           "type": "string"
         },

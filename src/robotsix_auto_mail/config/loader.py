@@ -240,24 +240,20 @@ def get_resolved_models() -> dict[str, str]:
         LEVEL1_DEFAULT,
         LEVEL2_DEFAULT,
         LEVEL3_DEFAULT,
+        LEVEL4_DEFAULT,
     )
 
     llmio_defaults: dict[int, str] = {
         1: LEVEL1_DEFAULT.model,
         2: LEVEL2_DEFAULT.model,
         3: LEVEL3_DEFAULT.model,
-        4: _LEVEL4_DEFAULT_MODEL,
+        4: LEVEL4_DEFAULT.model,
     }
     result: dict[str, str] = {}
     for level in (1, 2, 3, 4):
         override = resolve_model_override(level)
         result[f"level{level}"] = override or llmio_defaults.get(level, "")
     return result
-
-
-#: Provider-model identifier used as the level-4 fallback when llmio
-#: does not yet define a ``LEVEL4_DEFAULT``.
-_LEVEL4_DEFAULT_MODEL = "claudeSDK-opus"
 
 
 def load_langfuse() -> LangfuseConfig:

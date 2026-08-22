@@ -38,7 +38,7 @@ def register_subparser(
     config_sync_parser.add_argument(
         "--provider-model",
         default=None,
-        help="LLM provider-model identifier (e.g. openrouter-deepseek). Overrides "
+        help="LLM provider-model identifier (e.g. <provider>-<model>). Overrides "
         "the config file's models tier override.",
     )
     config_sync_parser.add_argument(

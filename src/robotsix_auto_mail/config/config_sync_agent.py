@@ -344,7 +344,7 @@ def run_config_sync_agent(
         api_key: OpenRouter API key.  Resolves with the precedence
             ``api_key`` argument → config file (via
             :func:`~robotsix_auto_mail.config.resolve_llm_api_key`).
-        provider_model: LLM backend name (e.g. ``openrouter-deepseek``).
+        provider_model: LLM backend name (e.g. ``"<provider>-<model>"``).
             ``None`` falls back to the tier-level default model (via
             :func:`~robotsix_auto_mail.core._llm_agent._run_llm_agent`).
         level: LLM integer tier to use.  ``1`` (cheap, default).

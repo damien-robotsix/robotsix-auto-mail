@@ -514,7 +514,7 @@ def run_triage_agent(
             ``api_key`` argument → the canonical ``openrouter`` block (via
             :func:`~robotsix_auto_mail.config.resolve_llm_api_key`).
         provider_model: LLM provider-model identifier
-            (e.g. ``openrouter-deepseek``).
+            (e.g. ``"<provider>-<model>"``).
             Resolves with the precedence ``provider_model`` argument →
             ``models`` tier override (via
             :func:`~robotsix_auto_mail.config.resolve_llm_tier`).
