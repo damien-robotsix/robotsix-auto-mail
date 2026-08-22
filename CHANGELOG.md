@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.5.1...v0.6.0) (2026-08-22)
+
+
+### Features
+
+* Remove component-level CSRF guard and trusted_origins config — CSRF is handled at the fleet edge (component-standard) (20260816T211735Z-remove-component-level-csrf-guard-and-tr-590f) ([#1193](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1193)) ([27a9df7](https://github.com/damien-robotsix/robotsix-auto-mail/commit/27a9df73a245cc4fe7430be8d1e11361f3ee993a))
+
+
+### Bug Fixes
+
+* Fix gitleaks pre-commit hook: missing baseline file breaks fresh clones (20260817T194330Z-fix-gitleaks-pre-commit-hook-missing-bas-4222) ([#1185](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1185)) ([81169bf](https://github.com/damien-robotsix/robotsix-auto-mail/commit/81169bf6151a0a27fa5be036948ffced18abf450))
+* mail runs llmio 0.1.0: DeepSeek hard-pinned with no price ceiling and no fallback (20260821T105510Z-mail-runs-llmio-0-1-0-deepseek-hard-pinn-4de6) ([#1191](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1191)) ([acf9e5d](https://github.com/damien-robotsix/robotsix-auto-mail/commit/acf9e5d47e26abb8e87c0fcf8b67469b26a7c490))
+
 ## [0.5.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.5.0...v0.5.1) (2026-08-15)
 
 
