@@ -540,8 +540,8 @@ def _render_board_page_shell(
                             '<span class="appshell-actions">'
                             + picker_html
                             + (
-                                f'<button id="probe-health-btn"'
-                                f">Recheck connections</button>\n"
+                                '<button id="probe-health-btn"'
+                                ">Recheck connections</button>\n"
                                 '<a href="/add-account" class="header-btn'
                                 ' add-account-btn"'
                                 ' title="Add a new mail account">'
