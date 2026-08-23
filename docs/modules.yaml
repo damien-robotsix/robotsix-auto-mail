@@ -362,6 +362,7 @@ modules:
       - src/robotsix_auto_mail/server/static/detail-embed.js
       - src/robotsix_auto_mail/server/static/settings-panel.css
       - src/robotsix_auto_mail/server/static/settings-loader.js
+      - src/robotsix_auto_mail/server/static/appshell-loader.js
       - src/robotsix_auto_mail/server/static/skill.md
       - src/robotsix_auto_mail/server/board_adapter.py
       - tests/server/__init__.py

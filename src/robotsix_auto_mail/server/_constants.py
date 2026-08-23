@@ -77,6 +77,14 @@ _STATIC_SETTINGS_LOADER_JS = (  # lgtm[py/unused-global-variable]
     / "settings-loader.js"
 ).read_text()
 
+# CSP-safe AppShell bootstrap (replaces the bespoke board-header with the
+# shared @robotsix/ui AppShell — robotsix-standards ui-shell.md).
+_STATIC_APPSHELL_LOADER_JS = (  # lgtm[py/unused-global-variable]
+    importlib.resources.files("robotsix_auto_mail.server")
+    / "static"
+    / "appshell-loader.js"
+).read_text()
+
 # Chat-access SKILL.md — served at GET /chat-skill per the
 # robotsix-standards chat-access standard §1.
 _STATIC_CHAT_SKILL_MD = (  # lgtm[py/unused-global-variable]
@@ -161,6 +169,7 @@ _ = (
     _STATIC_BOARD_EVENTS_JS,
     _STATIC_ADD_ACCOUNT_REDIRECT_JS,
     _STATIC_SETTINGS_LOADER_JS,
+    _STATIC_APPSHELL_LOADER_JS,
     _STATIC_CHAT_SKILL_MD,
     _STATIC_ROBOTSIX_UI_JS,
     _STATIC_ROBOTSIX_UI_CSS,

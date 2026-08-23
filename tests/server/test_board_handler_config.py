@@ -170,6 +170,7 @@ def test_settings_page_serves_the_shared_panel(single_db: str) -> None:
         body = resp.read().decode("utf-8")
         assert resp.status == 200
         assert "/static/settings-loader.js" in body
+        assert "/static/appshell-loader.js" in body
     finally:
         server.shutdown()
 

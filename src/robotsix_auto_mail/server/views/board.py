@@ -510,6 +510,7 @@ def _render_board_page_shell(
         "<head>\n"
         '<meta charset="utf-8">\n'
         "<title>Mail Board</title>\n"
+        '<link rel="stylesheet" href="/static/robotsix-ui.css">\n'
         '<link rel="stylesheet" href="/static/board.css">\n'
         '<link rel="stylesheet" href="/static/automail/board.css">\n'
         "</head>\n"
@@ -517,21 +518,48 @@ def _render_board_page_shell(
         + (health_alerts_html or '<div id="health-alerts"></div>\n')
         + (zero_mails_warning_html or "")
         + (
-            '<header class="board-header">\n'
-            '<div class="board-header-left">\n'
-            "<h1>Mail Board</h1>\n"
-            f"{picker_html}"
+            '<div id="app-shell"></div>\n'
+            # AppShell config — carried on a <div> (not a <script>) so a
+            # strict CSP does not flag a violation.  The loader reads the
+            # data- attribute, dynamic-imports robotsix-ui.js, and mounts.
+            '<div id="appshell-config" hidden'
+            ' data-appshell-config="'
+            + html.escape(
+                json.dumps(
+                    {
+                        "brand": "Mail Board",
+                        "navItems": [
+                            {"href": "/board", "label": "Board", "active": True},
+                            {"href": "/archive-log", "label": "Archive"},
+                        ],
+                        "settingsHref": "/settings-panel",
+                        # The server-rendered picker and action buttons
+                        # are passed as the right-slot inner HTML so they
+                        # render inside the shared AppShell's right zone.
+                        "rightSlotHTML": (
+                            '<span class="appshell-actions">'
+                            + picker_html
+                            + (
+                                f'<button id="probe-health-btn"'
+                                f">Recheck connections</button>\n"
+                                '<a href="/add-account" class="header-btn'
+                                ' add-account-btn"'
+                                ' title="Add a new mail account">'
+                                "+ Add Account</a>\n"
+                            )
+                            + "</span>"
+                        ),
+                    },
+                ),
+                quote=True,
+            )
+            + '">'
             "</div>\n"
-            '<div class="board-header-right">\n'
-            '<button id="probe-health-btn"'
-            ">Recheck connections</button>\n"
-            '<a href="/add-account" class="header-btn add-account-btn"'
-            ' title="Add a new mail account">+ Add Account</a>\n'
-            '<a href="/settings-panel" class="header-btn settings-btn"'
-            ' title="Manage accounts and settings">'
-            "Settings</a>\n"
-            "</div>\n"
-            "</header>\n"
+            # The AppShell loader must load before board.js so the shell
+            # chrome is visible immediately — it is an ES module so it
+            # is deferred by default and does not block parsing.
+            '<script type="module" src="/static/appshell-loader.js">'
+            "</script>\n"
         )
         + f'<span id="triage-control">{triage_control_html}</span>\n'
         f'<span id="ingest-control">{ingest_control_html}</span>\n'

@@ -15,6 +15,7 @@ connection, which is more than a config write.
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 from pathlib import Path
@@ -44,13 +45,33 @@ _SETTINGS_PAGE = (
     + """</style>
 </head>
 <body>
-<main>
-<div class="nav-links">
-  <a href="/board">&larr; Back to Board</a>
+<div id="app-shell"></div>
+<div id="appshell-config" hidden data-appshell-config='"""
+    # Same nav as the board page so the chrome is consistent
+    # across every view.  The Settings link in the app shell's
+    # right zone points at this page and is rendered by the
+    # loader as a non-active persistent link.
+    + html.escape(
+        json.dumps(
+            {
+                "brand": "Mail Board",
+                "navItems": [
+                    {"href": "/board", "label": "Board"},
+                    {"href": "/archive-log", "label": "Archive"},
+                ],
+                "settingsHref": "/settings-panel",
+                "rightSlotHTML": "",
+            },
+        ),
+        quote=True,
+    )
+    + """'>
 </div>
+<main>
 <div id="settings-panel"></div>
 <noscript><p class="panel-fallback">Settings require JavaScript.</p></noscript>
 </main>
+<script type="module" src="/static/appshell-loader.js"></script>
 <script type="module" src="/static/settings-loader.js"></script>
 </body>
 </html>

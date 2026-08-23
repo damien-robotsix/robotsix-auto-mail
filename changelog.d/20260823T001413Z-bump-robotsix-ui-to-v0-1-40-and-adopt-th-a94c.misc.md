@@ -1,0 +1,1 @@
+Bump robotsix-ui from v0.1.7 to v0.1.40 and adopt the shared AppShell navigation component, replacing the bespoke board header with the fleet-standard chrome (brand, nav items with active highlighting, Settings link). The board and settings pages now render inside the shared AppShell, matching the rest of the fleet's UIs.

@@ -6,7 +6,7 @@
 # does this same copy in its `ui` stage; run this for a local checkout.
 set -euo pipefail
 
-VERSION="${ROBOTSIX_UI_VERSION:-v0.1.7}"
+VERSION="${ROBOTSIX_UI_VERSION:-v0.1.40}"
 DEST="$(dirname "$0")/../../src/robotsix_auto_mail/server/static"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
