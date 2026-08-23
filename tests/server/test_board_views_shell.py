@@ -58,9 +58,33 @@ def test_page_shell_injects_columns_html() -> None:
 
 
 def test_page_shell_injects_picker_html() -> None:
-    """The picker_html argument appears in the page body."""
+    """The picker_html argument appears in the appshell-config payload."""
+    import html as _html
+    import json as _json
+    import re as _re
+
     result = _page_shell_sentinels(picker_html="<select>MY_PICKER</select>")
-    assert "<select>MY_PICKER</select>" in result
+    # The picker is now carried in the data-appshell-config attribute
+    # (HTML-escaped JSON), not as raw markup in the body — the AppShell
+    # loader reads it and injects it as the rightSlot inner HTML.
+    m = _re.search(r'data-appshell-config="([^"]*)"', result)
+    assert m is not None, "no #appshell-config data attribute"
+    config = _json.loads(_html.unescape(m.group(1)))
+    assert "MY_PICKER" in config["rightSlotHTML"]
+
+
+def test_page_shell_appshell_mount_point() -> None:
+    """The board page renders an #app-shell div for the AppShell loader."""
+    result = _page_shell_sentinels()
+    assert 'id="app-shell"' in result
+    assert 'id="appshell-config"' in result
+    assert 'src="/static/appshell-loader.js"' in result
+
+
+def test_page_shell_robotsix_ui_css_linked() -> None:
+    """The board page links to the shared robotsix-ui.css stylesheet."""
+    result = _page_shell_sentinels()
+    assert 'href="/static/robotsix-ui.css"' in result
 
 
 def test_page_shell_injects_batch_control_html() -> None:

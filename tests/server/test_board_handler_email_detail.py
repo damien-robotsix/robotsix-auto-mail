@@ -272,15 +272,26 @@ def test_picker_visible_multi_account(
     try:
         status, body, _h = _get(f"http://127.0.0.1:{port}/board")
         assert status == 200
-        assert '<select id="account-picker"' in body
-        assert '<option value="__all__"' in body
-        assert '<option value="A"' in body
-        assert '<option value="B"' in body
+        # The picker is carried in the appshell-config JSON payload
+        # (HTML-escaped inside a data attribute) — parse it out.
+        import html as _html
+        import json as _json
+        import re as _re
+
+        m = _re.search(r'data-appshell-config="([^"]*)"', body)
+        assert m is not None, "no appshell-config in body"
+        cfg = _json.loads(_html.unescape(m.group(1)))
+        slot = cfg["rightSlotHTML"]
+        assert 'id="account-picker"' in slot
+        assert '"__all__"' in slot
+        assert 'value="A"' in slot
+        assert 'value="B"' in slot
         # Default (no query, no cookie) → first account in configured order.
-        assert '<option value="A" selected>' in body
-        assert '<option value="__all__" selected>' not in body
-        # Non-None label renders escaped as the option text.
-        assert "Alice &lt;Work&gt;" in body
+        assert 'value="A" selected' in slot
+        assert 'value="__all__" selected' not in slot
+        # Non-None label renders escaped as the option text — check in the
+        # parsed rightSlotHTML rather than the raw (double-escaped) body.
+        assert "Alice &lt;Work&gt;" in slot
     finally:
         server.shutdown()
 
@@ -294,11 +305,20 @@ def test_picker_reflects_selection(
     try:
         status, body, _h = _get(f"http://127.0.0.1:{port}/board?account=B")
         assert status == 200
-        assert '<option value="B" selected>' in body
-        assert '<option value="A" selected>' not in body
+        # The picker is carried in the appshell-config JSON payload.
+        import html as _html
+        import json as _json
+        import re as _re
+
+        m = _re.search(r'data-appshell-config="([^"]*)"', body)
+        assert m is not None, "no appshell-config in body"
+        cfg = _json.loads(_html.unescape(m.group(1)))
+        slot = cfg["rightSlotHTML"]
+        assert 'value="B" selected' in slot
+        assert 'value="A" selected' not in slot
         # Aggregate sentinel is present but not selected.
-        assert '<option value="__all__">All mailboxes</option>' in body
-        assert '<option value="__all__" selected>' not in body
+        assert 'value="__all__"' in slot
+        assert 'value="__all__" selected' not in slot
     finally:
         server.shutdown()
 
@@ -312,10 +332,17 @@ def test_picker_onchange_navigates(
     server, port = _start_test_server_with_accounts(accounts)
     try:
         _s, body, _h = _get(f"http://127.0.0.1:{port}/board")
-        # The picker must NOT have an inline onchange handler.
+        # The picker must NOT have an inline onchange handler anywhere.
         assert 'onchange="' not in body
-        # The picker must still be present with the correct id.
-        assert '<select id="account-picker">' in body
+        # The picker must still be present (in the appshell-config).
+        import html as _html
+        import json as _json
+        import re as _re
+
+        m = _re.search(r'data-appshell-config="([^"]*)"', body)
+        assert m is not None, "no appshell-config in body"
+        cfg = _json.loads(_html.unescape(m.group(1)))
+        assert 'id="account-picker"' in cfg["rightSlotHTML"]
         # board-events.js must be loaded for the delegated handler.
         assert '<script src="/static/board-events.js"></script>' in body
     finally:

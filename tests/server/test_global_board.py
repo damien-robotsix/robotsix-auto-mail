@@ -168,9 +168,17 @@ def test_global_board_page_all_accounts_param(
         # Per-card move form carries ?account=.
         assert 'action="/move?account=A"' in body
         assert 'action="/move?account=B"' in body
-        # Picker includes All mailboxes option.
-        assert '<option value="__all__"' in body
-        assert "All mailboxes" in body
+        # Picker includes All mailboxes option — now carried in the
+        # appshell-config data attribute as HTML-escaped JSON.
+        import html as _html
+        import json as _json
+        import re as _re
+
+        m = _re.search(r'data-appshell-config="([^"]*)"', body)
+        assert m is not None, "no appshell-config in body"
+        cfg = _json.loads(_html.unescape(m.group(1)))
+        assert '"__all__"' in cfg["rightSlotHTML"]
+        assert "All mailboxes" in cfg["rightSlotHTML"]
         # No folder-triage form in aggregate mode.
         assert 'action="/run-folder-triage"' not in body
         # Delete-All fans out across accounts (TO_DELETE column seeded
@@ -216,11 +224,20 @@ def test_global_board_picker_all_mailboxes_option(
     try:
         status, body, _h = _get(f"http://127.0.0.1:{port}/board?account=__all__")
         assert status == 200
-        assert '<option value="__all__" selected>' in body
-        assert "All mailboxes" in body
+        # The picker is carried in the appshell-config JSON payload
+        # (HTML-escaped inside a data attribute) — parse it out.
+        import html as _html
+        import json as _json
+        import re as _re
+
+        m = _re.search(r'data-appshell-config="([^"]*)"', body)
+        assert m is not None, "no appshell-config in body"
+        cfg = _json.loads(_html.unescape(m.group(1)))
+        slot = cfg["rightSlotHTML"]
+        assert "All mailboxes" in slot
         # Per-account options follow.
-        assert '<option value="A"' in body
-        assert '<option value="B"' in body
+        assert 'value="A"' in slot
+        assert 'value="B"' in slot
     finally:
         server.shutdown()
 

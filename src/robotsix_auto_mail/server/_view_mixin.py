@@ -11,6 +11,7 @@ from urllib.parse import unquote
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, resolve_llm_api_key
 from robotsix_auto_mail.server._constants import (
     _STATIC_ADD_ACCOUNT_REDIRECT_JS,
+    _STATIC_APPSHELL_LOADER_JS,
     _STATIC_AUTOMAIL_BOARD_CSS,
     _STATIC_BOARD_AUTOMAIL_JS,
     _STATIC_BOARD_CSS,
@@ -285,6 +286,11 @@ class _BoardViewMixin:
         elif self.path == "/static/settings-loader.js":
             self._send_response(
                 _STATIC_SETTINGS_LOADER_JS,
+                content_type="text/javascript; charset=utf-8",
+            )
+        elif self.path == "/static/appshell-loader.js":
+            self._send_response(
+                _STATIC_APPSHELL_LOADER_JS,
                 content_type="text/javascript; charset=utf-8",
             )
         elif self.path == "/static/robotsix-ui.js":
