@@ -51,9 +51,7 @@ class _AttachmentMixin:
         # -- parse optional body -------------------------------------------
         content_length = int(self.headers.get("Content-Length", 0))
         raw_body = (
-            self.rfile.read(content_length).decode("utf-8")
-            if content_length
-            else ""
+            self.rfile.read(content_length).decode("utf-8") if content_length else ""
         )
         selector: dict[str, Any] = {}
         if raw_body.strip():
@@ -76,7 +74,7 @@ class _AttachmentMixin:
         # -- check attachments exist ---------------------------------------
         try:
             attachments_meta = json.loads(record.attachments_json)
-        except (json.JSONDecodeError, TypeError):
+        except json.JSONDecodeError, TypeError:
             attachments_meta = []
         if not isinstance(attachments_meta, list) or not attachments_meta:
             self._send_response(
@@ -101,9 +99,7 @@ class _AttachmentMixin:
             ]
             if not matching:
                 self._send_response(
-                    json.dumps(
-                        {"error": f"Attachment not found: {filename_filter}"}
-                    ),
+                    json.dumps({"error": f"Attachment not found: {filename_filter}"}),
                     status=404,
                     content_type="application/json; charset=utf-8",
                 )
@@ -185,9 +181,7 @@ class _AttachmentMixin:
 
         if not attachment_parts:
             self._send_response(
-                json.dumps(
-                    {"error": "No matching attachment parts found in MIME"}
-                ),
+                json.dumps({"error": "No matching attachment parts found in MIME"}),
                 status=502,
                 content_type="application/json; charset=utf-8",
             )
