@@ -365,6 +365,12 @@
       "description": "Absolute root directory for persisted mail data. Relative db_path values are resolved against this root.",
       "title": "Mail Data Root",
       "type": "string"
+    },
+    "file_hub_url": {
+      "default": "",
+      "description": "Base URL of the robotsix-file-hub service (e.g. 'http://file-hub:8080'). Empty means the push-attachments-to-file-hub endpoint is disabled.",
+      "title": "File Hub Url",
+      "type": "string"
     }
   },
   "required": [

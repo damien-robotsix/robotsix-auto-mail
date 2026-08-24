@@ -337,6 +337,7 @@ modules:
       - tests/server/test_frame_headers.py
       - src/robotsix_auto_mail/server/_account_mixin.py
       - src/robotsix_auto_mail/server/_action_mixin.py
+      - src/robotsix_auto_mail/server/_attachment_mixin.py
       - src/robotsix_auto_mail/server/_archive_action_mixin.py
       - src/robotsix_auto_mail/server/_auth_mixin.py
       - src/robotsix_auto_mail/server/_batch_mixin.py
@@ -370,6 +371,7 @@ modules:
       - tests/server/conftest_helpers.py
       - tests/server/test_no_origin_gate.py
       - tests/server/_test_helpers.py
+      - tests/server/test_attachment_mixin.py
       - tests/server/test_action_archive_and_delete.py
       - tests/server/test_action_archive_delete.py
       - tests/server/test_action_archive_move.py

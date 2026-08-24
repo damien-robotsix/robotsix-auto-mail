@@ -36,6 +36,7 @@ from robotsix_auto_mail.config import (
 from robotsix_auto_mail.server._account_mixin import _AccountMixin
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
+from robotsix_auto_mail.server._attachment_mixin import _AttachmentMixin
 from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
@@ -57,6 +58,7 @@ class BoardHandler(
     _BoardViewMixin,
     _BoardActionMixin,
     _ArchiveActionMixin,
+    _AttachmentMixin,
     _BatchActionMixin,
     _ReconcileMixin,
     _TriageMixin,
@@ -201,6 +203,18 @@ class BoardHandler(
             return
         if self.accounts is not None and not self._select_account():
             return
+        # Dispatch on the bare path so ``?account=<id>`` query strings do
+        # not defeat exact-match routing.
+        path = urlsplit(self.path).path
+
+        # Prefix-based POST routes (before exact-match table).
+        if path.startswith("/email/") and path.endswith("/attachments/to-file-hub"):
+            # Extract message_id from /email/<message_id>/attachments/to-file-hub
+            message_id = unquote(path[len("/email/") : -len("/attachments/to-file-hub")])
+            if message_id:
+                self._handle_push_to_file_hub(message_id)
+                return
+
         # Periodic-trigger decision — Option A (on-demand endpoint
         # only): no background/periodic runner is added.  The
         # deterministic ``check_config_sync.py`` remains the fast, free,
