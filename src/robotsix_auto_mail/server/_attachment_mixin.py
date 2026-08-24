@@ -173,9 +173,8 @@ class _AttachmentMixin:
                 and content_type not in ("text/plain", "text/html")
             ):
                 if att_idx in selected_indices and att_idx < len(attachments_meta):
-                    payload = part.get_payload(decode=True)
-                    if payload is None:
-                        payload = b""
+                    raw_payload = part.get_payload(decode=True)
+                    payload = raw_payload if isinstance(raw_payload, bytes) else b""
                     attachment_parts.append(
                         (att_idx, attachments_meta[att_idx], payload)
                     )
