@@ -1,5 +1,7 @@
 """Attachment-to-file-hub mixin for the board server."""
 
+# mypy: disable-error-code="attr-defined"
+
 from __future__ import annotations
 
 import email
