@@ -210,7 +210,8 @@ class BoardHandler(
         # Prefix-based POST routes (before exact-match table).
         if path.startswith("/email/") and path.endswith("/attachments/to-file-hub"):
             # Extract message_id from /email/<message_id>/attachments/to-file-hub
-            message_id = unquote(path[len("/email/") : -len("/attachments/to-file-hub")])
+            suffix = "/attachments/to-file-hub"
+            message_id = unquote(path[len("/email/") : -len(suffix)])
             if message_id:
                 self._handle_push_to_file_hub(message_id)
                 return
