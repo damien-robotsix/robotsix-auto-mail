@@ -545,6 +545,15 @@ class MailAccountsConfig(BaseModel):
         ),
     )
 
+    file_hub_url: str = Field(
+        default="",
+        description=(
+            "Base URL of the robotsix-file-hub service "
+            "(e.g. 'http://file-hub:8080'). "
+            "Empty means the push-attachments-to-file-hub endpoint is disabled."
+        ),
+    )
+
     @model_validator(mode="after")
     def _validate(self) -> MailAccountsConfig:
         ids = [a.account_id for a in self.accounts]

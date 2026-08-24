@@ -93,6 +93,8 @@ All GET endpoints below are read-only and safe to call without confirmation.
   - Saving or generating drafts (`POST /save-draft`, `POST /generate-draft`).
   - Config mutations (`PUT /config`, `POST /config/rollback`,
     `POST /config-sync`).
+  - Pushing email attachments to file-hub
+    (`POST /email/<message_id>/attachments/to-file-hub`).
 
   Before executing any POST/PUT, confirm with the user and explain what
   the operation will do.
@@ -223,3 +225,46 @@ All GET endpoints below are read-only and safe to call without confirmation.
   Errors: 400 (missing parameters, `confirm` not true, path escapes
   archive root), 404 (source folder not found), 409 (target already
   exists — no silent merge), 502 (IMAP error).
+
+## Push attachments to file-hub (state-mutating, requires confirmation)
+
+- **`POST /email/<message_id>/attachments/to-file-hub`** — Upload one
+  or all attachments of a mail message to robotsix-file-hub so
+  downstream agents can work with the documents.  Requires operator
+  confirmation per the safety rules above.
+
+  The `<message_id>` is the RFC 2822 Message-ID (URL-encoded in the
+  path).  The optional JSON body selects which attachment(s) to push:
+
+  ```json
+  {}
+  ```
+  Push all attachments (default when body is empty or omitted).
+
+  ```json
+  {"filename": "invoice.pdf"}
+  ```
+  Push a single attachment by filename.
+
+  ```json
+  {"index": 0}
+  ```
+  Push a single attachment by zero-based index.
+
+  Response (200):
+  ```json
+  {
+    "attachments": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "filename": "invoice.pdf",
+        "size": 12345,
+        "content_type": "application/pdf"
+      }
+    ]
+  }
+  ```
+
+  Errors: 400 (message has no attachments, invalid body), 404
+  (unknown message_id or attachment not found), 502 (IMAP or
+  file-hub unreachable), 503 (file-hub not configured).
