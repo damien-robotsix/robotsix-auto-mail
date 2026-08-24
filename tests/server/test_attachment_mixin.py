@@ -258,9 +258,7 @@ class TestPushToFileHubImapErrors:
             ],
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(
-            single_db, mail_config=None, accounts=accounts
-        )
+        handler = _AttachmentFakeHandler(single_db, mail_config=None, accounts=accounts)
         handler.headers.get.return_value = 0
         handler._handle_push_to_file_hub("<noimap@example.com>")
         handler._send_response.assert_called_once()
@@ -327,9 +325,7 @@ class TestPushToFileHubImapErrors:
         )
         handler.headers.get.return_value = 0
 
-        with mock.patch(
-            "robotsix_auto_mail.imap.ImapClient"
-        ) as mock_cls:
+        with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_client = mock.MagicMock()
             mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
             mock_client.__exit__ = mock.MagicMock(return_value=False)
@@ -400,9 +396,7 @@ class TestPushToFileHubHappyPath:
             mock_imap_cls.return_value = mock_imap
 
             mock_httpx_client = mock.MagicMock()
-            mock_httpx_client.__enter__ = mock.MagicMock(
-                return_value=mock_httpx_client
-            )
+            mock_httpx_client.__enter__ = mock.MagicMock(return_value=mock_httpx_client)
             mock_httpx_client.__exit__ = mock.MagicMock(return_value=False)
             mock_resp = mock.MagicMock()
             mock_resp.status_code = 200
@@ -479,9 +473,7 @@ class TestPushToFileHubHappyPath:
             mock_imap_cls.return_value = mock_imap
 
             mock_httpx_client = mock.MagicMock()
-            mock_httpx_client.__enter__ = mock.MagicMock(
-                return_value=mock_httpx_client
-            )
+            mock_httpx_client.__enter__ = mock.MagicMock(return_value=mock_httpx_client)
             mock_httpx_client.__exit__ = mock.MagicMock(return_value=False)
             mock_resp = mock.MagicMock()
             mock_resp.status_code = 200
@@ -556,9 +548,7 @@ class TestPushToFileHubHappyPath:
             mock_imap_cls.return_value = mock_imap
 
             mock_httpx_client = mock.MagicMock()
-            mock_httpx_client.__enter__ = mock.MagicMock(
-                return_value=mock_httpx_client
-            )
+            mock_httpx_client.__enter__ = mock.MagicMock(return_value=mock_httpx_client)
             mock_httpx_client.__exit__ = mock.MagicMock(return_value=False)
             mock_resp = mock.MagicMock()
             mock_resp.status_code = 200
@@ -676,9 +666,7 @@ class TestPushToFileHubFileHubErrors:
             mock_imap_cls.return_value = mock_imap
 
             mock_httpx_client = mock.MagicMock()
-            mock_httpx_client.__enter__ = mock.MagicMock(
-                return_value=mock_httpx_client
-            )
+            mock_httpx_client.__enter__ = mock.MagicMock(return_value=mock_httpx_client)
             mock_httpx_client.__exit__ = mock.MagicMock(return_value=False)
             mock_resp = mock.MagicMock()
             mock_resp.status_code = 413
