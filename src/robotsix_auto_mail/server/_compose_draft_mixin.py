@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -183,7 +183,7 @@ class _ComposeDraftMixin:
 
         # -- create the mail record ----------------------------------------
         message_id = f"<compose-{uuid.uuid4().hex}@robotsix-auto-mail>"
-        now = datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         record = MailRecord(
             message_id=message_id,
