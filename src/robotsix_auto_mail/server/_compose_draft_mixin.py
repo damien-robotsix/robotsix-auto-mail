@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -132,9 +132,7 @@ class _ComposeDraftMixin:
             # -- fetch each attachment from file-hub -----------------------
             for fid in attachment_ids:
                 if not isinstance(fid, str) or not fid:
-                    self._bad_request(
-                        "Each attachment ID must be a non-empty string"
-                    )
+                    self._bad_request("Each attachment ID must be a non-empty string")
                     return
                 fetch_url = f"{file_hub_url.rstrip('/')}/files/{fid}"
                 try:
@@ -151,9 +149,7 @@ class _ComposeDraftMixin:
 
                 if resp.status_code == 404:
                     self._send_response(
-                        json.dumps(
-                            {"error": f"Unknown file-hub attachment: {fid}"}
-                        ),
+                        json.dumps({"error": f"Unknown file-hub attachment: {fid}"}),
                         status=404,
                         content_type="application/json; charset=utf-8",
                     )
@@ -187,7 +183,7 @@ class _ComposeDraftMixin:
 
         # -- create the mail record ----------------------------------------
         message_id = f"<compose-{uuid.uuid4().hex}@robotsix-auto-mail>"
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        now = datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         record = MailRecord(
             message_id=message_id,

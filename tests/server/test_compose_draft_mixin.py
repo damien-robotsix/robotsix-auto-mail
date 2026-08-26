@@ -38,7 +38,7 @@ class _ComposeDraftFakeHandler(_ComposeDraftMixin):
         self._serve_json = mock.MagicMock()
 
 
-def _make_config(db_path: str = "/tmp/test.db") -> MailConfig:
+def _make_config(db_path: str = "/tmp/test.db") -> MailConfig:  # noqa: S108 — test-only default
     return MailConfig(
         imap_host="imap.example.com",
         smtp_host="smtp.example.com",
@@ -49,7 +49,7 @@ def _make_config(db_path: str = "/tmp/test.db") -> MailConfig:
 
 
 def _make_accounts(
-    db_path: str = "/tmp/test.db",
+    db_path: str = "/tmp/test.db",  # noqa: S108 — test-only default
     file_hub_url: str = "http://file-hub:8080",
 ) -> MailAccountsConfig:
     return MailAccountsConfig(
@@ -85,27 +85,21 @@ class TestComposeDraftMissingFields:
 
     def test_missing_to(self) -> None:
         handler = _ComposeDraftFakeHandler()
-        _set_json_body(
-            handler, {"account": "TEST", "subject": "S", "body": "B"}
-        )
+        _set_json_body(handler, {"account": "TEST", "subject": "S", "body": "B"})
         handler._handle_compose_draft()
         handler._bad_request.assert_called_once()
         assert "to" in handler._bad_request.call_args[0][0]
 
     def test_missing_subject(self) -> None:
         handler = _ComposeDraftFakeHandler()
-        _set_json_body(
-            handler, {"account": "TEST", "to": "a@b.com", "body": "B"}
-        )
+        _set_json_body(handler, {"account": "TEST", "to": "a@b.com", "body": "B"})
         handler._handle_compose_draft()
         handler._bad_request.assert_called_once()
         assert "subject" in handler._bad_request.call_args[0][0]
 
     def test_missing_body(self) -> None:
         handler = _ComposeDraftFakeHandler()
-        _set_json_body(
-            handler, {"account": "TEST", "to": "a@b.com", "subject": "S"}
-        )
+        _set_json_body(handler, {"account": "TEST", "to": "a@b.com", "subject": "S"})
         handler._handle_compose_draft()
         handler._bad_request.assert_called_once()
         assert "body" in handler._bad_request.call_args[0][0]
