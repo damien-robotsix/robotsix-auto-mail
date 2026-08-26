@@ -95,6 +95,8 @@ All GET endpoints below are read-only and safe to call without confirmation.
     `POST /config-sync`).
   - Pushing email attachments to file-hub
     (`POST /email/<message_id>/attachments/to-file-hub`).
+  - Composing a new outgoing draft
+    (`POST /compose-draft`).
 
   Before executing any POST/PUT, confirm with the user and explain what
   the operation will do.
@@ -268,3 +270,43 @@ All GET endpoints below are read-only and safe to call without confirmation.
   Errors: 400 (message has no attachments, invalid body), 404
   (unknown message_id or attachment not found), 502 (IMAP or
   file-hub unreachable), 503 (file-hub not configured).
+
+## Compose new draft (state-mutating, requires confirmation)
+
+- **`POST /compose-draft`** — Create a NEW outgoing draft (not a reply)
+  with optional file-hub attachments.  The draft is stored in the
+  board's Draft-ready column so the operator can review and send it.
+  Requires operator confirmation per the safety rules above.
+
+  JSON request body:
+  ```json
+  {
+    "account": "ROBOTSIX",
+    "to": "recipient@example.com",
+    "subject": "Subject line",
+    "body": "Draft body text",
+    "attachments": ["file-hub-id-1", "file-hub-id-2"]
+  }
+  ```
+
+  `account`, `to`, `subject`, and `body` are required.  `attachments`
+  is an optional list of file-hub file IDs; each is validated against
+  the file-hub service before the draft is stored.
+
+  Response (201):
+  ```json
+  {
+    "message_id": "<compose-abc123@robotsix-auto-mail>",
+    "account": "ROBOTSIX",
+    "to": "recipient@example.com",
+    "subject": "Subject line",
+    "attachments": 2
+  }
+  ```
+
+  Errors: 400 (missing/invalid fields), 404 (unknown account or
+  unknown file-hub attachment id), 502 (file-hub unreachable),
+  503 (file-hub not configured but attachments requested).
+
+  **Note:** This endpoint only composes and stores the draft.  Sending
+  is a separate, operator-confirmed action via `POST /send-draft`.
