@@ -1,0 +1,1 @@
+POST /compose-draft endpoint for creating new outgoing drafts (not replies) with file-hub attachments, stored in the Draft-ready column for operator review and send. Errors: 400 (invalid fields), 404 (unknown account/attachment), 502 (file-hub unreachable), 503 (file-hub not configured). Documented in chat-skill as confirmation-gated.

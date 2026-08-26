@@ -39,6 +39,7 @@ from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
 from robotsix_auto_mail.server._attachment_mixin import _AttachmentMixin
 from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
+from robotsix_auto_mail.server._compose_draft_mixin import _ComposeDraftMixin
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
 from robotsix_auto_mail.server._constants import (
     _STATIC_CHAT_SKILL_MD,
@@ -63,6 +64,7 @@ class BoardHandler(
     _ReconcileMixin,
     _TriageMixin,
     _DraftMixin,
+    _ComposeDraftMixin,
     _ConfigMixin,
     _AccountMixin,
     _BoardAuthMixin,
@@ -248,6 +250,7 @@ class BoardHandler(
             "/save-draft": self._handle_save_draft,
             "/send-draft": self._handle_send_draft,
             "/generate-draft": self._handle_generate_draft,
+            "/compose-draft": self._handle_compose_draft,
         }
         # Dispatch on the bare path so ``?account=<id>`` query strings do
         # not defeat exact-match routing.
