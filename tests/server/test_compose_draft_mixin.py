@@ -421,3 +421,119 @@ class TestComposeDraftHappyPath:
             args = handler._serve_json.call_args
             ids.append(args[0][0]["message_id"])
         assert ids[0] != ids[1]
+
+    def test_with_pdf_attachment(self, single_db: str) -> None:
+        """Regression: PDF attachment id stores metadata, not binary content.
+
+        Previously, the handler fetched the raw file-download endpoint
+        (/files/<id>) instead of the metadata endpoint (/files/<id>/metadata),
+        then called resp.json() on binary PDF bytes, crashing with a
+        UnicodeDecodeError.
+        """
+        accounts = _make_accounts(db_path=single_db)
+        handler = _ComposeDraftFakeHandler(accounts=accounts)
+        _set_json_body(
+            handler,
+            {
+                "account": "TEST",
+                "to": "someone@example.com",
+                "subject": "test",
+                "body": "test",
+                "attachments": ["44c50f3e-82b5-425f-893d-e945a1810b95"],
+            },
+        )
+
+        pdf_meta = {
+            "id": "44c50f3e-82b5-425f-893d-e945a1810b95",
+            "filename": "report.pdf",
+            "content_type": "application/pdf",
+            "size": 98765,
+        }
+
+        with mock.patch(
+            "robotsix_auto_mail.server._compose_draft_mixin.httpx"
+        ) as mock_httpx:
+            mock_client = mock.MagicMock()
+            mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
+            mock_client.__exit__ = mock.MagicMock(return_value=False)
+            mock_resp = mock.MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = pdf_meta
+            mock_client.get.return_value = mock_resp
+            mock_httpx.Client.return_value = mock_client
+
+            handler._handle_compose_draft()
+
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
+        assert args[1]["status"] == 201
+        body = args[0][0]
+        assert body["attachments"] == 1
+
+        # Verify the URL was the metadata endpoint, not the download endpoint
+        call_args = mock_client.get.call_args
+        requested_url = call_args[0][0]
+        assert "/metadata" in requested_url
+
+        # Verify the attachment metadata was stored correctly
+        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+
+        conn = init_db(single_db, skip_migrations=True)
+        try:
+            record = get_record_by_message_id(conn, body["message_id"])
+            assert record is not None
+            att_meta = json.loads(record.attachments_json)
+            assert len(att_meta) == 1
+            assert att_meta[0]["file_hub_id"] == "44c50f3e-82b5-425f-893d-e945a1810b95"
+            assert att_meta[0]["filename"] == "report.pdf"
+            assert att_meta[0]["mime_type"] == "application/pdf"
+            assert att_meta[0]["size"] == 98765
+        finally:
+            conn.close()
+
+
+class TestComposeDraftBinaryResponse:
+    """Regression: handler returns 502 when file-hub returns binary content."""
+
+    def test_binary_file_content_returns_502(self) -> None:
+        """If file-hub returns binary (e.g. PDF bytes), the handler must
+        return 502 instead of crashing with UnicodeDecodeError."""
+        accounts = _make_accounts()
+        handler = _ComposeDraftFakeHandler(accounts=accounts)
+        _set_json_body(
+            handler,
+            {
+                "account": "TEST",
+                "to": "a@b.com",
+                "subject": "S",
+                "body": "B",
+                "attachments": ["44c50f3e-82b5-425f-893d-e945a1810b95"],
+            },
+        )
+
+        # Simulate a response with binary PDF content (the original bug)
+        pdf_binary = b"%PDF-1.4\n\xe2\xe3\xcf\xd3" + b"\x00" * 50
+
+        with mock.patch(
+            "robotsix_auto_mail.server._compose_draft_mixin.httpx"
+        ) as mock_httpx:
+            mock_client = mock.MagicMock()
+            mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
+            mock_client.__exit__ = mock.MagicMock(return_value=False)
+            mock_resp = mock.MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.content = pdf_binary
+            # json() will raise UnicodeDecodeError on binary content
+            mock_resp.json.side_effect = UnicodeDecodeError(
+                "utf-8", b"\xe2", 0, 1, "invalid continuation byte"
+            )
+            mock_client.get.return_value = mock_resp
+            mock_httpx.Client.return_value = mock_client
+
+            handler._handle_compose_draft()
+
+        handler._send_response.assert_called_once()
+        args = handler._send_response.call_args
+        assert args[1]["status"] == 502
+        body = json.loads(args[0][0])
+        assert "non-JSON" in body["error"]

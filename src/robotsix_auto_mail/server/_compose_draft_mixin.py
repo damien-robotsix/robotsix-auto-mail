@@ -130,56 +130,97 @@ class _ComposeDraftMixin:
                 return
 
             # -- fetch each attachment from file-hub -----------------------
-            for fid in attachment_ids:
-                if not isinstance(fid, str) or not fid:
-                    self._bad_request("Each attachment ID must be a non-empty string")
-                    return
-                fetch_url = f"{file_hub_url.rstrip('/')}/files/{fid}"
-                try:
-                    with httpx.Client(timeout=30) as client:
-                        resp = client.get(fetch_url)
-                except Exception as exc:
-                    logger.warning("file-hub unreachable: %s", exc)
-                    self._send_response(
-                        json.dumps({"error": "file-hub unreachable"}),
-                        status=502,
-                        content_type="application/json; charset=utf-8",
+            try:
+                for fid in attachment_ids:
+                    if not isinstance(fid, str) or not fid:
+                        self._bad_request(
+                            "Each attachment ID must be a non-empty string"
+                        )
+                        return
+                    # Use the metadata endpoint, NOT the raw-file-download
+                    # endpoint (/files/<id>), which returns binary content.
+                    fetch_url = (
+                        f"{file_hub_url.rstrip('/')}/files/{fid}/metadata"
                     )
-                    return
+                    try:
+                        with httpx.Client(timeout=30) as client:
+                            resp = client.get(
+                                fetch_url,
+                                headers={"Accept": "application/json"},
+                            )
+                    except Exception as exc:
+                        logger.warning("file-hub unreachable: %s", exc)
+                        self._send_response(
+                            json.dumps({"error": "file-hub unreachable"}),
+                            status=502,
+                            content_type="application/json; charset=utf-8",
+                        )
+                        return
 
-                if resp.status_code == 404:
-                    self._send_response(
-                        json.dumps({"error": f"Unknown file-hub attachment: {fid}"}),
-                        status=404,
-                        content_type="application/json; charset=utf-8",
-                    )
-                    return
-                if resp.status_code >= 400:
-                    self._send_response(
-                        json.dumps(
-                            {
-                                "error": (
-                                    f"file-hub returned {resp.status_code} "
-                                    f"for attachment {fid}"
-                                )
-                            }
-                        ),
-                        status=502,
-                        content_type="application/json; charset=utf-8",
-                    )
-                    return
+                    if resp.status_code == 404:
+                        self._send_response(
+                            json.dumps(
+                                {"error": f"Unknown file-hub attachment: {fid}"}
+                            ),
+                            status=404,
+                            content_type="application/json; charset=utf-8",
+                        )
+                        return
+                    if resp.status_code >= 400:
+                        self._send_response(
+                            json.dumps(
+                                {
+                                    "error": (
+                                        f"file-hub returned {resp.status_code} "
+                                        f"for attachment {fid}"
+                                    )
+                                }
+                            ),
+                            status=502,
+                            content_type="application/json; charset=utf-8",
+                        )
+                        return
 
-                meta = resp.json()
-                attachments_meta.append(
-                    {
-                        "file_hub_id": fid,
-                        "filename": meta.get("filename", "attachment"),
-                        "mime_type": meta.get(
-                            "content_type", "application/octet-stream"
-                        ),
-                        "size": meta.get("size", 0),
-                    }
+                    try:
+                        meta = resp.json()
+                    except Exception:
+                        logger.warning(
+                            "file-hub returned non-JSON response for "
+                            "attachment %s (status %d)",
+                            fid,
+                            resp.status_code,
+                        )
+                        self._send_response(
+                            json.dumps(
+                                {
+                                    "error": (
+                                        f"file-hub returned non-JSON "
+                                        f"response for attachment {fid}"
+                                    )
+                                }
+                            ),
+                            status=502,
+                            content_type="application/json; charset=utf-8",
+                        )
+                        return
+                    attachments_meta.append(
+                        {
+                            "file_hub_id": fid,
+                            "filename": meta.get("filename", "attachment"),
+                            "mime_type": meta.get(
+                                "content_type", "application/octet-stream"
+                            ),
+                            "size": meta.get("size", 0),
+                        }
+                    )
+            except Exception:
+                logger.exception("Unexpected error during attachment validation")
+                self._send_response(
+                    json.dumps({"error": "Attachment validation failed"}),
+                    status=502,
+                    content_type="application/json; charset=utf-8",
                 )
+                return
 
         # -- create the mail record ----------------------------------------
         message_id = f"<compose-{uuid.uuid4().hex}@robotsix-auto-mail>"
