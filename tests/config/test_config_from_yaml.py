@@ -85,7 +85,7 @@ def test_mailconfig_full_fields() -> None:
         archive_root="custom-archive",
         archive_enabled=False,
         triage_on_ingest=False,
-        triage_rules_path="/path/to/rules.md",
+        triage_guidance="archive newsletters to Newsletters",
         oauth2_provider="microsoft",
         oauth2_tenant="contoso.onmicrosoft.com",
         log_level="DEBUG",

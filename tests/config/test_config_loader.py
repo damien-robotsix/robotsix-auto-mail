@@ -43,7 +43,6 @@ def _default_accounts(
     models: TierModelsConfig | None = None,
     triage_level: int = 1,
     classifier_level: int = 1,
-    rules_level: int = 1,
     detector_level: int = 1,
     draft_level: int = 1,
 ) -> MailAccountsConfig:
@@ -69,7 +68,6 @@ def _default_accounts(
         models=models or TierModelsConfig(),
         triage_level=triage_level,
         classifier_level=classifier_level,
-        rules_level=rules_level,
         detector_level=detector_level,
         draft_level=draft_level,
     )

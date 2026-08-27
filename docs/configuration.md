@@ -140,7 +140,7 @@ accounts:
 | Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
 | `triage.on_ingest` | `true` | boolean | no | Whether to run the inbox triage agent automatically after each ingest cycle. Accepts `true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`. |
-| `triage.rules_path` | `""` | string | no | Path to the human-readable `triage_rules.md` the flash LLM maintains from board actions. When empty, `<db-dir>/triage_rules.md` is derived from `store.path`. |
+| `triage.guidance` | `""` | string | no | Free-text advisory guidance prepended to the triage agent and archive-subfolder proposal. Edited only via `PUT /config` — never auto-maintained by the server. |
 
 ---
 
@@ -186,7 +186,6 @@ what makes the breakage easy to miss.
   },
   "triage_level": 1,
   "classifier_level": 1,
-  "rules_level": 1,
   "detector_level": 1,
   "draft_level": 1
 }
@@ -211,7 +210,6 @@ therefore fund exactly one function.
 | `models.level4` | `""` | string | no | Per-level model override for tier 4. Wired through even though llmio does not yet define a `LEVEL4_DEFAULT`. |
 | `triage_level` | `1` | integer | no | Tier level assigned to the inbox triage agent. |
 | `classifier_level` | `1` | integer | no | Tier level assigned to the message classifier. |
-| `rules_level` | `1` | integer | no | Tier level assigned to the rules-maintenance agent. |
 | `detector_level` | `1` | integer | no | Tier level assigned to the account-type detector. |
 | `draft_level` | `1` | integer | no | Tier level assigned to the draft-generation agent. |
 | `mail_data_root` | `/data` | string | no | Absolute root directory for all persisted mail data (SQLite databases, heartbeat files, etc.). Relative ``db_path`` values on each account are resolved against this root so a container restart never silently discards mail databases that were written outside the mounted volume. |

@@ -32,7 +32,7 @@ from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.pipeline._parse import ParseError as ParseError
 from robotsix_auto_mail.pipeline._parse import parse_message
 from robotsix_auto_mail.pipeline.reconcile import reconcile_records
-from robotsix_auto_mail.triage import resolve_rules_path, run_triage_agent
+from robotsix_auto_mail.triage import run_triage_agent
 
 _logger = logging.getLogger(__name__)
 
@@ -429,9 +429,7 @@ def ingest_mail(
                 level=_level,
                 only_undecided=True,
                 user_email=config.username,
-                rules_path=resolve_rules_path(
-                    db_path=config.db_path, rules_path=config.triage_rules_path
-                ),
+                guidance=config.triage_guidance,
             )
             triaged = len(decisions)
             _logger.info("triage_done decisions=%s", triaged)

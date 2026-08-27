@@ -4,14 +4,9 @@
 
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING, Any
 
-from robotsix_auto_mail.triage import (
-    TO_ARCHIVE,
-    record_user_action,
-    set_archive_subfolder_override,
-)
+from robotsix_auto_mail.triage import set_archive_subfolder_override
 
 
 class _ConfigMixin:
@@ -82,17 +77,6 @@ class _ConfigMixin:
                     return False
 
             set_archive_subfolder_override(conn, record.message_id, subfolder)
-            # -- record the human-confirmed folder choice (best-effort);
-            #    an empty subfolder (clearing the override) records nothing --
-            if subfolder and self.mail_config is not None:
-                with contextlib.suppress(Exception):
-                    # Non-fatal: rule maintenance is advisory only
-                    record_user_action(
-                        record,
-                        TO_ARCHIVE,
-                        config=self.mail_config,
-                        subfolder=subfolder,
-                    )
             return True
 
         self._handle_post_action(

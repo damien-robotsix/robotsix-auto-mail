@@ -32,9 +32,6 @@ from robotsix_auto_mail.config._constants import (
     APP_DRAFT as APP_DRAFT,
 )
 from robotsix_auto_mail.config._constants import (
-    APP_RULES as APP_RULES,
-)
-from robotsix_auto_mail.config._constants import (
     APP_TRIAGE as APP_TRIAGE,
 )
 from robotsix_auto_mail.config.credentials import (
@@ -114,7 +111,6 @@ __all__ = [
     "APP_CLASSIFIER",
     "APP_DETECTOR",
     "APP_DRAFT",
-    "APP_RULES",
     "APP_TRIAGE",
     "DEFAULT_ARCHIVE_ROOT",
     "DEFAULT_IMAP_TLS_MODE",

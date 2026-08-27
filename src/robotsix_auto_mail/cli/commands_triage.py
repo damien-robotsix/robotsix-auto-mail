@@ -81,7 +81,6 @@ def _cmd_triage(args: argparse.Namespace) -> int:
     try:
         from robotsix_auto_mail.triage import (
             TriageError,
-            resolve_rules_path,
             run_triage_agent,
         )
     except ImportError:
@@ -101,9 +100,7 @@ def _cmd_triage(args: argparse.Namespace) -> int:
             provider_model=_pm or None,
             level=_level,
             user_email=config.username,
-            rules_path=resolve_rules_path(
-                db_path=config.db_path, rules_path=config.triage_rules_path
-            ),
+            guidance=config.triage_guidance,
         )
     except TriageError as exc:
         sys.stderr.write(f"Error: {exc}\n")
@@ -141,7 +138,6 @@ def _cmd_triage_set(args: argparse.Namespace) -> int:
         from robotsix_auto_mail.triage import (
             VALID_TRIAGE_ACTIONS,
             TriageError,
-            record_user_action,
             set_triage_decision,
         )
     except ImportError:
@@ -167,9 +163,6 @@ def _cmd_triage_set(args: argparse.Namespace) -> int:
             return 1
         try:
             set_triage_decision(conn, args.message_id, args.action, source="user")
-            # Update the human-readable triage rules inline (CLI: no server
-            # thread to defer to; latency here is acceptable).
-            record_user_action(record, args.action, config=config, background=False)
         except TriageError as exc:
             sys.stderr.write(f"Error: {exc}\n")
             return 1

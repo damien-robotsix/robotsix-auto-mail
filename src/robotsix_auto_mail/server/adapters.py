@@ -64,7 +64,7 @@ class _NonEmptyColumnsAdapter:
 def _run_triage_background(
     db_path: str,
     user_email: str | None = None,
-    rules_path: str | None = None,
+    guidance: str = "",
 ) -> None:
     """Run the triage agent in a background thread, clearing the watermark on exit.
 
@@ -86,7 +86,7 @@ def _run_triage_background(
             run_triage_agent(
                 conn,
                 user_email=user_email,
-                rules_path=rules_path,
+                guidance=guidance,
                 only_undecided=True,
             )
         except Exception:  # noqa: S110  # nosec B110
@@ -456,9 +456,9 @@ def _run_batch_archive_background(
         ImapMessageNotFoundError,
         resolve_uid_with_fallback,
     )
-    from robotsix_auto_mail.triage import get_archive_subfolder, rules_text_for
+    from robotsix_auto_mail.triage import get_archive_subfolder
 
-    rules = rules_text_for(mail_config)
+    rules = mail_config.triage_guidance if mail_config is not None else ""
     _delimiter: str = ""
 
     def _pre_filter(conn: Any, records: list[MailRecord]) -> list[MailRecord]:

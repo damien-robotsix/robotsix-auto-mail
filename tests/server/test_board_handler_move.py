@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
 from unittest import mock
 from urllib.request import urlopen
 
@@ -16,20 +15,6 @@ from tests.server.conftest_helpers import (
     _start_test_server,
     _start_test_server_with_mail_config,
 )
-
-
-@pytest.fixture(autouse=True)
-def no_rules_update() -> Iterator[None]:
-    """Neutralize the background triage-rules flash-LLM update.
-
-    A board move fires ``record_user_action`` which (with an API key set)
-    spawns a background thread that calls the LLM provider — that would race
-    the provider-call assertions in this file.  Patch it out everywhere so
-    these tests observe only the archive-subfolder proposal's provider use.
-    """
-    with mock.patch("robotsix_auto_mail.server._action_mixin.record_user_action"):
-        yield
-
 
 # ---------------------------------------------------------------------------
 # POST /move tests

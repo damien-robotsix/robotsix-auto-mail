@@ -34,7 +34,6 @@ from robotsix_auto_mail.triage import (
     INBOX,
     get_archive_subfolder,
     get_triage_decision,
-    rules_text_for,
 )
 
 logger = logging.getLogger(__name__)
@@ -343,7 +342,9 @@ class _BoardViewMixin:
                 message_id,
                 record,
                 api_key=resolve_llm_api_key(raise_on_missing=False),
-                rules=rules_text_for(self.mail_config),
+                rules=self.mail_config.triage_guidance
+                if self.mail_config is not None
+                else "",
             )
             overrides = _load_archive_overrides(conn)
             hints = _load_llm_archive_hints(conn)

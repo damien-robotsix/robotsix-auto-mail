@@ -343,7 +343,6 @@ def merge_settings_store_accounts(
         models=accounts.models,
         triage_level=accounts.triage_level,
         classifier_level=accounts.classifier_level,
-        rules_level=accounts.rules_level,
         detector_level=accounts.detector_level,
         draft_level=accounts.draft_level,
         mail_data_root=accounts.mail_data_root,

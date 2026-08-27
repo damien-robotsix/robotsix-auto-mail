@@ -34,7 +34,6 @@ from robotsix_auto_mail.config._constants import (
     APP_CLASSIFIER,
     APP_DETECTOR,
     APP_DRAFT,
-    APP_RULES,
     APP_TRIAGE,
 )
 from robotsix_auto_mail.config.credentials import MAIN_LLM_ALIAS, LangfuseConfig
@@ -45,7 +44,6 @@ _VALID_APP_NAMES: frozenset[str] = frozenset(
     {
         APP_TRIAGE,
         APP_CLASSIFIER,
-        APP_RULES,
         APP_DETECTOR,
         APP_DRAFT,
     }

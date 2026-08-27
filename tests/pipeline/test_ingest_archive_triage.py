@@ -176,7 +176,7 @@ def test_ingest_runs_triage_on_new_mail(
         level=1,
         only_undecided=True,
         user_email=cfg.username,
-        rules_path=mock.ANY,
+        guidance=mock.ANY,
     )
     assert result.triaged == 2
     # Triage must perform no IMAP/mailbox action of its own.

@@ -1,10 +1,9 @@
 """Deterministic triage classification and archive-subfolder proposals.
 
 Archive-subfolder proposals (deterministic + per-message override storage +
-optional per-message LLM hints) and sender-key helpers.  The learned
-preferences that used to live in JSON watermark ledgers now live in the
-human-readable ``triage_rules.md`` file (see :mod:`robotsix_auto_mail.triage.rules`),
-which the archive-subfolder LLM proposal reads via its ``rules`` argument.
+optional per-message LLM hints) and sender-key helpers.  Advisory guidance
+for the archive-subfolder LLM proposal is passed via the ``rules`` argument
+(sourced from ``MailConfig.triage_guidance``).
 The ``pydantic_ai`` / LLM-provider imports stay lazy inside
 ``propose_archive_subfolder_llm`` to keep module-load time low.
 """
@@ -248,8 +247,8 @@ def propose_archive_subfolder_llm(
     and persist the hint.  Best-effort — failures are silently
     swallowed so the board falls back to the deterministic proposal.
 
-    *rules* is the human-readable ``triage_rules.md`` content; when
-    non-empty it is injected so the proposal honours the user's rules.
+    *rules* is the advisory guidance text (from ``MailConfig.triage_guidance``);
+    when non-empty it is injected so the proposal honours the user's rules.
     """
     # -- resolve API key --
     resolved_key = resolve_llm_api_key(api_key, raise_on_missing=False)

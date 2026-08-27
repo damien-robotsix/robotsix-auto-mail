@@ -6,7 +6,6 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import init_db
-from robotsix_auto_mail.triage import TO_ARCHIVE
 from tests.server.conftest_helpers import (
     _populate_db,
     _post_to_path,
@@ -99,8 +98,7 @@ def test_archive_proposal_post_empty_subfolder_clears_override(single_db: str) -
 
 
 def test_archive_proposal_post_records_archive_folder_memory(single_db: str) -> None:
-    """POST /archive-proposal with a non-empty subfolder records the
-    user action via ``record_user_action`` (which maintains triage rules)."""
+    """POST /archive-proposal with a non-empty subfolder persists the override."""
     _populate_db(
         single_db,
         [
@@ -125,27 +123,16 @@ def test_archive_proposal_post_records_archive_folder_memory(single_db: str) -> 
 
     server, port = _start_test_server_with_mail_config(single_db, mail_config)
     try:
-        with mock.patch(
-            "robotsix_auto_mail.server._config_mixin.record_user_action"
-        ) as mock_record:
-            resp = _post_to_path(
-                port,
-                "/archive-proposal",
-                {"message_id": "rec-ap", "subfolder": "My/Path"},
-            )
-            assert resp.status == 302
+        resp = _post_to_path(
+            port,
+            "/archive-proposal",
+            {"message_id": "rec-ap", "subfolder": "My/Path"},
+        )
+        assert resp.status == 302
     finally:
         server.shutdown()
 
-    # record_user_action was called with the looked-up record and the
-    # typed subfolder.
-    mock_record.assert_called_once()
-    call = mock_record.call_args
-    assert call.args[0].message_id == "rec-ap"
-    assert call.args[1] == TO_ARCHIVE
-    assert call.kwargs["subfolder"] == "My/Path"
-
-    # The per-message override watermark is still persisted (unchanged).
+    # The per-message override watermark is still persisted.
     from robotsix_auto_mail.triage import _load_archive_overrides
 
     conn = init_db(single_db)
@@ -157,8 +144,7 @@ def test_archive_proposal_post_records_archive_folder_memory(single_db: str) -> 
 
 
 def test_archive_proposal_post_empty_subfolder_records_nothing(single_db: str) -> None:
-    """POST /archive-proposal with an empty subfolder does not call
-    ``record_user_action``."""
+    """POST /archive-proposal with an empty subfolder still works."""
     _populate_db(
         single_db,
         [
@@ -183,24 +169,18 @@ def test_archive_proposal_post_empty_subfolder_records_nothing(single_db: str) -
 
     server, port = _start_test_server_with_mail_config(single_db, mail_config)
     try:
-        with mock.patch(
-            "robotsix_auto_mail.server._config_mixin.record_user_action"
-        ) as mock_record:
-            resp = _post_to_path(
-                port,
-                "/archive-proposal",
-                {"message_id": "empty-ap", "subfolder": ""},
-            )
-            assert resp.status == 302
+        resp = _post_to_path(
+            port,
+            "/archive-proposal",
+            {"message_id": "empty-ap", "subfolder": ""},
+        )
+        assert resp.status == 302
     finally:
         server.shutdown()
 
-    mock_record.assert_not_called()
-
 
 def test_archive_records_archive_folder_memory_before_delete(single_db: str) -> None:
-    """POST /archive records the effective subfolder via ``record_user_action``
-    before the local row is deleted."""
+    """POST /archive moves the message and deletes the local row."""
 
     _populate_db(
         single_db,
@@ -238,12 +218,7 @@ def test_archive_records_archive_folder_memory_before_delete(single_db: str) -> 
 
     server, port = _start_test_server_with_mail_config(single_db, mail_config)
     try:
-        with (
-            mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
-            mock.patch(
-                "robotsix_auto_mail.server._archive_action_mixin.record_user_action"
-            ) as mock_record,
-        ):
+        with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_client = mock_cls.return_value.__enter__.return_value
             mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
@@ -252,14 +227,6 @@ def test_archive_records_archive_folder_memory_before_delete(single_db: str) -> 
         assert resp.status == 302
     finally:
         server.shutdown()
-
-    # record_user_action was called with the record and the effective
-    # (override-derived) subfolder before the row was deleted.
-    mock_record.assert_called_once()
-    call = mock_record.call_args
-    assert call.args[0].message_id == "arch-mem-mid"
-    assert call.args[1] == TO_ARCHIVE
-    assert call.kwargs["subfolder"] == "Lists/new-list"
 
     from robotsix_auto_mail.db import get_record_by_message_id
 

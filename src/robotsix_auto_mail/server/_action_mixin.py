@@ -25,8 +25,6 @@ from robotsix_auto_mail.triage import (
     TO_CALENDAR,
     VALID_TRIAGE_ACTIONS,
     propose_archive_subfolder_llm,
-    record_user_action,
-    rules_text_for,
     set_triage_decision,
 )
 
@@ -223,8 +221,6 @@ class _BoardActionMixin:
                     source="user",
                     reason=f"moved to {triage_action}",
                 )
-                if self.mail_config is not None:
-                    record_user_action(record, triage_action, config=self.mail_config)
             except sqlite3.IntegrityError:
                 # Defense in depth: a stale CHECK constraint (legacy DB
                 # predating a new triage action) makes the upsert raise
@@ -246,7 +242,7 @@ class _BoardActionMixin:
                             resolve_llm_api_key(raise_on_missing=False),
                             provider_model=classifier_model or None,
                             level=classifier_level,
-                            rules=rules_text_for(self.mail_config),
+                            rules=self.mail_config.triage_guidance,
                         )
                 except Exception:  # noqa: S110  # nosec B110
                     pass  # Non-fatal: board falls back to deterministic proposal

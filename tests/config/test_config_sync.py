@@ -48,7 +48,7 @@ _JSON_EXAMPLE: dict = {
                 "archive_root": "robotsix-mail-archive",
                 "archive_enabled": True,
                 "triage_on_ingest": True,
-                "triage_rules_path": "",
+                "triage_guidance": "",
                 "log_level": "INFO",
                 "log_format": "console",
             },
@@ -73,7 +73,7 @@ _JSON_EXAMPLE: dict = {
                 "archive_root": "robotsix-mail-archive",
                 "archive_enabled": True,
                 "triage_on_ingest": True,
-                "triage_rules_path": "",
+                "triage_guidance": "",
                 "oauth2_token": "",
                 "oauth2_client_id": "",
                 "oauth2_client_secret": "",
@@ -139,7 +139,7 @@ _DOCS_YAML_TABLE = """\
 | `archive.root` | no | `"robotsix-mail-archive"` | Archive root folder |
 | `archive.enabled` | no | `true` | Whether to manage the archive structure |
 | `triage.on_ingest` | no | `true` | Run inbox triage automatically after ingest |
-| `triage.rules_path` | no | `""` | Path to the human-readable triage rules file |
+| `triage.guidance` | no | `""` | Free-text advisory guidance for the triage agent |
 | `langfuse.host` | no | `""` | Langfuse instance base URL |
 | `langfuse.projects` | no | `{}` | Alias → Langfuse project credentials |
 | `openrouter.keys` | no | `{}` | Alias → OpenRouter API key |

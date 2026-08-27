@@ -34,7 +34,7 @@ FIELD_YAML_MAP: dict[str, str] = {
     "archive_root": "archive.root",
     "archive_enabled": "archive.enabled",
     "triage_on_ingest": "triage.on_ingest",
-    "triage_rules_path": "triage.rules_path",
+    "triage_guidance": "triage.guidance",
     "log_level": "logging.level",
     "log_format": "logging.format",
 }
