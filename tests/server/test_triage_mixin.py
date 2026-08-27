@@ -7,7 +7,6 @@ integration tests in ``test_server_triage.py`` miss.
 
 from __future__ import annotations
 
-import json
 from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig

@@ -6,7 +6,6 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import init_db
-from robotsix_auto_mail.triage import TO_ARCHIVE
 from tests.server.conftest_helpers import (
     _populate_db,
     _post_to_path,

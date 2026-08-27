@@ -27,7 +27,8 @@ class _TriageMixin:
 
     def _launch_triage(self) -> None:
         """Launch the triage agent in a background thread (shared helper)."""
-        guidance = self.mail_config.triage_guidance if self.mail_config is not None else ""
+        cfg = self.mail_config
+        guidance = cfg.triage_guidance if cfg is not None else ""
         self._launch_background_worker(
             _TRIAGE_RUN_STATE_KEY,
             _run_triage_background,

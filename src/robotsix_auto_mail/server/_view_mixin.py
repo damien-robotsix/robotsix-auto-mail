@@ -342,7 +342,9 @@ class _BoardViewMixin:
                 message_id,
                 record,
                 api_key=resolve_llm_api_key(raise_on_missing=False),
-                rules=self.mail_config.triage_guidance if self.mail_config is not None else "",
+                rules=self.mail_config.triage_guidance
+                if self.mail_config is not None
+                else "",
             )
             overrides = _load_archive_overrides(conn)
             hints = _load_llm_archive_hints(conn)

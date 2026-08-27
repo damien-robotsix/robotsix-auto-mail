@@ -133,7 +133,9 @@ class _ArchiveActionMixin:
             record,
             api_key=resolve_llm_api_key(raise_on_missing=False),
             level=classifier_level,
-            rules=self.mail_config.triage_guidance if self.mail_config is not None else "",
+            rules=self.mail_config.triage_guidance
+            if self.mail_config is not None
+            else "",
         )
 
         # Determine the archive root.
