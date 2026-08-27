@@ -194,11 +194,11 @@
           "title": "Triage On Ingest",
           "type": "boolean"
         },
-        "triage_rules_path": {
+        "triage_guidance": {
           "advanced": true,
           "default": "",
-          "description": "Path to the human-readable triage rules file. Empty means derive from db_path.",
-          "title": "Triage Rules Path",
+          "description": "Free-text advisory guidance prepended to the triage agent and archive-subfolder proposal for this account. Edited only via PUT /config \u2014 never auto-maintained by the server.",
+          "title": "Triage Guidance",
           "type": "string"
         },
         "oauth2_token": {
@@ -308,7 +308,7 @@
       "type": "object"
     }
   },
-  "description": "An ordered collection of :class:`MailAccount`s.\n\nOne SQLite DB per account\n-------------------------\nMultiple accounts are modelled as N independent :class:`MailConfig`\ninstances, each carrying its **own** ``db_path``, rather than adding an\n``account_id`` column to every table.  The rationale:\n\n- Per-account state (triage decisions, archive watermarks \u2014 all keyed\n  by ``message_id`` in each DB, plus the per-account ``triage_rules.md``\n  file) is naturally isolated with zero schema migration.\n- Each :class:`MailConfig` already owns a ``db_path`` field, so no new\n  per-row plumbing is required.\n- The cost is one SQLite file per account; uniqueness of ``db_path``\n  across accounts is therefore enforced at load time.\n\nComponent-wide settings\n-----------------------\nThe ``langfuse``, ``openrouter``, ``models``, and per-application level\nfields sit here rather than on each :class:`MailConfig` because they\ndescribe the component's one LLM function, not a mailbox.  Their shape\nis fixed by robotsix-standards \u2014 see\n:mod:`robotsix_auto_mail.config.credentials`.\n\nValidation (all raise :class:`ConfigurationError`): all ``account_id``s\nunique; all ``MailConfig.db_path``s unique across accounts.",
+  "description": "An ordered collection of :class:`MailAccount`s.\n\nOne SQLite DB per account\n-------------------------\nMultiple accounts are modelled as N independent :class:`MailConfig`\ninstances, each carrying its **own** ``db_path``, rather than adding an\n``account_id`` column to every table.  The rationale:\n\n- Per-account state (triage decisions, archive watermarks \u2014 all keyed\n  by ``message_id`` in each DB) is naturally isolated with zero schema\n  migration.\n- Each :class:`MailConfig` already owns a ``db_path`` field, so no new\n  per-row plumbing is required.\n- The cost is one SQLite file per account; uniqueness of ``db_path``\n  across accounts is therefore enforced at load time.\n\nComponent-wide settings\n-----------------------\nThe ``langfuse``, ``openrouter``, ``models``, and per-application level\nfields sit here rather than on each :class:`MailConfig` because they\ndescribe the component's one LLM function, not a mailbox.  Their shape\nis fixed by robotsix-standards \u2014 see\n:mod:`robotsix_auto_mail.config.credentials`.\n\nValidation (all raise :class:`ConfigurationError`): all ``account_id``s\nunique; all ``MailConfig.db_path``s unique across accounts.",
   "properties": {
     "accounts": {
       "description": "Ordered list of mailbox accounts. Each entry has an account_id and its MailConfig.",
@@ -342,12 +342,6 @@
       "title": "Classifier Level",
       "type": "integer"
     },
-    "rules_level": {
-      "default": 1,
-      "description": "Tier level (1-4) assigned to the triage-rules synthesis agent.",
-      "title": "Rules Level",
-      "type": "integer"
-    },
     "detector_level": {
       "default": 1,
       "description": "Tier level (1-4) assigned to the provider-detection agent.",
@@ -379,3 +373,4 @@
   "title": "MailAccountsConfig",
   "type": "object"
 }
+

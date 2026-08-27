@@ -11,7 +11,6 @@ from __future__ import annotations
 import contextlib
 import json
 import sqlite3
-from pathlib import Path
 
 from robotsix_auto_mail.config import (
     APP_CLASSIFIER,
@@ -51,7 +50,6 @@ from robotsix_auto_mail.triage.persistence import (
     list_triage_decisions,
     set_triage_decision,
 )
-from robotsix_auto_mail.triage.rules import load_rules
 
 # ---------------------------------------------------------------------------
 # Prompt building
@@ -69,7 +67,7 @@ def _build_triage_system_prompt(
     ``archive_subfolder`` field.  When *user_email* is a non-empty string,
     appends an instruction telling the model never to classify mail the user
     sent to themself as ``TO_ANSWER``.  Learned per-sender/topic preferences
-    are supplied separately as the ``triage_rules.md`` guidance prepended to
+    are supplied separately as the ``triage_guidance`` advisory prepended to
     the user message (see :func:`run_triage_agent`).
     """
     prompt = (
@@ -496,7 +494,7 @@ def run_triage_agent(
     level: int = 1,
     only_undecided: bool = False,
     user_email: str | None = None,
-    rules_path: str | Path | None = None,
+    guidance: str = "",
 ) -> list[TriageDecision]:
     """Classify every inbox mail into a triage action and persist the result.
 
@@ -530,6 +528,9 @@ def run_triage_agent(
             ``config.username``).  When non-empty, the system prompt
             instructs the model never to classify self-sent mail (sender ==
             this address) as ``TO_ANSWER``.  Defaults to ``None``.
+        guidance: Free-text advisory guidance prepended to the triage
+            agent prompt when non-empty.  Sourced from
+            ``MailConfig.triage_guidance``.  Defaults to ``""``.
 
     Raises:
         TriageError: If the API key is missing or the LLM call fails.
@@ -567,15 +568,13 @@ def run_triage_agent(
 
     user_message = _build_user_message(remaining)
 
-    # -- bias the model toward the human-readable triage rules (advisory) --
-    rules = load_rules(Path(rules_path)) if rules_path else ""
-    if rules.strip():
-        guidance = (
+    # -- bias the model toward the human-readable triage guidance (advisory) --
+    if guidance.strip():
+        user_message = (
             "The user maintains these triage rules (advisory — follow them "
             "unless a message clearly differs):\n"
-            f"{rules.strip()}"
+            f"{guidance.strip()}\n\n{user_message}"
         )
-        user_message = f"{guidance}\n\n{user_message}"
 
     output: TriageResult = _run_llm_agent(
         api_key=resolved_key,
@@ -609,7 +608,7 @@ def run_triage_agent(
         resolved_key,
         resolved_provider_model,
         level=classifier_level,
-        rules=rules,
+        rules=guidance,
     )
 
     # -- check TO_DELETE senders for unsubscribe options ------------------

@@ -13,16 +13,8 @@ from robotsix_auto_mail.server._constants import _with_db
 from robotsix_auto_mail.server.adapters import (
     _run_triage_background,
 )
-from robotsix_auto_mail.triage import resolve_rules_path
 
 logger = logging.getLogger(__name__)
-
-
-def _rules_path_str(mail_config: object | None, db_path: str) -> str | None:
-    """Resolve the per-account triage-rules path as a string (or ``None``)."""
-    rules_path = getattr(mail_config, "triage_rules_path", "") if mail_config else ""
-    resolved = resolve_rules_path(db_path=db_path, rules_path=rules_path)
-    return str(resolved) if resolved else None
 
 
 class _TriageMixin:
@@ -35,13 +27,14 @@ class _TriageMixin:
 
     def _launch_triage(self) -> None:
         """Launch the triage agent in a background thread (shared helper)."""
+        guidance = self.mail_config.triage_guidance if self.mail_config is not None else ""
         self._launch_background_worker(
             _TRIAGE_RUN_STATE_KEY,
             _run_triage_background,
             (
                 self.db_path,
                 self.mail_config.username if self.mail_config is not None else None,
-                _rules_path_str(self.mail_config, self.db_path),
+                guidance,
             ),
         )
 

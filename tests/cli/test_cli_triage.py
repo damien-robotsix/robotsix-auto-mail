@@ -203,22 +203,13 @@ def test_triage_set_success(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
     from robotsix_auto_mail.triage import get_triage_decision
 
     cfg_db = _cfg_with_inbox(tmp_path)
-    with (
-        mock.patch(
-            "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
-        ),
-        mock.patch("robotsix_auto_mail.triage.record_user_action") as mock_record,
+    with mock.patch(
+        "robotsix_auto_mail.cli.load_accounts", return_value=_accounts(cfg_db)
     ):
         rc = main(["triage-set", "--account", "default", "<a@x.com>", "TO_ARCHIVE"])
 
     assert rc == 0
     assert "Recorded user triage decision" in capsys.readouterr().out
-
-    # The user action is recorded inline (no background thread) so the
-    # human-readable triage rules can be updated.
-    mock_record.assert_called_once()
-    assert mock_record.call_args.args[1] == "TO_ARCHIVE"
-    assert mock_record.call_args.kwargs["background"] is False
 
     conn = real_init_db(cfg_db.db_path)
     try:

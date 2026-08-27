@@ -9,7 +9,6 @@ folders.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
 from unittest import mock
 
 import pytest
@@ -50,15 +49,6 @@ def _make_archive_delete_request(
     ).encode("utf-8")
     handler.headers.get.return_value = len(body)
     handler.rfile.read.return_value = body
-
-
-@pytest.fixture(autouse=True)
-def record_user_action_mock() -> Iterator[mock.MagicMock]:
-    """Patch ``record_user_action`` so no background flash-LLM thread runs."""
-    with mock.patch(
-        "robotsix_auto_mail.server._archive_action_mixin.record_user_action"
-    ) as patched:
-        yield patched
 
 
 class TestHandleArchiveDeleteForce:

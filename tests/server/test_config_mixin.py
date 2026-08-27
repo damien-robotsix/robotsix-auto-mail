@@ -13,7 +13,6 @@ from typing import Any
 from unittest import mock
 
 from robotsix_auto_mail.server._config_mixin import _ConfigMixin
-from robotsix_auto_mail.triage import TO_ARCHIVE
 
 # ---------------------------------------------------------------------------
 # Fake handler for direct mixin testing
@@ -245,10 +244,8 @@ class TestHandleArchiveProposal:
 
     # -- empty / valid subfolder happy paths --------------------------------
 
-    def test_empty_subfolder_calls_set_override_but_not_record_user_action(
-        self,
-    ):
-        """An empty subfolder skips record_user_action (best-effort rule)."""
+    def test_empty_subfolder_calls_set_override(self):
+        """An empty subfolder still calls set_archive_subfolder_override."""
         handler = _FakeConfigHandler(mail_config=mock.MagicMock())
         action = self._capture_action(handler)
 
@@ -259,17 +256,13 @@ class TestHandleArchiveProposal:
         with mock.patch(
             "robotsix_auto_mail.server._config_mixin.set_archive_subfolder_override"
         ) as mock_set:
-            with mock.patch(
-                "robotsix_auto_mail.server._config_mixin.record_user_action"
-            ) as mock_record:
-                result = action(conn, record, "/board", "")
+            result = action(conn, record, "/board", "")
 
         assert result is True
         mock_set.assert_called_once_with(conn, "msg-1", "")
-        mock_record.assert_not_called()
 
-    def test_valid_subfolder_calls_set_override_and_records_user_action(self):
-        """A valid subfolder triggers both set_override + record_user_action."""
+    def test_valid_subfolder_calls_set_override(self):
+        """A valid subfolder triggers set_archive_subfolder_override."""
         handler = _FakeConfigHandler(mail_config=mock.MagicMock())
         action = self._capture_action(handler)
 
@@ -280,46 +273,15 @@ class TestHandleArchiveProposal:
         with mock.patch(
             "robotsix_auto_mail.server._config_mixin.set_archive_subfolder_override"
         ) as mock_set:
-            with mock.patch(
-                "robotsix_auto_mail.server._config_mixin.record_user_action"
-            ) as mock_record:
-                result = action(conn, record, "/board", "Receipts")
+            result = action(conn, record, "/board", "Receipts")
 
         assert result is True
         mock_set.assert_called_once_with(conn, "msg-1", "Receipts")
-        mock_record.assert_called_once_with(
-            record,
-            TO_ARCHIVE,
-            config=handler.mail_config,
-            subfolder="Receipts",
-        )
-
-    # -- error suppression --------------------------------------------------
-
-    def test_record_user_action_failure_is_suppressed(self):
-        """If record_user_action raises, the action still returns True."""
-        handler = _FakeConfigHandler(mail_config=mock.MagicMock())
-        action = self._capture_action(handler)
-
-        conn = mock.MagicMock()
-        record = mock.MagicMock()
-        record.message_id = "msg-1"
-
-        with mock.patch(
-            "robotsix_auto_mail.server._config_mixin.set_archive_subfolder_override"
-        ):
-            with mock.patch(
-                "robotsix_auto_mail.server._config_mixin.record_user_action",
-                side_effect=RuntimeError("db down"),
-            ):
-                result = action(conn, record, "/board", "Receipts")
-
-        assert result is True
 
     # -- mail_config is None ------------------------------------------------
 
-    def test_null_mail_config_skips_record_user_action(self):
-        """When mail_config is None, record_user_action is never called."""
+    def test_null_mail_config_still_calls_set_override(self):
+        """When mail_config is None, set_archive_subfolder_override is still called."""
         handler = _FakeConfigHandler(mail_config=None)
         action = self._capture_action(handler)
 
@@ -330,11 +292,7 @@ class TestHandleArchiveProposal:
         with mock.patch(
             "robotsix_auto_mail.server._config_mixin.set_archive_subfolder_override"
         ) as mock_set:
-            with mock.patch(
-                "robotsix_auto_mail.server._config_mixin.record_user_action"
-            ) as mock_record:
-                result = action(conn, record, "/board", "Receipts")
+            result = action(conn, record, "/board", "Receipts")
 
         assert result is True
         mock_set.assert_called_once_with(conn, "msg-1", "Receipts")
-        mock_record.assert_not_called()

@@ -113,9 +113,6 @@ OAuth2 access token presented over SASL XOAUTH2:
     proposals, with user-override storage via watermarks.
   - `triage/persistence.py` — Pydantic output-contract models and SQLite CRUD
     helpers for the `triage_decisions` table.
-  - `triage/rules.py` — LLM-driven rule-learning from board actions: loads a
-    human-readable `triage_rules.md` file into the triage prompt, and
-    updates it via flash LLM on each user action.
 - `config/config_sync_agent.py` — the config-drift advisory agent (also listed
   above).
 - `draft/` — `generate_draft_reply`, the draft-reply generator tied to the

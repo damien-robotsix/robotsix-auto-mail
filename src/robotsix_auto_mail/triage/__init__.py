@@ -12,9 +12,10 @@ mailbox side effects** whatsoever: the kanban is a local-only board, so
 moving a card never touches the original mailbox (no archive / delete /
 move / expunge / append / store).
 
-Learned preferences come from the human-readable ``triage_rules.md`` file
-(see :mod:`robotsix_auto_mail.triage.rules`), which a flash LLM maintains
-from the user's board actions and the triage agent reads on every run.
+Advisory guidance for the triage agent comes from
+``MailConfig.triage_guidance`` — a static, human/agent-editable config
+field set via ``PUT /config``.  The triage agent prepends this guidance
+to its prompt when non-empty.
 
 The implementation is split across internal submodules:
 
@@ -22,7 +23,6 @@ The implementation is split across internal submodules:
 - ``persistence`` — pydantic models and triage-decision storage.
 - ``classifier`` — deterministic archive-subfolder proposal + per-message
   override / LLM-hint caches and sender-key helpers.
-- ``rules`` — the ``triage_rules.md`` file maintained by the flash LLM.
 - ``agent`` — the LLM triage agent (``run_triage_agent``); its
   ``pydantic_ai`` imports stay lazy to keep module-load time low.
 
@@ -146,30 +146,8 @@ from robotsix_auto_mail.triage.persistence import (
 from robotsix_auto_mail.triage.persistence import (
     set_triage_decision as set_triage_decision,
 )
-from robotsix_auto_mail.triage.rules import (
-    DEFAULT_RULES_HEADER as DEFAULT_RULES_HEADER,
-)
-from robotsix_auto_mail.triage.rules import (
-    RulesMarkdown as RulesMarkdown,
-)
-from robotsix_auto_mail.triage.rules import (
-    load_rules as load_rules,
-)
-from robotsix_auto_mail.triage.rules import (
-    record_user_action as record_user_action,
-)
-from robotsix_auto_mail.triage.rules import (
-    resolve_rules_path as resolve_rules_path,
-)
-from robotsix_auto_mail.triage.rules import (
-    rules_text_for as rules_text_for,
-)
-from robotsix_auto_mail.triage.rules import (
-    update_rules_for_action as update_rules_for_action,
-)
 
 __all__ = [
-    "DEFAULT_RULES_HEADER",
     "DRAFT_READY",
     "HUMAN_TRIAGE",
     "INBOX",
@@ -182,7 +160,6 @@ __all__ = [
     "TRIAGE_ACTION_ORDER",
     "VALID_TRIAGE_ACTIONS",
     "ArchiveSubfolderProposal",
-    "RulesMarkdown",
     "TriageDecision",
     "TriageError",
     "TriageItem",
@@ -203,15 +180,10 @@ __all__ = [
     "get_archive_subfolder_with_source",
     "get_triage_decision",
     "list_triage_decisions",
-    "load_rules",
     "normalize_archive_subfolder",
     "propose_archive_subfolder",
     "propose_archive_subfolder_llm",
-    "record_user_action",
-    "resolve_rules_path",
-    "rules_text_for",
     "run_triage_agent",
     "set_archive_subfolder_override",
     "set_triage_decision",
-    "update_rules_for_action",
 ]

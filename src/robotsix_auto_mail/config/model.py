@@ -213,14 +213,15 @@ class MailConfig(BaseModel):
         json_schema_extra={"advanced": True},
     )
 
-    # Path to the human-readable triage rules file maintained by the flash
-    # LLM from user actions.  Empty means "derive from db_path"
-    # (``<db-dir>/triage_rules.md``).
-    triage_rules_path: str = Field(
+    # Free-text advisory guidance prepended to the triage agent and
+    # archive-subfolder proposal for this account.  Edited only via
+    # PUT /config — never auto-maintained by the server.
+    triage_guidance: str = Field(
         default="",
         description=(
-            "Path to the human-readable triage rules file. "
-            "Empty means derive from db_path."
+            "Free-text advisory guidance prepended to the triage agent and "
+            "archive-subfolder proposal for this account. "
+            "Edited only via PUT /config — never auto-maintained by the server."
         ),
         json_schema_extra={"advanced": True},
     )
@@ -453,8 +454,8 @@ class MailAccountsConfig(BaseModel):
     ``account_id`` column to every table.  The rationale:
 
     - Per-account state (triage decisions, archive watermarks — all keyed
-      by ``message_id`` in each DB, plus the per-account ``triage_rules.md``
-      file) is naturally isolated with zero schema migration.
+      by ``message_id`` in each DB) is naturally isolated with zero schema
+      migration.
     - Each :class:`MailConfig` already owns a ``db_path`` field, so no new
       per-row plumbing is required.
     - The cost is one SQLite file per account; uniqueness of ``db_path``
@@ -518,10 +519,6 @@ class MailAccountsConfig(BaseModel):
     classifier_level: int = Field(
         default=1,
         description="Tier level (1-4) assigned to the message classifier agent.",
-    )
-    rules_level: int = Field(
-        default=1,
-        description="Tier level (1-4) assigned to the triage-rules synthesis agent.",
     )
     detector_level: int = Field(
         default=1,

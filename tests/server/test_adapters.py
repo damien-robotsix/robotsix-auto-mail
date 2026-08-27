@@ -147,7 +147,7 @@ class TestRunTriageBackground:
         mock_run_triage.assert_called_once_with(
             mock_conn,
             user_email="x@y.com",
-            rules_path=None,
+            guidance="",
             only_undecided=True,
         )
 
@@ -163,7 +163,7 @@ class TestRunTriageBackground:
             _run_triage_background("/fake/db.sqlite")
 
         mock_run_triage.assert_called_once_with(
-            mock_conn, user_email=None, rules_path=None, only_undecided=True
+            mock_conn, user_email=None, guidance="", only_undecided=True
         )
 
 

@@ -125,9 +125,6 @@ def test_archive_stale_uid_preserves_record(single_db: str) -> None:
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
             mock.patch("robotsix_auto_mail.imap.cross_folder_resolve") as mock_cross,
-            mock.patch(
-                "robotsix_auto_mail.server._archive_action_mixin.record_user_action"
-            ) as mock_record,
         ):
             mock_client = mock_cls.return_value.__enter__.return_value
             mock_client.search_uids.return_value = []
@@ -138,9 +135,6 @@ def test_archive_stale_uid_preserves_record(single_db: str) -> None:
             )
 
         assert status == 302, f"Expected 302, got {status}: {body}"
-        # Mail is gone: the stale path deletes the row and returns before
-        # reaching the rules-recording step, so no user action is recorded.
-        mock_record.assert_not_called()
     finally:
         server.shutdown()
 

@@ -20,8 +20,6 @@ from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._action_mixin import _json_field_value
 from robotsix_auto_mail.triage import (
     TO_ARCHIVE,
-    record_user_action,
-    rules_text_for,
 )
 
 logger = logging.getLogger(__name__)
@@ -135,7 +133,7 @@ class _ArchiveActionMixin:
             record,
             api_key=resolve_llm_api_key(raise_on_missing=False),
             level=classifier_level,
-            rules=rules_text_for(self.mail_config),
+            rules=self.mail_config.triage_guidance if self.mail_config is not None else "",
         )
 
         # Determine the archive root.
@@ -217,15 +215,6 @@ class _ArchiveActionMixin:
                     status=502,
                 )
                 return False
-
-        # -- record the human-confirmed archive-folder choice (best-effort);
-        #    updates the triage rules file via the flash LLM --
-        if subfolder and self.mail_config is not None:
-            with contextlib.suppress(Exception):
-                # Non-fatal: rule maintenance is advisory only
-                record_user_action(
-                    record, TO_ARCHIVE, config=self.mail_config, subfolder=subfolder
-                )
 
         # -- write audit-log entry before deleting the local row --
         with contextlib.suppress(Exception):

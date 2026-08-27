@@ -1484,26 +1484,18 @@ triage decision always places the card in one of these columns. Note
 that `TO_DELETE` moves the card to the To delete column (a board move only, not
 an IMAP deletion).
 
-### Triage rules (`triage_rules.md`)
+### Triage guidance (`triage_guidance`)
 
-The agent learns from your manual triage actions through a single,
-**human-readable Markdown file**, `triage_rules.md`. Whenever you act on a
-message — move a card on the board, archive it into a folder, save a draft, or
-run `triage-set` — a small, fast ("flash") LLM is given your action plus the
-message's sender, subject, and body, and updates `triage_rules.md` if a rule
-should change. On every triage run the agent reads this file and treats the
-rules as advisory guidance (not hard rules), reasoning over the whole context
-of each new message rather than the subject alone.
+The triage agent can be guided by a static, per-account advisory prompt
+called `triage_guidance`. This is a free-text field in the account's
+`MailConfig` that is prepended to the triage agent's user message when
+non-empty. It is **never auto-maintained** — you edit it explicitly via
+`PUT /config` (or directly in the config file).
 
-Because it is a plain Markdown file, you can open, review, and edit the rules
-directly — delete or reword anything you disagree with.
-
-The file lives next to each account's SQLite datastore
-(`<db-dir>/triage_rules.md`) by default; set `triage.rules_path`
-to override the location. Rule updates triggered
-from the web board run in the background (they never delay a card move) and are
-best-effort — they require a resolvable LLM API key and never block or fail the
-action itself.
+Because it is a plain config field, you can set it to any guidance you want —
+rules about specific senders, archive folder preferences, or general triage
+philosophy. The triage agent treats it as advisory guidance (not hard rules),
+reasoning over the whole context of each new message.
 
 ### Options
 
@@ -1550,13 +1542,11 @@ $ robotsix-auto-mail triage-set <message_id> <action>
 ```
 
 This records the decision in the `triage_decisions` table with `source=user`
-(distinguishing it from agent decisions), **moves the card to the mapped
+(distinguishing it from agent decisions) and **moves the card to the mapped
 kanban board column** (see the action-to-column table under [Action statuses
-and kanban board mapping](#action-statuses-and-kanban-board-mapping)), and
-**updates the `triage_rules.md` file** (via the flash LLM) so future triage
-runs can apply the learned rule. Like the LLM-driven `triage` command, this is
-a local-only board move — no IMAP operations occur. (The `triage-set` rule
-update runs inline; the web-board actions defer it to the background.)
+and kanban board mapping](#action-statuses-and-kanban-board-mapping)). Like the
+LLM-driven `triage` command, this is a local-only board move — no IMAP
+operations occur.
 
 ### Arguments
 
@@ -1582,11 +1572,7 @@ robotsix-auto-mail triage-set '<c@x.com>' HUMAN_TRIAGE
 
 - If the `message_id` is unknown, exits with code `1` and an error message.
 - If the `action` is invalid, exits with code `1` and an error message.
-- On success, the decision is stored and `triage_rules.md` is updated (when an
-  LLM API key is resolvable); exit code is `0`.
-
-The next `triage` run reads `triage_rules.md` and treats the learned rules as
-advisory guidance for future mail.
+- On success, the decision is stored; exit code is `0`.
 
 ### Requirements
 
@@ -1597,11 +1583,6 @@ The `triage-set` command requires:
   with an install hint if it is absent. This matches `triage`'s pydantic-ai
   requirement, since `triage-set` imports the validation vocabulary and
   decision-recording helpers from the `triage` package.
-
-It does **not** require an LLM API key to record the decision. When a key
-*is* resolvable it additionally updates `triage_rules.md` via the flash LLM;
-without a key that rule-update step is silently skipped and the decision is
-still recorded.
 
 ## The config-sync-set command
 

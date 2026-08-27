@@ -179,7 +179,6 @@ class TestHandleSaveDraft:
                 return_value=None,
             ),
             mock.patch("robotsix_auto_mail.server._draft_mixin.set_triage_decision"),
-            mock.patch("robotsix_auto_mail.server._draft_mixin.record_user_action"),
         ):
             handler._handle_save_draft()
 
@@ -212,16 +211,12 @@ class TestHandleSaveDraft:
             mock.patch(
                 "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
             ) as mock_set,
-            mock.patch(
-                "robotsix_auto_mail.server._draft_mixin.record_user_action"
-            ) as mock_record,
         ):
             handler._handle_save_draft()
 
         mock_set.assert_called_once_with(
             mock.ANY, "no-decision", "DRAFT_READY", source="user", reason="draft saved"
         )
-        mock_record.assert_called_once_with(mock.ANY, "DRAFT_READY", config=mock.ANY)
 
     def test_sets_draft_ready_when_current_action_is_not_draft_ready(
         self, single_db: str
@@ -249,9 +244,6 @@ class TestHandleSaveDraft:
             mock.patch(
                 "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
             ) as mock_set,
-            mock.patch(
-                "robotsix_auto_mail.server._draft_mixin.record_user_action"
-            ) as mock_record,
         ):
             handler._handle_save_draft()
 
@@ -259,7 +251,6 @@ class TestHandleSaveDraft:
         mock_set.assert_called_once_with(
             mock.ANY, "other-action", "DRAFT_READY", source="user", reason="draft saved"
         )
-        mock_record.assert_called_once()
 
     def test_does_not_set_draft_ready_when_already_draft_ready(
         self, single_db: str
@@ -285,12 +276,8 @@ class TestHandleSaveDraft:
             mock.patch(
                 "robotsix_auto_mail.server._draft_mixin.set_triage_decision"
             ) as mock_set,
-            mock.patch(
-                "robotsix_auto_mail.server._draft_mixin.record_user_action"
-            ) as mock_record,
         ):
             handler._handle_save_draft()
 
-        # No new triage decision or user action should be recorded.
+        # No new triage decision should be recorded.
         mock_set.assert_not_called()
-        mock_record.assert_not_called()
