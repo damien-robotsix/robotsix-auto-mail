@@ -6,6 +6,8 @@ from unittest import mock
 
 import pytest
 
+from robotsix_auto_mail.config import MailAccountsConfig
+from robotsix_auto_mail.config.model import MailAccount, MailConfig
 from robotsix_auto_mail.db import (
     MailRecord,
     init_db,
@@ -501,3 +503,120 @@ def test_triage_action_labels_cover_every_action() -> None:
         assert isinstance(label, str)
         assert len(label) > 0
     assert tuple(TRIAGE_ACTION_LABELS) == TRIAGE_ACTION_ORDER
+
+
+# ---------------------------------------------------------------------------
+# Guidance-path tests
+# ---------------------------------------------------------------------------
+
+
+_ADVISORY_PREFIX = (
+    "The user maintains these triage rules (advisory — follow them "
+    "unless a message clearly differs):\n"
+)
+
+
+def test_run_triage_agent_guidance_prepends_advisory_block(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-empty guidance prepends the canonical advisory block to the LLM user message."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        result_obj = TriageResult(
+            items=[TriageItem(index=1, action="TO_ANSWER", confidence="high")]
+        )
+        _handle, patcher = _patch_llm(result_obj)
+        with (
+            patcher as cls,
+            mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
+        ):
+            run_triage_agent(
+                conn,
+                api_key="sk-test",
+                guidance="archive newsletters to Newsletters",
+            )
+            provider = cls.return_value
+
+        # The agent was built; inspect the user_message passed to run_sync.
+        agent_handle = provider.build_agent.return_value
+        user_message_arg = agent_handle.run_sync.call_args[0][0]
+        assert _ADVISORY_PREFIX in user_message_arg
+        assert "archive newsletters to Newsletters" in user_message_arg
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_no_guidance_no_advisory_block(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Empty guidance (default) does NOT prepend the advisory block."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        result_obj = TriageResult(
+            items=[TriageItem(index=1, action="TO_ANSWER", confidence="high")]
+        )
+        _handle, patcher = _patch_llm(result_obj)
+        with (
+            patcher as cls,
+            mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
+        ):
+            run_triage_agent(conn, api_key="sk-test")
+            provider = cls.return_value
+
+        agent_handle = provider.build_agent.return_value
+        user_message_arg = agent_handle.run_sync.call_args[0][0]
+        assert _ADVISORY_PREFIX not in user_message_arg
+    finally:
+        conn.close()
+
+
+def test_run_triage_agent_guidance_forwarded_as_rules_to_archive_hint_filler(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Guidance is forwarded as ``rules`` to ``_fill_missing_archive_hints``."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x.com>")
+        result_obj = TriageResult(
+            items=[TriageItem(index=1, action="TO_ARCHIVE", confidence="high")]
+        )
+        _handle, patcher = _patch_llm(result_obj)
+        with (
+            patcher,
+            mock.patch(
+                "robotsix_auto_mail.triage.agent._fill_missing_archive_hints"
+            ) as mock_fill,
+        ):
+            run_triage_agent(
+                conn,
+                api_key="sk-test",
+                guidance="some guidance",
+            )
+
+        mock_fill.assert_called_once()
+        assert mock_fill.call_args.kwargs["rules"] == "some guidance"
+    finally:
+        conn.close()
+
+
+def test_triage_guidance_config_round_trip(tmp_path: object) -> None:
+    """``triage_guidance`` survives a dump_config → load_config round-trip."""
+    from robotsix_config import dump_config, load_config
+
+    cfg = MailConfig(
+        imap_host="imap.example.com",
+        smtp_host="smtp.example.com",
+        username="test@example.com",
+        triage_guidance="archive newsletters to Newsletters",
+    )
+    account = MailAccount(account_id="test-account", config=cfg)
+    container = MailAccountsConfig(accounts=[account])
+
+    dump_config(container, path=tmp_path / "config.json")  # type: ignore[arg-type]
+    loaded = load_config(MailAccountsConfig, path=tmp_path / "config.json")
+    assert (
+        loaded.accounts[0].config.triage_guidance
+        == "archive newsletters to Newsletters"
+    )
