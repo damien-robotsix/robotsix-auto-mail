@@ -6,13 +6,13 @@ from unittest import mock
 
 import pytest
 
+from robotsix_auto_mail.config import MailAccountsConfig
+from robotsix_auto_mail.config.model import MailAccount, MailConfig
 from robotsix_auto_mail.db import (
     MailRecord,
     init_db,
     insert_record,
 )
-from robotsix_auto_mail.config import MailAccountsConfig
-from robotsix_auto_mail.config.model import MailAccount, MailConfig
 from robotsix_auto_mail.triage import (
     TRIAGE_ACTION_LABELS,
     TRIAGE_ACTION_ORDER,
@@ -616,4 +616,7 @@ def test_triage_guidance_config_round_trip(tmp_path: object) -> None:
 
     dump_config(container, path=tmp_path / "config.json")  # type: ignore[arg-type]
     loaded = load_config(MailAccountsConfig, path=tmp_path / "config.json")
-    assert loaded.accounts[0].config.triage_guidance == "archive newsletters to Newsletters"
+    assert (
+        loaded.accounts[0].config.triage_guidance
+        == "archive newsletters to Newsletters"
+    )
