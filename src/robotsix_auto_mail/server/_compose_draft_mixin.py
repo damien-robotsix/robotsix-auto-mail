@@ -139,9 +139,7 @@ class _ComposeDraftMixin:
                         return
                     # Use the metadata endpoint, NOT the raw-file-download
                     # endpoint (/files/<id>), which returns binary content.
-                    fetch_url = (
-                        f"{file_hub_url.rstrip('/')}/files/{fid}/metadata"
-                    )
+                    fetch_url = f"{file_hub_url.rstrip('/')}/files/{fid}/metadata"
                     try:
                         with httpx.Client(timeout=30) as client:
                             resp = client.get(
