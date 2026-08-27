@@ -6,10 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from robotsix_auto_mail.triage import (
-    TO_ARCHIVE,
-    set_archive_subfolder_override,
-)
+from robotsix_auto_mail.triage import set_archive_subfolder_override
 
 
 class _ConfigMixin:
