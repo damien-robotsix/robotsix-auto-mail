@@ -54,7 +54,7 @@ class _SentMixin:
 
         Returns the same structured shape as ``/archive/<folder>/messages``:
         each message object carries ``uid``, ``subject``, ``from``, ``to``,
-        ``date``, ``size``, and ``flags``.
+        ``date``, ``size``, ``flags``, and ``message_id``.
 
         Accepts optional ``?limit=N`` (default 500, max 2000) and
         ``?offset=N`` (default 0) query parameters.  Short-circuits in

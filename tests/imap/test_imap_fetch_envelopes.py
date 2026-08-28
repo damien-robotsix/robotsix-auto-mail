@@ -44,12 +44,14 @@ def _envelope_fetch_response(
         else:
             addr_part = f'(NIL NIL "{mailbox}" "{host}")'
 
+        msg_id = f"<uid{uid}@example.com>"
+
         # Build the inline FETCH response line.
         line = (
             f'1 (UID {uid} FLAGS (\\Seen) INTERNALDATE "{date_str}" '
             f"RFC822.SIZE 1234 ENVELOPE "
             f'("{date_str}" "{subject}" ({addr_part}) '
-            f"NIL NIL NIL NIL NIL NIL NIL))"
+            f'NIL NIL NIL NIL NIL NIL "{msg_id}"))'
         )
         items.append(line.encode())
     return ("OK", items)
@@ -74,6 +76,7 @@ def test_fetch_envelopes_returns_metadata(cfg: MailConfig) -> None:
     assert "2024" in str(msg["date"])
     assert msg["size"] == 1234
     assert "\\Seen" in msg["flags"]
+    assert msg["message_id"] == "<uid1@example.com>"
 
 
 def test_fetch_envelopes_multiple_messages(cfg: MailConfig) -> None:
