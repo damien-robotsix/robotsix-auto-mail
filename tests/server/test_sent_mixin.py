@@ -79,6 +79,7 @@ class TestServeSentMessages:
                         "date": "2024-01-01",
                         "size": 100,
                         "flags": ["\\Seen"],
+                        "message_id": "<invoice@example.com>",
                     }
                 ]
             ),

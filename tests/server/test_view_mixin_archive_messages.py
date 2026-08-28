@@ -62,6 +62,7 @@ class TestServeArchiveMessages:
                 "date": "2024-01-01",
                 "size": 100,
                 "flags": ["\\Seen"],
+                "message_id": "<test@example.com>",
             },
         ]
         mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
@@ -218,6 +219,7 @@ class TestServeArchiveMessages:
                 "date": "",
                 "size": 0,
                 "flags": [],
+                "message_id": f"<msg{i}@example.com>",
             }
             for i in range(1, 11)
         ]

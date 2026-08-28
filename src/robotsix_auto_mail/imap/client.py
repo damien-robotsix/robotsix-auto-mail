@@ -672,8 +672,8 @@ class ImapClient(_ProtocolClient):
         Returns:
             List of dicts, each with keys ``"uid"`` (int),
             ``"subject"`` (str), ``"from"`` (str), ``"to"`` (str),
-            ``"date"`` (str), ``"size"`` (int), and ``"flags"``
-            (list[str]).
+            ``"date"`` (str), ``"size"`` (int), ``"flags"``
+            (list[str]), and ``"message_id"`` (str).
             UIDs that no longer exist on the server are silently omitted.
 
         Raises:
@@ -1003,7 +1003,8 @@ def _parse_inline_fetch_attrs(line: bytes) -> dict[str, object] | None:
     This function parses the key-value pairs from the parenthesised
     part after the sequence number.  Returns a dict with keys
     ``"flags"``, ``"internal_date"``, ``"size"``, ``"subject"``,
-    ``"from"``, ``"to"``, ``"date"``, or ``None`` on parse failure.
+    ``"from"``, ``"to"``, ``"date"``, ``"message_id"``, or ``None``
+    on parse failure.
     """
     text = line.decode("utf-8", errors="replace")
     # Strip the sequence number prefix: "1 (FLAGS ...)"
@@ -1023,6 +1024,7 @@ def _parse_inline_fetch_attrs(line: bytes) -> dict[str, object] | None:
         "from": "",
         "to": "",
         "date": "",
+        "message_id": "",
     }
 
     i = 0
@@ -1068,6 +1070,7 @@ def _parse_inline_fetch_attrs(line: bytes) -> dict[str, object] | None:
                     result["from"] = env.get("from", "")
                     result["to"] = env.get("to", "")
                     result["date"] = env.get("date", "")
+                    result["message_id"] = env.get("message_id", "")
         elif inner[i] == '"':
             # Quoted string.
             j = i + 1
@@ -1106,7 +1109,7 @@ def _parse_flags(text: str) -> list[str]:
 
 
 def _parse_envelope_inline(text: str) -> dict[str, str]:
-    """Parse an inline ENVELOPE structure into a dict with subject/from/date.
+    """Parse an inline ENVELOPE structure into a dict with subject/from/date/message_id.
 
     The ENVELOPE is: ``date subject from sender reply-to to cc bcc
     in-reply-to message-id`` where each field is either a quoted
@@ -1164,6 +1167,12 @@ def _parse_envelope_inline(text: str) -> dict[str, str]:
     _reply_to, pos = _read_field(s, pos)
     to_str, pos = _read_field(s, pos)
     result["to"] = to_str
+    # Skip cc, bcc, in-reply-to; read message-id (last field).
+    _cc, pos = _read_field(s, pos)
+    _bcc, pos = _read_field(s, pos)
+    _in_reply_to, pos = _read_field(s, pos)
+    message_id, pos = _read_field(s, pos)
+    result["message_id"] = message_id
 
     return result
 
