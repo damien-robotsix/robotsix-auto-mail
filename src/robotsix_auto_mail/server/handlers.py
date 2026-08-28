@@ -48,6 +48,7 @@ from robotsix_auto_mail.server._constants import (
 )
 from robotsix_auto_mail.server._draft_mixin import _DraftMixin
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
+from robotsix_auto_mail.server._sent_mixin import _SentMixin
 from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
 from robotsix_auto_mail.server._triage_mixin import _TriageMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
@@ -66,6 +67,7 @@ class BoardHandler(
     _DraftMixin,
     _ComposeDraftMixin,
     _ConfigMixin,
+    _SentMixin,
     _AccountMixin,
     _BoardAuthMixin,
     _SettingsMixin,
@@ -164,6 +166,8 @@ class BoardHandler(
                     )
                 ),
             ),
+            (lambda p: p == "/sent/messages", self._serve_sent_messages),
+            (lambda p: p == "/sent/message", self._serve_sent_message),
             (lambda p: p.startswith("/static/"), self._serve_static),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),

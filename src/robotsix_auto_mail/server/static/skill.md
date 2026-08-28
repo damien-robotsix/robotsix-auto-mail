@@ -64,7 +64,15 @@ All GET endpoints below are read-only and safe to call without confirmation.
   Shows the effective archive subfolder for a message (source: `override`, `llm`, or `rule`).
 
 - **`GET /archive/<folder>/messages`** → JSON `{"folder":"…","total":N,"shown":N,"messages":[…]}`.
-  Lists messages inside an archive subfolder. Each message object contains `uid`, `subject`, `from`, `date`, `size`, and `flags`.  Accepts optional `?limit=N` (default 500, max 2000).  Returns 404 when the folder does not exist.
+  Lists messages inside an archive subfolder. Each message object contains `uid`, `subject`, `from`, `to`, `date`, `size`, and `flags`.  Accepts optional `?limit=N` (default 500, max 2000).  Returns 404 when the folder does not exist.
+
+### Sent folder (outbound mail)
+
+- **`GET /sent/messages?account=<id>`** → JSON `{"folder":"…","total":N,"shown":N,"messages":[…]}`.
+  Lists messages in the account's **Sent** folder (newest first). Each message object contains `uid`, `subject`, `from`, `to`, `date`, `size`, and `flags` — the same shape as `/archive/<folder>/messages`.  The `?account=` query parameter is **required** — an unknown/mistyped account returns 404.  Accepts optional `?limit=N` (default 500, max 2000) and `?offset=N` (default 0) for paging.  Returns 404 when the server has no Sent folder.  Read-only — no side effects.
+
+- **`GET /sent/message?account=<id>&uid=<n>`** → JSON `{"uid":N,"folder":"…","subject":"…","from":"…","to":[…],"cc":[…],"date":"…","body_plain":"…","body_html":"…","attachments":[{"filename":"…","mime_type":"…","size":N}]}`.
+  Reads a single Sent message by UID (from `/sent/messages`) and enumerates its attachments.  The `?account=` and `?uid=` query parameters are **required** — an unknown account returns 404, a missing/non-integer `uid` returns 400.  Returns 404 when the UID no longer exists.  Read-only — no side effects.
 
 ### Liveness
 

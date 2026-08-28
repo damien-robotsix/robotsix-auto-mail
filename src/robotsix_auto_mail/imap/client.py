@@ -671,8 +671,9 @@ class ImapClient(_ProtocolClient):
 
         Returns:
             List of dicts, each with keys ``"uid"`` (int),
-            ``"subject"`` (str), ``"from"`` (str), ``"date"`` (str),
-            ``"size"`` (int), and ``"flags"`` (list[str]).
+            ``"subject"`` (str), ``"from"`` (str), ``"to"`` (str),
+            ``"date"`` (str), ``"size"`` (int), and ``"flags"``
+            (list[str]).
             UIDs that no longer exist on the server are silently omitted.
 
         Raises:
@@ -1002,7 +1003,7 @@ def _parse_inline_fetch_attrs(line: bytes) -> dict[str, object] | None:
     This function parses the key-value pairs from the parenthesised
     part after the sequence number.  Returns a dict with keys
     ``"flags"``, ``"internal_date"``, ``"size"``, ``"subject"``,
-    ``"from"``, ``"date"``, or ``None`` on parse failure.
+    ``"from"``, ``"to"``, ``"date"``, or ``None`` on parse failure.
     """
     text = line.decode("utf-8", errors="replace")
     # Strip the sequence number prefix: "1 (FLAGS ...)"
@@ -1020,6 +1021,7 @@ def _parse_inline_fetch_attrs(line: bytes) -> dict[str, object] | None:
         "size": 0,
         "subject": "",
         "from": "",
+        "to": "",
         "date": "",
     }
 
@@ -1064,6 +1066,7 @@ def _parse_inline_fetch_attrs(line: bytes) -> dict[str, object] | None:
                 if env:
                     result["subject"] = env.get("subject", "")
                     result["from"] = env.get("from", "")
+                    result["to"] = env.get("to", "")
                     result["date"] = env.get("date", "")
         elif inner[i] == '"':
             # Quoted string.
@@ -1153,6 +1156,14 @@ def _parse_envelope_inline(text: str) -> dict[str, str]:
     result["subject"] = subject
     from_str, pos = _read_field(s, pos)
     result["from"] = from_str
+    # ENVELOPE field order (RFC 3501): date subject from sender reply-to
+    # to cc bcc in-reply-to message-id.  Skip sender and reply-to, then
+    # read the "to" recipient — the load-bearing field for Sent messages,
+    # where "from" is always the account itself.
+    _sender, pos = _read_field(s, pos)
+    _reply_to, pos = _read_field(s, pos)
+    to_str, pos = _read_field(s, pos)
+    result["to"] = to_str
 
     return result
 
