@@ -109,6 +109,92 @@ All GET endpoints below are read-only and safe to call without confirmation.
   Before executing any POST/PUT, confirm with the user and explain what
   the operation will do.
 
+## Board mutations (state-mutating, requires confirmation)
+
+These are the endpoints behind the board's own buttons — move a card
+between columns, save/send a reply draft, archive or delete one message,
+or run a column-wide batch.  All require operator confirmation per the
+safety rules above.
+
+**Conventions shared by every endpoint in this section:**
+
+- **`account` is a QUERY PARAMETER, never a body field**:
+  `POST /save-draft?account=ROBOTSIX`.  An `account` key inside the JSON
+  body is silently ignored and the request falls back to the default
+  account (the first configured one, or the `account` cookie) — for a
+  `message_id` that lives in another mailbox that surfaces as a
+  misleading **404 Not found**.  Always pass `?account=<id>` when more
+  than one account is configured (`GET /accounts` lists the ids).
+- Body: `application/x-www-form-urlencoded` or `application/json` with
+  the same field names.  `message_id` is the message's Message-ID header
+  exactly as returned by the board/detail endpoints.
+- Success is a **302 redirect** (to `/board`, or to the optional
+  `redirect_to` body field when it is a safe relative path) with no JSON
+  body — treat any 3xx as success.  Errors: **400** (missing/invalid
+  field, malformed JSON body), **404** (unknown `message_id` for the
+  selected account, or unknown `?account=`), **502** (IMAP/SMTP error).
+
+- **`POST /move`** — Move a card to another column (sets the triage
+  decision, source `user`).
+
+  ```json
+  {"message_id": "<Message-ID>", "triage_action": "TO_ARCHIVE"}
+  ```
+  `triage_action` must be one of `INBOX`, `HUMAN_TRIAGE`, `PENDING_ACTION`,
+  `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, `TO_ANSWER`.  Moving to
+  `TO_ARCHIVE` also (best-effort) proposes an archive subfolder; moving to
+  `TO_CALENDAR` queues a calendar event.
+
+- **`POST /save-draft`** — Store a reply draft on the card and move it to
+  the Draft-ready state.
+
+  ```json
+  {"message_id": "<Message-ID>", "draft_text": "<full reply body>"}
+  ```
+  `draft_text` is stored verbatim (whitespace preserved).
+
+- **`POST /send-draft`** — Send the stored draft over SMTP, record the
+  sent text on the card, and drop the triage decision so the card
+  re-enters the untriaged pool.
+
+  ```json
+  {"message_id": "<Message-ID>", "reply_mode": "reply"}
+  ```
+  `reply_mode` is **required** and must be exactly one of `reply`,
+  `reply_all`, `forward`; anything else (including empty) is
+  `400 Invalid reply_mode: '<value>'`.  `forward` additionally requires
+  `forward_to` (recipient address).  `400 SMTP is not configured` when
+  the account has no SMTP settings.  The draft must exist (save it
+  first).
+
+- **`POST /archive`** — Archive one message to the card's **proposed**
+  archive subfolder (the one shown on the To Archive card) and remove the
+  card.
+
+  ```json
+  {"message_id": "<Message-ID>"}
+  ```
+
+- **`POST /delete`** — Permanently delete one message from the IMAP
+  mailbox and the local DB.
+
+  ```json
+  {"message_id": "<Message-ID>"}
+  ```
+
+- **`POST /batch-archive`** and **`POST /batch-delete`** — Column-wide
+  "Archive All" / "Delete All".  **No body fields**: they act on every
+  card currently in the `TO_ARCHIVE` / `TO_DELETE` column of the selected
+  account (`?account=`; in the aggregate `?account=__all__` view they fan
+  out to every account).  The response is an immediate **302 to
+  `/board`**; the work runs in a background worker and progress shows in
+  the board's batch banner (poll `GET /board-content`).  Only one batch
+  operation runs per account at a time — a second request while one is
+  running, or a request on an empty column, is a no-op redirect.
+  `POST /batch-archive-folder` with body `{"folder": "<subfolder>"}`
+  archives only the To Archive cards whose proposed destination is that
+  subfolder (empty = archive root).
+
 ## Archive move (state-mutating, requires confirmation)
 
 - **`POST /archive-move`** — Move a single message from one archive
