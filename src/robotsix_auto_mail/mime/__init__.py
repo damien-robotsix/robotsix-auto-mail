@@ -7,6 +7,7 @@ and reused by any caller that needs to compose a plain-text email.
 
 from __future__ import annotations
 
+from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -90,6 +91,7 @@ def build_multipart_message(
     for file_obj, name in zip(attachments, attachment_names):
         part = MIMEBase("application", "octet-stream")
         part.set_payload(file_obj.read())
+        encoders.encode_base64(part)
         part.add_header("Content-Disposition", "attachment", filename=name)
         msg.attach(part)
 

@@ -293,7 +293,6 @@ class _ComposeDraftMixin:
         the board card is the fallback.
         """
         from robotsix_auto_mail.imap import ImapClient
-        from robotsix_auto_mail.imap.mailbox import is_special_use
         from robotsix_auto_mail.mime import build_multipart_message
 
         attachment_files: list[io.BytesIO] = []

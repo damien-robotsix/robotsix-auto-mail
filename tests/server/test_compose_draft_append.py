@@ -279,7 +279,10 @@ class TestComposeDraftImapAppend:
         mock_imap.append_message.assert_called_once()
         msg_bytes = mock_imap.append_message.call_args[0][1]
         assert b"report.pdf" in msg_bytes
-        assert b"%PDF-1.4 fake content" in msg_bytes
+        # Attachment is base64-encoded (not raw bytes).
+        import base64
+        assert base64.b64encode(b"%PDF-1.4 fake content") in msg_bytes
+        assert b"base64" in msg_bytes
         assert b"multipart" in msg_bytes
 
     def test_no_drafts_folder_logs_warning(
