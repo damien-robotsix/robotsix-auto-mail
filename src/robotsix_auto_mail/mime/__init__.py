@@ -88,7 +88,7 @@ def build_multipart_message(
 
     msg.attach(MIMEText(body, _charset="utf-8"))
 
-    for file_obj, name in zip(attachments, attachment_names):
+    for file_obj, name in zip(attachments, attachment_names, strict=True):
         part = MIMEBase("application", "octet-stream")
         part.set_payload(file_obj.read())
         encoders.encode_base64(part)

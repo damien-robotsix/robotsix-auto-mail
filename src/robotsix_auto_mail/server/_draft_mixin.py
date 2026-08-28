@@ -123,11 +123,12 @@ class _DraftMixin:
                 # not inferred from sender (which is the account itself).
                 try:
                     recipients = json.loads(record.recipients_json)
-                except (json.JSONDecodeError, TypeError):
+                except json.JSONDecodeError, TypeError:
                     recipients = {}
-                to_list = recipients.get("to", []) if isinstance(recipients, dict) else []
+                is_dict = isinstance(recipients, dict)
+                to_list = recipients.get("to", []) if is_dict else []
                 to_addr = to_list[0] if to_list else record.sender
-                cc_list = recipients.get("cc", []) if isinstance(recipients, dict) else []
+                cc_list = recipients.get("cc", []) if is_dict else []
                 cc = cc_list or None
                 # Compose-drafts are new messages — no reply threading.
                 # Subject is kept as-is (already set above).
