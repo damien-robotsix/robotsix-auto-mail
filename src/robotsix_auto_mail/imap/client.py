@@ -536,12 +536,8 @@ class ImapClient(_ProtocolClient):
             message_bytes,
         )
         if status != "OK":
-            response_text = (
-                b"".join(data).decode("utf-8", errors="replace").strip()
-            )
-            raise ImapError(
-                f"APPEND to '{mailbox}' failed: {status} — {response_text}"
-            )
+            response_text = b"".join(data).decode("utf-8", errors="replace").strip()
+            raise ImapError(f"APPEND to '{mailbox}' failed: {status} — {response_text}")
 
     def _subscribe(self, name: str) -> None:
         """Subscribe to *name*; ignore failure silently."""

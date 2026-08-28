@@ -301,16 +301,12 @@ class _ComposeDraftMixin:
             # -- download attachment content from file-hub -----------------
             if attachment_ids and file_hub_url:
                 for fid in attachment_ids:
-                    download_url = (
-                        f"{file_hub_url.rstrip('/')}/files/{fid}"
-                    )
+                    download_url = f"{file_hub_url.rstrip('/')}/files/{fid}"
                     try:
                         with httpx.Client(timeout=60) as http_client:
                             resp = http_client.get(download_url)
                     except Exception as exc:
-                        logger.warning(
-                            "Failed to download attachment %s: %s", fid, exc
-                        )
+                        logger.warning("Failed to download attachment %s: %s", fid, exc)
                         return
                     if resp.status_code >= 400:
                         logger.warning(
@@ -345,8 +341,7 @@ class _ComposeDraftMixin:
                 drafts_folder: str | None = None
                 for folder_info in folders:
                     if any(
-                        attr.lower() == "\\drafts"
-                        for attr in folder_info.attributes
+                        attr.lower() == "\\drafts" for attr in folder_info.attributes
                     ):
                         drafts_folder = folder_info.name
                         break
@@ -357,8 +352,7 @@ class _ComposeDraftMixin:
                             break
                 if drafts_folder is None:
                     logger.warning(
-                        "No Drafts folder found on the server; "
-                        "skipping IMAP APPEND"
+                        "No Drafts folder found on the server; skipping IMAP APPEND"
                     )
                     return
 
@@ -373,9 +367,7 @@ class _ComposeDraftMixin:
                     drafts_folder,
                 )
         except Exception:
-            logger.exception(
-                "Failed to IMAP-APPEND compose-draft to Drafts folder"
-            )
+            logger.exception("Failed to IMAP-APPEND compose-draft to Drafts folder")
         finally:
             for f in attachment_files:
                 f.close()
