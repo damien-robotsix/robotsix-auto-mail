@@ -74,11 +74,11 @@ class _SentMixin:
         qs = parse_qs(urlsplit(self.path).query)
         try:
             limit = min(max(int(qs.get("limit", ["500"])[0]), 1), 2000)
-        except ValueError, TypeError:
+        except (ValueError, TypeError):  # fmt: skip
             limit = 500
         try:
             offset = max(int(qs.get("offset", ["0"])[0]), 0)
-        except ValueError, TypeError:
+        except (ValueError, TypeError):  # fmt: skip
             offset = 0
 
         from robotsix_auto_mail.imap import ImapClient, ImapError
@@ -150,7 +150,7 @@ class _SentMixin:
             return
         try:
             uid = int(uid_values[0])
-        except ValueError, TypeError:
+        except (ValueError, TypeError):  # fmt: skip
             self._bad_request("uid must be an integer")
             return
 
@@ -196,11 +196,11 @@ class _SentMixin:
 
         try:
             recipients = json.loads(record.recipients_json)
-        except json.JSONDecodeError, TypeError:
+        except (json.JSONDecodeError, TypeError):  # fmt: skip
             recipients = {}
         try:
             attachments = json.loads(record.attachments_json)
-        except json.JSONDecodeError, TypeError:
+        except (json.JSONDecodeError, TypeError):  # fmt: skip
             attachments = []
 
         self._serve_json(
