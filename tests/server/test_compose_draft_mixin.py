@@ -295,7 +295,8 @@ class TestComposeDraftHappyPath:
             },
         )
 
-        handler._handle_compose_draft()
+        with mock.patch.object(handler, "_append_to_drafts_folder"):
+            handler._handle_compose_draft()
 
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
@@ -369,7 +370,8 @@ class TestComposeDraftHappyPath:
             mock_client.get.side_effect = responses
             mock_httpx.Client.return_value = mock_client
 
-            handler._handle_compose_draft()
+            with mock.patch.object(handler, "_append_to_drafts_folder"):
+                handler._handle_compose_draft()
 
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
@@ -417,7 +419,8 @@ class TestComposeDraftHappyPath:
                     "body": "B",
                 },
             )
-            handler._handle_compose_draft()
+            with mock.patch.object(handler, "_append_to_drafts_folder"):
+                handler._handle_compose_draft()
             args = handler._serve_json.call_args
             ids.append(args[0][0]["message_id"])
         assert ids[0] != ids[1]
@@ -462,7 +465,8 @@ class TestComposeDraftHappyPath:
             mock_client.get.return_value = mock_resp
             mock_httpx.Client.return_value = mock_client
 
-            handler._handle_compose_draft()
+            with mock.patch.object(handler, "_append_to_drafts_folder"):
+                handler._handle_compose_draft()
 
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args

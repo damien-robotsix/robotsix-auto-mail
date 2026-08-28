@@ -1,18 +1,20 @@
 """Compose-draft mixin for the board server — POST /compose-draft.
 
 Creates a NEW outgoing draft (not a reply) with optional file-hub
-attachments and stores it in the board's Draft-ready column.
+attachments, stores it in the board's Draft-ready column, and appends
+the MIME message into the account's real IMAP Drafts folder.
 """
 
 # mypy: disable-error-code="attr-defined"
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, BinaryIO
 
 import httpx
 
@@ -247,6 +249,18 @@ class _ComposeDraftMixin:
                 reason="compose-draft",
             )
 
+        # -- IMAP APPEND into Drafts folder -------------------------------
+        self._append_to_drafts_folder(
+            account=account,
+            from_addr=from_addr,
+            to_addr=to_addr,
+            subject=subject,
+            body=draft_body,
+            attachment_ids=attachment_ids,
+            attachments_meta=attachments_meta,
+            file_hub_url=file_hub_url,
+        )
+
         # -- respond -------------------------------------------------------
         self._serve_json(
             {
@@ -258,3 +272,102 @@ class _ComposeDraftMixin:
             },
             status=201,
         )
+
+    def _append_to_drafts_folder(
+        self,
+        *,
+        account: Any,
+        from_addr: str,
+        to_addr: str,
+        subject: str,
+        body: str,
+        attachment_ids: list[str],
+        attachments_meta: list[dict[str, Any]],
+        file_hub_url: str,
+    ) -> None:
+        """Build a MIME message and APPEND it to the account's Drafts folder.
+
+        Downloads attachment content from file-hub, constructs a multipart
+        MIME message, discovers the Drafts mailbox, and appends with the
+        ``\\Draft`` flag.  Errors are logged but do not fail the request —
+        the board card is the fallback.
+        """
+        from robotsix_auto_mail.imap import ImapClient
+        from robotsix_auto_mail.mime import build_multipart_message
+
+        attachment_files: list[BinaryIO] = []
+        attachment_names: list[str] = []
+        try:
+            # -- download attachment content from file-hub -----------------
+            if attachment_ids and file_hub_url:
+                for fid in attachment_ids:
+                    download_url = f"{file_hub_url.rstrip('/')}/files/{fid}"
+                    try:
+                        with httpx.Client(timeout=60) as http_client:
+                            resp = http_client.get(download_url)
+                    except Exception as exc:
+                        logger.warning("Failed to download attachment %s: %s", fid, exc)
+                        return
+                    if resp.status_code >= 400:
+                        logger.warning(
+                            "file-hub returned %d for attachment %s",
+                            resp.status_code,
+                            fid,
+                        )
+                        return
+                    attachment_files.append(io.BytesIO(resp.content))
+                    # Find the matching filename from metadata
+                    fname = "attachment"
+                    for meta in attachments_meta:
+                        if meta.get("file_hub_id") == fid:
+                            fname = meta.get("filename", "attachment")
+                            break
+                    attachment_names.append(fname)
+
+            # -- build MIME message ----------------------------------------
+            msg = build_multipart_message(
+                from_addr=from_addr,
+                to_addr=to_addr,
+                subject=subject,
+                body=body,
+                attachments=attachment_files,
+                attachment_names=attachment_names,
+            )
+            msg_bytes = msg.as_bytes()
+
+            # -- discover Drafts folder and APPEND -------------------------
+            with ImapClient(account.config) as imap:
+                folders = imap.list_folders()
+                drafts_folder: str | None = None
+                for folder_info in folders:
+                    if any(
+                        attr.lower() == "\\drafts" for attr in folder_info.attributes
+                    ):
+                        drafts_folder = folder_info.name
+                        break
+                if drafts_folder is None:
+                    for folder_info in folders:
+                        if "draft" in folder_info.name.lower():
+                            drafts_folder = folder_info.name
+                            break
+                if drafts_folder is None:
+                    logger.warning(
+                        "No Drafts folder found on the server; skipping IMAP APPEND"
+                    )
+                    return
+
+                imap.append_message(
+                    drafts_folder,
+                    msg_bytes,
+                    flags="(\\Draft)",
+                )
+                logger.info(
+                    "Appended compose-draft to %s/%s with \\Draft flag",
+                    account.config.username,
+                    drafts_folder,
+                )
+        except Exception:
+            logger.exception("Failed to IMAP-APPEND compose-draft to Drafts folder")
+        finally:
+            for f in attachment_files:
+                f.close()
