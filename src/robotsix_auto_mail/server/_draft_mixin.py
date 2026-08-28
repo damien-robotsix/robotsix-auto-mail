@@ -111,10 +111,27 @@ class _DraftMixin:
                 self._bad_request("Draft is empty; nothing to send")
                 return False
 
+            # -- detect compose-draft (new outgoing message) ----------
+            is_composed = record.message_id.startswith("<compose-")
+
             # -- compute recipients ------------------------------------
             from_addr = mail_config.username
+            subject = record.subject
 
-            if reply_mode == "forward":
+            if is_composed:
+                # Compose-draft: recipients are stored in the record,
+                # not inferred from sender (which is the account itself).
+                try:
+                    recipients = json.loads(record.recipients_json)
+                except (json.JSONDecodeError, TypeError):
+                    recipients = {}
+                to_list = recipients.get("to", []) if isinstance(recipients, dict) else []
+                to_addr = to_list[0] if to_list else record.sender
+                cc_list = recipients.get("cc", []) if isinstance(recipients, dict) else []
+                cc = cc_list or None
+                # Compose-drafts are new messages — no reply threading.
+                # Subject is kept as-is (already set above).
+            elif reply_mode == "forward":
                 if not forward_to.strip():
                     self._bad_request("forward_to is required for forward mode")
                     return False
@@ -139,13 +156,13 @@ class _DraftMixin:
                 )
 
             # -- subject -----------------------------------------------
-            subject = record.subject
-            if reply_mode == "forward":
-                if not subject.lower().startswith("fwd:"):
-                    subject = f"Fwd: {subject}"
-            else:
-                if not subject.lower().startswith("re:"):
-                    subject = f"Re: {subject}"
+            if not is_composed:
+                if reply_mode == "forward":
+                    if not subject.lower().startswith("fwd:"):
+                        subject = f"Fwd: {subject}"
+                else:
+                    if not subject.lower().startswith("re:"):
+                        subject = f"Re: {subject}"
 
             # -- send via SMTP -----------------------------------------
             from robotsix_auto_mail.smtp import SmtpClient
@@ -158,9 +175,15 @@ class _DraftMixin:
                     body=record.draft_text,
                     cc=cc,
                     in_reply_to=(
-                        None if reply_mode == "forward" else record.message_id
+                        None
+                        if reply_mode == "forward" or is_composed
+                        else record.message_id
                     ),
-                    references=(None if reply_mode == "forward" else record.message_id),
+                    references=(
+                        None
+                        if reply_mode == "forward" or is_composed
+                        else record.message_id
+                    ),
                 )
 
             # -- re-queue for triage: persist the sent reply and drop the

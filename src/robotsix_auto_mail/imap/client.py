@@ -505,6 +505,44 @@ class ImapClient(_ProtocolClient):
             f"RENAME '{old_name}' -> '{new_name}' failed: {status} — {response_text}"
         )
 
+    def append_message(
+        self,
+        mailbox: str,
+        message_bytes: bytes,
+        *,
+        flags: str = "",
+    ) -> None:
+        """Append a raw MIME message to *mailbox*.
+
+        Uses IMAP ``APPEND`` to write a complete RFC-5322 message into
+        the target mailbox.  Typical use: saving a composed draft into
+        the account's Drafts folder.
+
+        Args:
+            mailbox: Target mailbox name (e.g. ``"[Gmail]/Drafts"``).
+            message_bytes: The raw RFC-5322 message as bytes.
+            flags: Optional IMAP flags string (e.g. ``"(\\Draft)"``).
+
+        Raises:
+            ImapError: If the client is not connected or the APPEND
+                fails.
+        """
+        if self._imap is None:
+            raise ImapError("Not connected")
+        status, data = self._imap.append(
+            _encode_mailbox(mailbox),
+            flags or None,
+            None,
+            message_bytes,
+        )
+        if status != "OK":
+            response_text = (
+                b"".join(data).decode("utf-8", errors="replace").strip()
+            )
+            raise ImapError(
+                f"APPEND to '{mailbox}' failed: {status} — {response_text}"
+            )
+
     def _subscribe(self, name: str) -> None:
         """Subscribe to *name*; ignore failure silently."""
         if self._imap is None:
