@@ -250,7 +250,8 @@ class _ComposeDraftMixin:
             )
 
         # -- IMAP APPEND into Drafts folder -------------------------------
-        self._append_to_drafts_folder(
+        append_result = self._append_to_drafts_folder(
+            message_id=message_id,
             account=account,
             from_addr=from_addr,
             to_addr=to_addr,
@@ -260,6 +261,23 @@ class _ComposeDraftMixin:
             attachments_meta=attachments_meta,
             file_hub_url=file_hub_url,
         )
+
+        # -- persist IMAP source so /delete can reach the draft ----------
+        if (
+            isinstance(append_result, tuple)
+            and len(append_result) == 2
+            and append_result[1] is not None
+        ):
+            drafts_folder, append_uid = append_result
+            with _with_db(db_path) as conn:
+                from robotsix_auto_mail.db import update_record_source
+
+                update_record_source(
+                    conn,
+                    message_id,
+                    source_folder=drafts_folder,
+                    imap_uid=append_uid,
+                )
 
         # -- respond -------------------------------------------------------
         self._serve_json(
@@ -276,6 +294,7 @@ class _ComposeDraftMixin:
     def _append_to_drafts_folder(
         self,
         *,
+        message_id: str,
         account: Any,
         from_addr: str,
         to_addr: str,
@@ -284,13 +303,18 @@ class _ComposeDraftMixin:
         attachment_ids: list[str],
         attachments_meta: list[dict[str, Any]],
         file_hub_url: str,
-    ) -> None:
+    ) -> tuple[str, int] | None:
         """Build a MIME message and APPEND it to the account's Drafts folder.
 
         Downloads attachment content from file-hub, constructs a multipart
         MIME message, discovers the Drafts mailbox, and appends with the
         ``\\Draft`` flag.  Errors are logged but do not fail the request —
         the board card is the fallback.
+
+        Returns:
+            ``(drafts_folder, uid)`` on a successful append where the
+            server provided an ``APPENDUID`` response code, or ``None``
+            when the UID could not be determined or the append failed.
         """
         from robotsix_auto_mail.imap import ImapClient
         from robotsix_auto_mail.mime import build_multipart_message
@@ -307,14 +331,14 @@ class _ComposeDraftMixin:
                             resp = http_client.get(download_url)
                     except Exception as exc:
                         logger.warning("Failed to download attachment %s: %s", fid, exc)
-                        return
+                        return None
                     if resp.status_code >= 400:
                         logger.warning(
                             "file-hub returned %d for attachment %s",
                             resp.status_code,
                             fid,
                         )
-                        return
+                        return None
                     attachment_files.append(io.BytesIO(resp.content))
                     # Find the matching filename from metadata
                     fname = "attachment"
@@ -333,6 +357,8 @@ class _ComposeDraftMixin:
                 attachments=attachment_files,
                 attachment_names=attachment_names,
             )
+            # Set Message-ID so the server can be searched by it.
+            msg["Message-ID"] = message_id
             msg_bytes = msg.as_bytes()
 
             # -- discover Drafts folder and APPEND -------------------------
@@ -354,9 +380,9 @@ class _ComposeDraftMixin:
                     logger.warning(
                         "No Drafts folder found on the server; skipping IMAP APPEND"
                     )
-                    return
+                    return None
 
-                imap.append_message(
+                append_uid = imap.append_message(
                     drafts_folder,
                     msg_bytes,
                     flags="(\\Draft)",
@@ -366,8 +392,10 @@ class _ComposeDraftMixin:
                     account.config.username,
                     drafts_folder,
                 )
+                return (drafts_folder, append_uid) if append_uid else None
         except Exception:
             logger.exception("Failed to IMAP-APPEND compose-draft to Drafts folder")
+            return None
         finally:
             for f in attachment_files:
                 f.close()

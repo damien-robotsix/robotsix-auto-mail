@@ -326,6 +326,49 @@ class _BoardActionMixin:
                     )
                     return False
 
+            # -- compose-draft fallback: no UID but message may exist ----
+            # Compose-drafts whose APPENDUID was not returned by the
+            # server (no UIDPLUS) have imap_uid=None.  Search for
+            # them by Message-ID in the Drafts folder and delete if
+            # found; degrade gracefully if already gone.
+            elif (
+                self.mail_config is not None
+                and record.imap_uid is None
+                and record.message_id.startswith("<compose-")
+            ):
+                from robotsix_auto_mail.imap import ImapClient, ImapError
+
+                try:
+                    with ImapClient(self.mail_config) as client:
+                        folders = client.list_folders()
+                        drafts_folder: str | None = None
+                        for folder_info in folders:
+                            if any(
+                                a.lower() == "\\drafts" for a in folder_info.attributes
+                            ):
+                                drafts_folder = folder_info.name
+                                break
+                        if drafts_folder is None:
+                            for folder_info in folders:
+                                if "draft" in folder_info.name.lower():
+                                    drafts_folder = folder_info.name
+                                    break
+                        if drafts_folder is not None:
+                            client.select_folder(drafts_folder)
+                            found = client.search_uids(
+                                f'HEADER Message-ID "{record.message_id}"'
+                            )
+                            if found:
+                                client.delete_message(found[0])
+                except Exception as exc:
+                    # Draft may already have been removed manually —
+                    # log and continue with the DB deletion.
+                    logger.warning(
+                        "Could not delete compose-draft %s from IMAP: %s",
+                        record.message_id,
+                        exc,
+                    )
+
             # -- local DB deletion --
             delete_record_by_message_id(conn, record.message_id)
             return True

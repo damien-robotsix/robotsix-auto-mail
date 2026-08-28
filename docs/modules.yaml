@@ -255,6 +255,7 @@ modules:
       - tests/imap/__init__.py
       - tests/imap/test_protocol.py
       - tests/imap/conftest.py
+      - tests/imap/test_imap_append_message.py
       - tests/imap/test_imap_auth.py
       - tests/imap/test_imap_connection.py
       - tests/imap/test_imap_cross_folder.py
