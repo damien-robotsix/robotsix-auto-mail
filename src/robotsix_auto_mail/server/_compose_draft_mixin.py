@@ -14,7 +14,7 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, BinaryIO
 
 import httpx
 
@@ -295,7 +295,7 @@ class _ComposeDraftMixin:
         from robotsix_auto_mail.imap import ImapClient
         from robotsix_auto_mail.mime import build_multipart_message
 
-        attachment_files: list[io.BytesIO] = []
+        attachment_files: list[BinaryIO] = []
         attachment_names: list[str] = []
         try:
             # -- download attachment content from file-hub -----------------
