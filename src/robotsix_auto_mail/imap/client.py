@@ -511,7 +511,7 @@ class ImapClient(_ProtocolClient):
         message_bytes: bytes,
         *,
         flags: str = "",
-    ) -> None:
+    ) -> int | None:
         """Append a raw MIME message to *mailbox*.
 
         Uses IMAP ``APPEND`` to write a complete RFC-5322 message into
@@ -522,6 +522,12 @@ class ImapClient(_ProtocolClient):
             mailbox: Target mailbox name (e.g. ``"[Gmail]/Drafts"``).
             message_bytes: The raw RFC-5322 message as bytes.
             flags: Optional IMAP flags string (e.g. ``"(\\Draft)"``).
+
+        Returns:
+            The UID assigned by the server when the ``APPENDUID``
+            response code is present (RFC 4315 / UIDPLUS), or
+            ``None`` when the server does not advertise UIDPLUS or
+            the response does not include an ``APPENDUID`` code.
 
         Raises:
             ImapError: If the client is not connected or the APPEND
@@ -538,6 +544,7 @@ class ImapClient(_ProtocolClient):
         if status != "OK":
             response_text = b"".join(data).decode("utf-8", errors="replace").strip()
             raise ImapError(f"APPEND to '{mailbox}' failed: {status} — {response_text}")
+        return self._parse_appenduid(data)
 
     def _subscribe(self, name: str) -> None:
         """Subscribe to *name*; ignore failure silently."""
@@ -877,6 +884,33 @@ class ImapClient(_ProtocolClient):
                 continue
 
             self.delete_messages(valid_uids)
+
+    @staticmethod
+    def _parse_appenduid(data: Any) -> int | None:
+        """Extract the UID from an ``APPENDUID`` response code.
+
+        Inspects the ``APPEND`` response data for an ``APPENDUID``
+        response code (RFC 4315 / UIDPLUS:
+        ``APPENDUID <uidvalidity> <uid>``).  Returns the UID as
+        ``int`` when present, or ``None`` when the server does not
+        advertise UIDPLUS or the response lacks the code.
+        """
+        if not data:
+            return None
+        for item in data:
+            if isinstance(item, bytes):
+                text = item.decode("utf-8", errors="replace")
+            elif isinstance(item, str):
+                text = item
+            else:
+                continue
+            match = re.search(r"APPENDUID\s+\d+\s+(\d+)", text)
+            if match is not None:
+                try:
+                    return int(match.group(1))
+                except ValueError, TypeError:
+                    return None
+        return None
 
     @staticmethod
     def _copyuid_indicates_empty_source(data: Any) -> bool:
