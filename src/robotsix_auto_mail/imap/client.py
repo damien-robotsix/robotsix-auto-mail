@@ -908,7 +908,7 @@ class ImapClient(_ProtocolClient):
             if match is not None:
                 try:
                     return int(match.group(1))
-                except ValueError, TypeError:
+                except (ValueError, TypeError):
                     return None
         return None
 
