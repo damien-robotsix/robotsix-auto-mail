@@ -1,0 +1,1 @@
+The chat-skill now documents the board mutation endpoints (`/move`, `/save-draft`, `/send-draft` with its `reply_mode` enum, `/archive`, `/delete`, `/batch-archive`, `/batch-delete`, `/batch-archive-folder`): request bodies, the 302-redirect success contract, error codes, and the rule that `account` must be a query parameter.
