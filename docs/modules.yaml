@@ -214,6 +214,7 @@ modules:
       - src/robotsix_auto_mail/db/queries.py
       - tests/db/__init__.py
       - tests/db/conftest.py
+      - tests/db/test_compose_links.py
       - tests/db/test_archive_cleanup.py
       - tests/db/test_archive_determine.py
       - tests/db/test_archive_model.py
@@ -288,6 +289,7 @@ modules:
       - src/robotsix_auto_mail/pipeline/__init__.py
       - src/robotsix_auto_mail/pipeline/_parse.py
       - src/robotsix_auto_mail/pipeline/reconcile.py
+      - src/robotsix_auto_mail/pipeline/sent_reconcile.py
       - tests/pipeline/__init__.py
       - tests/pipeline/_helpers.py
       - tests/pipeline/test_pipeline_cli_ingest.py
@@ -301,6 +303,7 @@ modules:
       - tests/pipeline/test_parser_headers.py
       - tests/pipeline/test_parser_properties.py
       - tests/pipeline/test_reconcile.py
+      - tests/pipeline/test_sent_reconcile.py
       - tests/pipeline/test_uidvalidity.py
 
   - id: mime
