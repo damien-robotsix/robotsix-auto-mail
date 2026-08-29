@@ -1,5 +1,5 @@
 ARG BASE_DIGEST=sha256:c845af9399020c7e562969a13689e929074a10fd057acd1b1fad06a2fb068e97
-ARG ROBOTSIX_UI_VERSION=v0.1.40
+ARG ROBOTSIX_UI_VERSION=v0.1.41
 
 # ---------------------------------------------------------------------------
 # UI stage — the shared config panel from @robotsix/ui
