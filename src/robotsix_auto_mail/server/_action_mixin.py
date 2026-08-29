@@ -53,6 +53,14 @@ class _BoardActionMixin:
         from ._board_handler_protocol import BoardHandlerProtocol
 
     self: BoardHandlerProtocol
+    # Explicitly declare the two attributes this mixin *rebinds* (see
+    # ``_handle_post_action``'s cross-account owner loop).  Without these,
+    # mypy infers a member from the ``self.db_path = ...`` assignments and
+    # defers its type, poisoning every read with ``has-type``.  Typed as
+    # ``Any`` to match how the rest of the server package sees these
+    # protocol attributes (attr-defined is suppressed file-wide).
+    db_path: Any
+    mail_config: Any
 
     def _launch_background_worker(
         self,
@@ -211,13 +219,16 @@ class _BoardActionMixin:
                 if record is None:
                     continue
 
-                saved_db, saved_config = self.db_path, self.mail_config
-                self.db_path, self.mail_config = db_path, mail_config
+                saved_db: str = self.db_path
+                saved_config: object | None = self.mail_config
+                self.db_path = db_path
+                self.mail_config = mail_config
                 try:
                     if action(conn, record, redirect_to, **extra) is False:
                         return
                 finally:
-                    self.db_path, self.mail_config = saved_db, saved_config
+                    self.db_path = saved_db
+                    self.mail_config = saved_config
 
             if redirect_to and _is_safe_redirect_path(redirect_to):
                 self._redirect(redirect_to, code=302)
