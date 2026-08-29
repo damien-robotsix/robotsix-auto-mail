@@ -27,8 +27,6 @@ TO_DELETE: str = "TO_DELETE"
 TO_CALENDAR: str = "TO_CALENDAR"
 #: Triage action: ready to answer.
 TO_ANSWER: str = "TO_ANSWER"
-#: Triage action: draft is ready for sending.
-DRAFT_READY: str = "DRAFT_READY"
 
 #: Canonical triage action order for the kanban board, left-to-right.
 #: Starts with ``INBOX`` (not triaged / entry column) and ends with
@@ -41,7 +39,6 @@ TRIAGE_ACTION_ORDER: tuple[str, ...] = (
     TO_DELETE,
     TO_CALENDAR,
     TO_ANSWER,
-    DRAFT_READY,
 )
 
 #: Human-readable column header labels, keyed by triage action.
@@ -53,7 +50,6 @@ TRIAGE_ACTION_LABELS: dict[str, str] = {
     TO_DELETE: "To delete",
     TO_CALENDAR: "To calendar",
     TO_ANSWER: "To answer",
-    DRAFT_READY: "Draft ready",
 }
 
 #: Actions the LLM triage agent may assign.  ``INBOX`` is intentionally
@@ -65,7 +61,6 @@ TRIAGE_ACTION_LABELS: dict[str, str] = {
 #: agent-generated decisions.
 _AGENT_SELECTABLE_ACTIONS: frozenset[str] = VALID_TRIAGE_ACTIONS - {
     INBOX,
-    DRAFT_READY,
     PENDING_ACTION,
     TO_CALENDAR,
 }
@@ -86,7 +81,6 @@ _UNSUBSCRIBE_SUGGESTIONS_KEY = "unsubscribe_suggestions"
 # Explicit re-exports (required by mypy --strict / --no-implicit-reexport)
 # ---------------------------------------------------------------------------
 __all__ = [
-    "DRAFT_READY",
     "HUMAN_TRIAGE",
     "INBOX",
     "PENDING_ACTION",

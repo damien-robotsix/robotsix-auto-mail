@@ -12,9 +12,7 @@ from robotsix_auto_mail.core.format import _effective_body_plain, _format_date
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server.views.forms import _render_move_form
 from robotsix_auto_mail.triage import (
-    DRAFT_READY,
     INBOX,
-    TO_ANSWER,
     TRIAGE_ACTION_LABELS,
     TriageDecision,
     get_triage_decision,
@@ -26,7 +24,6 @@ def _build_detail_html(
     message_id: str,
     *,
     embed: bool = False,
-    focus_draft: bool = False,
     current_account_id: str | None = None,
 ) -> str | None:
     """Build a full HTML detail page for a single ``MailRecord``.
@@ -103,9 +100,6 @@ def _build_detail_html(
 
     body_html_render, body_html_note = _render_body(record)
     notes_section = _render_notes_section(record, redirect_input)
-    draft_section = _render_draft_section(
-        record, current_action, focus_draft, redirect_input
-    )
     to_html, cc_section = _render_recipients(to_list, cc_list)
     attach_html = _render_attachments(attachments)
     imap_uid_section = _render_imap_uid_section(record)
@@ -142,7 +136,6 @@ def _build_detail_html(
         "</div>\n"
         f"{body_html_note}"
         f"{notes_section}"
-        f"{draft_section}"
         '<div class="detail-field">'
         '<div class="detail-label">Attachments</div>'
         f'<div class="detail-value">{attach_html}</div>'
@@ -234,89 +227,6 @@ def _render_notes_section(record: MailRecord, redirect_input: str) -> str:
         f' style="width:100%;box-sizing:border-box;">{escaped_notes}</textarea>'
         '<button type="submit">Save</button>'
         "</form>"
-        "</div>"
-        "</div>\n"
-    )
-
-
-def _render_draft_section(
-    record: MailRecord,
-    current_action: str,
-    focus_draft: bool,
-    redirect_input: str,
-) -> str:
-    """Render the Draft reply ``/save-draft`` form, or ``""`` when hidden.
-
-    Visible when *current_action* is TO_ANSWER or DRAFT_READY, or when
-    *focus_draft* is True (forced via ?draft=1).
-    """
-    if not (current_action in (TO_ANSWER, DRAFT_READY) or focus_draft):
-        return ""
-    escaped_draft = html.escape(record.draft_text)
-    button_label = (
-        "Update draft"
-        if current_action == DRAFT_READY
-        else "Save draft &amp; move to draft ready"
-    )
-    generate_label = (
-        "Regenerate with AI" if current_action == DRAFT_READY else "Generate with AI"
-    )
-    generate_form = (
-        '<form class="detail-form" method="post" action="/generate-draft">'
-        f'<input type="hidden" name="message_id"'
-        f' value="{html.escape(record.message_id)}">'
-        f"{redirect_input}"
-        f'<button type="submit" class="draft-reply-btn">{generate_label}</button>'
-        "</form>"
-    )
-    # Only offer Reply / Reply-to-all once a draft has been saved
-    # (DRAFT_READY).  Each form sends the saved draft via SMTP and then
-    # archives the original message.
-    send_forms = ""
-    if current_action == DRAFT_READY:
-        send_forms = (
-            '<form class="detail-form" method="post" action="/send-draft">'
-            f'<input type="hidden" name="message_id"'
-            f' value="{html.escape(record.message_id)}">'
-            f"{redirect_input}"
-            '<input type="hidden" name="reply_mode" value="reply">'
-            '<button type="submit">Reply &amp; archive</button>'
-            "</form>"
-            '<form class="detail-form" method="post" action="/send-draft">'
-            f'<input type="hidden" name="message_id"'
-            f' value="{html.escape(record.message_id)}">'
-            f"{redirect_input}"
-            '<input type="hidden" name="reply_mode" value="reply_all">'
-            '<button type="submit">Reply to all &amp; archive</button>'
-            "</form>"
-            '<form class="detail-form" method="post" action="/send-draft">'
-            f'<input type="hidden" name="message_id"'
-            f' value="{html.escape(record.message_id)}">'
-            f"{redirect_input}"
-            '<input type="hidden" name="reply_mode" value="forward">'
-            '<div style="margin-bottom:4px;">'
-            "<label>Forward to:</label>"
-            '<input type="email" name="forward_to" required'
-            ' placeholder="recipient@example.com"'
-            ' style="width:100%;box-sizing:border-box;">'
-            "</div>"
-            '<button type="submit">Forward &amp; archive</button>'
-            "</form>"
-        )
-    return (
-        '<div class="detail-field">'
-        '<div class="detail-label">Draft reply</div>'
-        '<div class="detail-value">'
-        f"{generate_form}"
-        '<form class="detail-form" method="post" action="/save-draft">'
-        f'<input type="hidden" name="message_id"'
-        f' value="{html.escape(record.message_id)}">'
-        f"{redirect_input}"
-        '<textarea class="detail-draft detail-text-area" name="draft_text" rows="8"'
-        f' style="width:100%;box-sizing:border-box;">{escaped_draft}</textarea>'
-        f'<button type="submit">{button_label}</button>'
-        "</form>"
-        f"{send_forms}"
         "</div>"
         "</div>\n"
     )

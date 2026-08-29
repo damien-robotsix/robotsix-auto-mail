@@ -51,7 +51,7 @@ Append `?account=<account_id>` (e.g. `?account=main`) to any request.
 | `GET /archive/<folder>/messages` | JSON `{"folder":"…","full_path":"…","total":N,"shown":N,"messages":[…]}` | List messages in an archive subfolder. Each message object carries `uid`, `subject`, `from`, `to`, `date`, `size`, `flags`, and `message_id`. Optional `?limit=N` (default 500, max 2000). Returns `{"messages":[]}` in aggregate mode |
 | `GET /sent/messages` | JSON `{"folder":"…","total":N,"shown":N,"messages":[…]}` | List messages in the Sent folder (newest first). Each message object carries `uid`, `subject`, `from`, `to`, `date`, `size`, `flags`, and `message_id`. Optional `?limit=N` (default 500, max 2000) and `?offset=N` (default 0). Returns `{"messages":[]}` in aggregate mode |
 | `GET /email/{message_id}/status` | plain text — triage action name | 404 if unknown |
-| `GET /email/{message_id}` | HTML | Detail page; optional `?embed=1` strips chrome, `?draft=1` shows draft panel |
+| `GET /email/{message_id}` | HTML | Detail page; optional `?embed=1` strips chrome |
 | `GET /archive-proposal/{message_id}` | JSON `{"subfolder":"…","archive_root":"…","folder_exists":bool,"overridden":bool,"source":"…"}` | Effective archive subfolder for the message. `overridden` is a bool (true when a user override is set); `source` is one of `override` / `llm` / `rule`. 404 if message_id unknown |
 | `GET /static/{file}` | asset bytes | JS/CSS static files |
 
@@ -66,8 +66,8 @@ field value (if supplied) or a hardcoded default.  Exception:
 
 | Path | Form fields | Default redirect | Notes |
 |------|------------|-----------------|-------|
-| `POST /move` | `message_id`, `triage_action`, `redirect_to` (opt) | `/board` | Sets triage decision. Valid `triage_action` values (from `VALID_TRIAGE_ACTIONS`): **`INBOX`**, **`HUMAN_TRIAGE`**, **`PENDING_ACTION`**, **`TO_ARCHIVE`**, **`TO_DELETE`**, **`TO_CALENDAR`**, **`TO_ANSWER`**, **`DRAFT_READY`**. 400 on invalid. |
-| `POST /delete` | `message_id`, `redirect_to` (opt) | `/board` | IMAP deletion + DB row removal. Resolves the record in the selected account first, then falls back to searching every configured account — so a compose-draft (`<compose-…@robotsix-auto-mail>`) is deletable by the id `/compose-draft` returned even without an `?account=` hint. 502 on IMAP error, 404 only when the id exists in no account |
+| `POST /move` | `message_id`, `triage_action`, `redirect_to` (opt) | `/board` | Sets triage decision. Valid `triage_action` values (from `VALID_TRIAGE_ACTIONS`): **`INBOX`**, **`HUMAN_TRIAGE`**, **`PENDING_ACTION`**, **`TO_ARCHIVE`**, **`TO_DELETE`**, **`TO_CALENDAR`**, **`TO_ANSWER`**. 400 on invalid. |
+| `POST /delete` | `message_id`, `redirect_to` (opt) | `/board` | IMAP deletion + DB row removal. 502 on IMAP error |
 | `POST /archive` | `message_id`, `redirect_to` (opt) | `/board` | IMAP folder-move + DB row removal. 400/502 on error |
 | `POST /save-notes` | `message_id`, `notes`, `redirect_to` (opt) | `/board` | Persists notes. `notes` is NOT stripped of whitespace |
 | `POST /batch-delete` | *(none)* | `/board` | Fire-and-forget: deletes all `TO_DELETE` records in background. Single-flighted by watermark |
@@ -78,9 +78,7 @@ field value (if supplied) or a hardcoded default.  Exception:
 | `POST /reconcile` | *(none)* | `/board` | Launches reconcile in background |
 | `POST /force-triage-column` | `action` | `/board` | Clears all triage decisions for `action` then re-runs triage. Same valid values as `triage_action`. 400 on invalid |
 | `POST /archive-proposal` | `message_id`, `subfolder`, `redirect_to` (opt) | `/board` | Saves an archive-subfolder choice for a message |
-| `POST /save-draft` | `message_id`, `draft_text`, `redirect_to` (opt) | `/board` | Persists a draft reply text |
-| `POST /send-draft` | `message_id`, `reply_mode`, `forward_to` (required when `reply_mode=forward`), `redirect_to` (opt) | `/board` | Sends the stored draft via SMTP. Valid `reply_mode` values: **`reply`**, **`reply_all`**, **`forward`**. `forward` additionally requires a `forward_to` recipient address. 400 on invalid |
-| `POST /generate-draft` | `message_id`, `redirect_to` (opt) | `/board#<message_id>` | Triggers LLM draft generation in background |
+| `POST /compose-draft` | JSON only: `account`, `body`, `to`/`subject` (new msg), `reply_to_message_id`+`reply_all` (reply), `attachments` (opt) | — (returns JSON `201`, not redirect) | Composes a reply or new message and `APPEND`s it as a genuine RFC822 draft into the account's IMAP Drafts folder, with all file-hub attachments and threading headers. The board stores no draft and sends no mail. Fails loudly (no stripped draft) if an attachment cannot be fetched. 400/404/502/503 on error |
 | `POST /auth-start` | `account_id` | — (returns JSON flow state, not redirect) | Starts the OAuth2 device-code flow for a Microsoft account; blocks up to ~15s for the device prompt then returns the flow state JSON. Cross-account (ignores the session account). 400 for unknown / non-Microsoft accounts |
 
 > **Redirect-following note**: curl follows redirects with `-L`. Without
@@ -131,22 +129,28 @@ curl -s -u <user>:<pass> -X POST \
   'https://deploy.robotsix.net/mail/run-triage?account=main'
 ```
 
-### 6. Generate, inspect, and send a draft reply
+### 6. Compose a reply into the mailbox Drafts folder
+
+Composing writes a genuine draft into the account's real IMAP Drafts
+folder; the operator reviews and **sends manually** from their own mail
+client (Gmail / Roundcube).  The board never sends mail.
 
 ```bash
-# Step 1 – trigger generation (returns immediately; background LLM job)
+# Reply to an existing message (threading + Cc derived from the original).
+# Attachments are file-hub IDs; every one is fetched and included as a
+# MIME part, or the request fails loudly (no stripped draft is written).
 curl -s -u <user>:<pass> -X POST \
-  'https://deploy.robotsix.net/mail/generate-draft?account=main' \
-  -d 'message_id=<id>'
+  'https://deploy.robotsix.net/mail/compose-draft?account=main' \
+  -H 'Content-Type: application/json' \
+  -d '{"account":"main","reply_to_message_id":"<id>","reply_all":false,
+       "body":"Thanks — see attached.","attachments":["<file-hub-id>"]}'
 
-# Step 2 – poll until status is not HUMAN_TRIAGE (draft ready)
-curl -s -u <user>:<pass> \
-  'https://deploy.robotsix.net/mail/email/<id>/status?account=main'
-
-# Step 3 – send (reply_mode: "reply" or "reply_all")
+# A brand-new message just supplies to/subject/body instead of a reply id.
 curl -s -u <user>:<pass> -X POST \
-  'https://deploy.robotsix.net/mail/send-draft?account=main' \
-  -d 'message_id=<id>&reply_mode=reply'
+  'https://deploy.robotsix.net/mail/compose-draft?account=main' \
+  -H 'Content-Type: application/json' \
+  -d '{"account":"main","to":"someone@example.com",
+       "subject":"Hello","body":"Message body."}'
 ```
 
 ### 7. Trigger reconcile

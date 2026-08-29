@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 
-#: Canonical triage state vocabulary — the eight kanban columns.
+#: Canonical triage state vocabulary — the seven kanban columns.
 #: ``INBOX`` means "not triaged" (no ``triage_decisions`` row, or an
 #: explicit reset).
 VALID_TRIAGE_ACTIONS = frozenset(
@@ -22,7 +22,6 @@ VALID_TRIAGE_ACTIONS = frozenset(
         "TO_DELETE",
         "TO_CALENDAR",
         "TO_ANSWER",
-        "DRAFT_READY",
     }
 )
 

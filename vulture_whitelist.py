@@ -169,3 +169,16 @@ _SanitizingParser.handle_charref
 from robotsix_auto_mail.config.credentials import LangfuseProject
 
 all((LangfuseProject.project_id,))  # lgtm[py/ineffectual-statement]
+
+# ===========================================================================
+# SmtpClient.send — the SMTP transport primitive.  The board-managed
+# send-from-board path was removed (composing now writes drafts directly
+# into the mailbox's IMAP Drafts folder and the operator sends manually),
+# so no production code calls ``send`` anymore, but it remains a tested,
+# public part of the SMTP client API.  Referenced only by tests, which
+# vulture does not scan.
+# ===========================================================================
+
+from robotsix_auto_mail.smtp import SmtpClient
+
+all((SmtpClient.send,))  # lgtm[py/ineffectual-statement]

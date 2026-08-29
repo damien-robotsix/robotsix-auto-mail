@@ -744,14 +744,14 @@ $ robotsix-auto-mail serve
 ### The board page
 
 Open `http://localhost:<port>/board` in a browser.  The page shows ingested
-mail in **eight columns** — Inbox, Human triage, Pending action, To archive,
-To delete, To calendar, To answer, Draft ready — each with a card
+mail in **seven columns** — Inbox, Human triage, Pending action, To archive,
+To delete, To calendar, To answer — each with a card
 count badge.  Every mail card has a **Move** dropdown that lets you change
 the card's status column via `POST /move`.
 
 **Archive audit log (`GET /archive-log`).**  Every archive operation (individual
-archive via the **Archive** button, batch archive via "Archive All" or "Archive
-this folder", and the auto-archive on send-draft) writes an entry to the
+archive via the **Archive** button, and batch archive via "Archive All" or
+"Archive this folder") writes an entry to the
 `archive_audit_log` SQLite table.  The `GET /archive-log` endpoint exposes this
 trail as read-only JSON, most recent first:
 
@@ -820,8 +820,8 @@ silently.  The banner disappears once any mail is present.
 
 **Triage badges.**  When a mail record has a triage decision, the card displays a
 small **triage badge** showing the action label (one of `INBOX`, `HUMAN_TRIAGE`,
-`PENDING_ACTION`, `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, `TO_ANSWER`, or
-`DRAFT_READY`) with the decision reason visible in a
+`PENDING_ACTION`, `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, or
+`TO_ANSWER`) with the decision reason visible in a
 tooltip when you hover over the badge. Cards without a triage decision show no
 badge.
 
@@ -830,36 +830,22 @@ message, including the **Triage** field with the decision action, reason, source
 (agent or user), and confidence level. If no decision has been recorded, the
 Triage field shows "(no triage decision)".
 
-**Draft generation.**  For messages marked "To answer" (TO_ANSWER triage action),
-the detail drawer shows a **Draft reply** section with two interfaces:
-- A **Generate with AI** button (when no draft exists) or **Regenerate with AI**
-  button (when a draft already exists) that uses an LLM to prepare a concise,
-  professional reply draft in the same language as the incoming message. The LLM
-  incorporates any notes or instructions you have written in the **Notes** field
-  — use them to guide the draft (e.g., "decline politely", "mention invoice paid",
-  "propose Tuesday afternoon"). The generated draft appears in a textarea below
-  the button, ready for review and manual editing.
-- A **Save draft** form to persist your (edited) draft text and move the card to
-  "Draft ready" status.
+**Composing into the mailbox Drafts folder.**  The board does not store drafts
+or send mail. Composing a reply or a new message is done via the
+`POST /compose-draft` endpoint (see the chat skill), which builds a fully-formed
+RFC822 message — correct `From` (the selected account), `To`/`Cc`, `Subject`,
+threading headers (`In-Reply-To`/`References` for replies), the body, and **all
+file-hub attachments fetched and included as MIME parts** — and `APPEND`s it into
+that account's IMAP **Drafts** folder (e.g. `[Gmail]/Drafts`). The draft then
+appears natively in your own mail client (Gmail, Roundcube, …), where you review
+and **send it manually**. If a file-hub attachment cannot be fetched, the compose
+fails loudly and no stripped draft is written.
 
-On the board card itself, a **Draft reply** button (visible only for TO_ANSWER
-cards) is a shortcut — click it to immediately generate a draft and re-open the
-detail drawer to show the result.
-
-**Sending replies.**  Once a draft is saved (the card moves to "Draft ready" status),
-two additional buttons appear in the detail drawer:
-- **Reply** — sends the draft text as a reply to the original sender via SMTP,
-  then re-queues the original message for triage with the sent reply body stored.
-  The card reappears in the INBOX column and the triage agent will decide the
-  final disposition (typically to archive, but the agent may decide otherwise based
-  on the reply content). This allows the triage system to own the post-answer workflow.
-- **Reply to all** — sends the draft to the original sender and includes all
-  recipients from the original message (the `To` and `Cc` lists, excluding your own address
-  and duplicates). After sending, the message is re-queued for triage in the same manner.
-
-The reply always includes threading headers (`In-Reply-To` and `References`) so it appears
-as a conversation thread in the recipient's mail client. The subject is automatically prefixed
-with "Re: " unless it already starts with that (case-insensitive).
+For replies, the `To`/`Cc` recipients and threading headers are computed from the
+original message; the subject is automatically prefixed with "Re: " unless it
+already starts with that (case-insensitive). `reply_all` includes all recipients
+from the original message (the `To` and `Cc` lists, excluding your own address and
+duplicates).
 
 **Archive-folder recommendations.**  When you move a card to the "To archive" column
 (or the triage agent classifies one), the system proposes an archive subfolder. The
@@ -1003,7 +989,7 @@ robotsix-auto-mail serve --account work
 | | `board` | `serve` |
 |---|---|---|
 | **Output** | Plain text to stdout | HTML page in a browser |
-| **Layout** | Single "Inbox" column | Eight columns (Inbox, Human triage, Pending action, To archive, To delete, To calendar, To answer, Draft ready) |
+| **Layout** | Single "Inbox" column | Seven columns (Inbox, Human triage, Pending action, To archive, To delete, To calendar, To answer) |
 | **Lifetime** | One-shot — prints and exits | Persistent HTTP daemon |
 | **Interaction** | Read-only | Move dropdowns (`POST /move`) |
 | **Refresh** | Manual (re-run the command) | Automatic (30-second meta refresh) |
@@ -1475,11 +1461,10 @@ in the original mailbox. The agent defaults uncertain cases to `HUMAN_TRIAGE`
 | `TO_DELETE` | The message is junk / worthless and can be discarded | To delete |
 | `TO_CALENDAR` | The message has date/time references for the calendar | To calendar |
 | `TO_ANSWER` | The message needs a personal reply | To answer |
-| `DRAFT_READY` | A reply draft has been prepared and is ready to send | Draft ready |
 
 Each action automatically moves the card to its mapped board column. The
-kanban board has eight columns — Inbox, Human triage, Pending action, To
-archive, To delete, To calendar, To answer, and Draft ready — and a
+kanban board has seven columns — Inbox, Human triage, Pending action, To
+archive, To delete, To calendar, and To answer — and a
 triage decision always places the card in one of these columns. Note
 that `TO_DELETE` moves the card to the To delete column (a board move only, not
 an IMAP deletion).
@@ -1553,7 +1538,7 @@ operations occur.
 | Argument | Purpose |
 |---|---|
 | `<message_id>` | The Message-ID of the mail to triage (from `board` or `triage` output) |
-| `<action>` | The action status: `INBOX`, `HUMAN_TRIAGE`, `PENDING_ACTION`, `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, `TO_ANSWER`, or `DRAFT_READY` |
+| `<action>` | The action status: `INBOX`, `HUMAN_TRIAGE`, `PENDING_ACTION`, `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, or `TO_ANSWER` |
 
 ### Examples
 

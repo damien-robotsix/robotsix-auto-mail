@@ -75,23 +75,6 @@ class TestServeEmailDetail:
             "<html>detail</html>", content_type="text/html; charset=utf-8"
         )
 
-    def test_focus_draft_mode_passed_through(
-        self, fake_db_path: str, mock_build_detail_html: mock.MagicMock
-    ) -> None:
-        mock_build_detail_html.return_value = "<html>draft</html>"
-        handler = _FakeHandler(fake_db_path, path="/email/test%40example.com?draft=1")
-        handler._serve_email_detail()
-        mock_build_detail_html.assert_called_once_with(
-            fake_db_path,
-            "test@example.com",
-            embed=False,
-            focus_draft=True,
-            current_account_id=handler._current_account_id,
-        )
-        handler._send_response.assert_called_once_with(
-            "<html>draft</html>", content_type="text/html; charset=utf-8"
-        )
-
     def test_normal_mode_does_not_touch_account_cookie(
         self, fake_db_path: str, mock_build_detail_html: mock.MagicMock
     ) -> None:

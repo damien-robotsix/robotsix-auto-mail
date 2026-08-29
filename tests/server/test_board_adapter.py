@@ -44,7 +44,6 @@ def test_columns_order_and_labels() -> None:
         ("TO_DELETE", "To delete"),
         ("TO_CALENDAR", "To calendar"),
         ("TO_ANSWER", "To answer"),
-        ("DRAFT_READY", "Draft ready"),
     ]
 
 

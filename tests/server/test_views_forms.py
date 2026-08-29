@@ -95,11 +95,6 @@ class TestRenderMoveForm:
         result = _render_move_form(record, "TO_DELETE", "")
         assert '<option value="TO_DELETE" selected>To delete</option>' in result
 
-    def test_selected_attribute_on_current_action_draft_ready(self):
-        record = _make_record()
-        result = _render_move_form(record, "DRAFT_READY", "")
-        assert '<option value="DRAFT_READY" selected>Draft ready</option>' in result
-
     def test_no_other_option_has_selected_when_one_is_selected(self):
         record = _make_record()
         result = _render_move_form(record, "TO_ANSWER", "")

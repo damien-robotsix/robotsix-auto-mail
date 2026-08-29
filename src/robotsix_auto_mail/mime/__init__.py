@@ -63,6 +63,8 @@ def build_multipart_message(
     attachment_names: list[str],
     *,
     cc: list[str] | None = None,
+    in_reply_to: str | None = None,
+    references: str | None = None,
 ) -> MIMEMultipart:
     """Return a ``MIMEMultipart`` with a text body and file attachments.
 
@@ -74,6 +76,8 @@ def build_multipart_message(
         attachments: List of open binary file-like objects.
         attachment_names: Corresponding filenames for each attachment.
         cc: Optional Cc recipients.
+        in_reply_to: Optional ``In-Reply-To`` header value for threading.
+        references: Optional ``References`` header value for threading.
 
     Returns:
         A ``MIMEMultipart`` ready for ``send_message()`` or IMAP APPEND.
@@ -85,6 +89,10 @@ def build_multipart_message(
     msg["Date"] = formatdate(localtime=True)
     if cc:
         msg["Cc"] = ", ".join(cc)
+    if in_reply_to is not None:
+        msg["In-Reply-To"] = in_reply_to
+    if references is not None:
+        msg["References"] = references
 
     msg.attach(MIMEText(body, _charset="utf-8"))
 

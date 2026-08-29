@@ -1,10 +1,10 @@
 """Shared helpers for action-mixin unit tests.
 
 Provides ``_FakeHandler`` (a concrete ``_BoardActionMixin`` for direct
-mixin testing), ``_DraftMixinFakeHandler`` (extends ``_FakeHandler`` with
-``_DraftMixin`` for draft-handler unit tests), and ``_SyncThread`` (a
-synchronous ``threading.Thread`` replacement for deterministic
-background-worker tests).
+mixin testing), ``_ComposeDraftFakeHandler`` (extends ``_FakeHandler``
+with ``_ComposeDraftMixin`` for compose-to-Drafts unit tests), and
+``_SyncThread`` (a synchronous ``threading.Thread`` replacement for
+deterministic background-worker tests).
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from robotsix_auto_mail.server._account_mixin import _AccountMixin
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
-from robotsix_auto_mail.server._draft_mixin import _DraftMixin
+from robotsix_auto_mail.server._compose_draft_mixin import _ComposeDraftMixin
 
 
 class _FakeHandler(_ArchiveActionMixin, _BoardActionMixin):
@@ -43,9 +43,9 @@ class _FakeHandler(_ArchiveActionMixin, _BoardActionMixin):
         self._bad_request = mock.MagicMock()
 
 
-class _DraftMixinFakeHandler(_DraftMixin, _BoardActionMixin):
+class _ComposeDraftFakeHandler(_ComposeDraftMixin, _BoardActionMixin):
     """Concrete handler that wires ``BoardHandlerProtocol`` attributes
-    to MagicMock defaults so draft-mixin methods can be called directly."""
+    to MagicMock defaults so compose-draft methods can be called directly."""
 
     def __init__(
         self,

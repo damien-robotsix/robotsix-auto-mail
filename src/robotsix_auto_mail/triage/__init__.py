@@ -36,9 +36,6 @@ from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS as VALID_TRIAGE_ACTIONS,
 )
 from robotsix_auto_mail.triage._constants import (
-    DRAFT_READY as DRAFT_READY,
-)
-from robotsix_auto_mail.triage._constants import (
     HUMAN_TRIAGE as HUMAN_TRIAGE,
 )
 from robotsix_auto_mail.triage._constants import (
@@ -148,7 +145,6 @@ from robotsix_auto_mail.triage.persistence import (
 )
 
 __all__ = [
-    "DRAFT_READY",
     "HUMAN_TRIAGE",
     "INBOX",
     "PENDING_ACTION",

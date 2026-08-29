@@ -107,18 +107,19 @@ docker compose up board
 # Then open http://localhost:<port>/board
 ```
 
-The board shows ingested mail in eight columns — Inbox, Human triage, Pending
-action, To archive, To delete, To calendar, To answer, Draft ready — with
+The board shows ingested mail in seven columns — Inbox, Human triage, Pending
+action, To archive, To delete, To calendar, To answer — with
 per-card Move dropdowns and a 30-second auto-refresh. Cards display triage
 badges showing the decision action (e.g. answer, archive) with the reason
 visible on hover. Click any card to view full details including the triage
 action, reason, and confidence.
 
-Cards marked "Needs reply"
-have a **Draft reply** button that triggers LLM-driven draft generation — click it
-to have the LLM prepare a professional reply draft from the incoming message.
-When you send a reply, the original message re-enters the triage queue with the
-reply body stored so the triage agent can decide the final disposition.
+Composing a reply or a new message is done via the `POST /compose-draft`
+endpoint, which builds a genuine RFC822 message — correct sender, recipients,
+subject, threading headers, body, and all file-hub attachments — and `APPEND`s
+it into the account's IMAP **Drafts** folder. The draft then appears natively in
+your own mail client (Gmail, Roundcube, …), where you review and send it
+manually. The board itself stores no drafts and sends no mail.
 Full details are in [docs/connecting.md](docs/connecting.md#the-serve-command).
 
 ## Standards

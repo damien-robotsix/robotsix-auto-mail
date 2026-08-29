@@ -662,7 +662,6 @@ class _BoardViewMixin:
         message_id = unquote(parsed.path[len(prefix) :])
         qs = parse_qs(parsed.query)
         embed = qs.get("embed", ["0"])[0] == "1"
-        focus_draft = qs.get("draft", ["0"])[0] == "1"
 
         # Preserve the parent board's account cookie: when the detail
         # pane iframe loads with ``?account=<cardAccount>`` the request
@@ -677,7 +676,6 @@ class _BoardViewMixin:
                 self.db_path,
                 message_id,
                 embed=embed,
-                focus_draft=focus_draft,
                 current_account_id=self._current_account_id,
             )
         except Exception:

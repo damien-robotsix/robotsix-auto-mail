@@ -16,6 +16,7 @@ from typing import Any
 from robotsix_llmio.core.sqlite_utils import run_additive_migrations
 
 from ._migrate import (
+    _migrate_draft_ready_to_answer,
     _migrate_legacy_statuses,
     _migrate_status_to_triage,
     _migrate_triage_action_check,
@@ -119,6 +120,7 @@ def init_db(
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     if not skip_migrations:
+        _migrate_draft_ready_to_answer(conn)
         _migrate_triage_action_check(conn)
         _migrate_legacy_statuses(conn)
         _migrate_status_to_triage(conn)
@@ -265,20 +267,6 @@ def _update_column(
 def update_notes(conn: sqlite3.Connection, message_id: str, notes: str) -> bool:
     """Update ``mail_records.notes`` for *message_id*."""
     return _update_column(conn, message_id, "notes", notes)
-
-
-def update_draft_text(
-    conn: sqlite3.Connection, message_id: str, draft_text: str
-) -> bool:
-    """Update ``mail_records.draft_text`` for *message_id*."""
-    return _update_column(conn, message_id, "draft_text", draft_text)
-
-
-def update_sent_reply_text(
-    conn: sqlite3.Connection, message_id: str, text: str
-) -> bool:
-    """Update ``mail_records.sent_reply_text`` for *message_id*."""
-    return _update_column(conn, message_id, "sent_reply_text", text)
 
 
 def delete_record_by_message_id(conn: sqlite3.Connection, message_id: str) -> bool:
