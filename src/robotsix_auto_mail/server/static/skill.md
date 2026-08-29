@@ -399,3 +399,13 @@ Roundcube).
 
   **Note:** This endpoint only writes the draft into the mailbox.
   Sending is done manually by the operator from their own mail client.
+
+  **Auto-archive on send:** when a compose-draft is a **reply**
+  (`reply_to_message_id` set), the board records a link between the draft
+  and the original card.  Once the reply is actually sent — either from
+  the board or externally from the operator's mail client — the next
+  `POST /reconcile` cycle detects the sent message in the account's Sent
+  folder (matched by its `In-Reply-To` header) and automatically moves the
+  original card to the `TO_ARCHIVE` column, so a sent draft never lingers
+  as a phantom card.  Reconciliation is idempotent and never archives a
+  draft that was not actually sent.

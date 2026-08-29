@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ from ._migrate import (
 from .models import (
     _ADDITIVE_COLUMNS,
     _SCHEMA,
+    ComposeLink,
     MailRecord,
 )
 
@@ -222,6 +224,87 @@ def record_exists(conn: sqlite3.Connection, message_id: str) -> bool:
         (message_id,),
     )
     return cur.fetchone() is not None
+
+
+# ---------------------------------------------------------------------------
+# compose_links — auto-archive-on-send linkage
+# ---------------------------------------------------------------------------
+
+
+def record_compose_link(
+    conn: sqlite3.Connection,
+    reply_to_message_id: str,
+    *,
+    subject: str = "",
+    to_addr: str = "",
+) -> None:
+    """Record that a reply-draft was composed for *reply_to_message_id*.
+
+    Upserts keyed on *reply_to_message_id* (the original card's
+    ``Message-ID``).  Re-composing a reply for the same card refreshes the
+    row and clears any prior ``reconciled_at`` so the pending send is
+    tracked again.  Commits.
+    """
+    conn.execute(
+        """\
+INSERT INTO compose_links
+    (reply_to_message_id, draft_subject, draft_to, created_at, reconciled_at)
+VALUES
+    (:reply_to_message_id, :subject, :to_addr, :created_at, NULL)
+ON CONFLICT(reply_to_message_id) DO UPDATE SET
+    draft_subject = excluded.draft_subject,
+    draft_to      = excluded.draft_to,
+    created_at    = excluded.created_at,
+    reconciled_at = NULL
+""",
+        {
+            "reply_to_message_id": reply_to_message_id,
+            "subject": subject,
+            "to_addr": to_addr,
+            "created_at": datetime.now(UTC).isoformat(),
+        },
+    )
+    conn.commit()
+
+
+def list_unreconciled_compose_links(
+    conn: sqlite3.Connection,
+) -> list[ComposeLink]:
+    """Return every compose link whose send has not yet been reconciled.
+
+    Read-only — does **not** call ``conn.commit()``.
+    """
+    cur = conn.execute(
+        "SELECT reply_to_message_id, draft_subject, draft_to, created_at, "
+        "reconciled_at FROM compose_links WHERE reconciled_at IS NULL "
+        "ORDER BY created_at ASC"
+    )
+    return [
+        ComposeLink(
+            reply_to_message_id=row[0],
+            draft_subject=row[1],
+            draft_to=row[2],
+            created_at=row[3],
+            reconciled_at=row[4],
+        )
+        for row in cur.fetchall()
+    ]
+
+
+def mark_compose_link_reconciled(
+    conn: sqlite3.Connection,
+    reply_to_message_id: str,
+) -> None:
+    """Stamp *reply_to_message_id*'s compose link as reconciled.  Commits.
+
+    Idempotent: re-stamping an already-reconciled link just refreshes the
+    timestamp.
+    """
+    conn.execute(
+        "UPDATE compose_links SET reconciled_at = ? WHERE reply_to_message_id = ?",
+        (datetime.now(UTC).isoformat(), reply_to_message_id),
+    )
+    conn.commit()
 
 
 def update_record_source(

@@ -32,6 +32,7 @@ from robotsix_auto_mail.imap import ImapClient
 from robotsix_auto_mail.pipeline._parse import ParseError as ParseError
 from robotsix_auto_mail.pipeline._parse import parse_message
 from robotsix_auto_mail.pipeline.reconcile import reconcile_records
+from robotsix_auto_mail.pipeline.sent_reconcile import reconcile_sent_drafts
 from robotsix_auto_mail.triage import run_triage_agent
 
 _logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ __all__ = [
     "ingest_mail",
     "parse_message",
     "reconcile_records",
+    "reconcile_sent_drafts",
     "update_watermark",
 ]
 

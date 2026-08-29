@@ -238,6 +238,22 @@ class _ComposeDraftMixin:
             for f in attachment_files:
                 f.close()
 
+        # -- record the compose→card linkage for auto-archive-on-send ------
+        # Only replies map to an existing board card; a new message has no
+        # card to archive, so nothing is recorded for it.  A later reconcile
+        # cycle detects the sent reply in the Sent folder and archives the
+        # card (whether it was sent from the board or externally).
+        if reply_to_message_id:
+            from robotsix_auto_mail.db import record_compose_link
+
+            with _with_db(db_path) as conn:
+                record_compose_link(
+                    conn,
+                    reply_to_message_id,
+                    subject=subject,
+                    to_addr=to_addr,
+                )
+
         # -- respond -------------------------------------------------------
         self._serve_json(
             {
