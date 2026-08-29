@@ -109,16 +109,10 @@ from .queries import (
     update_calendar_event_ref as update_calendar_event_ref,
 )
 from .queries import (
-    update_draft_text as update_draft_text,
-)
-from .queries import (
     update_notes as update_notes,
 )
 from .queries import (
     update_record_source as update_record_source,
-)
-from .queries import (
-    update_sent_reply_text as update_sent_reply_text,
 )
 from .queries import (
     write_account_health as write_account_health,
@@ -157,10 +151,8 @@ __all__ = [
     "setup_archive",
     "update_calendar_correlation_id",
     "update_calendar_event_ref",
-    "update_draft_text",
     "update_notes",
     "update_record_source",
-    "update_sent_reply_text",
     "write_account_health",
     "write_archive_audit_entry",
 ]

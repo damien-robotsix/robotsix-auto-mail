@@ -67,7 +67,7 @@ def register_subparser(
     triage_set_parser.add_argument(
         "action",
         help="Triage action: INBOX, HUMAN_TRIAGE, PENDING_ACTION, TO_ARCHIVE, "
-        "TO_DELETE, TO_CALENDAR, TO_ANSWER, or DRAFT_READY.",
+        "TO_DELETE, TO_CALENDAR, or TO_ANSWER.",
     )
 
 

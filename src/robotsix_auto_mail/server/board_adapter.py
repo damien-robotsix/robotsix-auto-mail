@@ -45,9 +45,7 @@ from robotsix_auto_mail.core.format import (
 )
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.triage import (
-    DRAFT_READY,
     INBOX,
-    TO_ANSWER,
     TO_ARCHIVE,
     TO_DELETE,
     TRIAGE_ACTION_LABELS,
@@ -117,19 +115,6 @@ def _notes_indicator(card: MailRecord) -> str:
     )
 
 
-def _draft_indicator(card: MailRecord, current_action: str) -> str:
-    """Return the draft-indicator HTML snippet, or ``""``."""
-    if current_action != DRAFT_READY or not card.draft_text:
-        return ""
-    escaped_draft = html.escape(card.draft_text)
-    truncated = escaped_draft[:40] + ("…" if len(escaped_draft) > 40 else "")
-    return (
-        '<span class="card-draft-indicator"'
-        f' title="{escaped_draft}">'
-        f"✉️ {truncated}</span>"
-    )
-
-
 def _calendar_indicator(card: MailRecord) -> str:
     """Return the calendar-indicator HTML snippet, or ``""``."""
     if not card.calendar_event_ref:
@@ -146,20 +131,6 @@ def _calendar_indicator(card: MailRecord) -> str:
         '<span class="card-calendar-indicator card-calendar-success"'
         f' title="{html.escape(event_ref, quote=True)}">'
         "\u2705</span>"
-    )
-
-
-def _draft_reply_button(current_action: str, account_qs: str, escaped_mid: str) -> str:
-    """Return the draft-reply button HTML snippet, or ``""``."""
-    if current_action != TO_ANSWER:
-        return ""
-    return (
-        '<form class="draft-reply-form" method="post"'
-        f' action="/generate-draft{account_qs}">'
-        f'<input type="hidden" name="message_id" value="{escaped_mid}">'
-        '<button type="submit" class="draft-reply-btn">'
-        "Draft reply</button>"
-        "</form>"
     )
 
 
@@ -440,13 +411,7 @@ class MailBoardAdapter:
         body_html_render = _body_preview_html(card)
         options_parts = _move_options_parts(current_action)
         notes_indicator = _notes_indicator(card)
-        draft_indicator = _draft_indicator(card, current_action)
         calendar_indicator = _calendar_indicator(card)
-        draft_button = _draft_reply_button(
-            current_action,
-            account_qs,
-            escaped_mid,
-        )
         delete_form = _delete_form(
             current_action,
             account_qs,
@@ -478,11 +443,9 @@ class MailBoardAdapter:
             f"{account_badge}"
             f'<div class="body-preview">{body_html_render}</div>'
             f"{notes_indicator}"
-            f"{draft_indicator}"
             f"{calendar_indicator}"
             f"{archive_html}"
             f"{move_form}"
-            f"{draft_button}"
             f"{delete_form}"
             "</div>"
         )

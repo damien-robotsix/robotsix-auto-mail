@@ -55,7 +55,6 @@ class TestServeBoardCards:
                     "HUMAN_TRIAGE": [],
                     "PENDING_ACTION": [],
                     "TO_CALENDAR": [],
-                    "DRAFT_READY": [],
                 },
                 "total_mail_count": 3,
                 "archive_subfolders": {
@@ -234,7 +233,6 @@ class TestServeBoardCards:
                     "HUMAN_TRIAGE",
                     "PENDING_ACTION",
                     "TO_CALENDAR",
-                    "DRAFT_READY",
                 ]
             },
             "total_mail_count": 0,

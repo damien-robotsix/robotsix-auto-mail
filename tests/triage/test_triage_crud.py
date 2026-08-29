@@ -9,11 +9,9 @@ import pytest
 
 from robotsix_auto_mail.db import (
     MailRecord,
-    get_record_by_message_id,
     init_db,
     insert_record,
     list_untriaged_records,
-    update_sent_reply_text,
 )
 from robotsix_auto_mail.triage import (
     TriageError,
@@ -205,39 +203,17 @@ def test_delete_triage_decision_requeues_record() -> None:
         conn.close()
 
 
-def test_update_sent_reply_text_and_column_default() -> None:
-    """sent_reply_text defaults to '' and update_sent_reply_text persists it."""
-    conn = init_db(":memory:")
-    try:
-        # Column present on mail_records.
-        cols = {
-            row[1] for row in conn.execute("PRAGMA table_info(mail_records)").fetchall()
-        }
-        assert "sent_reply_text" in cols
-
-        _insert_inbox(conn, "<a@x.com>")
-        record = get_record_by_message_id(conn, "<a@x.com>")
-        assert record is not None
-        assert record.sent_reply_text == ""
-
-        assert update_sent_reply_text(conn, "<a@x.com>", "My reply body.") is True
-        updated = get_record_by_message_id(conn, "<a@x.com>")
-        assert updated is not None
-        assert updated.sent_reply_text == "My reply body."
-
-        # No matching row → False.
-        assert update_sent_reply_text(conn, "<missing>", "x") is False
-    finally:
-        conn.close()
-
-
 def test_answered_record_untriaged_and_marked_in_user_message() -> None:
     """A record with sent_reply_text (and no decision) is untriaged and its
     user-message line carries the answered marker + reply preview."""
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>", subject="Question")
-        update_sent_reply_text(conn, "<a@x.com>", "Thanks, all sorted.")
+        conn.execute(
+            "UPDATE mail_records SET sent_reply_text = ? WHERE message_id = ?",
+            ("Thanks, all sorted.", "<a@x.com>"),
+        )
+        conn.commit()
 
         untriaged = list_untriaged_records(conn)
         assert "<a@x.com>" in {r.message_id for r in untriaged}

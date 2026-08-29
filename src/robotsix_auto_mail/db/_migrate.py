@@ -97,6 +97,24 @@ WHERE mr.status = ?
     conn.commit()
 
 
+def _migrate_draft_ready_to_answer(conn: sqlite3.Connection) -> None:
+    """Remap the retired ``DRAFT_READY`` triage action to ``TO_ANSWER``.
+
+    The board no longer manages drafts (composing lands directly in the
+    mailbox's IMAP Drafts folder), so ``DRAFT_READY`` was dropped from the
+    triage vocabulary.  Legacy rows that still carry it are remapped to
+    ``TO_ANSWER`` so the underlying message resurfaces in the To-answer
+    column instead of vanishing from the board.
+
+    Idempotent: once no ``DRAFT_READY`` rows remain the ``UPDATE`` is a
+    no-op, so this is safe to run on every ``init_db`` call.
+    """
+    conn.execute(
+        "UPDATE triage_decisions SET action = 'TO_ANSWER' WHERE action = 'DRAFT_READY'",
+    )
+    conn.commit()
+
+
 def _migrate_triage_action_check(conn: sqlite3.Connection) -> None:
     """Rebuild ``triage_decisions`` when its stored CHECK constraint is stale.
 

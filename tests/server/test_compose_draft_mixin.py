@@ -1,8 +1,10 @@
 """Unit tests for ``_ComposeDraftMixin._handle_compose_draft``.
 
-Covers: missing fields, unknown account, file-hub not configured,
-file-hub unreachable, unknown file-hub id, happy path with and
-without attachments.
+Covers: missing fields, unknown account, reply derivation, file-hub not
+configured, file-hub unreachable, unknown file-hub id, fail-loud on a
+failed attachment download, and the happy paths (new message + reply)
+which write directly to the IMAP Drafts folder and store **no** board
+record.
 """
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ import json
 from unittest import mock
 
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
+from robotsix_auto_mail.db import MailRecord, init_db, insert_record
 from robotsix_auto_mail.server._compose_draft_mixin import _ComposeDraftMixin
 
 
@@ -67,6 +70,29 @@ def _set_json_body(handler: _ComposeDraftFakeHandler, body: dict) -> None:
     handler.rfile.read.return_value = raw
 
 
+def _mock_httpx_responses(*responses: object) -> mock._patch:
+    """Patch the module ``httpx`` so ``Client().get`` yields *responses*."""
+    patcher = mock.patch("robotsix_auto_mail.server._compose_draft_mixin.httpx")
+    mock_httpx = patcher.start()
+    mock_client = mock.MagicMock()
+    mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
+    mock_client.__exit__ = mock.MagicMock(return_value=False)
+    mock_client.get.side_effect = list(responses)
+    mock_httpx.Client.return_value = mock_client
+    return patcher
+
+
+def _resp(
+    status_code: int, payload: dict | None = None, content: bytes = b"x"
+) -> mock.MagicMock:
+    r = mock.MagicMock()
+    r.status_code = status_code
+    if payload is not None:
+        r.json.return_value = payload
+    r.content = content
+    return r
+
+
 class TestComposeDraftMissingFields:
     def test_empty_body(self) -> None:
         handler = _ComposeDraftFakeHandler()
@@ -83,26 +109,26 @@ class TestComposeDraftMissingFields:
         handler._bad_request.assert_called_once()
         assert "account" in handler._bad_request.call_args[0][0]
 
-    def test_missing_to(self) -> None:
-        handler = _ComposeDraftFakeHandler()
-        _set_json_body(handler, {"account": "TEST", "subject": "S", "body": "B"})
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "to" in handler._bad_request.call_args[0][0]
-
-    def test_missing_subject(self) -> None:
-        handler = _ComposeDraftFakeHandler()
-        _set_json_body(handler, {"account": "TEST", "to": "a@b.com", "body": "B"})
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "subject" in handler._bad_request.call_args[0][0]
-
     def test_missing_body(self) -> None:
         handler = _ComposeDraftFakeHandler()
         _set_json_body(handler, {"account": "TEST", "to": "a@b.com", "subject": "S"})
         handler._handle_compose_draft()
         handler._bad_request.assert_called_once()
         assert "body" in handler._bad_request.call_args[0][0]
+
+    def test_new_message_missing_to(self) -> None:
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts())
+        _set_json_body(handler, {"account": "TEST", "subject": "S", "body": "B"})
+        handler._handle_compose_draft()
+        handler._bad_request.assert_called_once()
+        assert "to" in handler._bad_request.call_args[0][0]
+
+    def test_new_message_missing_subject(self) -> None:
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts())
+        _set_json_body(handler, {"account": "TEST", "to": "a@b.com", "body": "B"})
+        handler._handle_compose_draft()
+        handler._bad_request.assert_called_once()
+        assert "subject" in handler._bad_request.call_args[0][0]
 
     def test_malformed_json(self) -> None:
         handler = _ComposeDraftFakeHandler()
@@ -131,32 +157,20 @@ class TestComposeDraftMissingFields:
 
 class TestComposeDraftUnknownAccount:
     def test_unknown_account_id(self) -> None:
-        accounts = _make_accounts()
-        handler = _ComposeDraftFakeHandler(accounts=accounts)
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts())
         _set_json_body(
             handler,
-            {
-                "account": "NONEXISTENT",
-                "to": "a@b.com",
-                "subject": "S",
-                "body": "B",
-            },
+            {"account": "NONEXISTENT", "to": "a@b.com", "subject": "S", "body": "B"},
         )
         handler._handle_compose_draft()
         handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
-        assert args[1]["status"] == 404
+        assert handler._send_response.call_args[1]["status"] == 404
 
     def test_no_accounts_configured(self) -> None:
         handler = _ComposeDraftFakeHandler(accounts=None)
         _set_json_body(
             handler,
-            {
-                "account": "TEST",
-                "to": "a@b.com",
-                "subject": "S",
-                "body": "B",
-            },
+            {"account": "TEST", "to": "a@b.com", "subject": "S", "body": "B"},
         )
         handler._handle_compose_draft()
         handler._bad_request.assert_called_once()
@@ -165,8 +179,7 @@ class TestComposeDraftUnknownAccount:
 
 class TestComposeDraftFileHubNotConfigured:
     def test_empty_file_hub_url_with_attachments(self) -> None:
-        accounts = _make_accounts(file_hub_url="")
-        handler = _ComposeDraftFakeHandler(accounts=accounts)
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(file_hub_url=""))
         _set_json_body(
             handler,
             {
@@ -179,14 +192,12 @@ class TestComposeDraftFileHubNotConfigured:
         )
         handler._handle_compose_draft()
         handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
-        assert args[1]["status"] == 503
+        assert handler._send_response.call_args[1]["status"] == 503
 
 
 class TestComposeDraftFileHubErrors:
-    def test_file_hub_unreachable(self) -> None:
-        accounts = _make_accounts()
-        handler = _ComposeDraftFakeHandler(accounts=accounts)
+    def _handler_with_attachment(self) -> _ComposeDraftFakeHandler:
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts())
         _set_json_body(
             handler,
             {
@@ -197,94 +208,67 @@ class TestComposeDraftFileHubErrors:
                 "attachments": ["att-1"],
             },
         )
+        return handler
 
-        with mock.patch(
-            "robotsix_auto_mail.server._compose_draft_mixin.httpx"
-        ) as mock_httpx:
+    def test_file_hub_unreachable(self) -> None:
+        handler = self._handler_with_attachment()
+        patcher = mock.patch("robotsix_auto_mail.server._compose_draft_mixin.httpx")
+        mock_httpx = patcher.start()
+        try:
             mock_client = mock.MagicMock()
             mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
             mock_client.__exit__ = mock.MagicMock(return_value=False)
-            mock_client.get.side_effect = Exception("connection refused")
+            mock_client.get.side_effect = RuntimeError("boom")
             mock_httpx.Client.return_value = mock_client
-
             handler._handle_compose_draft()
-
+        finally:
+            patcher.stop()
         handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
-        assert args[1]["status"] == 502
-        body = json.loads(args[0][0])
-        assert "unreachable" in body["error"]
+        assert handler._send_response.call_args[1]["status"] == 502
+        assert (
+            "unreachable" in json.loads(handler._send_response.call_args[0][0])["error"]
+        )
 
     def test_file_hub_unknown_id(self) -> None:
-        accounts = _make_accounts()
-        handler = _ComposeDraftFakeHandler(accounts=accounts)
-        _set_json_body(
-            handler,
-            {
-                "account": "TEST",
-                "to": "a@b.com",
-                "subject": "S",
-                "body": "B",
-                "attachments": ["bad-id"],
-            },
-        )
-
-        with mock.patch(
-            "robotsix_auto_mail.server._compose_draft_mixin.httpx"
-        ) as mock_httpx:
-            mock_client = mock.MagicMock()
-            mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
-            mock_client.__exit__ = mock.MagicMock(return_value=False)
-            mock_resp = mock.MagicMock()
-            mock_resp.status_code = 404
-            mock_client.get.return_value = mock_resp
-            mock_httpx.Client.return_value = mock_client
-
+        handler = self._handler_with_attachment()
+        patcher = _mock_httpx_responses(_resp(404))
+        try:
             handler._handle_compose_draft()
-
+        finally:
+            patcher.stop()
         handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
-        assert args[1]["status"] == 404
-        body = json.loads(args[0][0])
-        assert "bad-id" in body["error"]
+        assert handler._send_response.call_args[1]["status"] == 404
+        assert "att-1" in json.loads(handler._send_response.call_args[0][0])["error"]
 
     def test_file_hub_server_error(self) -> None:
-        accounts = _make_accounts()
-        handler = _ComposeDraftFakeHandler(accounts=accounts)
-        _set_json_body(
-            handler,
-            {
-                "account": "TEST",
-                "to": "a@b.com",
-                "subject": "S",
-                "body": "B",
-                "attachments": ["att-1"],
-            },
-        )
-
-        with mock.patch(
-            "robotsix_auto_mail.server._compose_draft_mixin.httpx"
-        ) as mock_httpx:
-            mock_client = mock.MagicMock()
-            mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
-            mock_client.__exit__ = mock.MagicMock(return_value=False)
-            mock_resp = mock.MagicMock()
-            mock_resp.status_code = 500
-            mock_resp.text = "Internal Server Error"
-            mock_client.get.return_value = mock_resp
-            mock_httpx.Client.return_value = mock_client
-
+        handler = self._handler_with_attachment()
+        patcher = _mock_httpx_responses(_resp(500))
+        try:
             handler._handle_compose_draft()
-
+        finally:
+            patcher.stop()
         handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
-        assert args[1]["status"] == 502
+        assert handler._send_response.call_args[1]["status"] == 502
+
+    def test_attachment_download_fails_loudly(self) -> None:
+        """Metadata OK but the content download 500s → fail loud, no append."""
+        handler = self._handler_with_attachment()
+        meta = _resp(200, {"filename": "f.pdf", "content_type": "application/pdf"})
+        bad_content = _resp(500)
+        patcher = _mock_httpx_responses(meta, bad_content)
+        try:
+            with mock.patch.object(handler, "_append_to_drafts_folder") as m_append:
+                handler._handle_compose_draft()
+        finally:
+            patcher.stop()
+        m_append.assert_not_called()
+        handler._send_response.assert_called_once()
+        assert handler._send_response.call_args[1]["status"] == 502
 
 
 class TestComposeDraftHappyPath:
-    def test_no_attachments(self, single_db: str) -> None:
-        accounts = _make_accounts(db_path=single_db)
-        handler = _ComposeDraftFakeHandler(accounts=accounts)
+    def test_no_attachments_writes_no_board_record(self, single_db: str) -> None:
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
         _set_json_body(
             handler,
             {
@@ -294,8 +278,9 @@ class TestComposeDraftHappyPath:
                 "body": "Draft body text",
             },
         )
-
-        with mock.patch.object(handler, "_append_to_drafts_folder"):
+        with mock.patch.object(
+            handler, "_append_to_drafts_folder", return_value="[Gmail]/Drafts"
+        ) as m_append:
             handler._handle_compose_draft()
 
         handler._serve_json.assert_called_once()
@@ -306,238 +291,142 @@ class TestComposeDraftHappyPath:
         assert body["to"] == "recipient@example.com"
         assert body["subject"] == "Hello"
         assert body["attachments"] == 0
-        assert "message_id" in body
+        assert body["reply"] is False
+        assert body["drafts_folder"] == "[Gmail]/Drafts"
+        assert "message_id" not in body
 
-        # Verify the record was stored in the DB
-        from robotsix_auto_mail.db import get_record_by_message_id, init_db
+        # The append received the composed message with no threading headers.
+        kwargs = m_append.call_args[1]
+        assert kwargs["from_addr"] == "user@example.com"
+        assert kwargs["in_reply_to"] is None
+        assert kwargs["cc"] is None
 
+        # No board draft record is ever created.
         conn = init_db(single_db, skip_migrations=True)
         try:
-            record = get_record_by_message_id(conn, body["message_id"])
-            assert record is not None
-            assert record.sender == "user@example.com"
-            assert record.subject == "Hello"
-            assert record.draft_text == "Draft body text"
-            recipients = json.loads(record.recipients_json)
-            assert recipients["to"] == ["recipient@example.com"]
-            assert json.loads(record.attachments_json) == []
+            rows = conn.execute("SELECT COUNT(*) FROM mail_records").fetchone()
+            assert rows[0] == 0
+            decisions = conn.execute("SELECT COUNT(*) FROM triage_decisions").fetchone()
+            assert decisions[0] == 0
         finally:
             conn.close()
 
     def test_with_attachments(self, single_db: str) -> None:
-        accounts = _make_accounts(db_path=single_db)
-        handler = _ComposeDraftFakeHandler(accounts=accounts)
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
         _set_json_body(
             handler,
             {
                 "account": "TEST",
-                "to": "gestion.als@actionlogement.fr",
+                "to": "gestion@example.fr",
                 "subject": "Mandat + RIB",
-                "body": "Veuillez trouver ci-joint le mandat et le RIB.",
+                "body": "Ci-joint le mandat et le RIB.",
                 "attachments": ["mandate-pdf-id", "rib-pdf-id"],
             },
         )
-
-        file_hub_responses = [
-            {
-                "id": "mandate-pdf-id",
-                "filename": "mandate_signe.pdf",
-                "content_type": "application/pdf",
-                "size": 12345,
-            },
-            {
-                "id": "rib-pdf-id",
-                "filename": "rib.pdf",
-                "content_type": "application/pdf",
-                "size": 6789,
-            },
-        ]
-
-        with mock.patch(
-            "robotsix_auto_mail.server._compose_draft_mixin.httpx"
-        ) as mock_httpx:
-            mock_client = mock.MagicMock()
-            mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
-            mock_client.__exit__ = mock.MagicMock(return_value=False)
-
-            responses = []
-            for resp_data in file_hub_responses:
-                mock_resp = mock.MagicMock()
-                mock_resp.status_code = 200
-                mock_resp.json.return_value = resp_data
-                responses.append(mock_resp)
-
-            mock_client.get.side_effect = responses
-            mock_httpx.Client.return_value = mock_client
-
-            with mock.patch.object(handler, "_append_to_drafts_folder"):
+        patcher = _mock_httpx_responses(
+            _resp(200, {"filename": "mandate.pdf"}, b"PDF1"),
+            _resp(200, content=b"PDF1"),
+            _resp(200, {"filename": "rib.pdf"}, b"PDF2"),
+            _resp(200, content=b"PDF2"),
+        )
+        try:
+            with mock.patch.object(
+                handler, "_append_to_drafts_folder", return_value="Drafts"
+            ) as m_append:
                 handler._handle_compose_draft()
+        finally:
+            patcher.stop()
 
         handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
-        assert args[1]["status"] == 201
-        body = args[0][0]
+        body = handler._serve_json.call_args[0][0]
         assert body["attachments"] == 2
+        kwargs = m_append.call_args[1]
+        assert kwargs["attachment_names"] == ["mandate.pdf", "rib.pdf"]
+        assert len(kwargs["attachment_files"]) == 2
 
-        # Verify the record was stored with attachment metadata
-        from robotsix_auto_mail.db import get_record_by_message_id, init_db
 
-        conn = init_db(single_db, skip_migrations=True)
+class TestComposeDraftReply:
+    def _insert_original(self, db_path: str) -> None:
+        conn = init_db(db_path, skip_migrations=True)
         try:
-            record = get_record_by_message_id(conn, body["message_id"])
-            assert record is not None
-            att_meta = json.loads(record.attachments_json)
-            assert len(att_meta) == 2
-            assert att_meta[0]["file_hub_id"] == "mandate-pdf-id"
-            assert att_meta[0]["filename"] == "mandate_signe.pdf"
-            assert att_meta[0]["mime_type"] == "application/pdf"
-            assert att_meta[0]["size"] == 12345
-            assert att_meta[1]["file_hub_id"] == "rib-pdf-id"
-            assert att_meta[1]["filename"] == "rib.pdf"
-
-            # Verify triage decision is DRAFT_READY
-            from robotsix_auto_mail.triage import get_triage_decision
-
-            decision = get_triage_decision(conn, body["message_id"])
-            assert decision is not None
-            assert decision.action == "DRAFT_READY"
+            insert_record(
+                conn,
+                MailRecord(
+                    message_id="<orig@example.com>",
+                    sender="peer@example.com",
+                    subject="Question about the invoice",
+                    date="2026-01-01T00:00:00Z",
+                    recipients_json=json.dumps(
+                        {
+                            "to": ["user@example.com", "team@example.com"],
+                            "cc": ["cc@x.com"],
+                        }
+                    ),
+                ),
+            )
         finally:
             conn.close()
 
-    def test_unique_message_ids(self, single_db: str) -> None:
-        """Two compose-draft calls produce distinct message_ids."""
-        accounts = _make_accounts(db_path=single_db)
-        ids: list[str] = []
-        for _ in range(2):
-            handler = _ComposeDraftFakeHandler(accounts=accounts)
-            _set_json_body(
-                handler,
-                {
-                    "account": "TEST",
-                    "to": "a@b.com",
-                    "subject": "S",
-                    "body": "B",
-                },
-            )
-            with mock.patch.object(handler, "_append_to_drafts_folder"):
-                handler._handle_compose_draft()
-            args = handler._serve_json.call_args
-            ids.append(args[0][0]["message_id"])
-        assert ids[0] != ids[1]
-
-    def test_with_pdf_attachment(self, single_db: str) -> None:
-        """Regression: PDF attachment id stores metadata, not binary content.
-
-        Previously, the handler fetched the raw file-download endpoint
-        (/files/<id>) instead of the metadata endpoint (/files/<id>/metadata),
-        then called resp.json() on binary PDF bytes, crashing with a
-        UnicodeDecodeError.
-        """
-        accounts = _make_accounts(db_path=single_db)
-        handler = _ComposeDraftFakeHandler(accounts=accounts)
+    def test_reply_derives_to_subject_and_threading(self, single_db: str) -> None:
+        self._insert_original(single_db)
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
         _set_json_body(
             handler,
             {
                 "account": "TEST",
-                "to": "someone@example.com",
-                "subject": "test",
-                "body": "test",
-                "attachments": ["44c50f3e-82b5-425f-893d-e945a1810b95"],
+                "body": "Here is my reply.",
+                "reply_to_message_id": "<orig@example.com>",
             },
         )
-
-        pdf_meta = {
-            "id": "44c50f3e-82b5-425f-893d-e945a1810b95",
-            "filename": "report.pdf",
-            "content_type": "application/pdf",
-            "size": 98765,
-        }
-
-        with mock.patch(
-            "robotsix_auto_mail.server._compose_draft_mixin.httpx"
-        ) as mock_httpx:
-            mock_client = mock.MagicMock()
-            mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
-            mock_client.__exit__ = mock.MagicMock(return_value=False)
-            mock_resp = mock.MagicMock()
-            mock_resp.status_code = 200
-            mock_resp.json.return_value = pdf_meta
-            mock_client.get.return_value = mock_resp
-            mock_httpx.Client.return_value = mock_client
-
-            with mock.patch.object(handler, "_append_to_drafts_folder"):
-                handler._handle_compose_draft()
-
-        handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
-        assert args[1]["status"] == 201
-        body = args[0][0]
-        assert body["attachments"] == 1
-
-        # Verify the URL was the metadata endpoint, not the download endpoint
-        call_args = mock_client.get.call_args
-        requested_url = call_args[0][0]
-        assert "/metadata" in requested_url
-
-        # Verify the attachment metadata was stored correctly
-        from robotsix_auto_mail.db import get_record_by_message_id, init_db
-
-        conn = init_db(single_db, skip_migrations=True)
-        try:
-            record = get_record_by_message_id(conn, body["message_id"])
-            assert record is not None
-            att_meta = json.loads(record.attachments_json)
-            assert len(att_meta) == 1
-            assert att_meta[0]["file_hub_id"] == "44c50f3e-82b5-425f-893d-e945a1810b95"
-            assert att_meta[0]["filename"] == "report.pdf"
-            assert att_meta[0]["mime_type"] == "application/pdf"
-            assert att_meta[0]["size"] == 98765
-        finally:
-            conn.close()
-
-
-class TestComposeDraftBinaryResponse:
-    """Regression: handler returns 502 when file-hub returns binary content."""
-
-    def test_binary_file_content_returns_502(self) -> None:
-        """If file-hub returns binary (e.g. PDF bytes), the handler must
-        return 502 instead of crashing with UnicodeDecodeError."""
-        accounts = _make_accounts()
-        handler = _ComposeDraftFakeHandler(accounts=accounts)
-        _set_json_body(
-            handler,
-            {
-                "account": "TEST",
-                "to": "a@b.com",
-                "subject": "S",
-                "body": "B",
-                "attachments": ["44c50f3e-82b5-425f-893d-e945a1810b95"],
-            },
-        )
-
-        # Simulate a response with binary PDF content (the original bug)
-        pdf_binary = b"%PDF-1.4\n\xe2\xe3\xcf\xd3" + b"\x00" * 50
-
-        with mock.patch(
-            "robotsix_auto_mail.server._compose_draft_mixin.httpx"
-        ) as mock_httpx:
-            mock_client = mock.MagicMock()
-            mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
-            mock_client.__exit__ = mock.MagicMock(return_value=False)
-            mock_resp = mock.MagicMock()
-            mock_resp.status_code = 200
-            mock_resp.content = pdf_binary
-            # json() will raise UnicodeDecodeError on binary content
-            mock_resp.json.side_effect = UnicodeDecodeError(
-                "utf-8", b"\xe2", 0, 1, "invalid continuation byte"
-            )
-            mock_client.get.return_value = mock_resp
-            mock_httpx.Client.return_value = mock_client
-
+        with mock.patch.object(
+            handler, "_append_to_drafts_folder", return_value="Drafts"
+        ) as m_append:
             handler._handle_compose_draft()
 
+        handler._serve_json.assert_called_once()
+        body = handler._serve_json.call_args[0][0]
+        assert body["reply"] is True
+        assert body["to"] == "peer@example.com"
+        assert body["subject"] == "Re: Question about the invoice"
+        kwargs = m_append.call_args[1]
+        assert kwargs["in_reply_to"] == "<orig@example.com>"
+        assert kwargs["references"] == "<orig@example.com>"
+        assert kwargs["cc"] is None
+
+    def test_reply_all_adds_cc(self, single_db: str) -> None:
+        self._insert_original(single_db)
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        _set_json_body(
+            handler,
+            {
+                "account": "TEST",
+                "body": "Reply to everyone.",
+                "reply_to_message_id": "<orig@example.com>",
+                "reply_all": True,
+            },
+        )
+        with mock.patch.object(
+            handler, "_append_to_drafts_folder", return_value="Drafts"
+        ) as m_append:
+            handler._handle_compose_draft()
+
+        cc = m_append.call_args[1]["cc"]
+        # self (user@) and the original sender (peer@) are excluded.
+        assert "team@example.com" in cc
+        assert "cc@x.com" in cc
+        assert "user@example.com" not in cc
+        assert "peer@example.com" not in cc
+
+    def test_reply_unknown_target(self, single_db: str) -> None:
+        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        _set_json_body(
+            handler,
+            {
+                "account": "TEST",
+                "body": "Reply body.",
+                "reply_to_message_id": "<missing@example.com>",
+            },
+        )
+        handler._handle_compose_draft()
         handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
-        assert args[1]["status"] == 502
-        body = json.loads(args[0][0])
-        assert "non-JSON" in body["error"]
+        assert handler._send_response.call_args[1]["status"] == 404

@@ -9,7 +9,7 @@ inheritance; each mixin lives in its own module under ``server/``:
   (``_handle_archive_move``, ``_handle_archive_delete``, …)
 - ``_batch_mixin`` — batch delete / archive handlers
 - ``_triage_mixin`` — triage launcher and rule-action handlers
-- ``_draft_mixin`` — draft save / send / generate handlers
+- ``_compose_draft_mixin`` — compose-to-Drafts handler
 - ``_config_mixin`` — config-sync and archive-proposal handlers
 
 ``BoardHandler`` itself retains the routing tables (``do_GET`` /
@@ -46,7 +46,6 @@ from robotsix_auto_mail.server._constants import (
     GLOBAL_VIEW_ACCOUNT_ID,
     _with_db,
 )
-from robotsix_auto_mail.server._draft_mixin import _DraftMixin
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._sent_mixin import _SentMixin
 from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
@@ -64,7 +63,6 @@ class BoardHandler(
     _BatchActionMixin,
     _ReconcileMixin,
     _TriageMixin,
-    _DraftMixin,
     _ComposeDraftMixin,
     _ConfigMixin,
     _SentMixin,
@@ -251,9 +249,6 @@ class BoardHandler(
             "/force-triage-column": self._handle_force_triage_column,
             "/archive-proposal": self._handle_archive_proposal,
             "/save-notes": self._handle_save_notes,
-            "/save-draft": self._handle_save_draft,
-            "/send-draft": self._handle_send_draft,
-            "/generate-draft": self._handle_generate_draft,
             "/compose-draft": self._handle_compose_draft,
         }
         # Dispatch on the bare path so ``?account=<id>`` query strings do

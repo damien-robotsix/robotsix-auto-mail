@@ -319,54 +319,6 @@ def _make_extra_html_adapter() -> MailBoardAdapter:
     )
 
 
-def _seed_draft_record(
-    db_path: str,
-    message_id: str,
-    *,
-    sender: str,
-    subject: str,
-    draft_text: str,
-    recipients_json: str = '{"to": [], "cc": []}',
-    imap_uid: int | None = None,
-    action: str = "DRAFT_READY",
-) -> None:
-    """Insert a mail record with a saved draft and a triage decision."""
-    conn = init_db(db_path)
-    try:
-        conn.execute(
-            "INSERT INTO mail_records "
-            "(message_id, sender, subject, date, recipients_json, "
-            "body_plain, body_html, attachments_json, status, "
-            "draft_text, imap_uid) "
-            "VALUES (?, ?, ?, ?, ?, 'body', '', '[]', 'to_read', ?, ?)",
-            (
-                message_id,
-                sender,
-                subject,
-                "2025-01-01T00:00:00",
-                recipients_json,
-                draft_text,
-                imap_uid,
-            ),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-    if action:
-        _seed_triage_decision(db_path, message_id, action=action)
-
-
-def _dummy_send_mail_config() -> MailConfig:
-    """A fully-populated MailConfig usable for /send-draft tests."""
-    return MailConfig(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-        username="user@example.com",
-        password="pass",
-        archive_root="my-archive",
-    )
-
-
 def _account_config(db_path: str) -> MailConfig:
     """A MailConfig bound to *db_path* that never touches the LLM/archive layers."""
     return MailConfig(

@@ -59,12 +59,12 @@ def test_triage_decision_rejects_invalid_action() -> None:
         TriageDecision(message_id="<a>", action="banana", source="user")
 
 
-def test_triage_decision_accepts_draft_ready_action() -> None:
-    """DRAFT_READY is a valid triage action."""
-    decision = TriageDecision(
-        message_id="<draft@test.com>", action="DRAFT_READY", source="user"
-    )
-    assert decision.action == "DRAFT_READY"
+def test_triage_decision_rejects_retired_draft_ready_action() -> None:
+    """DRAFT_READY was retired and is no longer a valid triage action."""
+    with pytest.raises(pydantic.ValidationError):
+        TriageDecision(
+            message_id="<draft@test.com>", action="DRAFT_READY", source="user"
+        )
 
 
 def test_triage_decision_rejects_invalid_source() -> None:

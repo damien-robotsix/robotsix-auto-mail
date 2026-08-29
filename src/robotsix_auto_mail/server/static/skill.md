@@ -53,7 +53,7 @@ All GET endpoints below are read-only and safe to call without confirmation.
   Optional `?embed=1` strips the page chrome for embedding.
 
 - **`GET /email/<message_id>/status`** → plain-text triage action name
-  (e.g. `INBOX`, `TO_ARCHIVE`, `DRAFT_READY`). Returns 404 for unknown IDs.
+  (e.g. `INBOX`, `TO_ARCHIVE`, `TO_ANSWER`). Returns 404 for unknown IDs.
 
 ### Archive layout
 
@@ -87,7 +87,6 @@ All GET endpoints below are read-only and safe to call without confirmation.
   before execution. These include:
   - Accepting or rejecting an archive proposal (`POST /move`,
     `POST /archive-proposal`).
-  - Sending mail (`POST /send-draft`).
   - Any batch operation (`POST /batch-delete`, `POST /batch-archive`,
     `POST /batch-archive-folder`).
   - Deleting or archiving individual messages (`POST /delete`,
@@ -98,12 +97,11 @@ All GET endpoints below are read-only and safe to call without confirmation.
   - Renaming archive folders (`POST /archive-rename`).
   - Triggering triage or reconcile runs (`POST /run-triage`,
     `POST /reconcile`, `POST /force-triage-column`).
-  - Saving or generating drafts (`POST /save-draft`, `POST /generate-draft`).
   - Config mutations (`PUT /config`, `POST /config/rollback`,
     `POST /config-sync`).
   - Pushing email attachments to file-hub
     (`POST /email/<message_id>/attachments/to-file-hub`).
-  - Composing a new outgoing draft
+  - Composing a reply or new message into the mailbox Drafts folder
     (`POST /compose-draft`).
 
   Before executing any POST/PUT, confirm with the user and explain what
@@ -112,14 +110,20 @@ All GET endpoints below are read-only and safe to call without confirmation.
 ## Board mutations (state-mutating, requires confirmation)
 
 These are the endpoints behind the board's own buttons — move a card
-between columns, save/send a reply draft, archive or delete one message,
-or run a column-wide batch.  All require operator confirmation per the
-safety rules above.
+between columns, archive or delete one message, or run a column-wide
+batch.  All require operator confirmation per the safety rules above.
+
+Composing a reply or new message is **not** a board action: it writes a
+genuine draft directly into the account's IMAP Drafts folder via
+`POST /compose-draft` (see "Compose to mailbox Drafts" below).  The
+board no longer stores drafts and no longer sends mail — the operator
+reviews and sends manually from their own mail client (Gmail /
+Roundcube).
 
 **Conventions shared by every endpoint in this section:**
 
 - **`account` is a QUERY PARAMETER, never a body field**:
-  `POST /save-draft?account=ROBOTSIX`.  An `account` key inside the JSON
+  `POST /move?account=ROBOTSIX`.  An `account` key inside the JSON
   body is silently ignored and the request falls back to the default
   account (the first configured one, or the `account` cookie) — for a
   `message_id` that lives in another mailbox that surfaces as a
@@ -144,28 +148,6 @@ safety rules above.
   `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, `TO_ANSWER`.  Moving to
   `TO_ARCHIVE` also (best-effort) proposes an archive subfolder; moving to
   `TO_CALENDAR` queues a calendar event.
-
-- **`POST /save-draft`** — Store a reply draft on the card and move it to
-  the Draft-ready state.
-
-  ```json
-  {"message_id": "<Message-ID>", "draft_text": "<full reply body>"}
-  ```
-  `draft_text` is stored verbatim (whitespace preserved).
-
-- **`POST /send-draft`** — Send the stored draft over SMTP, record the
-  sent text on the card, and drop the triage decision so the card
-  re-enters the untriaged pool.
-
-  ```json
-  {"message_id": "<Message-ID>", "reply_mode": "reply"}
-  ```
-  `reply_mode` is **required** and must be exactly one of `reply`,
-  `reply_all`, `forward`; anything else (including empty) is
-  `400 Invalid reply_mode: '<value>'`.  `forward` additionally requires
-  `forward_to` (recipient address).  `400 SMTP is not configured` when
-  the account has no SMTP settings.  The draft must exist (save it
-  first).
 
 - **`POST /archive`** — Archive one message to the card's **proposed**
   archive subfolder (the one shown on the To Archive card) and remove the
@@ -365,12 +347,14 @@ safety rules above.
   (unknown message_id or attachment not found), 502 (IMAP or
   file-hub unreachable), 503 (file-hub not configured).
 
-## Compose new draft (state-mutating, requires confirmation)
+## Compose to mailbox Drafts (state-mutating, requires confirmation)
 
-- **`POST /compose-draft`** — Create a NEW outgoing draft (not a reply)
-  with optional file-hub attachments.  The draft is stored in the
-  board's Draft-ready column so the operator can review and send it.
-  Requires operator confirmation per the safety rules above.
+- **`POST /compose-draft`** — Compose a **reply** or a **new** message
+  and write it as a genuine RFC822 draft directly into the account's
+  real IMAP Drafts folder (e.g. `[Gmail]/Drafts`).  The draft then
+  appears natively in the operator's mail client (Gmail / Roundcube)
+  for manual review and send.  The board stores nothing and never sends
+  mail.  Requires operator confirmation per the safety rules above.
 
   JSON request body:
   ```json
@@ -378,29 +362,40 @@ safety rules above.
     "account": "ROBOTSIX",
     "to": "recipient@example.com",
     "subject": "Subject line",
-    "body": "Draft body text",
-    "attachments": ["file-hub-id-1", "file-hub-id-2"]
+    "body": "Message body text",
+    "attachments": ["file-hub-id-1", "file-hub-id-2"],
+    "reply_to_message_id": "<orig@example.com>",
+    "reply_all": false
   }
   ```
 
-  `account`, `to`, `subject`, and `body` are required.  `attachments`
-  is an optional list of file-hub file IDs; each is validated against
-  the file-hub service before the draft is stored.
+  `account` and `body` are always required.  For a **new** message
+  `to` and `subject` are required.  For a **reply** set
+  `reply_to_message_id` to the original message's Message-ID: `to` and
+  `subject` then default to the original sender and a `Re:` subject, the
+  `In-Reply-To`/`References` threading headers are set automatically, and
+  `reply_all: true` adds the original recipients as Cc.  `attachments`
+  is an optional list of file-hub file IDs; **every** attachment is
+  fetched from file-hub and included as a MIME part.  If any attachment
+  cannot be fetched the request fails loudly (no stripped draft is ever
+  written).
 
   Response (201):
   ```json
   {
-    "message_id": "<compose-abc123@robotsix-auto-mail>",
     "account": "ROBOTSIX",
     "to": "recipient@example.com",
     "subject": "Subject line",
-    "attachments": 2
+    "drafts_folder": "[Gmail]/Drafts",
+    "attachments": 2,
+    "reply": true
   }
   ```
 
-  Errors: 400 (missing/invalid fields), 404 (unknown account or
-  unknown file-hub attachment id), 502 (file-hub unreachable),
-  503 (file-hub not configured but attachments requested).
+  Errors: 400 (missing/invalid fields), 404 (unknown account, unknown
+  reply target, or unknown file-hub attachment id), 502 (file-hub
+  unreachable or IMAP APPEND failed), 503 (file-hub not configured but
+  attachments requested).
 
-  **Note:** This endpoint only composes and stores the draft.  Sending
-  is a separate, operator-confirmed action via `POST /send-draft`.
+  **Note:** This endpoint only writes the draft into the mailbox.
+  Sending is done manually by the operator from their own mail client.

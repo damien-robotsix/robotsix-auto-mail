@@ -108,7 +108,7 @@ class _ArchiveActionMixin:
     def _archive_and_delete(self, conn: Any, record: MailRecord) -> bool:
         """Archive *record*'s message via IMAP, then delete its local row.
 
-        Shared by :meth:`_handle_archive` and :meth:`_handle_send_draft`.
+        Used by :meth:`_handle_archive`.
         Computes the effective archive root + subfolder, performs the IMAP
         move (only when IMAP is configured and the record has a tracked
         UID), writes an archive-audit-log entry, then removes the local

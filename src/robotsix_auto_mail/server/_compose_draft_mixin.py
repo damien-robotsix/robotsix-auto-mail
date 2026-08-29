@@ -1,8 +1,16 @@
 """Compose-draft mixin for the board server — POST /compose-draft.
 
-Creates a NEW outgoing draft (not a reply) with optional file-hub
-attachments, stores it in the board's Draft-ready column, and appends
-the MIME message into the account's real IMAP Drafts folder.
+Builds a fully-formed RFC822 message (reply or new) with correct From /
+To / Cc / Subject, threading headers for replies, body, and all file-hub
+attachments fetched and included as MIME parts, then ``APPEND``\\ s it
+directly into the target account's real IMAP Drafts folder.  The draft
+then appears natively in the user's mail client (Gmail / Roundcube) for
+manual review and send.
+
+The board does **not** store draft records and does **not** send mail —
+composing lands the message in the mailbox Drafts folder and nothing
+more.  If a file-hub attachment cannot be fetched the request fails
+loudly; a stripped draft is never written.
 """
 
 # mypy: disable-error-code="attr-defined"
@@ -12,23 +20,41 @@ from __future__ import annotations
 import io
 import json
 import logging
-import uuid
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, BinaryIO
 
 import httpx
 
 from robotsix_auto_mail.server._constants import _with_db
-from robotsix_auto_mail.triage import (
-    DRAFT_READY,
-    set_triage_decision,
-)
 
 logger = logging.getLogger(__name__)
 
 
+def _compute_reply_all_cc(
+    recipients_json: str, from_addr: str, sender: str
+) -> list[str] | None:
+    """Compute the Cc list for a reply-all, excluding self and the sender."""
+    try:
+        recipients = json.loads(recipients_json)
+    except json.JSONDecodeError, TypeError:
+        recipients = {}
+    orig_to = recipients.get("to", []) if isinstance(recipients, dict) else []
+    orig_cc = recipients.get("cc", []) if isinstance(recipients, dict) else []
+    cc_list: list[str] = []
+    seen: set[str] = set()
+    excluded = {from_addr.lower(), sender.lower()}
+    for addr in [*orig_to, *orig_cc]:
+        if not isinstance(addr, str):
+            continue
+        lowered = addr.lower()
+        if lowered in excluded or lowered in seen:
+            continue
+        seen.add(lowered)
+        cc_list.append(addr)
+    return cc_list or None
+
+
 class _ComposeDraftMixin:
-    """Mixin providing POST /compose-draft for creating new outgoing drafts."""
+    """Mixin providing POST /compose-draft — compose directly to IMAP Drafts."""
 
     if TYPE_CHECKING:
         from ._board_handler_protocol import BoardHandlerProtocol
@@ -36,7 +62,7 @@ class _ComposeDraftMixin:
     self: BoardHandlerProtocol
 
     def _handle_compose_draft(self) -> None:
-        """Process POST /compose-draft — create a new outgoing draft.
+        """Process POST /compose-draft — compose a message into IMAP Drafts.
 
         JSON request body::
 
@@ -44,25 +70,31 @@ class _ComposeDraftMixin:
                 "account": "<account_id>",
                 "to": "recipient@example.com",
                 "subject": "Subject line",
-                "body": "Draft body text",
-                "attachments": ["file-hub-id-1", "file-hub-id-2"]
+                "body": "Message body text",
+                "attachments": ["file-hub-id-1", "file-hub-id-2"],
+                "reply_to_message_id": "<orig@example.com>",
+                "reply_all": false
             }
 
-        ``account`` is required.  ``to``, ``subject``, and ``body`` are
-        required strings.  ``attachments`` is an optional list of file-hub
-        file IDs; each is validated against the file-hub service.
+        ``account`` and ``body`` are always required.  For a **new**
+        message ``to`` and ``subject`` are required.  For a **reply**
+        (``reply_to_message_id`` set) ``to``/``subject`` default to the
+        original sender and a ``Re:`` subject, and threading headers
+        (``In-Reply-To`` / ``References``) are set; ``reply_all`` adds the
+        original recipients as Cc.
 
-        The draft is stored as a new ``mail_records`` row with triage
-        decision ``DRAFT_READY`` so it appears in the Draft-ready column
-        on the board.
+        The composed RFC822 message — including every file-hub attachment
+        as a MIME part — is ``APPEND``\\ ed to the account's Drafts folder.
+        The board stores nothing; sending is done manually from the user's
+        mail client.
 
         Errors:
         - 400: missing/invalid fields
-        - 404: unknown account or unknown file-hub attachment id
-        - 502: file-hub unreachable
+        - 404: unknown account / file-hub attachment / reply target
+        - 502: file-hub unreachable or IMAP APPEND failed
+        - 503: file-hub not configured but attachments requested
         """
-        from robotsix_auto_mail.db import insert_record
-        from robotsix_auto_mail.db.models import MailRecord
+        from robotsix_auto_mail.db import get_record_by_message_id
 
         # -- parse JSON body -----------------------------------------------
         content_length = int(self.headers.get("Content-Length", 0))
@@ -83,16 +115,12 @@ class _ComposeDraftMixin:
         subject = body.get("subject", "")
         draft_body = body.get("body", "")
         attachment_ids = body.get("attachments", [])
+        reply_to_message_id = body.get("reply_to_message_id", "")
+        reply_all = bool(body.get("reply_all", False))
 
-        # -- validate required fields --------------------------------------
+        # -- validate always-required fields -------------------------------
         if not account_id:
             self._bad_request("Missing required field: account")
-            return
-        if not to_addr:
-            self._bad_request("Missing required field: to")
-            return
-        if not subject:
-            self._bad_request("Missing required field: subject")
             return
         if not draft_body:
             self._bad_request("Missing required field: body")
@@ -119,9 +147,49 @@ class _ComposeDraftMixin:
         db_path = account.config.db_path
         from_addr = account.config.username
 
-        # -- validate file-hub is configured (only if attachments given) ---
+        # -- reply threading: derive To/Cc/Subject from the original -------
+        in_reply_to: str | None = None
+        references: str | None = None
+        cc: list[str] | None = None
+        if reply_to_message_id:
+            with _with_db(db_path) as conn:
+                original = get_record_by_message_id(conn, reply_to_message_id)
+            if original is None:
+                self._send_response(
+                    json.dumps(
+                        {"error": f"Unknown reply target: {reply_to_message_id}"}
+                    ),
+                    status=404,
+                    content_type="application/json; charset=utf-8",
+                )
+                return
+            if not to_addr:
+                to_addr = original.sender
+            if not subject:
+                subject = (
+                    original.subject
+                    if original.subject.lower().startswith("re:")
+                    else f"Re: {original.subject}"
+                )
+            if reply_all:
+                cc = _compute_reply_all_cc(
+                    original.recipients_json, from_addr, original.sender
+                )
+            in_reply_to = reply_to_message_id
+            references = reply_to_message_id
+
+        # -- validate derived required fields ------------------------------
+        if not to_addr:
+            self._bad_request("Missing required field: to")
+            return
+        if not subject:
+            self._bad_request("Missing required field: subject")
+            return
+
+        # -- fetch attachments (fail loudly — never write a stripped draft)-
         file_hub_url: str = getattr(accounts, "file_hub_url", "") or ""
-        attachments_meta: list[dict[str, Any]] = []
+        attachment_files: list[BinaryIO] = []
+        attachment_names: list[str] = []
 
         if attachment_ids:
             if not file_hub_url:
@@ -130,272 +198,180 @@ class _ComposeDraftMixin:
                     status=503,
                 )
                 return
-
-            # -- fetch each attachment from file-hub -----------------------
-            try:
-                for fid in attachment_ids:
-                    if not isinstance(fid, str) or not fid:
-                        self._bad_request(
-                            "Each attachment ID must be a non-empty string"
-                        )
-                        return
-                    # Use the metadata endpoint, NOT the raw-file-download
-                    # endpoint (/files/<id>), which returns binary content.
-                    fetch_url = f"{file_hub_url.rstrip('/')}/files/{fid}/metadata"
-                    try:
-                        with httpx.Client(timeout=30) as client:
-                            resp = client.get(
-                                fetch_url,
-                                headers={"Accept": "application/json"},
-                            )
-                    except Exception as exc:
-                        logger.warning("file-hub unreachable: %s", exc)
-                        self._send_response(
-                            json.dumps({"error": "file-hub unreachable"}),
-                            status=502,
-                            content_type="application/json; charset=utf-8",
-                        )
-                        return
-
-                    if resp.status_code == 404:
-                        self._send_response(
-                            json.dumps(
-                                {"error": f"Unknown file-hub attachment: {fid}"}
-                            ),
-                            status=404,
-                            content_type="application/json; charset=utf-8",
-                        )
-                        return
-                    if resp.status_code >= 400:
-                        self._send_response(
-                            json.dumps(
-                                {
-                                    "error": (
-                                        f"file-hub returned {resp.status_code} "
-                                        f"for attachment {fid}"
-                                    )
-                                }
-                            ),
-                            status=502,
-                            content_type="application/json; charset=utf-8",
-                        )
-                        return
-
-                    try:
-                        meta = resp.json()
-                    except Exception:
-                        logger.warning(
-                            "file-hub returned non-JSON response for "
-                            "attachment %s (status %d)",
-                            fid,
-                            resp.status_code,
-                        )
-                        self._send_response(
-                            json.dumps(
-                                {
-                                    "error": (
-                                        f"file-hub returned non-JSON "
-                                        f"response for attachment {fid}"
-                                    )
-                                }
-                            ),
-                            status=502,
-                            content_type="application/json; charset=utf-8",
-                        )
-                        return
-                    attachments_meta.append(
-                        {
-                            "file_hub_id": fid,
-                            "filename": meta.get("filename", "attachment"),
-                            "mime_type": meta.get(
-                                "content_type", "application/octet-stream"
-                            ),
-                            "size": meta.get("size", 0),
-                        }
-                    )
-            except Exception:
-                logger.exception("Unexpected error during attachment validation")
+            error = self._fetch_attachments(
+                attachment_ids, file_hub_url, attachment_files, attachment_names
+            )
+            if error is not None:
+                for f in attachment_files:
+                    f.close()
+                status, message = error
                 self._send_response(
-                    json.dumps({"error": "Attachment validation failed"}),
-                    status=502,
+                    json.dumps({"error": message}),
+                    status=status,
                     content_type="application/json; charset=utf-8",
                 )
                 return
 
-        # -- create the mail record ----------------------------------------
-        message_id = f"<compose-{uuid.uuid4().hex}@robotsix-auto-mail>"
-        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        record = MailRecord(
-            message_id=message_id,
-            sender=from_addr,
-            subject=subject,
-            date=now,
-            recipients_json=json.dumps({"to": [to_addr], "cc": []}),
-            body_plain=draft_body,
-            body_html="",
-            attachments_json=json.dumps(attachments_meta),
-            draft_text=draft_body,
-            status="to_read",
-        )
-
-        with _with_db(db_path) as conn:
-            insert_record(conn, record)
-            set_triage_decision(
-                conn,
-                message_id,
-                DRAFT_READY,
-                source="user",
-                reason="compose-draft",
+        # -- build the RFC822 message and APPEND to Drafts -----------------
+        try:
+            drafts_folder = self._append_to_drafts_folder(
+                account=account,
+                from_addr=from_addr,
+                to_addr=to_addr,
+                subject=subject,
+                body=draft_body,
+                cc=cc,
+                in_reply_to=in_reply_to,
+                references=references,
+                attachment_files=attachment_files,
+                attachment_names=attachment_names,
             )
-
-        # -- IMAP APPEND into Drafts folder -------------------------------
-        append_result = self._append_to_drafts_folder(
-            message_id=message_id,
-            account=account,
-            from_addr=from_addr,
-            to_addr=to_addr,
-            subject=subject,
-            body=draft_body,
-            attachment_ids=attachment_ids,
-            attachments_meta=attachments_meta,
-            file_hub_url=file_hub_url,
-        )
-
-        # -- persist IMAP source so /delete can reach the draft ----------
-        if (
-            isinstance(append_result, tuple)
-            and len(append_result) == 2
-            and append_result[1] is not None
-        ):
-            drafts_folder, append_uid = append_result
-            with _with_db(db_path) as conn:
-                from robotsix_auto_mail.db import update_record_source
-
-                update_record_source(
-                    conn,
-                    message_id,
-                    source_folder=drafts_folder,
-                    imap_uid=append_uid,
-                )
+        except Exception as exc:
+            logger.exception("Failed to IMAP-APPEND compose-draft to Drafts folder")
+            self._send_response(
+                json.dumps({"error": f"IMAP APPEND failed: {exc}"}),
+                status=502,
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        finally:
+            for f in attachment_files:
+                f.close()
 
         # -- respond -------------------------------------------------------
         self._serve_json(
             {
-                "message_id": message_id,
                 "account": account_id,
                 "to": to_addr,
                 "subject": subject,
-                "attachments": len(attachments_meta),
+                "drafts_folder": drafts_folder,
+                "attachments": len(attachment_names),
+                "reply": bool(reply_to_message_id),
             },
             status=201,
         )
 
+    def _fetch_attachments(
+        self,
+        attachment_ids: list[Any],
+        file_hub_url: str,
+        attachment_files: list[BinaryIO],
+        attachment_names: list[str],
+    ) -> tuple[int, str] | None:
+        """Fetch each attachment's metadata + content from the file-hub.
+
+        Populates *attachment_files* and *attachment_names* in place.
+        Returns ``None`` on success, or ``(status, message)`` describing
+        the failure — the caller must abort and never write a stripped
+        draft.
+        """
+        base = file_hub_url.rstrip("/")
+        for fid in attachment_ids:
+            if not isinstance(fid, str) or not fid:
+                return (400, "Each attachment ID must be a non-empty string")
+
+            # -- metadata (filename) -------------------------------------
+            try:
+                with httpx.Client(timeout=30) as client:
+                    meta_resp = client.get(
+                        f"{base}/files/{fid}/metadata",
+                        headers={"Accept": "application/json"},
+                    )
+            except Exception as exc:
+                logger.warning("file-hub unreachable: %s", exc)
+                return (502, "file-hub unreachable")
+            if meta_resp.status_code == 404:
+                return (404, f"Unknown file-hub attachment: {fid}")
+            if meta_resp.status_code >= 400:
+                return (
+                    502,
+                    f"file-hub returned {meta_resp.status_code} for attachment {fid}",
+                )
+            try:
+                meta = meta_resp.json()
+            except Exception:
+                return (
+                    502,
+                    f"file-hub returned non-JSON response for attachment {fid}",
+                )
+            filename = meta.get("filename", "attachment")
+
+            # -- content -------------------------------------------------
+            try:
+                with httpx.Client(timeout=60) as client:
+                    content_resp = client.get(f"{base}/files/{fid}")
+            except Exception as exc:
+                logger.warning("Failed to download attachment %s: %s", fid, exc)
+                return (502, f"Failed to download attachment {fid}")
+            if content_resp.status_code == 404:
+                return (404, f"Unknown file-hub attachment: {fid}")
+            if content_resp.status_code >= 400:
+                return (
+                    502,
+                    f"file-hub returned {content_resp.status_code} "
+                    f"for attachment {fid}",
+                )
+
+            attachment_files.append(io.BytesIO(content_resp.content))
+            attachment_names.append(filename)
+        return None
+
     def _append_to_drafts_folder(
         self,
         *,
-        message_id: str,
         account: Any,
         from_addr: str,
         to_addr: str,
         subject: str,
         body: str,
-        attachment_ids: list[str],
-        attachments_meta: list[dict[str, Any]],
-        file_hub_url: str,
-    ) -> tuple[str, int] | None:
+        cc: list[str] | None,
+        in_reply_to: str | None,
+        references: str | None,
+        attachment_files: list[BinaryIO],
+        attachment_names: list[str],
+    ) -> str:
         """Build a MIME message and APPEND it to the account's Drafts folder.
 
-        Downloads attachment content from file-hub, constructs a multipart
-        MIME message, discovers the Drafts mailbox, and appends with the
-        ``\\Draft`` flag.  Errors are logged but do not fail the request —
-        the board card is the fallback.
-
-        Returns:
-            ``(drafts_folder, uid)`` on a successful append where the
-            server provided an ``APPENDUID`` response code, or ``None``
-            when the UID could not be determined or the append failed.
+        Returns the name of the Drafts folder the message was appended to.
+        Raises on any failure (no Drafts folder, APPEND error) so the
+        caller can fail loudly — a stripped or lost draft is never
+        silently accepted.
         """
         from robotsix_auto_mail.imap import ImapClient
         from robotsix_auto_mail.mime import build_multipart_message
 
-        attachment_files: list[BinaryIO] = []
-        attachment_names: list[str] = []
-        try:
-            # -- download attachment content from file-hub -----------------
-            if attachment_ids and file_hub_url:
-                for fid in attachment_ids:
-                    download_url = f"{file_hub_url.rstrip('/')}/files/{fid}"
-                    try:
-                        with httpx.Client(timeout=60) as http_client:
-                            resp = http_client.get(download_url)
-                    except Exception as exc:
-                        logger.warning("Failed to download attachment %s: %s", fid, exc)
-                        return None
-                    if resp.status_code >= 400:
-                        logger.warning(
-                            "file-hub returned %d for attachment %s",
-                            resp.status_code,
-                            fid,
-                        )
-                        return None
-                    attachment_files.append(io.BytesIO(resp.content))
-                    # Find the matching filename from metadata
-                    fname = "attachment"
-                    for meta in attachments_meta:
-                        if meta.get("file_hub_id") == fid:
-                            fname = meta.get("filename", "attachment")
-                            break
-                    attachment_names.append(fname)
+        msg = build_multipart_message(
+            from_addr=from_addr,
+            to_addr=to_addr,
+            subject=subject,
+            body=body,
+            attachments=attachment_files,
+            attachment_names=attachment_names,
+            cc=cc,
+            in_reply_to=in_reply_to,
+            references=references,
+        )
+        msg_bytes = msg.as_bytes()
 
-            # -- build MIME message ----------------------------------------
-            msg = build_multipart_message(
-                from_addr=from_addr,
-                to_addr=to_addr,
-                subject=subject,
-                body=body,
-                attachments=attachment_files,
-                attachment_names=attachment_names,
-            )
-            # Set Message-ID so the server can be searched by it.
-            msg["Message-ID"] = message_id
-            msg_bytes = msg.as_bytes()
-
-            # -- discover Drafts folder and APPEND -------------------------
-            with ImapClient(account.config) as imap:
-                folders = imap.list_folders()
-                drafts_folder: str | None = None
+        with ImapClient(account.config) as imap:
+            folders = imap.list_folders()
+            drafts_folder: str | None = None
+            for folder_info in folders:
+                if any(attr.lower() == "\\drafts" for attr in folder_info.attributes):
+                    drafts_folder = folder_info.name
+                    break
+            if drafts_folder is None:
                 for folder_info in folders:
-                    if any(
-                        attr.lower() == "\\drafts" for attr in folder_info.attributes
-                    ):
+                    if "draft" in folder_info.name.lower():
                         drafts_folder = folder_info.name
                         break
-                if drafts_folder is None:
-                    for folder_info in folders:
-                        if "draft" in folder_info.name.lower():
-                            drafts_folder = folder_info.name
-                            break
-                if drafts_folder is None:
-                    logger.warning(
-                        "No Drafts folder found on the server; skipping IMAP APPEND"
-                    )
-                    return None
+            if drafts_folder is None:
+                raise RuntimeError("No Drafts folder found on the IMAP server")
 
-                append_uid = imap.append_message(
-                    drafts_folder,
-                    msg_bytes,
-                    flags="(\\Draft)",
-                )
-                logger.info(
-                    "Appended compose-draft to %s/%s with \\Draft flag",
-                    account.config.username,
-                    drafts_folder,
-                )
-                return (drafts_folder, append_uid) if append_uid else None
-        except Exception:
-            logger.exception("Failed to IMAP-APPEND compose-draft to Drafts folder")
-            return None
-        finally:
-            for f in attachment_files:
-                f.close()
+            imap.append_message(drafts_folder, msg_bytes, flags="(\\Draft)")
+            logger.info(
+                "Appended compose-draft to %s/%s with \\Draft flag",
+                account.config.username,
+                drafts_folder,
+            )
+            return drafts_folder
