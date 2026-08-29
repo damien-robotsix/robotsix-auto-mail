@@ -401,7 +401,7 @@ class MailAccount(BaseModel):
 
 
 class TierModelsConfig(BaseModel):
-    """Per-level model overrides for the four LLM tiers.
+    """Per-level model overrides for the five LLM tiers.
 
     Each field holds a provider-model identifier
     (e.g. ``"<provider>-<model>"``).
@@ -433,7 +433,13 @@ class TierModelsConfig(BaseModel):
     level4: str = Field(
         default="",
         description=(
-            "Provider-model identifier for tier 4 (most capable). "
+            "Provider-model identifier for tier 4. Empty uses the llmio tier default."
+        ),
+    )
+    level5: str = Field(
+        default="",
+        description=(
+            "Provider-model identifier for tier 5 (most capable). "
             "Empty uses the llmio tier default."
         ),
     )
@@ -512,21 +518,21 @@ class MailAccountsConfig(BaseModel):
     triage_level: int = Field(
         default=1,
         description=(
-            "Tier level (1-4) assigned to the inbox triage agent. "
+            "Tier level (1-5) assigned to the inbox triage agent. "
             "Higher tiers use more capable (and expensive) models."
         ),
     )
     classifier_level: int = Field(
         default=1,
-        description="Tier level (1-4) assigned to the message classifier agent.",
+        description="Tier level (1-5) assigned to the message classifier agent.",
     )
     detector_level: int = Field(
         default=1,
-        description="Tier level (1-4) assigned to the provider-detection agent.",
+        description="Tier level (1-5) assigned to the provider-detection agent.",
     )
     draft_level: int = Field(
         default=1,
-        description="Tier level (1-4) assigned to the draft-reply agent.",
+        description="Tier level (1-5) assigned to the draft-reply agent.",
     )
 
     #: Absolute root directory for all persisted mail data (SQLite

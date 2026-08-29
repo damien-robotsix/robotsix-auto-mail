@@ -225,7 +225,7 @@ def resolve_llm_tier(app_name: str) -> tuple[int, str]:
 
 
 def get_resolved_models() -> dict[str, str]:
-    """Return the effective model for each tier level (1-4) for display.
+    """Return the effective model for each tier level (1-5) for display.
 
     For each level, returns the config override if set, otherwise the
     resolved llmio ``LEVELn_DEFAULT`` model identifier.  Useful for
@@ -239,6 +239,7 @@ def get_resolved_models() -> dict[str, str]:
         LEVEL2_DEFAULT,
         LEVEL3_DEFAULT,
         LEVEL4_DEFAULT,
+        LEVEL5_DEFAULT,
     )
 
     llmio_defaults: dict[int, str] = {
@@ -246,9 +247,10 @@ def get_resolved_models() -> dict[str, str]:
         2: LEVEL2_DEFAULT.model,
         3: LEVEL3_DEFAULT.model,
         4: LEVEL4_DEFAULT.model,
+        5: LEVEL5_DEFAULT.model,
     }
     result: dict[str, str] = {}
-    for level in (1, 2, 3, 4):
+    for level in (1, 2, 3, 4, 5):
         override = resolve_model_override(level)
         result[f"level{level}"] = override or llmio_defaults.get(level, "")
     return result
