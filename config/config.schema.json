@@ -277,7 +277,7 @@
       "type": "object"
     },
     "TierModelsConfig": {
-      "description": "Per-level model overrides for the four LLM tiers.\n\nEach field holds a provider-model identifier\n(e.g. ``\"<provider>-<model>\"``).\nEmpty means use the llmio tier default for that level.",
+      "description": "Per-level model overrides for the five LLM tiers.\n\nEach field holds a provider-model identifier\n(e.g. ``\"<provider>-<model>\"``).\nEmpty means use the llmio tier default for that level.",
       "properties": {
         "level1": {
           "default": "",
@@ -299,8 +299,14 @@
         },
         "level4": {
           "default": "",
-          "description": "Provider-model identifier for tier 4 (most capable). Empty uses the llmio tier default.",
+          "description": "Provider-model identifier for tier 4. Empty uses the llmio tier default.",
           "title": "Level4",
+          "type": "string"
+        },
+        "level5": {
+          "default": "",
+          "description": "Provider-model identifier for tier 5 (most capable). Empty uses the llmio tier default.",
+          "title": "Level5",
           "type": "string"
         }
       },
@@ -332,25 +338,25 @@
     },
     "triage_level": {
       "default": 1,
-      "description": "Tier level (1-4) assigned to the inbox triage agent. Higher tiers use more capable (and expensive) models.",
+      "description": "Tier level (1-5) assigned to the inbox triage agent. Higher tiers use more capable (and expensive) models.",
       "title": "Triage Level",
       "type": "integer"
     },
     "classifier_level": {
       "default": 1,
-      "description": "Tier level (1-4) assigned to the message classifier agent.",
+      "description": "Tier level (1-5) assigned to the message classifier agent.",
       "title": "Classifier Level",
       "type": "integer"
     },
     "detector_level": {
       "default": 1,
-      "description": "Tier level (1-4) assigned to the provider-detection agent.",
+      "description": "Tier level (1-5) assigned to the provider-detection agent.",
       "title": "Detector Level",
       "type": "integer"
     },
     "draft_level": {
       "default": 1,
-      "description": "Tier level (1-4) assigned to the draft-reply agent.",
+      "description": "Tier level (1-5) assigned to the draft-reply agent.",
       "title": "Draft Level",
       "type": "integer"
     },

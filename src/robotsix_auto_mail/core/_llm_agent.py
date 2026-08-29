@@ -89,6 +89,7 @@ def _run_llm_agent(  # noqa: UP047
         LEVEL2_DEFAULT,
         LEVEL3_DEFAULT,
         LEVEL4_DEFAULT,
+        LEVEL5_DEFAULT,
         TierConfig,
     )
     from robotsix_llmio.core import (
@@ -104,6 +105,7 @@ def _run_llm_agent(  # noqa: UP047
         level2=LEVEL2_DEFAULT,
         level3=LEVEL3_DEFAULT,
         level4=LEVEL4_DEFAULT,
+        level5=LEVEL5_DEFAULT,
     )
     _level = level
     _tlc = _tier_config.for_level(_level)
