@@ -43,6 +43,9 @@ from .models import (
     VALID_TRIAGE_ACTIONS as VALID_TRIAGE_ACTIONS,
 )
 from .models import (
+    ComposeLink as ComposeLink,
+)
+from .models import (
     MailRecord as MailRecord,
 )
 from .queries import (
@@ -82,10 +85,19 @@ from .queries import (
     list_records as list_records,
 )
 from .queries import (
+    list_unreconciled_compose_links as list_unreconciled_compose_links,
+)
+from .queries import (
     list_untriaged_records as list_untriaged_records,
 )
 from .queries import (
     load_json_watermark as load_json_watermark,
+)
+from .queries import (
+    mark_compose_link_reconciled as mark_compose_link_reconciled,
+)
+from .queries import (
+    record_compose_link as record_compose_link,
 )
 from .queries import (
     record_exists as record_exists,
@@ -126,6 +138,7 @@ __all__ = [
     "VALID_TRIAGE_ACTIONS",
     "ArchiveError",
     "ArchiveStructure",
+    "ComposeLink",
     "MailRecord",
     "cleanup_empty_archive_folders",
     "component_settings_count",
@@ -141,8 +154,11 @@ __all__ = [
     "insert_record",
     "list_archive_audit_entries",
     "list_records",
+    "list_unreconciled_compose_links",
     "list_untriaged_records",
     "load_json_watermark",
+    "mark_compose_link_reconciled",
+    "record_compose_link",
     "record_exists",
     "resolve_db_path",
     "save_json_watermark",

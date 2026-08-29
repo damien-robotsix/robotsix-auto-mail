@@ -71,6 +71,25 @@ class MailRecord:
     id: int = 0  # assigned by DB; ignored on insert
 
 
+@dataclasses.dataclass(frozen=True)
+class ComposeLink:
+    """Link between a composed reply-draft and the board card it replies to.
+
+    Compose-drafts do not create local card records; instead a link row
+    records that a reply was composed for the original card
+    (*reply_to_message_id*).  A later reconcile pass detects the reply
+    appearing in the account's Sent folder and auto-archives that card.
+    ``reconciled_at`` is ``None`` while the reply is still pending, and an
+    ISO-8601 UTC timestamp once the send has been reconciled.
+    """
+
+    reply_to_message_id: str
+    draft_subject: str = ""
+    draft_to: str = ""
+    created_at: str = ""
+    reconciled_at: str | None = None
+
+
 # ---------------------------------------------------------------------------
 # Schema
 # ---------------------------------------------------------------------------
@@ -119,6 +138,14 @@ CREATE TABLE IF NOT EXISTS component_settings (
     key         TEXT PRIMARY KEY,
     value       TEXT NOT NULL,
     updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS compose_links (
+    reply_to_message_id TEXT NOT NULL UNIQUE,
+    draft_subject       TEXT NOT NULL DEFAULT '',
+    draft_to            TEXT NOT NULL DEFAULT '',
+    created_at          TEXT NOT NULL,
+    reconciled_at       TEXT
 );
 
 CREATE TABLE IF NOT EXISTS archive_audit_log (

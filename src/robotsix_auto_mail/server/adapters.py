@@ -126,6 +126,23 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
                     )
                     logger.info("reconcile_done healed=%s removed=%s", healed, removed)
 
+                    # Auto-archive cards whose composed reply has been sent
+                    # (from the board or externally from the mail client).
+                    try:
+                        from robotsix_auto_mail.pipeline import (
+                            reconcile_sent_drafts,
+                        )
+
+                        archived, checked = reconcile_sent_drafts(conn, client)
+                        if checked:
+                            logger.info(
+                                "sent_reconcile_done archived=%s checked=%s",
+                                archived,
+                                checked,
+                            )
+                    except Exception:
+                        logger.exception("sent_reconcile_failed")
+
                     # Clean up empty archive subfolders.
                     if mail_config.archive_enabled:
                         try:

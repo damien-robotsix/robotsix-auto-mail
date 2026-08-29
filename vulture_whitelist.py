@@ -183,3 +183,18 @@ all((LangfuseProject.project_id,))  # lgtm[py/ineffectual-statement]
 from robotsix_auto_mail.smtp import SmtpClient
 
 all((SmtpClient.send,))  # lgtm[py/ineffectual-statement]
+
+# ===========================================================================
+# ComposeLink dataclass fields — persisted by ``record_compose_link`` and
+# read back by the reconcile pass and tests; vulture does not trace keyword
+# construction from SQL rows or cross-module/test attribute reads.
+# ===========================================================================
+
+from robotsix_auto_mail.db import ComposeLink
+
+all((  # lgtm[py/ineffectual-statement]
+    ComposeLink.draft_subject,
+    ComposeLink.draft_to,
+    ComposeLink.created_at,
+    ComposeLink.reconciled_at,
+))
