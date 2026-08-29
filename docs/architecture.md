@@ -115,9 +115,6 @@ OAuth2 access token presented over SASL XOAUTH2:
     helpers for the `triage_decisions` table.
 - `config/config_sync_agent.py` — the config-drift advisory agent (also listed
   above).
-- `draft/` — `generate_draft_reply`, the draft-reply generator tied to the
-  `TO_ANSWER` triage action; it persists the draft via `db.update_draft_text`
-  (no mail is sent).
 
 ### Surfaces
 

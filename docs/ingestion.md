@@ -158,9 +158,9 @@ individual message stored successfully (an errored message still advances it).
 
 ### `archive_audit_log` — archive operation audit trail
 
-Records every archive/move operation (individual archive, batch archive, or
-auto-archive on send-draft) so the operator or chat agent can review what was
-archived where, when, and why.
+Records every archive/move operation (individual archive or batch archive)
+so the operator or chat agent can review what was archived where, when, and
+why.
 
 | Column | Type | Role |
 |---|---|---|
@@ -189,7 +189,7 @@ and by manual board actions.
 | Column | Type | Role |
 |---|---|---|
 | `message_id` | `TEXT NOT NULL UNIQUE` | The message's `Message-ID`; foreign key into `mail_records`. |
-| `action` | `TEXT NOT NULL CHECK(...)` | The triage action; constrained to the canonical vocabulary (`INBOX`, `HUMAN_TRIAGE`, `PENDING_ACTION`, `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, `TO_ANSWER`, `DRAFT_READY`). |
+| `action` | `TEXT NOT NULL CHECK(...)` | The triage action; constrained to the canonical vocabulary (`INBOX`, `HUMAN_TRIAGE`, `PENDING_ACTION`, `TO_ARCHIVE`, `TO_DELETE`, `TO_CALENDAR`, `TO_ANSWER`). |
 | `source` | `TEXT NOT NULL` | Where the decision came from (e.g. the triage agent vs. a manual action). |
 | `reason` | `TEXT NOT NULL DEFAULT ''` | Human-readable rationale for the decision. |
 | `confidence` | `TEXT NOT NULL DEFAULT 'medium'` | Confidence level of the decision. |
