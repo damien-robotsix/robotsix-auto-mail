@@ -31,6 +31,7 @@ class _FakeHandler(_ArchiveActionMixin, _BoardActionMixin):
     ) -> None:
         self.db_path = db_path
         self.mail_config = mail_config
+        self.accounts = None
         self._effective_archive_root = (
             mail_config.archive_root if mail_config else "Archive"
         )

@@ -379,6 +379,7 @@ modules:
       - tests/server/test_action_archive_delete.py
       - tests/server/test_action_archive_move.py
       - tests/server/test_action_background_worker.py
+      - tests/server/test_action_delete_cross_account.py
       - tests/server/test_action_handle_archive.py
       - tests/server/test_action_handle_delete.py
       - tests/server/test_action_handle_move.py

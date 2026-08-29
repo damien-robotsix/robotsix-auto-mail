@@ -53,6 +53,14 @@ class _BoardActionMixin:
         from ._board_handler_protocol import BoardHandlerProtocol
 
     self: BoardHandlerProtocol
+    # Explicitly declare the two attributes this mixin *rebinds* (see
+    # ``_handle_post_action``'s cross-account owner loop).  Without these,
+    # mypy infers a member from the ``self.db_path = ...`` assignments and
+    # defers its type, poisoning every read with ``has-type``.  Typed as
+    # ``Any`` to match how the rest of the server package sees these
+    # protocol attributes (attr-defined is suppressed file-wide).
+    db_path: Any
+    mail_config: Any
 
     def _launch_background_worker(
         self,
@@ -154,6 +162,7 @@ class _BoardActionMixin:
         *fields: str,
         action: Any,
         no_strip: frozenset[str] = frozenset(),
+        cross_account: bool = False,
     ) -> None:
         """Shared POST handler skeleton.
 
@@ -166,6 +175,16 @@ class _BoardActionMixin:
            When *action* returns ``False`` the redirect is skipped
            (the callback already sent a response).
         5. Closes the connection and performs a safe redirect.
+
+        When *cross_account* is ``True`` and the record is not found in
+        the currently-selected account's DB, every other configured
+        account is searched.  This lets ids that carry no ``?account=``
+        hint — notably the synthetic ``<compose-...@robotsix-auto-mail>``
+        ids returned by ``/compose-draft`` — resolve to whichever
+        account actually holds the record instead of 404-ing against the
+        default (first) account.  For the matching account ``self.db_path``
+        and ``self.mail_config`` are rebound for the duration of *action*
+        so IMAP work targets the owning mailbox.
         """
         from robotsix_auto_mail.db import get_record_by_message_id
 
@@ -181,22 +200,43 @@ class _BoardActionMixin:
                 self._bad_request("Missing message_id")
             return
 
-        with _with_db(self.db_path) as conn:
-            record = get_record_by_message_id(conn, message_id)
-            if record is None:
-                self._not_found()
-                return
+        extra = {k: v for k, v in f.items() if k not in ("message_id", "redirect_to")}
 
-            extra = {
-                k: v for k, v in f.items() if k not in ("message_id", "redirect_to")
-            }
-            if action(conn, record, redirect_to, **extra) is False:
-                return
+        # Resolve the account that owns this record.  The currently-selected
+        # account is tried first; other accounts are appended only when
+        # *cross_account* fallback is enabled.
+        owners: list[tuple[str, Any]] = [(self.db_path, self.mail_config)]
+        if cross_account and self.accounts is not None:
+            owners.extend(
+                (account.config.db_path, account.config)
+                for account in self.accounts.accounts
+                if account.config.db_path != self.db_path
+            )
 
-        if redirect_to and _is_safe_redirect_path(redirect_to):
-            self._redirect(redirect_to, code=302)
-        else:
-            self._redirect("/board", code=302)
+        for db_path, mail_config in owners:
+            with _with_db(db_path) as conn:
+                record = get_record_by_message_id(conn, message_id)
+                if record is None:
+                    continue
+
+                saved_db: str = self.db_path
+                saved_config: object | None = self.mail_config
+                self.db_path = db_path
+                self.mail_config = mail_config
+                try:
+                    if action(conn, record, redirect_to, **extra) is False:
+                        return
+                finally:
+                    self.db_path = saved_db
+                    self.mail_config = saved_config
+
+            if redirect_to and _is_safe_redirect_path(redirect_to):
+                self._redirect(redirect_to, code=302)
+            else:
+                self._redirect("/board", code=302)
+            return
+
+        self._not_found()
 
     def _handle_move(self) -> None:
         """Process POST /move — update a card's triage decision and redirect."""
@@ -377,6 +417,7 @@ class _BoardActionMixin:
             "message_id",
             "redirect_to",
             action=delete_action,
+            cross_account=True,
         )
 
     def _handle_save_notes(self) -> None:

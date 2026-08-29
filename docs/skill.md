@@ -67,7 +67,7 @@ field value (if supplied) or a hardcoded default.  Exception:
 | Path | Form fields | Default redirect | Notes |
 |------|------------|-----------------|-------|
 | `POST /move` | `message_id`, `triage_action`, `redirect_to` (opt) | `/board` | Sets triage decision. Valid `triage_action` values (from `VALID_TRIAGE_ACTIONS`): **`INBOX`**, **`HUMAN_TRIAGE`**, **`PENDING_ACTION`**, **`TO_ARCHIVE`**, **`TO_DELETE`**, **`TO_CALENDAR`**, **`TO_ANSWER`**, **`DRAFT_READY`**. 400 on invalid. |
-| `POST /delete` | `message_id`, `redirect_to` (opt) | `/board` | IMAP deletion + DB row removal. 502 on IMAP error |
+| `POST /delete` | `message_id`, `redirect_to` (opt) | `/board` | IMAP deletion + DB row removal. Resolves the record in the selected account first, then falls back to searching every configured account — so a compose-draft (`<compose-…@robotsix-auto-mail>`) is deletable by the id `/compose-draft` returned even without an `?account=` hint. 502 on IMAP error, 404 only when the id exists in no account |
 | `POST /archive` | `message_id`, `redirect_to` (opt) | `/board` | IMAP folder-move + DB row removal. 400/502 on error |
 | `POST /save-notes` | `message_id`, `notes`, `redirect_to` (opt) | `/board` | Persists notes. `notes` is NOT stripped of whitespace |
 | `POST /batch-delete` | *(none)* | `/board` | Fire-and-forget: deletes all `TO_DELETE` records in background. Single-flighted by watermark |
