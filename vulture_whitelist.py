@@ -103,6 +103,7 @@ TierModelsConfig.level1
 TierModelsConfig.level2
 TierModelsConfig.level3
 TierModelsConfig.level4
+TierModelsConfig.level5
 
 # ===========================================================================
 # Config field mapping — imported by check_config_sync.py, not used directly
