@@ -258,22 +258,12 @@ The `pre-commit.yml` workflow runs `ruff`, `mypy`, `vulture`, and
 MUST be registered in `docs/modules.yaml` under the appropriate module,
 or the pre-commit gate will fail.
 
-### Changelog fragments (towncrier)
+### Changelog via conventional commits
 
-Every PR that adds or modifies source, test, or configuration files
-MUST include a changelog fragment file under `changelog.d/`.  The fragment
-must be a ``.md`` file whose name follows the towncrier convention
-(``<ID>.<type>.md``) and whose type matches one of the configured
-categories: ``feature``, ``bugfix``, ``removal``, or ``misc``.  The
-`towncrier check` CI gate in `ci.yml` verifies this on pull requests.
-
-**Rule:** Changelog fragments are claimed in `docs/modules.yaml` (core
-module) via the single glob entry `- changelog.d/*.md` (plus
-`- changelog.d/.gitkeep`) — NOT per-fragment path entries.  Do not
-append an individual `changelog.d/<id>.<type>.md` line when you add a
-fragment; the glob already covers it.  The `robotsix-modules
-check-registration` gate passes because the glob claims every
-`changelog.d/` file.
+Commit subjects and PR titles must be conventional
+(`feat:`/`fix:`/`chore:`/`docs:`/`refactor:`/`test:`/`ci:`).
+release-please generates `CHANGELOG.md` from these — there are no
+changelog fragment files.
 
 ---
 

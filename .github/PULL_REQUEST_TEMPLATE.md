@@ -12,11 +12,10 @@ document the migration path.
 
 ## Checklist
 
-- [ ] **Changelog fragment**: I have added a changelog fragment file
-      in `changelog/` with the naming convention
-      `YYYYMMDDTHHMMSSZ-description-XXXX.<type>.md` (types: `feature`,
-      `bugfix`, `removal`, `misc`), or this PR is labelled
-      `Skip-Changelog`.
+- [ ] **Conventional commit**: The PR title follows the conventional
+      commit format (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`,
+      `test:`, `ci:`). release-please generates `CHANGELOG.md` from
+      these — no changelog fragment files are needed.
 - [ ] **Tests added or updated**: New and existing test suites pass
       locally. For bug fixes, I added a test that reproduces the
       issue and fails before this change.

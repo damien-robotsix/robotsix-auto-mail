@@ -1,1 +1,0 @@
-Document the archive audit log table (`archive_audit_log`) in the ingestion schema docs and the `GET /archive-log` endpoint in the serve command docs.
