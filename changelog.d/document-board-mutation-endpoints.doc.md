@@ -1,1 +1,0 @@
-The chat-skill now documents the board mutation endpoints (`/move`, `/compose-draft`, `/archive`, `/delete`, `/batch-archive`, `/batch-delete`, `/batch-archive-folder`): request bodies, the success contract, error codes, and the rule that `account` must be a query parameter.

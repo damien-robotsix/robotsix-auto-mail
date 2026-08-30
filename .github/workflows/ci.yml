@@ -16,7 +16,7 @@ on:
       # match the filter, CI never re-runs, and main keeps the stale red
       # while mill parks every ticket as main-debt.
       - 'docs/modules.yaml'
-      - 'changelog.d/**'
+
       - '.github/workflows/**'
   # Lets a stale failure be cleared without an empty commit.
   workflow_dispatch:
