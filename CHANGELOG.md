@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.7.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.6.0...v0.7.0) (2026-08-31)
+
+
+### Features
+
+* adopt the five-tier llmio level map (haiku as level 2) ([#1224](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1224)) ([c63a82f](https://github.com/damien-robotsix/robotsix-auto-mail/commit/c63a82f26917c6b62aebcbe35ab67402edb5d908))
+* Auto-archive the board card once its draft has been sent (20260828T114828Z-auto-archive-the-board-card-once-its-dra-379b) ([#1222](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1222)) ([97d3b4e](https://github.com/damien-robotsix/robotsix-auto-mail/commit/97d3b4e5d825f767b591b1df6785e5e784be0011))
+* Capability 1: expose ROBOTSIX Sent folder read-only via chat API (20260828T122542Z-capability-1-expose-robotsix-sent-folder-d251) ([#1218](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1218)) ([5805a50](https://github.com/damien-robotsix/robotsix-auto-mail/commit/5805a50c075c06b86300ac91c395055f8c75cc6a))
+* Compose a new outgoing mail draft with attachments from file-hub (20260825T210504Z-compose-a-new-outgoing-mail-draft-with-a-ab28) ([#1207](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1207)) ([12e628f](https://github.com/damien-robotsix/robotsix-auto-mail/commit/12e628fe4e66c2cc1e426f1e7af75394e42e22c4))
+* Expose Message-ID in archive/Sent listings (standards-compliant attachment addressing) (20260828T210426Z-expose-message-id-in-archive-sent-listin-c5df) ([#1220](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1220)) ([062c4c9](https://github.com/damien-robotsix/robotsix-auto-mail/commit/062c4c99e66a896793a1ce450bbbf41adf394acd))
+* Replace board draft/send management with native IMAP Drafts (compose writes to mailbox, user sends manually) (20260828T230652Z-replace-board-draft-send-management-with-5c68) ([#1223](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1223)) ([faabdce](https://github.com/damien-robotsix/robotsix-auto-mail/commit/faabdcecb20cd6ed6b9917b92cdac61920875f17))
+
+
+### Bug Fixes
+
+* Cannot delete a compose-draft via POST /delete (returns 404) (20260828T114640Z-cannot-delete-a-compose-draft-via-post-d-3bde) ([#1221](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1221)) ([7c47ffb](https://github.com/damien-robotsix/robotsix-auto-mail/commit/7c47ffb7f12031cd6c93c3308da6eacaf101dc86))
+* **ci:** adopt the $/ self-repository syntax — zizmor 1.30 self-repository audit ([#1229](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1229)) ([c64afde](https://github.com/damien-robotsix/robotsix-auto-mail/commit/c64afde4d80906f4146a905ca756c03d1082e4bd))
+* compose-draft: create a real NEW message in the mailbox Drafts folder, not a board-only reply (20260827T170352Z-compose-draft-create-a-real-new-message-345c) ([#1216](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1216)) ([17a97de](https://github.com/damien-robotsix/robotsix-auto-mail/commit/17a97de42590b2f04a4cd8eeae21c4b685b68bc7))
+* Deleting a draft on the board must also delete it from the mailbox (Gmail Drafts / IMAP) (20260828T104822Z-deleting-a-draft-on-the-board-must-also-9e5f) ([#1217](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1217)) ([c717639](https://github.com/damien-robotsix/robotsix-auto-mail/commit/c71763931a03510ff63f8824fbf27768605a8990))
+* Fix: /compose-draft crashes with UnicodeDecodeError on any file-hub attachment (20260827T134943Z-fix-compose-draft-crashes-with-unicodede-164b) ([#1214](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1214)) ([5ef6172](https://github.com/damien-robotsix/robotsix-auto-mail/commit/5ef6172ef094bb988de46fdfb53f7c7ef8d45c35))
+
+
+### Documentation
+
+* **chat-skill:** document the board mutation endpoints ([#1219](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1219)) ([662aee3](https://github.com/damien-robotsix/robotsix-auto-mail/commit/662aee3fa1ff8f2129202ea033911b77cf42f3f3))
+
 ## [0.6.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.5.1...v0.6.0) (2026-08-24)
 
 
