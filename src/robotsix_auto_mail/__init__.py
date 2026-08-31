@@ -4,7 +4,7 @@ from importlib.metadata import version as _package_version
 try:
     __version__ = _package_version("robotsix-auto-mail")
 except PackageNotFoundError:
-    __version__ = "0.6.0"
+    __version__ = "0.7.0"
 
 from robotsix_auto_mail.core._observability import (
     init_langfuse_tracing,
