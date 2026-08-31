@@ -308,23 +308,13 @@ class _ArchiveActionMixin:
             self._bad_request("target_subfolder is required")
             return
 
-        if self.mail_config is None:
-            self._serve_json(
-                {"error": "IMAP not configured for this account"},
-                status=503,
-            )
+        if not self._require_imap_configured():
             return
 
-        archive_root = self._effective_archive_root
-
-        # Validate source_folder is under archive root (no ".." segments).
-        if source_folder and ".." in source_folder.split("/"):
-            self._bad_request("source_folder must not contain '..'")
-            return
-
-        # Validate target_subfolder is under archive root (no ".." segments).
-        if ".." in target_subfolder.split("/"):
-            self._bad_request("target_subfolder must not contain '..'")
+        ok, archive_root = self._validate_archive_path(
+            *(f for f in (source_folder, target_subfolder) if f)
+        )
+        if not ok:
             return
 
         # Validate that uid requires source_folder when message_id is absent.
@@ -470,18 +460,11 @@ class _ArchiveActionMixin:
             self._bad_request("confirm must be true — folder deletion is irreversible")
             return
 
-        if self.mail_config is None:
-            self._serve_json(
-                {"error": "IMAP not configured for this account"},
-                status=503,
-            )
+        if not self._require_imap_configured():
             return
 
-        archive_root = self._effective_archive_root
-
-        # Validate source_folder does not contain ".." segments.
-        if ".." in source_folder.split("/"):
-            self._bad_request("source_folder must not contain '..'")
+        ok, archive_root = self._validate_archive_path(source_folder)
+        if not ok:
             return
 
         from robotsix_auto_mail.imap import ImapClient, ImapError
@@ -650,18 +633,11 @@ class _ArchiveActionMixin:
             self._bad_request("confirm must be true — message deletion is irreversible")
             return
 
-        if self.mail_config is None:
-            self._serve_json(
-                {"error": "IMAP not configured for this account"},
-                status=503,
-            )
+        if not self._require_imap_configured():
             return
 
-        archive_root = self._effective_archive_root
-
-        # Validate source_folder does not contain ".." segments.
-        if ".." in source_folder.split("/"):
-            self._bad_request("source_folder must not contain '..'")
+        ok, archive_root = self._validate_archive_path(source_folder)
+        if not ok:
             return
 
         from robotsix_auto_mail.imap import (
@@ -809,21 +785,11 @@ class _ArchiveActionMixin:
             self._bad_request("target_name or target_path is required")
             return
 
-        if self.mail_config is None:
-            self._serve_json(
-                {"error": "IMAP not configured for this account"},
-                status=503,
-            )
+        if not self._require_imap_configured():
             return
 
-        archive_root = self._effective_archive_root
-
-        # Validate neither source nor target contain ".." segments.
-        if ".." in source_folder.split("/"):
-            self._bad_request("source_folder must not contain '..'")
-            return
-        if ".." in effective_target.split("/"):
-            self._bad_request("target_name/target_path must not contain '..'")
+        ok, archive_root = self._validate_archive_path(source_folder, effective_target)
+        if not ok:
             return
 
         from robotsix_auto_mail.imap import ImapClient, ImapError

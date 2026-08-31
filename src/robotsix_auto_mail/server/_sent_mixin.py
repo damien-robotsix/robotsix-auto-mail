@@ -64,11 +64,7 @@ class _SentMixin:
             self._serve_json({"messages": [], "folder": ""})
             return
 
-        if self.mail_config is None:
-            self._serve_json(
-                {"error": "IMAP not configured for this account"},
-                status=503,
-            )
+        if not self._require_imap_configured():
             return
 
         qs = parse_qs(urlsplit(self.path).query)
@@ -136,11 +132,7 @@ class _SentMixin:
             self._not_found()
             return
 
-        if self.mail_config is None:
-            self._serve_json(
-                {"error": "IMAP not configured for this account"},
-                status=503,
-            )
+        if not self._require_imap_configured():
             return
 
         qs = parse_qs(urlsplit(self.path).query)
