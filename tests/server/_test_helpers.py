@@ -18,9 +18,10 @@ from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._compose_draft_mixin import _ComposeDraftMixin
+from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
 
-class _FakeHandler(_ArchiveActionMixin, _BoardActionMixin):
+class _FakeHandler(_BoardViewMixin, _ArchiveActionMixin, _BoardActionMixin):
     """Concrete handler that wires the ``BoardHandlerProtocol`` attributes
     to MagicMock defaults so mixin methods can be called directly."""
 
@@ -32,9 +33,6 @@ class _FakeHandler(_ArchiveActionMixin, _BoardActionMixin):
         self.db_path = db_path
         self.mail_config = mail_config
         self.accounts = None
-        self._effective_archive_root = (
-            mail_config.archive_root if mail_config else "Archive"
-        )
         self.headers = mock.MagicMock()
         self.rfile = mock.MagicMock()
         self._send_response = mock.MagicMock()

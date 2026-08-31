@@ -7,9 +7,10 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.server._sent_mixin import _SentMixin
+from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
 
-class _FakeHandler(_SentMixin):
+class _FakeHandler(_BoardViewMixin, _SentMixin):
     """Concrete ``_SentMixin`` with protocol attributes wired to mocks."""
 
     def __init__(

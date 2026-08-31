@@ -60,6 +60,35 @@ class _BoardViewMixin:
             else DEFAULT_ARCHIVE_ROOT
         )
 
+    def _require_imap_configured(self) -> bool:
+        """Guard: emit 503 when ``mail_config`` is unset.
+
+        Returns ``True`` when IMAP is configured and the caller may
+        proceed; ``False`` when a 503 response has already been sent
+        and the caller must ``return`` immediately.
+        """
+        if self.mail_config is None:
+            self._serve_json(
+                {"error": "IMAP not configured for this account"},
+                status=503,
+            )
+            return False
+        return True
+
+    def _validate_archive_path(self, *folders: str) -> tuple[bool, str]:
+        """Guard: reject ``..`` segments in archive folder paths.
+
+        Returns ``(True, archive_root)`` when all *folders* are safe.
+        Returns ``(False, "")`` after sending a 400 response when any
+        path contains a ``..`` segment.
+        """
+        archive_root = self._effective_archive_root
+        for folder in folders:
+            if ".." in folder.split("/"):
+                self._bad_request(f"'{folder}' escapes archive root")
+                return False, ""
+        return True, archive_root
+
     def _serve_board(self) -> None:
         """Render and serve the kanban board HTML."""
         if self._aggregate and self.accounts is not None:
@@ -525,18 +554,11 @@ class _BoardViewMixin:
             self._serve_json({"messages": [], "folder": folder or ""})
             return
 
-        if self.mail_config is None:
-            self._serve_json(
-                {"error": "IMAP not configured for this account"},
-                status=503,
-            )
+        if not self._require_imap_configured():
             return
 
-        archive_root = self._effective_archive_root
-
-        # Reject ".." segments in the folder path.
-        if ".." in folder.split("/"):
-            self._bad_request("Folder path escapes archive root")
+        ok, archive_root = self._validate_archive_path(folder)
+        if not ok:
             return
 
         # Resolve the full IMAP folder path.

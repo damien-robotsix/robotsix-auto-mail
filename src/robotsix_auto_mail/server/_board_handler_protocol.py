@@ -34,3 +34,9 @@ class BoardHandlerProtocol(Protocol):
 
     def _serve_json(self, payload: object, status: int = 200) -> None:
         pass
+
+    def _require_imap_configured(self) -> bool:
+        pass
+
+    def _validate_archive_path(self, *folders: str) -> tuple[bool, str]:
+        pass
