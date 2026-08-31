@@ -65,7 +65,16 @@ repos:
     rev: v1.7.12
     hooks:
       - id: actionlint
-        args: [-shellcheck=]
+        # The two -ignore patterns mute actionlint's rejection of GitHub's
+        # $/ self-repository syntax (GA 2026-07-30), which zizmor >=1.30
+        # REQUIRES but actionlint v1.7.12 (latest) does not yet parse.
+        # Drop them once actionlint understands $/.
+        args:
+          - -shellcheck=
+          - -ignore
+          - 'in invalid format because ref is missing'
+          - -ignore
+          - 'not following the format "owner/repo'
 
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.11.0
@@ -73,7 +82,7 @@ repos:
       - id: shellcheck
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.29.0
+    rev: v1.30.0
     hooks:
       - id: zizmor
         args: [--format=sarif, .github/workflows/]
