@@ -152,6 +152,10 @@ class BoardHandler(
                 self._serve_probe_health,
             ),
             (
+                lambda p: p == "/llm/provider-status",
+                self._serve_llm_provider_status,
+            ),
+            (
                 lambda p: p == "/archive-folders",
                 self._serve_archive_folders,
             ),
@@ -484,6 +488,17 @@ class BoardHandler(
     def _serve_health(self) -> None:
         """Serve GET /health — liveness check."""
         self._serve_json({"status": "ok"}, status=200)
+
+    def _serve_llm_provider_status(self) -> None:
+        """Serve GET /llm/provider-status — llmio provider-failover state.
+
+        Surfaces which provider slot (default Anthropic / fallback
+        OpenRouter) is serving LLM calls and, while failover is armed,
+        when the default slot returns.
+        """
+        from robotsix_llmio.core import get_failover_status
+
+        self._serve_json(get_failover_status().model_dump(mode="json"), status=200)
 
     def _serve_ready(self) -> None:
         """Serve GET /readyz — readiness check (verifies the SQLite store)."""

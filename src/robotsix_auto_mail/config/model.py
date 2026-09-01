@@ -401,11 +401,13 @@ class MailAccount(BaseModel):
 
 
 class TierModelsConfig(BaseModel):
-    """Per-level model overrides for the five LLM tiers.
+    """Per-level model overrides for the three LLM capability levels.
 
     Each field holds a provider-model identifier
-    (e.g. ``"<provider>-<model>"``).
-    Empty means use the llmio tier default for that level.
+    (e.g. ``"<provider>-<model>"``) applied to llmio's *default* provider
+    slot at that level. Empty means use the llmio default for that level.
+    Provider failover (default → fallback slot) is llmio's concern and is
+    not configured here.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -413,34 +415,23 @@ class TierModelsConfig(BaseModel):
     level1: str = Field(
         default="",
         description=(
-            "Provider-model identifier for tier 1 (cheapest), "
+            "Provider-model identifier for level 1 (cheap, frequent), "
             "e.g. `<provider>-<model>`. "
-            "Empty uses the llmio tier default."
+            "Empty uses the llmio default."
         ),
     )
     level2: str = Field(
         default="",
         description=(
-            "Provider-model identifier for tier 2. Empty uses the llmio tier default."
+            "Provider-model identifier for level 2 (workhorse). "
+            "Empty uses the llmio default."
         ),
     )
     level3: str = Field(
         default="",
         description=(
-            "Provider-model identifier for tier 3. Empty uses the llmio tier default."
-        ),
-    )
-    level4: str = Field(
-        default="",
-        description=(
-            "Provider-model identifier for tier 4. Empty uses the llmio tier default."
-        ),
-    )
-    level5: str = Field(
-        default="",
-        description=(
-            "Provider-model identifier for tier 5 (most capable). "
-            "Empty uses the llmio tier default."
+            "Provider-model identifier for level 3 (frontier, most capable). "
+            "Empty uses the llmio default."
         ),
     )
 
@@ -513,26 +504,34 @@ class MailAccountsConfig(BaseModel):
         ),
     )
 
-    #: Tier level assigned to each application / task.  Different tasks
-    #: can use different tiers (e.g. triage=1 cheap, draft=3 high).
+    #: Capability level assigned to each application / task.  Different
+    #: tasks can use different levels (e.g. triage=1 cheap, draft=2).
     triage_level: int = Field(
         default=1,
+        ge=1,
+        le=3,
         description=(
-            "Tier level (1-5) assigned to the inbox triage agent. "
-            "Higher tiers use more capable (and expensive) models."
+            "Capability level (1-3) assigned to the inbox triage agent. "
+            "Higher levels use more capable (and expensive) models."
         ),
     )
     classifier_level: int = Field(
         default=1,
-        description="Tier level (1-5) assigned to the message classifier agent.",
+        ge=1,
+        le=3,
+        description="Capability level (1-3) assigned to the message classifier agent.",
     )
     detector_level: int = Field(
         default=1,
-        description="Tier level (1-5) assigned to the provider-detection agent.",
+        ge=1,
+        le=3,
+        description="Capability level (1-3) assigned to the provider-detection agent.",
     )
     draft_level: int = Field(
         default=1,
-        description="Tier level (1-5) assigned to the draft-reply agent.",
+        ge=1,
+        le=3,
+        description="Capability level (1-3) assigned to the draft-reply agent.",
     )
 
     #: Absolute root directory for all persisted mail data (SQLite

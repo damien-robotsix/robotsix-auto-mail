@@ -181,8 +181,7 @@ what makes the breakage easy to miss.
   "models": {
     "level1": "",
     "level2": "",
-    "level3": "",
-    "level4": ""
+    "level3": ""
   },
   "triage_level": 1,
   "classifier_level": 1,
@@ -204,14 +203,13 @@ therefore fund exactly one function.
 | `langfuse.host` | `""` | string | no | Langfuse instance base URL. When empty, the `robotsix-llmio` default (`https://cloud.langfuse.com`) is used. |
 | `langfuse.projects` | `{}` | map | no | Alias → `{public_key, secret_key, project_id}`. Tracing is enabled once both keys of an alias are set; `project_id` is optional and only used by consumers that address a project by id. Secret keys are masked in logs and `repr`. |
 | `openrouter.keys` | `{}` | map | no | Alias → OpenRouter API key. Get one at <https://openrouter.ai/keys>. Masked in logs and `repr`. |
-| `models.level1` | `""` | string | no | Per-level model override for tier 1 (used by triage, classifier, rules, and detector by default). Holds a provider-model identifier (e.g. ``"openrouter[deepseek]-deepseek/deepseek-v4-flash"``). Empty means use the llmio tier-1 default. |
-| `models.level2` | `""` | string | no | Per-level model override for tier 2. |
-| `models.level3` | `""` | string | no | Per-level model override for tier 3 (used by the draft agent by default). |
-| `models.level4` | `""` | string | no | Per-level model override for tier 4. Wired through even though llmio does not yet define a `LEVEL4_DEFAULT`. |
-| `triage_level` | `1` | integer | no | Tier level assigned to the inbox triage agent. |
-| `classifier_level` | `1` | integer | no | Tier level assigned to the message classifier. |
-| `detector_level` | `1` | integer | no | Tier level assigned to the account-type detector. |
-| `draft_level` | `1` | integer | no | Tier level assigned to the draft-generation agent. |
+| `models.level1` | `""` | string | no | Model override for capability level 1 (cheap, frequent — the default for every agent). Holds a provider-model identifier (e.g. ``"claudeSDK-haiku"``) applied to llmio's default provider slot. Empty means use the llmio default. |
+| `models.level2` | `""` | string | no | Model override for capability level 2 (workhorse). |
+| `models.level3` | `""` | string | no | Model override for capability level 3 (frontier, most capable). |
+| `triage_level` | `1` | integer | no | Capability level (1-3) assigned to the inbox triage agent. |
+| `classifier_level` | `1` | integer | no | Capability level (1-3) assigned to the message classifier. |
+| `detector_level` | `1` | integer | no | Capability level (1-3) assigned to the account-type detector. |
+| `draft_level` | `1` | integer | no | Capability level (1-3) assigned to the draft-generation agent. |
 | `mail_data_root` | `/data` | string | no | Absolute root directory for all persisted mail data (SQLite databases, heartbeat files, etc.). Relative ``db_path`` values on each account are resolved against this root so a container restart never silently discards mail databases that were written outside the mounted volume. |
 
 ### `logging` — observability

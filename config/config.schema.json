@@ -277,36 +277,24 @@
       "type": "object"
     },
     "TierModelsConfig": {
-      "description": "Per-level model overrides for the five LLM tiers.\n\nEach field holds a provider-model identifier\n(e.g. ``\"<provider>-<model>\"``).\nEmpty means use the llmio tier default for that level.",
+      "description": "Per-level model overrides for the three LLM capability levels.\n\nEach field holds a provider-model identifier\n(e.g. ``\"<provider>-<model>\"``) applied to llmio's *default* provider\nslot at that level. Empty means use the llmio default for that level.\nProvider failover (default \u2192 fallback slot) is llmio's concern and is\nnot configured here.",
       "properties": {
         "level1": {
           "default": "",
-          "description": "Provider-model identifier for tier 1 (cheapest), e.g. `<provider>-<model>`. Empty uses the llmio tier default.",
+          "description": "Provider-model identifier for level 1 (cheap, frequent), e.g. `<provider>-<model>`. Empty uses the llmio default.",
           "title": "Level1",
           "type": "string"
         },
         "level2": {
           "default": "",
-          "description": "Provider-model identifier for tier 2. Empty uses the llmio tier default.",
+          "description": "Provider-model identifier for level 2 (workhorse). Empty uses the llmio default.",
           "title": "Level2",
           "type": "string"
         },
         "level3": {
           "default": "",
-          "description": "Provider-model identifier for tier 3. Empty uses the llmio tier default.",
+          "description": "Provider-model identifier for level 3 (frontier, most capable). Empty uses the llmio default.",
           "title": "Level3",
-          "type": "string"
-        },
-        "level4": {
-          "default": "",
-          "description": "Provider-model identifier for tier 4. Empty uses the llmio tier default.",
-          "title": "Level4",
-          "type": "string"
-        },
-        "level5": {
-          "default": "",
-          "description": "Provider-model identifier for tier 5 (most capable). Empty uses the llmio tier default.",
-          "title": "Level5",
           "type": "string"
         }
       },
@@ -338,25 +326,33 @@
     },
     "triage_level": {
       "default": 1,
-      "description": "Tier level (1-5) assigned to the inbox triage agent. Higher tiers use more capable (and expensive) models.",
+      "description": "Capability level (1-3) assigned to the inbox triage agent. Higher levels use more capable (and expensive) models.",
+      "maximum": 3,
+      "minimum": 1,
       "title": "Triage Level",
       "type": "integer"
     },
     "classifier_level": {
       "default": 1,
-      "description": "Tier level (1-5) assigned to the message classifier agent.",
+      "description": "Capability level (1-3) assigned to the message classifier agent.",
+      "maximum": 3,
+      "minimum": 1,
       "title": "Classifier Level",
       "type": "integer"
     },
     "detector_level": {
       "default": 1,
-      "description": "Tier level (1-5) assigned to the provider-detection agent.",
+      "description": "Capability level (1-3) assigned to the provider-detection agent.",
+      "maximum": 3,
+      "minimum": 1,
       "title": "Detector Level",
       "type": "integer"
     },
     "draft_level": {
       "default": 1,
-      "description": "Tier level (1-5) assigned to the draft-reply agent.",
+      "description": "Capability level (1-3) assigned to the draft-reply agent.",
+      "maximum": 3,
+      "minimum": 1,
       "title": "Draft Level",
       "type": "integer"
     },

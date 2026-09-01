@@ -207,3 +207,23 @@ def test_readyz_content_type_is_json() -> None:
         assert "application/json" in content_type
     finally:
         server.shutdown()
+
+
+# ===========================================================================
+# GET /llm/provider-status tests
+# ===========================================================================
+
+
+def test_llm_provider_status_returns_failover_snapshot(single_db: str) -> None:
+    """GET /llm/provider-status returns llmio's failover state as JSON."""
+    server, port = _start_test_server(single_db)
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/llm/provider-status")
+        assert resp.status == 200
+        payload = json.loads(resp.read().decode("utf-8"))
+        # Shape comes from robotsix_llmio.core.FailoverStatus.
+        assert payload["active_slot"] in ("default", "fallback")
+        assert isinstance(payload["failover_active"], bool)
+        assert "failure_threshold" in payload
+    finally:
+        server.shutdown()

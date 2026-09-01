@@ -13,7 +13,6 @@ import pydantic
 import pytest
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 
-from robotsix_auto_mail.config import ConfigurationError
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 
 # ---------------------------------------------------------------------------
@@ -66,7 +65,7 @@ def test_happy_path_returns_typed_output(mock_deps):
 
     result = _run_llm_agent(
         api_key=None,
-        provider_model="openrouter/deepseek",
+        provider_model="openrouter-deepseek/deepseek-v4-flash-latest",
         level=1,
         system_prompt="You are a helpful assistant.",
         output_model=_FakeOutput,
@@ -78,7 +77,7 @@ def test_happy_path_returns_typed_output(mock_deps):
 
     assert isinstance(result, _FakeOutput)
     assert result.value == "ok"
-    mock_key.assert_called_once_with(None)
+    mock_key.assert_called_once_with(None, raise_on_missing=False)
     mock_get_prov.assert_called_once()
     mock_run.assert_called_once()
 
@@ -88,16 +87,39 @@ def test_happy_path_returns_typed_output(mock_deps):
 # ---------------------------------------------------------------------------
 
 
-def test_missing_api_key_raises_exc_type(mock_deps):
-    """``resolve_llm_api_key`` → ``ConfigurationError`` is caught and
-    re-raised as the caller's ``exc_type``."""
-    mock_key, mock_get_prov, mock_run = mock_deps
-    mock_key.side_effect = ConfigurationError("no API key configured")
+def test_no_api_key_ok_when_provider_is_claude_sdk(mock_deps):
+    """The default (Claude SDK) slot is keyless: a missing OpenRouter key
+    must not block the call."""
+    mock_key, mock_get_prov, _mock_run = mock_deps
+    mock_key.return_value = ""  # no OpenRouter key configured anywhere
 
-    with pytest.raises(RuntimeError, match="no API key configured"):
+    result = _run_llm_agent(
+        api_key=None,
+        provider_model=None,  # llmio default slot: claudeSDK
+        level=1,
+        system_prompt="test",
+        output_model=_FakeOutput,
+        user_message="hello",
+        label="test",
+        what="testing",
+        exc_type=RuntimeError,
+    )
+
+    assert isinstance(result, _FakeOutput)
+    # No api_key kwarg reaches the keyless provider.
+    assert "api_key" not in mock_get_prov.call_args.kwargs
+
+
+def test_missing_api_key_raises_only_for_openrouter_model(mock_deps):
+    """An OpenRouter-backed model without a configured key raises the
+    caller's ``exc_type`` with a pointer to the config location."""
+    mock_key, mock_get_prov, mock_run = mock_deps
+    mock_key.return_value = ""
+
+    with pytest.raises(RuntimeError, match="OpenRouter API key"):
         _run_llm_agent(
             api_key=None,
-            provider_model=None,
+            provider_model="openrouter-deepseek/deepseek-v4-flash-latest",
             level=1,
             system_prompt="test",
             output_model=_FakeOutput,
@@ -180,7 +202,7 @@ def test_output_retries_forwarded_to_build_agent(mock_deps):
 
     _run_llm_agent(
         api_key=None,
-        provider_model="openrouter/deepseek",
+        provider_model="openrouter-deepseek/deepseek-v4-flash-latest",
         level=1,
         system_prompt="test",
         output_model=_FakeOutput,
@@ -205,7 +227,7 @@ def test_output_retries_none_passes_default_retries(mock_deps):
 
     _run_llm_agent(
         api_key=None,
-        provider_model="openrouter/deepseek",
+        provider_model="openrouter-deepseek/deepseek-v4-flash-latest",
         level=1,
         system_prompt="test",
         output_model=_FakeOutput,
@@ -239,7 +261,7 @@ def test_unexpected_model_behavior_retried_up_to_thrice(mock_deps):
 
     result = _run_llm_agent(
         api_key=None,
-        provider_model="openrouter/deepseek",
+        provider_model="openrouter-deepseek/deepseek-v4-flash-latest",
         level=1,
         system_prompt="test",
         output_model=_FakeOutput,
@@ -264,7 +286,7 @@ def test_unexpected_model_behavior_all_attempts_fail(mock_deps):
     with pytest.raises(RuntimeError, match="persistent format slip"):
         _run_llm_agent(
             api_key=None,
-            provider_model="openrouter/deepseek",
+            provider_model="openrouter-deepseek/deepseek-v4-flash-latest",
             level=1,
             system_prompt="test",
             output_model=_FakeOutput,

@@ -224,38 +224,6 @@ def resolve_llm_tier(app_name: str) -> tuple[int, str]:
     )
 
 
-def get_resolved_models() -> dict[str, str]:
-    """Return the effective model for each tier level (1-5) for display.
-
-    For each level, returns the config override if set, otherwise the
-    resolved llmio ``LEVELn_DEFAULT`` model identifier.  Useful for
-    config panels that need to show the effective model even when the
-    override field is blank.
-
-    Returns an empty dict when the config or llmio is unreadable.
-    """
-    from robotsix_llmio.config.tier import (
-        LEVEL1_DEFAULT,
-        LEVEL2_DEFAULT,
-        LEVEL3_DEFAULT,
-        LEVEL4_DEFAULT,
-        LEVEL5_DEFAULT,
-    )
-
-    llmio_defaults: dict[int, str] = {
-        1: LEVEL1_DEFAULT.model,
-        2: LEVEL2_DEFAULT.model,
-        3: LEVEL3_DEFAULT.model,
-        4: LEVEL4_DEFAULT.model,
-        5: LEVEL5_DEFAULT.model,
-    }
-    result: dict[str, str] = {}
-    for level in (1, 2, 3, 4, 5):
-        override = resolve_model_override(level)
-        result[f"level{level}"] = override or llmio_defaults.get(level, "")
-    return result
-
-
 def load_langfuse() -> LangfuseConfig:
     """The canonical ``langfuse`` block, or an empty one when unreadable.
 
