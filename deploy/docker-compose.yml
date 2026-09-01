@@ -59,6 +59,12 @@ services:
       robotsix.deploy.primary: "true"
       robotsix.deploy.chat-access: "true"
       robotsix.deploy.config-target: "/home/app/config/config.json"
+      # Subscription auth for the claude-sdk transport (llmio's default
+      # provider slot): central-deploy mounts its managed `claude-auth`
+      # named volume at /home/app/.claude (injected at deploy time — not
+      # listed under volumes:). Authentication happens through
+      # central-deploy's dashboard login flow; no host ~/.claude involved.
+      robotsix.deploy.claude-mount: "true"
 
 volumes:
   auto-mail-config:

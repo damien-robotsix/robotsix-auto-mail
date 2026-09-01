@@ -73,7 +73,13 @@ def test_detect_provider_passes_api_key_arg() -> None:
         "robotsix_llmio.core.factory.get_provider_for_identifier",
         mock_provider_cls,
     ):
-        result = detect_provider("user@example.com", api_key="sk-arg-key")
+        result = detect_provider(
+            "user@example.com",
+            api_key="sk-arg-key",
+            # The key is only forwarded when the resolved provider needs
+            # one (the default Claude SDK slot is keyless).
+            provider_model="openrouter-deepseek/deepseek-v4-flash-latest",
+        )
 
     assert result.imap_host == "imap.example.com"
     mock_provider_cls.assert_called_once()
