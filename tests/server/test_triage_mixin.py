@@ -51,7 +51,9 @@ class _FakeHandler(_TriageMixin):
                 "type": f"urn:robotsix:error:{kind}",
                 "title": title,
                 "detail": detail,
-                "instance": instance if instance is not None else getattr(self, "path", "/"),
+                "instance": instance
+                if instance is not None
+                else getattr(self, "path", "/"),
             },
             status=status,
         )
