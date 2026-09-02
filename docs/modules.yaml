@@ -348,6 +348,7 @@ modules:
       - src/robotsix_auto_mail/server/_config_mixin.py
       - src/robotsix_auto_mail/server/_compose_draft_mixin.py
       - src/robotsix_auto_mail/server/_reconcile_mixin.py
+      - src/robotsix_auto_mail/server/_ingest_mixin.py
       - src/robotsix_auto_mail/server/_sent_mixin.py
       - src/robotsix_auto_mail/server/_settings_mixin.py
       - src/robotsix_auto_mail/server/_triage_mixin.py
@@ -418,6 +419,7 @@ modules:
       - tests/server/test_format_date.py
       - tests/server/test_global_board.py
       - tests/server/test_reconcile_mixin.py
+      - tests/server/test_ingest_mixin.py
       - tests/server/test_sent_mixin.py
       - tests/server/test_config_mixin.py
       - tests/server/test_settings_mixin.py
@@ -431,6 +433,7 @@ modules:
       - tests/server/test_server_archive_proposal_endpoint.py
       - tests/server/test_server_archive_security.py
       - tests/server/test_server_reconcile.py
+      - tests/server/test_server_ingest.py
       - tests/server/test_server_triage.py
       - tests/server/test_triage_mixin.py
       - tests/server/_view_helpers.py
