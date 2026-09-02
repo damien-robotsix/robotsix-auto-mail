@@ -32,14 +32,14 @@ class _ConfigMixin:
                 run_config_sync_agent,
             )
         except ImportError:
-            self._serve_json(
-                {
-                    "error": (
-                        "Config-sync advisory requires the optional LLM "
-                        "extra, which is not installed"
-                    )
-                },
+            self._problem(
                 status=503,
+                kind="config-sync-unavailable",
+                title="Config-sync Unavailable",
+                detail=(
+                    "Config-sync advisory requires the optional LLM "
+                    "extra, which is not installed"
+                ),
             )
             return
 
@@ -49,10 +49,20 @@ class _ConfigMixin:
             with _with_db(self.db_path, skip_migrations=False) as conn:
                 result = run_config_sync_agent(conn=conn)
         except ConfigSyncError as exc:
-            self._serve_json({"error": str(exc)}, status=503)
+            self._problem(
+                status=503,
+                kind="config-sync-failed",
+                title="Config-sync Failed",
+                detail=str(exc),
+            )
             return
         except Exception as exc:
-            self._serve_json({"error": str(exc)}, status=503)
+            self._problem(
+                status=503,
+                kind="config-sync-failed",
+                title="Config-sync Failed",
+                detail=str(exc),
+            )
             return
 
         self._serve_json(result.model_dump(), status=200)

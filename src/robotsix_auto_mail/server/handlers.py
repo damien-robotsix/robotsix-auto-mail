@@ -426,12 +426,22 @@ class BoardHandler(
         self.end_headers()
 
     def _not_found(self) -> None:
-        """Send a 404 Not Found."""
-        self._send_response(b"Not found", status=404)
+        """Send a 404 Not Found as an RFC 7807 problem response."""
+        self._problem(
+            status=404,
+            kind="not-found",
+            title="Not Found",
+            detail="The requested resource was not found.",
+        )
 
     def _bad_request(self, message: str) -> None:
-        """Send a 400 Bad Request with a plain-text body."""
-        self._send_response(message, status=400)
+        """Send a 400 Bad Request as an RFC 7807 problem response."""
+        self._problem(
+            status=400,
+            kind="bad-request",
+            title="Bad Request",
+            detail=message,
+        )
 
     def _serve_json(self, payload: Mapping[str, object], status: int = 200) -> None:
         """Serialize *payload* as JSON and send it with *status*."""
@@ -439,6 +449,31 @@ class BoardHandler(
             json.dumps(payload),
             status=status,
             content_type="application/json; charset=utf-8",
+        )
+
+    def _problem(
+        self,
+        status: int,
+        kind: str,
+        title: str,
+        detail: str,
+        instance: str | None = None,
+    ) -> None:
+        """Send an RFC 7807 problem-details JSON error response.
+
+        Every API error response uses this single envelope so clients can
+        parse one shape: ``{"type": "urn:robotsix:error:<kind>", "title",
+        "detail", "instance": self.path}``.  *instance* defaults to the
+        request path (as recommended by RFC 7807).
+        """
+        self._serve_json(
+            {
+                "type": f"urn:robotsix:error:{kind}",
+                "title": title,
+                "detail": detail,
+                "instance": instance if instance is not None else self.path,
+            },
+            status=status,
         )
 
     def _serve_chat_skill(self) -> None:

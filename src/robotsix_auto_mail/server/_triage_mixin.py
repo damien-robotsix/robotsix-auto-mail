@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import TYPE_CHECKING
 
@@ -83,10 +82,11 @@ class _TriageMixin:
             self._bad_request("Invalid request")
             return
         except Exception as exc:
-            self._send_response(
-                json.dumps({"error": str(exc)}).encode(),
+            self._problem(
                 status=503,
-                content_type="application/json",
+                kind="triage-failed",
+                title="Triage Failed",
+                detail=str(exc),
             )
             return
 

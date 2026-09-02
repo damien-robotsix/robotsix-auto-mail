@@ -35,6 +35,28 @@ class _FakeHandler(_TriageMixin):
         self._launch_background_worker = mock.MagicMock()
         self._bad_request = mock.MagicMock()
         self._send_response = mock.MagicMock()
+        self._serve_json = mock.MagicMock()
+
+    def _problem(
+        self,
+        status: int,
+        kind: str,
+        title: str,
+        detail: str,
+        instance: str | None = None,
+    ) -> None:
+        """Mirror ``BoardHandler._problem`` so mixin calls hit ``_serve_json``."""
+        self._serve_json(
+            {
+                "type": f"urn:robotsix:error:{kind}",
+                "title": title,
+                "detail": detail,
+                "instance": instance
+                if instance is not None
+                else getattr(self, "path", "/"),
+            },
+            status=status,
+        )
 
 
 # ===================================================================
@@ -143,4 +165,7 @@ class TestHandleForceTriageColumn:
         ):
             handler._handle_force_triage_column()
 
-        handler._send_response.assert_called_once()
+        handler._serve_json.assert_called_once()
+        call_args = handler._serve_json.call_args
+        assert call_args[1]["status"] == 503
+        assert call_args[0][0]["type"] == "urn:robotsix:error:triage-failed"

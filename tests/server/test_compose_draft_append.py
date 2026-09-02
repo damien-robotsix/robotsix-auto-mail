@@ -163,9 +163,8 @@ class TestComposeDraftImapAppend:
             handler._handle_compose_draft()
 
         imap.append_message.assert_not_called()
-        handler._serve_json.assert_not_called()
-        handler._send_response.assert_called_once()
-        assert handler._send_response.call_args[1]["status"] == 502
+        handler._serve_json.assert_called_once()
+        assert handler._serve_json.call_args[1]["status"] == 502
 
     def test_imap_append_failure_fails_loudly(self, single_db: str) -> None:
         handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
@@ -180,6 +179,7 @@ class TestComposeDraftImapAppend:
             mock_cls.return_value.__exit__ = mock.MagicMock(return_value=False)
             handler._handle_compose_draft()
 
-        handler._serve_json.assert_not_called()
-        handler._send_response.assert_called_once()
-        assert handler._send_response.call_args[1]["status"] == 502
+        handler._serve_json.assert_called_once()
+        call_args = handler._serve_json.call_args
+        assert call_args[1]["status"] == 502
+        assert call_args[0][0]["type"] == "urn:robotsix:error:imap-append-failed"

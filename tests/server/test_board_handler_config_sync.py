@@ -89,8 +89,8 @@ def test_config_sync_error_returns_503_json(single_db: str) -> None:
             status, body = _post_config_sync(port)
         assert status == 503
         payload = _json.loads(body)
-        assert "error" in payload
-        assert "No LLM API key found" in payload["error"]
+        assert payload["type"] == "urn:robotsix:error:config-sync-failed"
+        assert "No LLM API key found" in payload["detail"]
     finally:
         server.shutdown()
 

@@ -54,7 +54,13 @@
 
   function fetchJson(url) {
     return fetch(url).then(function (r) {
-      if (!r.ok) throw new Error("bad status");
+      if (!r.ok) {
+        return r.json().catch(function () {
+          return {};
+        }).then(function (problem) {
+          throw new Error(problem.detail || problem.title || "bad status");
+        });
+      }
       return r.json();
     });
   }

@@ -40,6 +40,27 @@ class _ComposeDraftFakeHandler(_ComposeDraftMixin):
         self._bad_request = mock.MagicMock()
         self._serve_json = mock.MagicMock()
 
+    def _problem(
+        self,
+        status: int,
+        kind: str,
+        title: str,
+        detail: str,
+        instance: str | None = None,
+    ) -> None:
+        """Mirror ``BoardHandler._problem`` so mixin calls hit ``_serve_json``."""
+        self._serve_json(
+            {
+                "type": f"urn:robotsix:error:{kind}",
+                "title": title,
+                "detail": detail,
+                "instance": instance
+                if instance is not None
+                else getattr(self, "path", "/"),
+            },
+            status=status,
+        )
+
 
 def _make_config(db_path: str = "/tmp/test.db") -> MailConfig:  # noqa: S108 — test-only default
     return MailConfig(
@@ -163,8 +184,10 @@ class TestComposeDraftUnknownAccount:
             {"account": "NONEXISTENT", "to": "a@b.com", "subject": "S", "body": "B"},
         )
         handler._handle_compose_draft()
-        handler._send_response.assert_called_once()
-        assert handler._send_response.call_args[1]["status"] == 404
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
+        assert args[1]["status"] == 404
+        assert args[0][0]["type"] == "urn:robotsix:error:unknown-account"
 
     def test_no_accounts_configured(self) -> None:
         handler = _ComposeDraftFakeHandler(accounts=None)
@@ -191,8 +214,10 @@ class TestComposeDraftFileHubNotConfigured:
             },
         )
         handler._handle_compose_draft()
-        handler._send_response.assert_called_once()
-        assert handler._send_response.call_args[1]["status"] == 503
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
+        assert args[1]["status"] == 503
+        assert args[0][0]["type"] == "urn:robotsix:error:file-hub-not-configured"
 
 
 class TestComposeDraftFileHubErrors:
@@ -223,11 +248,11 @@ class TestComposeDraftFileHubErrors:
             handler._handle_compose_draft()
         finally:
             patcher.stop()
-        handler._send_response.assert_called_once()
-        assert handler._send_response.call_args[1]["status"] == 502
-        assert (
-            "unreachable" in json.loads(handler._send_response.call_args[0][0])["error"]
-        )
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
+        assert args[1]["status"] == 502
+        assert args[0][0]["type"] == "urn:robotsix:error:attachment-fetch-failed"
+        assert "unreachable" in args[0][0]["detail"]
 
     def test_file_hub_unknown_id(self) -> None:
         handler = self._handler_with_attachment()
@@ -236,9 +261,10 @@ class TestComposeDraftFileHubErrors:
             handler._handle_compose_draft()
         finally:
             patcher.stop()
-        handler._send_response.assert_called_once()
-        assert handler._send_response.call_args[1]["status"] == 404
-        assert "att-1" in json.loads(handler._send_response.call_args[0][0])["error"]
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
+        assert args[1]["status"] == 404
+        assert "att-1" in args[0][0]["detail"]
 
     def test_file_hub_server_error(self) -> None:
         handler = self._handler_with_attachment()
@@ -247,8 +273,10 @@ class TestComposeDraftFileHubErrors:
             handler._handle_compose_draft()
         finally:
             patcher.stop()
-        handler._send_response.assert_called_once()
-        assert handler._send_response.call_args[1]["status"] == 502
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
+        assert args[1]["status"] == 502
+        assert args[0][0]["type"] == "urn:robotsix:error:attachment-fetch-failed"
 
     def test_attachment_download_fails_loudly(self) -> None:
         """Metadata OK but the content download 500s → fail loud, no append."""
@@ -262,8 +290,10 @@ class TestComposeDraftFileHubErrors:
         finally:
             patcher.stop()
         m_append.assert_not_called()
-        handler._send_response.assert_called_once()
-        assert handler._send_response.call_args[1]["status"] == 502
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
+        assert args[1]["status"] == 502
+        assert args[0][0]["type"] == "urn:robotsix:error:attachment-fetch-failed"
 
 
 class TestComposeDraftHappyPath:
@@ -428,5 +458,7 @@ class TestComposeDraftReply:
             },
         )
         handler._handle_compose_draft()
-        handler._send_response.assert_called_once()
-        assert handler._send_response.call_args[1]["status"] == 404
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
+        assert args[1]["status"] == 404
+        assert args[0][0]["type"] == "urn:robotsix:error:unknown-reply-target"

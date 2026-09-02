@@ -32,6 +32,16 @@ class BoardHandlerProtocol(Protocol):
     def _bad_request(self, message: str) -> None:
         pass
 
+    def _problem(
+        self,
+        status: int,
+        kind: str,
+        title: str,
+        detail: str,
+        instance: str | None = None,
+    ) -> None:
+        pass
+
     def _serve_json(self, payload: object, status: int = 200) -> None:
         pass
 
