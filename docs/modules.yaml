@@ -248,6 +248,7 @@ modules:
       Low-level IMAP client (stdlib imaplib wrapper).
     paths:
       - src/robotsix_auto_mail/imap/__init__.py
+      - src/robotsix_auto_mail/imap/_parsing.py
       - src/robotsix_auto_mail/imap/_protocol.py
       - src/robotsix_auto_mail/imap/client.py
       - src/robotsix_auto_mail/imap/errors.py
