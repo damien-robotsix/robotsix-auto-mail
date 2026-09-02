@@ -70,6 +70,26 @@ class _AttachmentFakeHandler(_AttachmentMixin):
         self._redirect = mock.MagicMock()
         self._not_found = mock.MagicMock()
         self._bad_request = mock.MagicMock()
+        self._serve_json = mock.MagicMock()
+
+    def _problem(
+        self,
+        status: int,
+        kind: str,
+        title: str,
+        detail: str,
+        instance: str | None = None,
+    ) -> None:
+        """Mirror ``BoardHandler._problem`` so mixin calls hit ``_serve_json``."""
+        self._serve_json(
+            {
+                "type": f"urn:robotsix:error:{kind}",
+                "title": title,
+                "detail": detail,
+                "instance": instance if instance is not None else getattr(self, "path", "/"),
+            },
+            status=status,
+        )
 
 
 def _make_mime_message(
@@ -118,17 +138,19 @@ class TestPushToFileHubNotConfigured:
     def test_no_accounts(self, single_db: str) -> None:
         handler = _AttachmentFakeHandler(single_db, accounts=None)
         handler._handle_push_to_file_hub("<msg@example.com>")
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 503
+        assert args[0][0]["type"] == "urn:robotsix:error:file-hub-not-configured"
 
     def test_empty_file_hub_url(self, single_db: str) -> None:
         accounts = _make_accounts(file_hub_url="")
         handler = _AttachmentFakeHandler(single_db, accounts=accounts)
         handler._handle_push_to_file_hub("<msg@example.com>")
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 503
+        assert args[0][0]["type"] == "urn:robotsix:error:file-hub-not-configured"
 
 
 class TestPushToFileHubMessageNotFound:
@@ -159,11 +181,12 @@ class TestPushToFileHubNoAttachments:
         handler = _AttachmentFakeHandler(single_db, accounts=accounts)
         handler.headers.get.return_value = 0
         handler._handle_push_to_file_hub("<no-att@example.com>")
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 400
-        body = json.loads(args[0][0])
-        assert "no attachments" in body["error"].lower()
+        payload = args[0][0]
+        assert "no attachments" in payload["detail"].lower()
+        assert payload["type"] == "urn:robotsix:error:no-attachments"
 
 
 class TestPushToFileHubSelection:
@@ -189,9 +212,10 @@ class TestPushToFileHubSelection:
             {"filename": "nonexistent.pdf"}
         ).encode()
         handler._handle_push_to_file_hub("<sel@example.com>")
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 404
+        assert args[0][0]["type"] == "urn:robotsix:error:attachment-not-found"
 
     def test_index_out_of_range(self, single_db: str) -> None:
         _populate_db_with_attachments(
@@ -213,9 +237,10 @@ class TestPushToFileHubSelection:
         handler.headers.get.return_value = 20
         handler.rfile.read.return_value = json.dumps({"index": 99}).encode()
         handler._handle_push_to_file_hub("<idx@example.com>")
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 400
+        assert args[0][0]["type"] == "urn:robotsix:error:index-out-of-range"
 
     def test_invalid_body(self, single_db: str) -> None:
         _populate_db_with_attachments(
@@ -261,9 +286,10 @@ class TestPushToFileHubImapErrors:
         handler = _AttachmentFakeHandler(single_db, mail_config=None, accounts=accounts)
         handler.headers.get.return_value = 0
         handler._handle_push_to_file_hub("<noimap@example.com>")
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 502
+        assert args[0][0]["type"] == "urn:robotsix:error:imap-unavailable"
 
     def test_no_imap_uid(self, single_db: str) -> None:
         _populate_db_with_attachments(
@@ -292,9 +318,10 @@ class TestPushToFileHubImapErrors:
         )
         handler.headers.get.return_value = 0
         handler._handle_push_to_file_hub("<nouid@example.com>")
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 502
+        assert args[0][0]["type"] == "urn:robotsix:error:imap-unavailable"
 
     def test_imap_fetch_error(self, single_db: str) -> None:
         _populate_db_with_attachments(
@@ -334,9 +361,10 @@ class TestPushToFileHubImapErrors:
 
             handler._handle_push_to_file_hub("<imaperr@example.com>")
 
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 502
+        assert args[0][0]["type"] == "urn:robotsix:error:imap-fetch-failed"
 
 
 class TestPushToFileHubHappyPath:
@@ -616,9 +644,10 @@ class TestPushToFileHubFileHubErrors:
 
             handler._handle_push_to_file_hub("<fherr@example.com>")
 
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 502
+        assert args[0][0]["type"] == "urn:robotsix:error:file-hub-upload-failed"
 
     def test_file_hub_http_error(self, single_db: str) -> None:
         _populate_db_with_attachments(
@@ -676,6 +705,7 @@ class TestPushToFileHubFileHubErrors:
 
             handler._handle_push_to_file_hub("<fhhttp@example.com>")
 
-        handler._send_response.assert_called_once()
-        args = handler._send_response.call_args
+        handler._serve_json.assert_called_once()
+        args = handler._serve_json.call_args
         assert args[1]["status"] == 502
+        assert args[0][0]["type"] == "urn:robotsix:error:file-hub-error"

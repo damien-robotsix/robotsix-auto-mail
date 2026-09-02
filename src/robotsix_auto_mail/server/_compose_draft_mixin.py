@@ -137,10 +137,11 @@ class _ComposeDraftMixin:
         try:
             account = accounts.get(account_id)
         except Exception:
-            self._send_response(
-                json.dumps({"error": f"Unknown account: {account_id}"}),
+            self._problem(
                 status=404,
-                content_type="application/json; charset=utf-8",
+                kind="unknown-account",
+                title="Unknown Account",
+                detail=f"Unknown account: {account_id}",
             )
             return
 
@@ -155,12 +156,11 @@ class _ComposeDraftMixin:
             with _with_db(db_path) as conn:
                 original = get_record_by_message_id(conn, reply_to_message_id)
             if original is None:
-                self._send_response(
-                    json.dumps(
-                        {"error": f"Unknown reply target: {reply_to_message_id}"}
-                    ),
+                self._problem(
                     status=404,
-                    content_type="application/json; charset=utf-8",
+                    kind="unknown-reply-target",
+                    title="Unknown Reply Target",
+                    detail=f"Unknown reply target: {reply_to_message_id}",
                 )
                 return
             if not to_addr:
@@ -193,9 +193,11 @@ class _ComposeDraftMixin:
 
         if attachment_ids:
             if not file_hub_url:
-                self._send_response(
-                    "file-hub is not configured (set file_hub_url in config)",
+                self._problem(
                     status=503,
+                    kind="file-hub-not-configured",
+                    title="File-hub Not Configured",
+                    detail="file-hub is not configured (set file_hub_url in config)",
                 )
                 return
             error = self._fetch_attachments(
@@ -205,10 +207,11 @@ class _ComposeDraftMixin:
                 for f in attachment_files:
                     f.close()
                 status, message = error
-                self._send_response(
-                    json.dumps({"error": message}),
+                self._problem(
                     status=status,
-                    content_type="application/json; charset=utf-8",
+                    kind="attachment-fetch-failed",
+                    title="Attachment Fetch Failed",
+                    detail=message,
                 )
                 return
 
@@ -228,10 +231,11 @@ class _ComposeDraftMixin:
             )
         except Exception as exc:
             logger.exception("Failed to IMAP-APPEND compose-draft to Drafts folder")
-            self._send_response(
-                json.dumps({"error": f"IMAP APPEND failed: {exc}"}),
+            self._problem(
                 status=502,
-                content_type="application/json; charset=utf-8",
+                kind="imap-append-failed",
+                title="IMAP APPEND Failed",
+                detail=f"IMAP APPEND failed: {exc}",
             )
             return
         finally:

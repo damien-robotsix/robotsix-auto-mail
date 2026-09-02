@@ -29,6 +29,25 @@ class _FakeConfigHandler(_ConfigMixin):
         self._bad_request = mock.MagicMock()
         self._handle_post_action = mock.MagicMock()
 
+    def _problem(
+        self,
+        status: int,
+        kind: str,
+        title: str,
+        detail: str,
+        instance: str | None = None,
+    ) -> None:
+        """Mirror ``BoardHandler._problem`` so mixin calls hit ``_serve_json``."""
+        self._serve_json(
+            {
+                "type": f"urn:robotsix:error:{kind}",
+                "title": title,
+                "detail": detail,
+                "instance": instance if instance is not None else getattr(self, "path", "/"),
+            },
+            status=status,
+        )
+
 
 # ---------------------------------------------------------------------------
 # _handle_config_sync
@@ -55,8 +74,8 @@ class TestHandleConfigSync:
         call_args = handler._serve_json.call_args
         payload = call_args[0][0]
         assert isinstance(payload, dict)
-        assert "error" in payload
-        assert "not installed" in payload["error"]
+        assert payload["type"] == "urn:robotsix:error:config-sync-unavailable"
+        assert "not installed" in payload["detail"]
         assert call_args[1]["status"] == 503
 
     def test_config_sync_error_returns_503(self):
@@ -81,7 +100,9 @@ class TestHandleConfigSync:
 
         handler._serve_json.assert_called_once()
         call_args = handler._serve_json.call_args
-        assert call_args[0][0] == {"error": "drift detected"}
+        payload = call_args[0][0]
+        assert payload["type"] == "urn:robotsix:error:config-sync-failed"
+        assert payload["detail"] == "drift detected"
         assert call_args[1]["status"] == 503
 
     def test_generic_exception_returns_503(self):
@@ -102,7 +123,9 @@ class TestHandleConfigSync:
 
         handler._serve_json.assert_called_once()
         call_args = handler._serve_json.call_args
-        assert call_args[0][0] == {"error": "something broke"}
+        payload = call_args[0][0]
+        assert payload["type"] == "urn:robotsix:error:config-sync-failed"
+        assert payload["detail"] == "something broke"
         assert call_args[1]["status"] == 503
 
     def test_success_returns_200_with_model_dump(self):
