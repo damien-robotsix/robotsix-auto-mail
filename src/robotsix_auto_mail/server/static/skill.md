@@ -95,8 +95,8 @@ All GET endpoints below are read-only and safe to call without confirmation.
   - Deleting archive folders (`POST /archive-delete`).
   - Deleting archived messages (`POST /archive-message-delete`).
   - Renaming archive folders (`POST /archive-rename`).
-  - Triggering triage or reconcile runs (`POST /run-triage`,
-    `POST /reconcile`, `POST /force-triage-column`).
+  - Triggering triage, reconcile, or force-fetch runs (`POST /run-triage`,
+    `POST /reconcile`, `POST /force-fetch`, `POST /force-triage-column`).
   - Config mutations (`PUT /config`, `POST /config/rollback`,
     `POST /config-sync`).
   - Pushing email attachments to file-hub
