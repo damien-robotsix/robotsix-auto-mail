@@ -1460,9 +1460,9 @@ requires-dist = [
     { name = "robotsix-board", git = "https://github.com/damien-robotsix/robotsix-board.git?rev=7fc8e9d4cc27ee128c474f36147af87296359215" },
     { name = "robotsix-config", git = "https://github.com/damien-robotsix/robotsix-config.git?rev=8b9fa37f53b179986ca8b8f603d8786b9aa06018" },
     { name = "robotsix-http", git = "https://github.com/damien-robotsix/robotsix-http.git?rev=c57947232685f4e4798a61e2bc53d747d3dbc75d" },
-    { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=7eee4cf3726daadab6870bf5acbfede81675ce86" },
-    { name = "robotsix-llmio", extras = ["openrouter", "claude-sdk", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=7eee4cf3726daadab6870bf5acbfede81675ce86" },
-    { name = "robotsix-llmio", extras = ["openrouter", "claude-sdk", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=7eee4cf3726daadab6870bf5acbfede81675ce86" },
+    { name = "robotsix-llmio", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=70c6ae9a36a089c7e763d2ee0ce1ab14270bddf4" },
+    { name = "robotsix-llmio", extras = ["openrouter", "claude-sdk", "tracing"], marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=70c6ae9a36a089c7e763d2ee0ce1ab14270bddf4" },
+    { name = "robotsix-llmio", extras = ["openrouter", "claude-sdk", "tracing"], marker = "extra == 'llm'", git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=70c6ae9a36a089c7e763d2ee0ce1ab14270bddf4" },
     { name = "robotsix-modules", marker = "extra == 'dev'", git = "https://github.com/damien-robotsix/robotsix-modules.git?rev=d916d1c14198dd00bb136605224177289c73352c" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "structlog", specifier = ">=24.1" },
@@ -1499,8 +1499,8 @@ dependencies = [
 
 [[package]]
 name = "robotsix-llmio"
-version = "0.7.0"
-source = { git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=7eee4cf3726daadab6870bf5acbfede81675ce86#7eee4cf3726daadab6870bf5acbfede81675ce86" }
+version = "0.7.1"
+source = { git = "https://github.com/damien-robotsix/robotsix-llmio.git?rev=70c6ae9a36a089c7e763d2ee0ce1ab14270bddf4#70c6ae9a36a089c7e763d2ee0ce1ab14270bddf4" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
