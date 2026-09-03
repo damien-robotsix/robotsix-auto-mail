@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.8.0...v0.9.0) (2026-09-03)
+
+
+### Features
+
+* Add force-fetch endpoint to robotsix-auto-mail (20260902T224533Z-add-force-fetch-endpoint-to-robotsix-aut-71d8) ([#1245](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1245)) ([e7c8141](https://github.com/damien-robotsix/robotsix-auto-mail/commit/e7c81412c296a68adbecce22fd662653824aee7f))
+
+
+### Bug Fixes
+
+* **deps:** refresh first-party git pin revs (2026-09-01 caretaker sweep) ([#1240](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1240)) ([88b02f7](https://github.com/damien-robotsix/robotsix-auto-mail/commit/88b02f780e31731c8af22cb725f6b949b3ca58e8))
+
 ## [0.8.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.7.0...v0.8.0) (2026-09-01)
 
 
