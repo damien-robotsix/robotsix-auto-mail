@@ -48,6 +48,13 @@ Patch **`get_provider_for_identifier`**, NOT `_run_llm_agent` or
 lazy imports inside its body precisely so test patches can intercept at
 these two seams.
 
+Calls run under llmio's **provider failover** (`call_with_failover`):
+the default slot is the keyless Claude SDK (levels 1-3 = haiku / opus /
+claude-fable-5) and the fallback slot is OpenRouter DeepSeek. The
+OpenRouter API key is only required when a call actually resolves to an
+`openrouter-*` model — tests that assert key forwarding must pin an
+OpenRouter `provider_model` explicitly.
+
 Example pattern (see `tests/triage/test_triage_agent.py`):
 ```python
 mock_provider = mock.MagicMock()

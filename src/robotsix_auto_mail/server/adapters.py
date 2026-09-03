@@ -13,6 +13,7 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.core._constants import (
     _BATCH_OP_STATE_KEY,
+    _INGEST_RUN_STATE_KEY,
     _RECONCILE_STATE_KEY,
     _TRIAGE_RUN_STATE_KEY,
     _WATERMARK_IDLE,
@@ -169,6 +170,41 @@ def _run_reconcile_background(db_path: str, mail_config: MailConfig | None) -> N
             pass
         finally:
             set_watermark(conn, _RECONCILE_STATE_KEY, _WATERMARK_IDLE)
+
+
+def _run_ingest_background(db_path: str, mail_config: MailConfig | None) -> None:
+    """Run a single force-fetch ingest cycle in a background thread.
+
+    Opens its own SQLite connection and IMAP connection so it never
+    shares a connection with the HTTP request-serve thread.  The
+    ``ingest_run:state`` watermark is cleared back to ``"idle"`` in a
+    ``finally`` block so the board always recovers — ``_ingest_cycle``
+    clears it itself on success, and this block also covers the
+    ``mail_config is None`` early-return and unexpected-exception cases.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    from robotsix_auto_mail.db import set_watermark
+
+    with _with_db(db_path, skip_migrations=True) as conn:
+        try:
+            if mail_config is None:
+                return
+            from robotsix_auto_mail.cli.commands_ingest import _ingest_cycle
+
+            _ingest_cycle(mail_config, dry_run=False, db_path=db_path)
+        except Exception:  # nosec B110
+            # _ingest_cycle handles fatal connection errors internally
+            # (returning 1) and clears its own watermark; swallow anything
+            # else so the request-serve thread is never affected.
+            logger.exception(
+                "force_fetch_failed account=%s",
+                mail_config.username if mail_config is not None else None,
+            )
+        finally:
+            set_watermark(conn, _INGEST_RUN_STATE_KEY, _WATERMARK_IDLE)
 
 
 def _batch_op_running(state: str | None) -> bool:

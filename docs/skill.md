@@ -76,6 +76,7 @@ field value (if supplied) or a hardcoded default.  Exception:
 | `POST /config-sync` | *(none)* | — (returns JSON `ConfigSyncResult`, not redirect) | Triggers config-sync advisory. 503 on error |
 | `POST /run-triage` | *(none)* | `/board` | Launches triage agent in background. Idempotent (no-op if already running) |
 | `POST /reconcile` | *(none)* | `/board` | Launches reconcile in background |
+| `POST /force-fetch` | *(none)* | `/board` | Triggers an immediate ingest (fetches new mail) in background. Idempotent (no-op if an ingest is already running) |
 | `POST /force-triage-column` | `action` | `/board` | Clears all triage decisions for `action` then re-runs triage. Same valid values as `triage_action`. 400 on invalid |
 | `POST /archive-proposal` | `message_id`, `subfolder`, `redirect_to` (opt) | `/board` | Saves an archive-subfolder choice for a message |
 | `POST /compose-draft` | JSON only: `account`, `body`, `to`/`subject` (new msg), `reply_to_message_id`+`reply_all` (reply), `attachments` (opt) | — (returns JSON `201`, not redirect) | Composes a reply or new message and `APPEND`s it as a genuine RFC822 draft into the account's IMAP Drafts folder, with all file-hub attachments and threading headers. The board stores no draft and sends no mail. Fails loudly (no stripped draft) if an attachment cannot be fetched. 400/404/502/503 on error |
@@ -199,4 +200,11 @@ curl -s -u <user>:<pass> \
 ```bash
 curl -s -u <user>:<pass> \
   'https://deploy.robotsix.net/mail/board-content?format=json&account=main'
+```
+
+### 14. Trigger an immediate force-fetch (ingest new mail now)
+
+```bash
+curl -s -u <user>:<pass> -X POST \
+  'https://deploy.robotsix.net/mail/force-fetch?account=main'
 ```

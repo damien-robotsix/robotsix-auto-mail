@@ -170,7 +170,20 @@ def test_config_sync_api_key_precedence(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-env"
         ),
     ):
-        rc = main(["config-sync", "--account", "default", "--api-key", "sk-cli"])
+        rc = main(
+            [
+                "config-sync",
+                "--account",
+                "default",
+                "--api-key",
+                "sk-cli",
+                # Pin an OpenRouter-backed model: the key is only forwarded
+                # when the resolved provider actually needs one (the default
+                # Claude SDK slot is keyless).
+                "--provider-model",
+                "openrouter-deepseek/deepseek-v4-flash-latest",
+            ]
+        )
 
     assert rc == 0
     cls.assert_called_once()

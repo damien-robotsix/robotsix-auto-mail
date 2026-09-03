@@ -64,7 +64,6 @@ def test_blocks_default_to_unconfigured() -> None:
     assert accts.models.level1 == ""
     assert accts.models.level2 == ""
     assert accts.models.level3 == ""
-    assert accts.models.level4 == ""
 
 
 def test_openrouter_key_is_addressed_by_alias() -> None:

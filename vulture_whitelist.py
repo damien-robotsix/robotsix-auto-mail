@@ -120,7 +120,6 @@ _ = FIELD_YAML_MAP
 # ===========================================================================
 
 from robotsix_auto_mail.config.loader import (
-    get_resolved_models,
     resolve_application_level,
     resolve_llm_tier,
     resolve_model_override,
@@ -128,7 +127,6 @@ from robotsix_auto_mail.config.loader import (
 )
 
 all((  # lgtm[py/ineffectual-statement]
-    get_resolved_models,
     resolve_application_level,
     resolve_llm_tier,
     resolve_model_override,

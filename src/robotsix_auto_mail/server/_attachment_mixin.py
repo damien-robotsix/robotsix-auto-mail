@@ -44,9 +44,11 @@ class _AttachmentMixin:
         if accounts is not None:
             file_hub_url = getattr(accounts, "file_hub_url", "") or ""
         if not file_hub_url:
-            self._send_response(
-                "file-hub is not configured (set file_hub_url in config)",
+            self._problem(
                 status=503,
+                kind="file-hub-not-configured",
+                title="File-hub Not Configured",
+                detail="file-hub is not configured (set file_hub_url in config)",
             )
             return
 
@@ -79,10 +81,11 @@ class _AttachmentMixin:
         except json.JSONDecodeError, TypeError:
             attachments_meta = []
         if not isinstance(attachments_meta, list) or not attachments_meta:
-            self._send_response(
-                json.dumps({"error": "Message has no attachments"}),
+            self._problem(
                 status=400,
-                content_type="application/json; charset=utf-8",
+                kind="no-attachments",
+                title="No Attachments",
+                detail="Message has no attachments",
             )
             return
 
@@ -100,10 +103,11 @@ class _AttachmentMixin:
                 if isinstance(a, dict) and a.get("filename") == filename_filter
             ]
             if not matching:
-                self._send_response(
-                    json.dumps({"error": f"Attachment not found: {filename_filter}"}),
+                self._problem(
                     status=404,
-                    content_type="application/json; charset=utf-8",
+                    kind="attachment-not-found",
+                    title="Attachment Not Found",
+                    detail=f"Attachment not found: {filename_filter}",
                 )
                 return
             selected_indices = {matching[0][0]}
@@ -112,17 +116,14 @@ class _AttachmentMixin:
                 self._bad_request("index must be a non-negative integer")
                 return
             if index_filter >= len(attachments_meta):
-                self._send_response(
-                    json.dumps(
-                        {
-                            "error": (
-                                f"Index {index_filter} out of range "
-                                f"(message has {len(attachments_meta)} attachments)"
-                            )
-                        }
-                    ),
+                self._problem(
                     status=400,
-                    content_type="application/json; charset=utf-8",
+                    kind="index-out-of-range",
+                    title="Attachment Index Out of Range",
+                    detail=(
+                        f"Index {index_filter} out of range "
+                        f"(message has {len(attachments_meta)} attachments)"
+                    ),
                 )
                 return
             selected_indices = {index_filter}
@@ -131,9 +132,11 @@ class _AttachmentMixin:
 
         # -- fetch raw email from IMAP -------------------------------------
         if self.mail_config is None or record.imap_uid is None:
-            self._send_response(
-                "IMAP not available for this message",
+            self._problem(
                 status=502,
+                kind="imap-unavailable",
+                title="IMAP Unavailable",
+                detail="IMAP not available for this message",
             )
             return
 
@@ -144,16 +147,20 @@ class _AttachmentMixin:
                 client.select_folder(record.source_folder)
                 fetched = client.fetch_messages([record.imap_uid])
         except (ImapError, OSError) as exc:
-            self._send_response(
-                f"IMAP fetch failed: {exc}",
+            self._problem(
                 status=502,
+                kind="imap-fetch-failed",
+                title="IMAP Fetch Failed",
+                detail=f"IMAP fetch failed: {exc}",
             )
             return
 
         if not fetched:
-            self._send_response(
-                "Message no longer exists on the mail server",
+            self._problem(
                 status=502,
+                kind="message-unavailable",
+                title="Message Unavailable",
+                detail="Message no longer exists on the mail server",
             )
             return
 
@@ -181,10 +188,11 @@ class _AttachmentMixin:
                 att_idx += 1
 
         if not attachment_parts:
-            self._send_response(
-                json.dumps({"error": "No matching attachment parts found in MIME"}),
+            self._problem(
                 status=502,
-                content_type="application/json; charset=utf-8",
+                kind="no-matching-attachments",
+                title="No Matching Attachments",
+                detail="No matching attachment parts found in MIME",
             )
             return
 
@@ -202,16 +210,20 @@ class _AttachmentMixin:
                         files={"file": (filename, payload, mime_type)},
                     )
             except Exception as exc:
-                self._send_response(
-                    f"file-hub upload failed: {exc}",
+                self._problem(
                     status=502,
+                    kind="file-hub-upload-failed",
+                    title="File-hub Upload Failed",
+                    detail=f"file-hub upload failed: {exc}",
                 )
                 return
 
             if resp.status_code >= 400:
-                self._send_response(
-                    f"file-hub returned {resp.status_code}: {resp.text}",
+                self._problem(
                     status=502,
+                    kind="file-hub-error",
+                    title="File-hub Error",
+                    detail=f"file-hub returned {resp.status_code}: {resp.text}",
                 )
                 return
 

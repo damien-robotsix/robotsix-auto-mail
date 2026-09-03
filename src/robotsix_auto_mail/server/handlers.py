@@ -1,13 +1,15 @@
 """Request handler and factory for the board server.
 
-``BoardHandler`` is assembled from seven private mixin classes via multiple
-inheritance; each mixin lives in its own module under ``server/``:
+``BoardHandler`` is assembled from a family of private mixin classes via
+multiple inheritance; each mixin lives in its own module under ``server/``:
 
 - ``_view_mixin`` — GET view methods (``_serve_board``, …)
 - ``_action_mixin`` — POST action methods (``_handle_move``, …)
 - ``_archive_action_mixin`` — archive POST action methods
   (``_handle_archive_move``, ``_handle_archive_delete``, …)
 - ``_batch_mixin`` — batch delete / archive handlers
+- ``_reconcile_mixin`` — reconcile-launcher handler
+- ``_ingest_mixin`` — force-fetch (immediate ingest) handler
 - ``_triage_mixin`` — triage launcher and rule-action handlers
 - ``_compose_draft_mixin`` — compose-to-Drafts handler
 - ``_config_mixin`` — config-sync and archive-proposal handlers
@@ -46,6 +48,7 @@ from robotsix_auto_mail.server._constants import (
     GLOBAL_VIEW_ACCOUNT_ID,
     _with_db,
 )
+from robotsix_auto_mail.server._ingest_mixin import _IngestMixin
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._sent_mixin import _SentMixin
 from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
@@ -62,6 +65,7 @@ class BoardHandler(
     _AttachmentMixin,
     _BatchActionMixin,
     _ReconcileMixin,
+    _IngestMixin,
     _TriageMixin,
     _ComposeDraftMixin,
     _ConfigMixin,
@@ -150,6 +154,10 @@ class BoardHandler(
             (
                 lambda p: p == "/probe-health",
                 self._serve_probe_health,
+            ),
+            (
+                lambda p: p == "/llm/provider-status",
+                self._serve_llm_provider_status,
             ),
             (
                 lambda p: p == "/archive-folders",
@@ -246,6 +254,7 @@ class BoardHandler(
             "/config-sync": self._handle_config_sync,
             "/run-triage": self._handle_run_triage,
             "/reconcile": self._handle_reconcile,
+            "/force-fetch": self._handle_force_fetch,
             "/force-triage-column": self._handle_force_triage_column,
             "/archive-proposal": self._handle_archive_proposal,
             "/save-notes": self._handle_save_notes,
@@ -422,12 +431,22 @@ class BoardHandler(
         self.end_headers()
 
     def _not_found(self) -> None:
-        """Send a 404 Not Found."""
-        self._send_response(b"Not found", status=404)
+        """Send a 404 Not Found as an RFC 7807 problem response."""
+        self._problem(
+            status=404,
+            kind="not-found",
+            title="Not Found",
+            detail="The requested resource was not found.",
+        )
 
     def _bad_request(self, message: str) -> None:
-        """Send a 400 Bad Request with a plain-text body."""
-        self._send_response(message, status=400)
+        """Send a 400 Bad Request as an RFC 7807 problem response."""
+        self._problem(
+            status=400,
+            kind="bad-request",
+            title="Bad Request",
+            detail=message,
+        )
 
     def _serve_json(self, payload: Mapping[str, object], status: int = 200) -> None:
         """Serialize *payload* as JSON and send it with *status*."""
@@ -435,6 +454,31 @@ class BoardHandler(
             json.dumps(payload),
             status=status,
             content_type="application/json; charset=utf-8",
+        )
+
+    def _problem(
+        self,
+        status: int,
+        kind: str,
+        title: str,
+        detail: str,
+        instance: str | None = None,
+    ) -> None:
+        """Send an RFC 7807 problem-details JSON error response.
+
+        Every API error response uses this single envelope so clients can
+        parse one shape: ``{"type": "urn:robotsix:error:<kind>", "title",
+        "detail", "instance": self.path}``.  *instance* defaults to the
+        request path (as recommended by RFC 7807).
+        """
+        self._serve_json(
+            {
+                "type": f"urn:robotsix:error:{kind}",
+                "title": title,
+                "detail": detail,
+                "instance": instance if instance is not None else self.path,
+            },
+            status=status,
         )
 
     def _serve_chat_skill(self) -> None:
@@ -484,6 +528,17 @@ class BoardHandler(
     def _serve_health(self) -> None:
         """Serve GET /health — liveness check."""
         self._serve_json({"status": "ok"}, status=200)
+
+    def _serve_llm_provider_status(self) -> None:
+        """Serve GET /llm/provider-status — llmio provider-failover state.
+
+        Surfaces which provider slot (default Anthropic / fallback
+        OpenRouter) is serving LLM calls and, while failover is armed,
+        when the default slot returns.
+        """
+        from robotsix_llmio.core import get_failover_status
+
+        self._serve_json(get_failover_status().model_dump(mode="json"), status=200)
 
     def _serve_ready(self) -> None:
         """Serve GET /readyz — readiness check (verifies the SQLite store)."""

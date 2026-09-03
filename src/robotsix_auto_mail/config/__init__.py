@@ -50,9 +50,6 @@ from robotsix_auto_mail.config.loader import (
     get_config_schema as get_config_schema,
 )
 from robotsix_auto_mail.config.loader import (
-    get_resolved_models as get_resolved_models,
-)
-from robotsix_auto_mail.config.loader import (
     load as load,
 )
 from robotsix_auto_mail.config.loader import (
@@ -127,7 +124,6 @@ __all__ = [
     "OpenRouterConfig",
     "TierModelsConfig",
     "get_config_schema",
-    "get_resolved_models",
     "load",
     "load_accounts",
     "load_langfuse",

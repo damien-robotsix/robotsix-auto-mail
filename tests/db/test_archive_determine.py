@@ -44,9 +44,15 @@ def test_determine_archive_structure_uses_cheap_tier() -> None:
 
 
 def test_determine_archive_structure_missing_api_key() -> None:
-    """No api_key and no LLM_API_KEY env var → ArchiveError."""
+    """An OpenRouter-pinned model with no key configured → ArchiveError.
+
+    (The default Claude SDK slot is keyless, so the key is only required
+    when the resolved model is OpenRouter-backed.)"""
     with pytest.raises(ArchiveError) as exc:
-        determine_archive_structure(["INBOX"])
+        determine_archive_structure(
+            ["INBOX"],
+            provider_model="openrouter-deepseek/deepseek-v4-flash-latest",
+        )
     assert "openrouter.keys" in str(exc.value)
 
 

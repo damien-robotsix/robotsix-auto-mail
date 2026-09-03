@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from unittest import mock
 from urllib.request import urlopen
@@ -196,7 +197,9 @@ def test_move_unknown_message_id_returns_404() -> None:
             port, {"message_id": "does-not-exist", "triage_action": "TO_ARCHIVE"}
         )
         assert status == 404
-        assert body == "Not found"
+        payload = json.loads(body)
+        assert payload["type"] == "urn:robotsix:error:not-found"
+        assert "not found" in payload["detail"].lower()
     finally:
         server.shutdown()
 

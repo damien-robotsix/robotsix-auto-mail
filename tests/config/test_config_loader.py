@@ -3,7 +3,7 @@
 Configuration is read exclusively from the JSON config file via
 ``robotsix_config``.  Covers load(), load_accounts(),
 resolve_llm_api_key(), resolve_llm_tier(), resolve_application_level(),
-resolve_model_override(), and get_resolved_models().
+resolve_model_override().
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ from robotsix_auto_mail.config import (
     MailConfig,
     OpenRouterConfig,
     TierModelsConfig,
-    get_resolved_models,
     load,
     load_accounts,
     resolve_application_level,
@@ -250,29 +249,6 @@ def test_resolve_llm_tier_empty_override() -> None:
         level, pm = resolve_llm_tier(APP_DRAFT)
         assert level == 3
         assert pm == ""
-
-
-# ---------------------------------------------------------------------------
-# get_resolved_models()
-# ---------------------------------------------------------------------------
-
-
-def test_get_resolved_models_includes_llmio_defaults() -> None:
-    """When overrides are blank, returns the llmio tier defaults."""
-    accts = _default_accounts()
-    with mock.patch(
-        "robotsix_auto_mail.config.loader.load_accounts", return_value=accts
-    ):
-        resolved = get_resolved_models()
-        assert resolved["level1"] != ""
-        assert resolved["level2"] != ""
-        assert resolved["level3"] != ""
-        assert resolved["level4"] != ""
-        # level1 should be the llmio default (deepseek flash)
-        assert (
-            "deepseek" in resolved["level1"].lower()
-            or "flash" in resolved["level1"].lower()
-        )
 
 
 # ---------------------------------------------------------------------------

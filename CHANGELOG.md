@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.7.0...v0.8.0) (2026-09-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* config keys models.level4/level5 are rejected (extra=forbid via llmio shapes was already the norm; the fields no longer exist) and *_level values above 3 fail validation.
+
+### Features
+
+* adopt llmio provider failover — 3 capability levels, keyless Anthropic default ([#1238](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1238)) ([8e09719](https://github.com/damien-robotsix/robotsix-auto-mail/commit/8e09719323ff0ad6a4afeb7b06ce614bc605b72c))
+
 ## [0.7.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.6.0...v0.7.0) (2026-08-31)
 
 
