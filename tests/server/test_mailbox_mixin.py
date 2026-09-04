@@ -297,6 +297,36 @@ class TestServeSearch:
         assert payload["messages"][0]["uid"] == 2
         assert payload["messages"][0]["folder"] == "INBOX"
 
+    def test_mixed_naive_and_aware_dates_sort_ok(self, cfg: MailConfig) -> None:
+        """tz-less and tz-aware Date headers must not crash newest-first sort.
+
+        ``email.utils.parsedate_to_datetime`` returns a naive datetime when
+        the Date header lacks a timezone offset and an aware one when it has
+        one; sorting a result set mixing both used to raise ``TypeError``.
+        """
+        client = _mock_client(
+            list_folders=mock.MagicMock(return_value=[_folder("INBOX")]),
+            search_uids=mock.MagicMock(return_value=[1, 2]),
+            fetch_envelopes=mock.MagicMock(
+                return_value=[
+                    # No timezone offset → naive datetime after parsing.
+                    _envelope(1, subject="Naive", date="Mon, 01 Jan 2024 10:00:00"),
+                    _envelope(
+                        2, subject="Aware", date="Mon, 02 Jan 2024 10:00:00 +0000"
+                    ),
+                ]
+            ),
+            fetch_messages=mock.MagicMock(return_value=[(2, _raw_message())]),
+        )
+        with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
+            handler = _FakeHandler(mail_config=cfg, path="/search?from=Rabot")
+            handler._serve_search()
+
+        # No TypeError: both sort keys were normalised to aware UTC, and the
+        # result is newest-first (uid 2 = Jan 02, uid 1 = Jan 01).
+        payload = handler._serve_json.call_args[0][0]
+        assert [m["uid"] for m in payload["messages"]] == [2, 1]
+
     def test_has_attachments_filter(self, cfg: MailConfig) -> None:
         client = _mock_client(
             list_folders=mock.MagicMock(return_value=[_folder("INBOX")]),

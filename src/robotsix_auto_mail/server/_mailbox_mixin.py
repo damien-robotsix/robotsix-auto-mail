@@ -333,6 +333,14 @@ class _MailboxMixin:
         except (ValueError, TypeError, OverflowError):  # fmt: skip
             dt = None
         if dt is not None:
+            # ``parsedate_to_datetime()`` returns a NAIVE datetime when the
+            # Date header carries no timezone offset but an AWARE one when it
+            # does (and the epoch fallback below is aware UTC).  A result set
+            # mixing tz-less and tz-aware dates would make ``sort()`` raise
+            # TypeError (offset-naive vs offset-aware), so normalise every
+            # parsed date to aware UTC before ordering.
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_datetime.UTC)
             return dt
         # Fall back to epoch so ordering stays deterministic.
         return _datetime.datetime.min.replace(tzinfo=_datetime.UTC)

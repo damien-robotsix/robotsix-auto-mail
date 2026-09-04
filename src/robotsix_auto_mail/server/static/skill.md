@@ -84,7 +84,9 @@ All GET endpoints below are read-only and safe to call without confirmation.
   `flags` (e.g. `\HasChildren`, `\Noselect`), and — where cheaply available —
   `messages` / `unseen` counts from IMAP `STATUS` (omitted when the server
   does not provide them).  The `?account=` query parameter is **required** —
-  an unknown/mistyped account returns 404.  Read-only — no side effects.
+  an unknown/mistyped account returns 404.  Unlike the aggregate board view,
+  aggregate mode (`?account=__all__`) is not supported here and returns 400 —
+  folder enumeration is inherently per-account.  Read-only — no side effects.
 
 ### Server-side message search (keyword)
 
@@ -108,9 +110,11 @@ All GET endpoints below are read-only and safe to call without confirmation.
   (`[{filename, mime_type, size}, …]`) derived from the parsed MIME.
 
   Errors: **400** on malformed date or when no search criteria are supplied,
-  **404** unknown account or folder, **502** on IMAP error.  Read-only — no
-  side effects.  This is v1 keyword search only; semantic / embedding-based
-  search is a possible v2 follow-up and is not implemented here.
+  **404** unknown account or folder, **502** on IMAP error.  Aggregate mode
+  (`?account=__all__`) is not supported and returns 400, matching
+  `/folders` — read-only, no side effects.  This is v1 keyword search only;
+  semantic / embedding-based search is a possible v2 follow-up and is not
+  implemented here.
 
 ### Liveness
 
