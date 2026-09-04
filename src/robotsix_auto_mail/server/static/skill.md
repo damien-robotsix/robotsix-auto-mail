@@ -371,6 +371,44 @@ Roundcube).
   ```
   Push a single attachment by zero-based index.
 
+  **Archive folder + uid addressing.**  Mail found via `GET /search`
+  lives in raw archive IMAP folders and was never triaged onto the
+  board, so the path `message_id` alone cannot resolve it.  Address it
+  directly by folder + uid (mirroring `POST /archive-message-delete`),
+  selecting the account with the `?account=<id>` query param:
+
+  ```json
+  {"source_folder": "BHealthcare", "uid": 4213}
+  ```
+  `source_folder` (alias `folder`) is **relative to the archive root**.
+  `uid` is the IMAP UID within that folder; add `"message_id": "<...>"`
+  as a fallback selector when the uid may be stale.  The path
+  `message_id` is also used as a fallback within the folder.
+
+  **Unzip during push.**  Zip attachments are expanded by default —
+  each contained file is uploaded to file-hub individually under its
+  inner filename (e.g. `Old_structure.stl.zip` → `Old_structure.stl`).
+  Set `"unzip": false` to push the raw zip container instead.
+  Extraction is capped against zip-bombs (max file count and total
+  uncompressed size); a zip exceeding the caps fails with 400.
+
+  ```json
+  {"source_folder": "BHealthcare", "uid": 4213, "unzip": true}
+  ```
+
+  **Provenance metadata.**  Each uploaded file carries mail context
+  (source account, folder, Message-ID, subject, sender, date, the outer
+  attachment filename, and — for unzipped files — the containing zip
+  name) forwarded to file-hub for triage/classification.  Add an
+  optional free-text `context` (alias `note`) and a `tags` list to
+  supply your own classification hints, forwarded verbatim:
+
+  ```json
+  {"source_folder": "BHealthcare", "uid": 4213,
+   "context": "STL models for digital-twin project",
+   "tags": ["stl", "digital-twin"]}
+  ```
+
   Response (200):
   ```json
   {
@@ -385,9 +423,11 @@ Roundcube).
   }
   ```
 
-  Errors: 400 (message has no attachments, invalid body), 404
-  (unknown message_id or attachment not found), 502 (IMAP or
-  file-hub unreachable), 503 (file-hub not configured).
+  Errors: 400 (message has no attachments, invalid body, zip exceeds
+  extraction caps, `source_folder` escapes the archive root), 404
+  (unknown account / folder / uid / message_id or attachment not
+  found), 502 (IMAP or file-hub unreachable), 503 (file-hub not
+  configured).
 
 ## Compose to mailbox Drafts (state-mutating, requires confirmation)
 
