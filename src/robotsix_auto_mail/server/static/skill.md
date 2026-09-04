@@ -74,6 +74,44 @@ All GET endpoints below are read-only and safe to call without confirmation.
 - **`GET /sent/message?account=<id>&uid=<n>`** → JSON `{"uid":N,"folder":"…","subject":"…","from":"…","to":[…],"cc":[…],"date":"…","body_plain":"…","body_html":"…","attachments":[{"filename":"…","mime_type":"…","size":N}]}`.
   Reads a single Sent message by UID (from `/sent/messages`) and enumerates its attachments.  The `?account=` and `?uid=` query parameters are **required** — an unknown account returns 404, a missing/non-integer `uid` returns 400.  Returns 404 when the UID no longer exists.  Read-only — no side effects.
 
+### Full mailbox folder enumeration
+
+- **`GET /folders?account=<id>`** → JSON `{"account":"<id>","delimiter":"/","folders":[{"name":"INBOX","flags":[…],"delimiter":"/","messages":N,"unseen":M},…]}`.
+  Enumerates the **complete** IMAP folder tree for the account — not just the
+  curated archive subfolders.  Includes INBOX, provider special-use folders
+  (Gmail `[Gmail]/All Mail`, `[Gmail]/Sent Mail`, …) and any custom
+  folders/labels.  Each folder entry carries its full IMAP `name` path,
+  `flags` (e.g. `\HasChildren`, `\Noselect`), and — where cheaply available —
+  `messages` / `unseen` counts from IMAP `STATUS` (omitted when the server
+  does not provide them).  The `?account=` query parameter is **required** —
+  an unknown/mistyped account returns 404.  Read-only — no side effects.
+
+### Server-side message search (keyword)
+
+- **`GET /search?account=<id>&from=&subject=&text=&since=&before=&folder=&has_attachments=&limit=`** → JSON `{"account":"<id>","count":N,"messages":[…]}`.
+  Maps keyword criteria to an IMAP `SEARCH` and returns matching message
+  headers.  `?account=` is required (unknown → 404).  All other params are
+  optional; multiple criteria combine with **AND**.  When `folder` is omitted
+  the search runs across **all** selectable folders and tags each result with
+  its `folder`.  Params:
+  - `from` — sender substring (IMAP `FROM`).
+  - `subject` — subject substring (IMAP `SUBJECT`).
+  - `text` — free-text body/header match (IMAP `TEXT`).
+  - `since` / `before` — ISO date bounds (`YYYY-MM-DD`, IMAP `SINCE`/`BEFORE`).
+  - `folder` — restrict to one folder path (unknown folder → 404).
+  - `has_attachments` — optional boolean filter (best-effort, post-filtered
+    by the actual parsed attachments).
+  - `limit` — max results (default 100, capped 500), newest-first.
+
+  Each message object carries `uid`, `folder`, `message_id`, `subject`,
+  `from`, `to`, `date`, `size`, `flags`, and an `attachments` summary
+  (`[{filename, mime_type, size}, …]`) derived from the parsed MIME.
+
+  Errors: **400** on malformed date or when no search criteria are supplied,
+  **404** unknown account or folder, **502** on IMAP error.  Read-only — no
+  side effects.  This is v1 keyword search only; semantic / embedding-based
+  search is a possible v2 follow-up and is not implemented here.
+
 ### Liveness
 
 - **`GET /health`** → JSON `{"status":"ok"}` 200. Liveness check only.

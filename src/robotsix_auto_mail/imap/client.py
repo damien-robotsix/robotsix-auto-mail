@@ -408,6 +408,54 @@ class ImapClient(_ProtocolClient):
                 uidvalidity = None
         return count, uidvalidity
 
+    def status_folder(self, name: str) -> tuple[int | None, int | None]:
+        """Return ``(messages, unseen)`` counts for *name* via IMAP ``STATUS``.
+
+        Issues ``STATUS <name> (MESSAGES UNSEEN)`` — a read-only, non-selecting
+        mailbox query that works for every folder without changing the
+        currently-selected mailbox.  Servers that do not advertise ``STATUS``
+        (or that reject it for a ``\\Noselect`` container) raise
+        :class:`ImapError`, which callers should treat as "counts not cheaply
+        available" and omit.
+
+        Args:
+            name: Mailbox name (e.g. ``"INBOX"``).
+
+        Returns:
+            A ``(messages, unseen)`` pair, either component ``None`` when the
+            server did not supply it.
+
+        Raises:
+            ImapError: If not connected or the server returns a non-OK status.
+        """
+        if self._imap is None:
+            raise ImapError("Not connected")
+        status, data = self._imap.status(_encode_mailbox(name), "(MESSAGES UNSEEN)")
+        if status != "OK":
+            raise ImapError(f"STATUS '{name}' failed: {status}")
+
+        messages: int | None = None
+        unseen: int | None = None
+        for line in data:
+            if not isinstance(line, bytes):
+                continue
+            text = line.decode("utf-8", errors="replace")
+            start = text.find("(")
+            end = text.rfind(")")
+            if start < 0 or end <= start:
+                continue
+            tokens = text[start + 1 : end].split()
+            # tokens alternate KEY VALUE, e.g. ``MESSAGES 5 UNSEEN 2``.
+            for i in range(0, len(tokens) - 1, 2):
+                key = tokens[i].upper()
+                if key == "MESSAGES":
+                    with contextlib.suppress(ValueError):
+                        messages = int(tokens[i + 1])
+                elif key == "UNSEEN":
+                    with contextlib.suppress(ValueError):
+                        unseen = int(tokens[i + 1])
+        return messages, unseen
+
     def create_folder(self, name: str) -> None:
         """Create a mailbox (folder) on the server, idempotently.
 
@@ -561,13 +609,19 @@ class ImapClient(_ProtocolClient):
         with contextlib.suppress(Exception):
             self._imap.unsubscribe(_encode_mailbox(name))
 
-    def search_uids(self, criteria: str = "ALL") -> list[int]:
+    def search_uids(
+        self, criteria: str = "ALL", charset: str | None = None
+    ) -> list[int]:
         """Issue ``UID SEARCH`` and return matching UIDs.
 
         Args:
             criteria: IMAP search criteria (default ``"ALL"``).
                 For watermark-based incremental fetch use e.g.
                 ``"UID 42:*"``.
+            charset: Optional IMAP ``CHARSET`` argument (e.g. ``"UTF-8"``)
+                so non-ASCII search values can be matched.  Emitted as
+                ``UID SEARCH CHARSET <charset> <criteria>``; ``None`` omits
+                the argument entirely (backward compatible).
 
         Returns:
             Sorted list of numeric UIDs.  Empty when no messages match.
@@ -577,7 +631,8 @@ class ImapClient(_ProtocolClient):
         """
         if self._imap is None:
             raise ImapError("Not connected")
-        status, data = self._imap.uid("SEARCH", criteria)
+        charset_args = (charset,) if charset else ()
+        status, data = self._imap.uid("SEARCH", *charset_args, criteria)
         if status != "OK":
             raise ImapError(f"UID SEARCH failed: {status}")
         # data is a list containing one element: the space-separated UIDs.
