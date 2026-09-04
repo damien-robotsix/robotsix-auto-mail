@@ -106,7 +106,6 @@ class MailConfig(BaseModel):
     imap_port: int = Field(
         default=993,
         description="IMAP server port (993 for direct TLS, 143 for STARTTLS).",
-        json_schema_extra={"advanced": True},
     )
     imap_tls_mode: str = Field(
         default=DEFAULT_IMAP_TLS_MODE,
@@ -114,12 +113,10 @@ class MailConfig(BaseModel):
             "TLS negotiation mode for IMAP: `direct-tls` (connect then TLS, "
             "default), `starttls` (upgrade after connect), or `none`."
         ),
-        json_schema_extra={"advanced": True},
     )
     smtp_port: int = Field(
         default=587,
         description="SMTP server port (587 for STARTTLS, 465 for direct TLS).",
-        json_schema_extra={"advanced": True},
     )
     smtp_tls_mode: str = Field(
         default=DEFAULT_SMTP_TLS_MODE,
@@ -127,7 +124,6 @@ class MailConfig(BaseModel):
             "TLS negotiation mode for SMTP: `direct-tls`, `starttls` "
             "(default), or `none`."
         ),
-        json_schema_extra={"advanced": True},
     )
 
     # Empty by default; the path resolver derives
@@ -154,7 +150,6 @@ class MailConfig(BaseModel):
         description=(
             "Minutes between automatic ingest cycles when `ingest_mode` is `watch`."
         ),
-        json_schema_extra={"advanced": True},
     )
 
     # Ingest mode: ``"once"`` (single pass, the default) or ``"watch"``
@@ -168,7 +163,6 @@ class MailConfig(BaseModel):
             "Ingest behaviour: `once` runs a single poll then exits, "
             "`watch` loops forever on `ingest_interval_minutes`."
         ),
-        json_schema_extra={"advanced": True},
     )
 
     # Heartbeat file path — touched at the end of each poll cycle in
@@ -180,7 +174,6 @@ class MailConfig(BaseModel):
             "File touched at the end of each poll cycle in watch mode "
             "for Docker HEALTHCHECK. Empty means no heartbeat."
         ),
-        json_schema_extra={"advanced": True},
     )
 
     # Self-managed archive folder structure.
@@ -192,7 +185,6 @@ class MailConfig(BaseModel):
             "not a filesystem path — archived messages are moved between "
             "IMAP folders and remain on the mail server."
         ),
-        json_schema_extra={"advanced": True},
     )
     archive_enabled: bool = Field(
         default=True,
@@ -200,7 +192,6 @@ class MailConfig(BaseModel):
             "When true, processed messages are moved into "
             "the archive; when false they stay in the inbox."
         ),
-        json_schema_extra={"advanced": True},
     )
 
     # Run the inbox triage agent automatically at the end of each ingest.
@@ -210,7 +201,6 @@ class MailConfig(BaseModel):
             "When true, the inbox triage agent runs "
             "automatically after each ingest cycle."
         ),
-        json_schema_extra={"advanced": True},
     )
 
     # Free-text advisory guidance prepended to the triage agent and
@@ -223,7 +213,6 @@ class MailConfig(BaseModel):
             "archive-subfolder proposal for this account. "
             "Edited only via PUT /config — never auto-maintained by the server."
         ),
-        json_schema_extra={"advanced": True},
     )
 
     # OAuth2 / XOAUTH2 credentials (Gmail, Microsoft 365, etc.).
@@ -259,7 +248,6 @@ class MailConfig(BaseModel):
             "for MSAL-managed Microsoft 365 tokens; "
             "empty means disabled."
         ),
-        json_schema_extra={"advanced": True},
     )
     oauth2_tenant: str = Field(
         default="organizations",
@@ -267,7 +255,6 @@ class MailConfig(BaseModel):
             "Azure AD tenant for MSAL OAuth2, e.g. "
             "`organizations`, `common`, or a tenant id."
         ),
-        json_schema_extra={"advanced": True},
     )
 
     # Logging configuration — application-wide (global).
@@ -282,7 +269,6 @@ class MailConfig(BaseModel):
         description=(
             "Log output format: `console` (human-readable) or `json` (structured)."
         ),
-        json_schema_extra={"advanced": True},
     )
 
     # -- validators --------------------------------------------------------

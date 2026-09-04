@@ -39,7 +39,6 @@
           "writeOnly": true
         },
         "project_id": {
-          "advanced": true,
           "default": "",
           "description": "Langfuse project id. Only needed by consumers that address the project by id; the component itself never uses it.",
           "title": "Project Id",
@@ -109,28 +108,24 @@
           "writeOnly": true
         },
         "imap_port": {
-          "advanced": true,
           "default": 993,
           "description": "IMAP server port (993 for direct TLS, 143 for STARTTLS).",
           "title": "Imap Port",
           "type": "integer"
         },
         "imap_tls_mode": {
-          "advanced": true,
           "default": "direct-tls",
           "description": "TLS negotiation mode for IMAP: `direct-tls` (connect then TLS, default), `starttls` (upgrade after connect), or `none`.",
           "title": "Imap Tls Mode",
           "type": "string"
         },
         "smtp_port": {
-          "advanced": true,
           "default": 587,
           "description": "SMTP server port (587 for STARTTLS, 465 for direct TLS).",
           "title": "Smtp Port",
           "type": "integer"
         },
         "smtp_tls_mode": {
-          "advanced": true,
           "default": "starttls",
           "description": "TLS negotiation mode for SMTP: `direct-tls`, `starttls` (default), or `none`.",
           "title": "Smtp Tls Mode",
@@ -149,14 +144,12 @@
           "type": "string"
         },
         "ingest_interval_minutes": {
-          "advanced": true,
           "default": 15,
           "description": "Minutes between automatic ingest cycles when `ingest_mode` is `watch`.",
           "title": "Ingest Interval Minutes",
           "type": "integer"
         },
         "ingest_mode": {
-          "advanced": true,
           "default": "once",
           "description": "Ingest behaviour: `once` runs a single poll then exits, `watch` loops forever on `ingest_interval_minutes`.",
           "enum": [
@@ -167,35 +160,30 @@
           "type": "string"
         },
         "heartbeat_file": {
-          "advanced": true,
           "default": "",
           "description": "File touched at the end of each poll cycle in watch mode for Docker HEALTHCHECK. Empty means no heartbeat.",
           "title": "Heartbeat File",
           "type": "string"
         },
         "archive_root": {
-          "advanced": true,
           "default": "robotsix-mail-archive",
           "description": "IMAP folder prefix for the self-managed archive hierarchy (e.g. 'robotsix-mail-archive'). This is an IMAP folder name, not a filesystem path \u2014 archived messages are moved between IMAP folders and remain on the mail server.",
           "title": "Archive Root",
           "type": "string"
         },
         "archive_enabled": {
-          "advanced": true,
           "default": true,
           "description": "When true, processed messages are moved into the archive; when false they stay in the inbox.",
           "title": "Archive Enabled",
           "type": "boolean"
         },
         "triage_on_ingest": {
-          "advanced": true,
           "default": true,
           "description": "When true, the inbox triage agent runs automatically after each ingest cycle.",
           "title": "Triage On Ingest",
           "type": "boolean"
         },
         "triage_guidance": {
-          "advanced": true,
           "default": "",
           "description": "Free-text advisory guidance prepended to the triage agent and archive-subfolder proposal for this account. Edited only via PUT /config \u2014 never auto-maintained by the server.",
           "title": "Triage Guidance",
@@ -224,14 +212,12 @@
           "writeOnly": true
         },
         "oauth2_provider": {
-          "advanced": true,
           "default": "",
           "description": "OAuth2 provider identifier. Set to `microsoft` for MSAL-managed Microsoft 365 tokens; empty means disabled.",
           "title": "Oauth2 Provider",
           "type": "string"
         },
         "oauth2_tenant": {
-          "advanced": true,
           "default": "organizations",
           "description": "Azure AD tenant for MSAL OAuth2, e.g. `organizations`, `common`, or a tenant id.",
           "title": "Oauth2 Tenant",
@@ -244,7 +230,6 @@
           "type": "string"
         },
         "log_format": {
-          "advanced": true,
           "default": "console",
           "description": "Log output format: `console` (human-readable) or `json` (structured).",
           "title": "Log Format",
