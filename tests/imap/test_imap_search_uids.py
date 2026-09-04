@@ -68,6 +68,19 @@ def test_search_uids_custom_criteria(cfg: MailConfig) -> None:
     assert result == [42, 43]
 
 
+def test_search_uids_with_charset(cfg: MailConfig) -> None:
+    """search_uids forwards a CHARSET argument before the criteria."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.uid.return_value = ("OK", [b"42"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            result = client.search_uids('FROM "Café"', charset="UTF-8")
+
+    mock_ssl.uid.assert_called_once_with("SEARCH", "UTF-8", 'FROM "Café"')
+    assert result == [42]
+
+
 def test_search_uids_not_connected(cfg: MailConfig) -> None:
     """search_uids raises ImapError when the client is not connected."""
     client = ImapClient(cfg)

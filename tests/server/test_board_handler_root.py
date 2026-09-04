@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 from tests.server.conftest_helpers import (
     _populate_db,
     _start_test_server,
+    _start_test_server_with_accounts,
 )
 
 
@@ -260,5 +261,75 @@ def test_handler_xss_prevention(single_db: str) -> None:
         assert "&lt;script&gt;" in body
         assert "&lt;img onerror" in body
         assert "&lt;b&gt;evil&lt;/b&gt;" in body
+    finally:
+        server.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# GET /folders and GET /search routing tests
+# ---------------------------------------------------------------------------
+
+
+def test_folders_endpoint_unknown_account_returns_404(
+    db_accounts_no_triage: object,
+) -> None:
+    """GET /folders?account=<unknown> returns 404 before touching IMAP."""
+    import urllib.error
+
+    _, _, accounts = db_accounts_no_triage
+    server, port = _start_test_server_with_accounts(accounts)
+    try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urlopen(f"http://127.0.0.1:{port}/folders?account=DoesNotExist")
+        assert exc_info.value.code == 404
+    finally:
+        server.shutdown()
+
+
+def test_search_endpoint_unknown_account_returns_404(
+    db_accounts_no_triage: object,
+) -> None:
+    """GET /search?account=<unknown> returns 404 before touching IMAP."""
+    import urllib.error
+
+    _, _, accounts = db_accounts_no_triage
+    server, port = _start_test_server_with_accounts(accounts)
+    try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urlopen(f"http://127.0.0.1:{port}/search?account=DoesNotExist&from=Rabot")
+        assert exc_info.value.code == 404
+    finally:
+        server.shutdown()
+
+
+def test_search_endpoint_no_criteria_returns_400(
+    db_accounts_no_triage: object,
+) -> None:
+    """GET /search with no criteria returns 400 before touching IMAP."""
+    import urllib.error
+
+    _, _, accounts = db_accounts_no_triage
+    server, port = _start_test_server_with_accounts(accounts)
+    try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urlopen(f"http://127.0.0.1:{port}/search?account=A")
+        assert exc_info.value.code == 400
+        body = exc_info.value.read().decode("utf-8")
+        assert "criteria" in body
+    finally:
+        server.shutdown()
+
+
+def test_folders_endpoint_without_imap_returns_503() -> None:
+    """GET /folders with no mail_config returns 503 (route is reachable)."""
+    import urllib.error
+
+    server, port = _start_test_server(":memory:")
+    try:
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urlopen(f"http://127.0.0.1:{port}/folders")
+        assert exc_info.value.code == 503
+        body = exc_info.value.read().decode("utf-8")
+        assert "IMAP not configured" in body
     finally:
         server.shutdown()

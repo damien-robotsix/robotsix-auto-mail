@@ -164,6 +164,56 @@ def test_select_folder_non_numeric_count(cfg: MailConfig) -> None:
 
 
 # ---------------------------------------------------------------------------
+# status_folder
+# ---------------------------------------------------------------------------
+
+
+def test_status_folder_returns_messages_and_unseen(cfg: MailConfig) -> None:
+    """status_folder parses MESSAGES / UNSEEN counts from the STATUS response."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.status.return_value = ("OK", [b"INBOX (MESSAGES 5 UNSEEN 2)"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            messages, unseen = client.status_folder("INBOX")
+
+    mock_ssl.status.assert_called_once_with("INBOX", "(MESSAGES UNSEEN)")
+    assert messages == 5
+    assert unseen == 2
+
+
+def test_status_folder_missing_component(cfg: MailConfig) -> None:
+    """status_folder returns None for a count the server did not supply."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.status.return_value = ("OK", [b"INBOX (MESSAGES 5)"])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            messages, unseen = client.status_folder("INBOX")
+
+    assert messages == 5
+    assert unseen is None
+
+
+def test_status_folder_not_connected(cfg: MailConfig) -> None:
+    """status_folder raises ImapError when the client is not connected."""
+    client = ImapClient(cfg)
+    with pytest.raises(ImapError, match="Not connected"):
+        client.status_folder("INBOX")
+
+
+def test_status_folder_non_ok_status(cfg: MailConfig) -> None:
+    """status_folder raises ImapError on non-OK STATUS response."""
+    mock_ssl = _make_mock_imap_ssl()
+    mock_ssl.status.return_value = ("NO", [])
+
+    with mock.patch("imaplib.IMAP4_SSL", return_value=mock_ssl):
+        with ImapClient(cfg) as client:
+            with pytest.raises(ImapError, match="STATUS 'INBOX' failed"):
+                client.status_folder("INBOX")
+
+
+# ---------------------------------------------------------------------------
 # create_folder
 # ---------------------------------------------------------------------------
 

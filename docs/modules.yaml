@@ -349,6 +349,7 @@ modules:
       - src/robotsix_auto_mail/server/_compose_draft_mixin.py
       - src/robotsix_auto_mail/server/_reconcile_mixin.py
       - src/robotsix_auto_mail/server/_ingest_mixin.py
+      - src/robotsix_auto_mail/server/_mailbox_mixin.py
       - src/robotsix_auto_mail/server/_sent_mixin.py
       - src/robotsix_auto_mail/server/_settings_mixin.py
       - src/robotsix_auto_mail/server/_triage_mixin.py
@@ -421,6 +422,7 @@ modules:
       - tests/server/test_reconcile_mixin.py
       - tests/server/test_ingest_mixin.py
       - tests/server/test_sent_mixin.py
+      - tests/server/test_mailbox_mixin.py
       - tests/server/test_config_mixin.py
       - tests/server/test_settings_mixin.py
       - tests/server/test_redirect_safety.py
