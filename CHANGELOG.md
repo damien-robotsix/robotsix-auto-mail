@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.9.0...v0.9.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **deps:** bump mkdocs-material to 9.7.7 for GHSA-xvg9-69gf-fjrf ([#1248](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1248)) ([9d1f4e4](https://github.com/damien-robotsix/robotsix-auto-mail/commit/9d1f4e4432dec2bd1bc29513b9f0135ae4061c59))
+
 ## [0.9.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.8.0...v0.9.0) (2026-09-03)
 
 
