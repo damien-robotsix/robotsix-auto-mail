@@ -6,6 +6,8 @@ This document orders the build-out of `robotsix-auto-mail` from a stub into a wo
 
 ## Phase 1: Foundation — project scaffold
 
+<!-- epic-id: 20260823T235642Z-phase-1-foundation-project-scaffold-548f -->
+
 ### Goal
 
 A runnable project skeleton with build tooling, linting, a test runner, and a well-defined directory layout. There is no application logic yet — the deliverable is a green CI build running a no-op test.
@@ -27,6 +29,8 @@ None — this is the starting point.
 ---
 
 ## Phase 2: Mail server connectivity
+
+<!-- epic-id: 20260823T235642Z-phase-2-mail-server-connectivity-df64 -->
 
 ### Goal
 
@@ -55,6 +59,8 @@ Establish authenticated, encrypted connections to a real mail server over standa
 
 ## Phase 3: Mail ingestion — read and parse
 
+<!-- epic-id: 20260823T235642Z-phase-3-mail-ingestion-read-and-parse-74a3 -->
+
 ### Goal
 
 Fetch mail from a configured IMAP inbox, parse each message into a structured record, and store it persistently in a local datastore. Repeated ingestion runs must be idempotent — the same message is never stored twice.
@@ -80,6 +86,8 @@ Fetch mail from a configured IMAP inbox, parse each message into a structured re
 ---
 
 ## Phase 4: Board view — inbox column
+
+<!-- epic-id: 20260823T235642Z-phase-4-board-view-inbox-column-4ed3 -->
 
 ### Goal
 
@@ -107,6 +115,8 @@ Expose ingested mail through a self-contained board interface so a user can see 
 
 ## Phase 5: Iteration — from board to workflow
 
+<!-- epic-id: 20260823T235642Z-phase-5-iteration-from-board-to-workflow-8a85 -->
+
 ### Goal (partially delivered)
 
 The multi-column kanban board (Inbox, Triaging, Done, Archive) with per-card
@@ -120,6 +130,8 @@ Move dropdowns is **delivered** — see the `serve` subcommand and
 ---
 
 ## Cross-cutting concerns
+
+<!-- epic-id: 20260823T235642Z-cross-cutting-concerns-9abd -->
 
 These apply to every phase and are not gated by a specific milestone:
 
