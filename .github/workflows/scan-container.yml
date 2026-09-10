@@ -15,4 +15,4 @@ jobs:
     permissions:
       contents: read
       security-events: write  # needed for SARIF upload
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/scan-container.yml@5fdc956e980cfb70ea36e33bc670a0376750dec6
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/scan-container.yml@fb907a46b00693a117ca6b975da6e7b0f8238491
