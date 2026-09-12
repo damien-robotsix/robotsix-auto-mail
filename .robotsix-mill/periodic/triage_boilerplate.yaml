@@ -1,9 +1,9 @@
 name: triage_boilerplate
 prompt_overlay: |
   When generating boilerplate for scope-triage decisions, include the
-  following pattern for tickets that touch CHANGELOG.md, docs/modules.yaml,
-  or add new changelog/*.md fragment files.  These are legitimate
-  accompanying documentation/registry updates, never scope creep.
+  following pattern for tickets that touch CHANGELOG.md or
+  docs/modules.yaml.  These are legitimate accompanying
+  documentation/registry updates, never scope creep.
 
   The boilerplate response template:
 
@@ -13,13 +13,18 @@ prompt_overlay: |
   updates that record the change made in the ticket:
 
   - **CHANGELOG.md:** Keeping the changelog in sync with the work performed
-    is not scope creep.
-  - **docs/modules.yaml:** The registry update registers a new changelog
-    entry file that was created by the ticket — this is a direct
-    consequence of the ticket's work.
-  - **changelog/*.md:** A changelog fragment file generated as part of the
-    ticket's change process to document the fix.  It is a normal
-    consequence of the ticket's work.
+    is not scope creep.  CHANGELOG.md is auto-managed by release-please
+    from conventional commits; a ticket that updates it (or that an
+    operator regenerates via release-please) is a normal consequence of
+    the work.
+  - **docs/modules.yaml:** The registry update registers/classifies files
+    touched by the ticket — a direct consequence of the ticket's work.
+
+  Note: this repo does NOT create changelog fragment files (`changelog.d/`,
+  `changelog/`, or `changelog/*.md`).  If a scope-triage ticket or drift
+  scan flags such a path, treat it as an unclassified/stale path (per
+  docs/modules.yaml drift rules), not as an accompanying-documentation
+  case.
 
   No unrelated files were modified.  Proceed.
 
