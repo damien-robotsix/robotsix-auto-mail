@@ -115,20 +115,11 @@ class AttachmentService(Service):
             return
 
         # -- parse optional body -------------------------------------------
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw_body = (
-            ctx.rfile.read(content_length).decode("utf-8") if content_length else ""
+        selector = ctx._read_json_object_body(
+            allow_empty=True, object_error="Request body must be a JSON object"
         )
-        selector: dict[str, Any] = {}
-        if raw_body.strip():
-            try:
-                selector = json.loads(raw_body)
-            except json.JSONDecodeError:
-                ctx._bad_request("Malformed JSON body")
-                return
-            if not isinstance(selector, dict):
-                ctx._bad_request("Request body must be a JSON object")
-                return
+        if selector is None:
+            return
 
         # -- resolve the message (board vs archive addressing) -------------
         archive_mode = (

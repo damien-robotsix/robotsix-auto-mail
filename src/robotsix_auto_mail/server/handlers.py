@@ -58,6 +58,7 @@ from robotsix_auto_mail.server._constants import (
     _with_db,
 )
 from robotsix_auto_mail.server._ingest_service import IngestService
+from robotsix_auto_mail.server._json_body_mixin import _JsonBodyMixin
 from robotsix_auto_mail.server._mailbox_service import MailboxService
 from robotsix_auto_mail.server._reconcile_service import ReconcileService
 from robotsix_auto_mail.server._request_helpers import launch_background_worker
@@ -73,7 +74,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class BoardHandler(BaseHTTPRequestHandler):
+class BoardHandler(_JsonBodyMixin, BaseHTTPRequestHandler):
     """Request handler for the robotsix-auto-mail board server.
 
     Routes ``GET /`` to a 301 redirect to ``/board``, ``GET /board`` to
