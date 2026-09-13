@@ -18,6 +18,7 @@ import httpx
 
 from robotsix_auto_mail.server._action_mixin import _json_field_value
 from robotsix_auto_mail.server._constants import _with_db
+from robotsix_auto_mail.server._json_body_mixin import _JsonBodyMixin
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ def _iter_attachment_parts(
             idx += 1
 
 
-class _AttachmentMixin:
+class _AttachmentMixin(_JsonBodyMixin):
     """Mixin providing POST /email/<id>/attachments/to-file-hub."""
 
     if TYPE_CHECKING:
@@ -117,20 +118,11 @@ class _AttachmentMixin:
             return
 
         # -- parse optional body -------------------------------------------
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw_body = (
-            self.rfile.read(content_length).decode("utf-8") if content_length else ""
+        selector = self._read_json_object_body(
+            allow_empty=True, object_error="Request body must be a JSON object"
         )
-        selector: dict[str, Any] = {}
-        if raw_body.strip():
-            try:
-                selector = json.loads(raw_body)
-            except json.JSONDecodeError:
-                self._bad_request("Malformed JSON body")
-                return
-            if not isinstance(selector, dict):
-                self._bad_request("Request body must be a JSON object")
-                return
+        if selector is None:
+            return
 
         # -- resolve the message (board vs archive addressing) -------------
         archive_mode = (

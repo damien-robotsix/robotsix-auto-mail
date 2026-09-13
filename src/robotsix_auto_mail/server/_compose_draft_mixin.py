@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, BinaryIO
 import httpx
 
 from robotsix_auto_mail.server._constants import _with_db
+from robotsix_auto_mail.server._json_body_mixin import _JsonBodyMixin
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def _compute_reply_all_cc(
     return cc_list or None
 
 
-class _ComposeDraftMixin:
+class _ComposeDraftMixin(_JsonBodyMixin):
     """Mixin providing POST /compose-draft — compose directly to IMAP Drafts."""
 
     if TYPE_CHECKING:
@@ -97,17 +98,10 @@ class _ComposeDraftMixin:
         from robotsix_auto_mail.db import get_record_by_message_id
 
         # -- parse JSON body -----------------------------------------------
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw_body = (
-            self.rfile.read(content_length).decode("utf-8") if content_length else ""
+        body = self._read_json_object_body(
+            allow_empty=True, object_error="Request body must be a JSON object"
         )
-        try:
-            body: dict[str, Any] = json.loads(raw_body) if raw_body.strip() else {}
-        except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
-            return
-        if not isinstance(body, dict):
-            self._bad_request("Request body must be a JSON object")
+        if body is None:
             return
 
         account_id = body.get("account", "")
