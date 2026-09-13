@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
 
 class BoardHandlerProtocol(Protocol):
@@ -43,6 +43,14 @@ class BoardHandlerProtocol(Protocol):
         pass
 
     def _serve_json(self, payload: object, status: int = 200) -> None:
+        pass
+
+    def _read_json_object_body(
+        self,
+        *,
+        allow_empty: bool = False,
+        object_error: str = "JSON body must be an object",
+    ) -> dict[str, Any] | None:
         pass
 
     def _require_imap_configured(self) -> bool:

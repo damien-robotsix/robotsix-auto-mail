@@ -349,6 +349,7 @@ modules:
       - src/robotsix_auto_mail/server/_compose_draft_mixin.py
       - src/robotsix_auto_mail/server/_reconcile_mixin.py
       - src/robotsix_auto_mail/server/_ingest_mixin.py
+      - src/robotsix_auto_mail/server/_json_body_mixin.py
       - src/robotsix_auto_mail/server/_mailbox_mixin.py
       - src/robotsix_auto_mail/server/_sent_mixin.py
       - src/robotsix_auto_mail/server/_settings_mixin.py

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -18,6 +17,7 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._action_mixin import _json_field_value
+from robotsix_auto_mail.server._json_body_mixin import _JsonBodyMixin
 from robotsix_auto_mail.triage import (
     TO_ARCHIVE,
 )
@@ -50,7 +50,7 @@ def _find_message_in_archive(
     return None
 
 
-class _ArchiveActionMixin:
+class _ArchiveActionMixin(_JsonBodyMixin):
     """Mixin providing archive-action handlers for the board server."""
 
     if TYPE_CHECKING:
@@ -275,16 +275,8 @@ class _ArchiveActionMixin:
         )
 
         # Parse the JSON body.
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            self._bad_request("JSON body must be an object")
+        data = self._read_json_object_body()
+        if data is None:
             return
 
         message_id = _json_field_value(data, "message_id")
@@ -436,16 +428,8 @@ class _ArchiveActionMixin:
         Returns JSON on success.  The folder must be under the archive
         root; path-escaping attempts (``..`` segments) are rejected.
         """
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            self._bad_request("JSON body must be an object")
+        data = self._read_json_object_body()
+        if data is None:
             return
 
         source_folder = _json_field_value(data, "source_folder")
@@ -596,16 +580,8 @@ class _ArchiveActionMixin:
         Returns JSON on success; 404 when the uid is not found in
         *source_folder*.
         """
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            self._bad_request("JSON body must be an object")
+        data = self._read_json_object_body()
+        if data is None:
             return
 
         uid_raw = data.get("uid")
@@ -746,16 +722,8 @@ class _ArchiveActionMixin:
 
         Returns JSON on success.
         """
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            self._bad_request("JSON body must be an object")
+        data = self._read_json_object_body()
+        if data is None:
             return
 
         source_folder = _json_field_value(data, "source_folder")
