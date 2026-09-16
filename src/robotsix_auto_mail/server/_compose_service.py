@@ -1,4 +1,4 @@
-"""Compose-draft mixin for the board server — POST /compose-draft.
+"""Compose-draft service for the board server — POST /compose-draft.
 
 Builds a fully-formed RFC822 message (reply or new) with correct From /
 To / Cc / Subject, threading headers for replies, body, and all file-hub
@@ -13,18 +13,21 @@ more.  If a file-hub attachment cannot be fetched the request fails
 loudly; a stripped draft is never written.
 """
 
-# mypy: disable-error-code="attr-defined"
-
 from __future__ import annotations
 
 import io
 import json
 import logging
-from typing import TYPE_CHECKING, Any, BinaryIO
+from typing import TYPE_CHECKING, Any, BinaryIO, cast
 
 import httpx
 
 from robotsix_auto_mail.server._constants import _with_db
+from robotsix_auto_mail.server._services import Service
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailAccountsConfig
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -53,15 +56,11 @@ def _compute_reply_all_cc(
     return cc_list or None
 
 
-class _ComposeDraftMixin:
-    """Mixin providing POST /compose-draft — compose directly to IMAP Drafts."""
+class ComposeService(Service):
+    """Stateless service providing POST /compose-draft — compose directly to
+    IMAP Drafts."""
 
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
-
-    self: BoardHandlerProtocol
-
-    def _handle_compose_draft(self) -> None:
+    def handle_compose_draft(self, ctx: RequestContext) -> None:
         """Process POST /compose-draft — compose a message into IMAP Drafts.
 
         JSON request body::
@@ -97,17 +96,17 @@ class _ComposeDraftMixin:
         from robotsix_auto_mail.db import get_record_by_message_id
 
         # -- parse JSON body -----------------------------------------------
-        content_length = int(self.headers.get("Content-Length", 0))
+        content_length = int(ctx.headers.get("Content-Length", 0))
         raw_body = (
-            self.rfile.read(content_length).decode("utf-8") if content_length else ""
+            ctx.rfile.read(content_length).decode("utf-8") if content_length else ""
         )
         try:
             body: dict[str, Any] = json.loads(raw_body) if raw_body.strip() else {}
         except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
+            ctx._bad_request("Malformed JSON body")
             return
         if not isinstance(body, dict):
-            self._bad_request("Request body must be a JSON object")
+            ctx._bad_request("Request body must be a JSON object")
             return
 
         account_id = body.get("account", "")
@@ -120,24 +119,24 @@ class _ComposeDraftMixin:
 
         # -- validate always-required fields -------------------------------
         if not account_id:
-            self._bad_request("Missing required field: account")
+            ctx._bad_request("Missing required field: account")
             return
         if not draft_body:
-            self._bad_request("Missing required field: body")
+            ctx._bad_request("Missing required field: body")
             return
         if not isinstance(attachment_ids, list):
-            self._bad_request("attachments must be a list of file-hub IDs")
+            ctx._bad_request("attachments must be a list of file-hub IDs")
             return
 
         # -- resolve account -----------------------------------------------
-        accounts = self.accounts
+        accounts = cast("MailAccountsConfig | None", ctx.accounts)
         if accounts is None:
-            self._bad_request("No accounts configured")
+            ctx._bad_request("No accounts configured")
             return
         try:
             account = accounts.get(account_id)
         except Exception:
-            self._problem(
+            ctx._problem(
                 status=404,
                 kind="unknown-account",
                 title="Unknown Account",
@@ -156,7 +155,7 @@ class _ComposeDraftMixin:
             with _with_db(db_path) as conn:
                 original = get_record_by_message_id(conn, reply_to_message_id)
             if original is None:
-                self._problem(
+                ctx._problem(
                     status=404,
                     kind="unknown-reply-target",
                     title="Unknown Reply Target",
@@ -180,10 +179,10 @@ class _ComposeDraftMixin:
 
         # -- validate derived required fields ------------------------------
         if not to_addr:
-            self._bad_request("Missing required field: to")
+            ctx._bad_request("Missing required field: to")
             return
         if not subject:
-            self._bad_request("Missing required field: subject")
+            ctx._bad_request("Missing required field: subject")
             return
 
         # -- fetch attachments (fail loudly — never write a stripped draft)-
@@ -193,7 +192,7 @@ class _ComposeDraftMixin:
 
         if attachment_ids:
             if not file_hub_url:
-                self._problem(
+                ctx._problem(
                     status=503,
                     kind="file-hub-not-configured",
                     title="File-hub Not Configured",
@@ -207,7 +206,7 @@ class _ComposeDraftMixin:
                 for f in attachment_files:
                     f.close()
                 status, message = error
-                self._problem(
+                ctx._problem(
                     status=status,
                     kind="attachment-fetch-failed",
                     title="Attachment Fetch Failed",
@@ -231,7 +230,7 @@ class _ComposeDraftMixin:
             )
         except Exception as exc:
             logger.exception("Failed to IMAP-APPEND compose-draft to Drafts folder")
-            self._problem(
+            ctx._problem(
                 status=502,
                 kind="imap-append-failed",
                 title="IMAP APPEND Failed",
@@ -259,7 +258,7 @@ class _ComposeDraftMixin:
                 )
 
         # -- respond -------------------------------------------------------
-        self._serve_json(
+        ctx._serve_json(
             {
                 "account": account_id,
                 "to": to_addr,

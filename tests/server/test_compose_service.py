@@ -1,6 +1,7 @@
-"""Unit tests for ``_ComposeDraftMixin._handle_compose_draft``.
+"""Unit tests for ``ComposeService.handle_compose_draft``.
 
-Covers: missing fields, unknown account, reply derivation, file-hub not
+Drives the service directly against a stub request context.  Covers:
+missing fields, unknown account, reply derivation, file-hub not
 configured, file-hub unreachable, unknown file-hub id, fail-loud on a
 failed attachment download, and the happy paths (new message + reply)
 which write directly to the IMAP Drafts folder and store **no** board
@@ -10,15 +11,16 @@ record.
 from __future__ import annotations
 
 import json
+from typing import Any
 from unittest import mock
 
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import MailRecord, init_db, insert_record
-from robotsix_auto_mail.server._compose_draft_mixin import _ComposeDraftMixin
+from robotsix_auto_mail.server._compose_service import ComposeService
 
 
-class _ComposeDraftFakeHandler(_ComposeDraftMixin):
-    """Concrete handler wiring ``BoardHandlerProtocol`` attributes to mocks."""
+class _StubContext:
+    """Stub request context wiring ``BoardHandlerProtocol`` attributes to mocks."""
 
     def __init__(
         self,
@@ -48,7 +50,7 @@ class _ComposeDraftFakeHandler(_ComposeDraftMixin):
         detail: str,
         instance: str | None = None,
     ) -> None:
-        """Mirror ``BoardHandler._problem`` so mixin calls hit ``_serve_json``."""
+        """Mirror ``BoardHandler._problem`` so calls hit ``_serve_json``."""
         self._serve_json(
             {
                 "type": f"urn:robotsix:error:{kind}",
@@ -60,6 +62,10 @@ class _ComposeDraftFakeHandler(_ComposeDraftMixin):
             },
             status=status,
         )
+
+
+def _service() -> ComposeService:
+    return ComposeService(db_path="")
 
 
 def _make_config(db_path: str = "/tmp/test.db") -> MailConfig:  # noqa: S108 — test-only default
@@ -84,16 +90,16 @@ def _make_accounts(
     )
 
 
-def _set_json_body(handler: _ComposeDraftFakeHandler, body: dict) -> None:
-    """Set the handler's rfile to return the given JSON body."""
+def _set_json_body(ctx: _StubContext, body: dict[str, Any]) -> None:
+    """Set the context's rfile to return the given JSON body."""
     raw = json.dumps(body).encode()
-    handler.headers.get.return_value = len(raw)
-    handler.rfile.read.return_value = raw
+    ctx.headers.get.return_value = len(raw)
+    ctx.rfile.read.return_value = raw
 
 
 def _mock_httpx_responses(*responses: object) -> mock._patch:
     """Patch the module ``httpx`` so ``Client().get`` yields *responses*."""
-    patcher = mock.patch("robotsix_auto_mail.server._compose_draft_mixin.httpx")
+    patcher = mock.patch("robotsix_auto_mail.server._compose_service.httpx")
     mock_httpx = patcher.start()
     mock_client = mock.MagicMock()
     mock_client.__enter__ = mock.MagicMock(return_value=mock_client)
@@ -116,53 +122,53 @@ def _resp(
 
 class TestComposeDraftMissingFields:
     def test_empty_body(self) -> None:
-        handler = _ComposeDraftFakeHandler()
-        handler.headers.get.return_value = 0
-        handler.rfile.read.return_value = b""
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "account" in handler._bad_request.call_args[0][0]
+        ctx = _StubContext()
+        ctx.headers.get.return_value = 0
+        ctx.rfile.read.return_value = b""
+        _service().handle_compose_draft(ctx)
+        ctx._bad_request.assert_called_once()
+        assert "account" in ctx._bad_request.call_args[0][0]
 
     def test_missing_account(self) -> None:
-        handler = _ComposeDraftFakeHandler()
-        _set_json_body(handler, {"to": "a@b.com", "subject": "S", "body": "B"})
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "account" in handler._bad_request.call_args[0][0]
+        ctx = _StubContext()
+        _set_json_body(ctx, {"to": "a@b.com", "subject": "S", "body": "B"})
+        _service().handle_compose_draft(ctx)
+        ctx._bad_request.assert_called_once()
+        assert "account" in ctx._bad_request.call_args[0][0]
 
     def test_missing_body(self) -> None:
-        handler = _ComposeDraftFakeHandler()
-        _set_json_body(handler, {"account": "TEST", "to": "a@b.com", "subject": "S"})
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "body" in handler._bad_request.call_args[0][0]
+        ctx = _StubContext()
+        _set_json_body(ctx, {"account": "TEST", "to": "a@b.com", "subject": "S"})
+        _service().handle_compose_draft(ctx)
+        ctx._bad_request.assert_called_once()
+        assert "body" in ctx._bad_request.call_args[0][0]
 
     def test_new_message_missing_to(self) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts())
-        _set_json_body(handler, {"account": "TEST", "subject": "S", "body": "B"})
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "to" in handler._bad_request.call_args[0][0]
+        ctx = _StubContext(accounts=_make_accounts())
+        _set_json_body(ctx, {"account": "TEST", "subject": "S", "body": "B"})
+        _service().handle_compose_draft(ctx)
+        ctx._bad_request.assert_called_once()
+        assert "to" in ctx._bad_request.call_args[0][0]
 
     def test_new_message_missing_subject(self) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts())
-        _set_json_body(handler, {"account": "TEST", "to": "a@b.com", "body": "B"})
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "subject" in handler._bad_request.call_args[0][0]
+        ctx = _StubContext(accounts=_make_accounts())
+        _set_json_body(ctx, {"account": "TEST", "to": "a@b.com", "body": "B"})
+        _service().handle_compose_draft(ctx)
+        ctx._bad_request.assert_called_once()
+        assert "subject" in ctx._bad_request.call_args[0][0]
 
     def test_malformed_json(self) -> None:
-        handler = _ComposeDraftFakeHandler()
-        handler.headers.get.return_value = 10
-        handler.rfile.read.return_value = b"not json"
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "Malformed" in handler._bad_request.call_args[0][0]
+        ctx = _StubContext()
+        ctx.headers.get.return_value = 10
+        ctx.rfile.read.return_value = b"not json"
+        _service().handle_compose_draft(ctx)
+        ctx._bad_request.assert_called_once()
+        assert "Malformed" in ctx._bad_request.call_args[0][0]
 
     def test_attachments_not_a_list(self) -> None:
-        handler = _ComposeDraftFakeHandler()
+        ctx = _StubContext()
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "to": "a@b.com",
@@ -171,40 +177,40 @@ class TestComposeDraftMissingFields:
                 "attachments": "not-a-list",
             },
         )
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "attachments" in handler._bad_request.call_args[0][0]
+        _service().handle_compose_draft(ctx)
+        ctx._bad_request.assert_called_once()
+        assert "attachments" in ctx._bad_request.call_args[0][0]
 
 
 class TestComposeDraftUnknownAccount:
     def test_unknown_account_id(self) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts())
+        ctx = _StubContext(accounts=_make_accounts())
         _set_json_body(
-            handler,
+            ctx,
             {"account": "NONEXISTENT", "to": "a@b.com", "subject": "S", "body": "B"},
         )
-        handler._handle_compose_draft()
-        handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
+        _service().handle_compose_draft(ctx)
+        ctx._serve_json.assert_called_once()
+        args = ctx._serve_json.call_args
         assert args[1]["status"] == 404
         assert args[0][0]["type"] == "urn:robotsix:error:unknown-account"
 
     def test_no_accounts_configured(self) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=None)
+        ctx = _StubContext(accounts=None)
         _set_json_body(
-            handler,
+            ctx,
             {"account": "TEST", "to": "a@b.com", "subject": "S", "body": "B"},
         )
-        handler._handle_compose_draft()
-        handler._bad_request.assert_called_once()
-        assert "No accounts" in handler._bad_request.call_args[0][0]
+        _service().handle_compose_draft(ctx)
+        ctx._bad_request.assert_called_once()
+        assert "No accounts" in ctx._bad_request.call_args[0][0]
 
 
 class TestComposeDraftFileHubNotConfigured:
     def test_empty_file_hub_url_with_attachments(self) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(file_hub_url=""))
+        ctx = _StubContext(accounts=_make_accounts(file_hub_url=""))
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "to": "a@b.com",
@@ -213,18 +219,18 @@ class TestComposeDraftFileHubNotConfigured:
                 "attachments": ["some-id"],
             },
         )
-        handler._handle_compose_draft()
-        handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
+        _service().handle_compose_draft(ctx)
+        ctx._serve_json.assert_called_once()
+        args = ctx._serve_json.call_args
         assert args[1]["status"] == 503
         assert args[0][0]["type"] == "urn:robotsix:error:file-hub-not-configured"
 
 
 class TestComposeDraftFileHubErrors:
-    def _handler_with_attachment(self) -> _ComposeDraftFakeHandler:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts())
+    def _ctx_with_attachment(self) -> _StubContext:
+        ctx = _StubContext(accounts=_make_accounts())
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "to": "a@b.com",
@@ -233,11 +239,11 @@ class TestComposeDraftFileHubErrors:
                 "attachments": ["att-1"],
             },
         )
-        return handler
+        return ctx
 
     def test_file_hub_unreachable(self) -> None:
-        handler = self._handler_with_attachment()
-        patcher = mock.patch("robotsix_auto_mail.server._compose_draft_mixin.httpx")
+        ctx = self._ctx_with_attachment()
+        patcher = mock.patch("robotsix_auto_mail.server._compose_service.httpx")
         mock_httpx = patcher.start()
         try:
             mock_client = mock.MagicMock()
@@ -245,62 +251,64 @@ class TestComposeDraftFileHubErrors:
             mock_client.__exit__ = mock.MagicMock(return_value=False)
             mock_client.get.side_effect = RuntimeError("boom")
             mock_httpx.Client.return_value = mock_client
-            handler._handle_compose_draft()
+            _service().handle_compose_draft(ctx)
         finally:
             patcher.stop()
-        handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        args = ctx._serve_json.call_args
         assert args[1]["status"] == 502
         assert args[0][0]["type"] == "urn:robotsix:error:attachment-fetch-failed"
         assert "unreachable" in args[0][0]["detail"]
 
     def test_file_hub_unknown_id(self) -> None:
-        handler = self._handler_with_attachment()
+        ctx = self._ctx_with_attachment()
         patcher = _mock_httpx_responses(_resp(404))
         try:
-            handler._handle_compose_draft()
+            _service().handle_compose_draft(ctx)
         finally:
             patcher.stop()
-        handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        args = ctx._serve_json.call_args
         assert args[1]["status"] == 404
         assert "att-1" in args[0][0]["detail"]
 
     def test_file_hub_server_error(self) -> None:
-        handler = self._handler_with_attachment()
+        ctx = self._ctx_with_attachment()
         patcher = _mock_httpx_responses(_resp(500))
         try:
-            handler._handle_compose_draft()
+            _service().handle_compose_draft(ctx)
         finally:
             patcher.stop()
-        handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        args = ctx._serve_json.call_args
         assert args[1]["status"] == 502
         assert args[0][0]["type"] == "urn:robotsix:error:attachment-fetch-failed"
 
     def test_attachment_download_fails_loudly(self) -> None:
         """Metadata OK but the content download 500s → fail loud, no append."""
-        handler = self._handler_with_attachment()
+        ctx = self._ctx_with_attachment()
+        service = _service()
         meta = _resp(200, {"filename": "f.pdf", "content_type": "application/pdf"})
         bad_content = _resp(500)
         patcher = _mock_httpx_responses(meta, bad_content)
         try:
-            with mock.patch.object(handler, "_append_to_drafts_folder") as m_append:
-                handler._handle_compose_draft()
+            with mock.patch.object(service, "_append_to_drafts_folder") as m_append:
+                service.handle_compose_draft(ctx)
         finally:
             patcher.stop()
         m_append.assert_not_called()
-        handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        args = ctx._serve_json.call_args
         assert args[1]["status"] == 502
         assert args[0][0]["type"] == "urn:robotsix:error:attachment-fetch-failed"
 
 
 class TestComposeDraftHappyPath:
     def test_no_attachments_writes_no_board_record(self, single_db: str) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
+        service = _service()
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "to": "recipient@example.com",
@@ -309,12 +317,12 @@ class TestComposeDraftHappyPath:
             },
         )
         with mock.patch.object(
-            handler, "_append_to_drafts_folder", return_value="[Gmail]/Drafts"
+            service, "_append_to_drafts_folder", return_value="[Gmail]/Drafts"
         ) as m_append:
-            handler._handle_compose_draft()
+            service.handle_compose_draft(ctx)
 
-        handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        args = ctx._serve_json.call_args
         assert args[1]["status"] == 201
         body = args[0][0]
         assert body["account"] == "TEST"
@@ -342,9 +350,10 @@ class TestComposeDraftHappyPath:
             conn.close()
 
     def test_with_attachments(self, single_db: str) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
+        service = _service()
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "to": "gestion@example.fr",
@@ -361,14 +370,14 @@ class TestComposeDraftHappyPath:
         )
         try:
             with mock.patch.object(
-                handler, "_append_to_drafts_folder", return_value="Drafts"
+                service, "_append_to_drafts_folder", return_value="Drafts"
             ) as m_append:
-                handler._handle_compose_draft()
+                service.handle_compose_draft(ctx)
         finally:
             patcher.stop()
 
-        handler._serve_json.assert_called_once()
-        body = handler._serve_json.call_args[0][0]
+        ctx._serve_json.assert_called_once()
+        body = ctx._serve_json.call_args[0][0]
         assert body["attachments"] == 2
         kwargs = m_append.call_args[1]
         assert kwargs["attachment_names"] == ["mandate.pdf", "rib.pdf"]
@@ -399,9 +408,10 @@ class TestComposeDraftReply:
 
     def test_reply_derives_to_subject_and_threading(self, single_db: str) -> None:
         self._insert_original(single_db)
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
+        service = _service()
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "body": "Here is my reply.",
@@ -409,12 +419,12 @@ class TestComposeDraftReply:
             },
         )
         with mock.patch.object(
-            handler, "_append_to_drafts_folder", return_value="Drafts"
+            service, "_append_to_drafts_folder", return_value="Drafts"
         ) as m_append:
-            handler._handle_compose_draft()
+            service.handle_compose_draft(ctx)
 
-        handler._serve_json.assert_called_once()
-        body = handler._serve_json.call_args[0][0]
+        ctx._serve_json.assert_called_once()
+        body = ctx._serve_json.call_args[0][0]
         assert body["reply"] is True
         assert body["to"] == "peer@example.com"
         assert body["subject"] == "Re: Question about the invoice"
@@ -425,9 +435,10 @@ class TestComposeDraftReply:
 
     def test_reply_all_adds_cc(self, single_db: str) -> None:
         self._insert_original(single_db)
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
+        service = _service()
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "body": "Reply to everyone.",
@@ -436,9 +447,9 @@ class TestComposeDraftReply:
             },
         )
         with mock.patch.object(
-            handler, "_append_to_drafts_folder", return_value="Drafts"
+            service, "_append_to_drafts_folder", return_value="Drafts"
         ) as m_append:
-            handler._handle_compose_draft()
+            service.handle_compose_draft(ctx)
 
         cc = m_append.call_args[1]["cc"]
         # self (user@) and the original sender (peer@) are excluded.
@@ -448,17 +459,17 @@ class TestComposeDraftReply:
         assert "peer@example.com" not in cc
 
     def test_reply_unknown_target(self, single_db: str) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "body": "Reply body.",
                 "reply_to_message_id": "<missing@example.com>",
             },
         )
-        handler._handle_compose_draft()
-        handler._serve_json.assert_called_once()
-        args = handler._serve_json.call_args
+        _service().handle_compose_draft(ctx)
+        ctx._serve_json.assert_called_once()
+        args = ctx._serve_json.call_args
         assert args[1]["status"] == 404
         assert args[0][0]["type"] == "urn:robotsix:error:unknown-reply-target"

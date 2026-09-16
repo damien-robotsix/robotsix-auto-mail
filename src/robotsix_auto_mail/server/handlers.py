@@ -54,7 +54,7 @@ from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
 from robotsix_auto_mail.server._attachment_mixin import _AttachmentMixin
 from robotsix_auto_mail.server._auth_service import AuthService
 from robotsix_auto_mail.server._batch_service import BatchService
-from robotsix_auto_mail.server._compose_draft_mixin import _ComposeDraftMixin
+from robotsix_auto_mail.server._compose_service import ComposeService
 from robotsix_auto_mail.server._config_service import ConfigService
 from robotsix_auto_mail.server._constants import (
     _STATIC_CHAT_SKILL_MD,
@@ -66,7 +66,7 @@ from robotsix_auto_mail.server._mailbox_mixin import _MailboxMixin
 from robotsix_auto_mail.server._reconcile_service import ReconcileService
 from robotsix_auto_mail.server._sent_service import SentService
 from robotsix_auto_mail.server._services import ServiceContainer
-from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
+from robotsix_auto_mail.server._settings_service import SettingsService
 from robotsix_auto_mail.server._triage_service import TriageService
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
@@ -81,10 +81,8 @@ class BoardHandler(
     _BoardActionMixin,
     _ArchiveActionMixin,
     _AttachmentMixin,
-    _ComposeDraftMixin,
     _MailboxMixin,
     _AccountMixin,
-    _SettingsMixin,
     BaseHTTPRequestHandler,
 ):
     """Request handler for the robotsix-auto-mail board server.
@@ -160,10 +158,10 @@ class BoardHandler(
         # The config surface covers every account at once, so it must be
         # reachable before an account is selected (and with none configured).
         if urlsplit(self.path).path == "/config":
-            self._handle_get_config()
+            self._services.get(SettingsService).handle_get_config(ctx)
             return
         if urlsplit(self.path).path == "/config/versions":
-            self._handle_get_config_versions()
+            self._services.get(SettingsService).handle_get_config_versions(ctx)
             return
         if self.accounts is not None and not self._select_account():
             return
@@ -181,7 +179,10 @@ class BoardHandler(
             (lambda p: p == "/healthz", self._serve_health),
             (lambda p: p == "/ready", self._serve_ready),
             (lambda p: p == "/readyz", self._serve_ready),
-            (lambda p: p == "/settings-panel", self._serve_settings_panel),
+            (
+                lambda p: p == "/settings-panel",
+                lambda: self._services.get(SettingsService).serve_settings_panel(ctx),
+            ),
             (
                 lambda p: p == "/probe-health",
                 self._serve_probe_health,
@@ -252,11 +253,11 @@ class BoardHandler(
         # _select_account() so account deletion works even when the
         # deleted account is not the currently-selected one.
         if urlsplit(self.path).path == "/delete-account":
-            self._handle_delete_account()
+            self._services.get(SettingsService).handle_delete_account(ctx)
             return
         # Rollback covers every account at once — same reasoning as GET /config.
         if urlsplit(self.path).path == "/config/rollback":
-            self._handle_config_rollback()
+            self._services.get(SettingsService).handle_config_rollback(ctx)
             return
         if self.accounts is not None and not self._select_account():
             return
@@ -321,7 +322,9 @@ class BoardHandler(
                 ConfigService
             ).handle_archive_proposal(ctx),
             "/save-notes": self._handle_save_notes,
-            "/compose-draft": self._handle_compose_draft,
+            "/compose-draft": lambda: self._services.get(
+                ComposeService
+            ).handle_compose_draft(ctx),
         }
         # Dispatch on the bare path so ``?account=<id>`` query strings do
         # not defeat exact-match routing.
@@ -333,8 +336,9 @@ class BoardHandler(
 
     def do_PUT(self) -> None:
         """Route PUT requests — the config surface is the only one."""
+        ctx = cast("RequestContext", self)
         if urlsplit(self.path).path == "/config":
-            self._handle_put_config()
+            self._services.get(SettingsService).handle_put_config(ctx)
             return
         self._not_found()
 

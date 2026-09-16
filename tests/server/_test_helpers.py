@@ -1,10 +1,8 @@
 """Shared helpers for action-mixin unit tests.
 
 Provides ``_FakeHandler`` (a concrete ``_BoardActionMixin`` for direct
-mixin testing), ``_ComposeDraftFakeHandler`` (extends ``_FakeHandler``
-with ``_ComposeDraftMixin`` for compose-to-Drafts unit tests), and
-``_SyncThread`` (a synchronous ``threading.Thread`` replacement for
-deterministic background-worker tests).
+mixin testing) and ``_SyncThread`` (a synchronous ``threading.Thread``
+replacement for deterministic background-worker tests).
 """
 
 from __future__ import annotations
@@ -16,7 +14,6 @@ from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.server._account_mixin import _AccountMixin
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
-from robotsix_auto_mail.server._compose_draft_mixin import _ComposeDraftMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
 
@@ -38,30 +35,6 @@ class _FakeHandler(_BoardViewMixin, _ArchiveActionMixin, _BoardActionMixin):
         self._redirect = mock.MagicMock()
         self._not_found = mock.MagicMock()
         self._bad_request = mock.MagicMock()
-
-
-class _ComposeDraftFakeHandler(_ComposeDraftMixin, _BoardActionMixin):
-    """Concrete handler that wires ``BoardHandlerProtocol`` attributes
-    to MagicMock defaults so compose-draft methods can be called directly."""
-
-    def __init__(
-        self,
-        db_path: str,
-        mail_config: MailConfig | None = None,
-    ) -> None:
-        self.db_path = db_path
-        self.mail_config = mail_config
-        self.accounts = None
-        self._current_account_id = None
-        self._aggregate = False
-        self._account_cookie = None
-        self.headers = mock.MagicMock()
-        self.rfile = mock.MagicMock()
-        self._send_response = mock.MagicMock()
-        self._redirect = mock.MagicMock()
-        self._not_found = mock.MagicMock()
-        self._bad_request = mock.MagicMock()
-        self._serve_json = mock.MagicMock()
 
 
 class _SyncThread:

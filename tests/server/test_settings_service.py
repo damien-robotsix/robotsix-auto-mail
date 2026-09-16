@@ -1,8 +1,9 @@
-"""Unit tests for the config surface handlers in ``_SettingsMixin``.
+"""Unit tests for ``SettingsService`` — the config surface + Settings page.
 
-These exercise the HTTP shell over ``robotsix_auto_mail.config.service``:
-status codes, the ``problem+json`` envelope, and the accounts-cache refresh
-that keeps a running server from serving pre-write config.
+Drives the service directly against a stub request context.  These
+exercise the HTTP shell over ``robotsix_auto_mail.config.service``: status
+codes, the ``problem+json`` envelope, and the accounts-cache refresh that
+keeps a running server from serving pre-write config.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
+from robotsix_auto_mail.server._settings_service import SettingsService
 
 
 class _FakeServer:
@@ -28,10 +29,13 @@ class _FakeServer:
         self.RequestHandlerClass.keywords = keywords if keywords is not None else {}
 
 
-class _FakeConfigHandler(_SettingsMixin):
-    """Concrete handler wiring protocol stubs for direct mixin testing."""
+class _StubContext:
+    """Stub request context wiring protocol stubs for direct service testing."""
 
     def __init__(self, body: bytes = b"", server: _FakeServer | None = None) -> None:
+        self.db_path = ""
+        self.mail_config = None
+        self.accounts = None
         self.headers = {"Content-Length": str(len(body))}
         self.rfile = io.BytesIO(body)
         self.server = server or _FakeServer()
@@ -48,6 +52,10 @@ class _FakeConfigHandler(_SettingsMixin):
         assert self._serve_json.call_args is not None
         status: int = self._serve_json.call_args[1]["status"]
         return status
+
+
+def _service() -> SettingsService:
+    return SettingsService(db_path="")
 
 
 def _account(account_id: str = "work") -> dict[str, Any]:
@@ -82,22 +90,22 @@ def _json_body(payload: Any) -> bytes:
 
 
 def test_get_config_returns_config_schema_and_version(config_file: Path) -> None:
-    handler = _FakeConfigHandler()
+    ctx = _StubContext()
 
-    handler._handle_get_config()
+    _service().handle_get_config(ctx)
 
-    assert handler.status == 200
-    assert handler.payload["config"]["accounts"][0]["account_id"] == "work"
-    assert handler.payload["schema"]["properties"]["accounts"]
-    assert handler.payload["version"] >= 1
+    assert ctx.status == 200
+    assert ctx.payload["config"]["accounts"][0]["account_id"] == "work"
+    assert ctx.payload["schema"]["properties"]["accounts"]
+    assert ctx.payload["version"] >= 1
 
 
 def test_get_config_never_echoes_a_secret(config_file: Path) -> None:
-    handler = _FakeConfigHandler()
+    ctx = _StubContext()
 
-    handler._handle_get_config()
+    _service().handle_get_config(ctx)
 
-    assert "stored-secret" not in json.dumps(handler.payload)
+    assert "stored-secret" not in json.dumps(ctx.payload)
 
 
 # ---------------------------------------------------------------------------
@@ -109,16 +117,16 @@ def test_put_config_applies_the_update_and_refreshes_the_cache(
     config_file: Path,
 ) -> None:
     server = _FakeServer({"accounts": None})
-    handler = _FakeConfigHandler(
+    ctx = _StubContext(
         _json_body(
             {"accounts": [{"account_id": "work", "config": {"imap_folder": "Later"}}]}
         ),
         server=server,
     )
 
-    handler._handle_put_config()
+    _service().handle_put_config(ctx)
 
-    assert handler.status == 200
+    assert ctx.status == 200
     stored = json.loads(config_file.read_text())
     assert stored["accounts"][0]["config"]["imap_folder"] == "Later"
     # The running server must not keep serving the pre-write config.
@@ -129,17 +137,17 @@ def test_put_config_reports_validation_failures_as_problem_json(
     config_file: Path,
 ) -> None:
     before = config_file.read_text()
-    handler = _FakeConfigHandler(
+    ctx = _StubContext(
         _json_body(
             {"accounts": [{"account_id": "work", "config": {"imap_tls_mode": "bogus"}}]}
         )
     )
 
-    handler._handle_put_config()
+    _service().handle_put_config(ctx)
 
-    assert handler.status == 422
-    assert handler.payload["type"] == "urn:robotsix:error:config-validation"
-    assert "imap_tls_mode" in handler.payload["detail"]
+    assert ctx.status == 422
+    assert ctx.payload["type"] == "urn:robotsix:error:config-validation"
+    assert "imap_tls_mode" in ctx.payload["detail"]
     assert config_file.read_text() == before
 
 
@@ -154,12 +162,12 @@ def test_put_config_reports_validation_failures_as_problem_json(
 def test_put_config_rejects_malformed_bodies(
     config_file: Path, body: bytes, expected: str
 ) -> None:
-    handler = _FakeConfigHandler(body)
+    ctx = _StubContext(body)
 
-    handler._handle_put_config()
+    _service().handle_put_config(ctx)
 
-    assert handler.status == 400
-    assert expected in handler.payload["detail"]
+    assert ctx.status == 400
+    assert expected in ctx.payload["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -168,32 +176,44 @@ def test_put_config_rejects_malformed_bodies(
 
 
 def test_get_config_versions_lists_history(config_file: Path) -> None:
-    _FakeConfigHandler(
-        _json_body(
-            {"accounts": [{"account_id": "work", "config": {"imap_folder": "Later"}}]}
+    _service().handle_put_config(
+        _StubContext(
+            _json_body(
+                {
+                    "accounts": [
+                        {"account_id": "work", "config": {"imap_folder": "Later"}}
+                    ]
+                }
+            )
         )
-    )._handle_put_config()
+    )
 
-    handler = _FakeConfigHandler()
-    handler._handle_get_config_versions()
+    ctx = _StubContext()
+    _service().handle_get_config_versions(ctx)
 
-    assert handler.status == 200
-    versions = handler.payload["versions"]
+    assert ctx.status == 200
+    versions = ctx.payload["versions"]
     assert versions[0]["version"] > versions[-1]["version"]
     assert "accounts.0.config.imap_folder" in versions[0]["changed_keys"]
 
 
 def test_rollback_restores_a_previous_version(config_file: Path) -> None:
-    _FakeConfigHandler(
-        _json_body(
-            {"accounts": [{"account_id": "work", "config": {"imap_folder": "Later"}}]}
+    _service().handle_put_config(
+        _StubContext(
+            _json_body(
+                {
+                    "accounts": [
+                        {"account_id": "work", "config": {"imap_folder": "Later"}}
+                    ]
+                }
+            )
         )
-    )._handle_put_config()
+    )
 
-    handler = _FakeConfigHandler(_json_body({"version": 1}))
-    handler._handle_config_rollback()
+    ctx = _StubContext(_json_body({"version": 1}))
+    _service().handle_config_rollback(ctx)
 
-    assert handler.status == 200
+    assert ctx.status == 200
     stored = json.loads(config_file.read_text())
     assert stored["accounts"][0]["config"]["imap_folder"] == "INBOX"
     # History carries no secrets, so the live one survives the rollback.
@@ -202,20 +222,20 @@ def test_rollback_restores_a_previous_version(config_file: Path) -> None:
 
 @pytest.mark.parametrize("version", ["1", None, True])
 def test_rollback_requires_an_integer_version(config_file: Path, version: Any) -> None:
-    handler = _FakeConfigHandler(_json_body({"version": version}))
+    ctx = _StubContext(_json_body({"version": version}))
 
-    handler._handle_config_rollback()
+    _service().handle_config_rollback(ctx)
 
-    assert handler.status == 422
-    assert "must be an integer" in handler.payload["detail"]
+    assert ctx.status == 422
+    assert "must be an integer" in ctx.payload["detail"]
 
 
 def test_rollback_to_an_unknown_version_is_rejected(config_file: Path) -> None:
-    handler = _FakeConfigHandler(_json_body({"version": 99}))
+    ctx = _StubContext(_json_body({"version": 99}))
 
-    handler._handle_config_rollback()
+    _service().handle_config_rollback(ctx)
 
-    assert handler.status == 422
+    assert ctx.status == 422
 
 
 # ---------------------------------------------------------------------------
@@ -224,11 +244,11 @@ def test_rollback_to_an_unknown_version_is_rejected(config_file: Path) -> None:
 
 
 def test_settings_page_mounts_the_shared_panel() -> None:
-    handler = _FakeConfigHandler()
+    ctx = _StubContext()
 
-    handler._serve_settings_panel()
+    _service().serve_settings_panel(ctx)
 
-    body = handler._send_response.call_args[0][0]
+    body = ctx._send_response.call_args[0][0]
     # No bespoke form: the page mounts the shared renderer via external
     # module scripts (CSP-safe — no 'unsafe-inline').
     assert "/static/settings-loader.js" in body
@@ -247,7 +267,7 @@ def test_put_config_mirrors_into_the_settings_store(
     from robotsix_auto_mail.settings import SettingsStore
 
     db_path = str(tmp_path / "mail.db")
-    handler = _FakeConfigHandler(
+    ctx = _StubContext(
         _json_body(
             {
                 "accounts": [
@@ -260,9 +280,9 @@ def test_put_config_mirrors_into_the_settings_store(
         )
     )
 
-    handler._handle_put_config()
+    _service().handle_put_config(ctx)
 
-    assert handler.status == 200
+    assert ctx.status == 200
     conn = sqlite3.connect(db_path)
     try:
         stored = SettingsStore(db_path).get_all(conn)

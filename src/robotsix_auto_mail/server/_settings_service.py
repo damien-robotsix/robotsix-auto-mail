@@ -11,8 +11,6 @@ Account creation and deletion stay separate flows: they validate a mailbox
 connection, which is more than a config write.
 """
 
-# mypy: disable-error-code="attr-defined"
-
 from __future__ import annotations
 
 import html
@@ -23,6 +21,10 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.server._constants import _update_handler_factory_cache
+from robotsix_auto_mail.server._services import Service
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -79,42 +81,39 @@ _SETTINGS_PAGE = (
 )
 
 
-class _SettingsMixin:
-    """Mixin providing the standard config surface, the Settings page,
-    and account deletion."""
-
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
-
-    self: BoardHandlerProtocol
+class SettingsService(Service):
+    """Stateless service providing the standard config surface, the Settings
+    page, and account deletion."""
 
     # -- request helpers -----------------------------------------------------
 
-    def _read_json_body(self) -> dict[str, Any] | None:
+    def _read_json_body(self, ctx: RequestContext) -> dict[str, Any] | None:
         """Parse the body as a JSON object, or answer and return ``None``."""
         try:
-            length = int(self.headers.get("Content-Length", "0"))
+            length = int(ctx.headers.get("Content-Length", "0"))
         except ValueError:
             length = 0
         if length <= 0:
-            self._config_problem("empty request body", status=400)
+            self._config_problem(ctx, "empty request body", status=400)
             return None
         if length > _MAX_BODY_BYTES:
-            self._config_problem("request body too large", status=413)
+            self._config_problem(ctx, "request body too large", status=413)
             return None
         try:
-            body = json.loads(self.rfile.read(length))
+            body = json.loads(ctx.rfile.read(length))
         except json.JSONDecodeError as exc:
-            self._config_problem(f"invalid JSON: {exc}", status=400)
+            self._config_problem(ctx, f"invalid JSON: {exc}", status=400)
             return None
         if not isinstance(body, dict):
-            self._config_problem("expected a JSON object", status=400)
+            self._config_problem(ctx, "expected a JSON object", status=400)
             return None
         return body
 
-    def _config_problem(self, detail: str, status: int = 422) -> None:
+    def _config_problem(
+        self, ctx: RequestContext, detail: str, status: int = 422
+    ) -> None:
         """Answer with the fleet's standard error envelope."""
-        self._serve_json(
+        ctx._serve_json(
             {
                 "type": "urn:robotsix:error:config-validation",
                 "title": "Config validation failed",
@@ -126,7 +125,7 @@ class _SettingsMixin:
 
     # -- GET /config ---------------------------------------------------------
 
-    def _handle_get_config(self) -> None:
+    def handle_get_config(self, ctx: RequestContext) -> None:
         """Return the effective config, its schema, and the current version.
 
         Secrets are masked by the model itself — they are never echoed.
@@ -134,79 +133,79 @@ class _SettingsMixin:
         from robotsix_auto_mail.config.service import get_config
 
         try:
-            self._serve_json(get_config(), status=200)
+            ctx._serve_json(get_config(), status=200)
         except Exception as exc:
             logger.error("Failed to read config: %s", exc)
-            self._config_problem(f"failed to read config: {exc}", status=500)
+            self._config_problem(ctx, f"failed to read config: {exc}", status=500)
 
     # -- PUT /config ---------------------------------------------------------
 
-    def _handle_put_config(self) -> None:
+    def handle_put_config(self, ctx: RequestContext) -> None:
         """Apply a partial config update and persist it."""
         from robotsix_auto_mail.config.service import (
             ConfigValidationError,
             update_config,
         )
 
-        body = self._read_json_body()
+        body = self._read_json_body(ctx)
         if body is None:
             return
 
         try:
             result = update_config(body)
         except ConfigValidationError as exc:
-            self._config_problem(exc.detail)
+            self._config_problem(ctx, exc.detail)
             return
         except Exception as exc:
             logger.error("Failed to write config: %s", exc)
-            self._config_problem(f"failed to write config: {exc}", status=500)
+            self._config_problem(ctx, f"failed to write config: {exc}", status=500)
             return
 
-        self._refresh_accounts_cache()
-        self._serve_json(result, status=200)
+        self._refresh_accounts_cache(ctx)
+        ctx._serve_json(result, status=200)
 
     # -- GET /config/versions ------------------------------------------------
 
-    def _handle_get_config_versions(self) -> None:
+    def handle_get_config_versions(self, ctx: RequestContext) -> None:
         """Return recent config versions, newest first."""
         from robotsix_auto_mail.config.service import list_versions
 
         try:
-            self._serve_json(list_versions(), status=200)
+            ctx._serve_json(list_versions(), status=200)
         except Exception as exc:
             logger.error("Failed to read config versions: %s", exc)
-            self._config_problem(f"failed to read versions: {exc}", status=500)
+            self._config_problem(ctx, f"failed to read versions: {exc}", status=500)
 
     # -- POST /config/rollback -----------------------------------------------
 
-    def _handle_config_rollback(self) -> None:
+    def handle_config_rollback(self, ctx: RequestContext) -> None:
         """Restore a previous version as a new version."""
         from robotsix_auto_mail.config.service import ConfigValidationError, rollback
 
-        body = self._read_json_body()
+        body = self._read_json_body(ctx)
         if body is None:
             return
         version = body.get("version")
         if not isinstance(version, int) or isinstance(version, bool):
-            self._config_problem("'version' must be an integer")
+            self._config_problem(ctx, "'version' must be an integer")
             return
 
         try:
             result = rollback(version)
         except ConfigValidationError as exc:
-            self._config_problem(exc.detail)
+            self._config_problem(ctx, exc.detail)
             return
         except Exception as exc:
             logger.error("Failed to roll back config: %s", exc)
-            self._config_problem(f"failed to roll back: {exc}", status=500)
+            self._config_problem(ctx, f"failed to roll back: {exc}", status=500)
             return
 
-        self._refresh_accounts_cache()
-        self._serve_json(result, status=200)
+        self._refresh_accounts_cache(ctx)
+        ctx._serve_json(result, status=200)
 
     # -- shared --------------------------------------------------------------
 
-    def _refresh_accounts_cache(self) -> None:
+    def _refresh_accounts_cache(self, ctx: RequestContext) -> None:
         """Re-read accounts into the handler factory after a config write.
 
         The server keeps the loaded accounts in the handler factory's
@@ -223,7 +222,7 @@ class _SettingsMixin:
             )
             return
 
-        handler_factory = getattr(self.server, "RequestHandlerClass", None)
+        handler_factory = getattr(ctx.server, "RequestHandlerClass", None)
         keywords = getattr(handler_factory, "keywords", None)
         if isinstance(keywords, dict) and "accounts" in keywords:
             keywords["accounts"] = accounts
@@ -259,13 +258,13 @@ class _SettingsMixin:
 
     # -- GET /settings-panel -------------------------------------------------
 
-    def _serve_settings_panel(self) -> None:
+    def serve_settings_panel(self, ctx: RequestContext) -> None:
         """Serve the Settings page, which mounts the shared config panel."""
-        self._send_response(_SETTINGS_PAGE, content_type="text/html; charset=utf-8")
+        ctx._send_response(_SETTINGS_PAGE, content_type="text/html; charset=utf-8")
 
     # -- POST /delete-account ------------------------------------------------
 
-    def _handle_delete_account(self) -> None:
+    def handle_delete_account(self, ctx: RequestContext) -> None:
         """Delete an account from the persisted configuration.
 
         POST /delete-account  (form body: ``account_id=<id>``)
@@ -281,16 +280,16 @@ class _SettingsMixin:
         )
 
         # Read URL-encoded form body.
-        length = int(self.headers.get("Content-Length", "0"))
+        length = int(ctx.headers.get("Content-Length", "0"))
         if length == 0:
-            self._serve_json({"ok": False, "error": "empty request body"}, status=400)
+            ctx._serve_json({"ok": False, "error": "empty request body"}, status=400)
             return
 
-        raw = self.rfile.read(length).decode("utf-8", errors="replace")
+        raw = ctx.rfile.read(length).decode("utf-8", errors="replace")
         body = parse_qs(raw)
         account_id_vals = body.get("account_id", [])
         if not account_id_vals:
-            self._serve_json({"ok": False, "error": "missing account_id"}, status=400)
+            ctx._serve_json({"ok": False, "error": "missing account_id"}, status=400)
             return
         account_id = account_id_vals[0].strip()
         account_id = account_id.replace("\n", "").replace("\r", "")
@@ -299,14 +298,14 @@ class _SettingsMixin:
         try:
             existing = load_accounts()
         except Exception as exc:
-            self._serve_json(
+            ctx._serve_json(
                 {"ok": False, "error": f"failed to load config: {exc}"},
                 status=500,
             )
             return
 
         if existing is None or account_id not in existing.ids():
-            self._serve_json(
+            ctx._serve_json(
                 {"ok": False, "error": f"unknown account: {account_id!r}"},
                 status=404,
             )
@@ -318,7 +317,7 @@ class _SettingsMixin:
         try:
             new_config = existing.with_accounts(new_accounts)
         except Exception as exc:
-            self._serve_json(
+            ctx._serve_json(
                 {"ok": False, "error": f"invalid config after deletion: {exc}"},
                 status=500,
             )
@@ -328,7 +327,7 @@ class _SettingsMixin:
             save_accounts(new_config)
         except Exception as exc:
             logger.error("Failed to save config after deleting account: %s", exc)
-            self._serve_json(
+            ctx._serve_json(
                 {"ok": False, "error": f"failed to save config: {exc}"},
                 status=500,
             )
@@ -340,6 +339,6 @@ class _SettingsMixin:
         logger.info("Deleted account %r via the settings page", safe_account_id)
 
         # Update handler factory cache.
-        _update_handler_factory_cache(self.server, new_config)
+        _update_handler_factory_cache(ctx.server, new_config)
 
-        self._serve_json({"ok": True}, status=200)
+        ctx._serve_json({"ok": True}, status=200)

@@ -2,7 +2,7 @@
 
 Exercises the routes end to end — including that they are reachable before an
 account is selected, and that ``PUT`` is wired at all — rather than calling the
-mixin directly (``test_settings_mixin.py`` covers that layer).
+service directly (``test_settings_service.py`` covers that layer).
 """
 
 from __future__ import annotations
