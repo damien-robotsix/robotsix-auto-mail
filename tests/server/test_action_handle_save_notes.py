@@ -1,4 +1,4 @@
-"""Tests for ``_BoardActionMixin._handle_save_notes``.
+"""Tests for ``ActionService.handle_save_notes``.
 
 Verifies that notes are persisted to the database with whitespace preserved
 (no-strip behaviour), and that missing message_id returns a 400.
@@ -7,7 +7,8 @@ Verifies that notes are persisted to the database with whitespace preserved
 from __future__ import annotations
 
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
-from tests.server._test_helpers import _FakeHandler
+from robotsix_auto_mail.server._action_service import ActionService
+from tests.server._test_helpers import _ActionServiceContext
 from tests.server.conftest_helpers import _populate_db
 
 
@@ -26,16 +27,16 @@ class TestHandleSaveNotes:
                 },
             ],
         )
-        handler = _FakeHandler(single_db)
-        handler.headers.get.return_value = 80
+        ctx = _ActionServiceContext(single_db)
+        ctx.headers.get.return_value = 80
         # URL-encoded: spaces become '+', %20, or actual spaces after
         # decoding.  parse_qs doesn't strip.  We include leading/trailing
         # spaces in the encoded form.
-        handler.rfile.read.return_value = (
+        ctx.rfile.read.return_value = (
             b"message_id=notes-test&redirect_to=/board&notes=+++preserve+spaces+++"
         )
 
-        handler._handle_save_notes()
+        ActionService(db_path=single_db).handle_save_notes(ctx)
 
         conn = init_db(single_db)
         try:
@@ -62,13 +63,13 @@ class TestHandleSaveNotes:
                 },
             ],
         )
-        handler = _FakeHandler(single_db)
-        handler.headers.get.return_value = 90
-        handler.rfile.read.return_value = (
+        ctx = _ActionServiceContext(single_db)
+        ctx.headers.get.return_value = 90
+        ctx.rfile.read.return_value = (
             b"message_id=notes-persist&redirect_to=/board&notes=Hello+World"
         )
 
-        handler._handle_save_notes()
+        ActionService(db_path=single_db).handle_save_notes(ctx)
 
         conn = init_db(single_db)
         try:
@@ -79,9 +80,9 @@ class TestHandleSaveNotes:
             conn.close()
 
     def test_missing_message_id_returns_400(self, tmp_db_path: str) -> None:
-        handler = _FakeHandler(tmp_db_path)
-        handler.headers.get.return_value = 40
-        handler.rfile.read.return_value = b"notes=some+notes&redirect_to=/board"
+        ctx = _ActionServiceContext(tmp_db_path)
+        ctx.headers.get.return_value = 40
+        ctx.rfile.read.return_value = b"notes=some+notes&redirect_to=/board"
 
-        handler._handle_save_notes()
-        handler._bad_request.assert_called_once_with("Missing message_id")
+        ActionService(db_path=tmp_db_path).handle_save_notes(ctx)
+        ctx._bad_request.assert_called_once_with("Missing message_id")

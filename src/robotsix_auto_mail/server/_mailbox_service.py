@@ -1,4 +1,4 @@
-"""Read-only mailbox enumeration + server-side search mixin for the board server.
+"""Read-only mailbox enumeration + server-side search service.
 
 Exposes two read-only endpoints over the chat HTTP API:
 
@@ -16,19 +16,21 @@ This is v1: keyword IMAP ``SEARCH`` only.  Semantic / embedding-based search is
 a possible v2 follow-up and is deliberately out of scope.
 """
 
-# mypy: disable-error-code="attr-defined"
-
 from __future__ import annotations
 
 import datetime as _datetime
 import email.utils
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, urlsplit
 
+from robotsix_auto_mail.server._services import Service
+
 if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailConfig
     from robotsix_auto_mail.imap import ImapClient
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -44,17 +46,13 @@ def _escape_search(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
-class _MailboxMixin:
-    """Mixin providing read-only ``GET /folders`` and ``GET /search``."""
-
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
-
-        self: BoardHandlerProtocol
+class MailboxService(Service):
+    """Stateless service providing read-only ``GET /folders`` and
+    ``GET /search``."""
 
     # -- GET /folders ------------------------------------------------------
 
-    def _serve_folders(self) -> None:
+    def serve_folders(self, ctx: RequestContext) -> None:
         """Serve GET /folders?account=<id> — enumerate every IMAP folder.
 
         Returns one entry per folder with its ``name`` (full IMAP path),
@@ -68,19 +66,20 @@ class _MailboxMixin:
         single IMAP account to enumerate, so it returns 400 rather than leak
         whichever DB the request happens to point at.
         """
-        if self._aggregate:
-            self._serve_json(
+        if ctx._aggregate:
+            ctx._serve_json(
                 {"error": "folders is per-account; use ?account=<id>"},
                 status=400,
             )
             return
-        if not self._require_imap_configured():
+        if not ctx._require_imap_configured():
             return
 
         from robotsix_auto_mail.imap import ImapClient, ImapError
 
+        mail_config = cast("MailConfig", ctx.mail_config)
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(mail_config) as client:
                 all_folders = client.list_folders()
                 delimiter = next((f.delimiter for f in all_folders if f.delimiter), "/")
                 folders: list[dict[str, object]] = []
@@ -103,15 +102,15 @@ class _MailboxMixin:
                         entry["unseen"] = unseen
                     folders.append(entry)
         except ImapError as exc:
-            self._send_response(f"IMAP error listing folders: {exc}", status=502)
+            ctx._send_response(f"IMAP error listing folders: {exc}", status=502)
             return
         except OSError as exc:
-            self._send_response(f"IMAP connection error: {exc}", status=502)
+            ctx._send_response(f"IMAP connection error: {exc}", status=502)
             return
 
-        self._serve_json(
+        ctx._serve_json(
             {
-                "account": self._current_account_id or "main",
+                "account": ctx._current_account_id or "main",
                 "delimiter": delimiter,
                 "folders": folders,
             }
@@ -119,7 +118,7 @@ class _MailboxMixin:
 
     # -- GET /search -------------------------------------------------------
 
-    def _serve_search(self) -> None:
+    def serve_search(self, ctx: RequestContext) -> None:
         """Serve GET /search?account=<id>&... — server-side IMAP search.
 
         Query params (all optional except ``account``):
@@ -138,20 +137,20 @@ class _MailboxMixin:
         no criteria supplied, 404 unknown account / folder, 502 on IMAP error.
         Read-only — no side effects.
         """
-        if self._aggregate:
-            self._serve_json(
+        if ctx._aggregate:
+            ctx._serve_json(
                 {"error": "search is per-account; use ?account=<id>"},
                 status=400,
             )
             return
-        if not self._require_imap_configured():
+        if not ctx._require_imap_configured():
             return
 
-        qs = parse_qs(urlsplit(self.path).query)
+        qs = parse_qs(urlsplit(ctx.path).query)
         try:
             criteria, charset = self._build_search_criteria(qs)
         except ValueError as exc:
-            self._bad_request(str(exc))
+            ctx._bad_request(str(exc))
             return
 
         limit = self._parse_limit(qs)
@@ -161,11 +160,12 @@ class _MailboxMixin:
 
         from robotsix_auto_mail.imap import ImapClient, ImapError
 
+        mail_config = cast("MailConfig", ctx.mail_config)
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(mail_config) as client:
                 folders = self._resolve_search_folders(client, folder_param)
                 if folders is None:
-                    self._not_found()
+                    ctx._not_found()
                     return
 
                 # folder -> matching uids
@@ -193,15 +193,15 @@ class _MailboxMixin:
                     client, results, has_attachments
                 )
         except ImapError as exc:
-            self._send_response(f"IMAP error searching mail: {exc}", status=502)
+            ctx._send_response(f"IMAP error searching mail: {exc}", status=502)
             return
         except OSError as exc:
-            self._send_response(f"IMAP connection error: {exc}", status=502)
+            ctx._send_response(f"IMAP connection error: {exc}", status=502)
             return
 
-        self._serve_json(
+        ctx._serve_json(
             {
-                "account": self._current_account_id or "main",
+                "account": ctx._current_account_id or "main",
                 "count": len(results),
                 "messages": results,
             }

@@ -49,9 +49,13 @@ others without depending on ``_action_mixin``.
 from __future__ import annotations
 
 import json
+import threading
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
+from robotsix_auto_mail.core._constants import _WATERMARK_RUNNING
+from robotsix_auto_mail.db import get_watermark, set_watermark
 from robotsix_auto_mail.server._constants import _is_safe_redirect_path, _with_db
 
 if TYPE_CHECKING:
@@ -116,6 +120,62 @@ def parse_request_body(
                     for field in fields
                 }
     return result
+
+
+def launch_background_worker(
+    ctx: RequestContext,
+    watermark_key: str,
+    target: Callable[..., None] | None = None,
+    args: tuple[Any, ...] = (),
+    *,
+    running_check: Callable[[str | None], bool] | None = None,
+    precheck: Callable[[Any], bool] | None = None,
+    db_path: str | None = None,
+    redirect: bool = True,
+) -> bool:
+    """Acquire a single-flight watermark and optionally spawn a daemon thread.
+
+    Returns ``True`` when the watermark was acquired (and, when *target*
+    is not ``None``, the worker thread was started).  Returns ``False``
+    when the watermark is already held or *precheck* returns ``False``.
+
+    When *redirect* is ``True`` (the default) the handler redirects to
+    ``/board`` on both the failure paths **and** after a successful
+    spawn.  Set *redirect* to ``False`` when the caller needs to
+    control the response itself (e.g. in an aggregate fan-out loop).
+
+    This is shared handler infrastructure (relocated from ``_action_mixin``)
+    so the composition-era service modules can guard their background work
+    through a single implementation.
+    """
+    _path = db_path if db_path is not None else ctx.db_path
+
+    with _with_db(_path) as conn:
+        if precheck is not None and not precheck(conn):
+            if redirect:
+                ctx._redirect("/board", code=302)
+            return False
+
+        if running_check is not None:
+            _is_running = running_check
+        else:
+
+            def _is_running(s: str | None) -> bool:
+                return s == _WATERMARK_RUNNING
+
+        if _is_running(get_watermark(conn, watermark_key)):
+            if redirect:
+                ctx._redirect("/board", code=302)
+            return False
+
+        set_watermark(conn, watermark_key, _WATERMARK_RUNNING)
+
+    if target is not None:
+        threading.Thread(target=target, args=args, daemon=True).start()
+        if redirect:
+            ctx._redirect("/board", code=302)
+
+    return True
 
 
 def handle_post_action(

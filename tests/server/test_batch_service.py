@@ -1,7 +1,7 @@
 """Unit tests for ``BatchService`` — batch-delete / batch-archive actions.
 
 Drives the service directly against a stub request context.  The context
-subclasses ``_BoardActionMixin`` so the *real* ``_launch_background_worker``
+delegates to the *real* ``launch_background_worker`` helper so ``_launch_background_worker``
 (single-flight watermark guard, precheck, daemon spawn) runs — the batch
 service only orchestrates it, so the watermark/precheck paths are exercised
 end-to-end rather than mocked away.
@@ -22,18 +22,22 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.core._constants import _BATCH_OP_STATE_KEY
 from robotsix_auto_mail.db import init_db, set_watermark
-from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._batch_service import BatchService
+from robotsix_auto_mail.server._request_helpers import launch_background_worker
 from tests.server._test_helpers import _SyncThread
 
 
-class _BatchContext(_BoardActionMixin):
+class _BatchContext:
     """Stub request context exposing the real ``_launch_background_worker``.
 
-    Inherits ``_BoardActionMixin`` for the genuine single-flight worker
-    launcher while wiring every response sink to a ``MagicMock`` so the
-    service can be exercised without a real HTTP server.
+    Delegates ``_launch_background_worker`` to the shared
+    :func:`launch_background_worker` helper for the genuine single-flight
+    worker launcher, while wiring every response sink to a ``MagicMock`` so
+    the service can be exercised without a real HTTP server.
     """
+
+    def _launch_background_worker(self, *args: Any, **kwargs: Any) -> bool:
+        return launch_background_worker(self, *args, **kwargs)  # type: ignore[arg-type]
 
     def __init__(
         self,
@@ -170,7 +174,7 @@ class TestHandleBatchDelete:
                 mock_delete_bg,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._action_mixin.threading.Thread",
+                "robotsix_auto_mail.server._request_helpers.threading.Thread",
                 _SyncThread,
             ),
         ):
@@ -195,7 +199,7 @@ class TestHandleBatchDelete:
                 mock_delete_bg,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._action_mixin.threading.Thread",
+                "robotsix_auto_mail.server._request_helpers.threading.Thread",
                 _SyncThread,
             ),
         ):
@@ -236,7 +240,7 @@ class TestHandleBatchDelete:
                 mock_delete_bg,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._action_mixin.threading.Thread",
+                "robotsix_auto_mail.server._request_helpers.threading.Thread",
                 _SyncThread,
             ),
         ):
@@ -342,7 +346,7 @@ class TestHandleBatchDeleteAggregate:
                 mock_delete_bg,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._action_mixin.threading.Thread",
+                "robotsix_auto_mail.server._request_helpers.threading.Thread",
                 _SyncThread,
             ),
         ):
@@ -457,7 +461,7 @@ class TestHandleBatchArchive:
                 mock_archive_bg,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._action_mixin.threading.Thread",
+                "robotsix_auto_mail.server._request_helpers.threading.Thread",
                 _SyncThread,
             ),
         ):
@@ -478,7 +482,7 @@ class TestHandleBatchArchive:
                 mock_archive_bg,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._action_mixin.threading.Thread",
+                "robotsix_auto_mail.server._request_helpers.threading.Thread",
                 _SyncThread,
             ),
         ):

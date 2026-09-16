@@ -208,7 +208,7 @@ def test_move_unknown_message_id_returns_404() -> None:
 def _component_llm_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """The provider key is component-wide, so the handler resolves it itself."""
     monkeypatch.setattr(
-        "robotsix_auto_mail.server._action_mixin.resolve_llm_api_key",
+        "robotsix_auto_mail.server._action_service.resolve_llm_api_key",
         lambda *_a, **_k: "sk-test",
     )
 

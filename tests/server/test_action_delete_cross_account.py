@@ -1,4 +1,4 @@
-"""Cross-account resolution tests for ``_handle_delete``.
+"""Cross-account resolution tests for ``ActionService.handle_delete``.
 
 A compose-draft created via ``POST /compose-draft`` for a specific
 account is stored in *that* account's DB.  A programmatic ``POST
@@ -15,7 +15,8 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
-from tests.server._test_helpers import _FakeHandler
+from robotsix_auto_mail.server._action_service import ActionService
+from tests.server._test_helpers import _ActionServiceContext
 from tests.server.conftest_helpers import _populate_db
 
 
@@ -61,18 +62,18 @@ def test_delete_resolves_compose_draft_in_other_account(tmp_path: object) -> Non
     accounts = _make_accounts(db_a, db_b)
     # Currently-selected account is A (the first / default), but the
     # draft lives in account B's DB.
-    handler = _FakeHandler(db_a, mail_config=_make_config(db_a))
-    handler.accounts = accounts
-    handler.headers.get.return_value = 200
-    handler.rfile.read.return_value = f"message_id={msg_id}&redirect_to=/board".encode()
+    ctx = _ActionServiceContext(db_a, mail_config=_make_config(db_a))
+    ctx.accounts = accounts
+    ctx.headers.get.return_value = 200
+    ctx.rfile.read.return_value = f"message_id={msg_id}&redirect_to=/board".encode()
 
     with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
         mock_client = mock_cls.return_value.__enter__.return_value
         mock_client.list_folders.return_value = []
-        handler._handle_delete()
+        ActionService(db_path=db_a).handle_delete(ctx)
 
-    handler._not_found.assert_not_called()
-    handler._redirect.assert_called_once()
+    ctx._not_found.assert_not_called()
+    ctx._redirect.assert_called_once()
 
     conn = init_db(db_b)
     try:
@@ -89,14 +90,14 @@ def test_delete_unknown_id_returns_404(tmp_path: object) -> None:
     init_db(db_b).close()
 
     accounts = _make_accounts(db_a, db_b)
-    handler = _FakeHandler(db_a, mail_config=_make_config(db_a))
-    handler.accounts = accounts
-    handler.headers.get.return_value = 200
-    handler.rfile.read.return_value = (
+    ctx = _ActionServiceContext(db_a, mail_config=_make_config(db_a))
+    ctx.accounts = accounts
+    ctx.headers.get.return_value = 200
+    ctx.rfile.read.return_value = (
         b"message_id=<compose-missing@robotsix-auto-mail>&redirect_to=/board"
     )
 
-    handler._handle_delete()
+    ActionService(db_path=db_a).handle_delete(ctx)
 
-    handler._not_found.assert_called_once()
-    handler._redirect.assert_not_called()
+    ctx._not_found.assert_called_once()
+    ctx._redirect.assert_not_called()
