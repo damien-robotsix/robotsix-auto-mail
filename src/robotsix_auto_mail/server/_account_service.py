@@ -1,7 +1,5 @@
-"""Add-account mixin for the board server — form + handler for creating
+"""Add-account service for the board server — form + handler for creating
 a new mail account through the web UI."""
-
-# mypy: disable-error-code="attr-defined"
 
 from __future__ import annotations
 
@@ -30,9 +28,10 @@ from robotsix_auto_mail.config.schema import (
     DEFAULT_SMTP_TLS_MODE,
 )
 from robotsix_auto_mail.server._constants import _update_handler_factory_cache
+from robotsix_auto_mail.server._services import Service
 
 if TYPE_CHECKING:
-    from ._board_handler_protocol import BoardHandlerProtocol
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -55,16 +54,14 @@ _ADD_ACCOUNT_EMBED_CSS = (
 ).read_text()
 
 
-class _AccountMixin:
-    """Mixin providing the add-account endpoint for the board."""
-
-    if TYPE_CHECKING:
-        self: BoardHandlerProtocol
+class AccountService(Service):
+    """Stateless service providing the add-account endpoint for the board."""
 
     # -- GET /add-account --------------------------------------------------
 
-    def _serve_add_account(
+    def serve_add_account(
         self,
+        ctx: RequestContext,
         error: str = "",
         success: str = "",
         prefill: dict[str, str] | None = None,
@@ -84,7 +81,7 @@ class _AccountMixin:
         """
         # On GET, read origin from the query string; on POST re-render,
         # the caller passes it explicitly and the query string is empty.
-        path = getattr(self, "path", "")
+        path = getattr(ctx, "path", "")
         qs_origin = parse_qs(urlsplit(path).query).get("origin", [""])[0]
         if qs_origin:
             origin = qs_origin
@@ -95,15 +92,15 @@ class _AccountMixin:
             prefill=p,
             origin=origin,
         )
-        self._send_response(body, content_type="text/html; charset=utf-8")
+        ctx._send_response(body, content_type="text/html; charset=utf-8")
 
     # -- POST /add-account -------------------------------------------------
 
-    def _handle_add_account(self) -> None:
+    def handle_add_account(self, ctx: RequestContext) -> None:
         """Process the account-creation form submission."""
         # 1. Read the URL-encoded POST body.
-        length = int(self.headers.get("Content-Length", "0"))
-        raw = self.rfile.read(length).decode("utf-8", errors="replace")
+        length = int(ctx.headers.get("Content-Length", "0"))
+        raw = ctx.rfile.read(length).decode("utf-8", errors="replace")
         body = parse_qs(raw)
 
         # 2. Extract form values (first value per key).
@@ -139,7 +136,8 @@ class _AccountMixin:
         if action == "detect":
             email = fields.get("username", "").strip()
             if not email:
-                self._serve_add_account(
+                self.serve_add_account(
+                    ctx,
                     error="Enter an email address in the Username field,"
                     " then click Detect Settings.",
                     prefill=prefill,
@@ -154,7 +152,8 @@ class _AccountMixin:
                 prefill["smtp_port"] = str(provider.smtp_port)
                 prefill["imap_tls_mode"] = provider.imap_tls_mode
                 prefill["smtp_tls_mode"] = provider.smtp_tls_mode
-                self._serve_add_account(
+                self.serve_add_account(
+                    ctx,
                     success=(
                         f"Settings detected for {html.escape(email)}:"
                         f" IMAP {provider.imap_host}:{provider.imap_port},"
@@ -166,7 +165,8 @@ class _AccountMixin:
                 )
                 return
             else:
-                self._serve_add_account(
+                self.serve_add_account(
+                    ctx,
                     error=(
                         f"Could not auto-detect settings for"
                         f" {html.escape(email)}."
@@ -181,7 +181,8 @@ class _AccountMixin:
         # 3. Validate required fields.
         missing = [f for f in _REQUIRED_FIELDS if not fields.get(f)]
         if missing:
-            self._serve_add_account(
+            self.serve_add_account(
+                ctx,
                 error=f"Missing required fields: {', '.join(missing)}",
                 prefill=prefill,
                 origin=origin,
@@ -194,7 +195,8 @@ class _AccountMixin:
         from robotsix_auto_mail.config.model import _ACCOUNT_ID_RE
 
         if not _ACCOUNT_ID_RE.match(account_id):
-            self._serve_add_account(
+            self.serve_add_account(
+                ctx,
                 error=(
                     f"Account ID '{html.escape(account_id)}' contains"
                     f" invalid characters. Use only letters, digits,"
@@ -209,14 +211,16 @@ class _AccountMixin:
         imap_tls = fields.get("imap_tls_mode") or DEFAULT_IMAP_TLS_MODE
         smtp_tls = fields.get("smtp_tls_mode") or DEFAULT_SMTP_TLS_MODE
         if imap_tls not in _VALID_TLS_MODES:
-            self._serve_add_account(
+            self.serve_add_account(
+                ctx,
                 error=f"Invalid IMAP TLS mode: {html.escape(imap_tls)}",
                 prefill=prefill,
                 origin=origin,
             )
             return
         if smtp_tls not in _VALID_TLS_MODES:
-            self._serve_add_account(
+            self.serve_add_account(
+                ctx,
                 error=f"Invalid SMTP TLS mode: {html.escape(smtp_tls)}",
                 prefill=prefill,
                 origin=origin,
@@ -227,7 +231,8 @@ class _AccountMixin:
         try:
             imap_port = int(fields["imap_port"]) if fields.get("imap_port") else 993
         except (ValueError, TypeError):  # fmt: skip
-            self._serve_add_account(
+            self.serve_add_account(
+                ctx,
                 error="IMAP Port must be a number.",
                 prefill=prefill,
                 origin=origin,
@@ -236,7 +241,8 @@ class _AccountMixin:
         try:
             smtp_port = int(fields["smtp_port"]) if fields.get("smtp_port") else 587
         except (ValueError, TypeError):  # fmt: skip
-            self._serve_add_account(
+            self.serve_add_account(
+                ctx,
                 error="SMTP Port must be a number.",
                 prefill=prefill,
                 origin=origin,
@@ -264,7 +270,8 @@ class _AccountMixin:
                 db_path=db_path,
             )
         except Exception as exc:
-            self._serve_add_account(
+            self.serve_add_account(
+                ctx,
                 error=f"Invalid configuration: {html.escape(str(exc))}",
                 prefill=prefill,
                 origin=origin,
@@ -286,7 +293,8 @@ class _AccountMixin:
 
         if existing is not None:
             if account_id in existing.ids():
-                self._serve_add_account(
+                self.serve_add_account(
+                    ctx,
                     error=f"Account ID '{html.escape(account_id)}' already exists.",
                     prefill=prefill,
                     origin=origin,
@@ -305,7 +313,8 @@ class _AccountMixin:
                 )
             )
         except Exception as exc:
-            self._serve_add_account(
+            self.serve_add_account(
+                ctx,
                 error=f"Invalid configuration: {html.escape(str(exc))}",
                 prefill=prefill,
                 origin=origin,
@@ -316,7 +325,8 @@ class _AccountMixin:
             save_accounts(new_config)
         except Exception as exc:
             logger.error("Failed to save config after adding account: %s", exc)
-            self._serve_add_account(
+            self.serve_add_account(
+                ctx,
                 error=f"Failed to save configuration: {html.escape(str(exc))}",
                 prefill=prefill,
                 origin=origin,
@@ -351,7 +361,7 @@ class _AccountMixin:
         # The handler is built via functools.partial; updating its
         # keywords dict causes the next handler instance to receive the
         # updated config.
-        _update_handler_factory_cache(self.server, new_config)
+        _update_handler_factory_cache(ctx.server, new_config)
 
         if origin == "settings":
             # Redirect the parent (settings page) rather than the iframe.
@@ -361,7 +371,7 @@ class _AccountMixin:
             # file (add-account-redirect.js) that reads the attribute and
             # performs the parent-frame navigation.
             target = "/settings-panel?added=" + quote(account_id, safe="")
-            self._send_response(
+            ctx._send_response(
                 "<!DOCTYPE html>\n"
                 '<meta charset="utf-8">\n'
                 "<body data-redirect='" + html.escape(target, quote=True) + "'>\n"
@@ -370,7 +380,7 @@ class _AccountMixin:
                 content_type="text/html; charset=utf-8",
             )
         else:
-            self._redirect("/board", code=303)
+            ctx._redirect("/board", code=303)
 
 
 def _build_add_account_form_html(

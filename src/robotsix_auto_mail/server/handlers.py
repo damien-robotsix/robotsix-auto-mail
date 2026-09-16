@@ -48,10 +48,10 @@ from robotsix_auto_mail.config import (
     MailAccountsConfig,
     MailConfig,
 )
-from robotsix_auto_mail.server._account_mixin import _AccountMixin
+from robotsix_auto_mail.server._account_service import AccountService
 from robotsix_auto_mail.server._action_service import ActionService
 from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
-from robotsix_auto_mail.server._attachment_mixin import _AttachmentMixin
+from robotsix_auto_mail.server._attachment_service import AttachmentService
 from robotsix_auto_mail.server._auth_service import AuthService
 from robotsix_auto_mail.server._batch_service import BatchService
 from robotsix_auto_mail.server._compose_service import ComposeService
@@ -80,8 +80,6 @@ logger = logging.getLogger(__name__)
 class BoardHandler(
     _BoardViewMixin,
     _ArchiveActionMixin,
-    _AttachmentMixin,
-    _AccountMixin,
     BaseHTTPRequestHandler,
 ):
     """Request handler for the robotsix-auto-mail board server.
@@ -147,7 +145,7 @@ class BoardHandler(
         # /add-account is also cross-account — handle before
         # _select_account() so account creation works even with zero accounts.
         if self.path.split("?")[0] == "/add-account":
-            self._serve_add_account()
+            self._services.get(AccountService).serve_add_account(ctx)
             return
         # /accounts is cross-account by design — list every configured
         # mailbox regardless of the session account.
@@ -252,7 +250,7 @@ class BoardHandler(
         # /add-account is also cross-account — handle before
         # _select_account() so account creation works even with zero accounts.
         if urlsplit(self.path).path == "/add-account":
-            self._handle_add_account()
+            self._services.get(AccountService).handle_add_account(ctx)
             return
         # /delete-account is also cross-account — handle before
         # _select_account() so account deletion works even when the
@@ -276,7 +274,9 @@ class BoardHandler(
             suffix = "/attachments/to-file-hub"
             message_id = unquote(path[len("/email/") : -len(suffix)])
             if message_id:
-                self._handle_push_to_file_hub(message_id)
+                self._services.get(AttachmentService).handle_push_to_file_hub(
+                    ctx, message_id
+                )
                 return
 
         # Periodic-trigger decision — Option A (on-demand endpoint

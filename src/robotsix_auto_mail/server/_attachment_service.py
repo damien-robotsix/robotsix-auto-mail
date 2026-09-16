@@ -1,6 +1,4 @@
-"""Attachment-to-file-hub mixin for the board server."""
-
-# mypy: disable-error-code="attr-defined"
+"""Attachment-to-file-hub service for the board server."""
 
 from __future__ import annotations
 
@@ -12,12 +10,17 @@ import logging
 import mimetypes
 import zipfile
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 
 from robotsix_auto_mail.server._constants import _with_db
 from robotsix_auto_mail.server._request_helpers import _json_field_value
+from robotsix_auto_mail.server._services import Service
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailConfig
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -68,15 +71,10 @@ def _iter_attachment_parts(
             idx += 1
 
 
-class _AttachmentMixin:
-    """Mixin providing POST /email/<id>/attachments/to-file-hub."""
+class AttachmentService(Service):
+    """Stateless service providing POST /email/<id>/attachments/to-file-hub."""
 
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
-
-    self: BoardHandlerProtocol
-
-    def _handle_push_to_file_hub(self, message_id: str) -> None:
+    def handle_push_to_file_hub(self, ctx: RequestContext, message_id: str) -> None:
         """Push one or all attachments of a message to robotsix-file-hub.
 
         POST /email/<message_id>/attachments/to-file-hub
@@ -103,12 +101,12 @@ class _AttachmentMixin:
         Returns JSON with one entry per file that landed in file-hub.
         """
         # -- check file-hub is configured ----------------------------------
-        accounts = self.accounts
+        accounts = ctx.accounts
         file_hub_url: str = ""
         if accounts is not None:
             file_hub_url = getattr(accounts, "file_hub_url", "") or ""
         if not file_hub_url:
-            self._problem(
+            ctx._problem(
                 status=503,
                 kind="file-hub-not-configured",
                 title="File-hub Not Configured",
@@ -117,19 +115,19 @@ class _AttachmentMixin:
             return
 
         # -- parse optional body -------------------------------------------
-        content_length = int(self.headers.get("Content-Length", 0))
+        content_length = int(ctx.headers.get("Content-Length", 0))
         raw_body = (
-            self.rfile.read(content_length).decode("utf-8") if content_length else ""
+            ctx.rfile.read(content_length).decode("utf-8") if content_length else ""
         )
         selector: dict[str, Any] = {}
         if raw_body.strip():
             try:
                 selector = json.loads(raw_body)
             except json.JSONDecodeError:
-                self._bad_request("Malformed JSON body")
+                ctx._bad_request("Malformed JSON body")
                 return
             if not isinstance(selector, dict):
-                self._bad_request("Request body must be a JSON object")
+                ctx._bad_request("Request body must be a JSON object")
                 return
 
         # -- resolve the message (board vs archive addressing) -------------
@@ -139,15 +137,16 @@ class _AttachmentMixin:
             or selector.get("uid") is not None
         )
         if archive_mode:
-            prepared = self._prepare_archive_push(selector, message_id)
+            prepared = self._prepare_archive_push(ctx, selector, message_id)
         else:
-            prepared = self._prepare_board_push(selector, message_id)
+            prepared = self._prepare_board_push(ctx, selector, message_id)
         if prepared is None:
             return  # a response has already been sent
         msg, attachments_meta, selected_indices, provenance = prepared
 
         # -- extract, optionally unzip, and upload -------------------------
         self._extract_and_upload(
+            ctx,
             msg,
             attachments_meta,
             selected_indices,
@@ -159,7 +158,7 @@ class _AttachmentMixin:
     # -- board-message resolution -----------------------------------------
 
     def _prepare_board_push(
-        self, selector: dict[str, Any], message_id: str
+        self, ctx: RequestContext, selector: dict[str, Any], message_id: str
     ) -> tuple[email.message.Message, list[Any], set[int], dict[str, str]] | None:
         """Resolve a board message by Message-ID.
 
@@ -168,10 +167,10 @@ class _AttachmentMixin:
         """
         from robotsix_auto_mail.db import get_record_by_message_id
 
-        with _with_db(self.db_path, skip_migrations=True) as conn:
+        with _with_db(ctx.db_path, skip_migrations=True) as conn:
             record = get_record_by_message_id(conn, message_id)
         if record is None:
-            self._not_found()
+            ctx._not_found()
             return None
 
         try:
@@ -179,7 +178,7 @@ class _AttachmentMixin:
         except json.JSONDecodeError, TypeError:
             attachments_meta = []
         if not isinstance(attachments_meta, list) or not attachments_meta:
-            self._problem(
+            ctx._problem(
                 status=400,
                 kind="no-attachments",
                 title="No Attachments",
@@ -187,12 +186,14 @@ class _AttachmentMixin:
             )
             return None
 
-        selected_indices = self._resolve_selected_indices(selector, attachments_meta)
+        selected_indices = self._resolve_selected_indices(
+            ctx, selector, attachments_meta
+        )
         if selected_indices is None:
             return None
 
-        if self.mail_config is None or record.imap_uid is None:
-            self._problem(
+        if ctx.mail_config is None or record.imap_uid is None:
+            ctx._problem(
                 status=502,
                 kind="imap-unavailable",
                 title="IMAP Unavailable",
@@ -200,12 +201,12 @@ class _AttachmentMixin:
             )
             return None
 
-        msg = self._fetch_mime(record.source_folder, record.imap_uid)
+        msg = self._fetch_mime(ctx, record.source_folder, record.imap_uid)
         if msg is None:
             return None
 
         provenance = {
-            "account": self._current_account_id or "main",
+            "account": ctx._current_account_id or "main",
             "source_folder": record.source_folder,
             "message_id": record.message_id,
             "subject": record.subject,
@@ -214,7 +215,9 @@ class _AttachmentMixin:
         }
         return msg, attachments_meta, selected_indices, provenance
 
-    def _fetch_mime(self, folder: str, uid: int) -> email.message.Message | None:
+    def _fetch_mime(
+        self, ctx: RequestContext, folder: str, uid: int
+    ) -> email.message.Message | None:
         """Fetch and parse a raw message by folder + UID.
 
         Returns the parsed :class:`email.message.Message` or ``None``
@@ -222,12 +225,13 @@ class _AttachmentMixin:
         """
         from robotsix_auto_mail.imap import ImapClient, ImapError
 
+        mail_config = cast("MailConfig", ctx.mail_config)
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(mail_config) as client:
                 client.select_folder(folder)
                 fetched = client.fetch_messages([uid])
         except (ImapError, OSError) as exc:
-            self._problem(
+            ctx._problem(
                 status=502,
                 kind="imap-fetch-failed",
                 title="IMAP Fetch Failed",
@@ -236,7 +240,7 @@ class _AttachmentMixin:
             return None
 
         if not fetched:
-            self._problem(
+            ctx._problem(
                 status=502,
                 kind="message-unavailable",
                 title="Message Unavailable",
@@ -250,7 +254,7 @@ class _AttachmentMixin:
     # -- archive-message resolution ---------------------------------------
 
     def _prepare_archive_push(
-        self, selector: dict[str, Any], path_message_id: str
+        self, ctx: RequestContext, selector: dict[str, Any], path_message_id: str
     ) -> tuple[email.message.Message, list[Any], set[int], dict[str, str]] | None:
         """Resolve an archive-resident message by folder + uid.
 
@@ -264,7 +268,7 @@ class _AttachmentMixin:
             _json_field_value(selector, "folder")
         )
         if not source_folder:
-            self._bad_request(
+            ctx._bad_request(
                 "source_folder (or folder) is required for archive addressing"
             )
             return None
@@ -275,16 +279,16 @@ class _AttachmentMixin:
             try:
                 uid = int(uid_raw)
             except ValueError, TypeError:
-                self._bad_request("uid must be an integer")
+                ctx._bad_request("uid must be an integer")
                 return None
 
         message_id = _json_field_value(selector, "message_id") or path_message_id
         if uid is None and not message_id:
-            self._bad_request("At least one of uid or message_id is required")
+            ctx._bad_request("At least one of uid or message_id is required")
             return None
 
-        if self.mail_config is None:
-            self._problem(
+        if ctx.mail_config is None:
+            ctx._problem(
                 status=502,
                 kind="imap-unavailable",
                 title="IMAP Unavailable",
@@ -292,11 +296,13 @@ class _AttachmentMixin:
             )
             return None
 
-        ok, archive_root = self._validate_archive_path(source_folder)
+        ok, archive_root = ctx._validate_archive_path(source_folder)
         if not ok:
             return None
 
-        msg = self._fetch_archive_mime(archive_root, source_folder, uid, message_id)
+        msg = self._fetch_archive_mime(
+            ctx, archive_root, source_folder, uid, message_id
+        )
         if msg is None:
             return None
 
@@ -305,7 +311,7 @@ class _AttachmentMixin:
             for _idx, fname, ctype, _payload in _iter_attachment_parts(msg)
         ]
         if not attachments_meta:
-            self._problem(
+            ctx._problem(
                 status=400,
                 kind="no-attachments",
                 title="No Attachments",
@@ -313,12 +319,14 @@ class _AttachmentMixin:
             )
             return None
 
-        selected_indices = self._resolve_selected_indices(selector, attachments_meta)
+        selected_indices = self._resolve_selected_indices(
+            ctx, selector, attachments_meta
+        )
         if selected_indices is None:
             return None
 
         provenance = {
-            "account": self._current_account_id or "main",
+            "account": ctx._current_account_id or "main",
             "source_folder": source_folder,
             "message_id": _decode_mime_header(msg.get("Message-ID")) or message_id,
             "subject": _decode_mime_header(msg.get("Subject")),
@@ -329,6 +337,7 @@ class _AttachmentMixin:
 
     def _fetch_archive_mime(
         self,
+        ctx: RequestContext,
         archive_root: str,
         source_folder: str,
         uid: int | None,
@@ -345,9 +354,10 @@ class _AttachmentMixin:
             ImapMessageNotFoundError,
         )
 
+        mail_config = cast("MailConfig", ctx.mail_config)
         resolved_uid: int | None = None
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(mail_config) as client:
                 existing = client.list_folders()
                 delimiter = next(
                     (f.delimiter for f in existing if f.delimiter),
@@ -363,7 +373,7 @@ class _AttachmentMixin:
                     translated_source != ar_translated
                     and not translated_source.startswith(root_prefix)
                 ):
-                    self._bad_request("source_folder escapes archive root")
+                    ctx._bad_request("source_folder escapes archive root")
                     return None
 
                 client.select_folder(translated_source)
@@ -381,15 +391,15 @@ class _AttachmentMixin:
                         resolved_uid = found[0]
 
                 if resolved_uid is None:
-                    self._not_found()
+                    ctx._not_found()
                     return None
 
                 fetched = client.fetch_messages([resolved_uid])
         except ImapMessageNotFoundError:
-            self._not_found()
+            ctx._not_found()
             return None
         except (ImapError, OSError) as exc:
-            self._problem(
+            ctx._problem(
                 status=502,
                 kind="imap-fetch-failed",
                 title="IMAP Fetch Failed",
@@ -398,7 +408,7 @@ class _AttachmentMixin:
             return None
 
         if not fetched:
-            self._problem(
+            ctx._problem(
                 status=502,
                 kind="message-unavailable",
                 title="Message Unavailable",
@@ -412,7 +422,7 @@ class _AttachmentMixin:
     # -- attachment selection ---------------------------------------------
 
     def _resolve_selected_indices(
-        self, selector: dict[str, Any], attachments_meta: list[Any]
+        self, ctx: RequestContext, selector: dict[str, Any], attachments_meta: list[Any]
     ) -> set[int] | None:
         """Resolve the ``filename``/``index`` selector to attachment indices.
 
@@ -424,7 +434,7 @@ class _AttachmentMixin:
 
         if filename_filter is not None:
             if not isinstance(filename_filter, str):
-                self._bad_request("filename must be a string")
+                ctx._bad_request("filename must be a string")
                 return None
             matching = [
                 i
@@ -432,7 +442,7 @@ class _AttachmentMixin:
                 if isinstance(a, dict) and a.get("filename") == filename_filter
             ]
             if not matching:
-                self._problem(
+                ctx._problem(
                     status=404,
                     kind="attachment-not-found",
                     title="Attachment Not Found",
@@ -443,10 +453,10 @@ class _AttachmentMixin:
 
         if index_filter is not None:
             if not isinstance(index_filter, int) or index_filter < 0:
-                self._bad_request("index must be a non-negative integer")
+                ctx._bad_request("index must be a non-negative integer")
                 return None
             if index_filter >= len(attachments_meta):
-                self._problem(
+                ctx._problem(
                     status=400,
                     kind="index-out-of-range",
                     title="Attachment Index Out of Range",
@@ -487,6 +497,7 @@ class _AttachmentMixin:
 
     def _extract_and_upload(
         self,
+        ctx: RequestContext,
         msg: email.message.Message,
         attachments_meta: list[Any],
         selected_indices: set[int],
@@ -500,17 +511,17 @@ class _AttachmentMixin:
         """
         unzip = selector.get("unzip", True)
         if not isinstance(unzip, bool):
-            self._bad_request("unzip must be a boolean")
+            ctx._bad_request("unzip must be a boolean")
             return
         context = selector.get("context")
         if context is None:
             context = selector.get("note")
         if context is not None and not isinstance(context, str):
-            self._bad_request("context must be a string")
+            ctx._bad_request("context must be a string")
             return
         tags = selector.get("tags")
         if tags is not None and not isinstance(tags, list):
-            self._bad_request("tags must be a list")
+            ctx._bad_request("tags must be a list")
             return
 
         # -- gather the selected attachment parts --------------------------
@@ -532,7 +543,7 @@ class _AttachmentMixin:
             selected_parts.append((filename, mime_type, payload))
 
         if not selected_parts:
-            self._problem(
+            ctx._problem(
                 status=502,
                 kind="no-matching-attachments",
                 title="No Matching Attachments",
@@ -547,7 +558,7 @@ class _AttachmentMixin:
             if unzip and zipfile.is_zipfile(io.BytesIO(payload)):
                 extracted = self._extract_zip(payload)
                 if extracted is None:
-                    self._problem(
+                    ctx._problem(
                         status=400,
                         kind="zip-too-large",
                         title="Zip Archive Too Large",
@@ -584,7 +595,7 @@ class _AttachmentMixin:
                         data={"metadata": json.dumps(metadata)},
                     )
             except Exception as exc:
-                self._problem(
+                ctx._problem(
                     status=502,
                     kind="file-hub-upload-failed",
                     title="File-hub Upload Failed",
@@ -593,7 +604,7 @@ class _AttachmentMixin:
                 return
 
             if resp.status_code >= 400:
-                self._problem(
+                ctx._problem(
                     status=502,
                     kind="file-hub-error",
                     title="File-hub Error",
@@ -603,7 +614,7 @@ class _AttachmentMixin:
 
             results.append(resp.json())
 
-        self._send_response(
+        ctx._send_response(
             json.dumps({"attachments": results}),
             status=200,
             content_type="application/json; charset=utf-8",

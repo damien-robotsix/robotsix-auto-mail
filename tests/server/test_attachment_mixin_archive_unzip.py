@@ -1,5 +1,5 @@
 """Unit tests for archive-scoped addressing, unzip-during-push, and
-provenance metadata in ``_AttachmentMixin._handle_push_to_file_hub``.
+provenance metadata in ``AttachmentService.handle_push_to_file_hub``.
 
 Complements ``test_attachment_mixin.py`` (board-message path) with the
 three capabilities added for archive-resident mail: folder+uid
@@ -16,8 +16,8 @@ from typing import Any
 from unittest import mock
 
 from robotsix_auto_mail.config import MailAccountsConfig, MailConfig
-from robotsix_auto_mail.server import _attachment_mixin
-from robotsix_auto_mail.server._attachment_mixin import _AttachmentMixin
+from robotsix_auto_mail.server import _attachment_service
+from robotsix_auto_mail.server._attachment_service import AttachmentService
 
 
 def _make_accounts(file_hub_url: str = "http://file-hub:8080") -> MailAccountsConfig:
@@ -65,8 +65,13 @@ def _make_mime(
     return msg.as_bytes()
 
 
-class _ArchiveFakeHandler(_AttachmentMixin):
-    """Concrete handler wiring ``BoardHandlerProtocol`` attributes to mocks."""
+def _push(ctx: "_ArchiveServiceContext", message_id: str) -> None:
+    """Drive ``AttachmentService.handle_push_to_file_hub`` with the stub *ctx*."""
+    AttachmentService(db_path=ctx.db_path).handle_push_to_file_hub(ctx, message_id)
+
+
+class _ArchiveServiceContext:
+    """Stub request context wiring ``BoardHandlerProtocol`` attributes to mocks."""
 
     def __init__(
         self,
@@ -112,7 +117,7 @@ class _ArchiveFakeHandler(_AttachmentMixin):
         return True, self.mail_config.archive_root
 
 
-def _set_body(handler: _ArchiveFakeHandler, body: dict[str, Any]) -> None:
+def _set_body(handler: _ArchiveServiceContext, body: dict[str, Any]) -> None:
     raw = json.dumps(body).encode()
     handler.headers.get.return_value = len(raw)
     handler.rfile.read.return_value = raw
@@ -172,16 +177,16 @@ class TestArchiveUnzipHappyPath:
                 ),
             ],
         )
-        handler = _ArchiveFakeHandler(_make_mail_config(), _make_accounts())
+        handler = _ArchiveServiceContext(_make_mail_config(), _make_accounts())
         _set_body(handler, {"source_folder": "BHealthcare", "uid": 4213})
 
         imap = _mock_imap(raw_email)
         httpx_mod, httpx_client = _mock_httpx()
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=imap),
-            mock.patch.object(_attachment_mixin, "httpx", httpx_mod),
+            mock.patch.object(_attachment_service, "httpx", httpx_mod),
         ):
-            handler._handle_push_to_file_hub("<rabot-31aug@example.com>")
+            _push(handler, "<rabot-31aug@example.com>")
 
         handler._send_response.assert_called_once()
         body = json.loads(handler._send_response.call_args[0][0])
@@ -212,7 +217,7 @@ class TestArchiveUnzipHappyPath:
             date="Sun, 31 Aug 2026 10:00:00 +0200",
             attachments=[("model.stl.zip", "application/zip", zip_bytes)],
         )
-        handler = _ArchiveFakeHandler(_make_mail_config(), _make_accounts())
+        handler = _ArchiveServiceContext(_make_mail_config(), _make_accounts())
         _set_body(
             handler,
             {"source_folder": "BHealthcare", "uid": 4213, "unzip": False},
@@ -222,9 +227,9 @@ class TestArchiveUnzipHappyPath:
         httpx_mod, httpx_client = _mock_httpx()
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=imap),
-            mock.patch.object(_attachment_mixin, "httpx", httpx_mod),
+            mock.patch.object(_attachment_service, "httpx", httpx_mod),
         ):
-            handler._handle_push_to_file_hub("<m@x>")
+            _push(handler, "<m@x>")
 
         body = json.loads(handler._send_response.call_args[0][0])
         assert [a["filename"] for a in body["attachments"]] == ["model.stl.zip"]
@@ -240,7 +245,7 @@ class TestArchiveUnzipHappyPath:
             date="Sun, 31 Aug 2026 10:00:00 +0200",
             attachments=[("plain.txt", "text/plain", b"hello")],
         )
-        handler = _ArchiveFakeHandler(_make_mail_config(), _make_accounts())
+        handler = _ArchiveServiceContext(_make_mail_config(), _make_accounts())
         _set_body(
             handler,
             {
@@ -255,9 +260,9 @@ class TestArchiveUnzipHappyPath:
         httpx_mod, httpx_client = _mock_httpx()
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=imap),
-            mock.patch.object(_attachment_mixin, "httpx", httpx_mod),
+            mock.patch.object(_attachment_service, "httpx", httpx_mod),
         ):
-            handler._handle_push_to_file_hub("<m@x>")
+            _push(handler, "<m@x>")
 
         meta = json.loads(
             httpx_client.post.call_args_list[0].kwargs["data"]["metadata"]
@@ -268,9 +273,9 @@ class TestArchiveUnzipHappyPath:
 
 class TestArchiveErrors:
     def test_missing_source_folder(self) -> None:
-        handler = _ArchiveFakeHandler(_make_mail_config(), _make_accounts())
+        handler = _ArchiveServiceContext(_make_mail_config(), _make_accounts())
         _set_body(handler, {"uid": 4213})
-        handler._handle_push_to_file_hub("<m@x>")
+        _push(handler, "<m@x>")
         handler._bad_request.assert_called_once()
 
     def test_uid_not_found_returns_404(self) -> None:
@@ -281,19 +286,19 @@ class TestArchiveErrors:
             date="Sun, 31 Aug 2026 10:00:00 +0200",
             attachments=[("a.txt", "text/plain", b"x")],
         )
-        handler = _ArchiveFakeHandler(_make_mail_config(), _make_accounts())
+        handler = _ArchiveServiceContext(_make_mail_config(), _make_accounts())
         _set_body(handler, {"source_folder": "BHealthcare", "uid": 9999})
 
         imap = _mock_imap(raw_email)
         imap.search_uids.return_value = []  # uid + message-id both miss
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=imap):
-            handler._handle_push_to_file_hub("<m@x>")
+            _push(handler, "<m@x>")
         handler._not_found.assert_called_once()
 
     def test_path_escape_returns_400(self) -> None:
-        handler = _ArchiveFakeHandler(_make_mail_config(), _make_accounts())
+        handler = _ArchiveServiceContext(_make_mail_config(), _make_accounts())
         _set_body(handler, {"source_folder": "../etc", "uid": 4213})
-        handler._handle_push_to_file_hub("<m@x>")
+        _push(handler, "<m@x>")
         handler._bad_request.assert_called_once()
 
     def test_zip_bomb_cap_exceeded_returns_400(self) -> None:
@@ -306,15 +311,15 @@ class TestArchiveErrors:
                 ("bomb.zip", "application/zip", _make_zip({"big.bin": b"x" * 4096})),
             ],
         )
-        handler = _ArchiveFakeHandler(_make_mail_config(), _make_accounts())
+        handler = _ArchiveServiceContext(_make_mail_config(), _make_accounts())
         _set_body(handler, {"source_folder": "BHealthcare", "uid": 4213})
 
         imap = _mock_imap(raw_email)
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=imap),
-            mock.patch.object(_attachment_mixin, "_MAX_UNZIP_TOTAL_BYTES", 1),
+            mock.patch.object(_attachment_service, "_MAX_UNZIP_TOTAL_BYTES", 1),
         ):
-            handler._handle_push_to_file_hub("<m@x>")
+            _push(handler, "<m@x>")
 
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args

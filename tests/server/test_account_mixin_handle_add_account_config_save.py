@@ -1,5 +1,5 @@
-"""Unit tests for ``_handle_add_account()`` config construction, duplicate
-detection, and save paths."""
+"""Unit tests for ``AccountService.handle_add_account()`` config
+construction, duplicate detection, and save paths."""
 
 from __future__ import annotations
 
@@ -7,26 +7,32 @@ from typing import Any
 from unittest import mock
 
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
-from tests.server._test_helpers import _AccountMixinFakeHandler, _make_post_body
+from robotsix_auto_mail.server._account_service import AccountService
+from tests.server._test_helpers import _AccountServiceContext, _make_post_body
+
+
+def _handle(ctx: _AccountServiceContext) -> None:
+    """Drive ``AccountService.handle_add_account`` with the stub *ctx*."""
+    AccountService(db_path=ctx.db_path).handle_add_account(ctx)
 
 
 class TestHandleAddAccountConfigSave:
-    """Tests for ``_handle_add_account()`` config construction, duplicate
-    detection, and save paths."""
+    """Tests for ``AccountService.handle_add_account()`` config
+    construction, duplicate detection, and save paths."""
 
-    def _setup_post(self, handler: _AccountMixinFakeHandler, body_str: str) -> None:
+    def _setup_post(self, handler: _AccountServiceContext, body_str: str) -> None:
         handler.headers.get.return_value = str(len(body_str))
         handler.rfile.read.return_value = body_str.encode("utf-8")
 
     def test_mailconfig_construction_failure(self) -> None:
         """When MailConfig() raises, the error is caught and rendered."""
-        handler = _AccountMixinFakeHandler()
+        handler = _AccountServiceContext()
         self._setup_post(handler, _make_post_body())
         with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.MailConfig",
+            "robotsix_auto_mail.server._account_service.MailConfig",
             side_effect=ValueError("bad field"),
         ):
-            handler._handle_add_account()
+            _handle(handler)
         handler._redirect.assert_not_called()
         handler._send_response.assert_called_once()
         body = handler._send_response.call_args[0][0]
@@ -34,7 +40,7 @@ class TestHandleAddAccountConfigSave:
         assert "bad field" in body
 
     def test_duplicate_account_id(self) -> None:
-        handler = _AccountMixinFakeHandler()
+        handler = _AccountServiceContext()
         self._setup_post(handler, _make_post_body(account_id="existing"))
 
         existing_account = MailAccount(
@@ -53,10 +59,10 @@ class TestHandleAddAccountConfigSave:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.server._account_mixin.load_accounts",
+            "robotsix_auto_mail.server._account_service.load_accounts",
             return_value=existing_config,
         ):
-            handler._handle_add_account()
+            _handle(handler)
 
         handler._redirect.assert_not_called()
         handler._send_response.assert_called_once()
@@ -64,19 +70,19 @@ class TestHandleAddAccountConfigSave:
         assert "already exists" in body
 
     def test_config_save_failure(self) -> None:
-        handler = _AccountMixinFakeHandler()
+        handler = _AccountServiceContext()
         self._setup_post(handler, _make_post_body())
         with (
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                "robotsix_auto_mail.server._account_service.load_accounts",
                 side_effect=FileNotFoundError,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.save_accounts",
+                "robotsix_auto_mail.server._account_service.save_accounts",
                 side_effect=OSError("disk full"),
             ),
         ):
-            handler._handle_add_account()
+            _handle(handler)
         handler._redirect.assert_not_called()
         handler._send_response.assert_called_once()
         body = handler._send_response.call_args[0][0]
@@ -84,40 +90,40 @@ class TestHandleAddAccountConfigSave:
         assert "disk full" in body
 
     def test_success_redirects_to_board(self) -> None:
-        handler = _AccountMixinFakeHandler()
+        handler = _AccountServiceContext()
         # Give the handler a server with RequestHandlerClass.keywords
         handler.server.RequestHandlerClass.keywords = {"accounts": None}
         self._setup_post(handler, _make_post_body())
 
         with (
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                "robotsix_auto_mail.server._account_service.load_accounts",
                 side_effect=FileNotFoundError,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.save_accounts",
+                "robotsix_auto_mail.server._account_service.save_accounts",
             ),
         ):
-            handler._handle_add_account()
+            _handle(handler)
 
         handler._redirect.assert_called_once_with("/board", code=303)
 
     def test_success_updates_handler_factory_cache(self) -> None:
-        handler = _AccountMixinFakeHandler()
+        handler = _AccountServiceContext()
         keywords: dict[str, Any] = {"accounts": None}
         handler.server.RequestHandlerClass.keywords = keywords
         self._setup_post(handler, _make_post_body())
 
         with (
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                "robotsix_auto_mail.server._account_service.load_accounts",
                 side_effect=FileNotFoundError,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.save_accounts",
+                "robotsix_auto_mail.server._account_service.save_accounts",
             ),
         ):
-            handler._handle_add_account()
+            _handle(handler)
 
         # The keywords['accounts'] should have been updated to the new config
         assert keywords["accounts"] is not None
@@ -126,7 +132,7 @@ class TestHandleAddAccountConfigSave:
         assert keywords["accounts"].accounts[0].account_id == "test"
 
     def test_success_appends_to_existing_config(self) -> None:
-        handler = _AccountMixinFakeHandler()
+        handler = _AccountServiceContext()
         handler.server.RequestHandlerClass.keywords = {"accounts": None}
         self._setup_post(handler, _make_post_body(account_id="new-account"))
 
@@ -147,14 +153,14 @@ class TestHandleAddAccountConfigSave:
 
         with (
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                "robotsix_auto_mail.server._account_service.load_accounts",
                 return_value=existing_config,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.save_accounts",
+                "robotsix_auto_mail.server._account_service.save_accounts",
             ) as mock_save,
         ):
-            handler._handle_add_account()
+            _handle(handler)
 
         mock_save.assert_called_once()
         saved_config = mock_save.call_args[0][0]
@@ -165,7 +171,7 @@ class TestHandleAddAccountConfigSave:
     def test_empty_accounts_adds_first_account(self) -> None:
         """When the existing config has accounts=[], adding the first
         account must succeed."""
-        handler = _AccountMixinFakeHandler()
+        handler = _AccountServiceContext()
         handler.server.RequestHandlerClass.keywords = {"accounts": None}
         self._setup_post(handler, _make_post_body(account_id="first-account"))
 
@@ -176,14 +182,14 @@ class TestHandleAddAccountConfigSave:
 
         with (
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                "robotsix_auto_mail.server._account_service.load_accounts",
                 return_value=existing_config,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.save_accounts",
+                "robotsix_auto_mail.server._account_service.save_accounts",
             ) as mock_save,
         ):
-            handler._handle_add_account()
+            _handle(handler)
 
         # Must succeed (no 502 crash).
         mock_save.assert_called_once()
@@ -193,20 +199,20 @@ class TestHandleAddAccountConfigSave:
 
     def test_load_accounts_failure_creates_fresh_config(self) -> None:
         """When load_accounts raises (no existing config), a fresh one is created."""
-        handler = _AccountMixinFakeHandler()
+        handler = _AccountServiceContext()
         handler.server.RequestHandlerClass.keywords = {"accounts": None}
         self._setup_post(handler, _make_post_body(account_id="sole-account"))
 
         with (
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.load_accounts",
+                "robotsix_auto_mail.server._account_service.load_accounts",
                 side_effect=FileNotFoundError,
             ),
             mock.patch(
-                "robotsix_auto_mail.server._account_mixin.save_accounts",
+                "robotsix_auto_mail.server._account_service.save_accounts",
             ) as mock_save,
         ):
-            handler._handle_add_account()
+            _handle(handler)
 
         mock_save.assert_called_once()
         saved_config = mock_save.call_args[0][0]

@@ -1,4 +1,4 @@
-"""Unit tests for ``_AttachmentMixin._handle_push_to_file_hub``.
+"""Unit tests for ``AttachmentService.handle_push_to_file_hub``.
 
 Covers: file-hub not configured, message not found, no attachments,
 single-attachment selection by filename/index, push-all, IMAP errors,
@@ -14,7 +14,7 @@ from unittest import mock
 from robotsix_auto_mail.config import MailAccountsConfig, MailConfig
 from robotsix_auto_mail.db import init_db
 from robotsix_auto_mail.imap import ImapError
-from robotsix_auto_mail.server._attachment_mixin import _AttachmentMixin
+from robotsix_auto_mail.server._attachment_service import AttachmentService
 from tests.server.conftest_helpers import _populate_db
 
 
@@ -49,8 +49,13 @@ def _populate_db_with_attachments(
         conn.close()
 
 
-class _AttachmentFakeHandler(_AttachmentMixin):
-    """Concrete handler wiring ``BoardHandlerProtocol`` attributes to mocks."""
+def _push(ctx: "_AttachmentServiceContext", message_id: str) -> None:
+    """Drive ``AttachmentService.handle_push_to_file_hub`` with the stub *ctx*."""
+    AttachmentService(db_path=ctx.db_path).handle_push_to_file_hub(ctx, message_id)
+
+
+class _AttachmentServiceContext:
+    """Stub request context wiring ``BoardHandlerProtocol`` attributes to mocks."""
 
     def __init__(
         self,
@@ -138,8 +143,8 @@ _ATTACHMENTS_JSON = json.dumps(
 
 class TestPushToFileHubNotConfigured:
     def test_no_accounts(self, single_db: str) -> None:
-        handler = _AttachmentFakeHandler(single_db, accounts=None)
-        handler._handle_push_to_file_hub("<msg@example.com>")
+        handler = _AttachmentServiceContext(single_db, accounts=None)
+        _push(handler, "<msg@example.com>")
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
         assert args[1]["status"] == 503
@@ -147,8 +152,8 @@ class TestPushToFileHubNotConfigured:
 
     def test_empty_file_hub_url(self, single_db: str) -> None:
         accounts = _make_accounts(file_hub_url="")
-        handler = _AttachmentFakeHandler(single_db, accounts=accounts)
-        handler._handle_push_to_file_hub("<msg@example.com>")
+        handler = _AttachmentServiceContext(single_db, accounts=accounts)
+        _push(handler, "<msg@example.com>")
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
         assert args[1]["status"] == 503
@@ -158,9 +163,9 @@ class TestPushToFileHubNotConfigured:
 class TestPushToFileHubMessageNotFound:
     def test_unknown_message_id(self, single_db: str) -> None:
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(single_db, accounts=accounts)
+        handler = _AttachmentServiceContext(single_db, accounts=accounts)
         handler.headers.get.return_value = 0
-        handler._handle_push_to_file_hub("<nonexistent@example.com>")
+        _push(handler, "<nonexistent@example.com>")
         handler._not_found.assert_called_once()
 
 
@@ -180,9 +185,9 @@ class TestPushToFileHubNoAttachments:
             ],
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(single_db, accounts=accounts)
+        handler = _AttachmentServiceContext(single_db, accounts=accounts)
         handler.headers.get.return_value = 0
-        handler._handle_push_to_file_hub("<no-att@example.com>")
+        _push(handler, "<no-att@example.com>")
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
         assert args[1]["status"] == 400
@@ -208,12 +213,12 @@ class TestPushToFileHubSelection:
             ],
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(single_db, accounts=accounts)
+        handler = _AttachmentServiceContext(single_db, accounts=accounts)
         handler.headers.get.return_value = 50
         handler.rfile.read.return_value = json.dumps(
             {"filename": "nonexistent.pdf"}
         ).encode()
-        handler._handle_push_to_file_hub("<sel@example.com>")
+        _push(handler, "<sel@example.com>")
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
         assert args[1]["status"] == 404
@@ -235,10 +240,10 @@ class TestPushToFileHubSelection:
             ],
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(single_db, accounts=accounts)
+        handler = _AttachmentServiceContext(single_db, accounts=accounts)
         handler.headers.get.return_value = 20
         handler.rfile.read.return_value = json.dumps({"index": 99}).encode()
-        handler._handle_push_to_file_hub("<idx@example.com>")
+        _push(handler, "<idx@example.com>")
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
         assert args[1]["status"] == 400
@@ -260,10 +265,10 @@ class TestPushToFileHubSelection:
             ],
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(single_db, accounts=accounts)
+        handler = _AttachmentServiceContext(single_db, accounts=accounts)
         handler.headers.get.return_value = 5
         handler.rfile.read.return_value = b"not-json"
-        handler._handle_push_to_file_hub("<bad@example.com>")
+        _push(handler, "<bad@example.com>")
         handler._bad_request.assert_called_once()
 
 
@@ -285,9 +290,11 @@ class TestPushToFileHubImapErrors:
             ],
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(single_db, mail_config=None, accounts=accounts)
+        handler = _AttachmentServiceContext(
+            single_db, mail_config=None, accounts=accounts
+        )
         handler.headers.get.return_value = 0
-        handler._handle_push_to_file_hub("<noimap@example.com>")
+        _push(handler, "<noimap@example.com>")
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
         assert args[1]["status"] == 502
@@ -315,11 +322,11 @@ class TestPushToFileHubImapErrors:
             password="test",
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(
+        handler = _AttachmentServiceContext(
             single_db, mail_config=mail_config, accounts=accounts
         )
         handler.headers.get.return_value = 0
-        handler._handle_push_to_file_hub("<nouid@example.com>")
+        _push(handler, "<nouid@example.com>")
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
         assert args[1]["status"] == 502
@@ -349,7 +356,7 @@ class TestPushToFileHubImapErrors:
             password="test",
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(
+        handler = _AttachmentServiceContext(
             single_db, mail_config=mail_config, accounts=accounts
         )
         handler.headers.get.return_value = 0
@@ -361,7 +368,7 @@ class TestPushToFileHubImapErrors:
             mock_client.fetch_messages.side_effect = ImapError("IMAP down")
             mock_cls.return_value = mock_client
 
-            handler._handle_push_to_file_hub("<imaperr@example.com>")
+            _push(handler, "<imaperr@example.com>")
 
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
@@ -394,7 +401,7 @@ class TestPushToFileHubHappyPath:
             password="test",
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(
+        handler = _AttachmentServiceContext(
             single_db, mail_config=mail_config, accounts=accounts
         )
         handler.headers.get.return_value = 0
@@ -416,7 +423,7 @@ class TestPushToFileHubHappyPath:
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_imap_cls,
             mock.patch(
-                "robotsix_auto_mail.server._attachment_mixin.httpx"
+                "robotsix_auto_mail.server._attachment_service.httpx"
             ) as mock_httpx,
         ):
             mock_imap = mock.MagicMock()
@@ -434,7 +441,7 @@ class TestPushToFileHubHappyPath:
             mock_httpx_client.post.return_value = mock_resp
             mock_httpx.Client.return_value = mock_httpx_client
 
-            handler._handle_push_to_file_hub("<happy@example.com>")
+            _push(handler, "<happy@example.com>")
 
         handler._send_response.assert_called_once()
         args = handler._send_response.call_args
@@ -468,7 +475,7 @@ class TestPushToFileHubHappyPath:
             password="test",
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(
+        handler = _AttachmentServiceContext(
             single_db, mail_config=mail_config, accounts=accounts
         )
         handler.headers.get.return_value = 40
@@ -493,7 +500,7 @@ class TestPushToFileHubHappyPath:
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_imap_cls,
             mock.patch(
-                "robotsix_auto_mail.server._attachment_mixin.httpx"
+                "robotsix_auto_mail.server._attachment_service.httpx"
             ) as mock_httpx,
         ):
             mock_imap = mock.MagicMock()
@@ -511,7 +518,7 @@ class TestPushToFileHubHappyPath:
             mock_httpx_client.post.return_value = mock_resp
             mock_httpx.Client.return_value = mock_httpx_client
 
-            handler._handle_push_to_file_hub("<single@example.com>")
+            _push(handler, "<single@example.com>")
 
         handler._send_response.assert_called_once()
         args = handler._send_response.call_args
@@ -545,7 +552,7 @@ class TestPushToFileHubHappyPath:
             password="test",
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(
+        handler = _AttachmentServiceContext(
             single_db, mail_config=mail_config, accounts=accounts
         )
         handler.headers.get.return_value = 15
@@ -568,7 +575,7 @@ class TestPushToFileHubHappyPath:
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_imap_cls,
             mock.patch(
-                "robotsix_auto_mail.server._attachment_mixin.httpx"
+                "robotsix_auto_mail.server._attachment_service.httpx"
             ) as mock_httpx,
         ):
             mock_imap = mock.MagicMock()
@@ -586,7 +593,7 @@ class TestPushToFileHubHappyPath:
             mock_httpx_client.post.return_value = mock_resp
             mock_httpx.Client.return_value = mock_httpx_client
 
-            handler._handle_push_to_file_hub("<byidx@example.com>")
+            _push(handler, "<byidx@example.com>")
 
         handler._send_response.assert_called_once()
         args = handler._send_response.call_args
@@ -621,7 +628,7 @@ class TestPushToFileHubFileHubErrors:
             password="test",
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(
+        handler = _AttachmentServiceContext(
             single_db, mail_config=mail_config, accounts=accounts
         )
         handler.headers.get.return_value = 0
@@ -633,7 +640,7 @@ class TestPushToFileHubFileHubErrors:
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_imap_cls,
             mock.patch(
-                "robotsix_auto_mail.server._attachment_mixin.httpx"
+                "robotsix_auto_mail.server._attachment_service.httpx"
             ) as mock_httpx,
         ):
             mock_imap = mock.MagicMock()
@@ -644,7 +651,7 @@ class TestPushToFileHubFileHubErrors:
 
             mock_httpx.Client.side_effect = OSError("Connection refused")
 
-            handler._handle_push_to_file_hub("<fherr@example.com>")
+            _push(handler, "<fherr@example.com>")
 
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
@@ -675,7 +682,7 @@ class TestPushToFileHubFileHubErrors:
             password="test",
         )
         accounts = _make_accounts()
-        handler = _AttachmentFakeHandler(
+        handler = _AttachmentServiceContext(
             single_db, mail_config=mail_config, accounts=accounts
         )
         handler.headers.get.return_value = 0
@@ -687,7 +694,7 @@ class TestPushToFileHubFileHubErrors:
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_imap_cls,
             mock.patch(
-                "robotsix_auto_mail.server._attachment_mixin.httpx"
+                "robotsix_auto_mail.server._attachment_service.httpx"
             ) as mock_httpx,
         ):
             mock_imap = mock.MagicMock()
@@ -705,7 +712,7 @@ class TestPushToFileHubFileHubErrors:
             mock_httpx_client.post.return_value = mock_resp
             mock_httpx.Client.return_value = mock_httpx_client
 
-            handler._handle_push_to_file_hub("<fhhttp@example.com>")
+            _push(handler, "<fhhttp@example.com>")
 
         handler._serve_json.assert_called_once()
         args = handler._serve_json.call_args
