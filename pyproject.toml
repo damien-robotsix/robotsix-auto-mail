@@ -212,4 +212,4 @@ robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git"
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "7eee4cf3726daadab6870bf5acbfede81675ce86" }  # pragma: allowlist secret
 robotsix-config = { git = "https://github.com/damien-robotsix/robotsix-config.git", rev = "8b9fa37f53b179986ca8b8f603d8786b9aa06018" }  # pragma: allowlist secret
 robotsix-http = { git = "https://github.com/damien-robotsix/robotsix-http.git", rev = "c57947232685f4e4798a61e2bc53d747d3dbc75d" }  # pragma: allowlist secret
-robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "d916d1c14198dd00bb136605224177289c73352c" }  # pragma: allowlist secret
+robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "db46f913b20d4bde672c2afb57bc35f88ede5005" }  # pragma: allowlist secret
