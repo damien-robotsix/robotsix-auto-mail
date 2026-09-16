@@ -342,7 +342,7 @@ modules:
       - src/robotsix_auto_mail/server/_account_service.py
       - src/robotsix_auto_mail/server/_action_service.py
       - src/robotsix_auto_mail/server/_attachment_service.py
-      - src/robotsix_auto_mail/server/_archive_action_mixin.py
+      - src/robotsix_auto_mail/server/_archive_service.py
       - src/robotsix_auto_mail/server/_auth_service.py
       - src/robotsix_auto_mail/server/_batch_service.py
       - src/robotsix_auto_mail/server/_board_handler_protocol.py

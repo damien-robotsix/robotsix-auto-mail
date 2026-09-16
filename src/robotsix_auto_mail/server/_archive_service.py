@@ -1,18 +1,25 @@
-"""Archive-action-handler mixin for the board server."""
+"""Archive-action service for the board server.
 
-# mypy: disable-error-code="attr-defined,arg-type"
+Hosts the board's archive endpoints — ``POST /archive``, ``POST
+/archive-move``, ``POST /archive-delete``, ``POST /archive-message-delete``
+and ``POST /archive-rename`` — as a stateless
+:class:`~robotsix_auto_mail.server._services.Service`.  Each handler takes the
+per-request context (:class:`RequestContext`) and reads all per-request state
+(the resolved account's ``mail_config``, the transport, the response sinks and
+the shared ``_require_imap_configured`` / ``_validate_archive_path`` guards)
+off it, never off the service instance.
+"""
 
 from __future__ import annotations
 
 import contextlib
 import json
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from robotsix_auto_mail.config import (
     APP_CLASSIFIER,
     DEFAULT_ARCHIVE_ROOT,
-    MailConfig,
     resolve_llm_api_key,
     resolve_llm_tier,
 )
@@ -21,9 +28,12 @@ from robotsix_auto_mail.server._request_helpers import (
     _json_field_value,
     handle_post_action,
 )
-from robotsix_auto_mail.triage import (
-    TO_ARCHIVE,
-)
+from robotsix_auto_mail.server._services import Service
+from robotsix_auto_mail.triage import TO_ARCHIVE
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailConfig
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -53,13 +63,8 @@ def _find_message_in_archive(
     return None
 
 
-class _ArchiveActionMixin:
-    """Mixin providing archive-action handlers for the board server."""
-
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
-
-    self: BoardHandlerProtocol
+class ArchiveService(Service):
+    """Stateless service providing the board's archive POST action handlers."""
 
     def _imap_archive_move(
         self,
@@ -108,10 +113,12 @@ class _ArchiveActionMixin:
 
             client.move_message(resolved_uid, dest_folder)
 
-    def _archive_and_delete(self, conn: Any, record: MailRecord) -> bool:
+    def _archive_and_delete(
+        self, ctx: RequestContext, conn: Any, record: MailRecord
+    ) -> bool:
         """Archive *record*'s message via IMAP, then delete its local row.
 
-        Used by :meth:`_handle_archive`.
+        Used by :meth:`handle_archive`.
         Computes the effective archive root + subfolder, performs the IMAP
         move (only when IMAP is configured and the record has a tracked
         UID), writes an archive-audit-log entry, then removes the local
@@ -128,6 +135,8 @@ class _ArchiveActionMixin:
         )
         from robotsix_auto_mail.triage import get_archive_subfolder_with_source
 
+        mail_config = cast("MailConfig | None", ctx.mail_config)
+
         # Compute the effective archive subfolder.
         classifier_level, _ = resolve_llm_tier(APP_CLASSIFIER)
         subfolder, proposal_source = get_archive_subfolder_with_source(
@@ -136,15 +145,13 @@ class _ArchiveActionMixin:
             record,
             api_key=resolve_llm_api_key(raise_on_missing=False),
             level=classifier_level,
-            rules=self.mail_config.triage_guidance
-            if self.mail_config is not None
-            else "",
+            rules=mail_config.triage_guidance if mail_config is not None else "",
         )
 
         # Determine the archive root.
         archive_root = (
-            self.mail_config.archive_root
-            if self.mail_config is not None
+            mail_config.archive_root
+            if mail_config is not None
             else DEFAULT_ARCHIVE_ROOT
         )
 
@@ -152,12 +159,12 @@ class _ArchiveActionMixin:
 
         # -- IMAP move phase (only when IMAP is configured and the
         #    record has a tracked UID) --
-        if self.mail_config is not None and record.imap_uid is not None:
+        if mail_config is not None and record.imap_uid is not None:
             from robotsix_auto_mail.imap import ImapError, ImapMessageNotFoundError
 
             try:
                 self._imap_archive_move(
-                    self.mail_config,
+                    mail_config,
                     record.imap_uid,
                     effective_root,
                     subfolder,
@@ -166,7 +173,7 @@ class _ArchiveActionMixin:
                 )
             except ValueError:
                 logger.exception("Action handler failed")
-                self._bad_request("Invalid request")
+                ctx._bad_request("Invalid request")
                 return False
             except ImapMessageNotFoundError:
                 from robotsix_auto_mail.server.adapters import (
@@ -174,9 +181,9 @@ class _ArchiveActionMixin:
                 )
 
                 try:
-                    result = _imap_cross_folder_fallback(self.mail_config, record, conn)
+                    result = _imap_cross_folder_fallback(mail_config, record, conn)
                 except (ImapError, OSError) as exc:
-                    self._send_response(
+                    ctx._send_response(
                         f"IMAP cross-folder resolution failed: {exc}",
                         status=502,
                     )
@@ -185,7 +192,7 @@ class _ArchiveActionMixin:
                     new_folder, new_uid = result
                     try:
                         self._imap_archive_move(
-                            self.mail_config,
+                            mail_config,
                             new_uid,
                             effective_root,
                             subfolder,
@@ -193,29 +200,13 @@ class _ArchiveActionMixin:
                             message_id=record.message_id,
                         )
                     except (ImapError, OSError) as exc:
-                        self._send_response(
+                        ctx._send_response(
                             f"IMAP cross-folder resolution failed: {exc}",
                             status=502,
                         )
                         return False
-                # Mail gone or healed — write audit entry and delete
-                # the local record in both cases.
-                with contextlib.suppress(Exception):
-                    write_archive_audit_entry(
-                        conn,
-                        message_id=record.message_id,
-                        subject=record.subject,
-                        sender=record.sender,
-                        date=record.date,
-                        source_column=TO_ARCHIVE,
-                        source_folder=record.source_folder,
-                        dest_folder=subfolder,
-                        proposal_source=proposal_source,
-                    )
-                delete_record_by_message_id(conn, record.message_id)
-                return True
             except (ImapError, OSError) as exc:
-                self._send_response(
+                ctx._send_response(
                     f"IMAP archive failed: {exc}",
                     status=502,
                 )
@@ -240,22 +231,22 @@ class _ArchiveActionMixin:
         delete_record_by_message_id(conn, record.message_id)
         return True
 
-    def _handle_archive(self) -> None:
+    def handle_archive(self, ctx: RequestContext) -> None:
         """Process POST /archive — move mail to archive folder via IMAP
         and remove it from the local database.
         """
 
         def archive_action(conn: Any, record: MailRecord, redirect_to: str) -> bool:
-            return self._archive_and_delete(conn, record)
+            return self._archive_and_delete(ctx, conn, record)
 
         handle_post_action(
-            self,
+            ctx,
             "message_id",
             "redirect_to",
             action=archive_action,
         )
 
-    def _handle_archive_move(self) -> None:
+    def handle_archive_move(self, ctx: RequestContext) -> None:
         """Process POST /archive-move — move a message between archive folders.
 
         Accepts a JSON body with:
@@ -279,16 +270,16 @@ class _ArchiveActionMixin:
         )
 
         # Parse the JSON body.
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
+        content_length = int(ctx.headers.get("Content-Length", 0))
+        raw = ctx.rfile.read(content_length).decode("utf-8")
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
+            ctx._bad_request("Malformed JSON body")
             return
 
         if not isinstance(data, dict):
-            self._bad_request("JSON body must be an object")
+            ctx._bad_request("JSON body must be an object")
             return
 
         message_id = _json_field_value(data, "message_id")
@@ -301,21 +292,21 @@ class _ArchiveActionMixin:
             try:
                 uid = int(uid_raw)
             except ValueError, TypeError:
-                self._bad_request("uid must be an integer")
+                ctx._bad_request("uid must be an integer")
                 return
 
         if not message_id and uid is None:
-            self._bad_request("At least one of message_id or uid is required")
+            ctx._bad_request("At least one of message_id or uid is required")
             return
 
         if not target_subfolder:
-            self._bad_request("target_subfolder is required")
+            ctx._bad_request("target_subfolder is required")
             return
 
-        if not self._require_imap_configured():
+        if not ctx._require_imap_configured():
             return
 
-        ok, archive_root = self._validate_archive_path(
+        ok, archive_root = ctx._validate_archive_path(
             *(f for f in (source_folder, target_subfolder) if f)
         )
         if not ok:
@@ -323,13 +314,13 @@ class _ArchiveActionMixin:
 
         # Validate that uid requires source_folder when message_id is absent.
         if uid is not None and not source_folder and not message_id:
-            self._bad_request(
+            ctx._bad_request(
                 "source_folder is required when uid is provided without message_id"
             )
             return
 
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
                 delimiter = next(
@@ -353,7 +344,7 @@ class _ArchiveActionMixin:
                         translated_source != ar_translated
                         and not translated_source.startswith(root_prefix)
                     ):
-                        self._bad_request("source_folder escapes archive root")
+                        ctx._bad_request("source_folder escapes archive root")
                         return
                     resolved_source_folder = translated_source
                     resolved_uid = uid
@@ -364,12 +355,12 @@ class _ArchiveActionMixin:
                         client, message_id, archive_root, delimiter
                     )
                     if resolved is None:
-                        self._not_found()
+                        ctx._not_found()
                         return
                     resolved_source_folder, resolved_uid = resolved
 
                 if resolved_source_folder is None or resolved_uid is None:
-                    self._not_found()
+                    ctx._not_found()
                     return
 
                 # Compute the destination folder path.
@@ -382,7 +373,7 @@ class _ArchiveActionMixin:
                     translated_target != ar_translated
                     and not translated_target.startswith(root_prefix)
                 ):
-                    self._bad_request("target_subfolder escapes archive root")
+                    ctx._bad_request("target_subfolder escapes archive root")
                     return
 
                 # Ensure destination folder hierarchy exists.
@@ -397,22 +388,22 @@ class _ArchiveActionMixin:
                 client.move_message(resolved_uid, translated_target)
 
         except ImapMessageNotFoundError:
-            self._not_found()
+            ctx._not_found()
             return
         except ImapError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP error during archive move: {exc}",
                 status=502,
             )
             return
         except OSError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP connection error: {exc}",
                 status=502,
             )
             return
 
-        self._serve_json(
+        ctx._serve_json(
             {
                 "status": "moved",
                 "message_id": message_id or "",
@@ -424,7 +415,7 @@ class _ArchiveActionMixin:
 
     # -- archive folder-delete -----------------------------------------------
 
-    def _handle_archive_delete(self) -> None:
+    def handle_archive_delete(self, ctx: RequestContext) -> None:
         """Process POST /archive-delete — delete an archive subfolder.
 
         Accepts a JSON body with:
@@ -440,16 +431,16 @@ class _ArchiveActionMixin:
         Returns JSON on success.  The folder must be under the archive
         root; path-escaping attempts (``..`` segments) are rejected.
         """
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
+        content_length = int(ctx.headers.get("Content-Length", 0))
+        raw = ctx.rfile.read(content_length).decode("utf-8")
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
+            ctx._bad_request("Malformed JSON body")
             return
 
         if not isinstance(data, dict):
-            self._bad_request("JSON body must be an object")
+            ctx._bad_request("JSON body must be an object")
             return
 
         source_folder = _json_field_value(data, "source_folder")
@@ -457,24 +448,24 @@ class _ArchiveActionMixin:
         force = data.get("force", False)
 
         if not source_folder:
-            self._bad_request("source_folder is required")
+            ctx._bad_request("source_folder is required")
             return
 
         if not confirm:
-            self._bad_request("confirm must be true — folder deletion is irreversible")
+            ctx._bad_request("confirm must be true — folder deletion is irreversible")
             return
 
-        if not self._require_imap_configured():
+        if not ctx._require_imap_configured():
             return
 
-        ok, archive_root = self._validate_archive_path(source_folder)
+        ok, archive_root = ctx._validate_archive_path(source_folder)
         if not ok:
             return
 
         from robotsix_auto_mail.imap import ImapClient, ImapError
 
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
                 delimiter = next(
@@ -494,20 +485,20 @@ class _ArchiveActionMixin:
                     translated_source != ar_translated
                     and not translated_source.startswith(root_prefix)
                 ):
-                    self._bad_request("source_folder escapes archive root")
+                    ctx._bad_request("source_folder escapes archive root")
                     return
 
                 # Verify the folder exists.
                 folder_names = {f.name for f in existing}
                 if translated_source not in folder_names:
-                    self._not_found()
+                    ctx._not_found()
                     return
 
                 # Check emptiness (unless force is True).
                 if not force:
                     count = client.select_folder(translated_source)
                     if count > 0:
-                        self._serve_json(
+                        ctx._serve_json(
                             {
                                 "error": (
                                     f"Folder '{source_folder}' is not empty "
@@ -522,7 +513,7 @@ class _ArchiveActionMixin:
                     child_prefix = f"{translated_source}{delimiter}"
                     for fname in folder_names:
                         if fname.startswith(child_prefix):
-                            self._serve_json(
+                            ctx._serve_json(
                                 {
                                     "error": (
                                         f"Folder '{source_folder}' has child "
@@ -557,19 +548,19 @@ class _ArchiveActionMixin:
                 client.delete_folder(translated_source)
 
         except ImapError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP error during folder delete: {exc}",
                 status=502,
             )
             return
         except OSError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP connection error: {exc}",
                 status=502,
             )
             return
 
-        self._serve_json(
+        ctx._serve_json(
             {
                 "status": "deleted",
                 "source_folder": source_folder,
@@ -578,7 +569,7 @@ class _ArchiveActionMixin:
 
     # -- archive message-delete ----------------------------------------------
 
-    def _handle_archive_message_delete(self) -> None:
+    def handle_archive_message_delete(self, ctx: RequestContext) -> None:
         """Process POST /archive-message-delete — permanently delete an
         archived message.
 
@@ -600,16 +591,16 @@ class _ArchiveActionMixin:
         Returns JSON on success; 404 when the uid is not found in
         *source_folder*.
         """
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
+        content_length = int(ctx.headers.get("Content-Length", 0))
+        raw = ctx.rfile.read(content_length).decode("utf-8")
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
+            ctx._bad_request("Malformed JSON body")
             return
 
         if not isinstance(data, dict):
-            self._bad_request("JSON body must be an object")
+            ctx._bad_request("JSON body must be an object")
             return
 
         uid_raw = data.get("uid")
@@ -622,25 +613,25 @@ class _ArchiveActionMixin:
             try:
                 uid = int(uid_raw)
             except ValueError, TypeError:
-                self._bad_request("uid must be an integer")
+                ctx._bad_request("uid must be an integer")
                 return
 
         if uid is None and not message_id:
-            self._bad_request("At least one of uid or message_id is required")
+            ctx._bad_request("At least one of uid or message_id is required")
             return
 
         if not source_folder:
-            self._bad_request("source_folder is required")
+            ctx._bad_request("source_folder is required")
             return
 
         if not confirm:
-            self._bad_request("confirm must be true — message deletion is irreversible")
+            ctx._bad_request("confirm must be true — message deletion is irreversible")
             return
 
-        if not self._require_imap_configured():
+        if not ctx._require_imap_configured():
             return
 
-        ok, archive_root = self._validate_archive_path(source_folder)
+        ok, archive_root = ctx._validate_archive_path(source_folder)
         if not ok:
             return
 
@@ -653,7 +644,7 @@ class _ArchiveActionMixin:
         resolved_uid: int | None = None
 
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
                 delimiter = next(
@@ -673,7 +664,7 @@ class _ArchiveActionMixin:
                     translated_source != ar_translated
                     and not translated_source.startswith(root_prefix)
                 ):
-                    self._bad_request("source_folder escapes archive root")
+                    ctx._bad_request("source_folder escapes archive root")
                     return
 
                 # Select the folder.
@@ -697,28 +688,28 @@ class _ArchiveActionMixin:
                         resolved_uid = found[0]
 
                 if resolved_uid is None:
-                    self._not_found()
+                    ctx._not_found()
                     return
 
                 client.delete_message(resolved_uid)
 
         except ImapMessageNotFoundError:
-            self._not_found()
+            ctx._not_found()
             return
         except ImapError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP error during message delete: {exc}",
                 status=502,
             )
             return
         except OSError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP connection error: {exc}",
                 status=502,
             )
             return
 
-        self._serve_json(
+        ctx._serve_json(
             {
                 "status": "deleted",
                 "uid": resolved_uid,
@@ -728,7 +719,7 @@ class _ArchiveActionMixin:
 
     # -- archive folder-rename -----------------------------------------------
 
-    def _handle_archive_rename(self) -> None:
+    def handle_archive_rename(self, ctx: RequestContext) -> None:
         """Process POST /archive-rename — rename an archive subfolder in place.
 
         Accepts a JSON body with:
@@ -750,16 +741,16 @@ class _ArchiveActionMixin:
 
         Returns JSON on success.
         """
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8")
+        content_length = int(ctx.headers.get("Content-Length", 0))
+        raw = ctx.rfile.read(content_length).decode("utf-8")
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            self._bad_request("Malformed JSON body")
+            ctx._bad_request("Malformed JSON body")
             return
 
         if not isinstance(data, dict):
-            self._bad_request("JSON body must be an object")
+            ctx._bad_request("JSON body must be an object")
             return
 
         source_folder = _json_field_value(data, "source_folder")
@@ -768,11 +759,11 @@ class _ArchiveActionMixin:
         confirm = data.get("confirm", False)
 
         if not source_folder:
-            self._bad_request("source_folder is required")
+            ctx._bad_request("source_folder is required")
             return
 
         if not confirm:
-            self._bad_request("confirm must be true — folder rename is irreversible")
+            ctx._bad_request("confirm must be true — folder rename is irreversible")
             return
 
         # target_path takes precedence over target_name.
@@ -786,20 +777,20 @@ class _ArchiveActionMixin:
             else:
                 effective_target = target_name
         else:
-            self._bad_request("target_name or target_path is required")
+            ctx._bad_request("target_name or target_path is required")
             return
 
-        if not self._require_imap_configured():
+        if not ctx._require_imap_configured():
             return
 
-        ok, archive_root = self._validate_archive_path(source_folder, effective_target)
+        ok, archive_root = ctx._validate_archive_path(source_folder, effective_target)
         if not ok:
             return
 
         from robotsix_auto_mail.imap import ImapClient, ImapError
 
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
                 delimiter = next(
@@ -823,24 +814,24 @@ class _ArchiveActionMixin:
                     translated_source != ar_translated
                     and not translated_source.startswith(root_prefix)
                 ):
-                    self._bad_request("source_folder escapes archive root")
+                    ctx._bad_request("source_folder escapes archive root")
                     return
                 if (
                     translated_target != ar_translated
                     and not translated_target.startswith(root_prefix)
                 ):
-                    self._bad_request("target_name/target_path escapes archive root")
+                    ctx._bad_request("target_name/target_path escapes archive root")
                     return
 
                 # Verify the source folder exists.
                 folder_names = {f.name for f in existing}
                 if translated_source not in folder_names:
-                    self._not_found()
+                    ctx._not_found()
                     return
 
                 # Reject when target already exists (no silent merge).
                 if translated_target in folder_names:
-                    self._serve_json(
+                    ctx._serve_json(
                         {
                             "error": (
                                 f"Target folder '{effective_target}' already exists"
@@ -853,19 +844,19 @@ class _ArchiveActionMixin:
                 client.rename_folder(translated_source, translated_target)
 
         except ImapError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP error during folder rename: {exc}",
                 status=502,
             )
             return
         except OSError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP connection error: {exc}",
                 status=502,
             )
             return
 
-        self._serve_json(
+        ctx._serve_json(
             {
                 "status": "renamed",
                 "source_folder": source_folder,

@@ -12,7 +12,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import MailConfig
-from tests.server._test_helpers import _FakeHandler
+from tests.server._test_helpers import _archive_service, _FakeHandler
 
 
 class TestImapArchiveMove:
@@ -38,7 +38,7 @@ class TestImapArchiveMove:
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
                 with pytest.raises(ValueError, match="escapes archive root"):
-                    handler._imap_archive_move(
+                    _archive_service(handler)._imap_archive_move(
                         mail_config,
                         imap_uid=1,
                         effective_root="my-archive",
@@ -63,7 +63,7 @@ class TestImapArchiveMove:
             mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
             mock_client.search_uids.return_value = [7]
 
-            handler._imap_archive_move(
+            _archive_service(handler)._imap_archive_move(
                 mail_config,
                 imap_uid=7,
                 effective_root="my-archive",
@@ -98,7 +98,7 @@ class TestImapArchiveMove:
             mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
             mock_client.search_uids.return_value = [3]
 
-            handler._imap_archive_move(
+            _archive_service(handler)._imap_archive_move(
                 mail_config,
                 imap_uid=3,
                 effective_root="my-archive",
@@ -128,7 +128,7 @@ class TestImapArchiveMove:
             mock_client.list_folders.return_value = [mock.Mock(delimiter=".")]
             mock_client.search_uids.return_value = [23]
 
-            handler._imap_archive_move(
+            _archive_service(handler)._imap_archive_move(
                 mail_config,
                 imap_uid=23,
                 effective_root="my-archive",
@@ -178,7 +178,7 @@ class TestImapArchiveMove:
 
             mock_client.search_uids.side_effect = _search_uids
 
-            handler._imap_archive_move(
+            _archive_service(handler)._imap_archive_move(
                 mail_config,
                 imap_uid=42,
                 effective_root="my-archive",

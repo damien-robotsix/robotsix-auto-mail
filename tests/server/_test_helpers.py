@@ -1,11 +1,13 @@
-"""Shared helpers for server mixin/service unit tests.
+"""Shared helpers for server service unit tests.
 
 Provides ``_RequestContextHelpers`` (the real ``_effective_archive_root`` /
 ``_require_imap_configured`` / ``_validate_archive_path`` guards mirrored from
 ``BoardHandler`` so stub request contexts get their genuine behaviour),
-``_FakeHandler`` (a concrete ``_ArchiveActionMixin`` for direct mixin testing),
-``_ActionServiceContext`` (a stub request context for the composition-era
-``ActionService`` tests), and ``_SyncThread`` (a synchronous
+``_FakeHandler`` (a stub request *context* wiring the response sinks to
+``MagicMock``s so services can be driven directly), ``_archive_service`` (a
+factory that builds an :class:`ArchiveService` wired to a fake handler's
+injected deps), ``_ActionServiceContext`` (a stub request context for the
+composition-era ``ActionService`` tests), and ``_SyncThread`` (a synchronous
 ``threading.Thread`` replacement for deterministic background-worker tests).
 """
 
@@ -15,7 +17,7 @@ from typing import Any, Callable
 from unittest import mock
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
-from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
+from robotsix_auto_mail.server._archive_service import ArchiveService
 
 
 class _RequestContextHelpers:
@@ -59,9 +61,13 @@ class _RequestContextHelpers:
         return True, archive_root
 
 
-class _FakeHandler(_ArchiveActionMixin, _RequestContextHelpers):
-    """Concrete handler that wires the ``BoardHandlerProtocol`` attributes
-    to MagicMock defaults so mixin methods can be called directly."""
+class _FakeHandler(_RequestContextHelpers):
+    """Stub request *context* that wires the ``RequestContext`` attributes
+    to MagicMock defaults so composition-era services can be driven directly.
+
+    Pair it with :func:`_archive_service` to exercise ``ArchiveService``
+    methods against this fake context.
+    """
 
     def __init__(
         self,
@@ -71,6 +77,9 @@ class _FakeHandler(_ArchiveActionMixin, _RequestContextHelpers):
         self.db_path = db_path
         self.mail_config = mail_config
         self.accounts = None
+        self._current_account_id: str | None = None
+        self._aggregate = False
+        self._account_cookie: str | None = None
         self.headers = mock.MagicMock()
         self.rfile = mock.MagicMock()
         self._send_response = mock.MagicMock()
@@ -78,6 +87,14 @@ class _FakeHandler(_ArchiveActionMixin, _RequestContextHelpers):
         self._not_found = mock.MagicMock()
         self._bad_request = mock.MagicMock()
         self._serve_json = mock.MagicMock()
+
+
+def _archive_service(handler: _FakeHandler) -> ArchiveService:
+    """Build an ``ArchiveService`` wired to *handler*'s injected deps."""
+    return ArchiveService(
+        db_path=handler.db_path,
+        mail_config=handler.mail_config,
+    )
 
 
 class _ActionServiceContext:
