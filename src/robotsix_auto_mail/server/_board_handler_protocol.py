@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
 
 class BoardHandlerProtocol(Protocol):
@@ -14,6 +14,15 @@ class BoardHandlerProtocol(Protocol):
     _current_account_id: str | None
     _aggregate: bool
     _account_cookie: str | None
+
+    # Per-request transport surface, populated by
+    # ``BaseHTTPRequestHandler``.  The shared request helpers
+    # (:mod:`robotsix_auto_mail.server._request_helpers`) read the body and
+    # headers through these; ``path`` carries the request line (with any
+    # query string) for route-local parsing.
+    path: str
+    headers: Any
+    rfile: Any
 
     def _send_response(
         self,
@@ -50,3 +59,11 @@ class BoardHandlerProtocol(Protocol):
 
     def _validate_archive_path(self, *folders: str) -> tuple[bool, str]:
         pass
+
+
+# The request-scoped context that composition-era services receive.  It is
+# the same structural surface as ``BoardHandlerProtocol`` — the running
+# ``BoardHandler`` instance *is* the context — but named for the composition
+# design so service code and the shared request helpers can depend on the
+# narrow contract rather than on the concrete ``BoardHandler``.
+RequestContext = BoardHandlerProtocol

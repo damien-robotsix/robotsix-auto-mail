@@ -1,11 +1,12 @@
 """Config-sync and archive-proposal mixin for the board server."""
 
-# mypy: disable-error-code="attr-defined"
+# mypy: disable-error-code="attr-defined,arg-type"
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from robotsix_auto_mail.server._request_helpers import handle_post_action
 from robotsix_auto_mail.triage import set_archive_subfolder_override
 
 
@@ -89,7 +90,8 @@ class _ConfigMixin:
             set_archive_subfolder_override(conn, record.message_id, subfolder)
             return True
 
-        self._handle_post_action(
+        handle_post_action(
+            self,
             "message_id",
             "subfolder",
             "redirect_to",

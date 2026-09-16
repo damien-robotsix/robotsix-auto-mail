@@ -27,7 +27,6 @@ class _FakeConfigHandler(_ConfigMixin):
         self.mail_config = mail_config
         self._serve_json = mock.MagicMock()
         self._bad_request = mock.MagicMock()
-        self._handle_post_action = mock.MagicMock()
 
     def _problem(
         self,
@@ -195,10 +194,12 @@ class TestHandleArchiveProposal:
     @staticmethod
     def _capture_action(handler: _FakeConfigHandler) -> Any:
         """Call _handle_archive_proposal and return the captured action."""
-        handler._handle_archive_proposal()
-        handler._handle_post_action.assert_called_once()
-        call_kwargs = handler._handle_post_action.call_args.kwargs
-        return call_kwargs["action"]
+        with mock.patch(
+            "robotsix_auto_mail.server._config_mixin.handle_post_action"
+        ) as mock_hpa:
+            handler._handle_archive_proposal()
+        mock_hpa.assert_called_once()
+        return mock_hpa.call_args.kwargs["action"]
 
     # -- field routing -----------------------------------------------------
 
@@ -206,11 +207,14 @@ class TestHandleArchiveProposal:
         """The method routes message_id, subfolder, and redirect_to."""
         handler = _FakeConfigHandler()
 
-        handler._handle_archive_proposal()
+        with mock.patch(
+            "robotsix_auto_mail.server._config_mixin.handle_post_action"
+        ) as mock_hpa:
+            handler._handle_archive_proposal()
 
-        handler._handle_post_action.assert_called_once()
-        args = handler._handle_post_action.call_args[0]
-        assert args == ("message_id", "subfolder", "redirect_to")
+        mock_hpa.assert_called_once()
+        args = mock_hpa.call_args[0]
+        assert args == (handler, "message_id", "subfolder", "redirect_to")
 
     # -- subfolder validation ----------------------------------------------
 

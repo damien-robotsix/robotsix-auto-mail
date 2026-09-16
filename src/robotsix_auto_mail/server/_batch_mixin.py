@@ -1,6 +1,6 @@
 """Batch-action mixin for the board server."""
 
-# mypy: disable-error-code="attr-defined"
+# mypy: disable-error-code="attr-defined,arg-type"
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
 from robotsix_auto_mail.core._constants import _BATCH_OP_STATE_KEY
+from robotsix_auto_mail.server._request_helpers import parse_request_body
 from robotsix_auto_mail.server.adapters import (
     _batch_op_running,
     _collect_records_for_action,
@@ -95,7 +96,7 @@ class _BatchActionMixin:
         that filter.  Same single-flight guard, precheck and background worker
         as the column-wide "Archive All", scoped to one destination.
         """
-        folder = self._parse_request_body("folder")["folder"]
+        folder = parse_request_body(self, "folder")["folder"]
         self._handle_batch_archive(subfolder=folder)
 
     def _handle_batch_archive(self, subfolder: str | None = None) -> None:

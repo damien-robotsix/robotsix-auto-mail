@@ -16,8 +16,8 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
-from robotsix_auto_mail.server._action_mixin import _json_field_value
 from robotsix_auto_mail.server._constants import _with_db
+from robotsix_auto_mail.server._request_helpers import _json_field_value
 
 logger = logging.getLogger(__name__)
 
