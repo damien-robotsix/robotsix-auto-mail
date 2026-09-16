@@ -343,8 +343,8 @@ modules:
       - src/robotsix_auto_mail/server/_action_mixin.py
       - src/robotsix_auto_mail/server/_attachment_mixin.py
       - src/robotsix_auto_mail/server/_archive_action_mixin.py
-      - src/robotsix_auto_mail/server/_auth_mixin.py
-      - src/robotsix_auto_mail/server/_batch_mixin.py
+      - src/robotsix_auto_mail/server/_auth_service.py
+      - src/robotsix_auto_mail/server/_batch_service.py
       - src/robotsix_auto_mail/server/_board_handler_protocol.py
       - src/robotsix_auto_mail/server/_config_service.py
       - src/robotsix_auto_mail/server/_compose_draft_mixin.py
@@ -353,7 +353,7 @@ modules:
       - src/robotsix_auto_mail/server/_reconcile_service.py
       - src/robotsix_auto_mail/server/_ingest_service.py
       - src/robotsix_auto_mail/server/_mailbox_mixin.py
-      - src/robotsix_auto_mail/server/_sent_mixin.py
+      - src/robotsix_auto_mail/server/_sent_service.py
       - src/robotsix_auto_mail/server/_settings_mixin.py
       - src/robotsix_auto_mail/server/_triage_service.py
       - src/robotsix_auto_mail/server/_view_mixin.py
@@ -420,12 +420,12 @@ modules:
       - tests/server/test_board_views_columns.py
       - tests/server/test_board_views_gather.py
       - tests/server/test_board_views_shell.py
-      - tests/server/test_auth_mixin.py
+      - tests/server/test_auth_service.py
       - tests/server/test_format_date.py
       - tests/server/test_global_board.py
       - tests/server/test_reconcile_service.py
       - tests/server/test_ingest_service.py
-      - tests/server/test_sent_mixin.py
+      - tests/server/test_sent_service.py
       - tests/server/test_mailbox_mixin.py
       - tests/server/test_config_service.py
       - tests/server/test_services_container.py
@@ -460,10 +460,7 @@ modules:
       - tests/server/test_views_detail_triage.py
       - tests/server/test_views_forms.py
       - tests/server/test_zero_mails_warning.py
-      - tests/server/test_batch_mixin_archive.py
-      - tests/server/test_batch_mixin_archive_folder.py
-      - tests/server/test_batch_mixin_delete.py
-      - tests/server/test_batch_mixin_delete_aggregate.py
+      - tests/server/test_batch_service.py
       - scripts/server/smoke_board.sh
       - scripts/server/vendor-ui.sh
 

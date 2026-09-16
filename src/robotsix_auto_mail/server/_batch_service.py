@@ -1,14 +1,13 @@
-"""Batch-action mixin for the board server."""
-
-# mypy: disable-error-code="attr-defined,arg-type"
+"""Batch-action service for the board server."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT
 from robotsix_auto_mail.core._constants import _BATCH_OP_STATE_KEY
 from robotsix_auto_mail.server._request_helpers import parse_request_body
+from robotsix_auto_mail.server._services import Service
 from robotsix_auto_mail.server.adapters import (
     _batch_op_running,
     _collect_records_for_action,
@@ -17,16 +16,15 @@ from robotsix_auto_mail.server.adapters import (
 )
 from robotsix_auto_mail.triage import TO_ARCHIVE, TO_DELETE
 
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailAccountsConfig, MailConfig
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
-class _BatchActionMixin:
-    """Mixin providing batch-delete and batch-archive actions."""
 
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
+class BatchService(Service):
+    """Stateless service providing batch-delete and batch-archive actions."""
 
-    self: BoardHandlerProtocol
-
-    def _handle_batch_delete(self) -> None:
+    def handle_batch_delete(self, ctx: RequestContext) -> None:
         """Process POST /batch-delete — delete all TO_DELETE mail from IMAP
         and local DB in a background daemon thread.
 
@@ -40,22 +38,22 @@ class _BatchActionMixin:
         30-second auto-refresh.
 
         In the aggregate ("All mailboxes") view the request resolves to
-        ``self._aggregate`` and is fanned out across every account by
-        :meth:`_handle_batch_delete_aggregate`.
+        ``ctx._aggregate`` and is fanned out across every account by
+        :meth:`handle_batch_delete_aggregate`.
         """
-        if self._aggregate and self.accounts is not None:
-            self._handle_batch_delete_aggregate()
+        if ctx._aggregate and ctx.accounts is not None:
+            self.handle_batch_delete_aggregate(ctx)
             return
 
-        self._launch_background_worker(
+        ctx._launch_background_worker(
             _BATCH_OP_STATE_KEY,
             _run_batch_delete_background,
-            (self.db_path, self.mail_config),
+            (ctx.db_path, ctx.mail_config),
             running_check=_batch_op_running,
             precheck=lambda conn: bool(_collect_records_for_action(conn, TO_DELETE)),
         )
 
-    def _handle_batch_delete_aggregate(self) -> None:
+    def handle_batch_delete_aggregate(self, ctx: RequestContext) -> None:
         """Fan out batch-delete across every configured account.
 
         Each account owns its DB, IMAP connection and ``batch_op:state``
@@ -66,14 +64,14 @@ class _BatchActionMixin:
         concurrently; each clears its own watermark on completion, and the
         aggregate board banner sums their progress.
         """
-        accounts = self.accounts
+        accounts = cast("MailAccountsConfig | None", ctx.accounts)
         if accounts is None:  # pragma: no cover - guarded by the caller
-            self._redirect("/board", code=302)
+            ctx._redirect("/board", code=302)
             return
 
         for account in accounts.accounts:
             db_path = account.config.db_path
-            self._launch_background_worker(
+            ctx._launch_background_worker(
                 _BATCH_OP_STATE_KEY,
                 _run_batch_delete_background,
                 (db_path, account.config),
@@ -85,44 +83,47 @@ class _BatchActionMixin:
                 redirect=False,
             )
 
-        self._redirect("/board", code=302)
+        ctx._redirect("/board", code=302)
 
-    def _handle_batch_archive_folder(self) -> None:
+    def handle_batch_archive_folder(self, ctx: RequestContext) -> None:
         """Process POST /batch-archive-folder — archive only the TO_ARCHIVE
         mail whose proposed destination equals the posted ``folder``.
 
         Reads the relative ``folder`` subfolder from the form body (empty =
-        the archive root) and delegates to :meth:`_handle_batch_archive` with
+        the archive root) and delegates to :meth:`handle_batch_archive` with
         that filter.  Same single-flight guard, precheck and background worker
         as the column-wide "Archive All", scoped to one destination.
         """
-        folder = parse_request_body(self, "folder")["folder"]
-        self._handle_batch_archive(subfolder=folder)
+        folder = parse_request_body(ctx, "folder")["folder"]
+        self.handle_batch_archive(ctx, subfolder=folder)
 
-    def _handle_batch_archive(self, subfolder: str | None = None) -> None:
+    def handle_batch_archive(
+        self, ctx: RequestContext, subfolder: str | None = None
+    ) -> None:
         """Process POST /batch-archive — archive all TO_ARCHIVE mail from
         IMAP and local DB in a background daemon thread.
 
         Returns the redirect **immediately** with no synchronous IMAP work,
         so the browser is never held while a large column is processed.
         When *subfolder* is not ``None`` only that destination's mail is
-        archived (see :meth:`_handle_batch_archive_folder`); ``None`` archives
+        archived (see :meth:`handle_batch_archive_folder`); ``None`` archives
         the whole column.  Single-flight guarded by the shared
         ``batch_op:state`` watermark (so delete and archive cannot run
         concurrently on the same account); the daemon worker groups UIDs by
         destination, heals stale UIDs itself, and batch-moves each group.
         Progress shows via the board's batch banner and 30-second refresh.
         """
+        mail_config = cast("MailConfig | None", ctx.mail_config)
         archive_root = (
-            self.mail_config.archive_root
-            if self.mail_config is not None
+            mail_config.archive_root
+            if mail_config is not None
             else DEFAULT_ARCHIVE_ROOT
         )
 
-        self._launch_background_worker(
+        ctx._launch_background_worker(
             _BATCH_OP_STATE_KEY,
             _run_batch_archive_background,
-            (self.db_path, self.mail_config, archive_root, subfolder),
+            (ctx.db_path, ctx.mail_config, archive_root, subfolder),
             running_check=_batch_op_running,
             precheck=lambda conn: bool(_collect_records_for_action(conn, TO_ARCHIVE)),
         )

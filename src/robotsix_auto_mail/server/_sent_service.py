@@ -1,32 +1,30 @@
-"""Read-only Sent-folder access mixin for the board server.
+"""Read-only Sent-folder access service for the board server.
 
 Exposes each account's **Sent** folder over the chat HTTP API so an agent
 can list outbound mail, read a single Sent message, and enumerate its
 attachments.  Strictly read-only — no send, move, or delete happens here.
 """
 
-# mypy: disable-error-code="attr-defined"
-
 from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, urlsplit
 
+from robotsix_auto_mail.server._services import Service
+
 if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailConfig
     from robotsix_auto_mail.imap import ImapClient
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
 logger = logging.getLogger(__name__)
 
 
-class _SentMixin:
-    """Mixin providing read-only ``GET /sent/messages`` and ``GET /sent/message``."""
-
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
-
-        self: BoardHandlerProtocol
+class SentService(Service):
+    """Stateless service providing read-only ``GET /sent/messages`` and
+    ``GET /sent/message``."""
 
     # -- helpers -----------------------------------------------------------
 
@@ -49,7 +47,7 @@ class _SentMixin:
 
     # -- GET /sent/messages ------------------------------------------------
 
-    def _serve_sent_messages(self) -> None:
+    def serve_sent_messages(self, ctx: RequestContext) -> None:
         """Serve GET /sent/messages — list messages in the account's Sent folder.
 
         Returns the same structured shape as ``/archive/<folder>/messages``:
@@ -60,14 +58,14 @@ class _SentMixin:
         ``?offset=N`` (default 0) query parameters.  Short-circuits in
         aggregate (``?account=__all__``) mode.  Read-only.
         """
-        if self._aggregate:
-            self._serve_json({"messages": [], "folder": ""})
+        if ctx._aggregate:
+            ctx._serve_json({"messages": [], "folder": ""})
             return
 
-        if not self._require_imap_configured():
+        if not ctx._require_imap_configured():
             return
 
-        qs = parse_qs(urlsplit(self.path).query)
+        qs = parse_qs(urlsplit(ctx.path).query)
         try:
             limit = min(max(int(qs.get("limit", ["500"])[0]), 1), 2000)
         except (ValueError, TypeError):  # fmt: skip
@@ -79,11 +77,12 @@ class _SentMixin:
 
         from robotsix_auto_mail.imap import ImapClient, ImapError
 
+        mail_config = cast("MailConfig", ctx.mail_config)
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(mail_config) as client:
                 sent_folder = self._discover_sent_folder(client)
                 if sent_folder is None:
-                    self._not_found()
+                    ctx._not_found()
                     return
                 client.select_folder(sent_folder)
                 all_uids = client.search_uids("ALL")
@@ -92,19 +91,19 @@ class _SentMixin:
                 uids = ordered[offset : offset + limit]
                 envelopes = client.fetch_envelopes(uids)
         except ImapError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP error listing Sent folder: {exc}",
                 status=502,
             )
             return
         except OSError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP connection error: {exc}",
                 status=502,
             )
             return
 
-        self._serve_json(
+        ctx._serve_json(
             {
                 "folder": sent_folder,
                 "total": len(all_uids),
@@ -115,7 +114,7 @@ class _SentMixin:
 
     # -- GET /sent/message -------------------------------------------------
 
-    def _serve_sent_message(self) -> None:
+    def serve_sent_message(self, ctx: RequestContext) -> None:
         """Serve GET /sent/message — read a single Sent message by UID.
 
         Requires ``?uid=<n>``.  Returns the message body/metadata plus an
@@ -128,49 +127,50 @@ class _SentMixin:
 
         Short-circuits in aggregate (``?account=__all__``) mode.  Read-only.
         """
-        if self._aggregate:
-            self._not_found()
+        if ctx._aggregate:
+            ctx._not_found()
             return
 
-        if not self._require_imap_configured():
+        if not ctx._require_imap_configured():
             return
 
-        qs = parse_qs(urlsplit(self.path).query)
+        qs = parse_qs(urlsplit(ctx.path).query)
         uid_values = qs.get("uid")
         if not uid_values:
-            self._bad_request("Missing required ?uid= query parameter")
+            ctx._bad_request("Missing required ?uid= query parameter")
             return
         try:
             uid = int(uid_values[0])
         except (ValueError, TypeError):  # fmt: skip
-            self._bad_request("uid must be an integer")
+            ctx._bad_request("uid must be an integer")
             return
 
         from robotsix_auto_mail.imap import ImapClient, ImapError
 
+        mail_config = cast("MailConfig", ctx.mail_config)
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(mail_config) as client:
                 sent_folder = self._discover_sent_folder(client)
                 if sent_folder is None:
-                    self._not_found()
+                    ctx._not_found()
                     return
                 client.select_folder(sent_folder)
                 fetched = client.fetch_messages([uid])
         except ImapError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP error reading Sent message: {exc}",
                 status=502,
             )
             return
         except OSError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP connection error: {exc}",
                 status=502,
             )
             return
 
         if not fetched:
-            self._not_found()
+            ctx._not_found()
             return
 
         _uid, raw_bytes = fetched[0]
@@ -180,7 +180,7 @@ class _SentMixin:
         try:
             record = parse_message(raw_bytes, imap_uid=uid, source_folder=sent_folder)
         except ParseError:
-            self._send_response(
+            ctx._send_response(
                 "Failed to parse Sent message MIME",
                 status=502,
             )
@@ -195,7 +195,7 @@ class _SentMixin:
         except (json.JSONDecodeError, TypeError):  # fmt: skip
             attachments = []
 
-        self._serve_json(
+        ctx._serve_json(
             {
                 "uid": uid,
                 "folder": sent_folder,
