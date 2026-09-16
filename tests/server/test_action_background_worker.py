@@ -23,9 +23,7 @@ class TestLaunchBackgroundWorker:
             "robotsix_auto_mail.server._request_helpers.threading.Thread",
             _SyncThread,
         ):
-            result = launch_background_worker(
-                ctx, "wm:test", target=target, args=(42,)
-            )
+            result = launch_background_worker(ctx, "wm:test", target=target, args=(42,))
 
         assert result is True
         target.assert_called_once_with(42)

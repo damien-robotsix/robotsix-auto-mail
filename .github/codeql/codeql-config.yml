@@ -2,6 +2,15 @@ paths-ignore:
   - tests
 
 query-filters:
+  # ``py/unused-import`` false-positives on names imported under
+  # ``TYPE_CHECKING`` that are only referenced from forward-reference string
+  # annotations (e.g. ``cast("MailConfig", ...)``): CodeQL does not treat the
+  # string literal as a name use, but mypy requires the import to resolve it.
+  # Ruff's F401 remains the authoritative unused-import gate (it correctly
+  # recognises the string-cast usage and runs in pre-commit + CI), so
+  # excluding the redundant CodeQL rule does not weaken enforcement.
+  - exclude:
+      id: py/unused-import
   - exclude:
       id: py/clear-text-logging-sensitive-data
   - exclude:
