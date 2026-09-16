@@ -12,7 +12,6 @@ from typing import Any, Callable
 from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.server._account_mixin import _AccountMixin
 from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
@@ -91,13 +90,16 @@ class _SyncThread:
 
 
 # ---------------------------------------------------------------------------
-# Account-mixin helpers
+# Account-service helpers
 # ---------------------------------------------------------------------------
 
 
-class _AccountMixinFakeHandler(_AccountMixin):
-    """Concrete handler that wires ``BoardHandlerProtocol`` attributes
-    to MagicMock defaults so account-mixin methods can be called directly."""
+class _AccountServiceContext:
+    """Stub request context for ``AccountService`` unit tests.
+
+    Wires every response sink to a ``MagicMock`` and exposes the per-request
+    transport/state fields the service reads, so it can be driven directly
+    without a real HTTP server."""
 
     def __init__(
         self,
@@ -112,6 +114,7 @@ class _AccountMixinFakeHandler(_AccountMixin):
         self._current_account_id = None
         self._aggregate = False
         self._account_cookie = None
+        self.path = ""
         self.headers = mock.MagicMock()
         self.rfile = mock.MagicMock()
         self._send_response = mock.MagicMock()

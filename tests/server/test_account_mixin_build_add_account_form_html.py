@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from robotsix_auto_mail.server._account_mixin import _build_add_account_form_html
+from robotsix_auto_mail.server._account_service import _build_add_account_form_html
 
 
 class TestBuildAddAccountFormHtml:
