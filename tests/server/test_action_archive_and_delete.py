@@ -63,7 +63,9 @@ class TestArchiveAndDelete:
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
                 mock_client.search_uids.return_value = [7]
 
-                result = _archive_service(handler)._archive_and_delete(handler, conn2, record2)
+                result = _archive_service(handler)._archive_and_delete(
+                    handler, conn2, record2
+                )
 
             assert result is True
         finally:
@@ -119,7 +121,9 @@ class TestArchiveAndDelete:
                 mock_client = mock_cls.return_value.__enter__.return_value
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-                result = _archive_service(handler)._archive_and_delete(handler, conn, record)
+                result = _archive_service(handler)._archive_and_delete(
+                    handler, conn, record
+                )
 
             assert result is False
             handler._bad_request.assert_called_once()
@@ -169,7 +173,9 @@ class TestArchiveAndDelete:
             with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_cls.side_effect = ImapError("connection refused")
 
-                result = _archive_service(handler)._archive_and_delete(handler, conn, record)
+                result = _archive_service(handler)._archive_and_delete(
+                    handler, conn, record
+                )
 
             assert result is False
             handler._send_response.assert_called_once()
@@ -235,7 +241,9 @@ class TestArchiveAndDelete:
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
                 mock_cross.return_value = ("Projects", 99)
 
-                result = _archive_service(handler)._archive_and_delete(handler, conn, record)
+                result = _archive_service(handler)._archive_and_delete(
+                    handler, conn, record
+                )
 
             assert result is True
             # Verify that the healed UID was moved (by the inner
@@ -275,7 +283,9 @@ class TestArchiveAndDelete:
             assert record is not None
 
             handler = _FakeHandler(single_db, mail_config=None)
-            result = _archive_service(handler)._archive_and_delete(handler, conn, record)
+            result = _archive_service(handler)._archive_and_delete(
+                handler, conn, record
+            )
 
             assert result is True
         finally:
