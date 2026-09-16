@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, Protocol
 
 
@@ -53,6 +54,18 @@ class BoardHandlerProtocol(Protocol):
 
     def _serve_json(self, payload: object, status: int = 200) -> None:
         pass
+
+    def _launch_background_worker(
+        self,
+        watermark_key: str,
+        target: Callable[..., None] | None = None,
+        args: tuple[Any, ...] = (),
+        *,
+        running_check: Callable[[str | None], bool] | None = None,
+        precheck: Callable[[Any], bool] | None = None,
+        db_path: str | None = None,
+        redirect: bool = True,
+    ) -> bool: ...
 
     def _require_imap_configured(self) -> bool:
         pass

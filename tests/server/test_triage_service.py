@@ -1,6 +1,6 @@
-"""Unit tests for ``_TriageMixin`` methods.
+"""Unit tests for ``TriageService`` methods.
 
-Drives the mixin directly against a mock handler *self*, isolating the
+Drives the service directly against a stub request context, isolating the
 logic from the HTTP transport and covering the error branches that
 integration tests in ``test_server_triage.py`` miss.
 """
@@ -11,18 +11,17 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.core._constants import _TRIAGE_RUN_STATE_KEY
-from robotsix_auto_mail.server._triage_mixin import _TriageMixin
+from robotsix_auto_mail.server._triage_service import TriageService
 from robotsix_auto_mail.server.adapters import _run_triage_background
 from robotsix_auto_mail.triage.persistence import TriageError
 
 # ---------------------------------------------------------------------------
-# Fake handler for _TriageMixin
+# Stub context for TriageService
 # ---------------------------------------------------------------------------
 
 
-class _FakeHandler(_TriageMixin):
-    """Concrete handler that wires ``BoardHandlerProtocol`` attributes
-    to MagicMock defaults so mixin methods can be called directly."""
+class _StubContext:
+    """Stub request context wiring the attributes the service reads."""
 
     def __init__(
         self,
@@ -44,7 +43,7 @@ class _FakeHandler(_TriageMixin):
         detail: str,
         instance: str | None = None,
     ) -> None:
-        """Mirror ``BoardHandler._problem`` so mixin calls hit ``_serve_json``."""
+        """Mirror ``BoardHandler._problem`` so service calls hit ``_serve_json``."""
         self._serve_json(
             {
                 "type": f"urn:robotsix:error:{kind}",
@@ -58,8 +57,12 @@ class _FakeHandler(_TriageMixin):
         )
 
 
+def _make_service() -> TriageService:
+    return TriageService(db_path=":memory:")
+
+
 # ===================================================================
-# _handle_run_triage
+# handle_run_triage
 # ===================================================================
 
 
@@ -74,10 +77,10 @@ class TestHandleRunTriage:
             password="test",
             triage_guidance="archive newsletters to Newsletters",
         )
-        handler = _FakeHandler("/data/mail.db", mail_config=cfg)
-        handler._handle_run_triage()
+        ctx = _StubContext("/data/mail.db", mail_config=cfg)
+        _make_service().handle_run_triage(ctx)
 
-        handler._launch_background_worker.assert_called_once_with(
+        ctx._launch_background_worker.assert_called_once_with(
             _TRIAGE_RUN_STATE_KEY,
             _run_triage_background,
             ("/data/mail.db", "user@example.com", "archive newsletters to Newsletters"),
@@ -85,10 +88,10 @@ class TestHandleRunTriage:
 
     def test_launches_with_none_email_when_no_config(self) -> None:
         """When mail_config is None, user_email is None and guidance is empty."""
-        handler = _FakeHandler(":memory:", mail_config=None)
-        handler._handle_run_triage()
+        ctx = _StubContext(":memory:", mail_config=None)
+        _make_service().handle_run_triage(ctx)
 
-        handler._launch_background_worker.assert_called_once_with(
+        ctx._launch_background_worker.assert_called_once_with(
             _TRIAGE_RUN_STATE_KEY,
             _run_triage_background,
             (":memory:", None, ""),
@@ -102,10 +105,10 @@ class TestHandleRunTriage:
             username="u@x.com",
             password="test",
         )
-        handler = _FakeHandler(":memory:", mail_config=cfg)
-        handler._handle_run_triage()
+        ctx = _StubContext(":memory:", mail_config=cfg)
+        _make_service().handle_run_triage(ctx)
 
-        handler._launch_background_worker.assert_called_once_with(
+        ctx._launch_background_worker.assert_called_once_with(
             _TRIAGE_RUN_STATE_KEY,
             _run_triage_background,
             (":memory:", "u@x.com", ""),
@@ -113,7 +116,7 @@ class TestHandleRunTriage:
 
 
 # ===================================================================
-# _handle_force_triage_column
+# handle_force_triage_column
 # ===================================================================
 
 
@@ -123,17 +126,17 @@ class TestHandleForceTriageColumn:
     def test_invalid_action_returns_400(self, tmp_db_path: str) -> None:
         """When the action is not in VALID_TRIAGE_ACTIONS, _bad_request is
         called and the worker is not launched."""
-        handler = _FakeHandler(tmp_db_path)
+        ctx = _StubContext(tmp_db_path)
 
         with mock.patch(
-            "robotsix_auto_mail.server._triage_mixin.parse_request_body",
+            "robotsix_auto_mail.server._triage_service.parse_request_body",
             return_value={"action": "NOT_A_REAL_ACTION"},
         ):
-            handler._handle_force_triage_column()
+            _make_service().handle_force_triage_column(ctx)
 
-        handler._bad_request.assert_called_once()
-        assert "Invalid triage action" in str(handler._bad_request.call_args[0][0])
-        handler._launch_background_worker.assert_not_called()
+        ctx._bad_request.assert_called_once()
+        assert "Invalid triage action" in str(ctx._bad_request.call_args[0][0])
+        ctx._launch_background_worker.assert_not_called()
 
     # -- TriageError from delete_triage_decisions_by_action ----------------
 
@@ -141,11 +144,11 @@ class TestHandleForceTriageColumn:
         """When delete_triage_decisions_by_action raises TriageError,
         _bad_request is called with a generic message and the worker is
         not launched."""
-        handler = _FakeHandler(tmp_db_path)
+        ctx = _StubContext(tmp_db_path)
 
         with (
             mock.patch(
-                "robotsix_auto_mail.server._triage_mixin.parse_request_body",
+                "robotsix_auto_mail.server._triage_service.parse_request_body",
                 return_value={"action": "TO_ARCHIVE"},
             ),
             mock.patch(
@@ -153,21 +156,21 @@ class TestHandleForceTriageColumn:
                 side_effect=TriageError("no decisions to clear"),
             ),
         ):
-            handler._handle_force_triage_column()
+            _make_service().handle_force_triage_column(ctx)
 
-        handler._bad_request.assert_called_once_with("Invalid request")
-        handler._launch_background_worker.assert_not_called()
+        ctx._bad_request.assert_called_once_with("Invalid request")
+        ctx._launch_background_worker.assert_not_called()
 
     # -- generic Exception from delete_triage_decisions_by_action ----------
 
     def test_generic_exception_returns_503(self, tmp_db_path: str) -> None:
         """When delete_triage_decisions_by_action raises a generic
         exception, _send_response is called with status 503 and JSON body."""
-        handler = _FakeHandler(tmp_db_path)
+        ctx = _StubContext(tmp_db_path)
 
         with (
             mock.patch(
-                "robotsix_auto_mail.server._triage_mixin.parse_request_body",
+                "robotsix_auto_mail.server._triage_service.parse_request_body",
                 return_value={"action": "TO_DELETE"},
             ),
             mock.patch(
@@ -175,9 +178,9 @@ class TestHandleForceTriageColumn:
                 side_effect=RuntimeError("database is locked"),
             ),
         ):
-            handler._handle_force_triage_column()
+            _make_service().handle_force_triage_column(ctx)
 
-        handler._serve_json.assert_called_once()
-        call_args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        call_args = ctx._serve_json.call_args
         assert call_args[1]["status"] == 503
         assert call_args[0][0]["type"] == "urn:robotsix:error:triage-failed"
