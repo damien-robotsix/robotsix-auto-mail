@@ -290,7 +290,9 @@ class TestPushToFileHubImapErrors:
             ],
         )
         accounts = _make_accounts()
-        handler = _AttachmentServiceContext(single_db, mail_config=None, accounts=accounts)
+        handler = _AttachmentServiceContext(
+            single_db, mail_config=None, accounts=accounts
+        )
         handler.headers.get.return_value = 0
         _push(handler, "<noimap@example.com>")
         handler._serve_json.assert_called_once()
