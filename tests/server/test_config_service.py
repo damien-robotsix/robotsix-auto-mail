@@ -1,4 +1,4 @@
-"""Unit tests for the config-sync and archive-proposal handlers in ``_ConfigMixin``.
+"""Unit tests for the config-sync and archive-proposal handlers in ``ConfigService``.
 
 These exercise the control-flow and error-handling logic directly
 without going through the HTTP server, catching regressions in 503
@@ -12,15 +12,15 @@ import builtins
 from typing import Any
 from unittest import mock
 
-from robotsix_auto_mail.server._config_mixin import _ConfigMixin
+from robotsix_auto_mail.server._config_service import ConfigService
 
 # ---------------------------------------------------------------------------
-# Fake handler for direct mixin testing
+# Stub context for direct service testing
 # ---------------------------------------------------------------------------
 
 
-class _FakeConfigHandler(_ConfigMixin):
-    """Concrete handler wiring protocol stubs for direct mixin testing."""
+class _StubContext:
+    """Stub request context wiring the attributes the service reads."""
 
     def __init__(self, db_path: str = ":memory:", mail_config: Any = None) -> None:
         self.db_path = db_path
@@ -36,7 +36,7 @@ class _FakeConfigHandler(_ConfigMixin):
         detail: str,
         instance: str | None = None,
     ) -> None:
-        """Mirror ``BoardHandler._problem`` so mixin calls hit ``_serve_json``."""
+        """Mirror ``BoardHandler._problem`` so service calls hit ``_serve_json``."""
         self._serve_json(
             {
                 "type": f"urn:robotsix:error:{kind}",
@@ -50,17 +50,21 @@ class _FakeConfigHandler(_ConfigMixin):
         )
 
 
+def _make_service() -> ConfigService:
+    return ConfigService(db_path=":memory:")
+
+
 # ---------------------------------------------------------------------------
-# _handle_config_sync
+# handle_config_sync
 # ---------------------------------------------------------------------------
 
 
 class TestHandleConfigSync:
-    """Unit tests for ``_ConfigMixin._handle_config_sync``."""
+    """Unit tests for ``ConfigService.handle_config_sync``."""
 
     def test_import_error_returns_503(self):
         """When config_sync_agent cannot be imported, return 503 with a JSON error."""
-        handler = _FakeConfigHandler()
+        ctx = _StubContext()
         _real_import = builtins.__import__
 
         def _block_import(name: str, *args: Any, **kwargs: Any) -> Any:
@@ -69,10 +73,10 @@ class TestHandleConfigSync:
             return _real_import(name, *args, **kwargs)
 
         with mock.patch("builtins.__import__", side_effect=_block_import):
-            handler._handle_config_sync()
+            _make_service().handle_config_sync(ctx)
 
-        handler._serve_json.assert_called_once()
-        call_args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        call_args = ctx._serve_json.call_args
         payload = call_args[0][0]
         assert isinstance(payload, dict)
         assert payload["type"] == "urn:robotsix:error:config-sync-unavailable"
@@ -85,7 +89,7 @@ class TestHandleConfigSync:
             ConfigSyncError,
         )
 
-        handler = _FakeConfigHandler()
+        ctx = _StubContext()
 
         with mock.patch(
             "robotsix_auto_mail.server._constants._with_db"
@@ -97,10 +101,10 @@ class TestHandleConfigSync:
                 "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
                 side_effect=ConfigSyncError("drift detected"),
             ):
-                handler._handle_config_sync()
+                _make_service().handle_config_sync(ctx)
 
-        handler._serve_json.assert_called_once()
-        call_args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        call_args = ctx._serve_json.call_args
         payload = call_args[0][0]
         assert payload["type"] == "urn:robotsix:error:config-sync-failed"
         assert payload["detail"] == "drift detected"
@@ -108,7 +112,7 @@ class TestHandleConfigSync:
 
     def test_generic_exception_returns_503(self):
         """Any Exception → 503 with the exception message as JSON."""
-        handler = _FakeConfigHandler()
+        ctx = _StubContext()
 
         with mock.patch(
             "robotsix_auto_mail.server._constants._with_db"
@@ -120,10 +124,10 @@ class TestHandleConfigSync:
                 "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
                 side_effect=RuntimeError("something broke"),
             ):
-                handler._handle_config_sync()
+                _make_service().handle_config_sync(ctx)
 
-        handler._serve_json.assert_called_once()
-        call_args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        call_args = ctx._serve_json.call_args
         payload = call_args[0][0]
         assert payload["type"] == "urn:robotsix:error:config-sync-failed"
         assert payload["detail"] == "something broke"
@@ -135,7 +139,7 @@ class TestHandleConfigSync:
             ConfigSyncResult,
         )
 
-        handler = _FakeConfigHandler()
+        ctx = _StubContext()
         result = ConfigSyncResult(proposals=[])
 
         with mock.patch(
@@ -148,10 +152,10 @@ class TestHandleConfigSync:
                 "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
                 return_value=result,
             ):
-                handler._handle_config_sync()
+                _make_service().handle_config_sync(ctx)
 
-        handler._serve_json.assert_called_once()
-        call_args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        call_args = ctx._serve_json.call_args
         assert call_args[0][0] == result.model_dump()
         assert call_args[1]["status"] == 200
 
@@ -161,7 +165,7 @@ class TestHandleConfigSync:
             ConfigSyncResult,
         )
 
-        handler = _FakeConfigHandler(db_path="/var/lib/mail/test.db")
+        ctx = _StubContext(db_path="/var/lib/mail/test.db")
 
         with mock.patch(
             "robotsix_auto_mail.server._constants._with_db"
@@ -173,7 +177,7 @@ class TestHandleConfigSync:
                 "robotsix_auto_mail.config.config_sync_agent.run_config_sync_agent",
                 return_value=ConfigSyncResult(proposals=[]),
             ):
-                handler._handle_config_sync()
+                _make_service().handle_config_sync(ctx)
 
         mock_with_db.assert_called_once_with(
             "/var/lib/mail/test.db",
@@ -182,22 +186,22 @@ class TestHandleConfigSync:
 
 
 # ---------------------------------------------------------------------------
-# _handle_archive_proposal
+# handle_archive_proposal
 # ---------------------------------------------------------------------------
 
 
 class TestHandleArchiveProposal:
-    """Unit tests for ``_ConfigMixin._handle_archive_proposal``."""
+    """Unit tests for ``ConfigService.handle_archive_proposal``."""
 
     # -- helpers -----------------------------------------------------------
 
     @staticmethod
-    def _capture_action(handler: _FakeConfigHandler) -> Any:
-        """Call _handle_archive_proposal and return the captured action."""
+    def _capture_action(ctx: _StubContext) -> Any:
+        """Call handle_archive_proposal and return the captured action."""
         with mock.patch(
-            "robotsix_auto_mail.server._config_mixin.handle_post_action"
+            "robotsix_auto_mail.server._config_service.handle_post_action"
         ) as mock_hpa:
-            handler._handle_archive_proposal()
+            _make_service().handle_archive_proposal(ctx)
         mock_hpa.assert_called_once()
         return mock_hpa.call_args.kwargs["action"]
 
@@ -205,66 +209,66 @@ class TestHandleArchiveProposal:
 
     def test_dispatches_correct_fields_to_handle_post_action(self):
         """The method routes message_id, subfolder, and redirect_to."""
-        handler = _FakeConfigHandler()
+        ctx = _StubContext()
 
         with mock.patch(
-            "robotsix_auto_mail.server._config_mixin.handle_post_action"
+            "robotsix_auto_mail.server._config_service.handle_post_action"
         ) as mock_hpa:
-            handler._handle_archive_proposal()
+            _make_service().handle_archive_proposal(ctx)
 
         mock_hpa.assert_called_once()
         args = mock_hpa.call_args[0]
-        assert args == (handler, "message_id", "subfolder", "redirect_to")
+        assert args == (ctx, "message_id", "subfolder", "redirect_to")
 
     # -- subfolder validation ----------------------------------------------
 
     def test_absolute_path_subfolder_is_rejected(self):
         """A subfolder starting with '/' triggers _bad_request + False."""
-        handler = _FakeConfigHandler()
-        action = self._capture_action(handler)
+        ctx = _StubContext()
+        action = self._capture_action(ctx)
 
         result = action(mock.MagicMock(), mock.MagicMock(), "/board", "/etc/passwd")
 
         assert result is False
-        handler._bad_request.assert_called_once_with(
+        ctx._bad_request.assert_called_once_with(
             "Subfolder must not be an absolute path"
         )
 
     def test_dot_dot_segment_is_rejected(self):
         """A subfolder containing '..' triggers _bad_request + False."""
-        handler = _FakeConfigHandler()
-        action = self._capture_action(handler)
+        ctx = _StubContext()
+        action = self._capture_action(ctx)
 
         result = action(mock.MagicMock(), mock.MagicMock(), "/board", "INBOX/../etc")
 
         assert result is False
-        handler._bad_request.assert_called_once_with(
+        ctx._bad_request.assert_called_once_with(
             "Subfolder must not contain '..' segments"
         )
 
     def test_over_256_char_subfolder_is_rejected(self):
         """A subfolder exceeding 256 chars triggers _bad_request + False."""
-        handler = _FakeConfigHandler()
-        action = self._capture_action(handler)
+        ctx = _StubContext()
+        action = self._capture_action(ctx)
 
         result = action(mock.MagicMock(), mock.MagicMock(), "/board", "x" * 257)
 
         assert result is False
-        handler._bad_request.assert_called_once_with(
+        ctx._bad_request.assert_called_once_with(
             "Subfolder exceeds maximum length of 256 characters"
         )
 
     def test_exactly_256_char_subfolder_is_accepted(self):
         """A subfolder of exactly 256 chars passes validation."""
-        handler = _FakeConfigHandler()
-        action = self._capture_action(handler)
+        ctx = _StubContext()
+        action = self._capture_action(ctx)
 
         conn = mock.MagicMock()
         record = mock.MagicMock()
         record.message_id = "msg-1"
 
         with mock.patch(
-            "robotsix_auto_mail.server._config_mixin.set_archive_subfolder_override"
+            "robotsix_auto_mail.server._config_service.set_archive_subfolder_override"
         ) as mock_set:
             result = action(conn, record, "/board", "x" * 256)
 
@@ -275,15 +279,15 @@ class TestHandleArchiveProposal:
 
     def test_empty_subfolder_calls_set_override(self):
         """An empty subfolder still calls set_archive_subfolder_override."""
-        handler = _FakeConfigHandler(mail_config=mock.MagicMock())
-        action = self._capture_action(handler)
+        ctx = _StubContext(mail_config=mock.MagicMock())
+        action = self._capture_action(ctx)
 
         conn = mock.MagicMock()
         record = mock.MagicMock()
         record.message_id = "msg-1"
 
         with mock.patch(
-            "robotsix_auto_mail.server._config_mixin.set_archive_subfolder_override"
+            "robotsix_auto_mail.server._config_service.set_archive_subfolder_override"
         ) as mock_set:
             result = action(conn, record, "/board", "")
 
@@ -292,15 +296,15 @@ class TestHandleArchiveProposal:
 
     def test_valid_subfolder_calls_set_override(self):
         """A valid subfolder triggers set_archive_subfolder_override."""
-        handler = _FakeConfigHandler(mail_config=mock.MagicMock())
-        action = self._capture_action(handler)
+        ctx = _StubContext(mail_config=mock.MagicMock())
+        action = self._capture_action(ctx)
 
         conn = mock.MagicMock()
         record = mock.MagicMock()
         record.message_id = "msg-1"
 
         with mock.patch(
-            "robotsix_auto_mail.server._config_mixin.set_archive_subfolder_override"
+            "robotsix_auto_mail.server._config_service.set_archive_subfolder_override"
         ) as mock_set:
             result = action(conn, record, "/board", "Receipts")
 
@@ -311,15 +315,15 @@ class TestHandleArchiveProposal:
 
     def test_null_mail_config_still_calls_set_override(self):
         """When mail_config is None, set_archive_subfolder_override is still called."""
-        handler = _FakeConfigHandler(mail_config=None)
-        action = self._capture_action(handler)
+        ctx = _StubContext(mail_config=None)
+        action = self._capture_action(ctx)
 
         conn = mock.MagicMock()
         record = mock.MagicMock()
         record.message_id = "msg-1"
 
         with mock.patch(
-            "robotsix_auto_mail.server._config_mixin.set_archive_subfolder_override"
+            "robotsix_auto_mail.server._config_service.set_archive_subfolder_override"
         ) as mock_set:
             result = action(conn, record, "/board", "Receipts")
 

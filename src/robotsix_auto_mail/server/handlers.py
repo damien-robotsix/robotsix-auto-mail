@@ -40,6 +40,7 @@ import logging
 from collections.abc import Callable, Mapping
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from robotsix_auto_mail.config import (
@@ -54,20 +55,23 @@ from robotsix_auto_mail.server._attachment_mixin import _AttachmentMixin
 from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
 from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
 from robotsix_auto_mail.server._compose_draft_mixin import _ComposeDraftMixin
-from robotsix_auto_mail.server._config_mixin import _ConfigMixin
+from robotsix_auto_mail.server._config_service import ConfigService
 from robotsix_auto_mail.server._constants import (
     _STATIC_CHAT_SKILL_MD,
     GLOBAL_VIEW_ACCOUNT_ID,
     _with_db,
 )
-from robotsix_auto_mail.server._ingest_mixin import _IngestMixin
+from robotsix_auto_mail.server._ingest_service import IngestService
 from robotsix_auto_mail.server._mailbox_mixin import _MailboxMixin
-from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
+from robotsix_auto_mail.server._reconcile_service import ReconcileService
 from robotsix_auto_mail.server._sent_mixin import _SentMixin
 from robotsix_auto_mail.server._services import ServiceContainer
 from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
-from robotsix_auto_mail.server._triage_mixin import _TriageMixin
+from robotsix_auto_mail.server._triage_service import TriageService
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
+
+if TYPE_CHECKING:
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +82,7 @@ class BoardHandler(
     _ArchiveActionMixin,
     _AttachmentMixin,
     _BatchActionMixin,
-    _ReconcileMixin,
-    _IngestMixin,
-    _TriageMixin,
     _ComposeDraftMixin,
-    _ConfigMixin,
     _SentMixin,
     _MailboxMixin,
     _AccountMixin,
@@ -270,6 +270,13 @@ class BoardHandler(
         # ``/config-sync``, which fully satisfies optional periodic
         # invocation without new in-process machinery.  Option B (an
         # in-process periodic runner) is explicitly deferred.
+        #
+        # Migrated endpoints are dispatched through ``self._services``; the
+        # running handler is the request *context* (``RequestContext`` — the
+        # same structural surface as ``BoardHandlerProtocol``).  The cast is a
+        # no-op at runtime that lets the concrete handler be passed where the
+        # narrow protocol is expected.
+        ctx = cast("RequestContext", self)
         routes: dict[str, Callable[[], None]] = {
             "/move": self._handle_move,
             "/delete": self._handle_delete,
@@ -281,12 +288,24 @@ class BoardHandler(
             "/batch-delete": self._handle_batch_delete,
             "/batch-archive": self._handle_batch_archive,
             "/batch-archive-folder": self._handle_batch_archive_folder,
-            "/config-sync": self._handle_config_sync,
-            "/run-triage": self._handle_run_triage,
-            "/reconcile": self._handle_reconcile,
-            "/force-fetch": self._handle_force_fetch,
-            "/force-triage-column": self._handle_force_triage_column,
-            "/archive-proposal": self._handle_archive_proposal,
+            "/config-sync": lambda: self._services.get(
+                ConfigService
+            ).handle_config_sync(ctx),
+            "/run-triage": lambda: self._services.get(TriageService).handle_run_triage(
+                ctx
+            ),
+            "/reconcile": lambda: self._services.get(ReconcileService).handle_reconcile(
+                ctx
+            ),
+            "/force-fetch": lambda: self._services.get(
+                IngestService
+            ).handle_force_fetch(ctx),
+            "/force-triage-column": lambda: self._services.get(
+                TriageService
+            ).handle_force_triage_column(ctx),
+            "/archive-proposal": lambda: self._services.get(
+                ConfigService
+            ).handle_archive_proposal(ctx),
             "/save-notes": self._handle_save_notes,
             "/compose-draft": self._handle_compose_draft,
         }

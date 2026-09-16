@@ -1,24 +1,21 @@
-"""Config-sync and archive-proposal mixin for the board server."""
-
-# mypy: disable-error-code="attr-defined,arg-type"
+"""Config-sync and archive-proposal service for the board server."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
 from robotsix_auto_mail.server._request_helpers import handle_post_action
+from robotsix_auto_mail.server._services import Service
 from robotsix_auto_mail.triage import set_archive_subfolder_override
 
+if TYPE_CHECKING:
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
-class _ConfigMixin:
-    """Mixin providing config-sync and archive-proposal handlers."""
 
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
+class ConfigService(Service):
+    """Stateless service providing config-sync and archive-proposal handlers."""
 
-    self: BoardHandlerProtocol
-
-    def _handle_config_sync(self) -> None:
+    def handle_config_sync(self, ctx: RequestContext) -> None:
         """Process POST /config-sync — run the LLM drift advisory agent.
 
         Lazily imports the optional LLM-backed agent so the rest of the
@@ -33,7 +30,7 @@ class _ConfigMixin:
                 run_config_sync_agent,
             )
         except ImportError:
-            self._problem(
+            ctx._problem(
                 status=503,
                 kind="config-sync-unavailable",
                 title="Config-sync Unavailable",
@@ -47,10 +44,10 @@ class _ConfigMixin:
         from robotsix_auto_mail.server._constants import _with_db
 
         try:
-            with _with_db(self.db_path, skip_migrations=False) as conn:
+            with _with_db(ctx.db_path, skip_migrations=False) as conn:
                 result = run_config_sync_agent(conn=conn)
         except ConfigSyncError as exc:
-            self._problem(
+            ctx._problem(
                 status=503,
                 kind="config-sync-failed",
                 title="Config-sync Failed",
@@ -58,7 +55,7 @@ class _ConfigMixin:
             )
             return
         except Exception as exc:
-            self._problem(
+            ctx._problem(
                 status=503,
                 kind="config-sync-failed",
                 title="Config-sync Failed",
@@ -66,9 +63,9 @@ class _ConfigMixin:
             )
             return
 
-        self._serve_json(result.model_dump(), status=200)
+        ctx._serve_json(result.model_dump(), status=200)
 
-    def _handle_archive_proposal(self) -> None:
+    def handle_archive_proposal(self, ctx: RequestContext) -> None:
         """Process POST /archive-proposal — store a user override and redirect."""
 
         def archive_proposal_action(
@@ -76,13 +73,13 @@ class _ConfigMixin:
         ) -> bool:
             if subfolder:
                 if subfolder.startswith("/"):
-                    self._bad_request("Subfolder must not be an absolute path")
+                    ctx._bad_request("Subfolder must not be an absolute path")
                     return False
                 if any(segment == ".." for segment in subfolder.split("/")):
-                    self._bad_request("Subfolder must not contain '..' segments")
+                    ctx._bad_request("Subfolder must not contain '..' segments")
                     return False
                 if len(subfolder) > 256:
-                    self._bad_request(
+                    ctx._bad_request(
                         "Subfolder exceeds maximum length of 256 characters"
                     )
                     return False
@@ -91,7 +88,7 @@ class _ConfigMixin:
             return True
 
         handle_post_action(
-            self,
+            ctx,
             "message_id",
             "subfolder",
             "redirect_to",
