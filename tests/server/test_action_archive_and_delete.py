@@ -1,4 +1,4 @@
-"""Tests for ``_BoardActionMixin._archive_and_delete``.
+"""Tests for ``ArchiveService._archive_and_delete``.
 
 Verifies IMAP archive-and-delete behaviour including happy-path local deletion
 after IMAP move, error handling (ValueError → 400, ImapError → 502), stale-UID
@@ -12,7 +12,7 @@ from unittest import mock
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 from robotsix_auto_mail.imap import ImapError
-from tests.server._test_helpers import _FakeHandler
+from tests.server._test_helpers import _archive_service, _FakeHandler
 from tests.server.conftest_helpers import _populate_db
 
 
@@ -63,7 +63,7 @@ class TestArchiveAndDelete:
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
                 mock_client.search_uids.return_value = [7]
 
-                result = handler._archive_and_delete(conn2, record2)
+                result = _archive_service(handler)._archive_and_delete(handler, conn2, record2)
 
             assert result is True
         finally:
@@ -119,7 +119,7 @@ class TestArchiveAndDelete:
                 mock_client = mock_cls.return_value.__enter__.return_value
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
-                result = handler._archive_and_delete(conn, record)
+                result = _archive_service(handler)._archive_and_delete(handler, conn, record)
 
             assert result is False
             handler._bad_request.assert_called_once()
@@ -169,7 +169,7 @@ class TestArchiveAndDelete:
             with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
                 mock_cls.side_effect = ImapError("connection refused")
 
-                result = handler._archive_and_delete(conn, record)
+                result = _archive_service(handler)._archive_and_delete(handler, conn, record)
 
             assert result is False
             handler._send_response.assert_called_once()
@@ -235,7 +235,7 @@ class TestArchiveAndDelete:
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
                 mock_cross.return_value = ("Projects", 99)
 
-                result = handler._archive_and_delete(conn, record)
+                result = _archive_service(handler)._archive_and_delete(handler, conn, record)
 
             assert result is True
             # Verify that the healed UID was moved (by the inner
@@ -275,7 +275,7 @@ class TestArchiveAndDelete:
             assert record is not None
 
             handler = _FakeHandler(single_db, mail_config=None)
-            result = handler._archive_and_delete(conn, record)
+            result = _archive_service(handler)._archive_and_delete(handler, conn, record)
 
             assert result is True
         finally:

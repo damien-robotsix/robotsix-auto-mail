@@ -1,34 +1,30 @@
 """Request handler and factory for the board server.
 
-``BoardHandler`` is assembled from a family of private mixin classes via
-multiple inheritance; each mixin lives in its own module under ``server/``:
+``BoardHandler`` is a thin routing + HTTP-infrastructure shell that inherits
+only from :class:`http.server.BaseHTTPRequestHandler`.  It owns the routing
+tables (``do_GET`` / ``do_POST`` / ``do_PUT``), per-request account selection
+(``_select_account``) and the HTTP-infrastructure methods (``_send_response``,
+``_redirect``, ``_serve_json``, ``_problem``, …), plus the shared archive
+guards (``_effective_archive_root``, ``_require_imap_configured``,
+``_validate_archive_path``) that the services reach through the request
+context.  The public API (``BoardHandler``, ``make_board_handler``) is
+unchanged.
 
-- ``_action_mixin`` — POST action methods (``_handle_move``, …)
-- ``_archive_action_mixin`` — archive POST action methods
-  (``_handle_archive_move``, ``_handle_archive_delete``, …)
-- ``_batch_mixin`` — batch delete / archive handlers
-- ``_reconcile_mixin`` — reconcile-launcher handler
-- ``_ingest_mixin`` — force-fetch (immediate ingest) handler
-- ``_triage_mixin`` — triage launcher and rule-action handlers
-- ``_compose_draft_mixin`` — compose-to-Drafts handler
-- ``_config_mixin`` — config-sync and archive-proposal handlers
-
-``BoardHandler`` itself retains the routing tables (``do_GET`` /
-``do_POST``), account selection, and the HTTP-infrastructure methods
-(``_send_response``, ``_redirect``, …).  The public API
-(``BoardHandler``, ``make_board_handler``) is unchanged.
-
-Composition migration
----------------------
-These mixins are being replaced, one batch at a time, by stateless
-*services* held in a :class:`~robotsix_auto_mail.server._services.ServiceContainer`
-(built once per handler and exposed as ``self._services``).  Each service
-receives the running handler as a request *context*
-(:class:`~robotsix_auto_mail.server._board_handler_protocol.RequestContext`).
-The shared request helpers ``parse_request_body`` and ``handle_post_action``
-already live in :mod:`robotsix_auto_mail.server._request_helpers`; that module
-documents the full step-by-step migration recipe every subsequent ticket
-follows.  No mixin has been converted yet — this is the foundation.
+Composition architecture
+-------------------------
+All endpoint logic lives in stateless *services*
+(``server/_*_service.py``), each a
+:class:`~robotsix_auto_mail.server._services.Service` subclass, held in a
+:class:`~robotsix_auto_mail.server._services.ServiceContainer` that is built
+once per :func:`make_board_handler` call and exposed as ``self._services``.
+Every service method receives the running handler as a request *context*
+(:class:`~robotsix_auto_mail.server._board_handler_protocol.RequestContext`)
+and reads all per-request state (the resolved account, ``_aggregate``, the
+transport, the response sinks) off it, never off the service instance — so a
+single per-connection container is safe.  The routing tables dispatch each
+path to ``self._services.get(SomeService).handle_...(ctx)``.  The shared
+request helpers ``parse_request_body`` and ``handle_post_action`` live in
+:mod:`robotsix_auto_mail.server._request_helpers`.
 """
 
 from __future__ import annotations
@@ -50,7 +46,7 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.server._account_service import AccountService
 from robotsix_auto_mail.server._action_service import ActionService
-from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
+from robotsix_auto_mail.server._archive_service import ArchiveService
 from robotsix_auto_mail.server._attachment_service import AttachmentService
 from robotsix_auto_mail.server._auth_service import AuthService
 from robotsix_auto_mail.server._batch_service import BatchService
@@ -77,10 +73,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class BoardHandler(
-    _ArchiveActionMixin,
-    BaseHTTPRequestHandler,
-):
+class BoardHandler(BaseHTTPRequestHandler):
     """Request handler for the robotsix-auto-mail board server.
 
     Routes ``GET /`` to a 301 redirect to ``/board``, ``GET /board`` to
@@ -309,11 +302,19 @@ class BoardHandler(
         routes: dict[str, Callable[[], None]] = {
             "/move": lambda: self._services.get(ActionService).handle_move(ctx),
             "/delete": lambda: self._services.get(ActionService).handle_delete(ctx),
-            "/archive": self._handle_archive,
-            "/archive-move": self._handle_archive_move,
-            "/archive-delete": self._handle_archive_delete,
-            "/archive-message-delete": self._handle_archive_message_delete,
-            "/archive-rename": self._handle_archive_rename,
+            "/archive": lambda: self._services.get(ArchiveService).handle_archive(ctx),
+            "/archive-move": lambda: self._services.get(
+                ArchiveService
+            ).handle_archive_move(ctx),
+            "/archive-delete": lambda: self._services.get(
+                ArchiveService
+            ).handle_archive_delete(ctx),
+            "/archive-message-delete": lambda: self._services.get(
+                ArchiveService
+            ).handle_archive_message_delete(ctx),
+            "/archive-rename": lambda: self._services.get(
+                ArchiveService
+            ).handle_archive_rename(ctx),
             "/batch-delete": lambda: self._services.get(
                 BatchService
             ).handle_batch_delete(ctx),

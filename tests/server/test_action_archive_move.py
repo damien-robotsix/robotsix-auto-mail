@@ -1,11 +1,11 @@
-"""Unit tests for ``_BoardActionMixin._handle_archive_move``."""
+"""Unit tests for ``ArchiveService.handle_archive_move``."""
 
 from __future__ import annotations
 
 import json
 from unittest import mock
 
-from tests.server._test_helpers import _FakeHandler
+from tests.server._test_helpers import _archive_service, _FakeHandler
 
 
 def _make_fake_handler(
@@ -73,7 +73,7 @@ class TestHandleArchiveMove:
                 mail_config=cfg,
                 body=body,
             )
-            handler._handle_archive_move()
+            _archive_service(handler).handle_archive_move(handler)
 
         handler._serve_json.assert_called_once()
         result = handler._serve_json.call_args[0][0]
@@ -111,7 +111,7 @@ class TestHandleArchiveMove:
                 mail_config=cfg,
                 body=body,
             )
-            handler._handle_archive_move()
+            _archive_service(handler).handle_archive_move(handler)
 
         handler._serve_json.assert_called_once()
         result = handler._serve_json.call_args[0][0]
@@ -149,7 +149,7 @@ class TestHandleArchiveMove:
                 mail_config=cfg,
                 body=body,
             )
-            handler._handle_archive_move()
+            _archive_service(handler).handle_archive_move(handler)
 
         handler._not_found.assert_called_once()
 
@@ -179,7 +179,7 @@ class TestHandleArchiveMove:
                 mail_config=cfg,
                 body=body,
             )
-            handler._handle_archive_move()
+            _archive_service(handler).handle_archive_move(handler)
 
         handler._bad_request.assert_called_once()
         assert ".." in str(handler._bad_request.call_args[0][0])
@@ -197,7 +197,7 @@ class TestHandleArchiveMove:
             mail_config=cfg,
             body=body,
         )
-        handler._handle_archive_move()
+        _archive_service(handler).handle_archive_move(handler)
 
         handler._bad_request.assert_called_once()
         assert "target_subfolder" in str(handler._bad_request.call_args[0][0])
@@ -215,7 +215,7 @@ class TestHandleArchiveMove:
             mail_config=cfg,
             body=body,
         )
-        handler._handle_archive_move()
+        _archive_service(handler).handle_archive_move(handler)
 
         handler._bad_request.assert_called_once()
         assert "message_id" in str(handler._bad_request.call_args[0][0])
@@ -234,7 +234,7 @@ class TestHandleArchiveMove:
             mail_config=cfg,
             body=body,
         )
-        handler._handle_archive_move()
+        _archive_service(handler).handle_archive_move(handler)
 
         handler._bad_request.assert_called_once()
         assert "source_folder" in str(handler._bad_request.call_args[0][0])
@@ -253,7 +253,7 @@ class TestHandleArchiveMove:
             mail_config=None,
             body=body,
         )
-        handler._handle_archive_move()
+        _archive_service(handler).handle_archive_move(handler)
 
         handler._serve_json.assert_called_once()
         call_args = handler._serve_json.call_args
@@ -266,7 +266,7 @@ class TestHandleArchiveMove:
             mail_config=cfg,
             body=b"not json",
         )
-        handler._handle_archive_move()
+        _archive_service(handler).handle_archive_move(handler)
 
         handler._bad_request.assert_called_once()
         assert "Malformed" in str(handler._bad_request.call_args[0][0])
@@ -297,7 +297,7 @@ class TestHandleArchiveMove:
                 mail_config=cfg,
                 body=body,
             )
-            handler._handle_archive_move()
+            _archive_service(handler).handle_archive_move(handler)
 
         handler._send_response.assert_called_once()
         call_args = handler._send_response.call_args
@@ -331,6 +331,6 @@ class TestHandleArchiveMove:
                 mail_config=cfg,
                 body=body,
             )
-            handler._handle_archive_move()
+            _archive_service(handler).handle_archive_move(handler)
 
         handler._not_found.assert_called_once()

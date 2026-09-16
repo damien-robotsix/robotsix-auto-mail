@@ -1,4 +1,12 @@
-"""Protocol describing the BoardHandler interface expected by server mixins."""
+"""Protocol describing the request-context surface services receive.
+
+The composition-era services (``server/_*_service.py``) never depend on the
+concrete :class:`~robotsix_auto_mail.server.handlers.BoardHandler`; they depend
+on the narrow :data:`RequestContext` contract defined here.  The running
+handler *is* the context — it structurally satisfies this Protocol — so
+``do_GET`` / ``do_POST`` pass ``cast("RequestContext", self)`` to each service
+method.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +15,7 @@ from typing import Any, Protocol
 
 
 class BoardHandlerProtocol(Protocol):
-    """Structural interface that every server mixin expects from BoardHandler."""
+    """Structural interface every board-endpoint service reads off the handler."""
 
     db_path: str
     mail_config: object | None  # MailConfig | None

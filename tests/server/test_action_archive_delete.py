@@ -1,4 +1,4 @@
-"""Tests for ``_BoardActionMixin._handle_archive_delete``.
+"""Tests for ``ArchiveService.handle_archive_delete``.
 
 Verifies POST /archive-delete behaviour including force-delete with
 child subfolders (deepest-first recursive deletion), force-delete of
@@ -12,7 +12,7 @@ import json
 from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
-from tests.server._test_helpers import _FakeHandler
+from tests.server._test_helpers import _archive_service, _FakeHandler
 
 
 def _make_handler(db_path: str, mail_config: MailConfig) -> _FakeHandler:
@@ -73,7 +73,7 @@ class TestHandleArchiveDeleteForce:
             ]
             mock_client.search_uids.return_value = [1, 2, 3]
 
-            handler._handle_archive_delete()
+            _archive_service(handler).handle_archive_delete(handler)
 
         # Should select, expunge, then delete only the target folder.
         assert mock_client.select_folder.call_args_list == [
@@ -118,7 +118,7 @@ class TestHandleArchiveDeleteForce:
                 [1, 2, 3],  # Newsletters (target)
             ]
 
-            handler._handle_archive_delete()
+            _archive_service(handler).handle_archive_delete(handler)
 
         # Child folders must be selected and deleted deepest-first.
         select_calls = mock_client.select_folder.call_args_list
@@ -163,7 +163,7 @@ class TestHandleArchiveDeleteForce:
             ]
             mock_client.search_uids.return_value = []
 
-            handler._handle_archive_delete()
+            _archive_service(handler).handle_archive_delete(handler)
 
         select_calls = mock_client.select_folder.call_args_list
         assert select_calls == [
@@ -206,7 +206,7 @@ class TestHandleArchiveDeleteForce:
                 [5],  # Parent
             ]
 
-            handler._handle_archive_delete()
+            _archive_service(handler).handle_archive_delete(handler)
 
         # Empty child: select_folder called, search_uids returns [],
         # delete_messages NOT called, but delete_folder IS called.
@@ -247,7 +247,7 @@ class TestHandleArchiveDeleteNonForce:
             ]
             mock_client.select_folder.return_value = 0
 
-            handler._handle_archive_delete()
+            _archive_service(handler).handle_archive_delete(handler)
 
         # Should return 409, not attempt deletion.
         handler._serve_json.assert_called_once()
@@ -277,7 +277,7 @@ class TestHandleArchiveDeleteNonForce:
             ]
             mock_client.select_folder.return_value = 5
 
-            handler._handle_archive_delete()
+            _archive_service(handler).handle_archive_delete(handler)
 
         handler._serve_json.assert_called_once()
         call_args = handler._serve_json.call_args[0][0]

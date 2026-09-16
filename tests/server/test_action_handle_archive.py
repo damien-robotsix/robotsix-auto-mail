@@ -1,13 +1,13 @@
-"""Tests for ``_BoardActionMixin._handle_archive``.
+"""Tests for ``ArchiveService.handle_archive``.
 
-Verifies that ``_handle_archive`` delegates to ``_archive_and_delete`` and
+Verifies that ``handle_archive`` delegates to ``_archive_and_delete`` and
 redirects on success.
 """
 
 from __future__ import annotations
 
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
-from tests.server._test_helpers import _FakeHandler
+from tests.server._test_helpers import _archive_service, _FakeHandler
 from tests.server.conftest_helpers import _populate_db
 
 
@@ -32,7 +32,7 @@ class TestHandleArchive:
         handler.headers.get.return_value = 70
         handler.rfile.read.return_value = b"message_id=arch-wrap&redirect_to=/board"
 
-        handler._handle_archive()
+        _archive_service(handler).handle_archive(handler)
 
         # Should redirect (success path) and delete the local record.
         handler._redirect.assert_called_once_with("/board", code=302)
