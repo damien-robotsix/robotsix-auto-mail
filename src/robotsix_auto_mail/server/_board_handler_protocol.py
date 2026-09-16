@@ -71,6 +71,10 @@ class BoardHandlerProtocol(Protocol):
         redirect: bool = True,
     ) -> bool: ...
 
+    @property
+    def _effective_archive_root(self) -> str:
+        pass
+
     def _require_imap_configured(self) -> bool:
         pass
 

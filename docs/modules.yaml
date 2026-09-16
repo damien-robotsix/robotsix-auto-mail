@@ -356,7 +356,7 @@ modules:
       - src/robotsix_auto_mail/server/_sent_service.py
       - src/robotsix_auto_mail/server/_settings_service.py
       - src/robotsix_auto_mail/server/_triage_service.py
-      - src/robotsix_auto_mail/server/_view_mixin.py
+      - src/robotsix_auto_mail/server/_view_service.py
       - src/robotsix_auto_mail/server/views/__init__.py
       - src/robotsix_auto_mail/server/views/board.py
       - src/robotsix_auto_mail/server/views/board_data.py

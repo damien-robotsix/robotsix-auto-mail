@@ -7,10 +7,10 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.server._mailbox_service import MailboxService
-from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
+from tests.server._test_helpers import _RequestContextHelpers
 
 
-class _FakeHandler(_BoardViewMixin):
+class _FakeHandler(_RequestContextHelpers):
     """Stub request context (with the real ``_require_imap_configured``) whose
     protocol attributes are wired to mocks so ``MailboxService`` can be driven
     directly."""

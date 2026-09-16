@@ -3,7 +3,6 @@
 ``BoardHandler`` is assembled from a family of private mixin classes via
 multiple inheritance; each mixin lives in its own module under ``server/``:
 
-- ``_view_mixin`` — GET view methods (``_serve_board``, …)
 - ``_action_mixin`` — POST action methods (``_handle_move``, …)
 - ``_archive_action_mixin`` — archive POST action methods
   (``_handle_archive_move``, ``_handle_archive_delete``, …)
@@ -44,6 +43,7 @@ from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from robotsix_auto_mail.config import (
+    DEFAULT_ARCHIVE_ROOT,
     ConfigurationError,
     MailAccountsConfig,
     MailConfig,
@@ -69,7 +69,7 @@ from robotsix_auto_mail.server._sent_service import SentService
 from robotsix_auto_mail.server._services import ServiceContainer
 from robotsix_auto_mail.server._settings_service import SettingsService
 from robotsix_auto_mail.server._triage_service import TriageService
-from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
+from robotsix_auto_mail.server._view_service import ViewService
 
 if TYPE_CHECKING:
     from robotsix_auto_mail.server._board_handler_protocol import RequestContext
@@ -78,7 +78,6 @@ logger = logging.getLogger(__name__)
 
 
 class BoardHandler(
-    _BoardViewMixin,
     _ArchiveActionMixin,
     BaseHTTPRequestHandler,
 ):
@@ -168,9 +167,18 @@ class BoardHandler(
         path = urlsplit(self.path).path
         routes: list[tuple[Callable[[str], bool], Callable[[], None]]] = [
             (lambda p: p == "/", lambda: self._redirect("/board")),
-            (lambda p: p == "/board", self._serve_board),
-            (lambda p: p == "/board-content", self._serve_board_content),
-            (lambda p: p == "/board-cards", self._serve_board_cards),
+            (
+                lambda p: p == "/board",
+                lambda: self._services.get(ViewService).serve_board(ctx),
+            ),
+            (
+                lambda p: p == "/board-content",
+                lambda: self._services.get(ViewService).serve_board_content(ctx),
+            ),
+            (
+                lambda p: p == "/board-cards",
+                lambda: self._services.get(ViewService).serve_board_cards(ctx),
+            ),
             (lambda p: p == "/chat-skill", self._serve_chat_skill),
             (lambda p: p == "/health", self._serve_health),
             (lambda p: p == "/healthz", self._serve_health),
@@ -190,15 +198,16 @@ class BoardHandler(
             ),
             (
                 lambda p: p == "/archive-folders",
-                self._serve_archive_folders,
+                lambda: self._services.get(ViewService).serve_archive_folders(ctx),
             ),
             (lambda p: p == "/archive-log", self._serve_archive_log),
             (
                 lambda p: p.startswith("/archive/") and p.endswith("/messages"),
-                lambda: self._serve_archive_messages(
+                lambda: self._services.get(ViewService).serve_archive_messages(
+                    ctx,
                     folder=unquote(
                         urlsplit(self.path).path[len("/archive/") : -len("/messages")]
-                    )
+                    ),
                 ),
             ),
             (
@@ -217,15 +226,21 @@ class BoardHandler(
                 lambda p: p == "/search",
                 lambda: self._services.get(MailboxService).serve_search(ctx),
             ),
-            (lambda p: p.startswith("/static/"), self._serve_static),
+            (
+                lambda p: p.startswith("/static/"),
+                lambda: self._services.get(ViewService).serve_static(ctx),
+            ),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
-                self._serve_email_status,
+                lambda: self._services.get(ViewService).serve_email_status(ctx),
             ),
-            (lambda p: p.startswith("/email/"), self._serve_email_detail),
+            (
+                lambda p: p.startswith("/email/"),
+                lambda: self._services.get(ViewService).serve_email_detail(ctx),
+            ),
             (
                 lambda p: p.startswith("/archive-proposal/"),
-                self._serve_archive_proposal,
+                lambda: self._services.get(ViewService).serve_archive_proposal(ctx),
             ),
         ]
         for matches, handler in routes:
@@ -479,6 +494,44 @@ class BoardHandler(
             db_path=db_path,
             redirect=redirect,
         )
+
+    @property
+    def _effective_archive_root(self) -> str:
+        """The configured archive root, or the default when no config is set."""
+        return (
+            self.mail_config.archive_root
+            if self.mail_config is not None
+            else DEFAULT_ARCHIVE_ROOT
+        )
+
+    def _require_imap_configured(self) -> bool:
+        """Guard: emit 503 when ``mail_config`` is unset.
+
+        Returns ``True`` when IMAP is configured and the caller may
+        proceed; ``False`` when a 503 response has already been sent
+        and the caller must ``return`` immediately.
+        """
+        if self.mail_config is None:
+            self._serve_json(
+                {"error": "IMAP not configured for this account"},
+                status=503,
+            )
+            return False
+        return True
+
+    def _validate_archive_path(self, *folders: str) -> tuple[bool, str]:
+        """Guard: reject ``..`` segments in archive folder paths.
+
+        Returns ``(True, archive_root)`` when all *folders* are safe.
+        Returns ``(False, "")`` after sending a 400 response when any
+        path contains a ``..`` segment.
+        """
+        archive_root = self._effective_archive_root
+        for folder in folders:
+            if ".." in folder.split("/"):
+                self._bad_request(f"'{folder}' escapes archive root")
+                return False, ""
+        return True, archive_root
 
     def _send_response(
         self,

@@ -1,7 +1,7 @@
 """Unit tests for ``SentService`` — read-only Sent-folder chat API.
 
 Drives the service directly against a stub request context.  The context
-subclasses ``_BoardViewMixin`` so the real ``_require_imap_configured``
+mixes in ``_RequestContextHelpers`` so the real ``_require_imap_configured``
 guard runs (its 503 body is behaviour the service depends on), while the
 response sinks are wired to ``MagicMock`` so the service can be exercised
 without a real HTTP server.
@@ -14,10 +14,10 @@ from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.server._sent_service import SentService
-from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
+from tests.server._test_helpers import _RequestContextHelpers
 
 
-class _StubContext(_BoardViewMixin):
+class _StubContext(_RequestContextHelpers):
     """Stub request context exposing the real ``_require_imap_configured``."""
 
     def __init__(
