@@ -1,24 +1,26 @@
-"""Action-handler mixin for the board server."""
+"""POST action service for the board server.
 
-# mypy: disable-error-code="attr-defined,arg-type"
+Hosts the board's card-mutation endpoints — ``POST /move``, ``POST /delete``
+and ``POST /save-notes`` — as a stateless :class:`._services.Service`.  Each
+handler takes the per-request context (:class:`RequestContext`) and delegates
+the shared parse → look-up → redirect skeleton to
+:func:`robotsix_auto_mail.server._request_helpers.handle_post_action`.
+"""
 
 from __future__ import annotations
 
 import logging
 import sqlite3
-import threading
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from robotsix_auto_mail.config import (
     APP_CLASSIFIER,
     resolve_llm_api_key,
     resolve_llm_tier,
 )
-from robotsix_auto_mail.core._constants import _WATERMARK_RUNNING
-from robotsix_auto_mail.db import MailRecord, get_watermark, set_watermark
-from robotsix_auto_mail.server._constants import _with_db
+from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._request_helpers import handle_post_action
+from robotsix_auto_mail.server._services import Service
 from robotsix_auto_mail.triage import (
     TO_ARCHIVE,
     TO_CALENDAR,
@@ -27,89 +29,27 @@ from robotsix_auto_mail.triage import (
     set_triage_decision,
 )
 
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailConfig
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
+
 logger = logging.getLogger(__name__)
 
 
-class _BoardActionMixin:
-    """Mixin providing POST action handlers for the board server."""
+class ActionService(Service):
+    """Stateless service providing the board's POST action handlers."""
 
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
-
-    self: BoardHandlerProtocol
-    # Explicitly declare the two attributes the shared
-    # ``handle_post_action`` skeleton *rebinds* on the context (its
-    # cross-account owner loop) and that these action callbacks read back.
-    # Without these, mypy infers a member from the ``self.db_path = ...``
-    # assignments and defers its type, poisoning every read with
-    # ``has-type``.  Typed as ``Any`` to match how the rest of the server
-    # package sees these protocol attributes (attr-defined is suppressed
-    # file-wide).
-    db_path: Any
-    mail_config: Any
-
-    def _launch_background_worker(
-        self,
-        watermark_key: str,
-        target: Callable[..., None] | None = None,
-        args: tuple[Any, ...] = (),
-        *,
-        running_check: Callable[[str | None], bool] | None = None,
-        precheck: Callable[[Any], bool] | None = None,
-        db_path: str | None = None,
-        redirect: bool = True,
-    ) -> bool:
-        """Acquire a single-flight watermark and optionally spawn a daemon thread.
-
-        Returns ``True`` when the watermark was acquired (and, when *target*
-        is not ``None``, the worker thread was started).  Returns ``False``
-        when the watermark is already held or *precheck* returns ``False``.
-
-        When *redirect* is ``True`` (the default) the handler redirects to
-        ``/board`` on both the failure paths **and** after a successful
-        spawn.  Set *redirect* to ``False`` when the caller needs to
-        control the response itself (e.g. in an aggregate fan-out loop).
-        """
-        _path = db_path if db_path is not None else self.db_path
-
-        with _with_db(_path) as conn:
-            if precheck is not None and not precheck(conn):
-                if redirect:
-                    self._redirect("/board", code=302)
-                return False
-
-            if running_check is not None:
-                _is_running = running_check
-            else:
-
-                def _is_running(s: str | None) -> bool:
-                    return s == _WATERMARK_RUNNING
-
-            if _is_running(get_watermark(conn, watermark_key)):
-                if redirect:
-                    self._redirect("/board", code=302)
-                return False
-
-            set_watermark(conn, watermark_key, _WATERMARK_RUNNING)
-
-        if target is not None:
-            threading.Thread(target=target, args=args, daemon=True).start()
-            if redirect:
-                self._redirect("/board", code=302)
-
-        return True
-
-    def _handle_move(self) -> None:
+    def handle_move(self, ctx: RequestContext) -> None:
         """Process POST /move — update a card's triage decision and redirect."""
 
         def move_action(
             conn: Any, record: MailRecord, redirect_to: str, triage_action: str
         ) -> bool:
             if not triage_action:
-                self._bad_request("Missing triage_action")
+                ctx._bad_request("Missing triage_action")
                 return False
             if triage_action not in VALID_TRIAGE_ACTIONS:
-                self._bad_request(f"Invalid triage action: {triage_action!r}")
+                ctx._bad_request(f"Invalid triage action: {triage_action!r}")
                 return False
 
             message_id = record.message_id
@@ -128,12 +68,13 @@ class _BoardActionMixin:
                 # IntegrityError.  Persisting the decision is impossible,
                 # but the move must not crash the worker into a 502 — send
                 # a clean error response and skip the success redirect.
-                self._bad_request(f"Could not move to {triage_action}")
+                ctx._bad_request(f"Could not move to {triage_action}")
                 return False
 
+            mail_config = cast("MailConfig | None", ctx.mail_config)
             if triage_action == TO_ARCHIVE:
                 try:
-                    if self.mail_config is not None:
+                    if mail_config is not None:
                         classifier_level, classifier_model = resolve_llm_tier(
                             APP_CLASSIFIER
                         )
@@ -143,7 +84,7 @@ class _BoardActionMixin:
                             resolve_llm_api_key(raise_on_missing=False),
                             provider_model=classifier_model or None,
                             level=classifier_level,
-                            rules=self.mail_config.triage_guidance,
+                            rules=mail_config.triage_guidance,
                         )
                 except Exception:  # noqa: S110  # nosec B110
                     pass  # Non-fatal: board falls back to deterministic proposal
@@ -164,20 +105,21 @@ class _BoardActionMixin:
             return True
 
         handle_post_action(
-            self,
+            ctx,
             "message_id",
             "triage_action",
             "redirect_to",
             action=move_action,
         )
 
-    def _handle_delete(self) -> None:
+    def handle_delete(self, ctx: RequestContext) -> None:
         """Process POST /delete — delete mail from IMAP mailbox and local DB."""
         from robotsix_auto_mail.db import delete_record_by_message_id
 
         def delete_action(conn: Any, record: MailRecord, redirect_to: str) -> bool:
+            mail_config = cast("MailConfig | None", ctx.mail_config)
             # -- IMAP deletion (when config and UID are both available) --
-            if self.mail_config is not None and record.imap_uid is not None:
+            if mail_config is not None and record.imap_uid is not None:
                 from robotsix_auto_mail.imap import (
                     ImapClient,
                     ImapError,
@@ -186,7 +128,7 @@ class _BoardActionMixin:
                 )
 
                 try:
-                    with ImapClient(self.mail_config) as client:
+                    with ImapClient(mail_config) as client:
                         resolved_uid = resolve_uid_with_fallback(
                             client,
                             record.source_folder,
@@ -200,11 +142,9 @@ class _BoardActionMixin:
                     )
 
                     try:
-                        result = _imap_cross_folder_fallback(
-                            self.mail_config, record, conn
-                        )
+                        result = _imap_cross_folder_fallback(mail_config, record, conn)
                     except (ImapError, OSError) as exc:
-                        self._send_response(
+                        ctx._send_response(
                             f"IMAP cross-folder resolution failed: {exc}",
                             status=502,
                         )
@@ -212,17 +152,17 @@ class _BoardActionMixin:
                     if result is not None:
                         new_folder, new_uid = result
                         try:
-                            with ImapClient(self.mail_config) as client2:
+                            with ImapClient(mail_config) as client2:
                                 client2.select_folder(new_folder)
                                 client2.delete_message(new_uid)
                         except (ImapError, OSError) as exc:
-                            self._send_response(
+                            ctx._send_response(
                                 f"IMAP cross-folder resolution failed: {exc}",
                                 status=502,
                             )
                             return False
                 except (ImapError, OSError) as exc:
-                    self._send_response(
+                    ctx._send_response(
                         f"IMAP deletion failed: {exc}",
                         status=502,
                     )
@@ -234,14 +174,14 @@ class _BoardActionMixin:
             # them by Message-ID in the Drafts folder and delete if
             # found; degrade gracefully if already gone.
             elif (
-                self.mail_config is not None
+                mail_config is not None
                 and record.imap_uid is None
                 and record.message_id.startswith("<compose-")
             ):
                 from robotsix_auto_mail.imap import ImapClient, ImapError
 
                 try:
-                    with ImapClient(self.mail_config) as client:
+                    with ImapClient(mail_config) as client:
                         folders = client.list_folders()
                         drafts_folder: str | None = None
                         for folder_info in folders:
@@ -276,14 +216,14 @@ class _BoardActionMixin:
             return True
 
         handle_post_action(
-            self,
+            ctx,
             "message_id",
             "redirect_to",
             action=delete_action,
             cross_account=True,
         )
 
-    def _handle_save_notes(self) -> None:
+    def handle_save_notes(self, ctx: RequestContext) -> None:
         """Process POST /save-notes — persist notes for a mail record."""
         from robotsix_auto_mail.db import update_notes
 
@@ -294,7 +234,7 @@ class _BoardActionMixin:
             return True
 
         handle_post_action(
-            self,
+            ctx,
             "message_id",
             "redirect_to",
             "notes",

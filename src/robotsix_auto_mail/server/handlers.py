@@ -40,7 +40,7 @@ import logging
 from collections.abc import Callable, Mapping
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from robotsix_auto_mail.config import (
@@ -49,7 +49,7 @@ from robotsix_auto_mail.config import (
     MailConfig,
 )
 from robotsix_auto_mail.server._account_mixin import _AccountMixin
-from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
+from robotsix_auto_mail.server._action_service import ActionService
 from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
 from robotsix_auto_mail.server._attachment_mixin import _AttachmentMixin
 from robotsix_auto_mail.server._auth_service import AuthService
@@ -62,8 +62,9 @@ from robotsix_auto_mail.server._constants import (
     _with_db,
 )
 from robotsix_auto_mail.server._ingest_service import IngestService
-from robotsix_auto_mail.server._mailbox_mixin import _MailboxMixin
+from robotsix_auto_mail.server._mailbox_service import MailboxService
 from robotsix_auto_mail.server._reconcile_service import ReconcileService
+from robotsix_auto_mail.server._request_helpers import launch_background_worker
 from robotsix_auto_mail.server._sent_service import SentService
 from robotsix_auto_mail.server._services import ServiceContainer
 from robotsix_auto_mail.server._settings_service import SettingsService
@@ -78,10 +79,8 @@ logger = logging.getLogger(__name__)
 
 class BoardHandler(
     _BoardViewMixin,
-    _BoardActionMixin,
     _ArchiveActionMixin,
     _AttachmentMixin,
-    _MailboxMixin,
     _AccountMixin,
     BaseHTTPRequestHandler,
 ):
@@ -212,8 +211,14 @@ class BoardHandler(
                 lambda p: p == "/sent/message",
                 lambda: self._services.get(SentService).serve_sent_message(ctx),
             ),
-            (lambda p: p == "/folders", self._serve_folders),
-            (lambda p: p == "/search", self._serve_search),
+            (
+                lambda p: p == "/folders",
+                lambda: self._services.get(MailboxService).serve_folders(ctx),
+            ),
+            (
+                lambda p: p == "/search",
+                lambda: self._services.get(MailboxService).serve_search(ctx),
+            ),
             (lambda p: p.startswith("/static/"), self._serve_static),
             (
                 lambda p: p.startswith("/email/") and p.endswith("/status"),
@@ -287,8 +292,8 @@ class BoardHandler(
         # invocation without new in-process machinery.  Option B (an
         # in-process periodic runner) is explicitly deferred.
         routes: dict[str, Callable[[], None]] = {
-            "/move": self._handle_move,
-            "/delete": self._handle_delete,
+            "/move": lambda: self._services.get(ActionService).handle_move(ctx),
+            "/delete": lambda: self._services.get(ActionService).handle_delete(ctx),
             "/archive": self._handle_archive,
             "/archive-move": self._handle_archive_move,
             "/archive-delete": self._handle_archive_delete,
@@ -321,7 +326,9 @@ class BoardHandler(
             "/archive-proposal": lambda: self._services.get(
                 ConfigService
             ).handle_archive_proposal(ctx),
-            "/save-notes": self._handle_save_notes,
+            "/save-notes": lambda: self._services.get(ActionService).handle_save_notes(
+                ctx
+            ),
             "/compose-draft": lambda: self._services.get(
                 ComposeService
             ).handle_compose_draft(ctx),
@@ -443,6 +450,35 @@ class BoardHandler(
         if self.headers.get("X-Forwarded-Proto") == "https":
             suffix += "; Secure"
         return f"account={account_id}{suffix}"
+
+    def _launch_background_worker(
+        self,
+        watermark_key: str,
+        target: Callable[..., None] | None = None,
+        args: tuple[Any, ...] = (),
+        *,
+        running_check: Callable[[str | None], bool] | None = None,
+        precheck: Callable[[Any], bool] | None = None,
+        db_path: str | None = None,
+        redirect: bool = True,
+    ) -> bool:
+        """Delegate to the shared ``launch_background_worker`` helper.
+
+        Kept as a handler method so the composition-era services (batch,
+        ingest, reconcile, triage) can guard their background work through
+        ``ctx._launch_background_worker`` — the shared single-flight watermark
+        implementation now lives in :mod:`._request_helpers`.
+        """
+        return launch_background_worker(
+            cast("RequestContext", self),
+            watermark_key,
+            target,
+            args,
+            running_check=running_check,
+            precheck=precheck,
+            db_path=db_path,
+            redirect=redirect,
+        )
 
     def _send_response(
         self,

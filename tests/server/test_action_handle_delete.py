@@ -1,4 +1,4 @@
-"""Unit tests for ``_handle_delete``.
+"""Unit tests for ``ActionService.handle_delete``.
 
 Covers local-only deletion (no IMAP config, no IMAP UID), IMAP server-
 side deletion, cross-folder healing when the stored UID is stale, and
@@ -12,7 +12,8 @@ from unittest import mock
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.db import get_record_by_message_id, init_db
 from robotsix_auto_mail.imap import ImapError
-from tests.server._test_helpers import _FakeHandler
+from robotsix_auto_mail.server._action_service import ActionService
+from tests.server._test_helpers import _ActionServiceContext
 from tests.server.conftest_helpers import _populate_db
 
 
@@ -31,11 +32,11 @@ class TestHandleDelete:
                 },
             ],
         )
-        handler = _FakeHandler(single_db, mail_config=None)
-        handler.headers.get.return_value = 80
-        handler.rfile.read.return_value = b"message_id=no-imap-del&redirect_to=/board"
+        ctx = _ActionServiceContext(single_db, mail_config=None)
+        ctx.headers.get.return_value = 80
+        ctx.rfile.read.return_value = b"message_id=no-imap-del&redirect_to=/board"
 
-        handler._handle_delete()
+        ActionService(db_path=single_db).handle_delete(ctx)
 
         conn = init_db(single_db)
         try:
@@ -63,11 +64,11 @@ class TestHandleDelete:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(single_db, mail_config=mail_config)
-        handler.headers.get.return_value = 80
-        handler.rfile.read.return_value = b"message_id=no-uid-del&redirect_to=/board"
+        ctx = _ActionServiceContext(single_db, mail_config=mail_config)
+        ctx.headers.get.return_value = 80
+        ctx.rfile.read.return_value = b"message_id=no-uid-del&redirect_to=/board"
 
-        handler._handle_delete()
+        ActionService(db_path=single_db).handle_delete(ctx)
 
         conn = init_db(single_db)
         try:
@@ -105,17 +106,15 @@ class TestHandleDelete:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(single_db, mail_config=mail_config)
-        handler.headers.get.return_value = 90
-        handler.rfile.read.return_value = (
-            b"message_id=happy-imap-del&redirect_to=/board"
-        )
+        ctx = _ActionServiceContext(single_db, mail_config=mail_config)
+        ctx.headers.get.return_value = 90
+        ctx.rfile.read.return_value = b"message_id=happy-imap-del&redirect_to=/board"
 
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_client = mock_cls.return_value.__enter__.return_value
             mock_client.search_uids.return_value = [55]
 
-            handler._handle_delete()
+            ActionService(db_path=single_db).handle_delete(ctx)
 
         mock_client.delete_message.assert_called_once_with(55)
         # Local record removed.
@@ -156,9 +155,9 @@ class TestHandleDelete:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(single_db, mail_config=mail_config)
-        handler.headers.get.return_value = 90
-        handler.rfile.read.return_value = b"message_id=cf-heal-del&redirect_to=/board"
+        ctx = _ActionServiceContext(single_db, mail_config=mail_config)
+        ctx.headers.get.return_value = 90
+        ctx.rfile.read.return_value = b"message_id=cf-heal-del&redirect_to=/board"
 
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
@@ -168,7 +167,7 @@ class TestHandleDelete:
             mock_client.search_uids.return_value = []
             mock_cross.return_value = ("Projects", 99)
 
-            handler._handle_delete()
+            ActionService(db_path=single_db).handle_delete(ctx)
 
         # The second client should have called delete_message with the
         # healed UID.
@@ -211,9 +210,9 @@ class TestHandleDelete:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(single_db, mail_config=mail_config)
-        handler.headers.get.return_value = 95
-        handler.rfile.read.return_value = b"message_id=cf-heal-fail&redirect_to=/board"
+        ctx = _ActionServiceContext(single_db, mail_config=mail_config)
+        ctx.headers.get.return_value = 95
+        ctx.rfile.read.return_value = b"message_id=cf-heal-fail&redirect_to=/board"
 
         with (
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
@@ -223,10 +222,10 @@ class TestHandleDelete:
             mock_client.search_uids.return_value = []
             mock_cross.side_effect = ImapError("connection lost")
 
-            handler._handle_delete()
+            ActionService(db_path=single_db).handle_delete(ctx)
 
-        handler._send_response.assert_called_once()
-        call_args = handler._send_response.call_args
+        ctx._send_response.assert_called_once()
+        call_args = ctx._send_response.call_args
         assert call_args[1]["status"] == 502
 
         # Local record preserved.
@@ -266,18 +265,18 @@ class TestHandleDelete:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(single_db, mail_config=mail_config)
-        handler.headers.get.return_value = 85
-        handler.rfile.read.return_value = b"message_id=imap-err-del&redirect_to=/board"
+        ctx = _ActionServiceContext(single_db, mail_config=mail_config)
+        ctx.headers.get.return_value = 85
+        ctx.rfile.read.return_value = b"message_id=imap-err-del&redirect_to=/board"
 
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             # Make the context manager itself raise ImapError on enter.
             mock_cls.side_effect = ImapError("connection refused")
 
-            handler._handle_delete()
+            ActionService(db_path=single_db).handle_delete(ctx)
 
-        handler._send_response.assert_called_once()
-        call_args = handler._send_response.call_args
+        ctx._send_response.assert_called_once()
+        call_args = ctx._send_response.call_args
         assert call_args[1]["status"] == 502
 
         # Local record preserved.

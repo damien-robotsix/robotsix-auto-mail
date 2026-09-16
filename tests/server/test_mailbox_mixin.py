@@ -1,4 +1,4 @@
-"""Unit tests for ``_MailboxMixin`` — read-only /folders and /search chat API."""
+"""Unit tests for ``MailboxService`` — read-only /folders and /search chat API."""
 
 from __future__ import annotations
 
@@ -6,12 +6,14 @@ from email.message import EmailMessage
 from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.server._mailbox_mixin import _MailboxMixin
+from robotsix_auto_mail.server._mailbox_service import MailboxService
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
 
-class _FakeHandler(_BoardViewMixin, _MailboxMixin):
-    """Concrete ``_MailboxMixin`` with protocol attributes wired to mocks."""
+class _FakeHandler(_BoardViewMixin):
+    """Stub request context (with the real ``_require_imap_configured``) whose
+    protocol attributes are wired to mocks so ``MailboxService`` can be driven
+    directly."""
 
     def __init__(
         self,
@@ -93,13 +95,13 @@ def _envelope(
 class TestServeFolders:
     def test_aggregate_returns_400(self) -> None:
         handler = _FakeHandler(_aggregate=True)
-        handler._serve_folders()
+        MailboxService(db_path="test.db").serve_folders(handler)
         handler._serve_json.assert_called_once()
         assert handler._serve_json.call_args[1]["status"] == 400
 
     def test_no_mail_config_returns_503(self) -> None:
         handler = _FakeHandler(mail_config=None)
-        handler._serve_folders()
+        MailboxService(db_path="test.db").serve_folders(handler)
         handler._serve_json.assert_called_once_with(
             {"error": "IMAP not configured for this account"},
             status=503,
@@ -118,7 +120,7 @@ class TestServeFolders:
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
             handler = _FakeHandler(mail_config=cfg, path="/folders")
-            handler._serve_folders()
+            MailboxService(db_path="test.db").serve_folders(handler)
 
         payload = handler._serve_json.call_args[0][0]
         assert payload["account"] == "ROBOTSIX"
@@ -147,7 +149,7 @@ class TestServeFolders:
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
             handler = _FakeHandler(mail_config=cfg, path="/folders")
-            handler._serve_folders()
+            MailboxService(db_path="test.db").serve_folders(handler)
 
         payload = handler._serve_json.call_args[0][0]
         assert len(payload["folders"]) == 2
@@ -164,7 +166,7 @@ class TestServeFolders:
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
             handler = _FakeHandler(mail_config=cfg, path="/folders")
-            handler._serve_folders()
+            MailboxService(db_path="test.db").serve_folders(handler)
 
         assert handler._send_response.call_args[1]["status"] == 502
 
@@ -177,12 +179,12 @@ class TestServeFolders:
 class TestServeSearch:
     def test_aggregate_returns_400(self) -> None:
         handler = _FakeHandler(_aggregate=True)
-        handler._serve_search()
+        MailboxService(db_path="test.db").serve_search(handler)
         assert handler._serve_json.call_args[1]["status"] == 400
 
     def test_no_mail_config_returns_503(self) -> None:
         handler = _FakeHandler(mail_config=None)
-        handler._serve_search()
+        MailboxService(db_path="test.db").serve_search(handler)
         handler._serve_json.assert_called_once_with(
             {"error": "IMAP not configured for this account"},
             status=503,
@@ -190,7 +192,7 @@ class TestServeSearch:
 
     def test_no_criteria_returns_400(self, cfg: MailConfig) -> None:
         handler = _FakeHandler(mail_config=cfg, path="/search")
-        handler._serve_search()
+        MailboxService(db_path="test.db").serve_search(handler)
         handler._bad_request.assert_called_once()
         assert "criteria" in str(handler._bad_request.call_args[0][0])
 
@@ -198,7 +200,7 @@ class TestServeSearch:
         handler = _FakeHandler(
             mail_config=cfg, path="/search?from=Rabot&since=not-a-date"
         )
-        handler._serve_search()
+        MailboxService(db_path="test.db").serve_search(handler)
         handler._bad_request.assert_called_once()
         assert "date" in str(handler._bad_request.call_args[0][0])
 
@@ -210,7 +212,7 @@ class TestServeSearch:
             handler = _FakeHandler(
                 mail_config=cfg, path="/search?from=Rabot&folder=Missing"
             )
-            handler._serve_search()
+            MailboxService(db_path="test.db").serve_search(handler)
         handler._not_found.assert_called_once()
 
     def test_searches_single_folder_and_builds_criteria(self, cfg: MailConfig) -> None:
@@ -227,7 +229,7 @@ class TestServeSearch:
                 "&text=attached&since=2024-01-01&before=2024-02-01"
                 "&folder=INBOX",
             )
-            handler._serve_search()
+            MailboxService(db_path="test.db").serve_search(handler)
 
         # Criteria is AND-combined and dates converted to IMAP format.
         criteria = client.search_uids.call_args[0][0]
@@ -283,7 +285,7 @@ class TestServeSearch:
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
             handler = _FakeHandler(mail_config=cfg, path="/search?from=Rabot&limit=1")
-            handler._serve_search()
+            MailboxService(db_path="test.db").serve_search(handler)
 
         # Only the selectable folders (INBOX, All Mail, Projects) are searched —
         # the [Gmail] (\Noselect) container node is skipped.
@@ -320,7 +322,7 @@ class TestServeSearch:
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
             handler = _FakeHandler(mail_config=cfg, path="/search?from=Rabot")
-            handler._serve_search()
+            MailboxService(db_path="test.db").serve_search(handler)
 
         # No TypeError: both sort keys were normalised to aware UTC, and the
         # result is newest-first (uid 2 = Jan 02, uid 1 = Jan 01).
@@ -344,7 +346,7 @@ class TestServeSearch:
             handler = _FakeHandler(
                 mail_config=cfg, path="/search?from=Rabot&has_attachments=true"
             )
-            handler._serve_search()
+            MailboxService(db_path="test.db").serve_search(handler)
 
         payload = handler._serve_json.call_args[0][0]
         uids = [m["uid"] for m in payload["messages"]]
@@ -358,7 +360,7 @@ class TestServeSearch:
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
             handler = _FakeHandler(mail_config=cfg, path="/search?from=Rabot")
-            handler._serve_search()
+            MailboxService(db_path="test.db").serve_search(handler)
         assert handler._send_response.call_args[1]["status"] == 502
 
     def test_non_ascii_value_sets_charset_utf8(self, cfg: MailConfig) -> None:
@@ -369,7 +371,7 @@ class TestServeSearch:
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
             handler = _FakeHandler(mail_config=cfg, path="/search?from=Caf%C3%A9")
-            handler._serve_search()
+            MailboxService(db_path="test.db").serve_search(handler)
 
         kwargs = client.search_uids.call_args[1]
         assert kwargs["charset"] == "UTF-8"
