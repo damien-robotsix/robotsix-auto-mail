@@ -1,26 +1,29 @@
-"""Board-auth mixin — OAuth2 device-code flow from the board UI."""
-
-# mypy: disable-error-code="attr-defined"
+"""Board-auth service — OAuth2 device-code flow from the board UI."""
 
 from __future__ import annotations
 
 import threading
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qs, urlparse
 
 from robotsix_auto_mail.config import ConfigurationError
 from robotsix_auto_mail.core._constants import _WATERMARK_IDLE
 from robotsix_auto_mail.oauth2 import MICROSOFT_PROVIDER, device_code_login
+from robotsix_auto_mail.server._services import Service
 
 if TYPE_CHECKING:
-    from ._board_handler_protocol import BoardHandlerProtocol
+    from robotsix_auto_mail.config import MailAccountsConfig
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
 
 
-class _BoardAuthMixin:
-    """Mixin providing OAuth2 device-code auth endpoints for the board."""
+class AuthService(Service):
+    """Stateless service providing OAuth2 device-code auth endpoints.
 
-    if TYPE_CHECKING:
-        self: BoardHandlerProtocol
+    The device-code flow state (``_AUTH_FLOWS`` / ``_AUTH_EVENTS``) is
+    intentionally class-level: it must survive across the independent
+    ``/auth-start`` and ``/auth-status`` requests that drive one login, so it
+    is shared process-wide rather than stored per request.
+    """
 
     #: Per-flow state keyed by ``flow_key`` (``account_id``).
     _AUTH_FLOWS: dict[str, dict[str, Any]] = {}  # noqa: RUF012
@@ -31,27 +34,28 @@ class _BoardAuthMixin:
 
     # -- POST /auth-start ---------------------------------------------------
 
-    def _handle_auth_start(self) -> None:
+    def handle_auth_start(self, ctx: RequestContext) -> None:
         """Start the OAuth2 device-code flow for *account_id*."""
         # 1. Read the URL-encoded POST body.
-        length = int(self.headers.get("Content-Length", "0"))
-        raw = self.rfile.read(length).decode("utf-8", errors="replace")
+        length = int(ctx.headers.get("Content-Length", "0"))
+        raw = ctx.rfile.read(length).decode("utf-8", errors="replace")
         body = parse_qs(raw)
         account_id = (body.get("account_id", [""])[0]).strip()
 
         # 2. Multi-account is the only model; an account id is mandatory.
         if not account_id:
-            self._serve_json({"error": "No account id specified"}, status=400)
+            ctx._serve_json({"error": "No account id specified"}, status=400)
             return
 
         # 3. Resolve the MailConfig for the target account.
-        if self.accounts is None:
-            self._serve_json({"error": "No accounts configured"}, status=400)
+        accounts = cast("MailAccountsConfig | None", ctx.accounts)
+        if accounts is None:
+            ctx._serve_json({"error": "No accounts configured"}, status=400)
             return
         try:
-            config = self.accounts.get(account_id).config
+            config = accounts.get(account_id).config
         except Exception as exc:
-            self._serve_json({"error": f"Unknown account: {exc}"}, status=400)
+            ctx._serve_json({"error": f"Unknown account: {exc}"}, status=400)
             return
 
         # 4. Only Microsoft OAuth2 accounts are supported.
@@ -59,7 +63,7 @@ class _BoardAuthMixin:
             config is None
             or getattr(config, "oauth2_provider", "") != MICROSOFT_PROVIDER
         ):
-            self._serve_json(
+            ctx._serve_json(
                 {"error": "Account is not configured for Microsoft OAuth2"},
                 status=400,
             )
@@ -70,22 +74,22 @@ class _BoardAuthMixin:
 
         # 5. Idempotent guard — if a flow is already running, return the
         #    current state so the board JS can resume polling.
-        existing = _BoardAuthMixin._AUTH_FLOWS.get(flow_key)
+        existing = AuthService._AUTH_FLOWS.get(flow_key)
         if existing is not None and existing.get("status") in (
             "pending_prompt",
             "pending_consent",
         ):
-            self._serve_json(existing)
+            ctx._serve_json(existing)
             return
 
         # 6. Initialise state and event.
-        _BoardAuthMixin._AUTH_FLOWS[flow_key] = {"status": "pending_prompt"}
+        AuthService._AUTH_FLOWS[flow_key] = {"status": "pending_prompt"}
         event = threading.Event()
-        _BoardAuthMixin._AUTH_EVENTS[flow_key] = event
+        AuthService._AUTH_EVENTS[flow_key] = event
 
         # 7. on_prompt callback — fires when MSAL returns the device code.
         def on_prompt(flow: dict[str, Any]) -> None:
-            _BoardAuthMixin._AUTH_FLOWS[flow_key] = {
+            AuthService._AUTH_FLOWS[flow_key] = {
                 "status": "pending_consent",
                 "message": flow.get("message", ""),
                 "user_code": flow.get("user_code", ""),
@@ -118,16 +122,16 @@ class _BoardAuthMixin:
                     logging.getLogger("robotsix_auto_mail.server.auth").warning(
                         "post-auth health probe failed: %s", _probe_exc
                     )
-                _BoardAuthMixin._AUTH_FLOWS[flow_key]["status"] = "success"
+                AuthService._AUTH_FLOWS[flow_key]["status"] = "success"
             except ConfigurationError as exc:
                 event.set()  # unblock POST if on_prompt never fired
-                _BoardAuthMixin._AUTH_FLOWS[flow_key] = {
+                AuthService._AUTH_FLOWS[flow_key] = {
                     "status": "error",
                     "error": str(exc),
                 }
             except Exception as exc:
                 event.set()
-                _BoardAuthMixin._AUTH_FLOWS[flow_key] = {
+                AuthService._AUTH_FLOWS[flow_key] = {
                     "status": "error",
                     "error": f"device-code login failed: {exc}",
                 }
@@ -139,36 +143,36 @@ class _BoardAuthMixin:
         event.wait(timeout=15)
 
         # 11. Respond with the current state.
-        self._serve_json(
-            _BoardAuthMixin._AUTH_FLOWS.get(flow_key, {"status": "pending_prompt"})
+        ctx._serve_json(
+            AuthService._AUTH_FLOWS.get(flow_key, {"status": "pending_prompt"})
         )
 
     # -- GET /auth-status ---------------------------------------------------
 
-    def _handle_auth_status(self) -> None:
+    def handle_auth_status(self, ctx: RequestContext) -> None:
         """Poll the status of a running device-code flow."""
         # 1. Parse account_id from the query string.
-        parsed = urlparse(self.path)
+        parsed = urlparse(ctx.path)
         qs = parse_qs(parsed.query)
         account_id = (qs.get("account_id", [""])[0]).strip()
 
         # 2. An account id is mandatory.
         if not account_id:
-            self._serve_json({"status": _WATERMARK_IDLE})
+            ctx._serve_json({"status": _WATERMARK_IDLE})
             return
 
         # 3. Compute flow key.
         flow_key = account_id
 
         # 3. Look up state.
-        state = _BoardAuthMixin._AUTH_FLOWS.get(flow_key)
+        state = AuthService._AUTH_FLOWS.get(flow_key)
         if state is None:
-            self._serve_json({"status": _WATERMARK_IDLE})
+            ctx._serve_json({"status": _WATERMARK_IDLE})
             return
 
         # 4. One-shot clear on success.
         if state.get("status") == "success":
-            _BoardAuthMixin._AUTH_FLOWS.pop(flow_key, None)
-            _BoardAuthMixin._AUTH_EVENTS.pop(flow_key, None)
+            AuthService._AUTH_FLOWS.pop(flow_key, None)
+            AuthService._AUTH_EVENTS.pop(flow_key, None)
 
-        self._serve_json(state)
+        ctx._serve_json(state)

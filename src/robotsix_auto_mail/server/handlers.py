@@ -52,8 +52,8 @@ from robotsix_auto_mail.server._account_mixin import _AccountMixin
 from robotsix_auto_mail.server._action_mixin import _BoardActionMixin
 from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
 from robotsix_auto_mail.server._attachment_mixin import _AttachmentMixin
-from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
-from robotsix_auto_mail.server._batch_mixin import _BatchActionMixin
+from robotsix_auto_mail.server._auth_service import AuthService
+from robotsix_auto_mail.server._batch_service import BatchService
 from robotsix_auto_mail.server._compose_draft_mixin import _ComposeDraftMixin
 from robotsix_auto_mail.server._config_service import ConfigService
 from robotsix_auto_mail.server._constants import (
@@ -64,7 +64,7 @@ from robotsix_auto_mail.server._constants import (
 from robotsix_auto_mail.server._ingest_service import IngestService
 from robotsix_auto_mail.server._mailbox_mixin import _MailboxMixin
 from robotsix_auto_mail.server._reconcile_service import ReconcileService
-from robotsix_auto_mail.server._sent_mixin import _SentMixin
+from robotsix_auto_mail.server._sent_service import SentService
 from robotsix_auto_mail.server._services import ServiceContainer
 from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
 from robotsix_auto_mail.server._triage_service import TriageService
@@ -81,12 +81,9 @@ class BoardHandler(
     _BoardActionMixin,
     _ArchiveActionMixin,
     _AttachmentMixin,
-    _BatchActionMixin,
     _ComposeDraftMixin,
-    _SentMixin,
     _MailboxMixin,
     _AccountMixin,
-    _BoardAuthMixin,
     _SettingsMixin,
     BaseHTTPRequestHandler,
 ):
@@ -139,10 +136,16 @@ class BoardHandler(
 
     def do_GET(self) -> None:
         """Route GET requests via an ordered (predicate → handler) table."""
+        # Migrated endpoints are dispatched through ``self._services``; the
+        # running handler is the request *context* (``RequestContext`` — the
+        # same structural surface as ``BoardHandlerProtocol``).  The cast is a
+        # no-op at runtime that lets the concrete handler be passed where the
+        # narrow protocol is expected.
+        ctx = cast("RequestContext", self)
         # /auth-status is cross-account by design — handle before
         # _select_account() so it works regardless of the session account.
         if self.path.split("?")[0] == "/auth-status":
-            self._handle_auth_status()
+            self._services.get(AuthService).handle_auth_status(ctx)
             return
         # /add-account is also cross-account — handle before
         # _select_account() so account creation works even with zero accounts.
@@ -200,8 +203,14 @@ class BoardHandler(
                     )
                 ),
             ),
-            (lambda p: p == "/sent/messages", self._serve_sent_messages),
-            (lambda p: p == "/sent/message", self._serve_sent_message),
+            (
+                lambda p: p == "/sent/messages",
+                lambda: self._services.get(SentService).serve_sent_messages(ctx),
+            ),
+            (
+                lambda p: p == "/sent/message",
+                lambda: self._services.get(SentService).serve_sent_message(ctx),
+            ),
             (lambda p: p == "/folders", self._serve_folders),
             (lambda p: p == "/search", self._serve_search),
             (lambda p: p.startswith("/static/"), self._serve_static),
@@ -223,10 +232,16 @@ class BoardHandler(
 
     def do_POST(self) -> None:
         """Route POST requests via an exact-match table."""
+        # Migrated endpoints are dispatched through ``self._services``; the
+        # running handler is the request *context* (``RequestContext`` — the
+        # same structural surface as ``BoardHandlerProtocol``).  The cast is a
+        # no-op at runtime that lets the concrete handler be passed where the
+        # narrow protocol is expected.
+        ctx = cast("RequestContext", self)
         # /auth-start is cross-account by design — handle before
         # _select_account() so it works regardless of the session account.
         if urlsplit(self.path).path == "/auth-start":
-            self._handle_auth_start()
+            self._services.get(AuthService).handle_auth_start(ctx)
             return
         # /add-account is also cross-account — handle before
         # _select_account() so account creation works even with zero accounts.
@@ -270,13 +285,6 @@ class BoardHandler(
         # ``/config-sync``, which fully satisfies optional periodic
         # invocation without new in-process machinery.  Option B (an
         # in-process periodic runner) is explicitly deferred.
-        #
-        # Migrated endpoints are dispatched through ``self._services``; the
-        # running handler is the request *context* (``RequestContext`` — the
-        # same structural surface as ``BoardHandlerProtocol``).  The cast is a
-        # no-op at runtime that lets the concrete handler be passed where the
-        # narrow protocol is expected.
-        ctx = cast("RequestContext", self)
         routes: dict[str, Callable[[], None]] = {
             "/move": self._handle_move,
             "/delete": self._handle_delete,
@@ -285,9 +293,15 @@ class BoardHandler(
             "/archive-delete": self._handle_archive_delete,
             "/archive-message-delete": self._handle_archive_message_delete,
             "/archive-rename": self._handle_archive_rename,
-            "/batch-delete": self._handle_batch_delete,
-            "/batch-archive": self._handle_batch_archive,
-            "/batch-archive-folder": self._handle_batch_archive_folder,
+            "/batch-delete": lambda: self._services.get(
+                BatchService
+            ).handle_batch_delete(ctx),
+            "/batch-archive": lambda: self._services.get(
+                BatchService
+            ).handle_batch_archive(ctx),
+            "/batch-archive-folder": lambda: self._services.get(
+                BatchService
+            ).handle_batch_archive_folder(ctx),
             "/config-sync": lambda: self._services.get(
                 ConfigService
             ).handle_config_sync(ctx),

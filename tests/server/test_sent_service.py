@@ -1,4 +1,11 @@
-"""Unit tests for ``_SentMixin`` — read-only Sent-folder chat API."""
+"""Unit tests for ``SentService`` — read-only Sent-folder chat API.
+
+Drives the service directly against a stub request context.  The context
+subclasses ``_BoardViewMixin`` so the real ``_require_imap_configured``
+guard runs (its 503 body is behaviour the service depends on), while the
+response sinks are wired to ``MagicMock`` so the service can be exercised
+without a real HTTP server.
+"""
 
 from __future__ import annotations
 
@@ -6,12 +13,12 @@ from email.message import EmailMessage
 from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.server._sent_mixin import _SentMixin
+from robotsix_auto_mail.server._sent_service import SentService
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
 
-class _FakeHandler(_BoardViewMixin, _SentMixin):
-    """Concrete ``_SentMixin`` with protocol attributes wired to mocks."""
+class _StubContext(_BoardViewMixin):
+    """Stub request context exposing the real ``_require_imap_configured``."""
 
     def __init__(
         self,
@@ -31,6 +38,10 @@ class _FakeHandler(_BoardViewMixin, _SentMixin):
         self._not_found = mock.MagicMock()
         self._bad_request = mock.MagicMock()
         self._serve_json = mock.MagicMock()
+
+
+def _make_service() -> SentService:
+    return SentService(db_path="test.db")
 
 
 def _mock_client(**attrs: object) -> mock.MagicMock:
@@ -54,14 +65,14 @@ def _sent_folder() -> mock.MagicMock:
 
 class TestServeSentMessages:
     def test_aggregate_short_circuits(self) -> None:
-        handler = _FakeHandler(_aggregate=True)
-        handler._serve_sent_messages()
-        handler._serve_json.assert_called_once_with({"messages": [], "folder": ""})
+        ctx = _StubContext(_aggregate=True)
+        _make_service().serve_sent_messages(ctx)
+        ctx._serve_json.assert_called_once_with({"messages": [], "folder": ""})
 
     def test_no_mail_config_returns_503(self) -> None:
-        handler = _FakeHandler(mail_config=None)
-        handler._serve_sent_messages()
-        handler._serve_json.assert_called_once_with(
+        ctx = _StubContext(mail_config=None)
+        _make_service().serve_sent_messages(ctx)
+        ctx._serve_json.assert_called_once_with(
             {"error": "IMAP not configured for this account"},
             status=503,
         )
@@ -86,11 +97,11 @@ class TestServeSentMessages:
             ),
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
-            handler = _FakeHandler(mail_config=cfg)
-            handler._serve_sent_messages()
+            ctx = _StubContext(mail_config=cfg)
+            _make_service().serve_sent_messages(ctx)
 
         client.select_folder.assert_called_once_with("Sent")
-        payload = handler._serve_json.call_args[0][0]
+        payload = ctx._serve_json.call_args[0][0]
         assert payload["folder"] == "Sent"
         assert payload["total"] == 3
         assert payload["messages"][0]["to"] == "client@tii.ae"
@@ -104,11 +115,11 @@ class TestServeSentMessages:
             fetch_envelopes=mock.MagicMock(return_value=[]),
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
-            handler = _FakeHandler(
+            ctx = _StubContext(
                 mail_config=cfg,
                 path="/sent/messages?limit=2&offset=1",
             )
-            handler._serve_sent_messages()
+            _make_service().serve_sent_messages(ctx)
 
         # reversed = [5,4,3,2,1]; offset 1, limit 2 → [4, 3]
         assert client.fetch_envelopes.call_args[0][0] == [4, 3]
@@ -122,10 +133,10 @@ class TestServeSentMessages:
             list_folders=mock.MagicMock(return_value=[other]),
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
-            handler = _FakeHandler(mail_config=cfg)
-            handler._serve_sent_messages()
+            ctx = _StubContext(mail_config=cfg)
+            _make_service().serve_sent_messages(ctx)
 
-        handler._not_found.assert_called_once()
+        ctx._not_found.assert_called_once()
 
     def test_imap_error_returns_502(self, cfg: MailConfig) -> None:
         from robotsix_auto_mail.imap.errors import ImapError
@@ -134,10 +145,10 @@ class TestServeSentMessages:
             list_folders=mock.MagicMock(side_effect=ImapError("boom")),
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
-            handler = _FakeHandler(mail_config=cfg)
-            handler._serve_sent_messages()
+            ctx = _StubContext(mail_config=cfg)
+            _make_service().serve_sent_messages(ctx)
 
-        assert handler._send_response.call_args[1]["status"] == 502
+        assert ctx._send_response.call_args[1]["status"] == 502
 
 
 class TestServeSentMessage:
@@ -157,21 +168,19 @@ class TestServeSentMessage:
         return msg.as_bytes()
 
     def test_missing_uid_returns_400(self, cfg: MailConfig) -> None:
-        handler = _FakeHandler(mail_config=cfg, path="/sent/message")
-        handler._serve_sent_message()
-        handler._bad_request.assert_called_once()
+        ctx = _StubContext(mail_config=cfg, path="/sent/message")
+        _make_service().serve_sent_message(ctx)
+        ctx._bad_request.assert_called_once()
 
     def test_non_integer_uid_returns_400(self, cfg: MailConfig) -> None:
-        handler = _FakeHandler(mail_config=cfg, path="/sent/message?uid=abc")
-        handler._serve_sent_message()
-        handler._bad_request.assert_called_once()
+        ctx = _StubContext(mail_config=cfg, path="/sent/message?uid=abc")
+        _make_service().serve_sent_message(ctx)
+        ctx._bad_request.assert_called_once()
 
     def test_aggregate_returns_404(self, cfg: MailConfig) -> None:
-        handler = _FakeHandler(
-            mail_config=cfg, path="/sent/message?uid=1", _aggregate=True
-        )
-        handler._serve_sent_message()
-        handler._not_found.assert_called_once()
+        ctx = _StubContext(mail_config=cfg, path="/sent/message?uid=1", _aggregate=True)
+        _make_service().serve_sent_message(ctx)
+        ctx._not_found.assert_called_once()
 
     def test_reads_message_and_enumerates_attachments(self, cfg: MailConfig) -> None:
         client = _mock_client(
@@ -179,11 +188,11 @@ class TestServeSentMessage:
             fetch_messages=mock.MagicMock(return_value=[(7, self._raw_message())]),
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
-            handler = _FakeHandler(mail_config=cfg, path="/sent/message?uid=7")
-            handler._serve_sent_message()
+            ctx = _StubContext(mail_config=cfg, path="/sent/message?uid=7")
+            _make_service().serve_sent_message(ctx)
 
         client.select_folder.assert_called_once_with("Sent")
-        payload = handler._serve_json.call_args[0][0]
+        payload = ctx._serve_json.call_args[0][0]
         assert payload["uid"] == 7
         assert payload["folder"] == "Sent"
         assert payload["subject"] == "Invoice"
@@ -197,15 +206,15 @@ class TestServeSentMessage:
             fetch_messages=mock.MagicMock(return_value=[]),
         )
         with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
-            handler = _FakeHandler(mail_config=cfg, path="/sent/message?uid=99")
-            handler._serve_sent_message()
+            ctx = _StubContext(mail_config=cfg, path="/sent/message?uid=99")
+            _make_service().serve_sent_message(ctx)
 
-        handler._not_found.assert_called_once()
+        ctx._not_found.assert_called_once()
 
     def test_no_mail_config_returns_503(self) -> None:
-        handler = _FakeHandler(mail_config=None, path="/sent/message?uid=1")
-        handler._serve_sent_message()
-        handler._serve_json.assert_called_once_with(
+        ctx = _StubContext(mail_config=None, path="/sent/message?uid=1")
+        _make_service().serve_sent_message(ctx)
+        ctx._serve_json.assert_called_once_with(
             {"error": "IMAP not configured for this account"},
             status=503,
         )

@@ -1,6 +1,6 @@
-"""Unit tests for ``_BoardAuthMixin`` methods.
+"""Unit tests for ``AuthService`` methods.
 
-Drives the mixin directly against a mock handler *self*, isolating the
+Drives the service directly against a stub request context, isolating the
 logic from the HTTP transport and covering the post-auth auto-probe
 behaviour added after the device-code flow completes.
 """
@@ -11,16 +11,15 @@ from typing import Any, Callable
 from unittest import mock
 
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
-from robotsix_auto_mail.server._auth_mixin import _BoardAuthMixin
+from robotsix_auto_mail.server._auth_service import AuthService
 
 # ---------------------------------------------------------------------------
-# Fake handler factory
+# Stub context for direct service testing
 # ---------------------------------------------------------------------------
 
 
-class _FakeHandler(_BoardAuthMixin):
-    """Concrete handler that wires the ``BoardHandlerProtocol`` attributes
-    to MagicMock defaults so mixin methods can be called directly."""
+class _StubContext:
+    """Stub request context wiring the attributes the service reads."""
 
     def __init__(
         self,
@@ -28,10 +27,12 @@ class _FakeHandler(_BoardAuthMixin):
         mail_config: MailConfig | None = None,
         *,
         accounts: object | None = None,
+        path: str = "/auth-start",
     ) -> None:
         self.db_path = db_path
         self.mail_config = mail_config
         self.accounts = accounts
+        self.path = path
         self._current_account_id = None
         self._aggregate = False
         self._account_cookie = None
@@ -42,6 +43,10 @@ class _FakeHandler(_BoardAuthMixin):
         self._not_found = mock.MagicMock()
         self._bad_request = mock.MagicMock()
         self._serve_json = mock.MagicMock()
+
+
+def _make_service() -> AuthService:
+    return AuthService(db_path=":memory:")
 
 
 # ---------------------------------------------------------------------------
@@ -131,16 +136,16 @@ class TestPostAuthAutoProbe:
         accounts = MailAccountsConfig(
             accounts=(MailAccount(account_id="test", config=cfg, label=None),),
         )
-        handler = _FakeHandler(tmp_db_path, mail_config=cfg, accounts=accounts)
-        handler.headers.get.return_value = 0
-        handler.rfile.read.return_value = b"account_id=test"
+        ctx = _StubContext(tmp_db_path, mail_config=cfg, accounts=accounts)
+        ctx.headers.get.return_value = 0
+        ctx.rfile.read.return_value = b"account_id=test"
 
         mock_write = mock.MagicMock()
         mock_conn = mock.MagicMock()
 
         with (
             mock.patch(
-                "robotsix_auto_mail.server._auth_mixin.device_code_login",
+                "robotsix_auto_mail.server._auth_service.device_code_login",
                 side_effect=_patch_device_code_login(),
             ),
             mock.patch(
@@ -157,7 +162,7 @@ class TestPostAuthAutoProbe:
             ),
             mock.patch("threading.Thread", _SyncThread),
         ):
-            handler._handle_auth_start()
+            _make_service().handle_auth_start(ctx)
 
         # Assert the probe wrote "ok" health.
         mock_write.assert_called_once()
@@ -166,7 +171,7 @@ class TestPostAuthAutoProbe:
         assert call_kwargs.get("error") is None
 
         # Assert the flow ended in "success".
-        assert _BoardAuthMixin._AUTH_FLOWS["test"]["status"] == "success"
+        assert AuthService._AUTH_FLOWS["test"]["status"] == "success"
 
     def test_auth_success_probe_failure_still_succeeds(self, tmp_db_path: str) -> None:
         """When probe_account raises, the flow still finishes with
@@ -175,13 +180,13 @@ class TestPostAuthAutoProbe:
         accounts = MailAccountsConfig(
             accounts=(MailAccount(account_id="test", config=cfg, label=None),),
         )
-        handler = _FakeHandler(tmp_db_path, mail_config=cfg, accounts=accounts)
-        handler.headers.get.return_value = 0
-        handler.rfile.read.return_value = b"account_id=test"
+        ctx = _StubContext(tmp_db_path, mail_config=cfg, accounts=accounts)
+        ctx.headers.get.return_value = 0
+        ctx.rfile.read.return_value = b"account_id=test"
 
         with (
             mock.patch(
-                "robotsix_auto_mail.server._auth_mixin.device_code_login",
+                "robotsix_auto_mail.server._auth_service.device_code_login",
                 side_effect=_patch_device_code_login(),
             ),
             mock.patch(
@@ -196,7 +201,7 @@ class TestPostAuthAutoProbe:
             ) as mock_write,
             mock.patch("threading.Thread", _SyncThread),
         ):
-            handler._handle_auth_start()
+            _make_service().handle_auth_start(ctx)
 
         # The probe failed, so neither init_db nor write_account_health
         # should have been called.
@@ -204,4 +209,4 @@ class TestPostAuthAutoProbe:
         mock_write.assert_not_called()
 
         # The flow must still succeed.
-        assert _BoardAuthMixin._AUTH_FLOWS["test"]["status"] == "success"
+        assert AuthService._AUTH_FLOWS["test"]["status"] == "success"
