@@ -190,9 +190,9 @@ def test_removed_settings_routes_are_gone(single_db: str) -> None:
 def test_vendored_panel_asset_is_served_when_present(
     single_db: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from robotsix_auto_mail.server import _view_mixin
+    from robotsix_auto_mail.server import _view_service
 
-    monkeypatch.setattr(_view_mixin, "_STATIC_ROBOTSIX_UI_JS", "export const ok = 1;")
+    monkeypatch.setattr(_view_service, "_STATIC_ROBOTSIX_UI_JS", "export const ok = 1;")
     server, port = _start_test_server_with_mail_config(
         single_db, _make_mail_config(single_db)
     )
@@ -208,9 +208,9 @@ def test_missing_vendored_panel_asset_404s(
     single_db: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A checkout without the vendored build must degrade, not crash."""
-    from robotsix_auto_mail.server import _view_mixin
+    from robotsix_auto_mail.server import _view_service
 
-    monkeypatch.setattr(_view_mixin, "_STATIC_ROBOTSIX_UI_JS", None)
+    monkeypatch.setattr(_view_service, "_STATIC_ROBOTSIX_UI_JS", None)
     server, port = _start_test_server_with_mail_config(
         single_db, _make_mail_config(single_db)
     )

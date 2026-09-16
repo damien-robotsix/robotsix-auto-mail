@@ -69,7 +69,12 @@ class BoardHandlerProtocol(Protocol):
         precheck: Callable[[Any], bool] | None = None,
         db_path: str | None = None,
         redirect: bool = True,
-    ) -> bool: ...
+    ) -> bool:
+        pass
+
+    @property
+    def _effective_archive_root(self) -> str:
+        pass
 
     def _require_imap_configured(self) -> bool:
         pass

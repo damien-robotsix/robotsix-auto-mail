@@ -1,14 +1,21 @@
-"""View-serving mixin for the board server."""
+"""View-serving service for the board server.
 
-# mypy: disable-error-code="attr-defined"
+Stateless composition-era replacement for the legacy ``_BoardViewMixin``.
+Every endpoint method takes the per-request context
+(:class:`robotsix_auto_mail.server._board_handler_protocol.RequestContext`)
+and reads all per-request state (``_current_account_id``, ``_aggregate``,
+``path``, the response sinks, ``_effective_archive_root``) off it — the
+service instance itself holds only the injected dependencies and is safe to
+share across every request.
+"""
 
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.parse import unquote
 
-from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, resolve_llm_api_key
+from robotsix_auto_mail.config import resolve_llm_api_key
 from robotsix_auto_mail.server._constants import (
     _STATIC_ADD_ACCOUNT_REDIRECT_JS,
     _STATIC_APPSHELL_LOADER_JS,
@@ -23,6 +30,7 @@ from robotsix_auto_mail.server._constants import (
     _parse_archive_structure,
     _with_db,
 )
+from robotsix_auto_mail.server._services import Service
 from robotsix_auto_mail.server.views import (
     _build_board_content,
     _build_board_html,
@@ -36,85 +44,44 @@ from robotsix_auto_mail.triage import (
     get_triage_decision,
 )
 
+if TYPE_CHECKING:
+    from robotsix_auto_mail.config import MailAccountsConfig, MailConfig
+    from robotsix_auto_mail.server._board_handler_protocol import RequestContext
+
 logger = logging.getLogger(__name__)
 
 
-class _BoardViewMixin:
-    """Mixin providing view-serving methods for the board handler."""
+class ViewService(Service):
+    """Stateless service providing the board's GET view/rendering endpoints."""
 
-    if TYPE_CHECKING:
-        from ._board_handler_protocol import BoardHandlerProtocol
-
-    self: BoardHandlerProtocol
-
-    # Declare the attribute type so that mypy doesn't infer ``None`` from
-    # the ``self._account_cookie = None`` assignment in _serve_email_detail.
-    _account_cookie: str | None
-
-    @property
-    def _effective_archive_root(self) -> str:
-        """The configured archive root, or the default when no config is set."""
-        return (
-            self.mail_config.archive_root
-            if self.mail_config is not None
-            else DEFAULT_ARCHIVE_ROOT
-        )
-
-    def _require_imap_configured(self) -> bool:
-        """Guard: emit 503 when ``mail_config`` is unset.
-
-        Returns ``True`` when IMAP is configured and the caller may
-        proceed; ``False`` when a 503 response has already been sent
-        and the caller must ``return`` immediately.
-        """
-        if self.mail_config is None:
-            self._serve_json(
-                {"error": "IMAP not configured for this account"},
-                status=503,
-            )
-            return False
-        return True
-
-    def _validate_archive_path(self, *folders: str) -> tuple[bool, str]:
-        """Guard: reject ``..`` segments in archive folder paths.
-
-        Returns ``(True, archive_root)`` when all *folders* are safe.
-        Returns ``(False, "")`` after sending a 400 response when any
-        path contains a ``..`` segment.
-        """
-        archive_root = self._effective_archive_root
-        for folder in folders:
-            if ".." in folder.split("/"):
-                self._bad_request(f"'{folder}' escapes archive root")
-                return False, ""
-        return True, archive_root
-
-    def _serve_board(self) -> None:
+    def serve_board(self, ctx: RequestContext) -> None:
         """Render and serve the kanban board HTML."""
-        if self._aggregate and self.accounts is not None:
+        if ctx._aggregate and ctx.accounts is not None:
             try:
-                body = _build_global_board_html(self.accounts)
+                body = _build_global_board_html(
+                    cast("MailAccountsConfig", ctx.accounts)
+                )
             except Exception:
-                self._send_response("Database unavailable", status=503)
+                ctx._send_response("Database unavailable", status=503)
                 return
-            self._send_response(body, content_type="text/html; charset=utf-8")
+            ctx._send_response(body, content_type="text/html; charset=utf-8")
             return
 
-        archive_root = self._effective_archive_root
+        archive_root = ctx._effective_archive_root
         try:
             body = _build_board_html(
-                self.db_path,
+                ctx.db_path,
                 archive_root=archive_root,
-                accounts=self.accounts,
-                current_account_id=self._current_account_id,
+                accounts=cast("MailAccountsConfig | None", ctx.accounts),
+                current_account_id=ctx._current_account_id,
             )
         except Exception:
-            self._send_response("Database unavailable", status=503)
+            ctx._send_response("Database unavailable", status=503)
             return
 
-        self._send_response(body, content_type="text/html; charset=utf-8")
+        ctx._send_response(body, content_type="text/html; charset=utf-8")
 
-    def _serve_board_content(self) -> None:
+    def serve_board_content(self, ctx: RequestContext) -> None:
         """Render and serve the board content as JSON.
 
         Supports ``?format=json`` for structured card data (no HTML).
@@ -124,71 +91,73 @@ class _BoardViewMixin:
         """
         from urllib.parse import parse_qs, urlsplit
 
-        qs = parse_qs(urlsplit(self.path).query)
+        qs = parse_qs(urlsplit(ctx.path).query)
 
         # -- structured JSON mode ---------------------------------------
         if qs.get("format") == ["json"]:
             # Omitted ?account= → aggregate (all accounts).
             if (
                 "account" not in qs
-                and self.accounts is not None
-                and self.accounts.ids()
+                and ctx.accounts is not None
+                and cast("MailAccountsConfig", ctx.accounts).ids()
             ):
                 try:
-                    payload = self._build_board_json_aggregate()
+                    payload = self._build_board_json_aggregate(ctx)
                 except Exception:
-                    self._serve_json({"error": "Database unavailable"}, status=503)
+                    ctx._serve_json({"error": "Database unavailable"}, status=503)
                     return
-                self._serve_json(payload)
+                ctx._serve_json(payload)
                 return
 
-            if self._aggregate and self.accounts is not None:
+            if ctx._aggregate and ctx.accounts is not None:
                 try:
-                    payload = self._build_board_json_aggregate()
+                    payload = self._build_board_json_aggregate(ctx)
                 except Exception:
-                    self._serve_json({"error": "Database unavailable"}, status=503)
+                    ctx._serve_json({"error": "Database unavailable"}, status=503)
                     return
-                self._serve_json(payload)
+                ctx._serve_json(payload)
                 return
 
             # Single account (already resolved by _select_account).
-            archive_root = self._effective_archive_root
+            archive_root = ctx._effective_archive_root
             try:
                 payload = self._build_board_json_single(
-                    self.db_path,
+                    ctx.db_path,
                     archive_root,
-                    account_id=self._current_account_id or "main",
+                    account_id=ctx._current_account_id or "main",
                 )
             except Exception:
-                self._serve_json({"error": "Database unavailable"}, status=503)
+                ctx._serve_json({"error": "Database unavailable"}, status=503)
                 return
-            self._serve_json(payload)
+            ctx._serve_json(payload)
             return
 
         # -- existing HTML mode -----------------------------------------
-        if self._aggregate and self.accounts is not None:
+        if ctx._aggregate and ctx.accounts is not None:
             try:
-                payload = _build_global_board_content(self.accounts)
+                payload = _build_global_board_content(
+                    cast("MailAccountsConfig", ctx.accounts)
+                )
             except Exception:
-                self._serve_json({"error": "Database unavailable"}, status=503)
+                ctx._serve_json({"error": "Database unavailable"}, status=503)
                 return
-            self._serve_json(payload)
+            ctx._serve_json(payload)
             return
 
-        archive_root = self._effective_archive_root
+        archive_root = ctx._effective_archive_root
         try:
             payload = _build_board_content(
-                self.db_path,
+                ctx.db_path,
                 archive_root=archive_root,
-                account_id=self._current_account_id or "main",
+                account_id=ctx._current_account_id or "main",
                 config_failures=(),
-                mail_config=self.mail_config,
+                mail_config=cast("MailConfig | None", ctx.mail_config),
             )
         except Exception:
-            self._serve_json({"error": "Database unavailable"}, status=503)
+            ctx._serve_json({"error": "Database unavailable"}, status=503)
             return
 
-        self._serve_json(payload)
+        ctx._serve_json(payload)
 
     # -- JSON board helpers -----------------------------------------------
 
@@ -229,7 +198,7 @@ class _BoardViewMixin:
 
         return {"columns": columns, "triage_running": triage_running}
 
-    def _build_board_json_aggregate(self) -> dict[str, object]:
+    def _build_board_json_aggregate(self, ctx: RequestContext) -> dict[str, object]:
         """Build structured JSON board content for all configured accounts.
 
         Merges per-account column buckets; each card carries its owning
@@ -239,9 +208,9 @@ class _BoardViewMixin:
             _gather_account_board_data,
         )
 
-        accounts = self.accounts
-        if accounts is None:
+        if ctx.accounts is None:
             return {}
+        accounts = cast("MailAccountsConfig", ctx.accounts)
 
         merged_columns: dict[str, list[dict[str, object]]] = {}
         triage_running = False
@@ -279,70 +248,70 @@ class _BoardViewMixin:
 
         return {"columns": merged_columns, "triage_running": triage_running}
 
-    def _serve_static(self) -> None:
+    def serve_static(self, ctx: RequestContext) -> None:
         """Serve static assets from the robotsix_board package."""
-        if self.path == "/static/board.js":
-            self._send_response(
+        if ctx.path == "/static/board.js":
+            ctx._send_response(
                 _STATIC_BOARD_JS,
                 content_type="text/javascript; charset=utf-8",
             )
-        elif self.path == "/static/board.css":
-            self._send_response(
+        elif ctx.path == "/static/board.css":
+            ctx._send_response(
                 _STATIC_BOARD_CSS,
                 content_type="text/css; charset=utf-8",
             )
-        elif self.path == "/static/automail/board.css":
-            self._send_response(
+        elif ctx.path == "/static/automail/board.css":
+            ctx._send_response(
                 _STATIC_AUTOMAIL_BOARD_CSS,
                 content_type="text/css; charset=utf-8",
             )
-        elif self.path == "/static/board-auto-mail.js":
-            self._send_response(
+        elif ctx.path == "/static/board-auto-mail.js":
+            ctx._send_response(
                 _STATIC_BOARD_AUTOMAIL_JS,
                 content_type="text/javascript; charset=utf-8",
             )
-        elif self.path == "/static/board-events.js":
-            self._send_response(
+        elif ctx.path == "/static/board-events.js":
+            ctx._send_response(
                 _STATIC_BOARD_EVENTS_JS,
                 content_type="text/javascript; charset=utf-8",
             )
-        elif self.path == "/static/add-account-redirect.js":
-            self._send_response(
+        elif ctx.path == "/static/add-account-redirect.js":
+            ctx._send_response(
                 _STATIC_ADD_ACCOUNT_REDIRECT_JS,
                 content_type="text/javascript; charset=utf-8",
             )
-        elif self.path == "/static/settings-loader.js":
-            self._send_response(
+        elif ctx.path == "/static/settings-loader.js":
+            ctx._send_response(
                 _STATIC_SETTINGS_LOADER_JS,
                 content_type="text/javascript; charset=utf-8",
             )
-        elif self.path == "/static/appshell-loader.js":
-            self._send_response(
+        elif ctx.path == "/static/appshell-loader.js":
+            ctx._send_response(
                 _STATIC_APPSHELL_LOADER_JS,
                 content_type="text/javascript; charset=utf-8",
             )
-        elif self.path == "/static/robotsix-ui.js":
+        elif ctx.path == "/static/robotsix-ui.js":
             # Vendored at image build time; absent in a bare checkout, where
             # the Settings page shows how to fetch it instead of blank space.
             if _STATIC_ROBOTSIX_UI_JS is None:
-                self._not_found()
+                ctx._not_found()
             else:
-                self._send_response(
+                ctx._send_response(
                     _STATIC_ROBOTSIX_UI_JS,
                     content_type="text/javascript; charset=utf-8",
                 )
-        elif self.path == "/static/robotsix-ui.css":
+        elif ctx.path == "/static/robotsix-ui.css":
             if _STATIC_ROBOTSIX_UI_CSS is None:
-                self._not_found()
+                ctx._not_found()
             else:
-                self._send_response(
+                ctx._send_response(
                     _STATIC_ROBOTSIX_UI_CSS,
                     content_type="text/css; charset=utf-8",
                 )
         else:
-            self._not_found()
+            ctx._not_found()
 
-    def _serve_archive_proposal(self) -> None:
+    def serve_archive_proposal(self, ctx: RequestContext) -> None:
         """Serve GET /archive-proposal/{message_id} — return JSON with
         effective subfolder, source, and folder-exists status."""
         from robotsix_auto_mail.db import (
@@ -354,16 +323,16 @@ class _BoardViewMixin:
             _load_llm_archive_hints,
         )
 
-        path = self.path
+        path = ctx.path
         prefix = "/archive-proposal/"
         message_id = unquote(path[len(prefix) :])
 
-        archive_root = self._effective_archive_root
+        archive_root = ctx._effective_archive_root
 
-        with _with_db(self.db_path) as conn:
+        with _with_db(ctx.db_path) as conn:
             record = get_record_by_message_id(conn, message_id)
             if record is None:
-                self._not_found()
+                ctx._not_found()
                 return
 
             subfolder = get_archive_subfolder(
@@ -371,8 +340,8 @@ class _BoardViewMixin:
                 message_id,
                 record,
                 api_key=resolve_llm_api_key(raise_on_missing=False),
-                rules=self.mail_config.triage_guidance
-                if self.mail_config is not None
+                rules=cast("MailConfig", ctx.mail_config).triage_guidance
+                if ctx.mail_config is not None
                 else "",
             )
             overrides = _load_archive_overrides(conn)
@@ -400,7 +369,7 @@ class _BoardViewMixin:
                 full_path = effective_root
             folder_exists = full_path in existing_folders
 
-        self._serve_json(
+        ctx._serve_json(
             {
                 "subfolder": subfolder,
                 "archive_root": archive_root,
@@ -410,7 +379,7 @@ class _BoardViewMixin:
             }
         )
 
-    def _serve_board_cards(self) -> None:
+    def serve_board_cards(self, ctx: RequestContext) -> None:
         """Serve GET /board-cards — structured JSON list of board cards.
 
         Returns a flat JSON array of cards, each with message_id, uid (if
@@ -429,31 +398,31 @@ class _BoardViewMixin:
             _gather_account_board_data,
         )
 
-        if self._aggregate:
-            self._serve_json(
+        if ctx._aggregate:
+            ctx._serve_json(
                 {"error": "board-cards is per-account; use ?account=<id>"},
                 status=400,
             )
             return
 
-        archive_root = self._effective_archive_root
+        archive_root = ctx._effective_archive_root
         try:
-            data = _gather_account_board_data(self.db_path, archive_root=archive_root)
+            data = _gather_account_board_data(ctx.db_path, archive_root=archive_root)
         except Exception:
-            self._serve_json({"error": "Database unavailable"}, status=503)
+            ctx._serve_json({"error": "Database unavailable"}, status=503)
             return
 
         column_buckets = data["column_buckets"]
         archive_subfolders = data.get("archive_subfolders", {})
 
         # Parse optional column filter.
-        qs = parse_qs(urlsplit(self.path).query)
+        qs = parse_qs(urlsplit(ctx.path).query)
         column_filter = qs.get("column")
         if column_filter is None:
             column_filter = qs.get("status")
         column_value = column_filter[0] if column_filter else None
 
-        account_id = self._current_account_id or "main"
+        account_id = ctx._current_account_id or "main"
         cards: list[dict[str, object]] = []
 
         for column, records in column_buckets.items():
@@ -475,9 +444,9 @@ class _BoardViewMixin:
                     }
                 )
 
-        self._serve_json({"cards": cards, "account": account_id})
+        ctx._serve_json({"cards": cards, "account": account_id})
 
-    def _serve_archive_folders(self) -> None:
+    def serve_archive_folders(self, ctx: RequestContext) -> None:
         """Serve GET /archive-folders — JSON with delimiter + flat subfolder list.
 
         Lists the real IMAP folder tree under the effective archive root.
@@ -486,22 +455,22 @@ class _BoardViewMixin:
 
         Short-circuits in aggregate (``?account=__all__``) mode — the JS
         already suppresses the fetch, but a direct ``curl`` must not leak
-        data from whichever account's DB ``self.db_path`` happens to point at.
+        data from whichever account's DB ``ctx.db_path`` happens to point at.
         """
         from robotsix_auto_mail.db import get_watermark
 
-        if self._aggregate:
-            self._serve_json({"delimiter": "/", "folders": []})
+        if ctx._aggregate:
+            ctx._serve_json({"delimiter": "/", "folders": []})
             return
 
-        archive_root = self._effective_archive_root
+        archive_root = ctx._effective_archive_root
 
         # -- try IMAP first -------------------------------------------------
-        if self.mail_config is not None:
+        if ctx.mail_config is not None:
             try:
                 from robotsix_auto_mail.imap import ImapClient
 
-                with ImapClient(self.mail_config) as client:
+                with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                     all_folders = client.list_folders()
                     delimiter = next(
                         (f.delimiter for f in all_folders if f.delimiter), "/"
@@ -514,14 +483,14 @@ class _BoardViewMixin:
                             if delimiter != "/":
                                 rel = rel.replace(delimiter, "/")
                             folders.append(rel)
-                    self._serve_json({"delimiter": "/", "folders": folders})
+                    ctx._serve_json({"delimiter": "/", "folders": folders})
                     return
             except Exception:
                 logger.debug("IMAP folder list fallback to watermark", exc_info=True)
                 # Fall through to watermark fallback.
 
         # -- watermark fallback ---------------------------------------------
-        with _with_db(self.db_path) as conn:
+        with _with_db(ctx.db_path) as conn:
             archive_raw = get_watermark(conn, "archive_structure")
             existing_folders, delimiter, effective_root = _parse_archive_structure(
                 archive_raw, archive_root
@@ -536,9 +505,9 @@ class _BoardViewMixin:
                     rel = rel.replace(delimiter, "/")
                 folders.append(rel)
 
-        self._serve_json({"delimiter": "/", "folders": folders})
+        ctx._serve_json({"delimiter": "/", "folders": folders})
 
-    def _serve_archive_messages(self, folder: str = "") -> None:
+    def serve_archive_messages(self, ctx: RequestContext, folder: str = "") -> None:
         """Serve GET /archive/<folder>/messages — list messages in an archive folder.
 
         Connects to IMAP, resolves the folder path under the effective
@@ -550,14 +519,14 @@ class _BoardViewMixin:
 
         Short-circuits in aggregate (``?account=__all__``) mode.
         """
-        if self._aggregate:
-            self._serve_json({"messages": [], "folder": folder or ""})
+        if ctx._aggregate:
+            ctx._serve_json({"messages": [], "folder": folder or ""})
             return
 
-        if not self._require_imap_configured():
+        if not ctx._require_imap_configured():
             return
 
-        ok, archive_root = self._validate_archive_path(folder)
+        ok, archive_root = ctx._validate_archive_path(folder)
         if not ok:
             return
 
@@ -570,7 +539,7 @@ class _BoardViewMixin:
         from robotsix_auto_mail.imap import ImapClient, ImapError
 
         try:
-            with ImapClient(self.mail_config) as client:
+            with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
                 delimiter = next(
@@ -586,13 +555,13 @@ class _BoardViewMixin:
                 if translated_path != archive_root.replace(
                     "/", delimiter
                 ) and not translated_path.startswith(root_prefix):
-                    self._bad_request("Folder path escapes archive root")
+                    ctx._bad_request("Folder path escapes archive root")
                     return
 
                 # Verify the folder exists.
                 matching = [f for f in existing if f.name == translated_path]
                 if not matching:
-                    self._not_found()
+                    ctx._not_found()
                     return
 
                 client.select_folder(translated_path)
@@ -601,7 +570,7 @@ class _BoardViewMixin:
                 # Parse limit query parameter.
                 from urllib.parse import parse_qs, urlsplit
 
-                qs = parse_qs(urlsplit(self.path).query)
+                qs = parse_qs(urlsplit(ctx.path).query)
                 limit_str = qs.get("limit", ["500"])[0]
                 try:
                     limit = min(max(int(limit_str), 1), 2000)
@@ -612,20 +581,20 @@ class _BoardViewMixin:
 
                 envelopes = client.fetch_envelopes(uids)
         except ImapError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP error listing archive folder: {exc}",
                 status=502,
             )
             return
         except OSError as exc:
-            self._send_response(
+            ctx._send_response(
                 f"IMAP connection error: {exc}",
                 status=502,
             )
             return
 
         # Build response — include the effective path for clarity.
-        self._serve_json(
+        ctx._serve_json(
             {
                 "folder": folder if folder else archive_root,
                 "full_path": full_path,
@@ -635,7 +604,7 @@ class _BoardViewMixin:
             }
         )
 
-    def _serve_email_status(self) -> None:
+    def serve_email_status(self, ctx: RequestContext) -> None:
         """Serve GET /email/{message_id}/status — return triage action as text.
 
         Returns ``"INBOX"`` when the record exists but has no triage
@@ -645,26 +614,26 @@ class _BoardViewMixin:
 
         # Extract the URL-encoded message_id from the path:
         #   "/email/<encoded>/status" → extract and decode.
-        path = self.path
+        path = ctx.path
         prefix = "/email/"
         suffix = "/status"
         encoded_mid = path[len(prefix) : -len(suffix)]
         message_id = unquote(encoded_mid)
 
-        with _with_db(self.db_path, skip_migrations=False) as conn:
+        with _with_db(ctx.db_path, skip_migrations=False) as conn:
             record = get_record_by_message_id(conn, message_id)
             if record is None:
-                self._not_found()
+                ctx._not_found()
                 return
             decision = get_triage_decision(conn, message_id)
 
         if decision is None:
-            self._send_response(INBOX)
+            ctx._send_response(INBOX)
             return
 
-        self._send_response(decision.action)
+        ctx._send_response(decision.action)
 
-    def _serve_email_detail(self) -> None:
+    def serve_email_detail(self, ctx: RequestContext) -> None:
         """Serve GET /email/{message_id} — full detail page.
 
         Supports ``?embed=1`` to return a fragment suitable for an
@@ -676,7 +645,7 @@ class _BoardViewMixin:
         """
         from urllib.parse import parse_qs, urlparse
 
-        path = self.path
+        path = ctx.path
         prefix = "/email/"
 
         # Separate path from query string.
@@ -691,21 +660,21 @@ class _BoardViewMixin:
         # parent board set (e.g. ``__all__`` for the aggregate view).
         # Clearing ``_account_cookie`` prevents that emission.
         if embed:
-            self._account_cookie = None
+            ctx._account_cookie = None
 
         try:
             detail_html = _build_detail_html(
-                self.db_path,
+                ctx.db_path,
                 message_id,
                 embed=embed,
-                current_account_id=self._current_account_id,
+                current_account_id=ctx._current_account_id,
             )
         except Exception:
-            self._send_response("Database unavailable", status=503)
+            ctx._send_response("Database unavailable", status=503)
             return
 
         if detail_html is None:
-            self._not_found()
+            ctx._not_found()
             return
 
-        self._send_response(detail_html, content_type="text/html; charset=utf-8")
+        ctx._send_response(detail_html, content_type="text/html; charset=utf-8")

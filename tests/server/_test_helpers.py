@@ -1,8 +1,11 @@
 """Shared helpers for server mixin/service unit tests.
 
-Provides ``_FakeHandler`` (a concrete ``_ArchiveActionMixin`` for direct
-mixin testing), ``_ActionServiceContext`` (a stub request context for the
-composition-era ``ActionService`` tests), and ``_SyncThread`` (a synchronous
+Provides ``_RequestContextHelpers`` (the real ``_effective_archive_root`` /
+``_require_imap_configured`` / ``_validate_archive_path`` guards mirrored from
+``BoardHandler`` so stub request contexts get their genuine behaviour),
+``_FakeHandler`` (a concrete ``_ArchiveActionMixin`` for direct mixin testing),
+``_ActionServiceContext`` (a stub request context for the composition-era
+``ActionService`` tests), and ``_SyncThread`` (a synchronous
 ``threading.Thread`` replacement for deterministic background-worker tests).
 """
 
@@ -11,12 +14,52 @@ from __future__ import annotations
 from typing import Any, Callable
 from unittest import mock
 
-from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.config import DEFAULT_ARCHIVE_ROOT, MailConfig
 from robotsix_auto_mail.server._archive_action_mixin import _ArchiveActionMixin
-from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
 
 
-class _FakeHandler(_BoardViewMixin, _ArchiveActionMixin):
+class _RequestContextHelpers:
+    """Real ``_effective_archive_root`` / ``_require_imap_configured`` /
+    ``_validate_archive_path`` helpers (mirroring ``BoardHandler``) for stub
+    request contexts.
+
+    These three guards used to live on ``_BoardViewMixin``; after the view
+    migration they belong to ``BoardHandler`` itself.  Stub contexts mix this
+    in so the real guard behaviour runs against their ``MagicMock`` response
+    sinks.
+    """
+
+    mail_config: MailConfig | None
+    _serve_json: Any
+    _bad_request: Any
+
+    @property
+    def _effective_archive_root(self) -> str:
+        return (
+            self.mail_config.archive_root
+            if self.mail_config is not None
+            else DEFAULT_ARCHIVE_ROOT
+        )
+
+    def _require_imap_configured(self) -> bool:
+        if self.mail_config is None:
+            self._serve_json(
+                {"error": "IMAP not configured for this account"},
+                status=503,
+            )
+            return False
+        return True
+
+    def _validate_archive_path(self, *folders: str) -> tuple[bool, str]:
+        archive_root = self._effective_archive_root
+        for folder in folders:
+            if ".." in folder.split("/"):
+                self._bad_request(f"'{folder}' escapes archive root")
+                return False, ""
+        return True, archive_root
+
+
+class _FakeHandler(_ArchiveActionMixin, _RequestContextHelpers):
     """Concrete handler that wires the ``BoardHandlerProtocol`` attributes
     to MagicMock defaults so mixin methods can be called directly."""
 
@@ -34,6 +77,7 @@ class _FakeHandler(_BoardViewMixin, _ArchiveActionMixin):
         self._redirect = mock.MagicMock()
         self._not_found = mock.MagicMock()
         self._bad_request = mock.MagicMock()
+        self._serve_json = mock.MagicMock()
 
 
 class _ActionServiceContext:
