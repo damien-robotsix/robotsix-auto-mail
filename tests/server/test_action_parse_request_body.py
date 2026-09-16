@@ -1,4 +1,4 @@
-"""Unit tests for ``_BoardActionMixin._parse_request_body``.
+"""Unit tests for ``_request_helpers.parse_request_body``.
 
 Covers field stripping, no-strip preservation, missing-field defaults,
 content-length honouring, duplicate-field handling, empty-body
@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 
+from robotsix_auto_mail.server._request_helpers import parse_request_body
 from tests.server._test_helpers import _FakeHandler
 
 
@@ -18,7 +19,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = 50
         handler.rfile.read.return_value = b"field1=++hello++&field2=++world++"
 
-        result = handler._parse_request_body("field1", "field2")
+        result = parse_request_body(handler, "field1", "field2")
         assert result == {"field1": "hello", "field2": "world"}
 
     def test_no_strip_preserves_whitespace(self, tmp_db_path: str) -> None:
@@ -28,8 +29,8 @@ class TestParseRequestBody:
             b"notes=++leading+trailing++&other=++trimmed++"
         )
 
-        result = handler._parse_request_body(
-            "notes", "other", no_strip=frozenset({"notes"})
+        result = parse_request_body(
+            handler, "notes", "other", no_strip=frozenset({"notes"})
         )
         # notes: spaces preserved (the '+' signs decode to spaces in
         # URL-encoded form, and parse_qs doesn't strip).
@@ -44,7 +45,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = 12
         handler.rfile.read.return_value = b"field1=hello"
 
-        result = handler._parse_request_body("field1", "field2")
+        result = parse_request_body(handler, "field1", "field2")
         assert result == {"field1": "hello", "field2": ""}
 
     def test_content_length_honored(self, tmp_db_path: str) -> None:
@@ -52,7 +53,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = 7
         handler.rfile.read.return_value = b"field1=hello&field2=world"
 
-        result = handler._parse_request_body("field1")
+        result = parse_request_body(handler, "field1")
         # Only 7 bytes read: "field1=" — but parse_qs handles truncated input.
         assert "field1" in result
 
@@ -61,7 +62,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = 30
         handler.rfile.read.return_value = b"field1=first&field1=second"
 
-        result = handler._parse_request_body("field1")
+        result = parse_request_body(handler, "field1")
         assert result == {"field1": "first"}
 
     def test_empty_body_yields_empty_strings(self, tmp_db_path: str) -> None:
@@ -69,7 +70,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = 0
         handler.rfile.read.return_value = b""
 
-        result = handler._parse_request_body("field1", "field2")
+        result = parse_request_body(handler, "field1", "field2")
         assert result == {"field1": "", "field2": ""}
 
     # -- JSON fallback ---------------------------------------------------
@@ -80,7 +81,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = len(payload)
         handler.rfile.read.return_value = payload.encode()
 
-        result = handler._parse_request_body("message_id", "triage_action")
+        result = parse_request_body(handler, "message_id", "triage_action")
         assert result == {"message_id": "abc-123", "triage_action": "TO_READ"}
 
     def test_json_body_falls_back_when_form_empty(self, tmp_db_path: str) -> None:
@@ -90,7 +91,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = len(payload)
         handler.rfile.read.return_value = payload.encode()
 
-        result = handler._parse_request_body("field1", "field2")
+        result = parse_request_body(handler, "field1", "field2")
         assert result == {"field1": "hello", "field2": "world"}
 
     def test_json_body_null_value_yields_empty_string(self, tmp_db_path: str) -> None:
@@ -99,7 +100,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = len(payload)
         handler.rfile.read.return_value = payload.encode()
 
-        result = handler._parse_request_body("message_id", "redirect_to")
+        result = parse_request_body(handler, "message_id", "redirect_to")
         assert result == {"message_id": "", "redirect_to": "/board"}
 
     def test_json_body_numeric_value_coerced_to_string(self, tmp_db_path: str) -> None:
@@ -108,7 +109,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = len(payload)
         handler.rfile.read.return_value = payload.encode()
 
-        result = handler._parse_request_body("message_id", "triage_action")
+        result = parse_request_body(handler, "message_id", "triage_action")
         assert result == {"message_id": "42", "triage_action": "TO_ARCHIVE"}
 
     def test_json_body_missing_key_yields_empty_string(self, tmp_db_path: str) -> None:
@@ -117,7 +118,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = len(payload)
         handler.rfile.read.return_value = payload.encode()
 
-        result = handler._parse_request_body("message_id", "redirect_to")
+        result = parse_request_body(handler, "message_id", "redirect_to")
         assert result == {"message_id": "abc", "redirect_to": ""}
 
     def test_json_body_strips_fields_by_default(self, tmp_db_path: str) -> None:
@@ -126,7 +127,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = len(payload)
         handler.rfile.read.return_value = payload.encode()
 
-        result = handler._parse_request_body("field1", "field2")
+        result = parse_request_body(handler, "field1", "field2")
         assert result == {"field1": "hello", "field2": "world"}
 
     def test_json_body_no_strip_preserves_whitespace(self, tmp_db_path: str) -> None:
@@ -135,8 +136,8 @@ class TestParseRequestBody:
         handler.headers.get.return_value = len(payload)
         handler.rfile.read.return_value = payload.encode()
 
-        result = handler._parse_request_body(
-            "notes", "other", no_strip=frozenset({"notes"})
+        result = parse_request_body(
+            handler, "notes", "other", no_strip=frozenset({"notes"})
         )
         assert result == {"notes": "  keep spaces  ", "other": "trim"}
 
@@ -147,7 +148,7 @@ class TestParseRequestBody:
         handler.headers.get.return_value = len(payload)
         handler.rfile.read.return_value = payload.encode()
 
-        result = handler._parse_request_body("message_id", "field2")
+        result = parse_request_body(handler, "message_id", "field2")
         assert result == {"message_id": "", "field2": ""}
 
     def test_malformed_json_returns_empty_fields(self, tmp_db_path: str) -> None:
@@ -157,5 +158,5 @@ class TestParseRequestBody:
         handler.headers.get.return_value = len(payload)
         handler.rfile.read.return_value = payload.encode()
 
-        result = handler._parse_request_body("message_id", "redirect_to")
+        result = parse_request_body(handler, "message_id", "redirect_to")
         assert result == {"message_id": "", "redirect_to": ""}

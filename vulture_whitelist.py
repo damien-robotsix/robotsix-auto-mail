@@ -52,6 +52,15 @@ BoardHandler.do_PUT
 BoardHandler.log_message
 
 # ===========================================================================
+# Composition foundation — ``_services`` holds the stateless service
+# container that the subsequent mixin→service migration tickets consume via
+# ``do_GET``/``do_POST``.  No production reader exists yet (this ticket only
+# lays the foundation), so vulture flags it until the first mixin migrates.
+# ===========================================================================
+
+BoardHandler._services
+
+# ===========================================================================
 # Duck-typing / protocol methods — called by robotsix-board via getattr.
 # ===========================================================================
 

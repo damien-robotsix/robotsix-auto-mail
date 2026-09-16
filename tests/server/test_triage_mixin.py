@@ -31,7 +31,6 @@ class _FakeHandler(_TriageMixin):
     ) -> None:
         self.db_path = db_path
         self.mail_config = mail_config
-        self._parse_request_body = mock.MagicMock()
         self._launch_background_worker = mock.MagicMock()
         self._bad_request = mock.MagicMock()
         self._send_response = mock.MagicMock()
@@ -125,9 +124,12 @@ class TestHandleForceTriageColumn:
         """When the action is not in VALID_TRIAGE_ACTIONS, _bad_request is
         called and the worker is not launched."""
         handler = _FakeHandler(tmp_db_path)
-        handler._parse_request_body.return_value = {"action": "NOT_A_REAL_ACTION"}
 
-        handler._handle_force_triage_column()
+        with mock.patch(
+            "robotsix_auto_mail.server._triage_mixin.parse_request_body",
+            return_value={"action": "NOT_A_REAL_ACTION"},
+        ):
+            handler._handle_force_triage_column()
 
         handler._bad_request.assert_called_once()
         assert "Invalid triage action" in str(handler._bad_request.call_args[0][0])
@@ -140,11 +142,16 @@ class TestHandleForceTriageColumn:
         _bad_request is called with a generic message and the worker is
         not launched."""
         handler = _FakeHandler(tmp_db_path)
-        handler._parse_request_body.return_value = {"action": "TO_ARCHIVE"}
 
-        with mock.patch(
-            "robotsix_auto_mail.triage.delete_triage_decisions_by_action",
-            side_effect=TriageError("no decisions to clear"),
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._triage_mixin.parse_request_body",
+                return_value={"action": "TO_ARCHIVE"},
+            ),
+            mock.patch(
+                "robotsix_auto_mail.triage.delete_triage_decisions_by_action",
+                side_effect=TriageError("no decisions to clear"),
+            ),
         ):
             handler._handle_force_triage_column()
 
@@ -157,11 +164,16 @@ class TestHandleForceTriageColumn:
         """When delete_triage_decisions_by_action raises a generic
         exception, _send_response is called with status 503 and JSON body."""
         handler = _FakeHandler(tmp_db_path)
-        handler._parse_request_body.return_value = {"action": "TO_DELETE"}
 
-        with mock.patch(
-            "robotsix_auto_mail.triage.delete_triage_decisions_by_action",
-            side_effect=RuntimeError("database is locked"),
+        with (
+            mock.patch(
+                "robotsix_auto_mail.server._triage_mixin.parse_request_body",
+                return_value={"action": "TO_DELETE"},
+            ),
+            mock.patch(
+                "robotsix_auto_mail.triage.delete_triage_decisions_by_action",
+                side_effect=RuntimeError("database is locked"),
+            ),
         ):
             handler._handle_force_triage_column()
 

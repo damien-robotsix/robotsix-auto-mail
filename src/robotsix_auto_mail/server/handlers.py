@@ -18,6 +18,18 @@ multiple inheritance; each mixin lives in its own module under ``server/``:
 ``do_POST``), account selection, and the HTTP-infrastructure methods
 (``_send_response``, ``_redirect``, …).  The public API
 (``BoardHandler``, ``make_board_handler``) is unchanged.
+
+Composition migration
+---------------------
+These mixins are being replaced, one batch at a time, by stateless
+*services* held in a :class:`~robotsix_auto_mail.server._services.ServiceContainer`
+(built once per handler and exposed as ``self._services``).  Each service
+receives the running handler as a request *context*
+(:class:`~robotsix_auto_mail.server._board_handler_protocol.RequestContext`).
+The shared request helpers ``parse_request_body`` and ``handle_post_action``
+already live in :mod:`robotsix_auto_mail.server._request_helpers`; that module
+documents the full step-by-step migration recipe every subsequent ticket
+follows.  No mixin has been converted yet — this is the foundation.
 """
 
 from __future__ import annotations
@@ -52,6 +64,7 @@ from robotsix_auto_mail.server._ingest_mixin import _IngestMixin
 from robotsix_auto_mail.server._mailbox_mixin import _MailboxMixin
 from robotsix_auto_mail.server._reconcile_mixin import _ReconcileMixin
 from robotsix_auto_mail.server._sent_mixin import _SentMixin
+from robotsix_auto_mail.server._services import ServiceContainer
 from robotsix_auto_mail.server._settings_mixin import _SettingsMixin
 from robotsix_auto_mail.server._triage_mixin import _TriageMixin
 from robotsix_auto_mail.server._view_mixin import _BoardViewMixin
@@ -109,6 +122,19 @@ class BoardHandler(
         # Aggregate mode flag — set to ``True`` when the request resolves to
         # the global (all-accounts) board view.
         self._aggregate: bool = False
+        # Composition-era service container, holding the stateless endpoint
+        # services wired with the injected dependencies.  Built here — before
+        # ``super().__init__`` synchronously dispatches ``do_GET``/``do_POST``
+        # via ``handle()`` — so it is always available during request
+        # dispatch.  Services read per-request state (the resolved account,
+        # ``_aggregate``, the transport) off this handler, never off
+        # themselves, so a per-connection container is safe.  See
+        # ``_request_helpers`` for the mixin→service migration recipe.
+        self._services = ServiceContainer(
+            db_path=db_path,
+            mail_config=mail_config,
+            accounts=accounts,
+        )
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
     def do_GET(self) -> None:

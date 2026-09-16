@@ -1,6 +1,6 @@
 """Triage-launcher mixin for the board server."""
 
-# mypy: disable-error-code="attr-defined"
+# mypy: disable-error-code="attr-defined,arg-type"
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from robotsix_auto_mail.core._constants import _TRIAGE_RUN_STATE_KEY
 from robotsix_auto_mail.server._constants import _with_db
+from robotsix_auto_mail.server._request_helpers import parse_request_body
 from robotsix_auto_mail.server.adapters import (
     _run_triage_background,
 )
@@ -67,7 +68,7 @@ class _TriageMixin:
         )
 
         # -- parse body ---------------------------------------------------
-        params = self._parse_request_body("action")
+        params = parse_request_body(self, "action")
         action = params["action"]
         if action not in VALID_TRIAGE_ACTIONS:
             self._bad_request(f"Invalid triage action: {action!r}")

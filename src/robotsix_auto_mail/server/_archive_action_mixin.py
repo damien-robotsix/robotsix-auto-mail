@@ -1,6 +1,6 @@
 """Archive-action-handler mixin for the board server."""
 
-# mypy: disable-error-code="attr-defined"
+# mypy: disable-error-code="attr-defined,arg-type"
 
 from __future__ import annotations
 
@@ -17,7 +17,10 @@ from robotsix_auto_mail.config import (
     resolve_llm_tier,
 )
 from robotsix_auto_mail.db import MailRecord
-from robotsix_auto_mail.server._action_mixin import _json_field_value
+from robotsix_auto_mail.server._request_helpers import (
+    _json_field_value,
+    handle_post_action,
+)
 from robotsix_auto_mail.triage import (
     TO_ARCHIVE,
 )
@@ -245,7 +248,8 @@ class _ArchiveActionMixin:
         def archive_action(conn: Any, record: MailRecord, redirect_to: str) -> bool:
             return self._archive_and_delete(conn, record)
 
-        self._handle_post_action(
+        handle_post_action(
+            self,
             "message_id",
             "redirect_to",
             action=archive_action,
