@@ -347,14 +347,14 @@ modules:
       - src/robotsix_auto_mail/server/_batch_service.py
       - src/robotsix_auto_mail/server/_board_handler_protocol.py
       - src/robotsix_auto_mail/server/_config_service.py
-      - src/robotsix_auto_mail/server/_compose_draft_mixin.py
+      - src/robotsix_auto_mail/server/_compose_service.py
       - src/robotsix_auto_mail/server/_request_helpers.py
       - src/robotsix_auto_mail/server/_services.py
       - src/robotsix_auto_mail/server/_reconcile_service.py
       - src/robotsix_auto_mail/server/_ingest_service.py
       - src/robotsix_auto_mail/server/_mailbox_mixin.py
       - src/robotsix_auto_mail/server/_sent_service.py
-      - src/robotsix_auto_mail/server/_settings_mixin.py
+      - src/robotsix_auto_mail/server/_settings_service.py
       - src/robotsix_auto_mail/server/_triage_service.py
       - src/robotsix_auto_mail/server/_view_mixin.py
       - src/robotsix_auto_mail/server/views/__init__.py
@@ -381,8 +381,8 @@ modules:
       - tests/server/_test_helpers.py
       - tests/server/test_attachment_mixin.py
       - tests/server/test_attachment_mixin_archive_unzip.py
-      - tests/server/test_compose_draft_mixin.py
-      - tests/server/test_compose_draft_append.py
+      - tests/server/test_compose_service.py
+      - tests/server/test_compose_service_append.py
       - tests/server/test_action_archive_and_delete.py
       - tests/server/test_action_archive_delete.py
       - tests/server/test_action_archive_move.py
@@ -429,7 +429,7 @@ modules:
       - tests/server/test_mailbox_mixin.py
       - tests/server/test_config_service.py
       - tests/server/test_services_container.py
-      - tests/server/test_settings_mixin.py
+      - tests/server/test_settings_service.py
       - tests/server/test_redirect_safety.py
       - tests/server/test_server_archive_batch.py
       - tests/server/test_server_archive_delete_basic.py

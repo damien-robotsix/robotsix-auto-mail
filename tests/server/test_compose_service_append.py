@@ -16,10 +16,11 @@ from unittest import mock
 
 from robotsix_auto_mail.db import MailRecord, init_db, insert_record
 from robotsix_auto_mail.imap.mailbox import MailboxInfo
-from tests.server.test_compose_draft_mixin import (
-    _ComposeDraftFakeHandler,
+from robotsix_auto_mail.server._compose_service import ComposeService
+from tests.server.test_compose_service import (
     _make_accounts,
     _set_json_body,
+    _StubContext,
 )
 
 
@@ -43,9 +44,9 @@ def _mock_imap(folders: list[MailboxInfo]) -> mock.MagicMock:
 
 class TestComposeDraftImapAppend:
     def test_no_attachments_appends_to_drafts(self, single_db: str) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "to": "ext@other.com",
@@ -57,7 +58,7 @@ class TestComposeDraftImapAppend:
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_cls.return_value.__enter__ = mock.MagicMock(return_value=imap)
             mock_cls.return_value.__exit__ = mock.MagicMock(return_value=False)
-            handler._handle_compose_draft()
+            ComposeService(db_path="").handle_compose_draft(ctx)
 
         imap.append_message.assert_called_once()
         call_args = imap.append_message.call_args
@@ -67,8 +68,8 @@ class TestComposeDraftImapAppend:
         assert b"From: user@example.com" in msg_bytes
         assert b"To: ext@other.com" in msg_bytes
         assert b"Subject: Test" in msg_bytes
-        handler._serve_json.assert_called_once()
-        assert handler._serve_json.call_args[1]["status"] == 201
+        ctx._serve_json.assert_called_once()
+        assert ctx._serve_json.call_args[1]["status"] == 201
 
     def test_reply_sets_threading_headers(self, single_db: str) -> None:
         conn = init_db(single_db, skip_migrations=True)
@@ -86,9 +87,9 @@ class TestComposeDraftImapAppend:
         finally:
             conn.close()
 
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "body": "My reply.",
@@ -99,7 +100,7 @@ class TestComposeDraftImapAppend:
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_cls.return_value.__enter__ = mock.MagicMock(return_value=imap)
             mock_cls.return_value.__exit__ = mock.MagicMock(return_value=False)
-            handler._handle_compose_draft()
+            ComposeService(db_path="").handle_compose_draft(ctx)
 
         msg_bytes = imap.append_message.call_args[0][1]
         assert b"In-Reply-To: <orig@example.com>" in msg_bytes
@@ -108,9 +109,9 @@ class TestComposeDraftImapAppend:
         assert b"To: peer@example.com" in msg_bytes
 
     def test_with_attachment_is_base64_multipart(self, single_db: str) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
         _set_json_body(
-            handler,
+            ctx,
             {
                 "account": "TEST",
                 "to": "ext@other.com",
@@ -129,7 +130,7 @@ class TestComposeDraftImapAppend:
         imap = _mock_imap(_drafts_folder())
         with (
             mock.patch(
-                "robotsix_auto_mail.server._compose_draft_mixin.httpx"
+                "robotsix_auto_mail.server._compose_service.httpx"
             ) as mock_httpx,
             mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls,
         ):
@@ -140,7 +141,7 @@ class TestComposeDraftImapAppend:
             mock_httpx.Client.return_value = http
             mock_cls.return_value.__enter__ = mock.MagicMock(return_value=imap)
             mock_cls.return_value.__exit__ = mock.MagicMock(return_value=False)
-            handler._handle_compose_draft()
+            ComposeService(db_path="").handle_compose_draft(ctx)
 
         msg_bytes = imap.append_message.call_args[0][1]
         assert b"report.pdf" in msg_bytes
@@ -149,9 +150,9 @@ class TestComposeDraftImapAppend:
         assert b"multipart" in msg_bytes
 
     def test_no_drafts_folder_fails_loudly(self, single_db: str) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
         _set_json_body(
-            handler,
+            ctx,
             {"account": "TEST", "to": "ext@other.com", "subject": "T", "body": "H"},
         )
         imap = _mock_imap(
@@ -160,16 +161,16 @@ class TestComposeDraftImapAppend:
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_cls.return_value.__enter__ = mock.MagicMock(return_value=imap)
             mock_cls.return_value.__exit__ = mock.MagicMock(return_value=False)
-            handler._handle_compose_draft()
+            ComposeService(db_path="").handle_compose_draft(ctx)
 
         imap.append_message.assert_not_called()
-        handler._serve_json.assert_called_once()
-        assert handler._serve_json.call_args[1]["status"] == 502
+        ctx._serve_json.assert_called_once()
+        assert ctx._serve_json.call_args[1]["status"] == 502
 
     def test_imap_append_failure_fails_loudly(self, single_db: str) -> None:
-        handler = _ComposeDraftFakeHandler(accounts=_make_accounts(db_path=single_db))
+        ctx = _StubContext(accounts=_make_accounts(db_path=single_db))
         _set_json_body(
-            handler,
+            ctx,
             {"account": "TEST", "to": "ext@other.com", "subject": "T", "body": "H"},
         )
         imap = _mock_imap(_drafts_folder())
@@ -177,9 +178,9 @@ class TestComposeDraftImapAppend:
         with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
             mock_cls.return_value.__enter__ = mock.MagicMock(return_value=imap)
             mock_cls.return_value.__exit__ = mock.MagicMock(return_value=False)
-            handler._handle_compose_draft()
+            ComposeService(db_path="").handle_compose_draft(ctx)
 
-        handler._serve_json.assert_called_once()
-        call_args = handler._serve_json.call_args
+        ctx._serve_json.assert_called_once()
+        call_args = ctx._serve_json.call_args
         assert call_args[1]["status"] == 502
         assert call_args[0][0]["type"] == "urn:robotsix:error:imap-append-failed"

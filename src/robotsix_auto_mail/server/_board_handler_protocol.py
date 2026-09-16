@@ -24,6 +24,10 @@ class BoardHandlerProtocol(Protocol):
     path: str
     headers: Any
     rfile: Any
+    # The ``HTTPServer`` instance, populated by ``BaseHTTPRequestHandler``.
+    # Settings-page writes reach the handler-factory keywords through it to
+    # refresh the running server's cached accounts after a config change.
+    server: Any
 
     def _send_response(
         self,
