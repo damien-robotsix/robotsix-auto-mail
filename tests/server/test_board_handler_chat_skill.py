@@ -5,7 +5,12 @@ from __future__ import annotations
 from urllib.request import urlopen
 
 import yaml
+from robotsix_http.fastapi import (
+    ChatSkillFrontmatter,
+    parse_chat_skill_frontmatter,
+)
 
+from robotsix_auto_mail.server._constants import _STATIC_CHAT_SKILL_MD
 from tests.server.conftest_helpers import _start_test_server
 
 
@@ -56,3 +61,24 @@ def test_chat_skill_has_frontmatter(single_db: str) -> None:
         assert len(frontmatter["description"]) > 0
     finally:
         server.shutdown()
+
+
+def test_static_chat_skill_md_satisfies_shared_parser() -> None:
+    """The served descriptor satisfies the shared chat-access contract.
+
+    auto-mail serves ``/chat-skill`` via stdlib ``http.server`` (not FastAPI),
+    so it cannot mount ``robotsix_http.fastapi.create_chat_skill_router``.  This
+    test validates ``_STATIC_CHAT_SKILL_MD`` against the same framework-agnostic
+    ``parse_chat_skill_frontmatter`` the FastAPI repos enforce via that router,
+    guaranteeing the descriptor meets the identical contract: a ``---``-delimited
+    frontmatter block with a kebab-case ``name`` and a non-empty one-sentence
+    ``description``.
+    """
+    frontmatter = parse_chat_skill_frontmatter(_STATIC_CHAT_SKILL_MD)
+
+    assert isinstance(frontmatter, ChatSkillFrontmatter)
+    # Kebab-case component id, matching auto-mail's package/component name.
+    assert frontmatter.name == "robotsix-auto-mail"
+    # A non-empty, single-sentence description (the parser rejects an empty one).
+    assert frontmatter.description
+    assert frontmatter.description.count(".") <= 1
