@@ -55,6 +55,16 @@ dev = [
     "pyyaml>=6.0.3",
     "types-PyYAML",
     "robotsix-llmio[openrouter,claude_sdk,tracing]",
+    # fastapi is required only so the chat-skill descriptor test can import the
+    # framework-agnostic parse_chat_skill_frontmatter / ChatSkillFrontmatter
+    # from robotsix_http.fastapi (that submodule imports fastapi at top level).
+    # The server keeps serving /chat-skill via stdlib http.server, so fastapi
+    # is a test-only need and lives here in the dev extra.  It is declared
+    # directly rather than via the robotsix-http[fastapi] extra because the
+    # graph-wide [tool.uv] override-dependencies pin (needed to unify the
+    # robotsix-http rev against robotsix-llmio's older transitive pin) strips
+    # the extra marker.
+    "fastapi>=0.115",
     # robotsix-modules provides the CLI used by CI / pre-commit to validate and
     # check registration of docs/modules.yaml. It is tooling only (never imported
     # by the package), so it lives in the dev extra (exempt from deptry DEP002).
@@ -207,9 +217,22 @@ paths = ["src/robotsix_auto_mail"]
 # does not need it but cannot drop it from the signature.
 ignore_names = ["format", "method_name"]
 
+[tool.uv]
+# robotsix-llmio transitively pins robotsix-http at an older rev
+# (c5794723…, v0.3.3) that predates the robotsix_http.fastapi extraction.
+# auto-mail needs the newer rev for parse_chat_skill_frontmatter /
+# ChatSkillFrontmatter (adopted in the chat-skill descriptor test).  The bump
+# is purely additive over v0.3.3 (new fastapi.py + safety.py; the client /
+# retry API robotsix-llmio consumes is unchanged), so overriding the pin
+# graph-wide is safe.  Drop this override once robotsix-llmio bumps its own
+# robotsix-http pin in lockstep.
+override-dependencies = [
+    "robotsix-http @ git+https://github.com/damien-robotsix/robotsix-http.git@7557325f0cd08e47124b588710da011951feb421",  # pragma: allowlist secret
+]
+
 [tool.uv.sources]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "7fc8e9d4cc27ee128c474f36147af87296359215" }  # pragma: allowlist secret
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "7eee4cf3726daadab6870bf5acbfede81675ce86" }  # pragma: allowlist secret
 robotsix-config = { git = "https://github.com/damien-robotsix/robotsix-config.git", rev = "8b9fa37f53b179986ca8b8f603d8786b9aa06018" }  # pragma: allowlist secret
-robotsix-http = { git = "https://github.com/damien-robotsix/robotsix-http.git", rev = "c57947232685f4e4798a61e2bc53d747d3dbc75d" }  # pragma: allowlist secret
+robotsix-http = { git = "https://github.com/damien-robotsix/robotsix-http.git", rev = "7557325f0cd08e47124b588710da011951feb421" }  # pragma: allowlist secret
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "d916d1c14198dd00bb136605224177289c73352c" }  # pragma: allowlist secret
