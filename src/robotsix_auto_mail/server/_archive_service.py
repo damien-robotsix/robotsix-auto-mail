@@ -13,7 +13,6 @@ off it, never off the service instance.
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
@@ -270,16 +269,8 @@ class ArchiveService(Service):
         )
 
         # Parse the JSON body.
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw = ctx.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            ctx._bad_request("JSON body must be an object")
+        data = ctx._read_json_object_body()
+        if data is None:
             return
 
         message_id = _json_field_value(data, "message_id")
@@ -431,16 +422,8 @@ class ArchiveService(Service):
         Returns JSON on success.  The folder must be under the archive
         root; path-escaping attempts (``..`` segments) are rejected.
         """
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw = ctx.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            ctx._bad_request("JSON body must be an object")
+        data = ctx._read_json_object_body()
+        if data is None:
             return
 
         source_folder = _json_field_value(data, "source_folder")
@@ -591,16 +574,8 @@ class ArchiveService(Service):
         Returns JSON on success; 404 when the uid is not found in
         *source_folder*.
         """
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw = ctx.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            ctx._bad_request("JSON body must be an object")
+        data = ctx._read_json_object_body()
+        if data is None:
             return
 
         uid_raw = data.get("uid")
@@ -741,16 +716,8 @@ class ArchiveService(Service):
 
         Returns JSON on success.
         """
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw = ctx.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            ctx._bad_request("JSON body must be an object")
+        data = ctx._read_json_object_body()
+        if data is None:
             return
 
         source_folder = _json_field_value(data, "source_folder")

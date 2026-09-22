@@ -96,17 +96,10 @@ class ComposeService(Service):
         from robotsix_auto_mail.db import get_record_by_message_id
 
         # -- parse JSON body -----------------------------------------------
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw_body = (
-            ctx.rfile.read(content_length).decode("utf-8") if content_length else ""
+        body = ctx._read_json_object_body(
+            allow_empty=True, object_error="Request body must be a JSON object"
         )
-        try:
-            body: dict[str, Any] = json.loads(raw_body) if raw_body.strip() else {}
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-        if not isinstance(body, dict):
-            ctx._bad_request("Request body must be a JSON object")
+        if body is None:
             return
 
         account_id = body.get("account", "")

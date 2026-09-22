@@ -80,6 +80,14 @@ class BoardHandlerProtocol(Protocol):
     ) -> bool:
         pass
 
+    def _read_json_object_body(
+        self,
+        *,
+        allow_empty: bool = False,
+        object_error: str = "JSON body must be an object",
+    ) -> dict[str, Any] | None:
+        pass
+
     @property
     def _effective_archive_root(self) -> str:
         pass

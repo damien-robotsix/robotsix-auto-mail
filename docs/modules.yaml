@@ -348,6 +348,7 @@ modules:
       - src/robotsix_auto_mail/server/_board_handler_protocol.py
       - src/robotsix_auto_mail/server/_config_service.py
       - src/robotsix_auto_mail/server/_compose_service.py
+      - src/robotsix_auto_mail/server/_json_body_mixin.py
       - src/robotsix_auto_mail/server/_request_helpers.py
       - src/robotsix_auto_mail/server/_services.py
       - src/robotsix_auto_mail/server/_reconcile_service.py
