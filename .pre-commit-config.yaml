@@ -17,7 +17,7 @@ repos:
         additional_dependencies:
           - pyyaml>=6.0.3
           - pydantic>=2.13.5
-          - urllib3>=2.7.0
+          - urllib3>=2.8.0
           - types-PyYAML
 
   - repo: https://github.com/abravalheri/validate-pyproject
