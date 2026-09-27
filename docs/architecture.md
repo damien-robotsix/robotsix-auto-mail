@@ -190,3 +190,88 @@ and `auth` — with its `auth login` sub-subcommand for the
 OAuth2 device-code flow).  Only `triage` and `config-sync` have `-set`
 companions.  `server/` serves the read/write kanban board over HTTP, backed
 by the same SQLite datastore.
+
+## Server request handling: composition model
+
+The `server/` request-handling layer follows a **composition** design: a thin
+HTTP-infrastructure shell (`BoardHandler`) dispatches every endpoint to a
+stateless *service* through a per-request *context*.  This replaced an earlier
+~15-way mixin inheritance (`BoardHandler(AttachmentMixin, MailboxMixin, …,
+BaseHTTPRequestHandler)`); that migration is now **complete** — no mixin
+modules remain and `BoardHandler` inherits only from
+`http.server.BaseHTTPRequestHandler`.
+
+### `BoardHandler` — HTTP infra + data-driven routing
+
+`server/handlers.py` defines `BoardHandler`, which owns only the
+cross-cutting HTTP concerns:
+
+- the response sinks and transport helpers (`_send_response`, `_redirect`,
+  `_not_found`, `_bad_request`, `_problem`, `_serve_json`);
+- per-request account selection (`_select_account`) and the per-request
+  state it sets (`_current_account_id`, `_aggregate`, `_account_cookie`);
+- the shared archive guards (`_effective_archive_root`,
+  `_require_imap_configured`, `_validate_archive_path`); and
+- the **route tables** in `do_GET` / `do_POST` (`do_PUT` where present).
+
+The GET table is an ordered list of `(predicate, handler)` tuples (first
+match wins, so prefix routes are ordered after their more-specific
+siblings); the POST table is an exact-match `dict` preceded by a few
+prefix-based special cases.  A handful of cross-account endpoints
+(`/auth-status`, `/add-account`, `/config`, `/delete-account`,
+`/config/rollback`, …) are dispatched *before* `_select_account()` so they
+work regardless of — or in the absence of — a session account.  Almost every
+route resolves to `self._services.get(SomeService).handle_…(ctx)`.
+
+### Services — stateless endpoint groups
+
+Each former mixin is now a `server/_<name>_service.py` module whose class
+subclasses `Service` (`server/_services.py`).  A `Service` stores only the
+injected, request-independent dependencies (`db_path`, `mail_config`,
+`accounts`) — never per-request state — so a single instance is safe to reuse
+across every request on a connection.  The `ServiceContainer` (also in
+`server/_services.py`) is built once per `make_board_handler()` call, wired
+with those dependencies, and exposed as `self._services`; its `get()` lazily
+instantiates and memoises each service on first use.
+
+### `RequestContext` — the structural contract
+
+Services never depend on the concrete `BoardHandler`.  They depend on the
+narrow `RequestContext` structural `Protocol` defined in
+`server/_board_handler_protocol.py` (an alias for `BoardHandlerProtocol`).
+The running handler *is* the context — it structurally satisfies the Protocol
+— so `do_GET` / `do_POST` pass `cast("RequestContext", self)` to each service
+method.  The Protocol exposes the HTTP infra, the injected dependencies, the
+per-request transport (`path`, `headers`, `rfile`, `server`), the per-request
+state, and the archive guards listed above.
+
+### Shared request helpers
+
+Two request-handling steps are shared by every endpoint group and therefore
+live in `server/_request_helpers.py` rather than on any one service:
+
+- `parse_request_body(ctx, *fields, no_strip=…)` — parse the body as
+  URL-encoded form data with a JSON fallback;
+- `handle_post_action(ctx, *fields, action=…, …)` — the shared POST skeleton
+  (parse body → validate `message_id` → open a read-only DB connection and
+  look up the record → delegate to `action` → safe redirect).
+
+`launch_background_worker(ctx, …)` (single-flight watermark guard + optional
+daemon thread) is exposed on the context as `_launch_background_worker`.
+
+### Adding or migrating an endpoint
+
+To add a new endpoint group (the same recipe that drove the mixin
+migration):
+
+1. Create `server/_<name>_service.py` with a `Service` subclass; each
+   endpoint method takes `ctx: RequestContext` as its first argument and
+   reads all handler-owned state off `ctx`.
+2. Register the class in the `handlers.py` imports and dispatch to it via
+   `self._services.get(<Name>Service).handle_…(ctx)` from the route table.
+3. Register the new module in [docs/modules.yaml](modules.yaml) and add
+   `_FakeHandler`-style unit tests that instantiate the service directly and
+   pass a stub context.
+
+The service container itself needs no per-service registration — `get()`
+builds any `Service` subclass on demand from the injected dependencies.
