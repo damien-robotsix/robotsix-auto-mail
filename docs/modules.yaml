@@ -108,6 +108,7 @@ modules:
       - tests/cli/test_commands_config_sync.py
       - tests/cli/test_commands_detect_cmd.py
       - tests/cli/test_commands_detect_probe.py
+      - tests/cli/test_commands_probe.py
       - tests/cli/test_commands_detect_report.py
       - tests/cli/test_commands_serve.py
       - tests/cli/test_commands_serve_ingest.py
@@ -228,6 +229,7 @@ modules:
       - tests/db/test_db_source.py
       - tests/db/test_db_schema.py
       - tests/db/test_migrate.py
+      - tests/db/test_migrate_functions.py
 
   - id: detect
     description: >-
@@ -272,6 +274,7 @@ modules:
       - tests/imap/test_imap_search_uids.py
       - tests/imap/test_imap_utils.py
       - tests/imap/test_imap_fetch_envelopes.py
+      - tests/imap/test_parsing.py
 
   - id: oauth2
     description: >-
