@@ -158,6 +158,75 @@ def test_cache_path_derives_from_db_path(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cache loading via the shared robotsix_http.oauth persistence primitives
+# ---------------------------------------------------------------------------
+
+
+def test_load_cache_returns_fresh_when_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A missing cache file → a fresh, empty SerializableTokenCache."""
+    from robotsix_auto_mail.oauth2 import _load_cache
+
+    _install_fake_msal(monkeypatch, accounts=[], silent_result=None)
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    assert not cache_path_for(cfg).exists()
+
+    cache = _load_cache(cfg)
+    assert isinstance(cache, _FakeCache)
+    # Fresh cache carries no persisted state.
+    assert cache.serialize() == ""
+
+
+def test_load_cache_reads_existing_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An existing cache file is deserialized into the returned cache."""
+    from robotsix_auto_mail.oauth2 import _load_cache
+
+    _install_fake_msal(monkeypatch, accounts=[], silent_result=None)
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    path = cache_path_for(cfg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('{"cached": "state"}')
+
+    cache = _load_cache(cfg)
+    assert cache.serialize() == '{"cached": "state"}'
+
+
+def test_load_cache_tolerates_corrupt_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A corrupt cache file (deserialize raises) → fresh cache, no raise."""
+    from robotsix_auto_mail.oauth2 import _load_cache
+
+    class _RaisingCache:
+        def __init__(self) -> None:
+            self.has_state_changed = False
+            self._state = ""
+
+        def deserialize(self, text: str) -> None:
+            raise ValueError("corrupt payload")
+
+        def serialize(self) -> str:
+            return self._state
+
+    class _FakeMsal:
+        SerializableTokenCache = _RaisingCache
+
+    monkeypatch.setitem(sys.modules, "msal", _FakeMsal())
+    cfg = _make_config(tmp_path, oauth2_provider="microsoft")
+    path = cache_path_for(cfg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("CORRUPT")
+
+    # Must degrade to a fresh empty cache instead of propagating the error.
+    cache = _load_cache(cfg)
+    assert isinstance(cache, _RaisingCache)
+    assert cache.serialize() == ""
+
+
+# ---------------------------------------------------------------------------
 # Silent-token happy path
 # ---------------------------------------------------------------------------
 

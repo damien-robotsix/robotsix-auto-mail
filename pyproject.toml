@@ -227,12 +227,12 @@ ignore_names = ["format", "method_name"]
 # graph-wide is safe.  Drop this override once robotsix-llmio bumps its own
 # robotsix-http pin in lockstep.
 override-dependencies = [
-    "robotsix-http @ git+https://github.com/damien-robotsix/robotsix-http.git@7557325f0cd08e47124b588710da011951feb421",  # pragma: allowlist secret
+    "robotsix-http @ git+https://github.com/damien-robotsix/robotsix-http.git@f8e05c97b901d1ea9af69c1b2d16bc59e8064c42",  # pragma: allowlist secret
 ]
 
 [tool.uv.sources]
 robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "7fc8e9d4cc27ee128c474f36147af87296359215" }  # pragma: allowlist secret
 robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "7eee4cf3726daadab6870bf5acbfede81675ce86" }  # pragma: allowlist secret
 robotsix-config = { git = "https://github.com/damien-robotsix/robotsix-config.git", rev = "8b9fa37f53b179986ca8b8f603d8786b9aa06018" }  # pragma: allowlist secret
-robotsix-http = { git = "https://github.com/damien-robotsix/robotsix-http.git", rev = "7557325f0cd08e47124b588710da011951feb421" }  # pragma: allowlist secret
+robotsix-http = { git = "https://github.com/damien-robotsix/robotsix-http.git", rev = "f8e05c97b901d1ea9af69c1b2d16bc59e8064c42" }  # pragma: allowlist secret
 robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "d916d1c14198dd00bb136605224177289c73352c" }  # pragma: allowlist secret
