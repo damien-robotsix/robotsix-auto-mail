@@ -21,6 +21,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from robotsix_http.oauth import (
+    SecureTokenStore,
+)
+from robotsix_http.oauth import (
+    build_token_provider as _shared_build_token_provider,
+)
+
 from robotsix_auto_mail.config import ConfigurationError, MailConfig
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -90,25 +97,43 @@ def cache_path_for(config: MailConfig) -> Path:
     return Path(config.db_path).parent / "msal_cache.json"
 
 
-def _load_cache(config: MailConfig) -> Any:
-    """Load (or create) the per-account ``SerializableTokenCache``."""
+def _token_store(config: MailConfig) -> SecureTokenStore[Any]:
+    """Return the secure on-disk store for *config*'s MSAL token cache.
+
+    Layers MSAL's ``SerializableTokenCache`` (de)serialization on top of the
+    shared ``robotsix_http.oauth`` persistence primitives, which own the
+    0700-directory / 0600-file security posture, the empty-path=disabled
+    contract, and the missing/corrupt-file silent no-op.
+    """
     msal = _require_msal()
-    cache = msal.SerializableTokenCache()
-    path = cache_path_for(config)
-    if path.exists():
-        cache.deserialize(path.read_text())
-    return cache
+
+    def _loads(raw: str) -> Any:
+        cache = msal.SerializableTokenCache()
+        cache.deserialize(raw)
+        return cache
+
+    return SecureTokenStore(
+        path=cache_path_for(config),
+        dumps=lambda cache: str(cache.serialize()),
+        loads=_loads,
+    )
+
+
+def _load_cache(config: MailConfig) -> Any:
+    """Load (or create) the per-account ``SerializableTokenCache``.
+
+    A missing or corrupt on-disk cache degrades to a fresh empty cache
+    (silent no-op) rather than raising.
+    """
+    msal = _require_msal()
+    return _token_store(config).load() or msal.SerializableTokenCache()
 
 
 def _persist_cache(config: MailConfig, cache: Any) -> None:
     """Write *cache* back to disk when its state changed."""
     if not cache.has_state_changed:
         return
-    path = cache_path_for(config)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.parent.chmod(0o700)
-    path.write_text(cache.serialize())
-    path.chmod(0o600)
+    _token_store(config).save(cache)
 
 
 # ---------------------------------------------------------------------------
@@ -383,7 +408,7 @@ def build_token_provider(config: MailConfig) -> TokenProvider | None:
 
     account_hint = config.username or "<id>"
 
-    def _provider() -> str:
+    def _acquire() -> Any:
         app = build_msal_app(config)
         accounts = app.get_accounts()
         if not accounts:
@@ -400,6 +425,9 @@ def build_token_provider(config: MailConfig) -> TokenProvider | None:
                 "Run `robotsix-auto-mail auth login --account <id>` to "
                 "re-consent."
             )
-        return str(result["access_token"])
+        return result
 
-    return _provider
+    return _shared_build_token_provider(
+        acquire=_acquire,
+        extract=lambda result: str(result["access_token"]),
+    )
