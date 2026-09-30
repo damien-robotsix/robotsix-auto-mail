@@ -12,6 +12,7 @@ from robotsix_auto_mail.imap import (
     MailboxInfo,
     cross_folder_resolve,
 )
+from robotsix_auto_mail.imap._parsing import _copyuid_indicates_empty_source
 
 # ---------------------------------------------------------------------------
 # cross_folder_resolve
@@ -244,4 +245,4 @@ def test_cross_folder_resolve_source_folder_none_backward_compat() -> None:
 def test_copyuid_indicates_empty_source_true() -> None:
     """_copyuid_indicates_empty_source returns True when COPYUID source-set is empty."""
     data = [b"1 OK [COPYUID 12345 "]
-    assert ImapClient._copyuid_indicates_empty_source(data) is True
+    assert _copyuid_indicates_empty_source(data) is True
