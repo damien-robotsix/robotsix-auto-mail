@@ -90,7 +90,7 @@ accounts:
 | Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
 | `imap.host` | *(none)* | string | yes | Hostname of the IMAP server. |
-| `imap.port` | `993` | integer | no | IMAP server port. |
+| `imap.port` | `993` | integer | no | IMAP server port (valid range: 1-65535; 993 for direct TLS, 143 for STARTTLS). |
 | `imap.tls_mode` | `direct-tls` | `starttls` / `direct-tls` / `none` | no | TLS negotiation mode. `direct-tls` initiates TLS immediately (port 993 convention); `starttls` upgrades after connecting (port 143 convention); `none` disables TLS entirely. |
 | `imap.folder` | `INBOX` | string | no | Mailbox (folder) to watch for new mail. |
 
@@ -99,7 +99,7 @@ accounts:
 | Key | Default | Kind | Required | Description |
 |---|---|---|---|---|
 | `smtp.host` | *(none)* | string | yes | Hostname of the SMTP server. |
-| `smtp.port` | `587` | integer | no | SMTP server port. |
+| `smtp.port` | `587` | integer | no | SMTP server port (valid range: 1-65535; 587 for STARTTLS, 465 for direct TLS). |
 | `smtp.tls_mode` | `starttls` | `starttls` / `direct-tls` / `none` | no | TLS negotiation mode. |
 
 ### `auth` — authentication
