@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import contextlib
 import imaplib
-import re
 import ssl
 from collections.abc import Iterator
 from typing import Any
@@ -27,7 +26,13 @@ from typing import Any
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response
 
-from ._parsing import _parse_inline_fetch_attrs
+from ._parsing import (
+    _copyuid_indicates_empty_source,
+    _parse_appenduid,
+    _parse_inline_fetch_attrs,
+    _parse_uid_from_fetch_header,
+    _parse_uid_from_fetch_trailer,
+)
 from .errors import (
     ImapAuthError,
     ImapConnectionError,
@@ -593,7 +598,7 @@ class ImapClient(_ProtocolClient):
         if status != "OK":
             response_text = b"".join(data).decode("utf-8", errors="replace").strip()
             raise ImapError(f"APPEND to '{mailbox}' failed: {status} — {response_text}")
-        return self._parse_appenduid(data)
+        return _parse_appenduid(data)
 
     def _subscribe(self, name: str) -> None:
         """Subscribe to *name*; ignore failure silently."""
@@ -695,7 +700,7 @@ class ImapClient(_ProtocolClient):
                 # Parse UID from the header line, e.g.:
                 # b'1 (UID 42)'
                 # b'1 (UID 42 BODY[] {5}'
-                uid = self._parse_uid_from_fetch_header(header)
+                uid = _parse_uid_from_fetch_header(header)
                 if uid is not None:
                     result.append((uid, body))
                     pending_body = None
@@ -706,7 +711,7 @@ class ImapClient(_ProtocolClient):
             elif isinstance(item, bytes) and pending_body is not None:
                 # Trailing bare-bytes UID carrier for the preceding
                 # header-less tuple, e.g. b" UID 10780)".
-                uid = self._parse_uid_from_fetch_trailer(item)
+                uid = _parse_uid_from_fetch_trailer(item)
                 if uid is not None:
                     result.append((uid, pending_body))
                 pending_body = None
@@ -751,7 +756,7 @@ class ImapClient(_ProtocolClient):
         for item in data:
             # For inline responses (no literals), imaplib returns bytes.
             if isinstance(item, bytes):
-                uid = self._parse_uid_from_fetch_header(item)
+                uid = _parse_uid_from_fetch_header(item)
                 if uid is None:
                     continue
                 msg = _parse_inline_fetch_attrs(item)
@@ -761,7 +766,7 @@ class ImapClient(_ProtocolClient):
             elif isinstance(item, tuple) and len(item) == 2:
                 # Some servers may split the response — handle gracefully.
                 header, payload = item
-                uid = self._parse_uid_from_fetch_header(
+                uid = _parse_uid_from_fetch_header(
                     header if isinstance(header, bytes) else b""
                 )
                 if uid is None:
@@ -841,7 +846,7 @@ class ImapClient(_ProtocolClient):
         # and its source-UID set is empty the COPY affected zero messages —
         # treat it as not-found.  Servers that omit ``COPYUID`` are not
         # regressed (we only raise when it is present and indicates zero).
-        if self._copyuid_indicates_empty_source(data):
+        if _copyuid_indicates_empty_source(data):
             raise ImapMessageNotFoundError(
                 f"UID {uid} not found in the selected folder (stale UID); "
                 "COPYUID reported zero source messages"
@@ -937,105 +942,7 @@ class ImapClient(_ProtocolClient):
             # returns a ``COPYUID`` response code.  When present and its
             # source-UID set is empty the COPY affected zero messages —
             # skip deletion of originals.
-            if self._copyuid_indicates_empty_source(data):
+            if _copyuid_indicates_empty_source(data):
                 continue
 
             self.delete_messages(valid_uids)
-
-    @staticmethod
-    def _parse_appenduid(data: Any) -> int | None:
-        """Extract the UID from an ``APPENDUID`` response code.
-
-        Inspects the ``APPEND`` response data for an ``APPENDUID``
-        response code (RFC 4315 / UIDPLUS:
-        ``APPENDUID <uidvalidity> <uid>``).  Returns the UID as
-        ``int`` when present, or ``None`` when the server does not
-        advertise UIDPLUS or the response lacks the code.
-        """
-        if not data:
-            return None
-        for item in data:
-            if isinstance(item, bytes):
-                text = item.decode("utf-8", errors="replace")
-            elif isinstance(item, str):
-                text = item
-            else:
-                continue
-            match = re.search(r"APPENDUID\s+\d+\s+(\d+)", text)
-            if match is not None:
-                try:
-                    return int(match.group(1))
-                except ValueError, TypeError:
-                    return None
-        return None
-
-    @staticmethod
-    def _copyuid_indicates_empty_source(data: Any) -> bool:
-        """Return ``True`` when a COPY response carries an empty ``COPYUID``.
-
-        Inspects the ``UID COPY`` response data for a ``COPYUID`` response
-        code (RFC 4315: ``COPYUID <uidvalidity> <source-set> <dest-set>``).
-        Returns ``True`` only when ``COPYUID`` is present AND its source-UID
-        set is empty (zero messages copied).  Returns ``False`` when no
-        ``COPYUID`` is present, so servers without UIDPLUS are not regressed.
-        """
-        if not data:
-            return False
-        for item in data:
-            if isinstance(item, bytes):
-                text = item.decode("utf-8", errors="replace")
-            elif isinstance(item, str):
-                text = item
-            else:
-                continue
-            match = re.search(r"COPYUID\s+\d+\s+(\S*)", text)
-            if match is None:
-                continue
-            source_set = match.group(1).strip()
-            return source_set == ""
-        return False
-
-    @staticmethod
-    def _parse_uid_from_fetch_header(header: bytes) -> int | None:
-        """Extract the UID from a FETCH response header line.
-
-        Typical format: ``b'1 (UID 42)'`` or ``b'1 (UID 42 BODY[] {5}'``.
-        """
-        try:
-            text = header.decode("utf-8", errors="replace")
-        except AttributeError:
-            return None
-        # Find "(UID " ... ")"
-        start = text.find("(UID ")
-        if start < 0:
-            return None
-        start += 5  # len("(UID ")
-        end = text.find(" ", start)
-        if end < 0:
-            end = text.find(")", start)
-            if end < 0:
-                return None
-        try:
-            return int(text[start:end].rstrip(")"))
-        except (ValueError, TypeError):  # fmt: skip
-            return None
-
-    @staticmethod
-    def _parse_uid_from_fetch_trailer(item: bytes) -> int | None:
-        """Extract the UID from a trailing bare-bytes FETCH item.
-
-        Exchange / Office365 returns the UID after the body literal as a
-        separate bare-``bytes`` item, e.g. ``b" UID 10780)"``.  Tolerates
-        a leading space and a trailing ``)``.
-        """
-        try:
-            text = item.decode("utf-8", errors="replace")
-        except AttributeError:
-            return None
-        match = re.search(r"UID\s+(\d+)", text)
-        if match is None:
-            return None
-        try:
-            return int(match.group(1))
-        except (ValueError, TypeError):  # fmt: skip
-            return None

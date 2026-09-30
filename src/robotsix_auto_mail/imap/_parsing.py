@@ -15,6 +15,8 @@ envelope metadata.
 from __future__ import annotations
 
 import contextlib
+import re
+from typing import Any
 
 
 def _parse_inline_fetch_attrs(line: bytes) -> dict[str, object] | None:
@@ -262,3 +264,101 @@ def _format_first_address(addr_text: str) -> str:
         if mailbox and host:
             return f"{mailbox}@{host}"
     return ""
+
+
+def _parse_appenduid(data: Any) -> int | None:
+    """Extract the UID from an ``APPENDUID`` response code.
+
+    Inspects the ``APPEND`` response data for an ``APPENDUID``
+    response code (RFC 4315 / UIDPLUS:
+    ``APPENDUID <uidvalidity> <uid>``).  Returns the UID as
+    ``int`` when present, or ``None`` when the server does not
+    advertise UIDPLUS or the response lacks the code.
+    """
+    if not data:
+        return None
+    for item in data:
+        if isinstance(item, bytes):
+            text = item.decode("utf-8", errors="replace")
+        elif isinstance(item, str):
+            text = item
+        else:
+            continue
+        match = re.search(r"APPENDUID\s+\d+\s+(\d+)", text)
+        if match is not None:
+            try:
+                return int(match.group(1))
+            except ValueError, TypeError:
+                return None
+    return None
+
+
+def _copyuid_indicates_empty_source(data: Any) -> bool:
+    """Return ``True`` when a COPY response carries an empty ``COPYUID``.
+
+    Inspects the ``UID COPY`` response data for a ``COPYUID`` response
+    code (RFC 4315: ``COPYUID <uidvalidity> <source-set> <dest-set>``).
+    Returns ``True`` only when ``COPYUID`` is present AND its source-UID
+    set is empty (zero messages copied).  Returns ``False`` when no
+    ``COPYUID`` is present, so servers without UIDPLUS are not regressed.
+    """
+    if not data:
+        return False
+    for item in data:
+        if isinstance(item, bytes):
+            text = item.decode("utf-8", errors="replace")
+        elif isinstance(item, str):
+            text = item
+        else:
+            continue
+        match = re.search(r"COPYUID\s+\d+\s+(\S*)", text)
+        if match is None:
+            continue
+        source_set = match.group(1).strip()
+        return source_set == ""
+    return False
+
+
+def _parse_uid_from_fetch_header(header: bytes) -> int | None:
+    """Extract the UID from a FETCH response header line.
+
+    Typical format: ``b'1 (UID 42)'`` or ``b'1 (UID 42 BODY[] {5}'``.
+    """
+    try:
+        text = header.decode("utf-8", errors="replace")
+    except AttributeError:
+        return None
+    # Find "(UID " ... ")"
+    start = text.find("(UID ")
+    if start < 0:
+        return None
+    start += 5  # len("(UID ")
+    end = text.find(" ", start)
+    if end < 0:
+        end = text.find(")", start)
+        if end < 0:
+            return None
+    try:
+        return int(text[start:end].rstrip(")"))
+    except (ValueError, TypeError):  # fmt: skip
+        return None
+
+
+def _parse_uid_from_fetch_trailer(item: bytes) -> int | None:
+    """Extract the UID from a trailing bare-bytes FETCH item.
+
+    Exchange / Office365 returns the UID after the body literal as a
+    separate bare-``bytes`` item, e.g. ``b" UID 10780)"``.  Tolerates
+    a leading space and a trailing ``)``.
+    """
+    try:
+        text = item.decode("utf-8", errors="replace")
+    except AttributeError:
+        return None
+    match = re.search(r"UID\s+(\d+)", text)
+    if match is None:
+        return None
+    try:
+        return int(match.group(1))
+    except (ValueError, TypeError):  # fmt: skip
+        return None
