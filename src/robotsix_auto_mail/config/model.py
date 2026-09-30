@@ -105,6 +105,8 @@ class MailConfig(BaseModel):
 
     imap_port: int = Field(
         default=993,
+        ge=1,
+        le=65535,
         description="IMAP server port (993 for direct TLS, 143 for STARTTLS).",
     )
     imap_tls_mode: str = Field(
@@ -116,6 +118,8 @@ class MailConfig(BaseModel):
     )
     smtp_port: int = Field(
         default=587,
+        ge=1,
+        le=65535,
         description="SMTP server port (587 for STARTTLS, 465 for direct TLS).",
     )
     smtp_tls_mode: str = Field(

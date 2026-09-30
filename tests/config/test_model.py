@@ -9,6 +9,7 @@ Covers ``MailConfig`` field validators, ``_validate_template_literals``,
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from robotsix_auto_mail.config.model import (
     MailAccount,
@@ -118,6 +119,28 @@ class TestMailConfigTlsValidators:
     def test_smtp_tls_mode_valid(self, mode: str) -> None:
         cfg = _make_config(smtp_tls_mode=mode)
         assert cfg.smtp_tls_mode == mode
+
+
+class TestMailConfigPortValidators:
+    @pytest.mark.parametrize("port", [0, -1, 65536])
+    def test_imap_port_out_of_range_raises(self, port: int) -> None:
+        with pytest.raises(ValidationError):
+            _make_config(imap_port=port)
+
+    @pytest.mark.parametrize("port", [0, -1, 65536])
+    def test_smtp_port_out_of_range_raises(self, port: int) -> None:
+        with pytest.raises(ValidationError):
+            _make_config(smtp_port=port)
+
+    @pytest.mark.parametrize("port", [993, 587, 143, 465, 1, 65535])
+    def test_imap_port_valid(self, port: int) -> None:
+        cfg = _make_config(imap_port=port)
+        assert cfg.imap_port == port
+
+    @pytest.mark.parametrize("port", [993, 587, 143, 465, 1, 65535])
+    def test_smtp_port_valid(self, port: int) -> None:
+        cfg = _make_config(smtp_port=port)
+        assert cfg.smtp_port == port
 
 
 class TestMailConfigLogValidators:

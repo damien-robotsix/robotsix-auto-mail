@@ -110,6 +110,8 @@
         "imap_port": {
           "default": 993,
           "description": "IMAP server port (993 for direct TLS, 143 for STARTTLS).",
+          "maximum": 65535,
+          "minimum": 1,
           "title": "Imap Port",
           "type": "integer"
         },
@@ -122,6 +124,8 @@
         "smtp_port": {
           "default": 587,
           "description": "SMTP server port (587 for STARTTLS, 465 for direct TLS).",
+          "maximum": 65535,
+          "minimum": 1,
           "title": "Smtp Port",
           "type": "integer"
         },
