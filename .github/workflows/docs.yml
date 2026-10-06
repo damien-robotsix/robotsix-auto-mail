@@ -23,7 +23,7 @@ jobs:
   # `docs` extra, so the install args pull `--extra docs`.
   deploy:
     name: Deploy docs
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-docs.yml@e94a9aad6c4d6753c860520ba49b6a94a59ceb55  # main
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-docs.yml@fb907a46b00693a117ca6b975da6e7b0f8238491  # main
     permissions:
       # A caller-job permissions map REPLACES the token scopes for the called
       # workflow — anything unlisted is zeroed. The shared spine deploys via the
