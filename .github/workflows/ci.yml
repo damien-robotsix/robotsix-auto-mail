@@ -43,7 +43,7 @@ jobs:
     permissions:
       contents: read
       security-events: write  # needed for SARIF upload from reusable workflow
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-ci.yml@e94a9aad6c4d6753c860520ba49b6a94a59ceb55  # main
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-ci.yml@d2a2353830cf211a9f18f3585085016766294dff  # main
     with:
       python-version: "3.14"
       install-extras: "dev"
