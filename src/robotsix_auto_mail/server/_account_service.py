@@ -402,6 +402,19 @@ def _build_add_account_form_html(
         """Return the pre-filled value, HTML-escaped."""
         return html.escape(p.get(key, default), quote=True)
 
+    def tls_options(selected: str) -> str:
+        """Render an ``<option>`` per valid TLS mode, marking the current one.
+
+        Generated from ``_VALID_TLS_MODES`` so the dropdown and the
+        server-side validation set stay in lockstep from a single source.
+        """
+        return "".join(
+            f'<option value="{mode}"'
+            f"{' selected' if selected == mode else ''}"
+            f">{mode}</option>\n"
+            for mode in sorted(_VALID_TLS_MODES)
+        )
+
     banner_html = ""
     if error:
         banner_html = f'<div class="error-banner">{html.escape(error)}</div>\n'
@@ -470,30 +483,10 @@ def _build_add_account_form_html(
         f' value="{smtp_port}">\n'
         "</label>\n"
         "<label>IMAP TLS Mode"
-        '<select name="imap_tls_mode">\n'
-        '<option value="direct-tls"'
-        f"{' selected' if imap_tls == 'direct-tls' else ''}"
-        ">direct-tls</option>\n"
-        '<option value="starttls"'
-        f"{' selected' if imap_tls == 'starttls' else ''}"
-        ">starttls</option>\n"
-        '<option value="none"'
-        f"{' selected' if imap_tls == 'none' else ''}"
-        ">none</option>\n"
-        "</select>\n"
+        '<select name="imap_tls_mode">\n' + tls_options(imap_tls) + "</select>\n"
         "</label>\n"
         "<label>SMTP TLS Mode"
-        '<select name="smtp_tls_mode">\n'
-        '<option value="starttls"'
-        f"{' selected' if smtp_tls == 'starttls' else ''}"
-        ">starttls</option>\n"
-        '<option value="direct-tls"'
-        f"{' selected' if smtp_tls == 'direct-tls' else ''}"
-        ">direct-tls</option>\n"
-        '<option value="none"'
-        f"{' selected' if smtp_tls == 'none' else ''}"
-        ">none</option>\n"
-        "</select>\n"
+        '<select name="smtp_tls_mode">\n' + tls_options(smtp_tls) + "</select>\n"
         "</label>\n"
         "<label>IMAP Folder"
         '<input name="imap_folder"'

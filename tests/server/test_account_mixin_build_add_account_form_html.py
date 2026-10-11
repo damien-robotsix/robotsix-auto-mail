@@ -100,3 +100,25 @@ class TestBuildAddAccountFormHtml:
         )
         # Password field should NOT contain the value
         assert 'value="secret123"' not in html_out
+
+    def test_tls_dropdowns_match_valid_tls_modes(self) -> None:
+        """Rendered TLS <option> values stay in lockstep with the enum.
+
+        The dropdowns are generated from ``_VALID_TLS_MODES`` so a mode
+        added/removed/renamed in the validation set cannot silently drift
+        from the form.
+        """
+        import re
+
+        from robotsix_auto_mail.config.schema import _VALID_TLS_MODES
+
+        html_out = _build_add_account_form_html()
+        for select_name in ("imap_tls_mode", "smtp_tls_mode"):
+            match = re.search(
+                rf'<select name="{select_name}">(.*?)</select>',
+                html_out,
+                re.DOTALL,
+            )
+            assert match is not None, f"missing {select_name} dropdown"
+            rendered = set(re.findall(r'<option value="([^"]+)"', match.group(1)))
+            assert rendered == set(_VALID_TLS_MODES)
