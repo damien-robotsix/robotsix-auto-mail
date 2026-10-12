@@ -49,6 +49,21 @@ All GET endpoints below are read-only and safe to call without confirmation.
 
 ### Email inspection
 
+- **`GET /board-cards/<message_id>/body?account=<id>`** → JSON
+  `{"message_id":"…","account":"<id>","body_plain":"…",`
+  `"body_html":"…"|null,"attachments":[{"filename":"…","mime_type":"…",`
+  `"size":N}]}`.
+  Fetches the message from the mailbox and returns its **full body**:
+  `body_plain` (always present; empty string when the message has no
+  text/plain part), `body_html` (sanitized HTML when the message has a
+  text/html part, otherwise `null`), and `attachments` metadata only
+  (never the attachment bytes).  The `<message_id>` path segment is the
+  board card id (percent-encode the angle brackets).  Strictly
+  read-only: the fetch uses IMAP `BODY.PEEK`, so the message's unread
+  (`\Seen`) state is left unchanged and the card is never moved.  Use
+  this to quote or summarize the actual content of a mail.  Returns 404
+  for unknown ids; 502 when the mailbox is unreachable.
+
 - **`GET /email/<message_id>`** → HTML detail page for one message.
   Optional `?embed=1` strips the page chrome for embedding.
 
