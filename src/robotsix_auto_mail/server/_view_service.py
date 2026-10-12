@@ -446,6 +446,126 @@ class ViewService(Service):
 
         ctx._serve_json({"cards": cards, "account": account_id})
 
+    def serve_board_card_body(self, ctx: RequestContext) -> None:
+        r"""Serve GET /board-cards/{card_id}/body — full message body.
+
+        Fetches the message addressed by the board card's Message-ID from
+        the mailbox and returns its full body as JSON:
+
+        - ``body_plain`` — the plain-text body (always present; an empty
+          string when the message carries no ``text/plain`` part).
+        - ``body_html`` — the sanitized HTML body when the message has a
+          ``text/html`` part, otherwise ``null``.
+        - ``attachments`` — attachment metadata only (``filename``,
+          ``mime_type``, ``size``), never the attachment bytes.
+
+        The fetch is strictly read-only: it uses IMAP ``BODY.PEEK`` (via
+        :meth:`ImapClient.fetch_messages`) so the message's ``\Seen``
+        state is left unchanged, and the board card is never moved or
+        mutated.
+
+        ``card_id`` is the card's Message-ID (percent-encoded in the
+        path).  The account is resolved by ``_select_account`` from the
+        ``?account=<id>`` query param before dispatch; an unknown account
+        returns 404.
+        """
+        import json
+        from urllib.parse import urlsplit
+
+        from robotsix_auto_mail.core._sanitize import sanitize_html
+        from robotsix_auto_mail.db import get_record_by_message_id
+        from robotsix_auto_mail.pipeline import parse_message
+
+        if ctx._aggregate:
+            ctx._serve_json(
+                {"error": "board-card body is per-account; use ?account=<id>"},
+                status=400,
+            )
+            return
+
+        prefix = "/board-cards/"
+        suffix = "/body"
+        raw_path = urlsplit(ctx.path).path
+        card_id = unquote(raw_path[len(prefix) : -len(suffix)])
+
+        with _with_db(ctx.db_path, skip_migrations=True) as conn:
+            record = get_record_by_message_id(conn, card_id)
+        if record is None:
+            ctx._not_found()
+            return
+
+        if ctx.mail_config is None or record.imap_uid is None:
+            ctx._problem(
+                status=502,
+                kind="imap-unavailable",
+                title="IMAP Unavailable",
+                detail="IMAP not available for this message",
+            )
+            return
+
+        raw_bytes = self._fetch_raw_message(ctx, record.source_folder, record.imap_uid)
+        if raw_bytes is None:
+            return  # a response has already been sent
+
+        parsed = parse_message(
+            raw_bytes,
+            imap_uid=record.imap_uid,
+            source_folder=record.source_folder,
+        )
+
+        try:
+            attachments = json.loads(parsed.attachments_json)
+        except (json.JSONDecodeError, TypeError):  # fmt: skip
+            attachments = []
+
+        body_html = sanitize_html(parsed.body_html) if parsed.body_html else None
+
+        ctx._serve_json(
+            {
+                "message_id": record.message_id,
+                "account": ctx._current_account_id or "main",
+                "body_plain": parsed.body_plain,
+                "body_html": body_html,
+                "attachments": attachments,
+            }
+        )
+
+    def _fetch_raw_message(
+        self, ctx: RequestContext, folder: str, uid: int
+    ) -> bytes | None:
+        """Fetch raw MIME bytes by folder + UID via read-only ``BODY.PEEK``.
+
+        Returns the raw message bytes, or ``None`` after emitting a 502
+        response.
+        """
+        from robotsix_auto_mail.imap import ImapClient, ImapError
+
+        mail_config = cast("MailConfig", ctx.mail_config)
+        try:
+            with ImapClient(mail_config) as client:
+                client.select_folder(folder)
+                fetched = client.fetch_messages([uid])
+        except (ImapError, OSError) as exc:
+            ctx._problem(
+                status=502,
+                kind="imap-fetch-failed",
+                title="IMAP Fetch Failed",
+                detail=f"IMAP fetch failed: {exc}",
+            )
+            return None
+
+        if not fetched:
+            ctx._problem(
+                status=502,
+                kind="message-unavailable",
+                title="Message Unavailable",
+                detail="Message no longer exists on the mail server",
+            )
+            return None
+
+        _uid, raw_bytes = fetched[0]
+        return raw_bytes
+
     def serve_archive_folders(self, ctx: RequestContext) -> None:
         """Serve GET /archive-folders — JSON with delimiter + flat subfolder list.
 

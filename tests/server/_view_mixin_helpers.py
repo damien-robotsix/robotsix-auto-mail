@@ -49,6 +49,7 @@ class _FakeHandler(_RequestContextHelpers):
         self._redirect = mock.MagicMock()
         self._not_found = mock.MagicMock()
         self._bad_request = mock.MagicMock()
+        self._problem = mock.MagicMock()
         self._serve_json = mock.MagicMock()
         self._service = ViewService(
             db_path=db_path,
@@ -66,6 +67,9 @@ class _FakeHandler(_RequestContextHelpers):
 
     def _serve_board_cards(self) -> None:
         self._service.serve_board_cards(self)
+
+    def _serve_board_card_body(self) -> None:
+        self._service.serve_board_card_body(self)
 
     def _serve_static(self) -> None:
         self._service.serve_static(self)

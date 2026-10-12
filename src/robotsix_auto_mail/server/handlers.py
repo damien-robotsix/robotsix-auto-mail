@@ -169,6 +169,10 @@ class BoardHandler(BaseHTTPRequestHandler):
                 lambda: self._services.get(ViewService).serve_board_content(ctx),
             ),
             (
+                lambda p: p.startswith("/board-cards/") and p.endswith("/body"),
+                lambda: self._services.get(ViewService).serve_board_card_body(ctx),
+            ),
+            (
                 lambda p: p == "/board-cards",
                 lambda: self._services.get(ViewService).serve_board_cards(ctx),
             ),
