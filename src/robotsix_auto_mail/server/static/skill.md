@@ -81,6 +81,26 @@ All GET endpoints below are read-only and safe to call without confirmation.
 - **`GET /archive/<folder>/messages`** → JSON `{"folder":"…","total":N,"shown":N,"messages":[…]}`.
   Lists messages inside an archive subfolder. Each message object contains `uid`, `subject`, `from`, `to`, `date`, `size`, and `flags`.  Accepts optional `?limit=N` (default 500, max 2000).  Returns 404 when the folder does not exist.
 
+- **`GET /archive/message?account=<id>&folder=<path>&uid=<n>`** → JSON
+  `{"message_id":"…","account":"<id>","folder":"…","uid":N,"body_plain":"…","body_html":"…"|null,"attachments":[{"filename":"…","mime_type":"…","size":N}]}`.
+  Reads the **full body** of an archived message by folder + UID — the
+  read-only counterpart to `POST /archive-message-delete`.  Use this when
+  a message has been archived (its board card is gone, so
+  `GET /board-cards/<message_id>/body` returns 404) but you located it via
+  `GET /search` by `folder` + `uid`.  `folder` accepts both the
+  archive-root-relative form (`Anniversaire`) and the full IMAP path as
+  returned by `/search` (`robotsix-mail-archive/Anniversaire`).  The
+  response shape mirrors the board-card body endpoint: `body_plain`
+  (always present), `body_html` (sanitized HTML or `null`), and
+  `attachments` metadata only (never the attachment bytes).  Pass
+  `&message_id=<id>` as a fallback selector (`HEADER Message-ID` search
+  within `folder`) when the `uid` is stale.  Strictly read-only: the fetch
+  uses IMAP `BODY.PEEK`, so the message's unread (`\Seen`) state is left
+  unchanged and no board card is created or moved.  `account` and `folder`
+  are **required**, plus at least one of `uid` / `message_id`.  Errors:
+  **400** (missing params), **404** (unknown folder/uid), **502** (IMAP
+  error).
+
 ### Sent folder (outbound mail)
 
 - **`GET /sent/messages?account=<id>`** → JSON `{"folder":"…","total":N,"shown":N,"messages":[…]}`.
