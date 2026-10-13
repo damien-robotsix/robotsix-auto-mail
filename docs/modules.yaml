@@ -449,6 +449,7 @@ modules:
       - tests/server/_view_helpers.py
       - tests/server/_view_mixin_helpers.py
       - tests/server/test_view_mixin_archive.py
+      - tests/server/test_view_mixin_archive_message.py
       - tests/server/test_view_mixin_archive_messages.py
       - tests/server/test_view_mixin_board.py
       - tests/server/test_view_mixin_board_cards.py

@@ -83,6 +83,9 @@ class _FakeHandler(_RequestContextHelpers):
     def _serve_archive_messages(self, folder: str = "") -> None:
         self._service.serve_archive_messages(self, folder=folder)
 
+    def _serve_archive_message(self) -> None:
+        self._service.serve_archive_message(self)
+
     def _serve_email_status(self) -> None:
         self._service.serve_email_status(self)
 

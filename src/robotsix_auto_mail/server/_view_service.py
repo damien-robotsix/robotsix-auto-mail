@@ -566,6 +566,181 @@ class ViewService(Service):
         _uid, raw_bytes = fetched[0]
         return raw_bytes
 
+    def serve_archive_message(self, ctx: RequestContext) -> None:
+        r"""Serve GET /archive/message — read an archived message body.
+
+        Reads a full message body addressed by **archive folder + UID**,
+        the read-only counterpart to ``POST /archive-message-delete``
+        (``{"source_folder": …, "uid": …}``).  Needed because once a
+        message is archived its board card is removed, so its body is no
+        longer reachable via ``GET /board-cards/{card_id}/body`` — but it
+        is still locatable through ``GET /search`` by folder + uid.
+
+        Query parameters:
+
+        - ``folder`` (required) — the archive folder path.  Accepts both
+          the archive-root-relative form (``Anniversaire``) and the full
+          IMAP path as returned by ``/search``
+          (``robotsix-mail-archive/Anniversaire``); the leading archive
+          root is stripped when present.
+        - ``uid`` — the IMAP UID within *folder*.
+        - ``message_id`` — fallback selector (``HEADER Message-ID``
+          search within *folder*) used when *uid* is absent or stale.
+
+        At least one of ``uid`` / ``message_id`` must be given.
+
+        The response mirrors the board-card body endpoint — ``body_plain``,
+        ``body_html`` (sanitized or ``null``), and ``attachments``
+        metadata only (never the attachment bytes) — plus the resolved
+        ``folder`` and ``uid`` for clarity.
+
+        Strictly read-only: the fetch uses IMAP ``BODY.PEEK`` (via
+        :meth:`ImapClient.fetch_messages`) so the message's ``\Seen``
+        state is left unchanged, and no board card is created or moved.
+
+        Errors: 400 on missing params / aggregate mode, 404 on unknown
+        folder or uid, 502 on IMAP error.
+        """
+        import json
+        from urllib.parse import parse_qs, urlsplit
+
+        from robotsix_auto_mail.core._sanitize import sanitize_html
+        from robotsix_auto_mail.pipeline import parse_message
+
+        if ctx._aggregate:
+            ctx._serve_json(
+                {"error": "archive message read is per-account; use ?account=<id>"},
+                status=400,
+            )
+            return
+
+        if not ctx._require_imap_configured():
+            return
+
+        qs = parse_qs(urlsplit(ctx.path).query)
+        folder = (qs.get("folder") or [""])[0]
+        message_id = (qs.get("message_id") or [""])[0]
+
+        uid: int | None = None
+        uid_values = qs.get("uid")
+        if uid_values:
+            try:
+                uid = int(uid_values[0])
+            except (ValueError, TypeError):  # fmt: skip
+                ctx._bad_request("uid must be an integer")
+                return
+
+        if not folder:
+            ctx._bad_request("folder is required")
+            return
+
+        if uid is None and not message_id:
+            ctx._bad_request("At least one of uid or message_id is required")
+            return
+
+        ok, archive_root = ctx._validate_archive_path(folder)
+        if not ok:
+            return
+
+        # Accept both the archive-root-relative form ("Anniversaire") and the
+        # full IMAP path as returned by ``/search``
+        # ("robotsix-mail-archive/Anniversaire"): strip the leading archive
+        # root when present so both resolve to the same folder.
+        root_prefix = f"{archive_root}/"
+        if folder == archive_root:
+            rel_folder = ""
+        elif folder.startswith(root_prefix):
+            rel_folder = folder[len(root_prefix) :]
+        else:
+            rel_folder = folder
+
+        full_path = f"{archive_root}/{rel_folder}" if rel_folder else archive_root
+
+        from robotsix_auto_mail.imap import ImapClient, ImapError
+
+        resolved_uid: int | None = None
+        raw_bytes: bytes | None = None
+
+        try:
+            with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
+                existing = client.list_folders()
+                delimiter = next(
+                    (f.delimiter for f in existing if f.delimiter),
+                    "/",
+                )
+
+                translated_path = full_path.replace("/", delimiter)
+
+                # Security: validate the folder is under the archive root.
+                ar_translated = archive_root.replace("/", delimiter)
+                prefix = f"{ar_translated}{delimiter}"
+                if translated_path != ar_translated and not translated_path.startswith(
+                    prefix
+                ):
+                    ctx._bad_request("folder escapes archive root")
+                    return
+
+                matching = [f for f in existing if f.name == translated_path]
+                if not matching:
+                    ctx._not_found()
+                    return
+
+                client.select_folder(translated_path)
+
+                # Resolve the UID, falling back to a Message-ID search when
+                # the provided uid is absent or stale.
+                if uid is not None and client.search_uids(f"UID {uid}"):
+                    resolved_uid = uid
+                elif message_id:
+                    found = client.search_uids(f'HEADER Message-ID "{message_id}"')
+                    if found:
+                        resolved_uid = found[0]
+
+                if resolved_uid is None:
+                    ctx._not_found()
+                    return
+
+                fetched = client.fetch_messages([resolved_uid])
+        except (ImapError, OSError) as exc:
+            ctx._problem(
+                status=502,
+                kind="imap-fetch-failed",
+                title="IMAP Fetch Failed",
+                detail=f"IMAP fetch failed: {exc}",
+            )
+            return
+
+        if not fetched:
+            ctx._not_found()
+            return
+
+        _uid, raw_bytes = fetched[0]
+
+        parsed = parse_message(
+            raw_bytes,
+            imap_uid=resolved_uid,
+            source_folder=translated_path,
+        )
+
+        try:
+            attachments = json.loads(parsed.attachments_json)
+        except (json.JSONDecodeError, TypeError):  # fmt: skip
+            attachments = []
+
+        body_html = sanitize_html(parsed.body_html) if parsed.body_html else None
+
+        ctx._serve_json(
+            {
+                "message_id": parsed.message_id or message_id,
+                "account": ctx._current_account_id or "main",
+                "folder": folder,
+                "uid": resolved_uid,
+                "body_plain": parsed.body_plain,
+                "body_html": body_html,
+                "attachments": attachments,
+            }
+        )
+
     def serve_archive_folders(self, ctx: RequestContext) -> None:
         """Serve GET /archive-folders — JSON with delimiter + flat subfolder list.
 

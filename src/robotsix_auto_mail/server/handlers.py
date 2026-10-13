@@ -199,6 +199,10 @@ class BoardHandler(BaseHTTPRequestHandler):
             ),
             (lambda p: p == "/archive-log", self._serve_archive_log),
             (
+                lambda p: p == "/archive/message",
+                lambda: self._services.get(ViewService).serve_archive_message(ctx),
+            ),
+            (
                 lambda p: p.startswith("/archive/") and p.endswith("/messages"),
                 lambda: self._services.get(ViewService).serve_archive_messages(
                     ctx,
