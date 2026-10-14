@@ -16,6 +16,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.server._archive_view_service import ArchiveViewService
 from robotsix_auto_mail.server._view_service import ViewService
 from tests.server._test_helpers import _RequestContextHelpers
 
@@ -56,6 +57,11 @@ class _FakeHandler(_RequestContextHelpers):
             mail_config=mail_config,
             accounts=accounts,
         )
+        self._archive_service = ArchiveViewService(
+            db_path=db_path,
+            mail_config=mail_config,
+            accounts=accounts,
+        )
 
     # -- delegators: drive the real service with this stub as context ------
 
@@ -75,16 +81,16 @@ class _FakeHandler(_RequestContextHelpers):
         self._service.serve_static(self)
 
     def _serve_archive_proposal(self) -> None:
-        self._service.serve_archive_proposal(self)
+        self._archive_service.serve_archive_proposal(self)
 
     def _serve_archive_folders(self) -> None:
-        self._service.serve_archive_folders(self)
+        self._archive_service.serve_archive_folders(self)
 
     def _serve_archive_messages(self, folder: str = "") -> None:
-        self._service.serve_archive_messages(self, folder=folder)
+        self._archive_service.serve_archive_messages(self, folder=folder)
 
     def _serve_archive_message(self) -> None:
-        self._service.serve_archive_message(self)
+        self._archive_service.serve_archive_message(self)
 
     def _serve_email_status(self) -> None:
         self._service.serve_email_status(self)
@@ -181,9 +187,9 @@ def mock_get_triage_decision() -> "mock._patch":
 
 @pytest.fixture
 def mock_get_archive_subfolder() -> "mock._patch":
-    # Imported at module level in _view_service.
+    # Imported at module level in _archive_view_service.
     with mock.patch(
-        "robotsix_auto_mail.server._view_service.get_archive_subfolder",
+        "robotsix_auto_mail.server._archive_view_service.get_archive_subfolder",
         autospec=True,
     ) as m:
         m.return_value = "Inbox"
@@ -223,7 +229,7 @@ def mock_get_watermark() -> "mock._patch":
 @pytest.fixture
 def mock_parse_archive_structure() -> "mock._patch":
     with mock.patch(
-        "robotsix_auto_mail.server._view_service._parse_archive_structure",
+        "robotsix_auto_mail.server._archive_view_service._parse_archive_structure",
         autospec=True,
     ) as m:
         m.return_value = (set(), "/", "/archive")

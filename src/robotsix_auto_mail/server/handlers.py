@@ -47,6 +47,7 @@ from robotsix_auto_mail.config import (
 from robotsix_auto_mail.server._account_service import AccountService
 from robotsix_auto_mail.server._action_service import ActionService
 from robotsix_auto_mail.server._archive_service import ArchiveService
+from robotsix_auto_mail.server._archive_view_service import ArchiveViewService
 from robotsix_auto_mail.server._attachment_service import AttachmentService
 from robotsix_auto_mail.server._auth_service import AuthService
 from robotsix_auto_mail.server._batch_service import BatchService
@@ -195,16 +196,20 @@ class BoardHandler(BaseHTTPRequestHandler):
             ),
             (
                 lambda p: p == "/archive-folders",
-                lambda: self._services.get(ViewService).serve_archive_folders(ctx),
+                lambda: self._services.get(ArchiveViewService).serve_archive_folders(
+                    ctx
+                ),
             ),
             (lambda p: p == "/archive-log", self._serve_archive_log),
             (
                 lambda p: p == "/archive/message",
-                lambda: self._services.get(ViewService).serve_archive_message(ctx),
+                lambda: self._services.get(ArchiveViewService).serve_archive_message(
+                    ctx
+                ),
             ),
             (
                 lambda p: p.startswith("/archive/") and p.endswith("/messages"),
-                lambda: self._services.get(ViewService).serve_archive_messages(
+                lambda: self._services.get(ArchiveViewService).serve_archive_messages(
                     ctx,
                     folder=unquote(
                         urlsplit(self.path).path[len("/archive/") : -len("/messages")]
@@ -241,7 +246,9 @@ class BoardHandler(BaseHTTPRequestHandler):
             ),
             (
                 lambda p: p.startswith("/archive-proposal/"),
-                lambda: self._services.get(ViewService).serve_archive_proposal(ctx),
+                lambda: self._services.get(ArchiveViewService).serve_archive_proposal(
+                    ctx
+                ),
             ),
         ]
         for matches, handler in routes:
