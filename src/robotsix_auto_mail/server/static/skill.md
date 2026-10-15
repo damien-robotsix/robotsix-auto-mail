@@ -64,6 +64,29 @@ All GET endpoints below are read-only and safe to call without confirmation.
   this to quote or summarize the actual content of a mail.  Returns 404
   for unknown ids; 502 when the mailbox is unreachable.
 
+- **`GET /message/body?account=<id>&folder=<path>&uid=<n>`** (or
+  **`?account=<id>&message_id=<id>`**) → JSON
+  `{"message_id":"…","account":"<id>","folder":"…","uid":N,"body_plain":"…",`
+  `"body_html":"…"|null,"attachments":[{"filename":"…","mime_type":"…",`
+  `"size":N}]}`.
+  Reads the **full body** of **any** message in **any** folder returned by
+  `GET /folders` — including `INBOX` — without triaging it onto the board.
+  Use this to read an untriaged message (e.g. an acknowledgement or reply
+  still sitting in INBOX) for which no board card exists yet, so
+  `GET /board-cards/<message_id>/body` cannot reach it, **without**
+  triggering a mutating `POST /run-triage` / `POST /force-triage-column`.
+  Select the message by `folder` + `uid` (both as returned by
+  `GET /folders` / `GET /search`), or by `message_id` alone — the latter
+  scans every selectable folder and returns the first match (pass `folder`
+  too to restrict the search).  The response shape mirrors the board-card
+  body endpoint: `body_plain` (always present), `body_html` (sanitized HTML
+  or `null`), and `attachments` metadata only (never the attachment bytes).
+  Strictly read-only: the fetch uses IMAP `BODY.PEEK`, so the message's
+  unread (`\Seen`) state is left unchanged and no board card is created or
+  moved.  `account` is **required**, plus at least one of `uid` (with
+  `folder`) / `message_id`.  Errors: **400** (missing params), **404**
+  (unknown folder/message), **502** (IMAP error).
+
 - **`GET /email/<message_id>`** → HTML detail page for one message.
   Optional `?embed=1` strips the page chrome for embedding.
 

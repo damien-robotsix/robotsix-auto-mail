@@ -375,3 +375,131 @@ class TestServeSearch:
 
         kwargs = client.search_uids.call_args[1]
         assert kwargs["charset"] == "UTF-8"
+
+
+# ---------------------------------------------------------------------------
+# GET /message/body
+# ---------------------------------------------------------------------------
+
+
+class TestServeMessageBody:
+    def test_aggregate_returns_400(self) -> None:
+        handler = _FakeHandler(_aggregate=True)
+        MailboxService(db_path="test.db").serve_message_body(handler)
+        assert handler._serve_json.call_args[1]["status"] == 400
+
+    def test_no_mail_config_returns_503(self) -> None:
+        handler = _FakeHandler(
+            mail_config=None, path="/message/body?folder=INBOX&uid=1"
+        )
+        MailboxService(db_path="test.db").serve_message_body(handler)
+        handler._serve_json.assert_called_once_with(
+            {"error": "IMAP not configured for this account"},
+            status=503,
+        )
+
+    def test_no_selector_returns_400(self, cfg: MailConfig) -> None:
+        handler = _FakeHandler(mail_config=cfg, path="/message/body")
+        MailboxService(db_path="test.db").serve_message_body(handler)
+        handler._bad_request.assert_called_once()
+
+    def test_uid_without_folder_returns_400(self, cfg: MailConfig) -> None:
+        handler = _FakeHandler(mail_config=cfg, path="/message/body?uid=5")
+        MailboxService(db_path="test.db").serve_message_body(handler)
+        handler._bad_request.assert_called_once()
+        assert "folder" in str(handler._bad_request.call_args[0][0])
+
+    def test_non_integer_uid_returns_400(self, cfg: MailConfig) -> None:
+        handler = _FakeHandler(
+            mail_config=cfg, path="/message/body?folder=INBOX&uid=abc"
+        )
+        MailboxService(db_path="test.db").serve_message_body(handler)
+        handler._bad_request.assert_called_once()
+
+    def test_reads_inbox_message_by_folder_and_uid(self, cfg: MailConfig) -> None:
+        client = _mock_client(
+            list_folders=mock.MagicMock(return_value=[_folder("INBOX")]),
+            select_folder=mock.MagicMock(return_value=1),
+            search_uids=mock.MagicMock(return_value=[42]),
+            fetch_messages=mock.MagicMock(return_value=[(42, _raw_message())]),
+        )
+        with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
+            handler = _FakeHandler(
+                mail_config=cfg, path="/message/body?folder=INBOX&uid=42"
+            )
+            MailboxService(db_path="test.db").serve_message_body(handler)
+
+        payload = handler._serve_json.call_args[0][0]
+        assert payload["folder"] == "INBOX"
+        assert payload["uid"] == 42
+        assert payload["message_id"] == "<abc@example.com>"
+        assert "STL files" in payload["body_plain"]
+        assert payload["attachments"][0]["filename"] == "bracket.stl"
+        # Read-only: only BODY.PEEK fetch, never a store/move.
+        client.fetch_messages.assert_called_once_with([42])
+
+    def test_reads_message_by_message_id_scanning_all_folders(
+        self, cfg: MailConfig
+    ) -> None:
+        # sorted(known) -> ["Archive", "INBOX"]: Archive misses, INBOX hits.
+        client = _mock_client(
+            list_folders=mock.MagicMock(
+                return_value=[_folder("Archive"), _folder("INBOX")]
+            ),
+            select_folder=mock.MagicMock(return_value=1),
+            search_uids=mock.MagicMock(side_effect=[[], [7]]),
+            fetch_messages=mock.MagicMock(return_value=[(7, _raw_message())]),
+        )
+        with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
+            handler = _FakeHandler(
+                mail_config=cfg,
+                path="/message/body?message_id=%3Cabc@example.com%3E",
+            )
+            MailboxService(db_path="test.db").serve_message_body(handler)
+
+        payload = handler._serve_json.call_args[0][0]
+        assert payload["folder"] == "INBOX"
+        assert payload["uid"] == 7
+        assert payload["message_id"] == "<abc@example.com>"
+        # Searched by Message-ID header, not restricted to the archive root.
+        assert any(
+            'HEADER Message-ID "<abc@example.com>"' in call.args[0]
+            for call in client.search_uids.call_args_list
+        )
+
+    def test_unknown_folder_returns_404(self, cfg: MailConfig) -> None:
+        client = _mock_client(
+            list_folders=mock.MagicMock(return_value=[_folder("INBOX")]),
+        )
+        with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
+            handler = _FakeHandler(
+                mail_config=cfg, path="/message/body?folder=Nope&uid=1"
+            )
+            MailboxService(db_path="test.db").serve_message_body(handler)
+        handler._not_found.assert_called_once()
+
+    def test_message_not_found_returns_404(self, cfg: MailConfig) -> None:
+        client = _mock_client(
+            list_folders=mock.MagicMock(return_value=[_folder("INBOX")]),
+            select_folder=mock.MagicMock(return_value=1),
+            search_uids=mock.MagicMock(return_value=[]),
+        )
+        with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
+            handler = _FakeHandler(
+                mail_config=cfg, path="/message/body?folder=INBOX&uid=99"
+            )
+            MailboxService(db_path="test.db").serve_message_body(handler)
+        handler._not_found.assert_called_once()
+
+    def test_imap_error_returns_502(self, cfg: MailConfig) -> None:
+        from robotsix_auto_mail.imap.errors import ImapError
+
+        client = _mock_client(
+            list_folders=mock.MagicMock(side_effect=ImapError("boom")),
+        )
+        with mock.patch("robotsix_auto_mail.imap.ImapClient", return_value=client):
+            handler = _FakeHandler(
+                mail_config=cfg, path="/message/body?folder=INBOX&uid=1"
+            )
+            MailboxService(db_path="test.db").serve_message_body(handler)
+        assert handler._send_response.call_args[1]["status"] == 502
