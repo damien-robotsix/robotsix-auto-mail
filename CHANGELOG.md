@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.9.1...v0.10.0) (2026-10-15)
+
+
+### Features
+
+* Mail: endpoint lecture seule du corps d'un message INBOX non trié (sans action modifiante) (20261015T075928Z-mail-endpoint-lecture-seule-du-corps-d-u-2c3b) ([#1328](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1328)) ([7994a9e](https://github.com/damien-robotsix/robotsix-auto-mail/commit/7994a9e7ee20f502625aa6c89d7e0e1c54d97e5f))
+
 ## [0.9.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.9.0...v0.9.1) (2026-09-05)
 
 
