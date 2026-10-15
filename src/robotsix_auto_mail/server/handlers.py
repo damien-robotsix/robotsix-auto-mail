@@ -225,6 +225,10 @@ class BoardHandler(BaseHTTPRequestHandler):
                 lambda: self._services.get(SentService).serve_sent_message(ctx),
             ),
             (
+                lambda p: p == "/message/body",
+                lambda: self._services.get(MailboxService).serve_message_body(ctx),
+            ),
+            (
                 lambda p: p == "/folders",
                 lambda: self._services.get(MailboxService).serve_folders(ctx),
             ),

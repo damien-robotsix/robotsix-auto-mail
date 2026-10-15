@@ -116,6 +116,148 @@ class MailboxService(Service):
             }
         )
 
+    # -- GET /message/body -------------------------------------------------
+
+    def serve_message_body(self, ctx: RequestContext) -> None:
+        r"""Serve GET /message/body — read ANY message body, read-only.
+
+        Reads a full message body addressed by **account + (message_id or
+        folder+uid)** from *any* IMAP folder — including ``INBOX`` and every
+        folder listed by ``GET /folders``, not just the archive root.  This
+        is the read-only way to inspect a message that has not been triaged
+        onto the board yet (no card exists, so
+        ``GET /board-cards/<message_id>/body`` cannot reach it) without
+        triggering a mutating ``POST /run-triage`` /
+        ``POST /force-triage-column`` that would change board state.
+
+        Query parameters:
+
+        - ``folder`` — any IMAP folder path from ``GET /folders`` (e.g.
+          ``INBOX``).  Required when selecting by ``uid``; optional (narrows
+          the lookup to that folder) when selecting by ``message_id``.
+        - ``uid`` — the IMAP UID within *folder*.
+        - ``message_id`` — ``HEADER Message-ID`` selector.  When no *folder*
+          is given the message is located by scanning every selectable
+          folder; the first match wins.
+
+        At least one of ``uid`` (with ``folder``) or ``message_id`` must be
+        given.
+
+        The response mirrors the board-card body endpoint — ``body_plain``,
+        ``body_html`` (sanitized or ``null``) and ``attachments`` metadata
+        only (never the attachment bytes) — plus the resolved ``folder`` and
+        ``uid``.
+
+        Strictly read-only: the fetch uses IMAP ``BODY.PEEK`` (via
+        :meth:`ImapClient.fetch_messages`) so the message's ``\Seen`` state
+        is left unchanged, and no board card is created or moved.
+
+        Errors: 400 on missing params / aggregate mode, 404 on unknown
+        folder or message, 502 on IMAP error.
+        """
+        from robotsix_auto_mail.core._sanitize import sanitize_html
+        from robotsix_auto_mail.pipeline import parse_message
+
+        if ctx._aggregate:
+            ctx._serve_json(
+                {"error": "message body read is per-account; use ?account=<id>"},
+                status=400,
+            )
+            return
+        if not ctx._require_imap_configured():
+            return
+
+        qs = parse_qs(urlsplit(ctx.path).query)
+        folder = (qs.get("folder") or [""])[0]
+        message_id = (qs.get("message_id") or [""])[0]
+
+        uid: int | None = None
+        uid_values = qs.get("uid")
+        if uid_values:
+            try:
+                uid = int(uid_values[0])
+            except (ValueError, TypeError):  # fmt: skip
+                ctx._bad_request("uid must be an integer")
+                return
+
+        if uid is not None and not folder:
+            ctx._bad_request("folder is required when selecting by uid")
+            return
+
+        if uid is None and not message_id:
+            ctx._bad_request("At least one of uid or message_id is required")
+            return
+
+        from robotsix_auto_mail.imap import ImapClient, ImapError
+
+        mail_config = cast("MailConfig", ctx.mail_config)
+        resolved_folder: str | None = None
+        resolved_uid: int | None = None
+        try:
+            with ImapClient(mail_config) as client:
+                known = {f.name for f in client.list_folders()}
+
+                if folder:
+                    if folder not in known:
+                        ctx._not_found()
+                        return
+                    search_folders = [folder]
+                else:
+                    # message_id-only: scan every selectable folder.
+                    search_folders = sorted(known)
+
+                for candidate in search_folders:
+                    client.select_folder(candidate)
+                    if folder and uid is not None and client.search_uids(f"UID {uid}"):
+                        resolved_folder, resolved_uid = candidate, uid
+                        break
+                    if message_id:
+                        found = client.search_uids(f'HEADER Message-ID "{message_id}"')
+                        if found:
+                            resolved_folder, resolved_uid = candidate, found[0]
+                            break
+
+                if resolved_folder is None or resolved_uid is None:
+                    ctx._not_found()
+                    return
+
+                client.select_folder(resolved_folder)
+                fetched = client.fetch_messages([resolved_uid])
+        except (ImapError, OSError) as exc:
+            ctx._send_response(f"IMAP fetch failed: {exc}", status=502)
+            return
+
+        if not fetched:
+            ctx._not_found()
+            return
+
+        _uid, raw_bytes = fetched[0]
+
+        parsed = parse_message(
+            raw_bytes,
+            imap_uid=resolved_uid,
+            source_folder=resolved_folder,
+        )
+
+        try:
+            attachments = json.loads(parsed.attachments_json)
+        except (json.JSONDecodeError, TypeError):  # fmt: skip
+            attachments = []
+
+        body_html = sanitize_html(parsed.body_html) if parsed.body_html else None
+
+        ctx._serve_json(
+            {
+                "message_id": parsed.message_id or message_id,
+                "account": ctx._current_account_id or "main",
+                "folder": resolved_folder,
+                "uid": resolved_uid,
+                "body_plain": parsed.body_plain,
+                "body_html": body_html,
+                "attachments": attachments,
+            }
+        )
+
     # -- GET /search -------------------------------------------------------
 
     def serve_search(self, ctx: RequestContext) -> None:
