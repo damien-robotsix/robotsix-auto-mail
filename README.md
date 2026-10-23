@@ -114,6 +114,17 @@ badges showing the decision action (e.g. answer, archive) with the reason
 visible on hover. Click any card to view full details including the triage
 action, reason, and confidence.
 
+Cards in the **To archive** column show the proposed archive subfolder with a
+**Browse** button that opens the archive-folder tree (the same picker as the
+mail detail page). Picking a folder stores a per-message override and updates
+the card's destination live, without a triage re-run. This works in the
+aggregate "All mailboxes" view too, where the tree is scoped to each card's
+owning account. In a single-account board, the **Archive All** and per-destination **Archive
+these N** buttons open a dialog listing every included mail grouped by
+destination; you can browse and change the destination of any message or group
+before the bulk archive runs, and those overrides are honoured by the archive.
+(Batch archive is not offered in the aggregate "All mailboxes" view.)
+
 Composing a reply or a new message is done via the `POST /compose-draft`
 endpoint, which builds a genuine RFC822 message — correct sender, recipients,
 subject, threading headers, body, and all file-hub attachments — and `APPEND`s
