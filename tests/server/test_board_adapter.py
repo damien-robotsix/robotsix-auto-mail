@@ -217,6 +217,43 @@ def test_mailboardadapter_archive_override_offers_folder_dropdown() -> None:
     assert '<option value="Compta">' in col
 
 
+def test_mailboardadapter_single_account_browse_button() -> None:
+    """Single-account To Archive cards expose the folder-tree Browse button."""
+    mid = "<test@example.com>"
+    record = _make_record(message_id=mid)
+    adapter = MailBoardAdapter(
+        triage_by_mid={mid: "TO_ARCHIVE"},
+        archive_subfolders={mid: "Compta"},
+        folder_exists={},
+        archive_root="robotsix-mail-archive",
+        unsubscribe_suggestions={},
+        record_notes={},
+        archive_folders=["Billing"],
+    )
+    card = adapter.card_extra_html(record)
+    assert 'class="archive-browse-btn"' in card
+    assert "data-account=" not in card.split("archive-browse-btn", 1)[1].split(">")[0]
+
+
+def test_mailboardadapter_aggregate_browse_button_scoped_to_account() -> None:
+    """Aggregate To Archive cards carry a Browse button scoped to their account."""
+    mid = "<test@example.com>"
+    record = _make_record(message_id=mid)
+    adapter = MailBoardAdapter(
+        triage_by_mid={mid: "TO_ARCHIVE"},
+        archive_subfolders={mid: "Compta"},
+        folder_exists={},
+        archive_root="robotsix-mail-archive",
+        unsubscribe_suggestions={},
+        record_notes={},
+        record_accounts={mid: "work&co"},
+        account_labels={"work&co": "Work"},
+    )
+    card = adapter.card_extra_html(record)
+    btn_tag = card.split('class="archive-browse-btn"', 1)[1].split(">", 1)[0]
+    assert 'data-account="work&amp;co"' in btn_tag
+
+
 def test_mailboardadapter_aggregate_forms_redirect_to_all_mailboxes() -> None:
     """In the aggregate view, card actions post back to the All-mailboxes board.
 

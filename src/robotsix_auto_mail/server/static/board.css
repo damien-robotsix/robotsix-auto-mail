@@ -857,3 +857,44 @@ button:hover {
   font-style: italic;
   color: var(--color-text-on-modal);
 }
+
+/* -- batch-archive dialog (per-message destinations + folder browse) ---- */
+.batch-archive-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-bottom: 1em;
+}
+.batch-archive-group {
+  margin-bottom: 0.6em;
+}
+.batch-archive-group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-weight: 600;
+}
+.batch-archive-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding-left: 1.2em;
+  font-size: 0.85rem;
+}
+.batch-archive-subject {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.batch-archive-excluded .batch-archive-subject {
+  text-decoration: line-through;
+}
+.batch-archive-note {
+  font-style: italic;
+  color: var(--color-text-dim);
+}
+.batch-archive-actions {
+  display: flex;
+  gap: 0.5em;
+  justify-content: flex-end;
+}
