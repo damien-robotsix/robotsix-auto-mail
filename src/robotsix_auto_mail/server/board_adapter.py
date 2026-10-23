@@ -331,12 +331,20 @@ class MailBoardAdapter:
         )
         # Browse button -- opens the folder-tree popover to select
         # an existing archive subfolder.  Suppressed when no
-        # archive subfolders exist yet (fresh setup) and in
-        # aggregate mode (the tree is per-account only).
-        if self.archive_folders and not self._record_accounts:
+        # archive subfolders exist yet (fresh setup).  In aggregate
+        # mode the tree is per-account: the button carries the card's
+        # owning account so the JS fetches ``/archive-folders`` for that
+        # account (and hides the button when it has no subfolders).
+        owning_account = self._record_accounts.get(card.message_id)
+        if owning_account or (self.archive_folders and not self._record_accounts):
+            data_account = (
+                f' data-account="{html.escape(owning_account, quote=True)}"'
+                if owning_account
+                else ""
+            )
             archive_html += (
                 '<button type="button" class="archive-browse-btn"'
-                f' data-message-id="{quoted_mid}">'
+                f' data-message-id="{quoted_mid}"{data_account}>'
                 "\U0001f4c1 Browse</button>"
             )
         archive_html += (

@@ -159,6 +159,13 @@
 
       // ---- 5d.  Archive All form ----
       if (form.classList.contains("archive-form")) {
+        // Open the batch-archive dialog (per-message destinations + folder
+        // browsing) instead of a bare confirm, when available.
+        if (typeof window.openBatchArchiveDialog === "function") {
+          e.preventDefault();
+          window.openBatchArchiveDialog(form);
+          return;
+        }
         var msg = confirmMessage(
           form,
           "Archive ALL mail in this column to their proposed folders?",
@@ -191,6 +198,11 @@
 
       // ---- 5f.  Archive group form (per-destination batch) ----
       if (form.classList.contains("archive-group-form")) {
+        if (typeof window.openBatchArchiveDialog === "function") {
+          e.preventDefault();
+          window.openBatchArchiveDialog(form);
+          return;
+        }
         // Read the destination label from the sibling .archive-group-label
         var group = form.closest(".archive-group");
         var labelEl = group

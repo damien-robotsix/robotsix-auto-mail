@@ -217,43 +217,69 @@
   /* ==================================================================
    * 2c. Folder-tree browser (Browse button → popover)
    *
-   * Fetches /archive-folders once on page load and caches the flat list.
-   * The flat list is parsed into a nested tree (split on "/").
-   * A click on any ".archive-browse-btn" opens a positioned popover with
-   * the expandable tree; clicking a leaf fills the sibling text input and
-   * closes the popover.  Suppressed in aggregate (dataAccountJs) mode.
+   * Fetches /archive-folders per account (cached) and parses the flat list
+   * into a nested tree (split on "/").  A click on any ".archive-browse-btn"
+   * opens a positioned popover with the expandable tree.  In the aggregate
+   * ("All mailboxes") view the button carries the card's owning account in
+   * data-account, so the tree is scoped to that account's archive.
+   *
+   * Picking a folder stores a per-message override via POST
+   * /archive-proposal (the same mechanism the mail detail page uses), then
+   * re-reads GET /archive-proposal/<id> and updates the card live.  The
+   * same popover backs the batch-archive dialog (section 2d).
    * ================================================================ */
 
-  let folderCache = null; // null = not fetched yet, [] = empty
+  const folderCaches = {}; // account key ("" = current) → string[]
+  const folderPending = {}; // account key → Promise<string[]>
   let folderPopover = null;
   let folderBrowseBtn = null;
+  let folderOnSelect = null;
 
-  function fetchFolders() {
-    if (folderCache !== null) return;
-    // Suppress in aggregate mode — the server also omits the button, but
-    // guard defensively.
-    if (dataAccountJs) {
-      folderCache = [];
-      hideBrowseButtons();
-      return;
-    }
-    fetchJson("/archive-folders" + fetchQs)
-      .then(function (data) {
-        folderCache = data.folders || [];
-        if (folderCache.length === 0) {
-          hideBrowseButtons();
-        }
-      })
-      .catch(function () {
-        folderCache = [];
-        hideBrowseButtons();
-      });
+  function accountQsFor(account) {
+    if (account) return "?account=" + encodeURIComponent(account);
+    return fetchQs;
   }
 
-  function hideBrowseButtons() {
+  function getFolders(account) {
+    const key = account || "";
+    if (folderCaches[key]) return Promise.resolve(folderCaches[key]);
+    if (folderPending[key]) return folderPending[key];
+    folderPending[key] = fetchJson("/archive-folders" + accountQsFor(account))
+      .then(function (data) {
+        folderCaches[key] = data.folders || [];
+        return folderCaches[key];
+      })
+      .catch(function () {
+        return [];
+      })
+      .then(function (folders) {
+        delete folderPending[key];
+        return folders;
+      });
+    return folderPending[key];
+  }
+
+  function fetchFolders() {
+    // Pre-fetch the folder list for every account represented by a Browse
+    // button; hide buttons whose account has no subfolders yet.
     const btns = document.querySelectorAll(".archive-browse-btn");
+    const accounts = {};
     for (let i = 0; i < btns.length; i++) {
-      btns[i].style.display = "none";
+      accounts[btns[i].getAttribute("data-account") || ""] = true;
+    }
+    Object.keys(accounts).forEach(function (account) {
+      getFolders(account).then(function (folders) {
+        if (folders.length === 0) hideBrowseButtons(account);
+      });
+    });
+  }
+
+  function hideBrowseButtons(account) {
+    const btns = document.querySelectorAll(".card-extra .archive-browse-btn");
+    for (let i = 0; i < btns.length; i++) {
+      if ((btns[i].getAttribute("data-account") || "") === account) {
+        btns[i].style.display = "none";
+      }
     }
   }
 
@@ -287,7 +313,7 @@
     if (hasChildren) {
       const toggle = document.createElement("span");
       toggle.className = "ft-toggle";
-      toggle.textContent = "\u25b6"; // ▶
+      toggle.textContent = "▶"; // ▶
 
       const label = document.createElement("span");
       label.textContent = "\u{1F4C1} " + name;
@@ -317,7 +343,7 @@
         e.stopPropagation();
         const collapsed = childContainer.style.display === "none";
         childContainer.style.display = collapsed ? "block" : "none";
-        toggle.textContent = collapsed ? "\u25bc" : "\u25b6"; // ▼ / ▶
+        toggle.textContent = collapsed ? "▼" : "▶"; // ▼ / ▶
       });
 
       row.appendChild(toggle);
@@ -345,33 +371,83 @@
   }
 
   function selectArchiveFolder(path) {
-    if (!folderBrowseBtn) return;
-    const mid = folderBrowseBtn.getAttribute("data-message-id");
-    const card = document.querySelector(
-      '.card-extra[data-message-id="' + CSS.escape(mid) + '"]',
-    );
-    if (!card) return;
-    const form = card.querySelector(".archive-override-form");
-    if (!form) return;
-    const input = form.querySelector('input[name="subfolder"]');
-    if (!input) return;
-    input.value = path;
+    const cb = folderOnSelect;
     closeFolderPopover();
-    // Focus the Set button so the user can immediately confirm.
-    const setBtn = form.querySelector('button[type="submit"]');
-    if (setBtn) setBtn.focus();
+    if (cb) cb(path);
   }
 
-  function openFolderPopover(btn) {
+  /*
+   * Store a per-message archive override (POST /archive-proposal) and
+   * resolve with the effective proposal read back from
+   * GET /archive-proposal/<id> ({subfolder, archive_root, source, ...}).
+   * *quotedMid* is the URL-quoted id carried in data-message-id.
+   */
+  function applyArchiveOverride(quotedMid, account, subfolder) {
+    const qs = accountQsFor(account);
+    const body = new URLSearchParams({
+      message_id: decodeURIComponent(quotedMid),
+      subfolder: subfolder,
+    });
+    return fetch("/archive-proposal" + qs, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      redirect: "manual",
+      credentials: "same-origin",
+    }).then(function (r) {
+      // The form endpoint answers with a redirect back to the board.
+      const redirected = r.type === "opaqueredirect" ||
+        (r.status >= 300 && r.status < 400);
+      if (!r.ok && !redirected) {
+        throw new Error("override failed: " + r.status);
+      }
+      return fetchJson("/archive-proposal/" + quotedMid + qs);
+    }).then(function (proposal) {
+      updateCardProposal(quotedMid, proposal);
+      return proposal;
+    });
+  }
+
+  function displayPath(root, subfolder) {
+    return subfolder ? root + "/" + subfolder : root + "/";
+  }
+
+  function updateCardProposal(quotedMid, proposal) {
+    const extra = document.querySelector(
+      '.card-extra[data-message-id="' + CSS.escape(quotedMid) + '"]',
+    );
+    if (!extra) return;
+    const subfolder = proposal.subfolder || "";
+    const path = displayPath(proposal.archive_root || "", subfolder);
+    extra.setAttribute("data-archive-dest", subfolder);
+    const pathEl = extra.querySelector(".archive-path");
+    if (pathEl) pathEl.textContent = path;
+    const input = extra.querySelector(
+      '.archive-override-form input[name="subfolder"]',
+    );
+    if (input) input.value = subfolder;
+    const confirmForm = extra.querySelector(".archive-confirm-form");
+    if (confirmForm) {
+      confirmForm.setAttribute(
+        "data-confirm",
+        "Archive this mail to " + path + "?",
+      );
+    }
+    const exists = extra.querySelector(".archive-exists");
+    if (exists) exists.style.display = proposal.folder_exists ? "" : "none";
+  }
+
+  function openFolderPopover(btn, folders, onSelect) {
     closeFolderPopover();
-    if (!folderCache || folderCache.length === 0) return;
+    if (!folders || folders.length === 0) return;
 
     folderBrowseBtn = btn;
+    folderOnSelect = onSelect;
 
     const popover = document.createElement("div");
     popover.className = "folder-tree-popover";
 
-    const tree = buildFolderTree(folderCache);
+    const tree = buildFolderTree(folders);
     const rootKeys = Object.keys(tree._children).sort();
     for (let i = 0; i < rootKeys.length; i++) {
       const name = rootKeys[i];
@@ -427,6 +503,7 @@
       document.removeEventListener("click", folderOutsideClick, true);
     }
     folderBrowseBtn = null;
+    folderOnSelect = null;
   }
 
   function folderOutsideClick(e) {
@@ -439,34 +516,38 @@
     }
   }
 
+  // Toggle the popover for *btn*; *onSelect(path)* runs on a folder pick.
+  function toggleFolderPopover(btn, account, onSelect) {
+    if (folderPopover && folderBrowseBtn === btn) {
+      closeFolderPopover();
+      return;
+    }
+    getFolders(account).then(function (folders) {
+      if (folders.length) openFolderPopover(btn, folders, onSelect);
+    });
+  }
+
   // Escape key closes the popover (appended to the existing Escape handler
   // below in section 3).
 
-  // Delegate click on Browse buttons.
+  // Delegate click on card Browse buttons (the batch dialog wires its own).
   document.addEventListener("click", function (e) {
-    const btn = e.target.closest(".archive-browse-btn");
+    const btn = e.target.closest(".card-extra .archive-browse-btn");
     if (!btn) return;
     e.preventDefault();
     e.stopPropagation();
-    if (folderPopover && folderBrowseBtn === btn) {
-      closeFolderPopover();
-    } else {
-      // Re-fetch in case the cache was never populated (e.g. fetch failed
-      // silently earlier).
-      if (folderCache === null) {
-        fetch("/archive-folders" + fetchQs)
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (data) {
-            folderCache = data.folders || [];
-            if (folderCache.length) openFolderPopover(btn);
-          })
-          .catch(function () {});
-        return;
-      }
-      openFolderPopover(btn);
-    }
+    const mid = btn.getAttribute("data-message-id") || "";
+    const account = btn.getAttribute("data-account") || "";
+    toggleFolderPopover(btn, account, function (path) {
+      applyArchiveOverride(mid, account, path)
+        .then(function () {
+          // Re-render so the server re-sorts cards into destination groups.
+          refreshBoard(true);
+        })
+        .catch(function (err) {
+          window.alert("Could not set archive folder: " + err.message);
+        });
+    });
   });
 
   // Kick off the folder fetch on load.
@@ -474,6 +555,196 @@
     document.addEventListener("DOMContentLoaded", fetchFolders);
   } else {
     fetchFolders();
+  }
+
+  /* ==================================================================
+   * 2d. Batch-archive dialog ("Archive All" / "Archive these N")
+   *
+   * Instead of a bare confirm(), the batch-archive forms open a dialog
+   * listing every included message grouped by destination.  Each message
+   * and each group has a Browse button using the same folder-tree popover;
+   * a pick stores a per-message override (POST /archive-proposal), which
+   * the background bulk archive honours (it resolves each record's
+   * destination via get_archive_subfolder, overrides first).
+   * ================================================================ */
+
+  let batchDialog = null;
+
+  function collectArchiveItems() {
+    const extras = document.querySelectorAll(".card-extra[data-archive-dest]");
+    const items = [];
+    for (let i = 0; i < extras.length; i++) {
+      const ex = extras[i];
+      items.push({
+        mid: ex.getAttribute("data-message-id") || "",
+        account: ex.getAttribute("data-account") || "",
+        subject: ex.getAttribute("data-subject") || "",
+        dest: ex.getAttribute("data-archive-dest") || "",
+      });
+    }
+    return items;
+  }
+
+  function closeBatchArchiveDialog() {
+    closeFolderPopover();
+    if (batchDialog) {
+      batchDialog.remove();
+      batchDialog = null;
+    }
+  }
+
+  function openBatchArchiveDialog(form) {
+    closeBatchArchiveDialog();
+    const folderInput = form.classList.contains("archive-group-form")
+      ? form.querySelector('input[name="folder"]')
+      : null;
+    // A group form archives exactly one destination (its folder filter).
+    let items = collectArchiveItems();
+    if (folderInput) {
+      const target = folderInput.value;
+      items = items.filter(function (it) {
+        return it.dest === target;
+      });
+    }
+    let busy = false;
+    let changed = false;
+
+    const overlay = document.createElement("div");
+    overlay.className = "auth-modal-overlay batch-archive-overlay";
+    const modal = document.createElement("div");
+    modal.className = "auth-modal batch-archive-modal";
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    batchDialog = overlay;
+
+    function included(it) {
+      return !folderInput || it.dest === folderInput.value;
+    }
+
+    function setDest(targets, btn, account) {
+      toggleFolderPopover(btn, account, function (path) {
+        // Moving a whole (still intact) group retargets the group form's
+        // folder filter; moving a single message takes it out of the group.
+        const groupChange = folderInput && targets.length > 0 &&
+          targets.length === items.filter(included).length &&
+          targets.every(included);
+        busy = true;
+        render();
+        Promise.all(targets.map(function (it) {
+          return applyArchiveOverride(it.mid, it.account, path).then(
+            function (proposal) {
+              it.dest = proposal.subfolder || "";
+              changed = true;
+            },
+          );
+        })).then(function () {
+          if (groupChange) folderInput.value = path;
+        }).catch(function (err) {
+          window.alert("Could not set archive folder: " + err.message);
+        }).then(function () {
+          busy = false;
+          render();
+        });
+      });
+    }
+
+    function browseButton(label, targets, account) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "archive-browse-btn";
+      b.textContent = "\u{1F4C1} " + label;
+      b.disabled = busy;
+      b.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        setDest(targets, b, account);
+      });
+      return b;
+    }
+
+    function render() {
+      modal.textContent = "";
+      const h = document.createElement("h3");
+      h.textContent = "Archive mail";
+      modal.appendChild(h);
+
+      const groups = {};
+      const order = [];
+      items.forEach(function (it) {
+        const key = it.account + "\u0000" + it.dest;
+        if (!groups[key]) {
+          groups[key] = { dest: it.dest, account: it.account, items: [] };
+          order.push(key);
+        }
+        groups[key].items.push(it);
+      });
+
+      const list = document.createElement("div");
+      list.className = "batch-archive-list";
+      order.forEach(function (key) {
+        const g = groups[key];
+        const sec = document.createElement("div");
+        sec.className = "batch-archive-group";
+        const head = document.createElement("div");
+        head.className = "batch-archive-group-head";
+        const lbl = document.createElement("span");
+        lbl.className = "batch-archive-dest";
+        lbl.textContent = "\u{1F4C1} " + (g.dest || "Archive root") +
+          (g.account ? " [" + g.account + "]" : "") +
+          " (" + g.items.length + ")";
+        head.appendChild(lbl);
+        head.appendChild(browseButton("Change all", g.items, g.account));
+        sec.appendChild(head);
+
+        g.items.forEach(function (it) {
+          const row = document.createElement("div");
+          row.className = "batch-archive-item";
+          const subj = document.createElement("span");
+          subj.className = "batch-archive-subject";
+          subj.textContent = it.subject;
+          row.appendChild(subj);
+          if (!included(it)) {
+            row.classList.add("batch-archive-excluded");
+            const note = document.createElement("span");
+            note.className = "batch-archive-note";
+            note.textContent =
+              " (moved out of this group — archive it with its new folder)";
+            row.appendChild(note);
+          }
+          row.appendChild(browseButton("Browse", [it], it.account));
+          sec.appendChild(row);
+        });
+        list.appendChild(sec);
+      });
+      modal.appendChild(list);
+
+      const count = items.filter(included).length;
+      const actions = document.createElement("div");
+      actions.className = "batch-archive-actions";
+      const ok = document.createElement("button");
+      ok.type = "button";
+      ok.className = "archive-btn batch-archive-confirm";
+      ok.textContent = "Archive " + count + " mail";
+      ok.disabled = busy || count === 0;
+      ok.addEventListener("click", function () {
+        closeBatchArchiveDialog();
+        form.submit(); // bypasses the submit listener (no re-prompt)
+      });
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "batch-archive-cancel";
+      cancel.textContent = "Cancel";
+      cancel.addEventListener("click", function () {
+        closeBatchArchiveDialog();
+        // Re-sort the board into the new destination groups.
+        if (changed) refreshBoard(true);
+      });
+      actions.appendChild(ok);
+      actions.appendChild(cancel);
+      modal.appendChild(actions);
+    }
+
+    render();
   }
 
   /* ==================================================================
@@ -517,6 +788,8 @@
         // close the detail panel.
         if (folderPopover) {
           closeFolderPopover();
+        } else if (batchDialog) {
+          closeBatchArchiveDialog();
         } else {
           closeDetail();
         }
@@ -752,4 +1025,5 @@
   window.closeDetail = closeDetail;
   window.refreshBoard = refreshBoard;
   window.authorizeAccount = authorizeAccount;
+  window.openBatchArchiveDialog = openBatchArchiveDialog;
 })();
