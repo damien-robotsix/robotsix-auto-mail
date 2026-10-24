@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.10.0...v0.11.0) (2026-10-23)
+
+
+### Features
+
+* Mail board: add archive-folder browsing/selection to To Archive cards in the board view (parity with single-mail view) (20261023T153736Z-mail-board-add-archive-folder-browsing-s-2a59) ([#1348](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1348)) ([39a0751](https://github.com/damien-robotsix/robotsix-auto-mail/commit/39a0751105ab7abc1195bda5334b64dfaf7c26b6))
+
 ## [0.10.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.9.1...v0.10.0) (2026-10-15)
 
 
