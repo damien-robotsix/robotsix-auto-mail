@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from urllib.request import urlopen
 
 import yaml
@@ -10,6 +11,7 @@ from robotsix_http.fastapi import (
     parse_chat_skill_frontmatter,
 )
 
+from robotsix_auto_mail.db.models import VALID_TRIAGE_ACTIONS
 from robotsix_auto_mail.server._constants import _STATIC_CHAT_SKILL_MD
 from tests.server.conftest_helpers import _start_test_server
 
@@ -82,3 +84,20 @@ def test_static_chat_skill_md_satisfies_shared_parser() -> None:
     # A non-empty, single-sentence description (the parser rejects an empty one).
     assert frontmatter.description
     assert frontmatter.description.count(".") <= 1
+
+
+def test_static_chat_skill_md_triage_actions_match_model() -> None:
+    """The move-endpoint triage_action list in skill.md mirrors the model.
+
+    ``skill.md`` hand-copies ``VALID_TRIAGE_ACTIONS`` as literals; this keeps
+    the two in lockstep so chat agents never learn a stale column vocabulary.
+    """
+    match = re.search(
+        r"`triage_action` must be one of (.+?)\.(?:\s|$)",
+        _STATIC_CHAT_SKILL_MD,
+        re.DOTALL,
+    )
+    assert match, "skill.md is missing the '`triage_action` must be one of' list"
+    tokens = re.findall(r"`([A-Z_]+)`", match.group(1))
+    assert len(tokens) == len(set(tokens)), f"duplicate actions: {tokens}"
+    assert set(tokens) == VALID_TRIAGE_ACTIONS
