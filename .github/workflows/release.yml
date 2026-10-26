@@ -34,7 +34,6 @@ jobs:
     uses: damien-robotsix/robotsix-github-workflows/.github/workflows/docker-release.yml@92c11fd2be7a9ce80bd60208616271326e0fb08a  # 92c11fd 2026-10-26
     with:
       trivyignores: .trivyignore
-    secrets: inherit
 
   sbom:
     name: Generate SBOM
