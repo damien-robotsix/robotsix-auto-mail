@@ -15,6 +15,7 @@ only the injected dependencies and is safe to share across every request.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, cast
 from urllib.parse import unquote
 
@@ -66,6 +67,59 @@ def _fetch_raw_message(ctx: RequestContext, folder: str, uid: int) -> bytes | No
 
     _uid, raw_bytes = fetched[0]
     return raw_bytes
+
+
+def _serve_parsed_message_body(
+    ctx: RequestContext,
+    raw_bytes: bytes,
+    *,
+    imap_uid: int,
+    source_folder: str,
+    message_id: str | None,
+    prefer_parsed_message_id: bool = False,
+    extra: Mapping[str, object] | None = None,
+) -> None:
+    """Parse *raw_bytes* and serve the JSON message-body response.
+
+    Shared by the board-card body, mailbox message read and archive
+    message read endpoints.  ``message_id`` is served verbatim unless
+    *prefer_parsed_message_id* is set, in which case the parsed
+    ``Message-ID`` header wins and *message_id* is only the fallback.
+    *extra* keys (e.g. ``folder``/``uid``) are inserted after
+    ``account``.
+    """
+    import json
+
+    from robotsix_auto_mail.core._sanitize import sanitize_html
+    from robotsix_auto_mail.pipeline import parse_message
+
+    parsed = parse_message(
+        raw_bytes,
+        imap_uid=imap_uid,
+        source_folder=source_folder,
+    )
+
+    try:
+        attachments = json.loads(parsed.attachments_json)
+    except (json.JSONDecodeError, TypeError):  # fmt: skip
+        attachments = []
+
+    body_html = sanitize_html(parsed.body_html) if parsed.body_html else None
+
+    ctx._serve_json(
+        {
+            "message_id": (
+                (parsed.message_id or message_id)
+                if prefer_parsed_message_id
+                else message_id
+            ),
+            "account": ctx._current_account_id or "main",
+            **(extra or {}),
+            "body_plain": parsed.body_plain,
+            "body_html": body_html,
+            "attachments": attachments,
+        }
+    )
 
 
 class ArchiveViewService(Service):
@@ -174,11 +228,7 @@ class ArchiveViewService(Service):
         Errors: 400 on missing params / aggregate mode, 404 on unknown
         folder or uid, 502 on IMAP error.
         """
-        import json
         from urllib.parse import parse_qs, urlsplit
-
-        from robotsix_auto_mail.core._sanitize import sanitize_html
-        from robotsix_auto_mail.pipeline import parse_message
 
         if ctx._aggregate:
             ctx._serve_json(
@@ -289,29 +339,14 @@ class ArchiveViewService(Service):
 
         _uid, raw_bytes = fetched[0]
 
-        parsed = parse_message(
+        _serve_parsed_message_body(
+            ctx,
             raw_bytes,
             imap_uid=resolved_uid,
             source_folder=translated_path,
-        )
-
-        try:
-            attachments = json.loads(parsed.attachments_json)
-        except (json.JSONDecodeError, TypeError):  # fmt: skip
-            attachments = []
-
-        body_html = sanitize_html(parsed.body_html) if parsed.body_html else None
-
-        ctx._serve_json(
-            {
-                "message_id": parsed.message_id or message_id,
-                "account": ctx._current_account_id or "main",
-                "folder": folder,
-                "uid": resolved_uid,
-                "body_plain": parsed.body_plain,
-                "body_html": body_html,
-                "attachments": attachments,
-            }
+            message_id=message_id,
+            prefer_parsed_message_id=True,
+            extra={"folder": folder, "uid": resolved_uid},
         )
 
     def serve_archive_folders(self, ctx: RequestContext) -> None:

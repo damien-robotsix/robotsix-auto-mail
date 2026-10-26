@@ -25,6 +25,7 @@ import logging
 from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, urlsplit
 
+from robotsix_auto_mail.server._archive_view_service import _serve_parsed_message_body
 from robotsix_auto_mail.server._services import Service
 
 if TYPE_CHECKING:
@@ -155,8 +156,6 @@ class MailboxService(Service):
         Errors: 400 on missing params / aggregate mode, 404 on unknown
         folder or message, 502 on IMAP error.
         """
-        from robotsix_auto_mail.core._sanitize import sanitize_html
-        from robotsix_auto_mail.pipeline import parse_message
 
         if ctx._aggregate:
             ctx._serve_json(
@@ -233,29 +232,14 @@ class MailboxService(Service):
 
         _uid, raw_bytes = fetched[0]
 
-        parsed = parse_message(
+        _serve_parsed_message_body(
+            ctx,
             raw_bytes,
             imap_uid=resolved_uid,
             source_folder=resolved_folder,
-        )
-
-        try:
-            attachments = json.loads(parsed.attachments_json)
-        except (json.JSONDecodeError, TypeError):  # fmt: skip
-            attachments = []
-
-        body_html = sanitize_html(parsed.body_html) if parsed.body_html else None
-
-        ctx._serve_json(
-            {
-                "message_id": parsed.message_id or message_id,
-                "account": ctx._current_account_id or "main",
-                "folder": resolved_folder,
-                "uid": resolved_uid,
-                "body_plain": parsed.body_plain,
-                "body_html": body_html,
-                "attachments": attachments,
-            }
+            message_id=message_id,
+            prefer_parsed_message_id=True,
+            extra={"folder": resolved_folder, "uid": resolved_uid},
         )
 
     # -- GET /search -------------------------------------------------------
