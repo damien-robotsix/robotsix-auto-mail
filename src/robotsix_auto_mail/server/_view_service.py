@@ -15,7 +15,10 @@ import logging
 from typing import TYPE_CHECKING, cast
 from urllib.parse import unquote
 
-from robotsix_auto_mail.server._archive_view_service import _fetch_raw_message
+from robotsix_auto_mail.server._archive_view_service import (
+    _fetch_raw_message,
+    _serve_parsed_message_body,
+)
 from robotsix_auto_mail.server._constants import (
     _STATIC_ADD_ACCOUNT_REDIRECT_JS,
     _STATIC_APPSHELL_LOADER_JS,
@@ -399,12 +402,9 @@ class ViewService(Service):
         ``?account=<id>`` query param before dispatch; an unknown account
         returns 404.
         """
-        import json
         from urllib.parse import urlsplit
 
-        from robotsix_auto_mail.core._sanitize import sanitize_html
         from robotsix_auto_mail.db import get_record_by_message_id
-        from robotsix_auto_mail.pipeline import parse_message
 
         if ctx._aggregate:
             ctx._serve_json(
@@ -437,27 +437,12 @@ class ViewService(Service):
         if raw_bytes is None:
             return  # a response has already been sent
 
-        parsed = parse_message(
+        _serve_parsed_message_body(
+            ctx,
             raw_bytes,
             imap_uid=record.imap_uid,
             source_folder=record.source_folder,
-        )
-
-        try:
-            attachments = json.loads(parsed.attachments_json)
-        except (json.JSONDecodeError, TypeError):  # fmt: skip
-            attachments = []
-
-        body_html = sanitize_html(parsed.body_html) if parsed.body_html else None
-
-        ctx._serve_json(
-            {
-                "message_id": record.message_id,
-                "account": ctx._current_account_id or "main",
-                "body_plain": parsed.body_plain,
-                "body_html": body_html,
-                "attachments": attachments,
-            }
+            message_id=record.message_id,
         )
 
     def serve_email_status(self, ctx: RequestContext) -> None:
