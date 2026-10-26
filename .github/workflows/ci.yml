@@ -183,6 +183,22 @@ jobs:
       pip-audit-requirements-file: requirements-locked.txt
       pip-audit-ignore-packages: "robotsix-config robotsix-board robotsix-auto-mail robotsix-llmio robotsix-modules robotsix-http"
 
+  # Pre-merge image gate: builds the Dockerfile locally (push: false),
+  # smoke-tests the built image and blocks on fixable CRITICAL/HIGH Trivy
+  # findings — so a broken image build or a new CVE is caught on the PR
+  # instead of after release.yml has already published from main. The
+  # Dockerfile needs no build secrets and its build args have defaults.
+  # No smoke_command: the default probe execs the entrypoint with --help,
+  # which entrypoint.sh forwards to `robotsix-auto-mail --help` without a
+  # config file.
+  docker-pr-scan:
+    name: Docker PR scan
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      security-events: write  # needed for SARIF upload from reusable workflow
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/docker-pr-scan.yml@ff826aea1635a407b1d2a05403898dbc97c877ce  # main
+
   # CycloneDX SBOM generated via reusable workflow (.github/workflows/sbom.yml).
   sbom:
     name: Generate SBOM
