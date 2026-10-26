@@ -1,12 +1,10 @@
 name: Release image
 
-# Publishes container images to GHCR using the Docker daemon's
-# built-in BuildKit (`docker` driver) to avoid pulling the
-# `moby/buildkit` image from Docker Hub (which causes transient
-# timeouts under Docker Hub rate-limiting).
+# Publishes container images to GHCR through the shared
+# robotsix-github-workflows `docker-release.yml` reusable workflow.
 #
-# Tags produced:
-#   push to `main`  -> `main`, `sha-<short>`, `latest`
+# Tags produced (docker/metadata-action in the reusable workflow):
+#   push to `main`  -> `main`, `sha-<short>`
 #   push of a `v*` tag -> `1.2.3`, `sha-<short>`
 on:
   push:
@@ -21,99 +19,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Fleet-standard publish path: metadata tags, provenance/SBOM
+  # attestations, render-harden, assert-image-user, docker-smoke, the
+  # Trivy gate and the Trivy SARIF upload all live in the reusable
+  # workflow. The Dockerfile needs no build secrets (see ci.yml).
   publish:
     name: Publish container image
-    runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write  # needed to push container image to GHCR
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c  # v2.21.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e  # v4.3.0
-        with:
-          driver: docker  # Use Docker daemon's built-in BuildKit — avoids pulling moby/buildkit from Docker Hub
-
-      - name: Log into GHCR
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Compute Docker metadata
-        id: meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6.2.0
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-
-      - name: Build and push
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  trivy:
-    name: Scan image with Trivy
-    needs: publish
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read  # needed to pull image from GHCR
-      security-events: write  # needed for SARIF upload
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c  # v2.21.0
-        with:
-          egress-policy: audit
-
-      - name: Compute image reference
-        id: ref
-        env:
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          if [ "$REF_TYPE" = "tag" ]; then
-            TAG="$REF_NAME"
-            TAG="${TAG#v}"
-          else
-            TAG="$REF_NAME"
-          fi
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-
-      - name: Scan published image with Trivy
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-        with:
-          image-ref: ghcr.io/${{ github.repository }}:${{ steps.ref.outputs.tag }}
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
-          # Fail the step only for tag (release) pushes — branch
-          # pushes still scan and upload SARIF but don't fail.
-          exit-code: ${{ github.ref_type == 'tag' && '1' || '0' }}
-          vuln-type: os,library
-
-      - name: Upload Trivy SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938  # v3
-        if: always()
-        with:
-          sarif_file: trivy-results.sarif
+      packages: write         # needed to push container image to GHCR
+      id-token: write         # provenance/SBOM attestation signing
+      attestations: write     # provenance/SBOM attestation signing
+      security-events: write  # needed for Trivy SARIF upload
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/docker-release.yml@92c11fd2be7a9ce80bd60208616271326e0fb08a  # 92c11fd 2026-10-26
+    with:
+      trivyignores: .trivyignore
 
   sbom:
     name: Generate SBOM

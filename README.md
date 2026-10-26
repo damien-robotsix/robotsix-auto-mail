@@ -79,8 +79,12 @@ uv sync --frozen
 Or pull the pre-built container image from GHCR:
 
 ```sh
-docker pull ghcr.io/damien-robotsix/robotsix-auto-mail:latest
+docker pull ghcr.io/damien-robotsix/robotsix-auto-mail:main
 ```
+
+The `main` tag tracks the latest build from the `main` branch. Release tags
+(`v*`) also publish a version tag such as `1.2.3` alongside a `sha-<short>` tag.
+The `latest` tag is no longer produced by the release workflow.
 
 See [docs/connecting.md](docs/connecting.md) for full configuration instructions.
 
