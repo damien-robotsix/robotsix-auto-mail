@@ -21,7 +21,7 @@ repos:
           - types-PyYAML
 
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: v0.25
+    rev: v0.27
     hooks:
       - id: validate-pyproject
         args: ['--disable-plugins=uv']
