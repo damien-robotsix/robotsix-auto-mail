@@ -19,6 +19,11 @@ from robotsix_auto_mail.db import MailRecord, init_db, list_records
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the 'board' subcommand: a read-only board view of ingested mail.
+
+    Args:
+        subparsers: The top-level CLI subparsers action to add the parser to.
+    """
     from robotsix_auto_mail.cli import _add_account_arg
 
     parser = subparsers.add_parser(

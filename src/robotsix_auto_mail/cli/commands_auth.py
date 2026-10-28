@@ -12,6 +12,12 @@ from robotsix_auto_mail.config import ConfigurationError
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the 'auth' subcommand group (login) on the top-level CLI parser.
+
+    Args:
+        subparsers: The top-level CLI subparsers action; called once during
+            CLI construction.
+    """
     auth_parser = subparsers.add_parser(
         "auth", help="Authenticate accounts (OAuth2 device-code login)"
     )

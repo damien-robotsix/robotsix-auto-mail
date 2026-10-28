@@ -15,6 +15,11 @@ from robotsix_auto_mail.smtp import SmtpClient, SmtpError
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the 'probe' subcommand on the top-level CLI parser.
+
+    Args:
+        subparsers: The top-level CLI subparsers action to add the parser to.
+    """
     from robotsix_auto_mail.cli import _add_account_arg
 
     parser = subparsers.add_parser(
