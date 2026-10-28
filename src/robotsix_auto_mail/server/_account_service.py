@@ -16,7 +16,7 @@ from robotsix_auto_mail.config import (
     load_accounts,
     save_accounts,
 )
-from robotsix_auto_mail.config.detect import (
+from robotsix_auto_mail.detect import (
     MailProvider,
     autoconfig_lookup,
     mx_lookup,

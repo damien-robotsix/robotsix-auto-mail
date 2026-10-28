@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from robotsix_auto_mail.config.detect import (
+from robotsix_auto_mail.detect import (
     DetectionError,
 )
 
@@ -33,7 +33,7 @@ def test_detection_error_chain() -> None:
 
 def test_prompt_contains_all_providers() -> None:
     """Every prompt-table provider appears in the generated system prompt."""
-    from robotsix_auto_mail.config.detect import (
+    from robotsix_auto_mail.detect import (
         _DETECT_SYSTEM_PROMPT,
         _PROVIDER_DB,
     )
@@ -50,7 +50,7 @@ def test_prompt_contains_all_providers() -> None:
 
 def test_mx_providers_covers_all_needles() -> None:
     """Every entry with mx_needles + imap_host has a matching MX entry."""
-    from robotsix_auto_mail.config.detect import (
+    from robotsix_auto_mail.detect import (
         _MX_PROVIDERS,
         _PROVIDER_DB,
         MailProvider,
@@ -83,7 +83,7 @@ def test_mx_providers_covers_all_needles() -> None:
 
 def test_consistency_mx_vs_prompt() -> None:
     """Providers in both prompt table and MX must have identical hosts."""
-    from robotsix_auto_mail.config.detect import (
+    from robotsix_auto_mail.detect import (
         _DETECT_SYSTEM_PROMPT,
         _MX_PROVIDERS,
         _PROVIDER_DB,

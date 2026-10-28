@@ -8,7 +8,7 @@ import pytest
 
 from robotsix_auto_mail.cli import main
 from robotsix_auto_mail.cli.config import _detect_settings
-from robotsix_auto_mail.config.detect import DetectionError, MailProvider
+from robotsix_auto_mail.detect import DetectionError, MailProvider
 from tests.cli.conftest import (
     _host_fail_result,
     _mock_autoconfig,
@@ -31,7 +31,7 @@ def test_detect_refines_host_with_llm_on_connection_failure(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             side_effect=[bad, good],
         ) as mock_dp,
         mock.patch(
@@ -69,7 +69,7 @@ def test_detect_prompts_for_host_when_llm_cannot_fix(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             side_effect=[bad, DetectionError("llm down")],
         ),
         mock.patch(

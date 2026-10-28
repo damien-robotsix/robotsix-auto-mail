@@ -19,7 +19,7 @@ from robotsix_auto_mail.config import (
     OpenRouterConfig,
     TierModelsConfig,
 )
-from robotsix_auto_mail.config.detect import MailProvider
+from robotsix_auto_mail.detect import MailProvider
 from tests.cli.conftest import _ok_result
 
 
@@ -30,7 +30,7 @@ def test_detect_honours_id_flag(tmp_path: Path, no_autoconfig: object) -> None:
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch(
@@ -66,7 +66,7 @@ def test_detect_appends_second_account(tmp_path: Path, no_autoconfig: object) ->
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", side_effect=[p1, p2]
+            "robotsix_auto_mail.detect.detect_provider", side_effect=[p1, p2]
         ),
         mock.patch(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
@@ -116,7 +116,7 @@ def test_detect_refuses_duplicate_id(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=provider
+            "robotsix_auto_mail.detect.detect_provider", return_value=provider
         ),
         mock.patch(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
@@ -181,7 +181,7 @@ def test_detect_overwrite_existing_account(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=provider
+            "robotsix_auto_mail.detect.detect_provider", return_value=provider
         ),
         mock.patch(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
@@ -241,7 +241,7 @@ def test_detect_overwrite_not_set_still_errors_on_duplicate(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider", return_value=provider
+            "robotsix_auto_mail.detect.detect_provider", return_value=provider
         ),
         mock.patch(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
@@ -293,7 +293,7 @@ def test_detect_overwrite_with_oauth2_flags(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as _mock_getpass,
@@ -364,7 +364,7 @@ def test_detect_overwrite_preserves_component_credentials(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch(

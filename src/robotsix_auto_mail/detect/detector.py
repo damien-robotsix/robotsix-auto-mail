@@ -15,7 +15,7 @@ from pydantic import SecretStr
 from robotsix_http import RetryConfig, call_with_retry
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.config.detect.models import (
+from robotsix_auto_mail.detect.models import (
     DetectedProvider,
     DetectionError,
     MailProvider,

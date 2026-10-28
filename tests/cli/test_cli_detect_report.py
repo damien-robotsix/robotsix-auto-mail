@@ -10,7 +10,7 @@ import pytest
 
 from robotsix_auto_mail.cli import main
 from robotsix_auto_mail.config import MailAccountsConfig
-from robotsix_auto_mail.config.detect import MailProvider
+from robotsix_auto_mail.detect import MailProvider
 from tests.cli.conftest import _ok_result
 
 
@@ -23,7 +23,7 @@ def test_detect_prints_json_report(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch(
@@ -62,7 +62,7 @@ def test_detect_honours_id_in_report(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),

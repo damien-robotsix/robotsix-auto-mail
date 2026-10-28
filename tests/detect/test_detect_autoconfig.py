@@ -6,7 +6,7 @@ from unittest import mock
 
 import httpx
 
-from robotsix_auto_mail.config.detect import (
+from robotsix_auto_mail.detect import (
     autoconfig_lookup,
     mx_lookup,
     provider_from_mx,
