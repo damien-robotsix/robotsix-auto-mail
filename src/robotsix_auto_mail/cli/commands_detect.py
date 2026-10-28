@@ -130,7 +130,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     Returns 0 on success, 1 on any error.
     """
     try:
-        from robotsix_auto_mail.config.detect import (
+        from robotsix_auto_mail.detect import (
             DetectionError,
             autoconfig_lookup,
             detect_provider,

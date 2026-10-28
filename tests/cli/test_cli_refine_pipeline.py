@@ -10,7 +10,7 @@ import pytest
 
 from robotsix_auto_mail.cli.config import _verify_and_refine, _VerifyResult
 from robotsix_auto_mail.config import ConfigurationError
-from robotsix_auto_mail.config.detect import DetectionError, MailProvider
+from robotsix_auto_mail.detect import DetectionError, MailProvider
 from tests.cli.conftest import _mock_detect, _provider_to_config
 
 # ---------------------------------------------------------------------------

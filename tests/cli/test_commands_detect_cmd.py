@@ -16,7 +16,7 @@ import pytest
 
 from robotsix_auto_mail.cli.commands_detect import _cmd_detect
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
-from robotsix_auto_mail.config.detect import MailProvider
+from robotsix_auto_mail.detect import MailProvider
 
 # ---------------------------------------------------------------------------
 # _cmd_detect — unit tests via mocked callbacks
@@ -44,11 +44,11 @@ def _mock_detect_imports() -> mock._patch | None:
 def test_cmd_detect_missing_pydantic_ai() -> None:
     """_cmd_detect exits 1 when pydantic-ai import fails."""
     # Remove the module from sys.modules to force a re-import inside _cmd_detect.
-    real_detect = sys.modules.pop("robotsix_auto_mail.config.detect", None)
+    real_detect = sys.modules.pop("robotsix_auto_mail.detect", None)
     original_import = __import__
 
     def _block_detect(name: str, *args: object, **kwargs: object) -> object:
-        if name == "robotsix_auto_mail.config.detect":
+        if name == "robotsix_auto_mail.detect":
             raise ImportError("No module named 'pydantic_ai'")
         return original_import(name, *args, **kwargs)  # type: ignore[arg-type]
 
@@ -70,7 +70,7 @@ def test_cmd_detect_missing_pydantic_ai() -> None:
         assert rc == 1
     finally:
         if real_detect is not None:
-            sys.modules["robotsix_auto_mail.config.detect"] = real_detect
+            sys.modules["robotsix_auto_mail.detect"] = real_detect
 
 
 def test_cmd_detect_app_password_oauth2_mutual_exclusion_client_id() -> None:
@@ -125,7 +125,7 @@ def test_cmd_detect_provider_none() -> None:
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.is_microsoft_provider",
+            "robotsix_auto_mail.detect.is_microsoft_provider",
             return_value=False,
         ),
         mock.patch(
@@ -181,7 +181,7 @@ def test_cmd_detect_stdout_path() -> None:
             return_value=(mock_provider, []),
         ),
         mock.patch(
-            "robotsix_auto_mail.config.detect.is_microsoft_provider",
+            "robotsix_auto_mail.detect.is_microsoft_provider",
             return_value=False,
         ),
         mock.patch(
@@ -225,7 +225,7 @@ def test_cmd_detect_stdout_microsoft_app_password_clears_oauth2() -> None:
             return_value=(mock_provider, []),
         ),
         mock.patch(
-            "robotsix_auto_mail.config.detect.is_microsoft_provider",
+            "robotsix_auto_mail.detect.is_microsoft_provider",
             return_value=True,
         ),
         mock.patch(
@@ -272,7 +272,7 @@ def test_cmd_detect_happy_path_output_file(
             return_value=(mock_provider, ["mx1"]),
         ),
         mock.patch(
-            "robotsix_auto_mail.config.detect.is_microsoft_provider",
+            "robotsix_auto_mail.detect.is_microsoft_provider",
             return_value=False,
         ),
         mock.patch(
@@ -321,7 +321,7 @@ def test_cmd_detect_verify_and_refine_returns_none_config() -> None:
             return_value=(mock_provider, []),
         ),
         mock.patch(
-            "robotsix_auto_mail.config.detect.is_microsoft_provider",
+            "robotsix_auto_mail.detect.is_microsoft_provider",
             return_value=False,
         ),
         mock.patch(
@@ -377,7 +377,7 @@ def test_cmd_detect_account_exists_no_overwrite(tmp_path: Path) -> None:
             return_value=(mock_provider, []),
         ),
         mock.patch(
-            "robotsix_auto_mail.config.detect.is_microsoft_provider",
+            "robotsix_auto_mail.detect.is_microsoft_provider",
             return_value=False,
         ),
         mock.patch(
@@ -457,7 +457,7 @@ def test_cmd_detect_account_exists_overwrite_merge(tmp_path: Path) -> None:
             return_value=(mock_provider, []),
         ),
         mock.patch(
-            "robotsix_auto_mail.config.detect.is_microsoft_provider",
+            "robotsix_auto_mail.detect.is_microsoft_provider",
             return_value=False,
         ),
         mock.patch(
@@ -517,7 +517,7 @@ def test_cmd_detect_microsoft_account_no_password_prompt(
             return_value=(mock_provider, []),
         ),
         mock.patch(
-            "robotsix_auto_mail.config.detect.is_microsoft_provider",
+            "robotsix_auto_mail.detect.is_microsoft_provider",
             return_value=True,
         ),
         mock.patch(

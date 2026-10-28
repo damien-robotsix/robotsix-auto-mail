@@ -1,4 +1,4 @@
-"""Shared helpers for config/detect tests."""
+"""Shared helpers for detect tests."""
 
 from __future__ import annotations
 

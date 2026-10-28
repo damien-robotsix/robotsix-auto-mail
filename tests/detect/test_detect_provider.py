@@ -6,13 +6,13 @@ from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail.config.detect import (
+from robotsix_auto_mail.config.schema import ConfigurationError
+from robotsix_auto_mail.detect import (
     DetectedProvider,
     DetectionError,
     MailProvider,
     detect_provider,
 )
-from robotsix_auto_mail.config.schema import ConfigurationError
 
 # ---------------------------------------------------------------------------
 # detect_provider — integration-style tests

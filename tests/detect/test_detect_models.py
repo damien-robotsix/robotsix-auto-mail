@@ -7,7 +7,7 @@ from dataclasses import FrozenInstanceError
 import pydantic
 import pytest
 
-from robotsix_auto_mail.config.detect import (
+from robotsix_auto_mail.detect import (
     DetectedProvider,
     MailProvider,
     is_microsoft_provider,

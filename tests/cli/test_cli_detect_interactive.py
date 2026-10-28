@@ -9,7 +9,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.cli import main
-from robotsix_auto_mail.config.detect import MailProvider
+from robotsix_auto_mail.detect import MailProvider
 
 
 def test_detect_verification_failure_reports(
@@ -29,7 +29,7 @@ def test_detect_verification_failure_reports(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch(

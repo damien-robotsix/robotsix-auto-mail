@@ -26,7 +26,7 @@ from robotsix_auto_mail.smtp import (
 )
 
 if TYPE_CHECKING:
-    from robotsix_auto_mail.config.detect import MailProvider
+    from robotsix_auto_mail.detect import MailProvider
 
 logger = logging.getLogger(__name__)
 

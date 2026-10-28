@@ -8,7 +8,7 @@ import pytest
 
 from robotsix_auto_mail.cli.config import _refine_with_llm, _VerifyResult
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.config.detect import DetectionError, MailProvider
+from robotsix_auto_mail.detect import DetectionError, MailProvider
 from tests.cli.conftest import _build_config
 
 

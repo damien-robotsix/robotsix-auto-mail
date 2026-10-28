@@ -9,7 +9,7 @@ import pytest
 
 from robotsix_auto_mail.cli import main
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.config.detect import MailProvider
+from robotsix_auto_mail.detect import MailProvider
 from tests.cli.conftest import _auth_fail_result, _ok_result
 
 
@@ -24,7 +24,7 @@ def test_detect_microsoft_runs_device_code_and_verifies(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
@@ -58,7 +58,7 @@ def test_detect_microsoft_stdout_instructs_auth_login(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
@@ -86,7 +86,7 @@ def test_detect_stdout_app_password_clears_oauth2_provider(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch(
@@ -124,7 +124,7 @@ def test_detect_microsoft_auth_failure_points_at_auth_login(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
@@ -156,7 +156,7 @@ def test_detect_microsoft_custom_oauth2_client_id_and_tenant(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
@@ -203,7 +203,7 @@ def test_detect_microsoft_app_password_writes_password_config(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="app-pw-123") as mock_getpass,
@@ -244,7 +244,7 @@ def test_detect_app_password_mutually_exclusive_with_oauth2_flags(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass"),
@@ -277,7 +277,7 @@ def test_detect_app_password_noop_for_non_microsoft(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="gm-pw") as mock_getpass,
@@ -314,7 +314,7 @@ def test_detect_app_password_noop_for_generic_imap_host(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.config.detect.detect_provider",
+            "robotsix_auto_mail.detect.detect_provider",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="example-pw") as mock_getpass,

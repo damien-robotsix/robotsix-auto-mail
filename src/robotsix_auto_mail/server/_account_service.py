@@ -16,16 +16,16 @@ from robotsix_auto_mail.config import (
     load_accounts,
     save_accounts,
 )
-from robotsix_auto_mail.config.detect import (
-    MailProvider,
-    autoconfig_lookup,
-    mx_lookup,
-    provider_from_mx,
-)
 from robotsix_auto_mail.config.schema import (
     _VALID_TLS_MODES,
     DEFAULT_IMAP_TLS_MODE,
     DEFAULT_SMTP_TLS_MODE,
+)
+from robotsix_auto_mail.detect import (
+    MailProvider,
+    autoconfig_lookup,
+    mx_lookup,
+    provider_from_mx,
 )
 from robotsix_auto_mail.server._constants import _update_handler_factory_cache
 from robotsix_auto_mail.server._services import Service

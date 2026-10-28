@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.cli.config import _refine_password
-from robotsix_auto_mail.config.detect import MailProvider
+from robotsix_auto_mail.detect import MailProvider
 from tests.cli.conftest import _build_config
 
 
