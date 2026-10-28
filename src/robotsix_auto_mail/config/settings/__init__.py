@@ -9,8 +9,8 @@ has been overwritten.
 
 from __future__ import annotations
 
-from robotsix_auto_mail.settings.import_ import import_from_central_deploy
-from robotsix_auto_mail.settings.store import (
+from robotsix_auto_mail.config.settings.import_ import import_from_central_deploy
+from robotsix_auto_mail.config.settings.store import (
     SettingsStore,
     discover_accounts_from_settings_stores,
     merge_settings_store_accounts,

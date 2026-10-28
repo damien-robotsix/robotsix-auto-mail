@@ -477,13 +477,13 @@ modules:
       Includes the one-time import from central-deploy's config export
       endpoint.
     paths:
-      - src/robotsix_auto_mail/settings/__init__.py
-      - src/robotsix_auto_mail/settings/import_.py
-      - src/robotsix_auto_mail/settings/store.py
-      - tests/settings/__init__.py
-      - tests/settings/test_discover_accounts.py
-      - tests/settings/test_import.py
-      - tests/settings/test_store.py
+      - src/robotsix_auto_mail/config/settings/__init__.py
+      - src/robotsix_auto_mail/config/settings/import_.py
+      - src/robotsix_auto_mail/config/settings/store.py
+      - tests/config/settings/__init__.py
+      - tests/config/settings/test_discover_accounts.py
+      - tests/config/settings/test_import.py
+      - tests/config/settings/test_store.py
 
   - id: docs
     description: >-

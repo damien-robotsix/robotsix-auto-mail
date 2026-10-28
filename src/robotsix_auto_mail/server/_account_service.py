@@ -340,8 +340,8 @@ class AccountService(Service):
         # config/config.json on restart — the settings store is the
         # authoritative source for runtime config.
         try:
+            from robotsix_auto_mail.config.settings import SettingsStore
             from robotsix_auto_mail.db import init_db
-            from robotsix_auto_mail.settings import SettingsStore
 
             conn = init_db(db_path, skip_migrations=True)
             try:

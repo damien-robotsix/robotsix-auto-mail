@@ -68,7 +68,7 @@ def import_from_central_deploy(
     Returns ``True`` when the import completed and seeded at least
     one setting, ``False`` otherwise.
     """
-    from robotsix_auto_mail.settings.store import SettingsStore
+    from robotsix_auto_mail.config.settings.store import SettingsStore
 
     if not isinstance(store, SettingsStore):
         raise TypeError(

@@ -7,7 +7,7 @@ import sqlite3
 import pytest
 
 from robotsix_auto_mail.config.model import MailConfig
-from robotsix_auto_mail.settings.store import (
+from robotsix_auto_mail.config.settings.store import (
     SettingsStore,
     _is_secret_field,
     _masked_value,

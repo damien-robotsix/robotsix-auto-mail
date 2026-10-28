@@ -56,7 +56,7 @@ def _reload_accounts_and_interval(
 
     try:
         accounts = load_accounts()
-        from robotsix_auto_mail.settings import merge_settings_store_accounts
+        from robotsix_auto_mail.config.settings import merge_settings_store_accounts
 
         accounts = merge_settings_store_accounts(accounts)
     except Exception:  # noqa: S110
@@ -170,8 +170,11 @@ def _import_settings_from_central_deploy(accounts: MailAccountsConfig) -> None:
     if not os.environ.get("CENTRAL_DEPLOY_EXPORT_URL"):
         return
 
+    from robotsix_auto_mail.config.settings import (
+        SettingsStore,
+        import_from_central_deploy,
+    )
     from robotsix_auto_mail.db import init_db
-    from robotsix_auto_mail.settings import SettingsStore, import_from_central_deploy
 
     for acct in accounts.accounts:
         try:
@@ -211,12 +214,11 @@ def _cmd_serve(
     """
     from http.server import ThreadingHTTPServer
 
-    from robotsix_auto_mail.server import make_board_handler
-
     # Merge accounts discovered from settings stores that are not already
     # in the config file.  This ensures accounts added via the web UI
     # survive even when the deploy system overwrites config/config.json.
-    from robotsix_auto_mail.settings import merge_settings_store_accounts
+    from robotsix_auto_mail.config.settings import merge_settings_store_accounts
+    from robotsix_auto_mail.server import make_board_handler
 
     accounts = merge_settings_store_accounts(accounts)
 

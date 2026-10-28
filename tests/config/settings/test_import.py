@@ -1,4 +1,4 @@
-"""Unit tests for ``robotsix_auto_mail.settings.import_``."""
+"""Unit tests for ``robotsix_auto_mail.config.settings.import_``."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from unittest import mock
 
 import pytest
 
-from robotsix_auto_mail.settings import import_ as settings_import
-from robotsix_auto_mail.settings.store import SettingsStore
+from robotsix_auto_mail.config.settings import import_ as settings_import
+from robotsix_auto_mail.config.settings.store import SettingsStore
 
 # ===========================================================================
 # _fetch_export

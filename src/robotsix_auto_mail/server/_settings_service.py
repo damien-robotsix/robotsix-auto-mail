@@ -239,8 +239,8 @@ class SettingsService(Service):
 
         Best-effort: a failure here must never fail the config write.
         """
+        from robotsix_auto_mail.config.settings import SettingsStore
         from robotsix_auto_mail.server._constants import _with_db
-        from robotsix_auto_mail.settings import SettingsStore
 
         for account in getattr(accounts, "accounts", []):
             db_path = account.config.db_path

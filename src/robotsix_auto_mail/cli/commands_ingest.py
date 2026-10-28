@@ -58,7 +58,9 @@ def _idle_watch_loop(heartbeat_file: str | None) -> int:
             # Re-check the config so freshly added accounts are picked up.
             try:
                 fresh = _cli.load_accounts()
-                from robotsix_auto_mail.settings import merge_settings_store_accounts
+                from robotsix_auto_mail.config.settings import (
+                    merge_settings_store_accounts,
+                )
 
                 fresh = merge_settings_store_accounts(fresh)
             except ConfigurationError:
@@ -247,7 +249,7 @@ def _cmd_ingest(
 
     # Merge accounts discovered from settings stores so accounts added via
     # the web UI survive a deploy-system overwrite of config/config.json.
-    from robotsix_auto_mail.settings import merge_settings_store_accounts
+    from robotsix_auto_mail.config.settings import merge_settings_store_accounts
 
     accounts = merge_settings_store_accounts(accounts)
 

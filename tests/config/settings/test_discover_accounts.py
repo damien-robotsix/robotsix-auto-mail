@@ -12,12 +12,12 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
-from robotsix_auto_mail.db import init_db
-from robotsix_auto_mail.settings import SettingsStore
-from robotsix_auto_mail.settings.store import (
+from robotsix_auto_mail.config.settings import SettingsStore
+from robotsix_auto_mail.config.settings.store import (
     discover_accounts_from_settings_stores,
     merge_settings_store_accounts,
 )
+from robotsix_auto_mail.db import init_db
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -202,7 +202,7 @@ class TestMergeSettingsStoreAccounts:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.config.settings.store.discover_accounts_from_settings_stores",
             return_value=[discovered],
         ):
             caplog.set_level(logging.INFO)
@@ -239,7 +239,7 @@ class TestMergeSettingsStoreAccounts:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.config.settings.store.discover_accounts_from_settings_stores",
             return_value=[discovered],
         ):
             result = merge_settings_store_accounts(existing)
@@ -258,7 +258,7 @@ class TestMergeSettingsStoreAccounts:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.config.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ):
             result = merge_settings_store_accounts(existing)
