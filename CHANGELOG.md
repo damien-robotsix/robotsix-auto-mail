@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.11.0...v0.11.1) (2026-10-28)
+
+
+### Documentation
+
+* docstring_coverage scan: 3 findings (2026-10-28) (20261028T015606Z-docstring-coverage-scan-3-findings-2026-ac8b) ([#1372](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1372)) ([332f25d](https://github.com/damien-robotsix/robotsix-auto-mail/commit/332f25d9621bea90e7d3f890044a1722b3b2e13f))
+
 ## [0.11.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.10.0...v0.11.0) (2026-10-23)
 
 
