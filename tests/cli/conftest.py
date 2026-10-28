@@ -16,13 +16,9 @@ from robotsix_auto_mail.detect import DetectionError, MailProvider
 def no_autoconfig() -> object:
     """Force autoconfig + MX detection to miss so tests reach the LLM path."""
     with (
-        mock.patch(
-            "robotsix_auto_mail.detect.autoconfig_lookup", return_value=None
-        ),
+        mock.patch("robotsix_auto_mail.detect.autoconfig_lookup", return_value=None),
         mock.patch("robotsix_auto_mail.detect.mx_lookup", return_value=[]),
-        mock.patch(
-            "robotsix_auto_mail.detect.provider_from_mx", return_value=None
-        ),
+        mock.patch("robotsix_auto_mail.detect.provider_from_mx", return_value=None),
     ):
         yield
 

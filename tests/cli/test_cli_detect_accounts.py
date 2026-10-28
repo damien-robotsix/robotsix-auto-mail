@@ -65,9 +65,7 @@ def test_detect_appends_second_account(tmp_path: Path, no_autoconfig: object) ->
     p2 = MailProvider(imap_host="imap.work.com", smtp_host="smtp.work.com")
 
     with (
-        mock.patch(
-            "robotsix_auto_mail.detect.detect_provider", side_effect=[p1, p2]
-        ),
+        mock.patch("robotsix_auto_mail.detect.detect_provider", side_effect=[p1, p2]),
         mock.patch(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
@@ -115,9 +113,7 @@ def test_detect_refuses_duplicate_id(
     provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
-        mock.patch(
-            "robotsix_auto_mail.detect.detect_provider", return_value=provider
-        ),
+        mock.patch("robotsix_auto_mail.detect.detect_provider", return_value=provider),
         mock.patch(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
@@ -180,9 +176,7 @@ def test_detect_overwrite_existing_account(
     provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
-        mock.patch(
-            "robotsix_auto_mail.detect.detect_provider", return_value=provider
-        ),
+        mock.patch("robotsix_auto_mail.detect.detect_provider", return_value=provider),
         mock.patch(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
@@ -240,9 +234,7 @@ def test_detect_overwrite_not_set_still_errors_on_duplicate(
     provider = MailProvider(imap_host="imap.gmail.com", smtp_host="smtp.gmail.com")
 
     with (
-        mock.patch(
-            "robotsix_auto_mail.detect.detect_provider", return_value=provider
-        ),
+        mock.patch("robotsix_auto_mail.detect.detect_provider", return_value=provider),
         mock.patch(
             "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),

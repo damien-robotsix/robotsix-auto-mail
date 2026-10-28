@@ -15,13 +15,13 @@ from pydantic import SecretStr
 from robotsix_http import RetryConfig, call_with_retry
 
 from robotsix_auto_mail.config import MailConfig
+from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 from robotsix_auto_mail.detect.models import (
     DetectedProvider,
     DetectionError,
     MailProvider,
     ProviderEntry,
 )
-from robotsix_auto_mail.core._llm_agent import _run_llm_agent
 
 # ---------------------------------------------------------------------------
 # Shared HTTP client (sync) with retry configuration
