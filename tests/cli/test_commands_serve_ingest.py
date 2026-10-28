@@ -40,7 +40,7 @@ def test_ingest_loop_calls_ingest_cycle_for_account_with_password(
             mock_ingest_cycle,
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.config.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
@@ -79,7 +79,7 @@ def test_ingest_loop_skips_account_without_password() -> None:
             mock_ingest_cycle,
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.config.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
@@ -112,7 +112,7 @@ def test_ingest_loop_survives_ingest_cycle_exception(
             mock_ingest_cycle,
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.config.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
@@ -175,7 +175,7 @@ def test_ingest_loop_respects_ingest_interval() -> None:
             mock_ingest_cycle,
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.config.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
@@ -209,7 +209,7 @@ def test_ingest_loop_survives_load_accounts_failure(
             mock_ingest_cycle,
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.config.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,
@@ -246,7 +246,7 @@ def test_ingest_loop_handles_empty_accounts() -> None:
             mock_ingest_cycle,
         ),
         mock.patch(
-            "robotsix_auto_mail.settings.store.discover_accounts_from_settings_stores",
+            "robotsix_auto_mail.config.settings.store.discover_accounts_from_settings_stores",
             return_value=[],
         ),
         mock.patch("robotsix_auto_mail.cli.commands_serve.time.sleep") as mock_sleep,

@@ -264,7 +264,7 @@ def test_put_config_mirrors_into_the_settings_store(
     """The recovery snapshot must track the operator's latest save."""
     import sqlite3
 
-    from robotsix_auto_mail.settings import SettingsStore
+    from robotsix_auto_mail.config.settings import SettingsStore
 
     db_path = str(tmp_path / "mail.db")
     ctx = _StubContext(

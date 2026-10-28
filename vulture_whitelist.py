@@ -147,7 +147,7 @@ all((  # lgtm[py/ineffectual-statement]
 # trace test usage or attribute access inside the same module.
 # ===========================================================================
 
-from robotsix_auto_mail.settings.store import SettingsStore
+from robotsix_auto_mail.config.settings.store import SettingsStore
 
 all((  # lgtm[py/ineffectual-statement]
     SettingsStore.seed_from_mail_config,
