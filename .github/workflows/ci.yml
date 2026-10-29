@@ -43,7 +43,7 @@ jobs:
     permissions:
       contents: read
       security-events: write  # needed for SARIF upload from reusable workflow
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-ci.yml@e94a9aad6c4d6753c860520ba49b6a94a59ceb55  # main
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-ci.yml@86a722f2938c1dda343bbf8d3c5989613cbf1794  # v1.5.0
     with:
       python-version: "3.14"
       install-extras: "dev"
@@ -52,6 +52,11 @@ jobs:
       mypy-advisory: false        # auto-mail runs `mypy --strict` as a BLOCKING gate; it must NOT become advisory
       run-deptry: true
       run-bandit: true
+      run-vulture: true
+      vulture-args: 'src/robotsix_auto_mail/ vulture_whitelist.py'
+      check-lock: true
+      # Blocking SARIF `uv audit` job; needs security-events: write (granted above).
+      audit-sarif: true
       # No --randomly-seed=last here. `last` resolves the seed from
       # .pytest_cache, which CI never persists, so each xdist worker resolved
       # its own — intermittently producing different collection orders and
@@ -101,9 +106,6 @@ jobs:
           UV_MALWARE_CHECK: 1
         run: uv sync --frozen --extra dev
 
-      - name: Dependency vulnerability audit
-        run: UV_PREVIEW=1 uv audit --frozen
-
       - name: Check config sync
         run: uv run --frozen python scripts/config/check_config_sync.py
 
@@ -112,10 +114,6 @@ jobs:
 
       - name: Check module registration completeness
         run: uv run --frozen robotsix-modules check-registration docs/modules.yaml --root .
-
-
-      - name: Dead code detection (vulture)
-        run: uv run --frozen vulture src/robotsix_auto_mail/ vulture_whitelist.py
 
       - name: Install Deno
         env:
