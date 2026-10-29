@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.11.1...v0.11.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **ci:** attach the SBOM to the release-please Release instead of re-creating it ([#1376](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1376)) ([62d9b6a](https://github.com/damien-robotsix/robotsix-auto-mail/commit/62d9b6aac70c63ba8560a45b89c1e3eb531c529c))
+
 ## [0.11.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.11.0...v0.11.1) (2026-10-28)
 
 
