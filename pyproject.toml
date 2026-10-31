@@ -27,6 +27,9 @@ dependencies = [
     "robotsix-board",
     "robotsix-http",
     "robotsix-llmio",
+    # Framework-agnostic HTTP security-header suite (robotsix-standards
+    # http-security-headers.md: BALANCED preset baseline, one definition point).
+    "secure>=2.0.1",
     "structlog>=24.1",
     "robotsix-config",
 ]

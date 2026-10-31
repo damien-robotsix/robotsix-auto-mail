@@ -16,6 +16,7 @@ from robotsix_http import RetryConfig, call_with_retry
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
+from robotsix_auto_mail.detect._ssrf_guard import guarded_client
 from robotsix_auto_mail.detect.models import (
     DetectedProvider,
     DetectionError,
@@ -27,7 +28,10 @@ from robotsix_auto_mail.detect.models import (
 # Shared HTTP client (sync) with retry configuration
 # ---------------------------------------------------------------------------
 
-_HTTP = httpx.Client()
+# SSRF-hardened (robotsix-standards ssrf-hardened-fetchers.md): the
+# connection layer rejects non-public resolved addresses and connects to the
+# validated IP literal; ``trust_env=False`` so no env proxy is honoured.
+_HTTP = guarded_client()
 
 _RETRY_CONFIG = RetryConfig(max_retries=2, backoff_base=2.0, backoff_cap=10.0)
 
@@ -456,9 +460,9 @@ def _autoconfig_urls(email_address: str) -> list[str]:
         return []
     quoted = urllib.parse.quote(email_address)
     # Security note: these URLs target autoconfig.<domain> derived from the
-    # operator-supplied email. A crafted domain could probe internal
-    # autoconfig hostnames (mild SSRF). Accepted: operator-initiated only,
-    # HTTPS-only probe, no credentials sent, 5 s timeout enforced by caller.
+    # supplied email, i.e. a caller-influenced host. They are fetched through
+    # the SSRF-guarded ``_HTTP`` client, whose connection layer refuses any
+    # host resolving to a private/loopback/link-local/metadata/CGNAT address.
     return [
         # Mozilla ISPDB — central database keyed by domain.
         f"https://autoconfig.thunderbird.net/v1.1/{domain}",
@@ -528,7 +532,7 @@ def autoconfig_lookup(
     should then fall back to :func:`detect_provider`.
     """
     for url in _autoconfig_urls(email_address):
-        # See _autoconfig_urls() for the SSRF-risk rationale.
+        # SSRF-guarded client; a blocked target raises SSRFError (ValueError).
         try:
             resp = call_with_retry(
                 lambda u=url: _HTTP.request("GET", u, timeout=httpx.Timeout(timeout)),

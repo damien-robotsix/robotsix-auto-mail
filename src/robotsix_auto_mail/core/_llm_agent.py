@@ -46,7 +46,9 @@ def _run_llm_agent(  # noqa: UP047
 
     Args:
         api_key: OpenRouter API key.  ``None`` falls back to the
-            standard resolution cascade (env → config file).  Only
+            canonical ``openrouter`` block of the config file (see
+            :func:`~robotsix_auto_mail.config.resolve_llm_api_key`; no
+            environment-variable fallback).  Only
             required when a call actually resolves to the OpenRouter
             provider — the default (Claude SDK) slot is keyless.
         provider_model: LLM provider-model identifier.  ``None`` uses

@@ -60,8 +60,8 @@ def test_json_format_renders_parseable_json(
     logger = logging.getLogger("robotsix_auto_mail")
     logger.info("hello_event foo=bar")
 
-    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip()]
-    assert lines, "expected a log line on stdout"
+    lines = [ln for ln in capsys.readouterr().err.splitlines() if ln.strip()]
+    assert lines, "expected a log line on stderr"
     payload = json.loads(lines[-1])
     assert payload["message"] == "hello_event foo=bar"
     assert payload["level"] == "INFO"
@@ -87,7 +87,7 @@ def test_trace_id_no_span_renders_dash(
     logger = logging.getLogger("robotsix_auto_mail")
     logger.info("no_span_event")
 
-    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip()]
+    lines = [ln for ln in capsys.readouterr().err.splitlines() if ln.strip()]
     payload = json.loads(lines[-1])
     assert payload["trace_id"] == "-"
 
@@ -113,7 +113,7 @@ def test_trace_id_active_span_renders_hex(
     logger = logging.getLogger("robotsix_auto_mail")
     logger.info("span_event")
 
-    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip()]
+    lines = [ln for ln in capsys.readouterr().err.splitlines() if ln.strip()]
     payload = json.loads(lines[-1])
     assert payload["trace_id"] == format(trace_int, "032x")
     assert len(payload["trace_id"]) == 32
@@ -131,5 +131,5 @@ def test_trace_id_present_in_console_format(
     logger = logging.getLogger("robotsix_auto_mail")
     logger.info("console_event")
 
-    out = capsys.readouterr().out
+    out = capsys.readouterr().err
     assert "[-]" in out
