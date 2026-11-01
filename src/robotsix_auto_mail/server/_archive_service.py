@@ -1,8 +1,8 @@
 """Archive-action service for the board server.
 
 Hosts the board's archive endpoints — ``POST /archive``, ``POST
-/archive-move``, ``POST /archive-delete``, ``POST /archive-message-delete``
-and ``POST /archive-rename`` — as a stateless
+/archive-move``, ``POST /archive-delete``, ``POST /archive-message-delete``,
+``POST /archive-rename`` and ``POST /archive-create`` — as a stateless
 :class:`~robotsix_auto_mail.server._services.Service`.  Each handler takes the
 per-request context (:class:`RequestContext`) and reads all per-request state
 (the resolved account's ``mail_config``, the transport, the response sinks and
@@ -862,4 +862,124 @@ class ArchiveService(Service):
                 "source_folder": source_folder,
                 "target": effective_target,
             }
+        )
+
+    # -- archive folder-create -----------------------------------------------
+
+    def handle_archive_create(self, ctx: RequestContext) -> None:
+        """Process POST /archive-create — create a new archive subfolder.
+
+        Accepts a JSON body with:
+
+        - ``target_subfolder`` (str): the new subfolder path relative to
+          the archive root.  Nested paths (``Admin/Comptabilité``) are
+          supported; missing intermediate parents are created.
+        - ``confirm`` (bool): must be ``true`` — the operation mutates the
+          mailbox and requires explicit opt-in.
+
+        Issues IMAP ``CREATE`` for the archive root and each missing
+        intermediate parent (top-down), then for the target itself.
+        Reuses the same path-escape guard as ``/archive-rename``.  Returns
+        409 when the folder already exists (no silent merge) and 201 with
+        ``{"status": "created", "folder": <path>}`` on success.
+        """
+        content_length = int(ctx.headers.get("Content-Length", 0))
+        raw = ctx.rfile.read(content_length).decode("utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            ctx._bad_request("Malformed JSON body")
+            return
+
+        if not isinstance(data, dict):
+            ctx._bad_request("JSON body must be an object")
+            return
+
+        target_subfolder = _json_field_value(data, "target_subfolder").strip("/")
+        confirm = data.get("confirm", False)
+
+        if not target_subfolder:
+            ctx._bad_request("target_subfolder is required")
+            return
+
+        if confirm is not True:
+            ctx._bad_request("confirm must be true — folder creation is a mutation")
+            return
+
+        segments = target_subfolder.split("/")
+        if any(seg.strip() in ("", ".") for seg in segments):
+            ctx._bad_request("target_subfolder contains an empty or '.' segment")
+            return
+
+        if not ctx._require_imap_configured():
+            return
+
+        ok, archive_root = ctx._validate_archive_path(target_subfolder)
+        if not ok:
+            return
+
+        from robotsix_auto_mail.imap import ImapClient, ImapError
+
+        try:
+            with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
+                # Discover the server's hierarchy delimiter.
+                existing = client.list_folders()
+                delimiter = next(
+                    (f.delimiter for f in existing if f.delimiter),
+                    "/",
+                )
+
+                if delimiter != "/" and any(delimiter in seg for seg in segments):
+                    ctx._bad_request(
+                        "target_subfolder contains the IMAP hierarchy delimiter"
+                    )
+                    return
+
+                translated_target = f"{archive_root}/{target_subfolder}".replace(
+                    "/", delimiter
+                )
+
+                # Validate the path is strictly under the archive root.
+                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
+                if not translated_target.startswith(root_prefix):
+                    ctx._bad_request("target_subfolder escapes archive root")
+                    return
+
+                # Reject when the folder already exists (no silent merge).
+                folder_names = {f.name for f in existing}
+                if translated_target in folder_names:
+                    ctx._serve_json(
+                        {
+                            "error": (
+                                f"Target folder '{target_subfolder}' already exists"
+                            ),
+                        },
+                        status=409,
+                    )
+                    return
+
+                # Create missing ancestors top-down, then the target.
+                parts = translated_target.split(delimiter)
+                for i in range(1, len(parts)):
+                    ancestor = delimiter.join(parts[:i])
+                    if ancestor not in folder_names:
+                        client.create_folder(ancestor)
+                client.create_folder(translated_target)
+
+        except ImapError as exc:
+            ctx._send_response(
+                f"IMAP error during folder create: {exc}",
+                status=502,
+            )
+            return
+        except OSError as exc:
+            ctx._send_response(
+                f"IMAP connection error: {exc}",
+                status=502,
+            )
+            return
+
+        ctx._serve_json(
+            {"status": "created", "folder": target_subfolder},
+            status=201,
         )

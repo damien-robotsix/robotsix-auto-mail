@@ -335,6 +335,9 @@ class BoardHandler(BaseHTTPRequestHandler):
             "/archive-rename": lambda: self._services.get(
                 ArchiveService
             ).handle_archive_rename(ctx),
+            "/archive-create": lambda: self._services.get(
+                ArchiveService
+            ).handle_archive_create(ctx),
             "/batch-delete": lambda: self._services.get(
                 BatchService
             ).handle_batch_delete(ctx),

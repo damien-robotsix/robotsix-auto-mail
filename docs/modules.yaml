@@ -393,6 +393,7 @@ modules:
       - tests/server/test_compose_service.py
       - tests/server/test_compose_service_append.py
       - tests/server/test_action_archive_and_delete.py
+      - tests/server/test_action_archive_create.py
       - tests/server/test_action_archive_delete.py
       - tests/server/test_action_archive_move.py
       - tests/server/test_action_background_worker.py
