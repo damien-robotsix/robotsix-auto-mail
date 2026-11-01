@@ -29,6 +29,8 @@ from __future__ import annotations
 
 from secure import Preset, Secure
 
+__all__ = ["SECURITY_HEADERS"]
+
 _DROPPED_HEADERS = frozenset({"server"})
 _DROPPED_CSP_DIRECTIVES = frozenset({"upgrade-insecure-requests"})
 _OVERRIDES = {"Referrer-Policy": "no-referrer"}
