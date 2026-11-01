@@ -22,7 +22,7 @@ jobs:
       actions: read  # needed to read workflow run data
       contents: read
       security-events: write  # needed for SARIF upload
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/codeql.yml@fb907a46b00693a117ca6b975da6e7b0f8238491  # main
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/codeql.yml@86a722f2938c1dda343bbf8d3c5989613cbf1794  # v1.5.0
     with:
       languages: python
       config-file: ./.github/codeql/codeql-config.yml

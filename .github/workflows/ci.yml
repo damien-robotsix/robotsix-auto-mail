@@ -158,7 +158,7 @@ jobs:
     permissions:
       contents: read
       security-events: write  # needed for SARIF upload from reusable workflow
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-security.yml@e94a9aad6c4d6753c860520ba49b6a94a59ceb55  # main
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/python-security.yml@86a722f2938c1dda343bbf8d3c5989613cbf1794  # v1.5.0
     with:
       python-version: "3.14"
       install-extras: "dev"
@@ -195,7 +195,7 @@ jobs:
     permissions:
       contents: read
       security-events: write  # needed for SARIF upload from reusable workflow
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/docker-pr-scan.yml@ff826aea1635a407b1d2a05403898dbc97c877ce  # main
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/docker-pr-scan.yml@86a722f2938c1dda343bbf8d3c5989613cbf1794  # v1.5.0
 
   # CycloneDX SBOM generated via reusable workflow (.github/workflows/sbom.yml).
   sbom:

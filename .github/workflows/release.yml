@@ -31,7 +31,7 @@ jobs:
       id-token: write         # provenance/SBOM attestation signing
       attestations: write     # provenance/SBOM attestation signing
       security-events: write  # needed for Trivy SARIF upload
-    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/docker-release.yml@92c11fd2be7a9ce80bd60208616271326e0fb08a  # 92c11fd 2026-10-26
+    uses: damien-robotsix/robotsix-github-workflows/.github/workflows/docker-release.yml@86a722f2938c1dda343bbf8d3c5989613cbf1794  # v1.5.0
     with:
       trivyignores: .trivyignore
 
