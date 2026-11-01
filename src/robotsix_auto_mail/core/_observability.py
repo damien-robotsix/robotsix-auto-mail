@@ -11,6 +11,8 @@ loaded :class:`~robotsix_auto_mail.config.MailConfig`.
 
 from __future__ import annotations
 
+import logging
+import sys
 from typing import TYPE_CHECKING
 
 from robotsix_llmio.core import install_signal_handlers, setup_langfuse_tracing
@@ -18,8 +20,16 @@ from robotsix_llmio.logging import (
     setup_logging as _llmio_setup_logging,
 )
 
+from robotsix_auto_mail.config.credentials import MAIN_LLM_ALIAS
+
 if TYPE_CHECKING:
     from robotsix_auto_mail.config import LangfuseConfig, MailConfig
+
+logger = logging.getLogger(__name__)
+
+# Langfuse Cloud — used when the canonical block leaves ``host`` empty, so
+# the base URL never comes from the ``LANGFUSE_BASE_URL`` env var.
+_DEFAULT_LANGFUSE_HOST = "https://cloud.langfuse.com"
 
 
 def setup_logging(
@@ -43,38 +53,44 @@ def setup_logging(
         level=level,
         fmt=log_format,
         loggers=["robotsix_auto_mail"],
+        # stderr, not llmio's stdout default: CLI subcommands print JSON
+        # payloads on stdout, which log lines must never corrupt.
+        stream=sys.stderr,
     )
 
 
 def init_langfuse_tracing(langfuse: LangfuseConfig | None = None) -> bool:
-    """Enable Langfuse tracing from the canonical ``langfuse`` block.
+    """Enable Langfuse tracing from the canonical ``langfuse`` block — only.
 
     *langfuse* is the block declared in ``config/config.json``; the
     project traced is the one aliased :data:`MAIN_LLM_ALIAS`, auto-mail's
-    single LLM function.  Unset fields convert to ``None`` so llmio falls
-    back to the ``LANGFUSE_PUBLIC_KEY`` / ``LANGFUSE_SECRET_KEY`` /
-    ``LANGFUSE_BASE_URL`` env vars, and ``langfuse=None`` reproduces the
-    env-only behaviour.
+    single LLM function.  The canonical block is the **only** credential
+    source (robotsix-standards ``component-standard.md``, "LLM tracing
+    credentials — no fallback"): when it is absent, or the project is
+    missing or half-filled, tracing is disabled explicitly with a one-line
+    notice and llmio is never called, so its ``LANGFUSE_*`` env-var
+    fallback can never silently pick up deploy-plane credentials.  An
+    unset ``host`` resolves to Langfuse Cloud here rather than to the
+    ``LANGFUSE_BASE_URL`` env var.
 
     Returns:
-        ``True`` if tracing was successfully set up, ``False`` if
-        credentials were missing (application should continue normally
-        either way).
+        ``True`` if tracing was successfully set up, ``False`` if the
+        canonical block is unconfigured or setup failed (application
+        should continue normally either way).
     """
     project = langfuse.project() if langfuse else None
-    # A half-filled project is unconfigured, not broken: passing one key on
-    # its own would hand llmio a credential pair it cannot use, instead of
-    # falling through to the env vars.
-    if project is not None and not project.is_configured():
-        project = None
-    public_key = project.public_key if project else None
-    secret_key = project.secret_key.get_secret_value() if project else None
-    base_url = (langfuse.host or None) if langfuse else None
+    if langfuse is None or project is None or not project.is_configured():
+        logger.info(
+            "Langfuse tracing disabled: the canonical 'langfuse' block has no "
+            "configured %r project",
+            MAIN_LLM_ALIAS,
+        )
+        return False
     ok: bool = setup_langfuse_tracing(
         service_name="robotsix-auto-mail",
-        public_key=public_key,
-        secret_key=secret_key,
-        base_url=base_url,
+        public_key=project.public_key,
+        secret_key=project.secret_key.get_secret_value(),
+        base_url=langfuse.host or _DEFAULT_LANGFUSE_HOST,
     )
     if ok:
         install_signal_handlers()

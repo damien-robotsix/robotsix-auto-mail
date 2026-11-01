@@ -21,6 +21,7 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.core._constants import _ARCHIVE_TAXONOMY_GUIDANCE
 from robotsix_auto_mail.core._llm_agent import _run_llm_agent
+from robotsix_auto_mail.core.prompt_blocks import UNTRUSTED_DATA_NOTICE, section
 from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS,
     MailRecord,
@@ -290,9 +291,13 @@ def propose_archive_subfolder_llm(
     # -- build user message --
     body_snippet = record.body_plain[:1000] if record.body_plain else ""
     user_message = (
-        f"Sender: {record.sender}\n"
-        f"Subject: {record.subject}\n"
-        f"Body (first 1000 chars):\n{body_snippet}"
+        UNTRUSTED_DATA_NOTICE
+        + "\n\n"
+        + section("sender", record.sender or "")
+        + "\n"
+        + section("subject", record.subject or "")
+        + "\nBody (first 1000 chars):\n"
+        + section("body", body_snippet)
     )
 
     # -- call shared LLM helper (best-effort) --

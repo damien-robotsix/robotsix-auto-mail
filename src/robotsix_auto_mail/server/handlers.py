@@ -62,6 +62,7 @@ from robotsix_auto_mail.server._ingest_service import IngestService
 from robotsix_auto_mail.server._mailbox_service import MailboxService
 from robotsix_auto_mail.server._reconcile_service import ReconcileService
 from robotsix_auto_mail.server._request_helpers import launch_background_worker
+from robotsix_auto_mail.server._security_headers import SECURITY_HEADERS
 from robotsix_auto_mail.server._sent_service import SentService
 from robotsix_auto_mail.server._services import ServiceContainer
 from robotsix_auto_mail.server._settings_service import SettingsService
@@ -553,6 +554,20 @@ class BoardHandler(BaseHTTPRequestHandler):
                 return False, ""
         return True, archive_root
 
+    def _send_security_headers(self) -> None:
+        """Write the shared security-header suite, account cookie, and end headers.
+
+        The single shared send path for both :meth:`_send_response` and
+        :meth:`_redirect`: the header set itself is defined once in
+        :data:`~robotsix_auto_mail.server._security_headers.SECURITY_HEADERS`
+        (``secure`` BALANCED preset), so the two paths cannot drift.
+        """
+        for name, value in SECURITY_HEADERS:
+            self.send_header(name, value)
+        if self._account_cookie is not None:
+            self.send_header("Set-Cookie", self._account_cookie)
+        self.end_headers()
+
     def _send_response(
         self,
         body: bytes | str,
@@ -569,17 +584,7 @@ class BoardHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(encoded)))
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "SAMEORIGIN")
-        self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header(
-            "Content-Security-Policy",
-            "default-src 'self'; style-src 'self' 'unsafe-inline'; "
-            "frame-ancestors 'self'",
-        )
-        if self._account_cookie is not None:
-            self.send_header("Set-Cookie", self._account_cookie)
-        self.end_headers()
+        self._send_security_headers()
         self.wfile.write(encoded)
 
     def _redirect(self, location: str, code: int = 301) -> None:
@@ -594,17 +599,7 @@ class BoardHandler(BaseHTTPRequestHandler):
             location = "/board"
         self.send_response(code)
         self.send_header("Location", location)
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "SAMEORIGIN")
-        self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header(
-            "Content-Security-Policy",
-            "default-src 'self'; style-src 'self' 'unsafe-inline'; "
-            "frame-ancestors 'self'",
-        )
-        if self._account_cookie is not None:
-            self.send_header("Set-Cookie", self._account_cookie)
-        self.end_headers()
+        self._send_security_headers()
 
     def _not_found(self) -> None:
         """Send a 404 Not Found as an RFC 7807 problem response."""

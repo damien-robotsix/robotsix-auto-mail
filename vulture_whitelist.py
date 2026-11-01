@@ -135,12 +135,14 @@ from robotsix_auto_mail.config.loader import (
     save_accounts,
 )
 
-all((  # lgtm[py/ineffectual-statement]
-    resolve_application_level,
-    resolve_llm_tier,
-    resolve_model_override,
-    save_accounts,
-))
+all(
+    (  # lgtm[py/ineffectual-statement]
+        resolve_application_level,
+        resolve_llm_tier,
+        resolve_model_override,
+        save_accounts,
+    )
+)
 
 # ===========================================================================
 # SettingsStore — methods called by tests and internally; vulture doesn't
@@ -149,10 +151,12 @@ all((  # lgtm[py/ineffectual-statement]
 
 from robotsix_auto_mail.config.settings.store import SettingsStore
 
-all((  # lgtm[py/ineffectual-statement]
-    SettingsStore.seed_from_mail_config,
-    SettingsStore.to_mail_config,
-))
+all(
+    (  # lgtm[py/ineffectual-statement]
+        SettingsStore.seed_from_mail_config,
+        SettingsStore.to_mail_config,
+    )
+)
 
 # ===========================================================================
 # HTMLParser callback methods — called by the parent class's feed() method,
@@ -199,9 +203,20 @@ all((SmtpClient.send,))  # lgtm[py/ineffectual-statement]
 
 from robotsix_auto_mail.db import ComposeLink
 
-all((  # lgtm[py/ineffectual-statement]
-    ComposeLink.draft_subject,
-    ComposeLink.draft_to,
-    ComposeLink.created_at,
-    ComposeLink.reconciled_at,
-))
+all(
+    (  # lgtm[py/ineffectual-statement]
+        ComposeLink.draft_subject,
+        ComposeLink.draft_to,
+        ComposeLink.created_at,
+        ComposeLink.reconciled_at,
+    )
+)
+
+# ===========================================================================
+# httpcore.NetworkBackend interface method — invoked by httpcore, not by
+# application code; overridden to block unix-socket SSRF targets.
+# ===========================================================================
+
+from robotsix_auto_mail.detect._ssrf_guard import _SSRFGuardBackend
+
+_SSRFGuardBackend.connect_unix_socket

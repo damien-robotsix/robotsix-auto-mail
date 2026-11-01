@@ -55,8 +55,11 @@ def test_probe_success(cfg: MailConfig, capsys: pytest.CaptureFixture[str]) -> N
     assert "STARTTLS" in out
     assert "AUTH" in out
 
-    # No errors on stderr
-    assert err == ""
+    # No errors on stderr (INFO log lines, e.g. the Langfuse-disabled
+    # notice, are expected there now that logging targets stderr)
+    assert " ERROR " not in err
+    assert " WARNING " not in err
+    assert "Traceback" not in err
 
 
 # ---------------------------------------------------------------------------
