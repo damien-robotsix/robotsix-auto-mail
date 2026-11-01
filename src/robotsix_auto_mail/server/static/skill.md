@@ -195,6 +195,7 @@ All GET endpoints below are read-only and safe to call without confirmation.
   - Deleting archive folders (`POST /archive-delete`).
   - Deleting archived messages (`POST /archive-message-delete`).
   - Renaming archive folders (`POST /archive-rename`).
+  - Creating archive folders (`POST /archive-create`).
   - Triggering triage, reconcile, or force-fetch runs (`POST /run-triage`,
     `POST /reconcile`, `POST /force-fetch`, `POST /force-triage-column`).
   - Config mutations (`PUT /config`, `POST /config/rollback`,
@@ -403,6 +404,36 @@ Roundcube).
   Errors: 400 (missing parameters, `confirm` not true, path escapes
   archive root), 404 (source folder not found), 409 (target already
   exists — no silent merge), 502 (IMAP error).
+
+## Archive folder-create (state-mutating, requires confirmation)
+
+- **`POST /archive-create?account=<id>`** — Create a new archive
+  subfolder under the archive root via IMAP `CREATE`.  Nested paths
+  are supported; missing intermediate parent folders are created
+  (e.g. `Admin/Comptabilité` creates `Admin` first when absent).
+  Requires operator confirmation per the safety rules above.  The new
+  folder is listed by a subsequent `GET /archive-folders` and can be
+  used as an archive destination (`POST /archive`, `POST /archive-move`).
+
+  JSON request body:
+  ```json
+  {
+    "target_subfolder": "<path relative to archive root>",
+    "confirm": true
+  }
+  ```
+
+  Response (201):
+  ```json
+  {
+    "status": "created",
+    "folder": "<path>"
+  }
+  ```
+
+  Errors: 400 (missing `target_subfolder`, `confirm` not true, path
+  escapes archive root), 409 (folder already exists — no silent merge),
+  502 (IMAP error).
 
 ## Push attachments to file-hub (state-mutating, requires confirmation)
 
