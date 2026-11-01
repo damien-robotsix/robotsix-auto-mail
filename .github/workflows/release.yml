@@ -46,6 +46,7 @@ jobs:
     needs: [publish, sbom]
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: write  # needed to create the GitHub Release
       actions: read  # needed to download workflow artifacts
