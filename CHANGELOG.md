@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.11.2...v0.12.0) (2026-11-01)
+
+
+### Features
+
+* Add archive folder creation endpoint (POST /archive-create) to robotsix-auto-mail (20261101T183150Z-add-archive-folder-creation-endpoint-pos-24d2) ([#1395](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1395)) ([78b24dc](https://github.com/damien-robotsix/robotsix-auto-mail/commit/78b24dcdf7a3eaca2827a08c5c4c3178840aa99f))
+
+
+### Bug Fixes
+
+* component-security-audit: undelimited email content in LLM prompts, missing HSTS/Permissions-Policy, unguarded autoconfig fetcher, Langfuse env fallback (20261031T142025Z-component-security-audit-undelimited-ema-3efd) ([#1390](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1390)) ([6bb7511](https://github.com/damien-robotsix/robotsix-auto-mail/commit/6bb75111eade5f122f4e7011612ebe9909ff945f))
+
 ## [0.11.2](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.11.1...v0.11.2) (2026-10-29)
 
 
