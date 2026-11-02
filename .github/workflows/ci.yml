@@ -72,6 +72,7 @@ jobs:
   repo-checks:
     name: Repository checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write  # needed for SARIF upload
@@ -249,6 +250,7 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: [ci]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     continue-on-error: true
     permissions:
       contents: read
