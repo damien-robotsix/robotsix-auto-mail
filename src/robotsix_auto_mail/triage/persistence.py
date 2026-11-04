@@ -139,19 +139,6 @@ class UnsubscribeDetection(pydantic.BaseModel):
         return v
 
 
-class ArchiveSubfolderProposal(pydantic.BaseModel):
-    """Structured LLM output for a per-mail archive subfolder proposal."""
-
-    subfolder: str = pydantic.Field(
-        default="",
-        description=(
-            "Proposed archive subfolder path relative to the archive root "
-            "(e.g. 'Lists/python-dev' or 'Receipts/2025').  "
-            "Empty string if no suitable folder can be determined."
-        ),
-    )
-
-
 # ---------------------------------------------------------------------------
 # Persistence helpers — triage_decisions table
 # ---------------------------------------------------------------------------

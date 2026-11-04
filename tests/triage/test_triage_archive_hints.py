@@ -12,7 +12,6 @@ from robotsix_auto_mail.db import (
     insert_record,
 )
 from robotsix_auto_mail.triage import (
-    ArchiveSubfolderProposal,
     TriageItem,
     TriageResult,
     _load_llm_archive_hints,
@@ -21,6 +20,13 @@ from robotsix_auto_mail.triage import (
     run_triage_agent,
 )
 from tests.conftest import _make_record
+
+
+def _archive_result(subfolder: str) -> TriageResult:
+    """Unified-agent output: one TO_ARCHIVE item carrying *subfolder*."""
+    return TriageResult(
+        items=[TriageItem(index=1, action="TO_ARCHIVE", archive_subfolder=subfolder)]
+    )
 
 
 def _patch_llm(
@@ -144,8 +150,8 @@ def test_run_triage_agent_ignores_archive_subfolder_for_non_archive(
 def test_propose_archive_subfolder_llm_rules_in_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """When a non-empty ``rules`` text is passed, the system prompt injects
-    the user's triage rules verbatim."""
+    """When a non-empty ``rules`` text is passed, the unified agent's user
+    message injects the user's triage rules verbatim."""
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<armada@ls2n.fr>", sender="crew@ls2n-fr.org")
@@ -160,7 +166,7 @@ def test_propose_archive_subfolder_llm_rules_in_prompt(
 
         mock_handle = mock.MagicMock()
         mock_run_result = mock.MagicMock()
-        mock_run_result.output = ArchiveSubfolderProposal(subfolder="ls2n/armada")
+        mock_run_result.output = _archive_result("ls2n/armada")
         mock_handle.run_sync.return_value = mock_run_result
 
         mock_provider = mock.MagicMock()
@@ -173,9 +179,9 @@ def test_propose_archive_subfolder_llm_rules_in_prompt(
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test", rules=rules)
 
-        system_prompt = mock_provider.build_agent.call_args[1]["system_prompt"]
-        assert "The user's triage rules" in system_prompt
-        assert rules in system_prompt
+        user_message = mock_handle.run_sync.call_args[0][0]
+        assert "The user maintains these triage rules" in user_message
+        assert rules in user_message
     finally:
         conn.close()
 
@@ -183,8 +189,8 @@ def test_propose_archive_subfolder_llm_rules_in_prompt(
 def test_propose_archive_subfolder_llm_no_rules_omits_section(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """With empty ``rules`` the triage-rules section is absent from the
-    system prompt."""
+    """With empty ``rules`` the triage-rules advisory is absent from the
+    user message."""
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<armada@ls2n.fr>", sender="crew@ls2n-fr.org")
@@ -197,7 +203,7 @@ def test_propose_archive_subfolder_llm_no_rules_omits_section(
 
         mock_handle = mock.MagicMock()
         mock_run_result = mock.MagicMock()
-        mock_run_result.output = ArchiveSubfolderProposal(subfolder="ls2n/armada")
+        mock_run_result.output = _archive_result("ls2n/armada")
         mock_handle.run_sync.return_value = mock_run_result
 
         mock_provider = mock.MagicMock()
@@ -210,7 +216,7 @@ def test_propose_archive_subfolder_llm_no_rules_omits_section(
         ):
             propose_archive_subfolder_llm(conn, record, api_key="sk-test")
 
-        system_prompt = mock_provider.build_agent.call_args[1]["system_prompt"]
-        assert "The user's triage rules" not in system_prompt
+        user_message = mock_handle.run_sync.call_args[0][0]
+        assert "The user maintains these triage rules" not in user_message
     finally:
         conn.close()

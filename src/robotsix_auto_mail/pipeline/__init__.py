@@ -14,7 +14,6 @@ import sqlite3
 import time
 
 from robotsix_auto_mail.config import (
-    APP_CLASSIFIER,
     APP_TRIAGE,
     MailConfig,
     resolve_llm_api_key,
@@ -371,7 +370,7 @@ def ingest_mail(
     _t0 = time.perf_counter()
     if not dry_run and config.archive_enabled:
         try:
-            _level, _pm = resolve_llm_tier(APP_CLASSIFIER)
+            _level, _pm = resolve_llm_tier(APP_TRIAGE)
             setup_archive(
                 db_conn,
                 imap_client,

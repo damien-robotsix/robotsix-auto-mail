@@ -1,4 +1,4 @@
-"""Tests for archive subfolder normalization, fill_missing, and get/set overrides."""
+"""Tests for archive subfolder normalization, the unified agent, and overrides."""
 
 from __future__ import annotations
 
@@ -15,12 +15,16 @@ from robotsix_auto_mail.db import (
 )
 from robotsix_auto_mail.triage import (
     TriageItem,
+    TriageResult,
+    _build_triage_system_prompt,
     _load_archive_overrides,
+    _load_llm_archive_hints,
     _save_llm_archive_hints,
+    classify_archive_destination,
     get_archive_subfolder,
+    run_triage_agent,
     set_archive_subfolder_override,
 )
-from robotsix_auto_mail.triage.agent import _fill_missing_archive_hints
 from robotsix_auto_mail.triage.classifier import normalize_archive_subfolder
 from tests.conftest import _make_record
 
@@ -67,46 +71,107 @@ def test_normalize_archive_subfolder(raw: str, expected: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# _fill_missing_archive_hints
+# Unified agent: one LLM call assigns column + archive destination
 # ---------------------------------------------------------------------------
 
 
-def test_fill_missing_archive_hints_only_unhinted_to_archive() -> None:
-    """The proposer runs only for TO_ARCHIVE records without an existing hint."""
+def _patch_provider(result: TriageResult) -> tuple[mock.MagicMock, mock.MagicMock]:
+    """Return ``(provider, handle)`` mocks whose agent yields *result*."""
+    handle = mock.MagicMock()
+    handle.run_sync.return_value = mock.MagicMock(output=result)
+    provider = mock.MagicMock()
+    provider.build_agent.return_value = handle
+    provider.call_with_retry.side_effect = lambda fn, what: fn()
+    return provider, handle
+
+
+def test_run_triage_agent_single_llm_call_for_column_and_destination() -> None:
+    """A TO_ARCHIVE decision without a subfolder triggers NO second LLM call."""
     conn = init_db(":memory:")
     try:
-        rec_a = _make_record(message_id="<a@x>")  # TO_ARCHIVE, no hint → propose
-        rec_b = _make_record(message_id="<b@x>")  # TO_DELETE → skip
-        rec_c = _make_record(message_id="<c@x>")  # TO_ARCHIVE, already hinted → skip
-        _save_llm_archive_hints(conn, {"<c@x>": "Billing"})
-        by_index = {
-            1: TriageItem(index=1, action="TO_ARCHIVE"),
-            2: TriageItem(index=2, action="TO_DELETE"),
-            3: TriageItem(index=3, action="TO_ARCHIVE"),
-        }
+        _insert_inbox(conn, "<a@x>")
+        _insert_inbox(conn, "<b@x>")
+        result = TriageResult(
+            items=[
+                TriageItem(index=1, action="TO_ARCHIVE", archive_subfolder="Finance"),
+                TriageItem(index=2, action="TO_ARCHIVE"),
+            ]
+        )
+        provider, handle = _patch_provider(result)
         with mock.patch(
-            "robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"
-        ) as proposer:
-            _fill_missing_archive_hints(
-                conn, [rec_a, rec_b, rec_c], by_index, "sk-test", None
-            )
-        called_ids = [call.args[1].message_id for call in proposer.call_args_list]
-        assert called_ids == ["<a@x>"]
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
+            return_value=provider,
+        ):
+            run_triage_agent(conn, api_key="sk-test")
+        assert handle.run_sync.call_count == 1
+        hints = _load_llm_archive_hints(conn)
+        assert hints == {"<a@x>": "Finance"}
+        system_prompt = provider.build_agent.call_args[1]["system_prompt"]
+        assert "archive_subfolder" in system_prompt
+        assert "TO_ARCHIVE" in system_prompt
     finally:
         conn.close()
 
 
-def test_fill_missing_archive_hints_no_api_key_is_noop() -> None:
-    """With no API key the proposer is never invoked."""
+def test_classify_archive_destination_uses_unified_agent() -> None:
+    """The single-message path reuses the triage prompt + TriageResult schema."""
+    conn = init_db(":memory:")
+    try:
+        _insert_inbox(conn, "<a@x>")
+        rec = _make_record(message_id="<a@x>")
+        result = TriageResult(
+            items=[TriageItem(index=1, action="TO_ARCHIVE", archive_subfolder="Orders")]
+        )
+        provider, handle = _patch_provider(result)
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
+            return_value=provider,
+        ):
+            got = classify_archive_destination(conn, rec, api_key="sk-test")
+        assert got == "Orders"
+        assert _load_llm_archive_hints(conn) == {"<a@x>": "Orders"}
+        assert handle.run_sync.call_count == 1
+        kwargs = provider.build_agent.call_args[1]
+        assert kwargs["system_prompt"] == _build_triage_system_prompt(None, None)
+        assert "TO_ARCHIVE" in handle.run_sync.call_args[0][0]
+    finally:
+        conn.close()
+
+
+def test_classify_archive_destination_no_api_key_is_noop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no resolvable API key the agent is never built and "" is returned."""
+    monkeypatch.setattr(
+        "robotsix_auto_mail.triage.agent.resolve_llm_api_key",
+        lambda *a, **kw: "",
+    )
     conn = init_db(":memory:")
     try:
         rec = _make_record(message_id="<a@x>")
-        by_index = {1: TriageItem(index=1, action="TO_ARCHIVE")}
         with mock.patch(
-            "robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"
-        ) as proposer:
-            _fill_missing_archive_hints(conn, [rec], by_index, "", None)
-        proposer.assert_not_called()
+            "robotsix_llmio.core.factory.get_provider_for_identifier"
+        ) as factory:
+            assert classify_archive_destination(conn, rec, api_key="") == ""
+        factory.assert_not_called()
+        assert _load_llm_archive_hints(conn) == {}
+    finally:
+        conn.close()
+
+
+def test_classify_archive_destination_llm_failure_returns_empty() -> None:
+    """An LLM failure is swallowed — callers fall back to the archive root."""
+    conn = init_db(":memory:")
+    try:
+        rec = _make_record(message_id="<a@x>")
+        provider, handle = _patch_provider(TriageResult())
+        handle.run_sync.side_effect = RuntimeError("boom")
+        with mock.patch(
+            "robotsix_llmio.core.factory.get_provider_for_identifier",
+            return_value=provider,
+        ):
+            assert classify_archive_destination(conn, rec, api_key="sk-test") == ""
+        assert _load_llm_archive_hints(conn) == {}
     finally:
         conn.close()
 

@@ -1,4 +1,4 @@
-"""Tests for propose_archive_subfolder_llm."""
+"""Tests for propose_archive_subfolder_llm (unified triage agent)."""
 
 from __future__ import annotations
 
@@ -14,12 +14,20 @@ from robotsix_auto_mail.db import (
     set_watermark,
 )
 from robotsix_auto_mail.triage import (
-    ArchiveSubfolderProposal,
+    TriageItem,
+    TriageResult,
     _load_llm_archive_hints,
     get_archive_subfolder,
     propose_archive_subfolder_llm,
 )
 from tests.conftest import _make_record
+
+
+def _archive_result(subfolder: str) -> TriageResult:
+    """Unified-agent output: one TO_ARCHIVE item carrying *subfolder*."""
+    return TriageResult(
+        items=[TriageItem(index=1, action="TO_ARCHIVE", archive_subfolder=subfolder)]
+    )
 
 
 def _insert_inbox(conn: object, message_id: str, **overrides: str) -> None:
@@ -48,7 +56,7 @@ def _patch_llm_for_proposal(
     Returns the mock handle (to assert ``close()``) and the patcher.
     """
     mock_run_result = mock.MagicMock()
-    mock_run_result.output = ArchiveSubfolderProposal(subfolder=subfolder)
+    mock_run_result.output = _archive_result(subfolder)
     mock_handle = mock.MagicMock()
     mock_handle.run_sync.return_value = mock_run_result
 
@@ -207,7 +215,7 @@ def test_propose_archive_subfolder_llm_existing_folders_in_prompt(
 
         mock_handle = mock.MagicMock()
         mock_run_result = mock.MagicMock()
-        mock_run_result.output = ArchiveSubfolderProposal(subfolder="Lists/python-dev")
+        mock_run_result.output = _archive_result("Lists/python-dev")
         mock_handle.run_sync.return_value = mock_run_result
 
         mock_provider = mock.MagicMock()
@@ -232,7 +240,7 @@ def test_propose_archive_subfolder_llm_existing_folders_in_prompt(
 def test_propose_archive_subfolder_llm_rules_in_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A non-empty ``rules`` argument is injected into the system prompt."""
+    """A non-empty ``rules`` argument is injected into the agent prompt."""
     monkeypatch.setattr(
         "robotsix_auto_mail.config.resolve_llm_api_key",
         lambda *a, **kw: "sk-test",
@@ -251,7 +259,7 @@ def test_propose_archive_subfolder_llm_rules_in_prompt(
 
         mock_handle = mock.MagicMock()
         mock_run_result = mock.MagicMock()
-        mock_run_result.output = ArchiveSubfolderProposal(subfolder="Work/Reports")
+        mock_run_result.output = _archive_result("Work/Reports")
         mock_handle.run_sync.return_value = mock_run_result
 
         mock_provider = mock.MagicMock()
@@ -266,10 +274,8 @@ def test_propose_archive_subfolder_llm_rules_in_prompt(
                 conn, record, api_key="sk-test", rules=rules_text
             )
 
-        # Verify system prompt includes the injected rules text.
-        call_kwargs = mock_provider.build_agent.call_args[1]
-        system_prompt = call_kwargs["system_prompt"]
-        assert rules_text in system_prompt
+        # Verify the unified agent's user message carries the rules text.
+        assert rules_text in mock_handle.run_sync.call_args[0][0]
     finally:
         conn.close()
 

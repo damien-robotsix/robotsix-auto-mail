@@ -13,11 +13,7 @@ import logging
 import sqlite3
 from typing import TYPE_CHECKING, Any, cast
 
-from robotsix_auto_mail.config import (
-    APP_CLASSIFIER,
-    resolve_llm_api_key,
-    resolve_llm_tier,
-)
+from robotsix_auto_mail.config import resolve_llm_api_key
 from robotsix_auto_mail.db import MailRecord
 from robotsix_auto_mail.server._request_helpers import handle_post_action
 from robotsix_auto_mail.server._services import Service
@@ -25,7 +21,7 @@ from robotsix_auto_mail.triage import (
     TO_ARCHIVE,
     TO_CALENDAR,
     VALID_TRIAGE_ACTIONS,
-    propose_archive_subfolder_llm,
+    classify_archive_destination,
     set_triage_decision,
 )
 
@@ -75,16 +71,14 @@ class ActionService(Service):
             if triage_action == TO_ARCHIVE:
                 try:
                     if mail_config is not None:
-                        classifier_level, classifier_model = resolve_llm_tier(
-                            APP_CLASSIFIER
-                        )
-                        propose_archive_subfolder_llm(
+                        # Same unified triage agent (and ``triage`` tier) that
+                        # assigns columns picks the archive destination.
+                        classify_archive_destination(
                             conn,
                             record,
-                            resolve_llm_api_key(raise_on_missing=False),
-                            provider_model=classifier_model or None,
-                            level=classifier_level,
+                            api_key=resolve_llm_api_key(raise_on_missing=False),
                             rules=mail_config.triage_guidance,
+                            user_email=mail_config.username or None,
                         )
                 except Exception:  # noqa: S110  # nosec B110
                     pass  # Non-fatal: board falls back to deterministic proposal

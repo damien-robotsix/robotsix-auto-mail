@@ -21,6 +21,7 @@ from robotsix_auto_mail.triage import (
     TriageItem,
     TriageResult,
     _build_triage_system_prompt,
+    _load_llm_archive_hints,
     get_triage_decision,
     list_triage_decisions,
     run_triage_agent,
@@ -100,10 +101,7 @@ def test_run_triage_agent_happy_path(
             ]
         )
         handle, patcher = _patch_llm(result_obj)
-        with (
-            patcher,
-            mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
-        ):
+        with patcher:
             out = run_triage_agent(conn, api_key="sk-test")
 
         assert [(d.message_id, d.action) for d in out] == [
@@ -149,10 +147,7 @@ def test_run_triage_agent_forwards_user_email_to_prompt(
         _handle, patcher = _patch_llm(
             TriageResult(items=[TriageItem(index=1, action="TO_ARCHIVE")])
         )
-        with (
-            patcher as cls,
-            mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
-        ):
+        with patcher as cls:
             run_triage_agent(conn, api_key="sk-test", user_email="me@example.com")
             provider = cls.return_value
         call_kwargs = provider.build_agent.call_args.kwargs
@@ -525,10 +520,7 @@ def test_run_triage_agent_guidance_prepends_advisory_block(
             items=[TriageItem(index=1, action="TO_ANSWER", confidence="high")]
         )
         _handle, patcher = _patch_llm(result_obj)
-        with (
-            patcher as cls,
-            mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
-        ):
+        with patcher as cls:
             run_triage_agent(
                 conn,
                 api_key="sk-test",
@@ -556,10 +548,7 @@ def test_run_triage_agent_no_guidance_no_advisory_block(
             items=[TriageItem(index=1, action="TO_ANSWER", confidence="high")]
         )
         _handle, patcher = _patch_llm(result_obj)
-        with (
-            patcher as cls,
-            mock.patch("robotsix_auto_mail.triage.agent.propose_archive_subfolder_llm"),
-        ):
+        with patcher as cls:
             run_triage_agent(conn, api_key="sk-test")
             provider = cls.return_value
 
@@ -570,31 +559,29 @@ def test_run_triage_agent_no_guidance_no_advisory_block(
         conn.close()
 
 
-def test_run_triage_agent_guidance_forwarded_as_rules_to_archive_hint_filler(
+def test_run_triage_agent_archive_destination_in_same_call(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Guidance is forwarded as ``rules`` to ``_fill_missing_archive_hints``."""
+    """Column + archive destination come from ONE LLM call (no second agent)."""
     conn = init_db(":memory:")
     try:
         _insert_inbox(conn, "<a@x.com>")
         result_obj = TriageResult(
-            items=[TriageItem(index=1, action="TO_ARCHIVE", confidence="high")]
+            items=[
+                TriageItem(
+                    index=1,
+                    action="TO_ARCHIVE",
+                    confidence="high",
+                    archive_subfolder="Newsletters/Python",
+                )
+            ]
         )
-        _handle, patcher = _patch_llm(result_obj)
-        with (
-            patcher,
-            mock.patch(
-                "robotsix_auto_mail.triage.agent._fill_missing_archive_hints"
-            ) as mock_fill,
-        ):
-            run_triage_agent(
-                conn,
-                api_key="sk-test",
-                guidance="some guidance",
-            )
+        handle, patcher = _patch_llm(result_obj)
+        with patcher:
+            run_triage_agent(conn, api_key="sk-test", guidance="some guidance")
 
-        mock_fill.assert_called_once()
-        assert mock_fill.call_args.kwargs["rules"] == "some guidance"
+        assert handle.run_sync.call_count == 1
+        assert _load_llm_archive_hints(conn) == {"<a@x.com>": "Newsletters/Python"}
     finally:
         conn.close()
 

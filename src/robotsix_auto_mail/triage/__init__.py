@@ -75,6 +75,9 @@ from robotsix_auto_mail.triage.agent import (
     _load_archive_folders as _load_archive_folders,
 )
 from robotsix_auto_mail.triage.agent import (
+    classify_archive_destination as classify_archive_destination,
+)
+from robotsix_auto_mail.triage.agent import (
     run_triage_agent as run_triage_agent,
 )
 from robotsix_auto_mail.triage.classifier import (
@@ -109,9 +112,6 @@ from robotsix_auto_mail.triage.classifier import (
 )
 from robotsix_auto_mail.triage.classifier import (
     set_archive_subfolder_override as set_archive_subfolder_override,
-)
-from robotsix_auto_mail.triage.persistence import (
-    ArchiveSubfolderProposal as ArchiveSubfolderProposal,
 )
 from robotsix_auto_mail.triage.persistence import (
     TriageDecision as TriageDecision,
@@ -155,7 +155,6 @@ __all__ = [
     "TRIAGE_ACTION_LABELS",
     "TRIAGE_ACTION_ORDER",
     "VALID_TRIAGE_ACTIONS",
-    "ArchiveSubfolderProposal",
     "TriageDecision",
     "TriageError",
     "TriageItem",
@@ -170,6 +169,7 @@ __all__ = [
     "_save_archive_overrides",
     "_save_llm_archive_hints",
     "_sender_key",
+    "classify_archive_destination",
     "delete_triage_decision",
     "delete_triage_decisions_by_action",
     "get_archive_subfolder",

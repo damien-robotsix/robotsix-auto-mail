@@ -158,19 +158,15 @@ class TestHandleMove:
             b"message_id=arch-llm&triage_action=TO_ARCHIVE&redirect_to=/board"
         )
 
-        # The provider key and model are component-wide: they reach the call
-        # through the resolvers, not through the account being moved.
+        # The provider key is component-wide: it reaches the call
+        # through the resolver, not through the account being moved.
         with (
             mock.patch(
                 "robotsix_auto_mail.server._action_service.resolve_llm_api_key",
                 return_value="sk-test",
             ),
             mock.patch(
-                "robotsix_auto_mail.server._action_service.resolve_llm_tier",
-                return_value=(1, "openrouter-deepseek"),
-            ),
-            mock.patch(
-                "robotsix_auto_mail.server._action_service.propose_archive_subfolder_llm"
+                "robotsix_auto_mail.server._action_service.classify_archive_destination"
             ) as mock_propose,
         ):
             ActionService(db_path=single_db).handle_move(ctx)
@@ -179,12 +175,13 @@ class TestHandleMove:
         # Verify the call arguments.
         call_args = mock_propose.call_args
         assert call_args[0][1].message_id == "arch-llm"  # record (pos 1)
-        assert call_args[0][2] == "sk-test"  # api_key (pos 2)
+        # Unified triage agent: no separate classifier tier is passed — the
+        # agent resolves the ``triage`` tier itself.
         assert call_args[1] == {
-            "provider_model": "openrouter-deepseek",
-            "level": 1,
+            "api_key": "sk-test",
             "rules": "",
-        }  # provider_model + level + rules kwargs
+            "user_email": mail_config.username,
+        }
 
     def test_to_archive_llm_exception_is_swallowed(self, single_db: str) -> None:
         _populate_db(
@@ -213,7 +210,7 @@ class TestHandleMove:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.server._action_service.propose_archive_subfolder_llm",
+            "robotsix_auto_mail.server._action_service.classify_archive_destination",
             side_effect=RuntimeError("LLM timeout"),
         ):
             # Should not raise — the exception is swallowed.
@@ -243,7 +240,7 @@ class TestHandleMove:
         )
 
         with mock.patch(
-            "robotsix_auto_mail.server._action_service.propose_archive_subfolder_llm"
+            "robotsix_auto_mail.server._action_service.classify_archive_destination"
         ) as mock_propose:
             ActionService(db_path=single_db).handle_move(ctx)
 
