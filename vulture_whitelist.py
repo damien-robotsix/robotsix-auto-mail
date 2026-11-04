@@ -22,10 +22,6 @@ from robotsix_auto_mail.config.config_sync_agent import LedgerEntry
 
 LedgerEntry._validate_state
 
-from robotsix_auto_mail.detect import DetectedProvider
-
-DetectedProvider._validate_tls_mode
-
 from robotsix_auto_mail.triage.persistence import TriageItem
 
 TriageItem._coerce_action
@@ -102,7 +98,6 @@ MailAccountsConfig._validate
 MailAccountsConfig.models
 MailAccountsConfig.triage_level
 MailAccountsConfig.classifier_level
-MailAccountsConfig.detector_level
 MailAccountsConfig.draft_level
 
 from robotsix_auto_mail.config.model import TierModelsConfig

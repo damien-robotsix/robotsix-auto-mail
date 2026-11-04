@@ -56,9 +56,6 @@ from robotsix_auto_mail.cli.config import (
     _refine_password as _refine_password,
 )
 from robotsix_auto_mail.cli.config import (
-    _refine_with_llm as _refine_with_llm,
-)
-from robotsix_auto_mail.cli.config import (
     _verify_config as _verify_config,
 )
 from robotsix_auto_mail.cli.config import (
@@ -75,7 +72,6 @@ __all__ = [
     "_cmd_ingest",
     "_refine_manual",
     "_refine_password",
-    "_refine_with_llm",
     "build_parser",
     "main",
 ]

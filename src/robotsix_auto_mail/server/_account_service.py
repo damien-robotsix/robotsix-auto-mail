@@ -144,7 +144,7 @@ class AccountService(Service):
                     origin=origin,
                 )
                 return
-            provider, detect_error = _detect_provider_for_email(email)
+            provider, detect_error = _lookup_provider_for_email(email)
             if provider is not None:
                 prefill["imap_host"] = provider.imap_host
                 prefill["smtp_host"] = provider.smtp_host
@@ -541,13 +541,13 @@ def _build_add_account_form_html(
     )
 
 
-def _detect_provider_for_email(
+def _lookup_provider_for_email(
     email_address: str,
 ) -> tuple[MailProvider | None, str]:
     """Run the provider-detection ladder for *email_address*.
 
-    Tries the non-LLM detection paths only (autoconfig + MX lookup)
-    so the web UI stays responsive even without an LLM API key.
+    Tries autoconfig, then an MX lookup against the known-provider
+    registry.
 
     Returns ``(provider, error_message)`` — exactly one of the two
     is non-truthy.

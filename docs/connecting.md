@@ -62,14 +62,16 @@ first:
 2. **MX records** — a DNS-over-HTTPS lookup identifies the hosting provider
    from the domain's mail servers (e.g. `*.mail.ovh.net` → OVH), mapped to
    that provider's known IMAP/SMTP settings.
-3. **LLM** — only if the first two miss; the MX hostnames are passed in as a
-   hint so it identifies the provider rather than guessing blindly.
+
+If neither step resolves, `detect` exits with an error and you configure the
+account manually (edit `config/config.json`, or use the web *Add Mail
+Account* form).
 
 After detection, `detect` verifies the settings by connecting to IMAP and
-SMTP (the same check as the `probe` command), refining on failure.  Pass
-`--no-verify` to skip that connection check.  The LLM step needs a
-`pydantic-ai` installation and an API key; autoconfig and MX detection do
-not.
+SMTP (the same check as the `probe` command), refining on failure (a
+password re-prompt for auth failures, a manual host prompt for connection
+failures).  Pass `--no-verify` to skip that connection check.  No LLM or API
+key is involved.
 
 `detect` prints a JSON diagnostic report to stdout — it does **not** write
 any config file.  Copy the detected values into your deploy-managed
@@ -79,17 +81,13 @@ write-only password field.
 ### Setup
 
 ```sh
-# Installs dev dependencies (incl. pydantic-ai) from the committed uv.lock,
+# Installs dev dependencies from the committed uv.lock,
 # so you get the exact same resolved versions as CI. The dev tooling lives
 # in the `dev` extra, which `--extra dev` pulls in. After changing
 # dependencies in pyproject.toml, run `uv lock` and commit the updated
 # uv.lock.
 uv sync --extra dev
 ```
-
-Set your OpenRouter API key (required for `detect`) in `config/config.json`
-under `openrouter.keys.robotsix-auto-mail`, or pass it per-run with
-`--api-key`.
 
 ### Minimal usage
 
@@ -126,9 +124,6 @@ robotsix-auto-mail detect user@gmail.com --password "app-password"
 ### Docker invocation
 
 ```sh
-# Set your OpenRouter API key in config/config.json under
-# openrouter.keys.robotsix-auto-mail (or pass --api-key), then:
-
 # Detect provider settings, write config, and verify connectivity —
 # all in one step (prompts for the password; uses the run TTY).
 docker compose run robotsix-auto-mail detect user@gmail.com
@@ -144,7 +139,7 @@ interactive prompt appears (requires a TTY — use `docker compose run` without
 
 ### Caveats
 
-- **LLM output can be wrong.** That is exactly why `detect` verifies by
+- **Published settings can be stale.** That is why `detect` verifies by
   connecting after detection. If verification fails, check the host/port/TLS
   values in the report and re-run `detect`.
 - With `--no-verify`, no connection is made — `detect` is then purely a
@@ -558,11 +553,6 @@ only `ROBOTSIX_CONFIG_FILE` (which locates the file) is read from the environmen
 
 If the config file has an *invalid* value (e.g. a non-integer port), the error
 is raised immediately so your typo is not silently swallowed.
-
-The `detect` command resolves the LLM settings (`openrouter.keys`,
-`llm_provider_model`) on their own, so it works before the mail fields are
-filled in.  It never copies them onto the account it writes: they are
-component-wide.
 
 ## Example setups
 

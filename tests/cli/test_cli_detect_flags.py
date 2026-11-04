@@ -21,7 +21,7 @@ def test_detect_no_verify_still_reports(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="app-pw-789") as _mock_getpass,
@@ -29,9 +29,6 @@ def test_detect_no_verify_still_reports(
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as _mock_verify,
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(
             [

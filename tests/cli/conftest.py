@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest import mock
 
 import pytest
 
 from robotsix_auto_mail.cli.config import _VerifyResult
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
-from robotsix_auto_mail.detect import DetectionError, MailProvider
+from robotsix_auto_mail.detect import MailProvider
 
 
 @pytest.fixture
 def no_autoconfig() -> object:
-    """Force autoconfig + MX detection to miss so tests reach the LLM path."""
+    """Force autoconfig + MX detection to miss (nothing resolves)."""
     with (
         mock.patch("robotsix_auto_mail.detect.autoconfig_lookup", return_value=None),
         mock.patch("robotsix_auto_mail.detect.mx_lookup", return_value=[]),
@@ -75,14 +74,6 @@ def _mock_provider_from_mx(mx_hosts: list[str]) -> MailProvider | None:
     if mx_hosts:
         return MailProvider(imap_host="imap.mx.com", smtp_host="smtp.mx.com")
     return None
-
-
-def _mock_detect(email: str, **kwargs: Any) -> MailProvider:
-    return MailProvider(imap_host="imap.llm.com", smtp_host="smtp.llm.com")
-
-
-def _mock_detect_error(email: str, **kwargs: Any) -> MailProvider:
-    raise DetectionError("LLM unavailable")
 
 
 # ---------------------------------------------------------------------------

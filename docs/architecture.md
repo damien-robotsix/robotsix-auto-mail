@@ -90,7 +90,7 @@ OAuth2 access token presented over SASL XOAUTH2:
 
 ### Provider detection
 
-- `detect/` — MX-record / autoconfig / LLM provider detection and
+- `detect/` — MX-record / autoconfig provider detection and
   auto-configuration lookup.
 
 ### Archive layout

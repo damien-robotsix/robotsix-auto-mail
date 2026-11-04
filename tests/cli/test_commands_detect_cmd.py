@@ -8,7 +8,6 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import sys
 from pathlib import Path
 from unittest import mock
 
@@ -34,43 +33,6 @@ def _default_config() -> MailConfig:
         smtp_port=587,
         smtp_tls_mode="starttls",
     )
-
-
-def _mock_detect_imports() -> mock._patch | None:
-    """Ensure the lazy pydantic-ai import inside _cmd_detect succeeds."""
-    return None  # real import works in test environment
-
-
-def test_cmd_detect_missing_pydantic_ai() -> None:
-    """_cmd_detect exits 1 when pydantic-ai import fails."""
-    # Remove the module from sys.modules to force a re-import inside _cmd_detect.
-    real_detect = sys.modules.pop("robotsix_auto_mail.detect", None)
-    original_import = __import__
-
-    def _block_detect(name: str, *args: object, **kwargs: object) -> object:
-        if name == "robotsix_auto_mail.detect":
-            raise ImportError("No module named 'pydantic_ai'")
-        return original_import(name, *args, **kwargs)  # type: ignore[arg-type]
-
-    try:
-        with mock.patch("builtins.__import__", side_effect=_block_detect):
-            args = argparse.Namespace(
-                email="user@example.com",
-                id=None,
-                password=None,
-                output="",
-                stdout=False,
-                overwrite=False,
-                no_verify=False,
-                app_password=False,
-                oauth2_client_id="",
-                oauth2_tenant="",
-            )
-            rc = _cmd_detect(args)
-        assert rc == 1
-    finally:
-        if real_detect is not None:
-            sys.modules["robotsix_auto_mail.detect"] = real_detect
 
 
 def test_cmd_detect_app_password_oauth2_mutual_exclusion_client_id() -> None:
@@ -121,7 +83,9 @@ def test_cmd_detect_app_password_oauth2_mutual_exclusion_tenant() -> None:
 
 def test_cmd_detect_provider_none() -> None:
     """When _detect_settings returns None, _cmd_detect exits 1."""
-    mock_provider = MailProvider(imap_host="imap.llm.com", smtp_host="smtp.llm.com")
+    mock_provider = MailProvider(
+        imap_host="imap.example.com", smtp_host="smtp.example.com"
+    )
 
     with (
         mock.patch(
@@ -130,7 +94,7 @@ def test_cmd_detect_provider_none() -> None:
         ),
         mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
-            return_value=(mock_provider, []),
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.cli.commands_detect._get_password",
@@ -148,10 +112,10 @@ def test_cmd_detect_provider_none() -> None:
             "robotsix_auto_mail.cli.commands_detect._print_detect_report",
         ),
     ):
-        # Now test when _detect_settings returns (None, [])
+        # Now test when _detect_settings returns None
         with mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
-            return_value=(None, []),
+            return_value=None,
         ):
             args = argparse.Namespace(
                 email="user@example.com",
@@ -178,7 +142,7 @@ def test_cmd_detect_stdout_path() -> None:
     with (
         mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
-            return_value=(mock_provider, []),
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.detect.is_microsoft_provider",
@@ -222,7 +186,7 @@ def test_cmd_detect_stdout_microsoft_app_password_clears_oauth2() -> None:
     with (
         mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
-            return_value=(mock_provider, []),
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.detect.is_microsoft_provider",
@@ -269,7 +233,7 @@ def test_cmd_detect_happy_path_output_file(
     with (
         mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
-            return_value=(mock_provider, ["mx1"]),
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.detect.is_microsoft_provider",
@@ -313,12 +277,14 @@ def test_cmd_detect_happy_path_output_file(
 
 def test_cmd_detect_verify_and_refine_returns_none_config() -> None:
     """When _verify_and_refine returns (rc, None), exit with rc."""
-    mock_provider = MailProvider(imap_host="imap.llm.com", smtp_host="smtp.llm.com")
+    mock_provider = MailProvider(
+        imap_host="imap.example.com", smtp_host="smtp.example.com"
+    )
 
     with (
         mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
-            return_value=(mock_provider, []),
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.detect.is_microsoft_provider",
@@ -374,7 +340,7 @@ def test_cmd_detect_account_exists_no_overwrite(tmp_path: Path) -> None:
     with (
         mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
-            return_value=(mock_provider, []),
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.detect.is_microsoft_provider",
@@ -454,7 +420,7 @@ def test_cmd_detect_account_exists_overwrite_merge(tmp_path: Path) -> None:
     with (
         mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
-            return_value=(mock_provider, []),
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.detect.is_microsoft_provider",
@@ -514,7 +480,7 @@ def test_cmd_detect_microsoft_account_no_password_prompt(
     with (
         mock.patch(
             "robotsix_auto_mail.cli.commands_detect._detect_settings",
-            return_value=(mock_provider, []),
+            return_value=mock_provider,
         ),
         mock.patch(
             "robotsix_auto_mail.detect.is_microsoft_provider",

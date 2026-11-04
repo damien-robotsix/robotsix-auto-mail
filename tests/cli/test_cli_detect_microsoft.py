@@ -24,7 +24,7 @@ def test_detect_microsoft_runs_device_code_and_verifies(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
@@ -32,9 +32,6 @@ def test_detect_microsoft_runs_device_code_and_verifies(
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as mock_verify,
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(["detect", "user@contoso.com"])
 
@@ -58,14 +55,11 @@ def test_detect_microsoft_stdout_instructs_auth_login(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(["detect", "user@contoso.com", "--no-verify"])
 
@@ -86,11 +80,8 @@ def test_detect_stdout_app_password_clears_oauth2_provider(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
-        ),
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
     ):
         rc = main(
@@ -124,7 +115,7 @@ def test_detect_microsoft_auth_failure_points_at_auth_login(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
@@ -132,9 +123,6 @@ def test_detect_microsoft_auth_failure_points_at_auth_login(
         mock.patch(
             "robotsix_auto_mail.cli._verify_config",
             return_value=_auth_fail_result(),
-        ),
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
     ):
         rc = main(["detect", "user@contoso.com"])
@@ -156,15 +144,12 @@ def test_detect_microsoft_custom_oauth2_client_id_and_tenant(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass") as mock_getpass,
         mock.patch("robotsix_auto_mail.oauth2.device_code_login") as mock_login,
         mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(
             [
@@ -203,7 +188,7 @@ def test_detect_microsoft_app_password_writes_password_config(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="app-pw-123") as mock_getpass,
@@ -211,9 +196,6 @@ def test_detect_microsoft_app_password_writes_password_config(
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as mock_verify,
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(
             [
@@ -244,14 +226,11 @@ def test_detect_app_password_mutually_exclusive_with_oauth2_flags(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass"),
         mock.patch("robotsix_auto_mail.oauth2.device_code_login"),
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(
             [
@@ -277,16 +256,13 @@ def test_detect_app_password_noop_for_non_microsoft(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="gm-pw") as mock_getpass,
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as mock_verify,
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(
             [
@@ -314,16 +290,13 @@ def test_detect_app_password_noop_for_generic_imap_host(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("getpass.getpass", return_value="example-pw") as mock_getpass,
         mock.patch(
             "robotsix_auto_mail.cli._verify_config", return_value=_ok_result()
         ) as mock_verify,
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(
             [

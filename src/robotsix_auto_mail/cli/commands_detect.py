@@ -27,7 +27,8 @@ def register_subparser(
 ) -> None:
     """Register the ``detect`` subcommand and its arguments.
 
-    The subcommand auto-detects email provider settings via LLM, verifies
+    The subcommand auto-detects email provider settings (Mozilla
+    autoconfig / MX lookup), verifies
     them by connecting to IMAP and SMTP, and prints a JSON diagnostic report.
     No config file is written — the operator copies the report values into
     the deploy Configure panel.
@@ -35,7 +36,8 @@ def register_subparser(
     parser = subparsers.add_parser(
         "detect",
         help=(
-            "Auto-detect email provider settings via LLM and print a diagnostic report"
+            "Auto-detect email provider settings (autoconfig / MX lookup) and "
+            "print a diagnostic report"
         ),
     )
     parser.add_argument(
@@ -129,34 +131,19 @@ def _cmd_detect(args: argparse.Namespace) -> int:
 
     Returns 0 on success, 1 on any error.
     """
-    try:
-        from robotsix_auto_mail.detect import (
-            DetectionError,
-            autoconfig_lookup,
-            detect_provider,
-            is_microsoft_provider,
-            mx_lookup,
-            provider_from_mx,
-            provider_to_config,
-        )
-    except ImportError:
-        sys.stderr.write(
-            "The 'detect' command requires the pydantic-ai package. "
-            "Install it with: uv sync --extra llm (from the robotsix-auto-mail repo)\n"
-        )
-        return 1
-
-    from robotsix_auto_mail.config import (
-        APP_DETECTOR,
-        resolve_llm_api_key,
-        resolve_llm_tier,
+    from robotsix_auto_mail.detect import (
+        autoconfig_lookup,
+        is_microsoft_provider,
+        mx_lookup,
+        provider_from_mx,
+        provider_to_config,
     )
 
     account_id = args.id or _account_id_from_email(args.email)
     label = args.email
 
     # Reject --app-password + --oauth2-* early (before the detection ladder)
-    # so the user gets an immediate error instead of paying for an LLM call.
+    # so the user gets an immediate error before any network lookup.
     if args.app_password and (args.oauth2_client_id or args.oauth2_tenant):
         sys.stderr.write(
             "Error: --app-password is mutually exclusive with "
@@ -164,18 +151,11 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         )
         return 1
 
-    api_key = resolve_llm_api_key(None, raise_on_missing=False)
-    llm_level, llm_provider_model_str = resolve_llm_tier(APP_DETECTOR)
-    provider, mx_hosts = _detect_settings(
+    provider = _detect_settings(
         args.email,
-        api_key,
-        llm_provider_model_str,
         autoconfig_lookup,
         mx_lookup,
         provider_from_mx,
-        detect_provider,
-        DetectionError,
-        level=llm_level,
     )
     if provider is None:
         return 1
@@ -236,18 +216,12 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     rc, config = _verify_and_refine(
         provider,
         email=args.email,
-        api_key=api_key,
-        llm_provider_model=llm_provider_model_str,
-        llm_level=llm_level,
-        mx_hosts=mx_hosts,
         password=password,
         password_from_args=args.password,
         no_verify=args.no_verify,
         account_id=account_id,
         label=label,
         provider_to_config=provider_to_config,
-        detect_provider=detect_provider,
-        _detection_error=DetectionError,
         microsoft=microsoft,
         oauth2_client_id=args.oauth2_client_id,
         oauth2_tenant=args.oauth2_tenant,

@@ -23,11 +23,8 @@ def test_detect_prints_json_report(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
-        ),
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
         ),
     ):
         rc = main(
@@ -44,13 +41,8 @@ def test_detect_prints_json_report(
 
     assert rc == 0
     content = output.read_text()
-    # mail fields updated…
     assert "imap.gmail.com" in content
     assert "user@gmail.com" in content
-    # …and the resolved LLM key is *not* copied onto the account: it is
-    # component-wide, and a per-account copy is what the canonical
-    # `openrouter` block replaced.
-    assert "sk-test" not in content
 
 
 def test_detect_honours_id_in_report(
@@ -62,13 +54,10 @@ def test_detect_honours_id_in_report(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch("robotsix_auto_mail.cli._verify_config", return_value=_ok_result()),
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(
             [

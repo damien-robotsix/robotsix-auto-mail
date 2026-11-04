@@ -13,5 +13,4 @@ from typing import Final
 
 APP_TRIAGE: Final = "triage"
 APP_CLASSIFIER: Final = "classifier"
-APP_DETECTOR: Final = "detector"
 APP_DRAFT: Final = "draft"

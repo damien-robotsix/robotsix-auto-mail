@@ -52,15 +52,13 @@ $EDITOR config/config.json
 ### 2a. Alternative: auto-detect provider settings (detect)
 
 Instead of manually creating the whole `config/config.json`, you can
-auto-generate the account settings from just your email address. First put
-your LLM API key in the config file's top-level `openrouter:` block (e.g. copy
-the example and set `openrouter.keys.robotsix-auto-mail`), then run:
+auto-generate the account settings from just your email address:
 
 ```sh
 docker compose run robotsix-auto-mail detect user@gmail.com
 ```
 
-This calls an LLM to look up the correct IMAP/SMTP settings and writes
+This looks up the IMAP/SMTP settings (Mozilla autoconfig, then MX records) and writes
 `config/config.json`, prompting for your password and including it in
 that file.  See [docs/connecting.md](connecting.md#auto-detection-with-detect)
 for full details.
