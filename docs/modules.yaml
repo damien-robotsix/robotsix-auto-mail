@@ -128,7 +128,6 @@ modules:
       - tests/cli/test_cli_ingest.py
       - tests/cli/test_cli_probe.py
       - tests/cli/test_cli_refine_password.py
-      - tests/cli/test_cli_refine_llm.py
       - tests/cli/test_cli_refine_manual.py
       - tests/cli/test_cli_refine_pipeline.py
       - tests/cli/test_cli_refine_prompt_hosts.py
@@ -236,7 +235,7 @@ modules:
   - id: detect
     description: >-
       MX-record provider detection and auto-configuration lookup
-      (Mozilla ISPDB, autoconfig XML, LLM fallback).
+      (Mozilla ISPDB, autoconfig XML); no LLM involved.
     paths:
       - src/robotsix_auto_mail/detect/__init__.py
       - src/robotsix_auto_mail/detect/detector.py
@@ -248,7 +247,6 @@ modules:
       - tests/detect/test_ssrf_guard.py
       - tests/detect/test_detect_consistency.py
       - tests/detect/test_detect_models.py
-      - tests/detect/test_detect_provider.py
 
   - id: imap
     description: >-

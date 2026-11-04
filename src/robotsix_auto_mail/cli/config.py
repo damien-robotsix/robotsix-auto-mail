@@ -115,22 +115,6 @@ def _report_verify_result(result: _VerifyResult) -> None:
             sys.stderr.write(f"  {label}: {kind} failed — {err}\n")
 
 
-def _verify_feedback(config: MailConfig, result: _VerifyResult) -> str:
-    """Describe the connection failures for the LLM refinement prompt."""
-    parts: list[str] = []
-    if not result.imap_ok and not result.imap_auth:
-        parts.append(
-            f"IMAP host {config.imap_host!r} (port {config.imap_port}, "
-            f"{config.imap_tls_mode}) could not be reached: {result.imap_error}"
-        )
-    if not result.smtp_ok and not result.smtp_auth:
-        parts.append(
-            f"SMTP host {config.smtp_host!r} (port {config.smtp_port}, "
-            f"{config.smtp_tls_mode}) could not be reached: {result.smtp_error}"
-        )
-    return "\n".join(parts)
-
-
 def _prompt_hosts(config: MailConfig, result: _VerifyResult) -> MailConfig | None:
     """Prompt the user for the host(s) that failed to connect.
 
@@ -190,80 +174,54 @@ def _get_password(args: argparse.Namespace) -> str | None:
 
 def _detect_settings(
     email: str,
-    api_key: str | None,
-    llm_provider_model: str | None,
     autoconfig_lookup: Callable[[str], MailProvider | None],
     mx_lookup: Callable[[str], list[str]],
     provider_from_mx: Callable[[list[str]], MailProvider | None],
-    detect_provider: Callable[..., MailProvider],
-    _detection_error: type[Exception],
-    *,
-    level: int = 1,
-) -> tuple[MailProvider | None, list[str]]:
+) -> MailProvider | None:
     """Run the provider-detection ladder for *email*.
 
     Tries, in order:
     1. ``autoconfig_lookup`` (Thunderbird/Outlook-style autodiscovery)
     2. MX-record lookup → ``provider_from_mx``
-    3. LLM ``detect_provider`` (requires *api_key*)
 
-    Returns ``(provider, mx_hosts)`` where *provider* is a
-    ``MailProvider`` and *mx_hosts* is the (possibly empty) list of
-    MX hostnames discovered during step 2 — needed later when the
-    verification loop asks the LLM for a refinement.
-
-    Prints progress messages to stderr (exactly as today).
-
-    Returns ``(None, mx_hosts)`` when ``detect_provider``
-    raises ``DetectionError`` (the error is printed to stderr).
+    Prints progress messages to stderr.  Returns the detected
+    ``MailProvider``, or ``None`` when neither step resolves (an error
+    pointing at manual configuration is printed to stderr).
     """
     sys.stderr.write(f"Detecting settings for {email}…\n")
-    mx_hosts: list[str] = []
     provider = autoconfig_lookup(email)
     if provider is not None:
         sys.stderr.write(
             f"  autoconfig: imap={provider.imap_host} smtp={provider.smtp_host}\n"
         )
-    else:
-        sys.stderr.write("  autoconfig: no match — checking MX records…\n")
-        mx_hosts = mx_lookup(email)
-        if mx_hosts:
-            sys.stderr.write(f"  MX: {', '.join(mx_hosts[:3])}\n")
-        provider = provider_from_mx(mx_hosts)
-        if provider is not None:
-            sys.stderr.write(
-                f"  MX provider: imap={provider.imap_host} smtp={provider.smtp_host}\n"
-            )
-        else:
-            sys.stderr.write("  no known provider — asking the LLM…\n")
-            try:
-                provider = detect_provider(
-                    email,
-                    level=level,
-                    api_key=api_key,
-                    provider_model=llm_provider_model,
-                    mx_hosts=mx_hosts,
-                )
-            except _detection_error as exc:
-                sys.stderr.write(f"Error: {exc}\n")
-                return None, mx_hosts
-            sys.stderr.write(
-                f"  LLM: imap={provider.imap_host} smtp={provider.smtp_host}\n"
-            )
-    return provider, mx_hosts
+        return provider
+    sys.stderr.write("  autoconfig: no match — checking MX records…\n")
+    mx_hosts = mx_lookup(email)
+    if mx_hosts:
+        sys.stderr.write(f"  MX: {', '.join(mx_hosts[:3])}\n")
+    provider = provider_from_mx(mx_hosts)
+    if provider is None:
+        sys.stderr.write(
+            f"Error: could not auto-detect settings for {email} (no autoconfig "
+            "and no known provider for the MX records). Configure the account "
+            "manually in config/config.json.\n"
+        )
+        return None
+    sys.stderr.write(
+        f"  MX provider: imap={provider.imap_host} smtp={provider.smtp_host}\n"
+    )
+    return provider
 
 
 @dataclasses.dataclass(frozen=True)
 class _RefineOutcome:
-    """Result of one refinement strategy: a rebuilt config and/or provider.
+    """Result of one refinement strategy: a rebuilt config, if any.
 
     ``config`` is ``None`` when the strategy produced no new config (the
-    user cancelled, or the LLM returned no refinement).  ``provider`` is
-    set only when the strategy updated the working provider (LLM refine).
+    user cancelled).
     """
 
     config: MailConfig | None = None
-    provider: MailProvider | None = None
 
 
 def _refine_password(
@@ -279,43 +237,6 @@ def _refine_password(
     if not new_pw:
         return _RefineOutcome()
     return _RefineOutcome(config=build(provider, new_pw))
-
-
-def _refine_with_llm(
-    build: Callable[[MailProvider, str | None], MailConfig],
-    provider: MailProvider,
-    config: MailConfig,
-    result: _VerifyResult,
-    *,
-    email: str,
-    api_key: str | None,
-    llm_provider_model: str | None,
-    llm_level: int = 1,
-    mx_hosts: list[str],
-    detect_provider: Callable[..., MailProvider],
-    _detection_error: type[Exception],
-) -> _RefineOutcome:
-    """Ask the LLM for a refined provider after a host/connection failure."""
-    sys.stderr.write("Refining the host with the LLM…\n")
-    try:
-        refined = detect_provider(
-            email,
-            level=llm_level,
-            api_key=api_key,
-            provider_model=llm_provider_model,
-            feedback=_verify_feedback(config, result),
-            mx_hosts=mx_hosts,
-        )
-    except _detection_error as exc:
-        sys.stderr.write(f"  LLM refinement error: {exc}\n")
-        refined = None
-    if refined is None:
-        return _RefineOutcome()
-    sys.stderr.write(f"  LLM: imap={refined.imap_host} smtp={refined.smtp_host}\n")
-    return _RefineOutcome(
-        config=build(refined, config.password.get_secret_value()),
-        provider=refined,
-    )
 
 
 def _refine_manual(config: MailConfig, result: _VerifyResult) -> _RefineOutcome:
@@ -335,18 +256,12 @@ def _verify_and_refine(
     provider: MailProvider,
     *,
     email: str,
-    api_key: str | None,
-    llm_provider_model: str | None,
-    llm_level: int = 1,
-    mx_hosts: list[str],
     password: str | None,
     password_from_args: str | None,
     no_verify: bool,
     account_id: str,
     label: str | None,
     provider_to_config: Callable[..., MailConfig],
-    detect_provider: Callable[..., MailProvider],
-    _detection_error: type[Exception],
     microsoft: bool = False,
     oauth2_client_id: str = "",
     oauth2_tenant: str = "",
@@ -358,9 +273,8 @@ def _verify_and_refine(
     1. Auth-only failure → re-prompt password (max 2 attempts
        for interactively-entered passwords; 0 when ``--password``
        was supplied).
-    2. Host/connection failure → ask the LLM for a refined provider
-       (max 2 attempts), then fall back to a manual interactive
-       prompt.
+    2. Host/connection failure → manual interactive prompt for the
+       failing host(s) (once).
 
     Returns ``(0, config)`` when verification succeeds, ``(1, None)``
     when all budgets are exhausted.  Does **not** write any files —
@@ -386,11 +300,6 @@ def _verify_and_refine(
                     "oauth2_tenant": oauth2_tenant or detected.oauth2_tenant,
                 }
             )
-
-        # An LLM key or model supplied here is *not* written into the account:
-        # both are component-wide, and copying them onto a mailbox is what the
-        # canonical `openrouter` / `llm_provider_model` settings replaced.
-        # They are still used for this run's detection calls.
         return detected
 
     config = _build(provider, password)
@@ -423,9 +332,8 @@ def _verify_and_refine(
             return 0, config
 
     # -- verify + refine loop --
-    #   connection/TLS failure → refine host via the LLM (bounded), then a
-    #   manual prompt;  auth failure → re-prompt the password.
-    llm_budget = 2
+    #   connection/TLS failure → manual host prompt;  auth failure →
+    #   re-prompt the password.
     # only re-prompt the password when it was entered interactively; Microsoft
     # accounts never use a password, so re-prompting is always disabled.
     pw_budget = 0 if microsoft else (2 if password_from_args is None else 0)
@@ -456,27 +364,6 @@ def _verify_and_refine(
                 break
             config = outcome.config
             continue
-
-        if result.host_problem and llm_budget > 0:
-            llm_budget -= 1
-            outcome = _refine_with_llm(
-                _build,
-                provider,
-                config,
-                result,
-                email=email,
-                api_key=api_key,
-                llm_provider_model=llm_provider_model,
-                llm_level=llm_level,
-                mx_hosts=mx_hosts,
-                detect_provider=detect_provider,
-                _detection_error=_detection_error,
-            )
-            if outcome.provider is not None:
-                provider = outcome.provider
-            if outcome.config is not None:
-                config = outcome.config
-                continue
 
         if result.host_problem and not manual_used:
             manual_used = True

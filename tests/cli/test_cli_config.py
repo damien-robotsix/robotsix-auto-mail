@@ -12,7 +12,6 @@ from robotsix_auto_mail.cli.config import (
     _get_password,
     _report_verify_result,
     _verify_config,
-    _verify_feedback,
     _VerifyResult,
 )
 from robotsix_auto_mail.config import MailConfig
@@ -311,55 +310,6 @@ def test_report_verify_result_connection_fail(
 
 
 # ---------------------------------------------------------------------------
-# _verify_feedback
-# ---------------------------------------------------------------------------
-
-
-def test_verify_feedback_host_problems(cfg: MailConfig) -> None:
-    """Non-auth failures produce host-targeted feedback strings."""
-    result = _VerifyResult(
-        imap_ok=False,
-        smtp_ok=False,
-        imap_error="no route",
-        smtp_error="timeout",
-    )
-    msg = _verify_feedback(cfg, result)
-    assert "IMAP host" in msg
-    assert str(cfg.imap_host) in msg
-    assert "no route" in msg
-    assert "SMTP host" in msg
-    assert str(cfg.smtp_host) in msg
-    assert "timeout" in msg
-
-
-def test_verify_feedback_no_host_problems(cfg: MailConfig) -> None:
-    """Auth-only problems produce empty feedback (no host-level issues)."""
-    result = _VerifyResult(
-        imap_ok=False,
-        smtp_ok=True,
-        imap_auth=True,
-        imap_error="auth",
-    )
-    msg = _verify_feedback(cfg, result)
-    assert msg == ""  # imap auth failure only → not a host problem
-
-
-def test_verify_feedback_mixed(cfg: MailConfig) -> None:
-    """Only the non-auth failures appear in feedback."""
-    result = _VerifyResult(
-        imap_ok=False,
-        smtp_ok=False,
-        imap_auth=False,
-        smtp_auth=True,
-        imap_error="refused",
-        smtp_error="bad password",
-    )
-    msg = _verify_feedback(cfg, result)
-    assert "IMAP host" in msg
-    assert "SMTP host" not in msg  # SMTP was auth, not host
-
-
-# ---------------------------------------------------------------------------
 # _get_password
 # ---------------------------------------------------------------------------
 
@@ -391,7 +341,3 @@ def test_get_password_keyboard_interrupt() -> None:
     with mock.patch("getpass.getpass", side_effect=KeyboardInterrupt):
         result = _get_password(args)
     assert result is None
-
-
-# ---------------------------------------------------------------------------
-# _verify_feedback

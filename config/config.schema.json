@@ -329,14 +329,6 @@
       "title": "Classifier Level",
       "type": "integer"
     },
-    "detector_level": {
-      "default": 1,
-      "description": "Capability level (1-3) assigned to the provider-detection agent.",
-      "maximum": 3,
-      "minimum": 1,
-      "title": "Detector Level",
-      "type": "integer"
-    },
     "draft_level": {
       "default": 1,
       "description": "Capability level (1-3) assigned to the draft-reply agent.",

@@ -32,7 +32,6 @@ from robotsix_config import (
 
 from robotsix_auto_mail.config._constants import (
     APP_CLASSIFIER,
-    APP_DETECTOR,
     APP_DRAFT,
     APP_TRIAGE,
 )
@@ -44,7 +43,6 @@ _VALID_APP_NAMES: frozenset[str] = frozenset(
     {
         APP_TRIAGE,
         APP_CLASSIFIER,
-        APP_DETECTOR,
         APP_DRAFT,
     }
 )
@@ -170,8 +168,7 @@ def resolve_application_level(app_name: str) -> int:
     """Return the configured tier level for a named application.
 
     *app_name* must be one of the :data:`~._constants.APP_*` constants
-    (``"triage"``, ``"classifier"``, ``"rules"``, ``"detector"``, or
-    ``"draft"``).
+    (``"triage"``, ``"classifier"``, ``"rules"``, or ``"draft"``).
 
     Returns the configured ``{app_name}_level`` from the config file,
     or ``1`` when the config is unreadable.

@@ -4,118 +4,13 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
 
-import pydantic
 import pytest
 
 from robotsix_auto_mail.detect import (
-    DetectedProvider,
     MailProvider,
     is_microsoft_provider,
     provider_to_config,
 )
-
-# ---------------------------------------------------------------------------
-# DetectedProvider — validation
-# ---------------------------------------------------------------------------
-
-
-def test_detected_provider_valid_construction() -> None:
-    """A DetectedProvider with both required hosts constructs fine."""
-    dp = DetectedProvider(
-        imap_host="imap.example.com",
-        smtp_host="smtp.example.com",
-    )
-    assert dp.imap_host == "imap.example.com"
-    assert dp.smtp_host == "smtp.example.com"
-
-
-def test_detected_provider_defaults() -> None:
-    """Fields not supplied fall back to their declared defaults."""
-    dp = DetectedProvider(imap_host="imap.example.com", smtp_host="smtp.example.com")
-    assert dp.imap_port == 993
-    assert dp.imap_tls_mode == "direct-tls"
-    assert dp.smtp_port == 587
-    assert dp.smtp_tls_mode == "starttls"
-
-
-def test_detected_provider_missing_imap_host() -> None:
-    """Missing imap_host raises pydantic.ValidationError."""
-    with pytest.raises(pydantic.ValidationError):
-        DetectedProvider(smtp_host="smtp.example.com")  # type: ignore[call-arg]
-
-
-def test_detected_provider_missing_smtp_host() -> None:
-    """Missing smtp_host raises pydantic.ValidationError."""
-    with pytest.raises(pydantic.ValidationError):
-        DetectedProvider(imap_host="imap.example.com")  # type: ignore[call-arg]
-
-
-def test_detected_provider_imap_port_zero() -> None:
-    """imap_port=0 violates ge=1."""
-    with pytest.raises(pydantic.ValidationError):
-        DetectedProvider(
-            imap_host="imap.example.com",
-            smtp_host="smtp.example.com",
-            imap_port=0,
-        )
-
-
-def test_detected_provider_imap_port_negative() -> None:
-    """imap_port=-1 violates ge=1."""
-    with pytest.raises(pydantic.ValidationError):
-        DetectedProvider(
-            imap_host="imap.example.com",
-            smtp_host="smtp.example.com",
-            imap_port=-1,
-        )
-
-
-def test_detected_provider_imap_port_over_max() -> None:
-    """imap_port=65536 violates le=65535."""
-    with pytest.raises(pydantic.ValidationError):
-        DetectedProvider(
-            imap_host="imap.example.com",
-            smtp_host="smtp.example.com",
-            imap_port=65536,
-        )
-
-
-def test_detected_provider_invalid_imap_tls_mode() -> None:
-    """An invalid imap_tls_mode string raises pydantic.ValidationError."""
-    with pytest.raises(pydantic.ValidationError) as exc:
-        DetectedProvider(
-            imap_host="imap.example.com",
-            smtp_host="smtp.example.com",
-            imap_tls_mode="bad",
-        )
-    assert "imap_tls_mode" in str(exc.value)
-    assert "bad" in str(exc.value)
-
-
-def test_detected_provider_invalid_smtp_tls_mode() -> None:
-    """An invalid smtp_tls_mode string raises pydantic.ValidationError."""
-    with pytest.raises(pydantic.ValidationError) as exc:
-        DetectedProvider(
-            imap_host="imap.example.com",
-            smtp_host="smtp.example.com",
-            smtp_tls_mode="bad",
-        )
-    assert "smtp_tls_mode" in str(exc.value)
-    assert "bad" in str(exc.value)
-
-
-def test_detected_provider_accepts_valid_tls_modes() -> None:
-    """All three valid TLS modes are accepted for both fields."""
-    for mode in ("starttls", "direct-tls", "none"):
-        dp = DetectedProvider(
-            imap_host="imap.example.com",
-            smtp_host="smtp.example.com",
-            imap_tls_mode=mode,
-            smtp_tls_mode=mode,
-        )
-        assert dp.imap_tls_mode == mode
-        assert dp.smtp_tls_mode == mode
-
 
 # ---------------------------------------------------------------------------
 # MailProvider

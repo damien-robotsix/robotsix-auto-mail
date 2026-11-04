@@ -54,9 +54,9 @@ in the TLS-modes table in [docs/connecting.md](connecting.md#configuration-keys)
 
 If `robotsix-auto-mail detect <email>` cannot resolve settings, it has worked
 through its ladder — published autoconfig (Mozilla ISPDB / domain
-`autoconfig`), then MX-record lookup, then an LLM fallback (see
-[docs/connecting.md](connecting.md#auto-detection-with-detect)).  When all
-three miss (or the LLM returns wrong settings, which is why `detect` verifies
+`autoconfig`), then MX-record lookup (see
+[docs/connecting.md](connecting.md#auto-detection-with-detect)).  When both
+miss (or the published settings are wrong, which is why `detect` verifies
 by connecting afterward), fall back to writing `config/config.json`
 manually — the hand-edited approach is fully supported.  After editing, re-run
 `robotsix-auto-mail probe` to confirm.

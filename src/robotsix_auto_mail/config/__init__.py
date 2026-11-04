@@ -26,9 +26,6 @@ from robotsix_auto_mail.config._constants import (
     APP_CLASSIFIER as APP_CLASSIFIER,
 )
 from robotsix_auto_mail.config._constants import (
-    APP_DETECTOR as APP_DETECTOR,
-)
-from robotsix_auto_mail.config._constants import (
     APP_DRAFT as APP_DRAFT,
 )
 from robotsix_auto_mail.config._constants import (
@@ -106,7 +103,6 @@ from robotsix_auto_mail.config.schema import (
 
 __all__ = [
     "APP_CLASSIFIER",
-    "APP_DETECTOR",
     "APP_DRAFT",
     "APP_TRIAGE",
     "DEFAULT_ARCHIVE_ROOT",

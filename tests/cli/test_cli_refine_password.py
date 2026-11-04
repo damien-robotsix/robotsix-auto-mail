@@ -45,7 +45,6 @@ def test_refine_password_empty_input(capsys: pytest.CaptureFixture[str]) -> None
     with mock.patch("getpass.getpass", return_value=""):
         outcome = _refine_password(_build_config, provider)
     assert outcome.config is None
-    assert outcome.provider is None
 
 
 def test_refine_password_eof() -> None:

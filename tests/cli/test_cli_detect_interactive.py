@@ -29,7 +29,7 @@ def test_detect_verification_failure_reports(
 
     with (
         mock.patch(
-            "robotsix_auto_mail.detect.detect_provider",
+            "robotsix_auto_mail.detect.autoconfig_lookup",
             return_value=mock_provider,
         ),
         mock.patch(
@@ -37,9 +37,6 @@ def test_detect_verification_failure_reports(
             side_effect=[fail, fail, fail, fail, fail],
         ),
         mock.patch("builtins.input", side_effect=["", ""]),
-        mock.patch(
-            "robotsix_auto_mail.config.resolve_llm_api_key", return_value="sk-test"
-        ),
     ):
         rc = main(
             [
