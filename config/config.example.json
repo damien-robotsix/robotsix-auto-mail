@@ -77,7 +77,6 @@
     "level3": ""
   },
   "triage_level": 1,
-  "classifier_level": 1,
   "detector_level": 1,
   "draft_level": 1,
   "mail_data_root": "/data",

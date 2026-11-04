@@ -23,9 +23,6 @@ This module re-exports the public and previously-importable symbols so
 from __future__ import annotations
 
 from robotsix_auto_mail.config._constants import (
-    APP_CLASSIFIER as APP_CLASSIFIER,
-)
-from robotsix_auto_mail.config._constants import (
     APP_DETECTOR as APP_DETECTOR,
 )
 from robotsix_auto_mail.config._constants import (
@@ -105,7 +102,6 @@ from robotsix_auto_mail.config.schema import (
 )
 
 __all__ = [
-    "APP_CLASSIFIER",
     "APP_DETECTOR",
     "APP_DRAFT",
     "APP_TRIAGE",

@@ -274,7 +274,6 @@ _CONFIGURATION_MD_CONTAINER_KEYS: frozenset[str] = frozenset(
         "models.level3",
         "models.level4",
         "triage_level",
-        "classifier_level",
         "detector_level",
         "draft_level",
         "mail_data_root",

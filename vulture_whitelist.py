@@ -101,7 +101,6 @@ MailAccountsConfig.model_config
 MailAccountsConfig._validate
 MailAccountsConfig.models
 MailAccountsConfig.triage_level
-MailAccountsConfig.classifier_level
 MailAccountsConfig.detector_level
 MailAccountsConfig.draft_level
 

@@ -342,7 +342,6 @@ def merge_settings_store_accounts(
         openrouter=accounts.openrouter,
         models=accounts.models,
         triage_level=accounts.triage_level,
-        classifier_level=accounts.classifier_level,
         detector_level=accounts.detector_level,
         draft_level=accounts.draft_level,
         mail_data_root=accounts.mail_data_root,

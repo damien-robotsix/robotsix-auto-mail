@@ -31,7 +31,6 @@ from robotsix_config import (
 )
 
 from robotsix_auto_mail.config._constants import (
-    APP_CLASSIFIER,
     APP_DETECTOR,
     APP_DRAFT,
     APP_TRIAGE,
@@ -43,7 +42,6 @@ from robotsix_auto_mail.config.schema import ConfigurationError
 _VALID_APP_NAMES: frozenset[str] = frozenset(
     {
         APP_TRIAGE,
-        APP_CLASSIFIER,
         APP_DETECTOR,
         APP_DRAFT,
     }
