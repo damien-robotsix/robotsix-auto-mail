@@ -13,7 +13,6 @@ import json
 import sqlite3
 
 from robotsix_auto_mail.config import (
-    APP_CLASSIFIER,
     APP_TRIAGE,
     ConfigurationError,
     resolve_llm_api_key,
@@ -39,7 +38,6 @@ from robotsix_auto_mail.triage.classifier import (
     _save_llm_archive_hints,
     _sender_key,
     normalize_archive_subfolder,
-    propose_archive_subfolder_llm,
 )
 from robotsix_auto_mail.triage.persistence import (
     TriageDecision,
@@ -64,8 +62,10 @@ def _build_triage_system_prompt(
     """Build the LLM system prompt describing the triage task and actions.
 
     When *archive_folders* is a non-empty list, appends a paragraph
-    describing the available archive folders and the optional
-    ``archive_subfolder`` field.  When *user_email* is a non-empty string,
+    the available archive folders the model should prefer for the
+    ``archive_subfolder`` destination it returns with every ``TO_ARCHIVE``
+    decision (one unified call assigns both the column and the archive
+    destination).  When *user_email* is a non-empty string,
     appends an instruction telling the model never to classify mail the user
     sent to themself as ``TO_ANSWER``.  Learned per-sender/topic preferences
     are supplied separately as the ``triage_guidance`` advisory prepended to
@@ -109,6 +109,13 @@ def _build_triage_system_prompt(
         "of the values above), a short `reason`, and a `confidence` of "
         "`low`, `medium`, or `high`. Prefer `HUMAN_TRIAGE` over guessing.\n"
         "\n"
+        "Archive destination: whenever the `action` is `TO_ARCHIVE`, ALSO "
+        "set `archive_subfolder` to the destination folder path relative to "
+        "the archive root (e.g. `Lists/python-dev`). Never leave it empty "
+        "for a `TO_ARCHIVE` message. For every other action leave "
+        "`archive_subfolder` empty.\n"
+        "Folder taxonomy rules:\n" + _ARCHIVE_TAXONOMY_GUIDANCE + "\n"
+        "\n"
         "Confidence levels:\n"
         "- `high` — the message clearly matches a well-known pattern (e.g. an\n"
         "  obvious newsletter, a receipt from a recognised vendor, unambiguous\n"
@@ -134,13 +141,9 @@ def _build_triage_system_prompt(
             "\n\nThe user has an archive folder structure with these "
             "existing sub-folders:\n"
             f"{folder_lines}\n\n"
-            "When you classify a message as `TO_ARCHIVE`, you may "
-            "optionally set an `archive_subfolder` field with a suggested "
-            "destination path relative to the archive root (e.g. "
-            "`Lists/python-dev`). You may suggest an existing folder from "
-            "the list above, or propose a new folder name that fits the "
-            "message. Leave the field empty or omit it when you have no "
-            "suggestion.\n" + _ARCHIVE_TAXONOMY_GUIDANCE + "\n"
+            "For a `TO_ARCHIVE` message, prefer an existing folder from "
+            "the list above for `archive_subfolder`; propose a new folder "
+            "name only when none of them fits the message.\n"
         )
     if user_email:
         prompt += (
@@ -472,40 +475,6 @@ def _update_archive_hints(
     _save_llm_archive_hints(conn, hints)
 
 
-def _fill_missing_archive_hints(
-    conn: sqlite3.Connection,
-    remaining: list[MailRecord],
-    by_index: dict[int, TriageItem],
-    api_key: str,
-    provider_model: str | None,
-    level: int = 1,
-    rules: str = "",
-) -> None:
-    """Propose a subfolder for TO_ARCHIVE records the classifier left blank.
-
-    The triage LLM may classify a message ``TO_ARCHIVE`` without volunteering
-    an ``archive_subfolder`` (the field is optional and the cheap model often
-    omits it).  Filling those gaps here — during the background triage run —
-    means the board can render each destination from a cached hint instead of
-    issuing an LLM call per card on every page load.  Best-effort: a missing
-    key or proposal failure leaves the hint unset (the board falls back to the
-    archive root), never aborting triage.
-    """
-    if not api_key:
-        return
-    hinted = set(_load_llm_archive_hints(conn))
-    for i, record in enumerate(remaining, start=1):
-        matched = by_index.get(i)
-        if matched is None or matched.action != "TO_ARCHIVE":
-            continue
-        if record.message_id in hinted:
-            continue
-        # Persists the hint itself; swallows its own errors.
-        propose_archive_subfolder_llm(
-            conn, record, api_key, provider_model, level=level, rules=rules
-        )
-
-
 def run_triage_agent(
     conn: sqlite3.Connection,
     *,
@@ -617,19 +586,9 @@ def run_triage_agent(
     decisions.extend(_persist_llm_triage_results(conn, remaining, by_index))
 
     # -- store/clear LLM archive subfolder hints -------------------------
+    # The same call returned each TO_ARCHIVE destination, so the board
+    # renders it from the cached hint (no second LLM call per message).
     _update_archive_hints(conn, remaining, by_index)
-    # Fill subfolders the classifier omitted, so the board renders each
-    # TO_ARCHIVE destination from a cached hint (no LLM call per render).
-    classifier_level, _ = resolve_llm_tier(APP_CLASSIFIER)
-    _fill_missing_archive_hints(
-        conn,
-        remaining,
-        by_index,
-        resolved_key,
-        resolved_provider_model,
-        level=classifier_level,
-        rules=guidance,
-    )
 
     # -- check TO_DELETE senders for unsubscribe options ------------------
     _check_unsubscribe_for_to_delete(
@@ -639,3 +598,76 @@ def run_triage_agent(
     )
 
     return decisions
+
+
+def classify_archive_destination(
+    conn: sqlite3.Connection,
+    record: MailRecord,
+    *,
+    api_key: str | None = None,
+    provider_model: str | None = None,
+    level: int | None = None,
+    rules: str = "",
+    user_email: str | None = None,
+) -> str:
+    """Run the unified triage agent on *record* to pick its archive destination.
+
+    Used when the column is already decided as ``TO_ARCHIVE`` (a user move on
+    the board, or an archive with no cached hint): the same system prompt and
+    ``TriageResult`` schema as :func:`run_triage_agent` are used — there is no
+    separate archive-classifier agent or tier knob.  When *provider_model* and
+    *level* are both ``None`` the ``triage`` tier is resolved from config.
+
+    Persists the normalised subfolder as the record's LLM archive hint and
+    returns it.  Best-effort: a missing API key or any LLM failure returns
+    ``""`` (callers fall back to the deterministic proposal / archive root).
+    """
+    resolved_key = resolve_llm_api_key(api_key, raise_on_missing=False)
+    if not resolved_key:
+        return ""
+    resolved_provider_model: str | None
+    if provider_model is None and level is None:
+        resolved_level, resolved_provider_model = resolve_llm_tier(APP_TRIAGE)
+    else:
+        resolved_level = level if level is not None else 1
+        resolved_provider_model = provider_model
+
+    system_prompt = _build_triage_system_prompt(_load_archive_folders(conn), user_email)
+    user_message = (
+        "The user has already decided this message goes to `TO_ARCHIVE`: "
+        "return it with action `TO_ARCHIVE` and choose its "
+        "`archive_subfolder`.\n\n" + _build_user_message([record])
+    )
+    if rules.strip():
+        user_message = (
+            "The user maintains these triage rules (advisory — follow them "
+            "unless a message clearly differs):\n"
+            f"{rules.strip()}\n\n{user_message}"
+        )
+
+    try:
+        output: TriageResult = _run_llm_agent(
+            api_key=resolved_key,
+            provider_model=resolved_provider_model,
+            level=resolved_level,
+            system_prompt=system_prompt,
+            output_model=TriageResult,
+            user_message=user_message,
+            label="mail triage (archive destination)",
+            what="archive destination",
+            exc_type=TriageError,
+        )
+    except Exception:
+        # Any failure (LLM error, validation, import) → deterministic fallback.
+        return ""
+
+    item = next((i for i in output.items if i.index == 1), None)
+    if item is None and len(output.items) == 1:
+        item = output.items[0]
+    subfolder = normalize_archive_subfolder(item.archive_subfolder if item else "")
+    if not subfolder:
+        return ""
+    hints = _load_llm_archive_hints(conn)
+    hints[record.message_id] = subfolder
+    _save_llm_archive_hints(conn, hints)
+    return subfolder

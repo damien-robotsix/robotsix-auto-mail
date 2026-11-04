@@ -4,37 +4,26 @@ Archive-subfolder proposals (deterministic + per-message override storage +
 optional per-message LLM hints) and sender-key helpers.  Advisory guidance
 for the archive-subfolder LLM proposal is passed via the ``rules`` argument
 (sourced from ``MailConfig.triage_guidance``).
-The ``pydantic_ai`` / LLM-provider imports stay lazy inside
-``propose_archive_subfolder_llm`` to keep module-load time low.
+The LLM proposal is delegated (lazily) to the unified triage agent in
+:mod:`robotsix_auto_mail.triage.agent`.
 """
 
 from __future__ import annotations
 
-import json
 import re
 import sqlite3
 from email.utils import parseaddr
 from typing import cast
 
-from robotsix_auto_mail.config import (
-    resolve_llm_api_key,
-)
-from robotsix_auto_mail.core._constants import _ARCHIVE_TAXONOMY_GUIDANCE
-from robotsix_auto_mail.core._llm_agent import _run_llm_agent
-from robotsix_auto_mail.core.prompt_blocks import UNTRUSTED_DATA_NOTICE, section
 from robotsix_auto_mail.db import (
     VALID_TRIAGE_ACTIONS,
     MailRecord,
-    get_watermark,
     load_json_watermark,
     save_json_watermark,
 )
 from robotsix_auto_mail.triage._constants import (
     _ARCHIVE_LLM_HINTS_WATERMARK_KEY,
     _ARCHIVE_OVERRIDES_WATERMARK_KEY,
-)
-from robotsix_auto_mail.triage.persistence import (
-    ArchiveSubfolderProposal,
 )
 
 # ---------------------------------------------------------------------------
@@ -244,87 +233,28 @@ def propose_archive_subfolder_llm(
     level: int = 1,
     rules: str = "",
 ) -> None:
-    """Run a cheap LLM to propose an archive subfolder for *record*
-    and persist the hint.  Best-effort — failures are silently
-    swallowed so the board falls back to the deterministic proposal.
+    """Propose an archive subfolder for *record* via the unified triage agent
+    and persist the hint.  Best-effort — failures are silently swallowed so
+    the board falls back to the deterministic proposal.
 
-    *rules* is the advisory guidance text (from ``MailConfig.triage_guidance``);
-    when non-empty it is injected so the proposal honours the user's rules.
+    Delegates to
+    :func:`robotsix_auto_mail.triage.agent.classify_archive_destination`: the
+    same agent (prompt, output schema and ``triage`` tier) that assigns the
+    board column also picks the archive destination — there is no separate
+    archive-classifier agent.  *rules* is the advisory guidance text (from
+    ``MailConfig.triage_guidance``).
     """
-    # -- resolve API key --
-    resolved_key = resolve_llm_api_key(api_key, raise_on_missing=False)
-    if not resolved_key:
-        return  # No API key → silently return
+    # Lazy import: ``triage.agent`` imports this module at load time.
+    from robotsix_auto_mail.triage.agent import classify_archive_destination
 
-    # -- load existing archive folders from watermark --
-    archive_raw = get_watermark(conn, "archive_structure")
-    existing_folders: list[str] = []
-    if archive_raw is not None:
-        try:
-            data = json.loads(archive_raw)
-            existing_folders = data if isinstance(data, list) else data["folders"]
-        except json.JSONDecodeError, TypeError, KeyError:
-            existing_folders = []
-
-    # -- build system prompt --
-    system_prompt = (
-        "You are an assistant that proposes archive subfolders for email.\n"
-        "Given a mail message, pick the best existing archive folder for it, "
-        "or propose a new folder name if none of the existing ones fit.\n"
-        "Return ONLY a JSON object with a single `subfolder` field — no "
-        "explanation, no markdown fences.\n"
+    classify_archive_destination(
+        conn,
+        record,
+        api_key=api_key,
+        provider_model=provider_model,
+        level=level,
+        rules=rules,
     )
-    if existing_folders:
-        folder_lines = "\n".join(f"- {f}" for f in existing_folders)
-        system_prompt += (
-            "\nExisting archive folders:\n"
-            f"{folder_lines}\n"
-            "You may pick one of these or propose a new one.\n"
-        )
-    if rules.strip():
-        system_prompt += (
-            "\nThe user's triage rules (honour these when they apply):\n"
-            f"{rules.strip()}\n"
-        )
-    system_prompt += "\nFolder taxonomy rules:\n" + _ARCHIVE_TAXONOMY_GUIDANCE + "\n"
-
-    # -- build user message --
-    body_snippet = record.body_plain[:1000] if record.body_plain else ""
-    user_message = (
-        UNTRUSTED_DATA_NOTICE
-        + "\n\n"
-        + section("sender", record.sender or "")
-        + "\n"
-        + section("subject", record.subject or "")
-        + "\nBody (first 1000 chars):\n"
-        + section("body", body_snippet)
-    )
-
-    # -- call shared LLM helper (best-effort) --
-    try:
-        proposed: ArchiveSubfolderProposal = _run_llm_agent(
-            api_key=resolved_key,
-            provider_model=provider_model,
-            level=level,
-            system_prompt=system_prompt,
-            output_model=ArchiveSubfolderProposal,
-            user_message=user_message,
-            label="archive subfolder proposal",
-            what="archive subfolder proposal",
-            exc_type=RuntimeError,
-        )
-        subfolder = normalize_archive_subfolder(proposed.subfolder)
-        if not subfolder:
-            return  # Empty / root-only / action-only proposal → don't persist
-
-        # -- persist the hint --
-        hints = _load_llm_archive_hints(conn)
-        hints[record.message_id] = subfolder
-        _save_llm_archive_hints(conn, hints)
-    except Exception:
-        # Any failure (import error, LLM error, pydantic validation, etc.)
-        # → silently return so the board falls back to the deterministic proposal.
-        return
 
 
 # ---------------------------------------------------------------------------

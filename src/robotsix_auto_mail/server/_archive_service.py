@@ -18,7 +18,7 @@ import logging
 from typing import TYPE_CHECKING, Any, cast
 
 from robotsix_auto_mail.config import (
-    APP_CLASSIFIER,
+    APP_TRIAGE,
     DEFAULT_ARCHIVE_ROOT,
     resolve_llm_api_key,
     resolve_llm_tier,
@@ -138,13 +138,13 @@ class ArchiveService(Service):
         mail_config = cast("MailConfig | None", ctx.mail_config)
 
         # Compute the effective archive subfolder.
-        classifier_level, _ = resolve_llm_tier(APP_CLASSIFIER)
+        triage_level, _ = resolve_llm_tier(APP_TRIAGE)
         subfolder, proposal_source = get_archive_subfolder_with_source(
             conn,
             record.message_id,
             record,
             api_key=resolve_llm_api_key(raise_on_missing=False),
-            level=classifier_level,
+            level=triage_level,
             rules=mail_config.triage_guidance if mail_config is not None else "",
         )
 
