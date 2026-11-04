@@ -206,8 +206,8 @@ therefore fund exactly one function.
 | `models.level1` | `""` | string | no | Model override for capability level 1 (cheap, frequent — the default for every agent). Holds a provider-model identifier (e.g. ``"claudeSDK-haiku"``) applied to llmio's default provider slot. Empty means use the llmio default. |
 | `models.level2` | `""` | string | no | Model override for capability level 2 (workhorse). |
 | `models.level3` | `""` | string | no | Model override for capability level 3 (frontier, most capable). |
-| `triage_level` | `1` | integer | no | Capability level (1-3) assigned to the inbox triage agent. |
-| `classifier_level` | `1` | integer | no | Capability level (1-3) assigned to the message classifier. |
+| `triage_level` | `1` | integer | no | Capability level (1-3) assigned to the unified triage agent. One call per message assigns the board column and, for `TO_ARCHIVE` mail, the archive destination; the manual-move archive path uses the same agent and tier. |
+| `classifier_level` | `1` | integer | no | Deprecated and no longer read. Archive-destination selection now runs on the unified triage agent, so `triage_level` governs it. The key is kept for compatibility and ignored. |
 | `detector_level` | `1` | integer | no | Capability level (1-3) assigned to the account-type detector. |
 | `draft_level` | `1` | integer | no | Capability level (1-3) assigned to the draft-generation agent. |
 | `mail_data_root` | `/data` | string | no | Absolute root directory for all persisted mail data (SQLite databases, heartbeat files, etc.). Relative ``db_path`` values on each account are resolved against this root so a container restart never silently discards mail databases that were written outside the mounted volume. |
