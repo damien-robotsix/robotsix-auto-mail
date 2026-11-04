@@ -505,12 +505,6 @@ class MailAccountsConfig(BaseModel):
             "Higher levels use more capable (and expensive) models."
         ),
     )
-    classifier_level: int = Field(
-        default=1,
-        ge=1,
-        le=3,
-        description="Capability level (1-3) assigned to the message classifier agent.",
-    )
     detector_level: int = Field(
         default=1,
         ge=1,

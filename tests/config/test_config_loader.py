@@ -13,7 +13,6 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import (
-    APP_CLASSIFIER,
     APP_DRAFT,
     APP_TRIAGE,
     MAIN_LLM_ALIAS,
@@ -41,7 +40,6 @@ def _default_accounts(
     llm_api_key: str = "",
     models: TierModelsConfig | None = None,
     triage_level: int = 1,
-    classifier_level: int = 1,
     detector_level: int = 1,
     draft_level: int = 1,
 ) -> MailAccountsConfig:
@@ -66,7 +64,6 @@ def _default_accounts(
         openrouter=OpenRouterConfig(keys={MAIN_LLM_ALIAS: llm_api_key}),
         models=models or TierModelsConfig(),
         triage_level=triage_level,
-        classifier_level=classifier_level,
         detector_level=detector_level,
         draft_level=draft_level,
     )
@@ -176,7 +173,6 @@ def test_resolve_application_level_reads_config() -> None:
     ):
         assert resolve_application_level(APP_TRIAGE) == 3
         assert resolve_application_level(APP_DRAFT) == 2
-        assert resolve_application_level(APP_CLASSIFIER) == 1  # default
 
 
 def test_resolve_application_level_rejects_unknown_app_name() -> None:

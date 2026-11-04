@@ -321,14 +321,6 @@
       "title": "Triage Level",
       "type": "integer"
     },
-    "classifier_level": {
-      "default": 1,
-      "description": "Capability level (1-3) assigned to the message classifier agent.",
-      "maximum": 3,
-      "minimum": 1,
-      "title": "Classifier Level",
-      "type": "integer"
-    },
     "detector_level": {
       "default": 1,
       "description": "Capability level (1-3) assigned to the provider-detection agent.",
