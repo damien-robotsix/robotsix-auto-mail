@@ -13,7 +13,6 @@ off it, never off the service instance.
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
@@ -24,9 +23,15 @@ from robotsix_auto_mail.config import (
     resolve_llm_tier,
 )
 from robotsix_auto_mail.db import MailRecord
+from robotsix_auto_mail.server._archive_paths import (
+    imap_delimiter,
+    send_imap_failure,
+    translate_archive_path,
+)
 from robotsix_auto_mail.server._request_helpers import (
     _json_field_value,
     handle_post_action,
+    read_json_object,
 )
 from robotsix_auto_mail.server._services import Service
 from robotsix_auto_mail.triage import TO_ARCHIVE
@@ -97,10 +102,7 @@ class ArchiveService(Service):
 
             # Determine the IMAP hierarchy delimiter.
             existing = client.list_folders()
-            delimiter = next(
-                (f.delimiter for f in existing if f.delimiter),
-                "/",
-            )
+            delimiter = imap_delimiter(existing)
 
             dest_folder = _archive_dest_folder(effective_root, subfolder, delimiter)
             if dest_folder is None:
@@ -270,16 +272,8 @@ class ArchiveService(Service):
         )
 
         # Parse the JSON body.
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw = ctx.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            ctx._bad_request("JSON body must be an object")
+        data = read_json_object(ctx)
+        if data is None:
             return
 
         message_id = _json_field_value(data, "message_id")
@@ -323,10 +317,7 @@ class ArchiveService(Service):
             with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
-                delimiter = next(
-                    (f.delimiter for f in existing if f.delimiter),
-                    "/",
-                )
+                delimiter = imap_delimiter(existing)
 
                 # Resolve the full source folder path.
                 resolved_source_folder: str | None = None
@@ -334,16 +325,11 @@ class ArchiveService(Service):
 
                 if uid is not None and source_folder:
                     # Explicit uid + source_folder: use directly.
-                    translated_source = f"{archive_root}/{source_folder}".replace(
-                        "/", delimiter
+                    # Translate and validate under archive root.
+                    translated_source = translate_archive_path(
+                        archive_root, source_folder, delimiter
                     )
-                    # Validate under archive root.
-                    root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
-                    ar_translated = archive_root.replace("/", delimiter)
-                    if (
-                        translated_source != ar_translated
-                        and not translated_source.startswith(root_prefix)
-                    ):
+                    if translated_source is None:
                         ctx._bad_request("source_folder escapes archive root")
                         return
                     resolved_source_folder = translated_source
@@ -364,15 +350,10 @@ class ArchiveService(Service):
                     return
 
                 # Compute the destination folder path.
-                translated_target = f"{archive_root}/{target_subfolder}".replace(
-                    "/", delimiter
+                translated_target = translate_archive_path(
+                    archive_root, target_subfolder, delimiter
                 )
-                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
-                ar_translated = archive_root.replace("/", delimiter)
-                if (
-                    translated_target != ar_translated
-                    and not translated_target.startswith(root_prefix)
-                ):
+                if translated_target is None:
                     ctx._bad_request("target_subfolder escapes archive root")
                     return
 
@@ -390,17 +371,8 @@ class ArchiveService(Service):
         except ImapMessageNotFoundError:
             ctx._not_found()
             return
-        except ImapError as exc:
-            ctx._send_response(
-                f"IMAP error during archive move: {exc}",
-                status=502,
-            )
-            return
-        except OSError as exc:
-            ctx._send_response(
-                f"IMAP connection error: {exc}",
-                status=502,
-            )
+        except (ImapError, OSError) as exc:
+            send_imap_failure(ctx, exc, "archive move")
             return
 
         ctx._serve_json(
@@ -431,16 +403,8 @@ class ArchiveService(Service):
         Returns JSON on success.  The folder must be under the archive
         root; path-escaping attempts (``..`` segments) are rejected.
         """
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw = ctx.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            ctx._bad_request("JSON body must be an object")
+        data = read_json_object(ctx)
+        if data is None:
             return
 
         source_folder = _json_field_value(data, "source_folder")
@@ -468,23 +432,14 @@ class ArchiveService(Service):
             with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
-                delimiter = next(
-                    (f.delimiter for f in existing if f.delimiter),
-                    "/",
-                )
+                delimiter = imap_delimiter(existing)
 
-                # Translate the source folder to the IMAP namespace.
-                translated_source = f"{archive_root}/{source_folder}".replace(
-                    "/", delimiter
+                # Translate the source folder to the IMAP namespace and
+                # validate it is under the archive root.
+                translated_source = translate_archive_path(
+                    archive_root, source_folder, delimiter
                 )
-
-                # Validate the translated path is under the archive root.
-                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
-                ar_translated = archive_root.replace("/", delimiter)
-                if (
-                    translated_source != ar_translated
-                    and not translated_source.startswith(root_prefix)
-                ):
+                if translated_source is None:
                     ctx._bad_request("source_folder escapes archive root")
                     return
 
@@ -547,17 +502,8 @@ class ArchiveService(Service):
 
                 client.delete_folder(translated_source)
 
-        except ImapError as exc:
-            ctx._send_response(
-                f"IMAP error during folder delete: {exc}",
-                status=502,
-            )
-            return
-        except OSError as exc:
-            ctx._send_response(
-                f"IMAP connection error: {exc}",
-                status=502,
-            )
+        except (ImapError, OSError) as exc:
+            send_imap_failure(ctx, exc, "folder delete")
             return
 
         ctx._serve_json(
@@ -591,16 +537,8 @@ class ArchiveService(Service):
         Returns JSON on success; 404 when the uid is not found in
         *source_folder*.
         """
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw = ctx.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            ctx._bad_request("JSON body must be an object")
+        data = read_json_object(ctx)
+        if data is None:
             return
 
         uid_raw = data.get("uid")
@@ -647,23 +585,14 @@ class ArchiveService(Service):
             with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
-                delimiter = next(
-                    (f.delimiter for f in existing if f.delimiter),
-                    "/",
-                )
+                delimiter = imap_delimiter(existing)
 
-                # Translate the source folder to the IMAP namespace.
-                translated_source = f"{archive_root}/{source_folder}".replace(
-                    "/", delimiter
+                # Translate the source folder to the IMAP namespace and
+                # validate it is under the archive root.
+                translated_source = translate_archive_path(
+                    archive_root, source_folder, delimiter
                 )
-
-                # Validate the translated path is under the archive root.
-                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
-                ar_translated = archive_root.replace("/", delimiter)
-                if (
-                    translated_source != ar_translated
-                    and not translated_source.startswith(root_prefix)
-                ):
+                if translated_source is None:
                     ctx._bad_request("source_folder escapes archive root")
                     return
 
@@ -696,17 +625,8 @@ class ArchiveService(Service):
         except ImapMessageNotFoundError:
             ctx._not_found()
             return
-        except ImapError as exc:
-            ctx._send_response(
-                f"IMAP error during message delete: {exc}",
-                status=502,
-            )
-            return
-        except OSError as exc:
-            ctx._send_response(
-                f"IMAP connection error: {exc}",
-                status=502,
-            )
+        except (ImapError, OSError) as exc:
+            send_imap_failure(ctx, exc, "message delete")
             return
 
         ctx._serve_json(
@@ -741,16 +661,8 @@ class ArchiveService(Service):
 
         Returns JSON on success.
         """
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw = ctx.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            ctx._bad_request("JSON body must be an object")
+        data = read_json_object(ctx)
+        if data is None:
             return
 
         source_folder = _json_field_value(data, "source_folder")
@@ -793,33 +705,20 @@ class ArchiveService(Service):
             with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
-                delimiter = next(
-                    (f.delimiter for f in existing if f.delimiter),
-                    "/",
-                )
+                delimiter = imap_delimiter(existing)
 
-                # Translate source and target to the IMAP namespace.
-                translated_source = f"{archive_root}/{source_folder}".replace(
-                    "/", delimiter
+                # Translate source and target to the IMAP namespace and
+                # validate both paths are under the archive root.
+                translated_source = translate_archive_path(
+                    archive_root, source_folder, delimiter
                 )
-                translated_target = f"{archive_root}/{effective_target}".replace(
-                    "/", delimiter
-                )
-
-                # Validate both paths are under the archive root.
-                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
-                ar_translated = archive_root.replace("/", delimiter)
-
-                if (
-                    translated_source != ar_translated
-                    and not translated_source.startswith(root_prefix)
-                ):
+                if translated_source is None:
                     ctx._bad_request("source_folder escapes archive root")
                     return
-                if (
-                    translated_target != ar_translated
-                    and not translated_target.startswith(root_prefix)
-                ):
+                translated_target = translate_archive_path(
+                    archive_root, effective_target, delimiter
+                )
+                if translated_target is None:
                     ctx._bad_request("target_name/target_path escapes archive root")
                     return
 
@@ -843,17 +742,8 @@ class ArchiveService(Service):
 
                 client.rename_folder(translated_source, translated_target)
 
-        except ImapError as exc:
-            ctx._send_response(
-                f"IMAP error during folder rename: {exc}",
-                status=502,
-            )
-            return
-        except OSError as exc:
-            ctx._send_response(
-                f"IMAP connection error: {exc}",
-                status=502,
-            )
+        except (ImapError, OSError) as exc:
+            send_imap_failure(ctx, exc, "folder rename")
             return
 
         ctx._serve_json(
@@ -883,16 +773,8 @@ class ArchiveService(Service):
         409 when the folder already exists (no silent merge) and 201 with
         ``{"status": "created", "folder": <path>}`` on success.
         """
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw = ctx.rfile.read(content_length).decode("utf-8")
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-
-        if not isinstance(data, dict):
-            ctx._bad_request("JSON body must be an object")
+        data = read_json_object(ctx)
+        if data is None:
             return
 
         target_subfolder = _json_field_value(data, "target_subfolder").strip("/")
@@ -924,10 +806,7 @@ class ArchiveService(Service):
             with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
-                delimiter = next(
-                    (f.delimiter for f in existing if f.delimiter),
-                    "/",
-                )
+                delimiter = imap_delimiter(existing)
 
                 if delimiter != "/" and any(delimiter in seg for seg in segments):
                     ctx._bad_request(
@@ -935,13 +814,11 @@ class ArchiveService(Service):
                     )
                     return
 
-                translated_target = f"{archive_root}/{target_subfolder}".replace(
-                    "/", delimiter
-                )
-
                 # Validate the path is strictly under the archive root.
-                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
-                if not translated_target.startswith(root_prefix):
+                translated_target = translate_archive_path(
+                    archive_root, target_subfolder, delimiter, allow_root=False
+                )
+                if translated_target is None:
                     ctx._bad_request("target_subfolder escapes archive root")
                     return
 
@@ -966,17 +843,8 @@ class ArchiveService(Service):
                         client.create_folder(ancestor)
                 client.create_folder(translated_target)
 
-        except ImapError as exc:
-            ctx._send_response(
-                f"IMAP error during folder create: {exc}",
-                status=502,
-            )
-            return
-        except OSError as exc:
-            ctx._send_response(
-                f"IMAP connection error: {exc}",
-                status=502,
-            )
+        except (ImapError, OSError) as exc:
+            send_imap_failure(ctx, exc, "folder create")
             return
 
         ctx._serve_json(

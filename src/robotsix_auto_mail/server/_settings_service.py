@@ -21,6 +21,11 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.server._constants import _update_handler_factory_cache
+from robotsix_auto_mail.server._request_helpers import (
+    MAX_JSON_BODY_BYTES,
+    JsonBodyError,
+    read_json_object,
+)
 from robotsix_auto_mail.server._services import Service
 
 if TYPE_CHECKING:
@@ -29,7 +34,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 #: Cap on a config request body — the panel sends only changed keys.
-_MAX_BODY_BYTES = 1_000_000
+_MAX_BODY_BYTES = MAX_JSON_BODY_BYTES
 
 _SETTINGS_CSS = (Path(__file__).parent / "static" / "settings-panel.css").read_text()
 
@@ -89,25 +94,16 @@ class SettingsService(Service):
 
     def _read_json_body(self, ctx: RequestContext) -> dict[str, Any] | None:
         """Parse the body as a JSON object, or answer and return ``None``."""
-        try:
-            length = int(ctx.headers.get("Content-Length", "0"))
-        except ValueError:
-            length = 0
-        if length <= 0:
-            self._config_problem(ctx, "empty request body", status=400)
-            return None
-        if length > _MAX_BODY_BYTES:
-            self._config_problem(ctx, "request body too large", status=413)
-            return None
-        try:
-            body = json.loads(ctx.rfile.read(length))
-        except json.JSONDecodeError as exc:
-            self._config_problem(ctx, f"invalid JSON: {exc}", status=400)
-            return None
-        if not isinstance(body, dict):
-            self._config_problem(ctx, "expected a JSON object", status=400)
-            return None
-        return body
+
+        def respond(kind: JsonBodyError, detail: str) -> None:
+            if kind == "too_large":
+                self._config_problem(ctx, detail, status=413)
+            elif kind == "malformed":
+                self._config_problem(ctx, f"invalid JSON: {detail}", status=400)
+            else:
+                self._config_problem(ctx, detail, status=400)
+
+        return read_json_object(ctx, respond, max_bytes=_MAX_BODY_BYTES)
 
     def _config_problem(
         self, ctx: RequestContext, detail: str, status: int = 422
