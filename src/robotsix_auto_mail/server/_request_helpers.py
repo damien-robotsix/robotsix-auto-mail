@@ -51,7 +51,7 @@ from __future__ import annotations
 import json
 import threading
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import parse_qs
 
 from robotsix_auto_mail.core._constants import _WATERMARK_RUNNING
@@ -75,6 +75,63 @@ def _json_field_value(data: dict[str, Any], field: str) -> str:
     if isinstance(val, str):
         return val
     return str(val)
+
+
+#: Cap on a JSON request body read by :func:`read_json_object`.
+MAX_JSON_BODY_BYTES = 1_000_000
+
+#: Why :func:`read_json_object` rejected a body.
+JsonBodyError = Literal["empty", "too_large", "malformed", "not_object"]
+
+
+def _default_json_body_error(
+    ctx: RequestContext, kind: JsonBodyError, detail: str
+) -> None:
+    """Default responder: the archive endpoints' plain-text 4xx messages."""
+    if kind == "too_large":
+        ctx._send_response("Request body too large", status=413)
+    elif kind == "not_object":
+        ctx._bad_request("JSON body must be an object")
+    else:
+        ctx._bad_request("Malformed JSON body")
+
+
+def read_json_object(
+    ctx: RequestContext,
+    on_error: Callable[[JsonBodyError, str], None] | None = None,
+    *,
+    max_bytes: int = MAX_JSON_BODY_BYTES,
+) -> dict[str, Any] | None:
+    """Parse the request body as a JSON object, or answer and return ``None``.
+
+    Guards a missing / non-integer ``Content-Length`` (treated as an empty
+    body), enforces *max_bytes*, and rejects malformed JSON and non-object
+    bodies.  On rejection *on_error* is called with the failure kind and a
+    detail string (the decoder's message for ``"malformed"``); the default
+    responder sends the archive endpoints' 400/413 messages.
+    """
+    respond = on_error or (
+        lambda kind, detail: _default_json_body_error(ctx, kind, detail)
+    )
+    try:
+        length = int(ctx.headers.get("Content-Length", "0"))
+    except ValueError, TypeError:
+        length = 0
+    if length <= 0:
+        respond("empty", "empty request body")
+        return None
+    if length > max_bytes:
+        respond("too_large", "request body too large")
+        return None
+    try:
+        body = json.loads(ctx.rfile.read(length))
+    except ValueError as exc:  # JSONDecodeError and UnicodeDecodeError
+        respond("malformed", str(exc))
+        return None
+    if not isinstance(body, dict):
+        respond("not_object", "expected a JSON object")
+        return None
+    return body
 
 
 def parse_request_body(

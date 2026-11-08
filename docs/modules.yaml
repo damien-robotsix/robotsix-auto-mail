@@ -347,6 +347,7 @@ modules:
       - src/robotsix_auto_mail/server/_account_service.py
       - src/robotsix_auto_mail/server/_action_service.py
       - src/robotsix_auto_mail/server/_attachment_service.py
+      - src/robotsix_auto_mail/server/_archive_paths.py
       - src/robotsix_auto_mail/server/_archive_service.py
       - src/robotsix_auto_mail/server/_archive_view_service.py
       - src/robotsix_auto_mail/server/_auth_service.py
@@ -390,6 +391,7 @@ modules:
       - tests/server/test_attachment_mixin_archive_unzip.py
       - tests/server/test_compose_service.py
       - tests/server/test_compose_service_append.py
+      - tests/server/test_archive_paths.py
       - tests/server/test_action_archive_and_delete.py
       - tests/server/test_action_archive_create.py
       - tests/server/test_action_archive_delete.py

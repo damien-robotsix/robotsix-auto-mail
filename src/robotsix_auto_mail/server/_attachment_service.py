@@ -14,6 +14,10 @@ from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 
+from robotsix_auto_mail.server._archive_paths import (
+    imap_delimiter,
+    translate_archive_path,
+)
 from robotsix_auto_mail.server._constants import _with_db
 from robotsix_auto_mail.server._request_helpers import _json_field_value
 from robotsix_auto_mail.server._services import Service
@@ -359,20 +363,12 @@ class AttachmentService(Service):
         try:
             with ImapClient(mail_config) as client:
                 existing = client.list_folders()
-                delimiter = next(
-                    (f.delimiter for f in existing if f.delimiter),
-                    "/",
-                )
+                delimiter = imap_delimiter(existing)
 
-                translated_source = f"{archive_root}/{source_folder}".replace(
-                    "/", delimiter
+                translated_source = translate_archive_path(
+                    archive_root, source_folder, delimiter
                 )
-                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
-                ar_translated = archive_root.replace("/", delimiter)
-                if (
-                    translated_source != ar_translated
-                    and not translated_source.startswith(root_prefix)
-                ):
+                if translated_source is None:
                     ctx._bad_request("source_folder escapes archive root")
                     return None
 

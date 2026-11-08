@@ -20,6 +20,10 @@ from typing import TYPE_CHECKING, cast
 from urllib.parse import unquote
 
 from robotsix_auto_mail.config import resolve_llm_api_key
+from robotsix_auto_mail.server._archive_paths import (
+    imap_delimiter,
+    translate_archive_path,
+)
 from robotsix_auto_mail.server._constants import (
     _parse_archive_structure,
     _with_db,
@@ -277,8 +281,6 @@ class ArchiveViewService(Service):
         else:
             rel_folder = folder
 
-        full_path = f"{archive_root}/{rel_folder}" if rel_folder else archive_root
-
         from robotsix_auto_mail.imap import ImapClient, ImapError
 
         resolved_uid: int | None = None
@@ -287,19 +289,13 @@ class ArchiveViewService(Service):
         try:
             with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 existing = client.list_folders()
-                delimiter = next(
-                    (f.delimiter for f in existing if f.delimiter),
-                    "/",
-                )
-
-                translated_path = full_path.replace("/", delimiter)
+                delimiter = imap_delimiter(existing)
 
                 # Security: validate the folder is under the archive root.
-                ar_translated = archive_root.replace("/", delimiter)
-                prefix = f"{ar_translated}{delimiter}"
-                if translated_path != ar_translated and not translated_path.startswith(
-                    prefix
-                ):
+                translated_path = translate_archive_path(
+                    archive_root, rel_folder, delimiter
+                )
+                if translated_path is None:
                     ctx._bad_request("folder escapes archive root")
                     return
 
@@ -445,19 +441,14 @@ class ArchiveViewService(Service):
             with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                 # Discover the server's hierarchy delimiter.
                 existing = client.list_folders()
-                delimiter = next(
-                    (f.delimiter for f in existing if f.delimiter),
-                    "/",
+                delimiter = imap_delimiter(existing)
+
+                # Translate "/" to the server delimiter and validate the
+                # path is under the archive root.
+                translated_path = translate_archive_path(
+                    archive_root, folder, delimiter
                 )
-
-                # Translate "/" in full_path to the server delimiter.
-                translated_path = full_path.replace("/", delimiter)
-
-                # Security: validate the path is under the archive root.
-                root_prefix = f"{archive_root.replace('/', delimiter)}{delimiter}"
-                if translated_path != archive_root.replace(
-                    "/", delimiter
-                ) and not translated_path.startswith(root_prefix):
+                if translated_path is None:
                     ctx._bad_request("Folder path escapes archive root")
                     return
 
