@@ -231,6 +231,7 @@ modules:
       - tests/db/test_db_schema.py
       - tests/db/test_migrate.py
       - tests/db/test_migrate_functions.py
+      - tests/db/test_queries.py
 
   - id: detect
     description: >-
