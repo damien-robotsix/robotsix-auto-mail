@@ -247,17 +247,37 @@ state, and the archive guards listed above.
 
 ### Shared request helpers
 
-Two request-handling steps are shared by every endpoint group and therefore
-live in `server/_request_helpers.py` rather than on any one service:
+Request-handling steps shared across endpoint groups live in
+`server/_request_helpers.py` rather than on any one service:
 
 - `parse_request_body(ctx, *fields, no_strip=…)` — parse the body as
   URL-encoded form data with a JSON fallback;
+- `read_json_object(ctx, on_error=…, max_bytes=…)` — parse a JSON-object
+  body, guarding a missing / non-integer `Content-Length`, enforcing the
+  body-size cap and rejecting malformed or non-object JSON.  Handlers that
+  take a JSON body (e.g. the `/archive-*` endpoints) call it instead of
+  parsing `Content-Length` and calling `json.loads` inline;
 - `handle_post_action(ctx, *fields, action=…, …)` — the shared POST skeleton
   (parse body → validate `message_id` → open a read-only DB connection and
   look up the record → delegate to `action` → safe redirect).
 
 `launch_background_worker(ctx, …)` (single-flight watermark guard + optional
 daemon thread) is exposed on the context as `_launch_background_worker`.
+
+The archive action, view and attachment services (`_archive_service.py`,
+`_archive_view_service.py`, `_attachment_service.py`) share their IMAP
+archive-path handling through `server/_archive_paths.py`, and the
+`handle_archive_*` handlers in `_archive_service.py` call these helpers
+instead of each carrying its own copy:
+
+- `imap_delimiter(folders)` — the server's hierarchy delimiter (falls back
+  to `/`);
+- `translate_archive_path(archive_root, sub, delimiter, allow_root=…)` — map a
+  `/`-separated archive-relative path into the IMAP namespace, rejecting any
+  path that escapes the archive root;
+- `send_imap_failure(ctx, exc, operation)` — the uniform 502 response the
+  `handle_archive_*` handlers send for an `ImapError` or connection
+  (`OSError`) failure.
 
 ### Adding or migrating an endpoint
 
