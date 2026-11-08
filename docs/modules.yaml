@@ -395,6 +395,7 @@ modules:
       - tests/server/test_action_archive_and_delete.py
       - tests/server/test_action_archive_create.py
       - tests/server/test_action_archive_delete.py
+      - tests/server/test_action_archive_handlers_regression.py
       - tests/server/test_action_archive_move.py
       - tests/server/test_action_background_worker.py
       - tests/server/test_action_delete_cross_account.py
