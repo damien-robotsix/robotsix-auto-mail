@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.12.0...v0.12.1) (2026-11-08)
+
+
+### Documentation
+
+* AGENT.md: Tool-use discipline — Read JSON request bodies in HTTP handlers through `read_json_object` in `src/ro… (20261108T104541Z-agent-md-tool-use-discipline-read-json-r-ee23) ([#1412](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1412)) ([e8545cc](https://github.com/damien-robotsix/robotsix-auto-mail/commit/e8545cc32cdcbc1baae15c7c21ff6ceafbb7d7ad))
+* Update documentation that references the old archive handler structure (20261108T104555Z-update-documentation-that-references-the-308a) ([#1415](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1415)) ([0329242](https://github.com/damien-robotsix/robotsix-auto-mail/commit/0329242284bb19d7e4dfdb3c1f02182ac46ca67d))
+
 ## [0.12.0](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.11.2...v0.12.0) (2026-11-01)
 
 
