@@ -21,6 +21,12 @@ full model-tool round-trip and contributes to observation bloat.
   acceptable.
 - **Avoid per-line queries:** never chain `sed -n …p`, `head -N`, or
   `cat -n` to extract content that `read_file` could return in one call.
+- **Read JSON request bodies through the shared helper:** in HTTP
+  handlers, read JSON request bodies via `read_json_object` in
+  `src/robotsix_auto_mail/server/_request_helpers.py`; never parse
+  `Content-Length` and call `json.loads` inline in a handler.  The
+  helper carries the non-integer `Content-Length` guard and the
+  body-size cap that inline parsing has repeatedly omitted.
 
 ---
 
