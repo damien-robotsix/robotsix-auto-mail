@@ -19,6 +19,14 @@ from robotsix_auto_mail.core._constants import (
 def register_subparser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the ``serve`` subcommand and its arguments.
+
+    Args:
+        subparsers: The top-level subparsers action to attach ``serve`` to.
+
+    The ``--host`` default (127.0.0.1) is safe for local use; pass
+    0.0.0.0 explicitly to listen on all interfaces.
+    """
     parser = subparsers.add_parser("serve", help="Start the web board server")
     parser.add_argument(
         "--account",
