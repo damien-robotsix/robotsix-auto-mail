@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.12.1...v0.12.2) (2026-11-11)
+
+
+### Documentation
+
+* docstring gap: add docstring to register_subparser in src/robotsix_auto_mail/cli/commands_serve.py:19 (20261111T022824Z-docstring-gap-add-docstring-to-register-b4ee) ([#1417](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1417)) ([29f790a](https://github.com/damien-robotsix/robotsix-auto-mail/commit/29f790af701969d746b783079da0e18b80fce15b))
+
 ## [0.12.1](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.12.0...v0.12.1) (2026-11-08)
 
 
