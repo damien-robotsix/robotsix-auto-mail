@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from email.mime.text import MIMEText
 
-from robotsix_auto_mail.mime import build_plain_text_message
+from robotsix_auto_mail.outbound.mime import build_plain_text_message
 
 
 def test_build_plain_text_message_basic() -> None:

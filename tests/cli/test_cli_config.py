@@ -16,7 +16,7 @@ from robotsix_auto_mail.cli.config import (
 )
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
-from robotsix_auto_mail.smtp import SmtpAuthError, SmtpClient, SmtpError
+from robotsix_auto_mail.outbound.smtp import SmtpAuthError, SmtpClient, SmtpError
 
 # ---------------------------------------------------------------------------
 # _VerifyResult property tests — all 9 combinatorial outcomes

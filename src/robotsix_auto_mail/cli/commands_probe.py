@@ -9,7 +9,7 @@ from robotsix_auto_mail.cli.commands import _print_header
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.core.health import probe_account
 from robotsix_auto_mail.imap import ImapClient, ImapError
-from robotsix_auto_mail.smtp import SmtpClient, SmtpError
+from robotsix_auto_mail.outbound.smtp import SmtpClient, SmtpError
 
 
 def register_subparser(

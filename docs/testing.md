@@ -68,7 +68,7 @@ and `pytest` locally before pushing mirrors what CI enforces.
 ## Test organization
 
 Tests live under `tests/` with per-module subdirectories that mirror `src/`
-(`tests/imap/`, `tests/smtp/`, `tests/cli/`, `tests/db/`,
+(`tests/imap/`, `tests/outbound/smtp/`, `tests/cli/`, `tests/db/`,
 `tests/pipeline/`, `tests/detect/`, `tests/triage/`, `tests/config/`,
 `tests/server/`, `tests/core/`, `tests/draft/`, `tests/oauth2/`,
 `tests/observability/`, `tests/dev/`, …).  The
@@ -94,7 +94,7 @@ The protocol clients are unit-tested without a live server:
 - IMAP tests patch the stdlib `imaplib` entry points; SMTP tests patch the
   stdlib `smtplib` entry points.  Connection, TLS, and auth failures are
   exercised with error-injection patterns under `tests/imap/` and
-  `tests/smtp/` (raising the relevant `imaplib`/`smtplib`/`ssl` errors so the
+  `tests/outbound/smtp/` (raising the relevant `imaplib`/`smtplib`/`ssl` errors so the
   client maps them to its own exception types).
 - The abstract `_ProtocolClient` base is tested through a local concrete
   test-double subclass rather than the real IMAP/SMTP clients.

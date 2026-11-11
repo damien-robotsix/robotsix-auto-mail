@@ -17,8 +17,8 @@ from typing import Any
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.errors import RobotsixMailError
 from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response
-from robotsix_auto_mail.mime import build_plain_text_message
 from robotsix_auto_mail.oauth2 import build_token_provider
+from robotsix_auto_mail.outbound.mime import build_plain_text_message
 
 # Socket timeout (seconds) for SMTP connections, mirroring the IMAP client's
 # _IMAP_TIMEOUT_SECONDS.  stdlib ``smtplib`` opens sockets with NO timeout by

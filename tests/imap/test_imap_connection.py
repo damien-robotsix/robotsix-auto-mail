@@ -297,8 +297,8 @@ def test_imap_client_does_not_import_smtp() -> None:
     assert "smtplib" not in content, (
         "imap module must not import smtplib (keep transports separate)"
     )
-    assert "robotsix_auto_mail.smtp" not in content, (
-        "imap module must not import robotsix_auto_mail.smtp"
+    assert "robotsix_auto_mail.outbound.smtp" not in content, (
+        "imap module must not import robotsix_auto_mail.outbound.smtp"
     )
 
 

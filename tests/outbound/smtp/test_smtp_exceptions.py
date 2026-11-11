@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.smtp import (
+from robotsix_auto_mail.outbound.smtp import (
     SmtpAuthError,
     SmtpClient,
     SmtpConnectionError,

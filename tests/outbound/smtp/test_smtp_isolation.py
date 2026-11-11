@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.smtp import SmtpClient
+from robotsix_auto_mail.outbound.smtp import SmtpClient
 
 # ===================================================================
 # Doesn't depend on IMAP
@@ -12,7 +12,7 @@ from robotsix_auto_mail.smtp import SmtpClient
 
 def test_smtp_client_imports_protocol_base_from_imap() -> None:
     """The smtp_client module imports _ProtocolClient from the imap package."""
-    import robotsix_auto_mail.smtp as mod
+    import robotsix_auto_mail.outbound.smtp as mod
 
     source = mod.__file__
     assert source is not None

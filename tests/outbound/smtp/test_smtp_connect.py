@@ -11,7 +11,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.smtp import (
+from robotsix_auto_mail.outbound.smtp import (
     SmtpAuthError,
     SmtpClient,
     SmtpConnectionError,
@@ -317,7 +317,7 @@ def test_xoauth2_uses_token_provider_over_static() -> None:
     mock_smtp.auth.return_value = (235, b"2.7.0 Accepted")
 
     with mock.patch(
-        "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
+        "robotsix_auto_mail.outbound.smtp.build_token_provider", return_value=provider
     ):
         with mock.patch("smtplib.SMTP", return_value=mock_smtp):
             SmtpClient(cfg).connect()
@@ -342,7 +342,7 @@ def test_xoauth2_provider_refreshes_on_reconnect() -> None:
     mock_smtp.auth.return_value = (235, b"2.7.0 Accepted")
 
     with mock.patch(
-        "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
+        "robotsix_auto_mail.outbound.smtp.build_token_provider", return_value=provider
     ):
         with mock.patch("smtplib.SMTP", return_value=mock_smtp):
             client = SmtpClient(cfg)
@@ -389,7 +389,7 @@ def test_smtp_xoauth2_force_refresh_succeeds_on_retry() -> None:
     mock_smtp_2.auth.return_value = (235, b"2.7.0 Accepted")
 
     with mock.patch(
-        "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
+        "robotsix_auto_mail.outbound.smtp.build_token_provider", return_value=provider
     ):
         with mock.patch("smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]):
             with mock.patch(
@@ -441,7 +441,7 @@ def test_smtp_xoauth2_force_refresh_fails_conditional_access() -> None:
     mock_smtp_2.auth.side_effect = fake_auth_fail_2
 
     with mock.patch(
-        "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
+        "robotsix_auto_mail.outbound.smtp.build_token_provider", return_value=provider
     ):
         with mock.patch("smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]):
             with mock.patch(
@@ -468,7 +468,9 @@ def test_smtp_xoauth2_no_retry_for_static_token() -> None:
     auth_error = smtplib.SMTPAuthenticationError(535, b"Auth failed")
     mock_smtp.auth.side_effect = auth_error
 
-    with mock.patch("robotsix_auto_mail.smtp.build_token_provider", return_value=None):
+    with mock.patch(
+        "robotsix_auto_mail.outbound.smtp.build_token_provider", return_value=None
+    ):
         with mock.patch("smtplib.SMTP", return_value=mock_smtp):
             with mock.patch(
                 "robotsix_auto_mail.oauth2.acquire_fresh_token"
@@ -506,7 +508,7 @@ def test_smtp_cae_claims_forwarded_to_acquire_fresh_token() -> None:
     mock_smtp_2.auth.return_value = (235, b"2.7.0 Accepted")
 
     with mock.patch(
-        "robotsix_auto_mail.smtp.build_token_provider", return_value=provider
+        "robotsix_auto_mail.outbound.smtp.build_token_provider", return_value=provider
     ):
         with mock.patch("smtplib.SMTP", side_effect=[mock_smtp_1, mock_smtp_2]):
             with mock.patch(

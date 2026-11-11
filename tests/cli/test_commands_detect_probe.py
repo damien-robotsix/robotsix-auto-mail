@@ -10,7 +10,7 @@ from unittest import mock
 from robotsix_auto_mail.cli.commands_detect import _probe_capabilities
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap.errors import ImapError
-from robotsix_auto_mail.smtp import SmtpError
+from robotsix_auto_mail.outbound.smtp import SmtpError
 
 # ---------------------------------------------------------------------------
 # _probe_capabilities — mock ImapClient / SmtpClient
@@ -53,7 +53,7 @@ def test_probe_capabilities_not_verified() -> None:
     )
     with (
         mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_imap,
-        mock.patch("robotsix_auto_mail.smtp.SmtpClient") as mock_smtp,
+        mock.patch("robotsix_auto_mail.outbound.smtp.SmtpClient") as mock_smtp,
     ):
         imap_caps, smtp_feats = _probe_capabilities(config, verified=False)
 
@@ -77,7 +77,7 @@ def test_probe_capabilities_success() -> None:
             return_value=_FakeImap(["IMAP4rev1", "IDLE", "MOVE"]),
         ),
         mock.patch(
-            "robotsix_auto_mail.smtp.SmtpClient",
+            "robotsix_auto_mail.outbound.smtp.SmtpClient",
             return_value=_FakeSmtp({"SIZE": "10240000", "STARTTLS": ""}),
         ),
     ):
@@ -101,7 +101,7 @@ def test_probe_capabilities_imap_oserror() -> None:
             side_effect=OSError("connection refused"),
         ),
         mock.patch(
-            "robotsix_auto_mail.smtp.SmtpClient",
+            "robotsix_auto_mail.outbound.smtp.SmtpClient",
             return_value=_FakeSmtp({"STARTTLS": ""}),
         ),
     ):
@@ -125,7 +125,7 @@ def test_probe_capabilities_imap_imap_error() -> None:
             side_effect=ImapError("bad"),
         ),
         mock.patch(
-            "robotsix_auto_mail.smtp.SmtpClient",
+            "robotsix_auto_mail.outbound.smtp.SmtpClient",
             return_value=_FakeSmtp({"AUTH": "PLAIN"}),
         ),
     ):
@@ -149,7 +149,7 @@ def test_probe_capabilities_smtp_oserror() -> None:
             return_value=_FakeImap(["IMAP4rev1"]),
         ),
         mock.patch(
-            "robotsix_auto_mail.smtp.SmtpClient",
+            "robotsix_auto_mail.outbound.smtp.SmtpClient",
             side_effect=OSError("timeout"),
         ),
     ):
@@ -173,7 +173,7 @@ def test_probe_capabilities_smtp_error() -> None:
             return_value=_FakeImap(["IMAP4rev1"]),
         ),
         mock.patch(
-            "robotsix_auto_mail.smtp.SmtpClient",
+            "robotsix_auto_mail.outbound.smtp.SmtpClient",
             side_effect=SmtpError("bad"),
         ),
     ):
@@ -197,7 +197,7 @@ def test_probe_capabilities_both_fail() -> None:
             side_effect=OSError("nope"),
         ),
         mock.patch(
-            "robotsix_auto_mail.smtp.SmtpClient",
+            "robotsix_auto_mail.outbound.smtp.SmtpClient",
             side_effect=SmtpError("also nope"),
         ),
     ):

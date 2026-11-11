@@ -19,7 +19,7 @@ from pydantic import SecretStr
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import ImapAuthError, ImapClient, ImapError
-from robotsix_auto_mail.smtp import (
+from robotsix_auto_mail.outbound.smtp import (
     SmtpAuthError,
     SmtpClient,
     SmtpError,

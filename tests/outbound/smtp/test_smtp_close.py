@@ -6,7 +6,7 @@ import smtplib
 from unittest import mock
 
 from robotsix_auto_mail.config import MailConfig
-from robotsix_auto_mail.smtp import SmtpClient
+from robotsix_auto_mail.outbound.smtp import SmtpClient
 from tests.conftest import _make_mock_smtp, _make_mock_smtp_ssl
 
 # ===================================================================
