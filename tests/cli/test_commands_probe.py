@@ -18,7 +18,7 @@ from robotsix_auto_mail.cli import commands_probe
 from robotsix_auto_mail.cli.commands_probe import _cmd_probe, register_subparser
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import ImapError
-from robotsix_auto_mail.smtp import SmtpError
+from robotsix_auto_mail.outbound.smtp import SmtpError
 
 
 class _FakeFolder:

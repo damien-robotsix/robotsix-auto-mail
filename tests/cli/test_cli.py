@@ -10,7 +10,7 @@ import pytest
 from robotsix_auto_mail.cli import build_parser, main
 from robotsix_auto_mail.config import MailAccount, MailAccountsConfig, MailConfig
 from robotsix_auto_mail.imap import ImapClient
-from robotsix_auto_mail.smtp import SmtpClient
+from robotsix_auto_mail.outbound.smtp import SmtpClient
 from tests.conftest import _make_mock_imap_ssl, _make_mock_smtp
 
 

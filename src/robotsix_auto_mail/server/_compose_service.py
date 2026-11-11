@@ -357,7 +357,7 @@ class ComposeService(Service):
         silently accepted.
         """
         from robotsix_auto_mail.imap import ImapClient
-        from robotsix_auto_mail.mime import build_multipart_message
+        from robotsix_auto_mail.outbound.mime import build_multipart_message
 
         msg = build_multipart_message(
             from_addr=from_addr,

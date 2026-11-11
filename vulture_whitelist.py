@@ -186,7 +186,7 @@ all((LangfuseProject.project_id,))  # lgtm[py/ineffectual-statement]
 # vulture does not scan.
 # ===========================================================================
 
-from robotsix_auto_mail.smtp import SmtpClient
+from robotsix_auto_mail.outbound.smtp import SmtpClient
 
 all((SmtpClient.send,))  # lgtm[py/ineffectual-statement]
 

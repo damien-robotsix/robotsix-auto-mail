@@ -19,7 +19,7 @@ from robotsix_auto_mail.config import (
 )
 from robotsix_auto_mail.imap.client import _IMAP4_ERROR
 from robotsix_auto_mail.imap.errors import ImapError
-from robotsix_auto_mail.smtp import _SMTP_EXCEPTION, SmtpError
+from robotsix_auto_mail.outbound.smtp import _SMTP_EXCEPTION, SmtpError
 
 
 def register_subparser(
@@ -340,7 +340,7 @@ def _probe_capabilities(
     Returns empty collections when *verified* is ``False`` or a probe fails.
     """
     from robotsix_auto_mail.imap import ImapClient
-    from robotsix_auto_mail.smtp import SmtpClient
+    from robotsix_auto_mail.outbound.smtp import SmtpClient
 
     if not verified:
         return [], {}

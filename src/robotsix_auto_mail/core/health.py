@@ -12,7 +12,7 @@ from typing import Literal
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import ImapClient, ImapError
-from robotsix_auto_mail.smtp import SmtpClient, SmtpError
+from robotsix_auto_mail.outbound.smtp import SmtpClient, SmtpError
 
 
 def utcnow() -> str:
