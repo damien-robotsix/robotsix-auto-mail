@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.3](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.12.2...v0.12.3) (2026-11-13)
+
+
+### Bug Fixes
+
+* ci_fix: out-of-scope CI failure — CodeQL code-scanning, Python CI / Tests, Python CI / Dependency audit (SARIF) (20261113T042315Z-ci-fix-out-of-scope-ci-failure-codeql-co-4fe6) ([#1422](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1422)) ([15db48e](https://github.com/damien-robotsix/robotsix-auto-mail/commit/15db48e2320e734be7af9e8ea9287ed450f3eac5))
+
 ## [0.12.2](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.12.1...v0.12.2) (2026-11-11)
 
 
