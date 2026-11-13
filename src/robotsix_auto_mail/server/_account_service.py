@@ -97,33 +97,19 @@ class AccountService(Service):
     # -- POST /add-account -------------------------------------------------
 
     def handle_add_account(self, ctx: RequestContext) -> None:
-        """Process the account-creation form submission."""
+        """Process the account-creation form submission.
+
+        Thin orchestrator: parse the form, branch to provider detection
+        when the "Detect Settings" button was pressed, otherwise validate,
+        persist, and redirect (or render the error back into the form).
+        """
         # 1. Read the URL-encoded POST body.
         length = int(ctx.headers.get("Content-Length", "0"))
         raw = ctx.rfile.read(length).decode("utf-8", errors="replace")
         body = parse_qs(raw)
 
         # 2. Extract form values (first value per key).
-        prefill: dict[str, str] = {}
-        fields: dict[str, str] = {}
-        for key in (
-            "account_id",
-            "label",
-            "imap_host",
-            "smtp_host",
-            "username",
-            "password",
-            "imap_port",
-            "smtp_port",
-            "imap_tls_mode",
-            "smtp_tls_mode",
-            "imap_folder",
-        ):
-            vals = body.get(key, [])
-            value = vals[0].strip() if vals else ""
-            if key != "password":
-                prefill[key] = value
-            fields[key] = value
+        fields, prefill = _extract_account_form_fields(body)
 
         # 2b. Read the origin tracking field (set when embedded in
         #     the settings page).
@@ -134,227 +120,24 @@ class AccountService(Service):
         #     (or an error).
         action = (body.get("action", [""])[0]).strip()
         if action == "detect":
-            email = fields.get("username", "").strip()
-            if not email:
-                self.serve_add_account(
-                    ctx,
-                    error="Enter an email address in the Username field,"
-                    " then click Detect Settings.",
-                    prefill=prefill,
-                    origin=origin,
-                )
-                return
-            provider, detect_error = _lookup_provider_for_email(email)
-            if provider is not None:
-                prefill["imap_host"] = provider.imap_host
-                prefill["smtp_host"] = provider.smtp_host
-                prefill["imap_port"] = str(provider.imap_port)
-                prefill["smtp_port"] = str(provider.smtp_port)
-                prefill["imap_tls_mode"] = provider.imap_tls_mode
-                prefill["smtp_tls_mode"] = provider.smtp_tls_mode
-                self.serve_add_account(
-                    ctx,
-                    success=(
-                        f"Settings detected for {html.escape(email)}:"
-                        f" IMAP {provider.imap_host}:{provider.imap_port},"
-                        f" SMTP {provider.smtp_host}:{provider.smtp_port}."
-                        " Review and edit if needed, then click Add Account."
-                    ),
-                    prefill=prefill,
-                    origin=origin,
-                )
-                return
-            else:
-                self.serve_add_account(
-                    ctx,
-                    error=(
-                        f"Could not auto-detect settings for"
-                        f" {html.escape(email)}."
-                        f" {detect_error or 'No provider match found.'}"
-                        " Please enter IMAP/SMTP settings manually."
-                    ),
-                    prefill=prefill,
-                    origin=origin,
-                )
-                return
-
-        # 3. Validate required fields.
-        missing = [f for f in _REQUIRED_FIELDS if not fields.get(f)]
-        if missing:
-            self.serve_add_account(
-                ctx,
-                error=f"Missing required fields: {', '.join(missing)}",
-                prefill=prefill,
-                origin=origin,
-            )
+            self._handle_detect_action(ctx, fields, prefill, origin)
             return
 
-        # 4. Validate account_id charset (pydantic-level check via MailAccount
-        #    construction later, but fail-fast with a user-friendly message).
-        account_id = fields["account_id"]
-        from robotsix_auto_mail.config.model import _ACCOUNT_ID_RE
-
-        if not _ACCOUNT_ID_RE.match(account_id):
-            self.serve_add_account(
-                ctx,
-                error=(
-                    f"Account ID '{html.escape(account_id)}' contains"
-                    f" invalid characters. Use only letters, digits,"
-                    f" dots, underscores, and hyphens."
-                ),
-                prefill=prefill,
-                origin=origin,
-            )
+        # 3-7. Validate the form and build the MailAccount.
+        account, error = _validate_account_form(fields)
+        if account is None:
+            self.serve_add_account(ctx, error=error, prefill=prefill, origin=origin)
             return
-
-        # 5. Validate TLS mode values.
-        imap_tls = fields.get("imap_tls_mode") or DEFAULT_IMAP_TLS_MODE
-        smtp_tls = fields.get("smtp_tls_mode") or DEFAULT_SMTP_TLS_MODE
-        if imap_tls not in _VALID_TLS_MODES:
-            self.serve_add_account(
-                ctx,
-                error=f"Invalid IMAP TLS mode: {html.escape(imap_tls)}",
-                prefill=prefill,
-                origin=origin,
-            )
-            return
-        if smtp_tls not in _VALID_TLS_MODES:
-            self.serve_add_account(
-                ctx,
-                error=f"Invalid SMTP TLS mode: {html.escape(smtp_tls)}",
-                prefill=prefill,
-                origin=origin,
-            )
-            return
-
-        # 6. Parse optional integer fields.
-        try:
-            imap_port = int(fields["imap_port"]) if fields.get("imap_port") else 993
-        except (ValueError, TypeError):  # fmt: skip
-            self.serve_add_account(
-                ctx,
-                error="IMAP Port must be a number.",
-                prefill=prefill,
-                origin=origin,
-            )
-            return
-        try:
-            smtp_port = int(fields["smtp_port"]) if fields.get("smtp_port") else 587
-        except (ValueError, TypeError):  # fmt: skip
-            self.serve_add_account(
-                ctx,
-                error="SMTP Port must be a number.",
-                prefill=prefill,
-                origin=origin,
-            )
-            return
-
-        # 7. Build the MailConfig.
-        from pydantic import SecretStr
-
-        label = fields.get("label") or None
-        imap_folder = fields.get("imap_folder") or "INBOX"
-        db_path = f".data/{account_id}/mail.db"
-
-        try:
-            mail_cfg = MailConfig(
-                imap_host=fields["imap_host"],
-                smtp_host=fields["smtp_host"],
-                username=fields["username"],
-                password=SecretStr(fields["password"]),
-                imap_port=imap_port,
-                smtp_port=smtp_port,
-                imap_tls_mode=imap_tls,
-                smtp_tls_mode=smtp_tls,
-                imap_folder=imap_folder,
-                db_path=db_path,
-            )
-        except Exception as exc:
-            self.serve_add_account(
-                ctx,
-                error=f"Invalid configuration: {html.escape(str(exc))}",
-                prefill=prefill,
-                origin=origin,
-            )
-            return
-
-        account = MailAccount(
-            account_id=account_id,
-            config=mail_cfg,
-            label=label,
-        )
 
         # 8. Load existing config, append, save.
-        try:
-            existing = load_accounts()
-        except Exception:
-            # No existing config or empty — create a fresh one.
-            existing = None
-
-        if existing is not None:
-            if account_id in existing.ids():
-                self.serve_add_account(
-                    ctx,
-                    error=f"Account ID '{html.escape(account_id)}' already exists.",
-                    prefill=prefill,
-                    origin=origin,
-                )
-                return
-            new_accounts = [*list(existing.accounts), account]
-        else:
-            new_accounts = [account]
-
-        try:
-            new_config = (
-                existing.with_accounts(new_accounts)
-                if existing is not None
-                else MailAccountsConfig(
-                    accounts=new_accounts,
-                )
-            )
-        except Exception as exc:
-            self.serve_add_account(
-                ctx,
-                error=f"Invalid configuration: {html.escape(str(exc))}",
-                prefill=prefill,
-                origin=origin,
-            )
+        new_config, error = _persist_account(account)
+        if new_config is None:
+            self.serve_add_account(ctx, error=error, prefill=prefill, origin=origin)
             return
 
-        try:
-            save_accounts(new_config)
-        except Exception as exc:
-            logger.error("Failed to save config after adding account: %s", exc)
-            self.serve_add_account(
-                ctx,
-                error=f"Failed to save configuration: {html.escape(str(exc))}",
-                prefill=prefill,
-                origin=origin,
-            )
-            return
+        _seed_account_settings_store(account)
 
-        # Initialize the new account's database and seed its settings
-        # store so the account config is persisted in the managed
-        # configuration plane (the per-account SQLite DB).  This ensures
-        # the account survives even when the deploy system overwrites
-        # config/config.json on restart — the settings store is the
-        # authoritative source for runtime config.
-        try:
-            from robotsix_auto_mail.config.settings import SettingsStore
-            from robotsix_auto_mail.db import init_db
-
-            conn = init_db(db_path, skip_migrations=True)
-            try:
-                store = SettingsStore(db_path)
-                store.seed_from_mail_config(conn, mail_cfg)
-            finally:
-                conn.close()
-        except Exception:
-            logger.exception("Failed to seed settings store for account %r", account_id)
-            # The account was saved to config; the settings-store seeding
-            # is a best-effort addition — do not block the redirect.
-
-        logger.info("Added account %r via web UI", account_id)
+        logger.info("Added account %r via web UI", account.account_id)
 
         # Update the handler factory's cached accounts so the redirect
         # immediately reflects the new account without a server restart.
@@ -363,24 +146,263 @@ class AccountService(Service):
         # updated config.
         _update_handler_factory_cache(ctx.server, new_config)
 
-        if origin == "settings":
-            # Redirect the parent (settings page) rather than the iframe.
-            # We cannot emit an inline <script>window.top.location.href=…</script>
-            # because a strict Content-Security-Policy blocks it.  Instead we
-            # set a data-redirect attribute on <body> and load an external JS
-            # file (add-account-redirect.js) that reads the attribute and
-            # performs the parent-frame navigation.
-            target = "/settings-panel?added=" + quote(account_id, safe="")
-            ctx._send_response(
-                "<!DOCTYPE html>\n"
-                '<meta charset="utf-8">\n'
-                "<body data-redirect='" + html.escape(target, quote=True) + "'>\n"
-                '<script src="/static/add-account-redirect.js"></script>\n',
-                status=200,
-                content_type="text/html; charset=utf-8",
+        _send_add_account_success(ctx, account.account_id, origin)
+
+    def _handle_detect_action(
+        self,
+        ctx: RequestContext,
+        fields: dict[str, str],
+        prefill: dict[str, str],
+        origin: str,
+    ) -> None:
+        """Run provider detection for the username and re-render the form."""
+        email = fields.get("username", "").strip()
+        if not email:
+            self.serve_add_account(
+                ctx,
+                error="Enter an email address in the Username field,"
+                " then click Detect Settings.",
+                prefill=prefill,
+                origin=origin,
+            )
+            return
+        provider, detect_error = _lookup_provider_for_email(email)
+        if provider is not None:
+            prefill["imap_host"] = provider.imap_host
+            prefill["smtp_host"] = provider.smtp_host
+            prefill["imap_port"] = str(provider.imap_port)
+            prefill["smtp_port"] = str(provider.smtp_port)
+            prefill["imap_tls_mode"] = provider.imap_tls_mode
+            prefill["smtp_tls_mode"] = provider.smtp_tls_mode
+            self.serve_add_account(
+                ctx,
+                success=(
+                    f"Settings detected for {html.escape(email)}:"
+                    f" IMAP {provider.imap_host}:{provider.imap_port},"
+                    f" SMTP {provider.smtp_host}:{provider.smtp_port}."
+                    " Review and edit if needed, then click Add Account."
+                ),
+                prefill=prefill,
+                origin=origin,
             )
         else:
-            ctx._redirect("/board", code=303)
+            self.serve_add_account(
+                ctx,
+                error=(
+                    f"Could not auto-detect settings for"
+                    f" {html.escape(email)}."
+                    f" {detect_error or 'No provider match found.'}"
+                    " Please enter IMAP/SMTP settings manually."
+                ),
+                prefill=prefill,
+                origin=origin,
+            )
+
+
+# -- POST /add-account helpers ----------------------------------------------
+
+_FORM_FIELDS = (
+    "account_id",
+    "label",
+    "imap_host",
+    "smtp_host",
+    "username",
+    "password",
+    "imap_port",
+    "smtp_port",
+    "imap_tls_mode",
+    "smtp_tls_mode",
+    "imap_folder",
+)
+
+
+def _extract_account_form_fields(
+    body: dict[str, list[str]],
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Return ``(fields, prefill)`` from the parsed form body.
+
+    ``prefill`` mirrors ``fields`` minus the password, so it can be
+    echoed back into a re-rendered form.
+    """
+    prefill: dict[str, str] = {}
+    fields: dict[str, str] = {}
+    for key in _FORM_FIELDS:
+        vals = body.get(key, [])
+        value = vals[0].strip() if vals else ""
+        if key != "password":
+            prefill[key] = value
+        fields[key] = value
+    return fields, prefill
+
+
+def _account_db_path(account_id: str) -> str:
+    """Return the per-account SQLite path for a newly added account."""
+    return f".data/{account_id}/mail.db"
+
+
+def _validate_account_form(
+    fields: dict[str, str],
+) -> tuple[MailAccount | None, str]:
+    """Validate the submitted fields and build the :class:`MailAccount`.
+
+    Returns ``(account, "")`` on success or ``(None, error)`` with a
+    user-facing error message on the first validation failure.
+    """
+    # 3. Validate required fields.
+    missing = [f for f in _REQUIRED_FIELDS if not fields.get(f)]
+    if missing:
+        return None, f"Missing required fields: {', '.join(missing)}"
+
+    # 4. Validate account_id charset (pydantic-level check via MailAccount
+    #    construction later, but fail-fast with a user-friendly message).
+    account_id = fields["account_id"]
+    from robotsix_auto_mail.config.model import _ACCOUNT_ID_RE
+
+    if not _ACCOUNT_ID_RE.match(account_id):
+        return None, (
+            f"Account ID '{html.escape(account_id)}' contains"
+            f" invalid characters. Use only letters, digits,"
+            f" dots, underscores, and hyphens."
+        )
+
+    # 5. Validate TLS mode values.
+    imap_tls = fields.get("imap_tls_mode") or DEFAULT_IMAP_TLS_MODE
+    smtp_tls = fields.get("smtp_tls_mode") or DEFAULT_SMTP_TLS_MODE
+    if imap_tls not in _VALID_TLS_MODES:
+        return None, f"Invalid IMAP TLS mode: {html.escape(imap_tls)}"
+    if smtp_tls not in _VALID_TLS_MODES:
+        return None, f"Invalid SMTP TLS mode: {html.escape(smtp_tls)}"
+
+    # 6. Parse optional integer fields.
+    try:
+        imap_port = int(fields["imap_port"]) if fields.get("imap_port") else 993
+    except (ValueError, TypeError):  # fmt: skip
+        return None, "IMAP Port must be a number."
+    try:
+        smtp_port = int(fields["smtp_port"]) if fields.get("smtp_port") else 587
+    except (ValueError, TypeError):  # fmt: skip
+        return None, "SMTP Port must be a number."
+
+    # 7. Build the MailConfig.
+    from pydantic import SecretStr
+
+    label = fields.get("label") or None
+    imap_folder = fields.get("imap_folder") or "INBOX"
+
+    try:
+        mail_cfg = MailConfig(
+            imap_host=fields["imap_host"],
+            smtp_host=fields["smtp_host"],
+            username=fields["username"],
+            password=SecretStr(fields["password"]),
+            imap_port=imap_port,
+            smtp_port=smtp_port,
+            imap_tls_mode=imap_tls,
+            smtp_tls_mode=smtp_tls,
+            imap_folder=imap_folder,
+            db_path=_account_db_path(account_id),
+        )
+    except Exception as exc:
+        return None, f"Invalid configuration: {html.escape(str(exc))}"
+
+    account = MailAccount(
+        account_id=account_id,
+        config=mail_cfg,
+        label=label,
+    )
+    return account, ""
+
+
+def _persist_account(
+    account: MailAccount,
+) -> tuple[MailAccountsConfig | None, str]:
+    """Append *account* to the saved config and write it to disk.
+
+    Returns ``(new_config, "")`` on success or ``(None, error)`` with a
+    user-facing error message when the account cannot be saved.
+    """
+    account_id = account.account_id
+    try:
+        existing = load_accounts()
+    except Exception:
+        # No existing config or empty — create a fresh one.
+        existing = None
+
+    if existing is not None:
+        if account_id in existing.ids():
+            return None, f"Account ID '{html.escape(account_id)}' already exists."
+        new_accounts = [*list(existing.accounts), account]
+    else:
+        new_accounts = [account]
+
+    try:
+        new_config = (
+            existing.with_accounts(new_accounts)
+            if existing is not None
+            else MailAccountsConfig(
+                accounts=new_accounts,
+            )
+        )
+    except Exception as exc:
+        return None, f"Invalid configuration: {html.escape(str(exc))}"
+
+    try:
+        save_accounts(new_config)
+    except Exception as exc:
+        logger.error("Failed to save config after adding account: %s", exc)
+        return None, f"Failed to save configuration: {html.escape(str(exc))}"
+
+    return new_config, ""
+
+
+def _seed_account_settings_store(account: MailAccount) -> None:
+    """Initialize the new account's database and seed its settings store.
+
+    This persists the account config in the managed configuration plane
+    (the per-account SQLite DB) so the account survives even when the
+    deploy system overwrites config/config.json on restart — the settings
+    store is the authoritative source for runtime config.
+    """
+    account_id = account.account_id
+    db_path = _account_db_path(account_id)
+    try:
+        from robotsix_auto_mail.config.settings import SettingsStore
+        from robotsix_auto_mail.db import init_db
+
+        conn = init_db(db_path, skip_migrations=True)
+        try:
+            store = SettingsStore(db_path)
+            store.seed_from_mail_config(conn, account.config)
+        finally:
+            conn.close()
+    except Exception:
+        logger.exception("Failed to seed settings store for account %r", account_id)
+        # The account was saved to config; the settings-store seeding
+        # is a best-effort addition — do not block the redirect.
+
+
+def _send_add_account_success(
+    ctx: RequestContext, account_id: str, origin: str
+) -> None:
+    """Redirect after a successful add (parent frame when embedded)."""
+    if origin == "settings":
+        # Redirect the parent (settings page) rather than the iframe.
+        # We cannot emit an inline <script>window.top.location.href=…</script>
+        # because a strict Content-Security-Policy blocks it.  Instead we
+        # set a data-redirect attribute on <body> and load an external JS
+        # file (add-account-redirect.js) that reads the attribute and
+        # performs the parent-frame navigation.
+        target = "/settings-panel?added=" + quote(account_id, safe="")
+        ctx._send_response(
+            "<!DOCTYPE html>\n"
+            '<meta charset="utf-8">\n'
+            "<body data-redirect='" + html.escape(target, quote=True) + "'>\n"
+            '<script src="/static/add-account-redirect.js"></script>\n',
+            status=200,
+            content_type="text/html; charset=utf-8",
+        )
+    else:
+        ctx._redirect("/board", code=303)
 
 
 def _build_add_account_form_html(
