@@ -406,6 +406,7 @@ modules:
       - tests/server/test_action_parse_request_body.py
       - tests/server/test_account_mixin_build_add_account_form_html.py
       - tests/server/test_account_mixin_handle_add_account_config_save.py
+      - tests/server/test_account_mixin_handle_add_account_flow.py
       - tests/server/test_account_mixin_handle_add_account_validation.py
       - tests/server/test_account_mixin_serve_add_account.py
       - tests/server/test_action_post_action.py
