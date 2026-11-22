@@ -7,9 +7,17 @@ from unittest import mock
 
 import pytest
 
+from robotsix_auto_mail.config import MailConfig
 from tests.server._view_mixin_helpers import _FakeHandler
 
 pytest_plugins = ["tests.server._view_mixin_helpers"]
+
+
+def _folder(name: str, delimiter: str | None = "/") -> mock.Mock:
+    folder = mock.Mock()
+    folder.name = name
+    folder.delimiter = delimiter
+    return folder
 
 
 class TestServeArchiveProposal:
@@ -216,6 +224,33 @@ class TestServeArchiveProposal:
             call_args["folder_exists"] is True
         )  # full_path == effective_root == "Root"
 
+    def test_folder_exists_false_for_dotdot_subfolder(
+        self,
+        fake_db_path: str,
+        mock_get_record_by_message_id: mock.MagicMock,
+        mock_get_archive_subfolder: mock.MagicMock,
+        mock_load_archive_overrides: mock.MagicMock,
+        mock_load_llm_archive_hints: mock.MagicMock,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
+    ) -> None:
+        mid = "dotdot@example.com"
+        mock_get_record_by_message_id.return_value = mock.MagicMock()
+        mock_get_archive_subfolder.return_value = "../etc"
+        mock_load_archive_overrides.return_value = {mid: "../etc"}
+        mock_load_llm_archive_hints.return_value = {}
+        mock_get_watermark.return_value = '{"delimiter":"/","folders":["Root"]}'
+        mock_parse_archive_structure.return_value = (
+            {"Root", "Root/../etc"},
+            "/",
+            "Root",
+        )
+        handler = _FakeHandler(fake_db_path, path=f"/archive-proposal/{mid}")
+        handler._serve_archive_proposal()
+        call_args = handler._serve_json.call_args[0][0]
+        assert call_args["subfolder"] == "../etc"
+        assert call_args["folder_exists"] is False
+
 
 class TestServeArchiveFolders:
     @pytest.fixture(autouse=True)
@@ -283,3 +318,71 @@ class TestServeArchiveFolders:
         handler = _FakeHandler(fake_db_path, _aggregate=False)
         handler._serve_archive_folders()
         handler._serve_json.assert_called_once_with({"delimiter": "/", "folders": []})
+
+    def test_filters_names_with_dotdot_segments(
+        self,
+        fake_db_path: str,
+        mock_get_watermark: mock.MagicMock,
+        mock_parse_archive_structure: mock.MagicMock,
+    ) -> None:
+        mock_get_watermark.return_value = "ignored"
+        mock_parse_archive_structure.return_value = (
+            {"Root", "Root/2024", "Root/../etc", "Root/2024/Q1"},
+            "/",
+            "Root",
+        )
+        handler = _FakeHandler(fake_db_path, _aggregate=False)
+        handler._serve_archive_folders()
+        handler._serve_json.assert_called_once_with(
+            {"delimiter": "/", "folders": ["2024", "2024/Q1"]}
+        )
+
+    def test_imap_branch_lists_sorted_subfolders(
+        self,
+        fake_db_path: str,
+    ) -> None:
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="Archive",
+        )
+        handler = _FakeHandler(fake_db_path, mail_config=mail_config)
+        with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+            client = mock_cls.return_value.__enter__.return_value
+            client.list_folders.return_value = [
+                _folder("Archive", "/"),
+                _folder("Archive/2024", "/"),
+                _folder("Archive/2024/Q1", "/"),
+                _folder("Archive/../etc", "/"),
+                _folder("Archive2", "/"),
+            ]
+            handler._serve_archive_folders()
+        handler._serve_json.assert_called_once_with(
+            {"delimiter": "/", "folders": ["2024", "2024/Q1"]}
+        )
+
+    def test_imap_branch_discovers_non_slash_delimiter(
+        self,
+        fake_db_path: str,
+    ) -> None:
+        mail_config = MailConfig(
+            imap_host="imap.example.com",
+            smtp_host="smtp.example.com",
+            username="test",
+            password="test",
+            archive_root="Archive",
+        )
+        handler = _FakeHandler(fake_db_path, mail_config=mail_config)
+        with mock.patch("robotsix_auto_mail.imap.ImapClient") as mock_cls:
+            client = mock_cls.return_value.__enter__.return_value
+            client.list_folders.return_value = [
+                _folder("Archive", "."),
+                _folder("Archive.2024", "."),
+                _folder("Archive.2024.Q1", "."),
+            ]
+            handler._serve_archive_folders()
+        handler._serve_json.assert_called_once_with(
+            {"delimiter": "/", "folders": ["2024", "2024/Q1"]}
+        )
