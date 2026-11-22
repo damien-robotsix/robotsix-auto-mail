@@ -227,6 +227,20 @@ are loaded at module level via `Path(__file__).parent / "static" /
 string literals in `server/` — the separation keeps the server module
 navigable and allows CSS/JS tooling to apply.
 
+### Dockerfile — every external image reference must be digest-pinned
+
+> **Rule:** Every external base-image and multi-stage source reference in the
+> Dockerfile — both `FROM <image>` and `COPY --from=<image>` — must be pinned
+> to a `@sha256` digest, never a bare tag.  Tag-only external references
+> through `COPY --from` are not covered by the shared
+> `lint_dockerfile_pins.py` FROM-only check, so they must be pinned manually.
+
+Ticket 20261121T235956Z enabled the shared digest-pin gate, which flags only
+tag-only `FROM` directives.  The audit found `COPY --from=ghcr.io/astral-sh/uv:0.12.1`
+(bare tag, pre-existing since 2026-06-02) escapes the gate — the `uv` binary it
+pulls installs the entire dependency tree, so a tampered tag would build
+untrusted code undetected.
+
 ---
 
 ## Logging / Tracing
