@@ -180,12 +180,8 @@ class ArchiveViewService(Service):
             existing_folders, delimiter, effective_root = _parse_archive_structure(
                 archive_raw, archive_root
             )
-            if subfolder:
-                translated = subfolder.replace("/", delimiter)
-                full_path = f"{effective_root}{delimiter}{translated}"
-            else:
-                full_path = effective_root
-            folder_exists = full_path in existing_folders
+            full_path = translate_archive_path(effective_root, subfolder, delimiter)
+            folder_exists = full_path is not None and full_path in existing_folders
 
         ctx._serve_json(
             {
@@ -371,9 +367,7 @@ class ArchiveViewService(Service):
 
                 with ImapClient(cast("MailConfig", ctx.mail_config)) as client:
                     all_folders = client.list_folders()
-                    delimiter = next(
-                        (f.delimiter for f in all_folders if f.delimiter), "/"
-                    )
+                    delimiter = imap_delimiter(all_folders)
                     _root_prefix = f"{archive_root}{delimiter}"
                     folders: list[str] = []
                     for f in sorted(all_folders, key=lambda f: f.name):
@@ -381,6 +375,11 @@ class ArchiveViewService(Service):
                             rel = f.name[len(_root_prefix) :]
                             if delimiter != "/":
                                 rel = rel.replace(delimiter, "/")
+                            if (
+                                translate_archive_path(archive_root, rel, delimiter)
+                                != f.name
+                            ):
+                                continue
                             folders.append(rel)
                     ctx._serve_json({"delimiter": "/", "folders": folders})
                     return
@@ -402,6 +401,8 @@ class ArchiveViewService(Service):
                 rel = name[len(_root_prefix) :]
                 if delimiter != "/":
                     rel = rel.replace(delimiter, "/")
+                if translate_archive_path(effective_root, rel, delimiter) != name:
+                    continue
                 folders.append(rel)
 
         ctx._serve_json({"delimiter": "/", "folders": folders})
