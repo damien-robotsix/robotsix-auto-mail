@@ -101,6 +101,7 @@ def read_json_object(
     on_error: Callable[[JsonBodyError, str], None] | None = None,
     *,
     max_bytes: int = MAX_JSON_BODY_BYTES,
+    allow_empty: bool = False,
 ) -> dict[str, Any] | None:
     """Parse the request body as a JSON object, or answer and return ``None``.
 
@@ -109,6 +110,10 @@ def read_json_object(
     bodies.  On rejection *on_error* is called with the failure kind and a
     detail string (the decoder's message for ``"malformed"``); the default
     responder sends the archive endpoints' 400/413 messages.
+
+    When *allow_empty* is true an empty (zero-length or whitespace-only)
+    body returns ``{}`` instead of being rejected — for endpoints that
+    accept an omitted body and fall back to defaults.
     """
     respond = on_error or (
         lambda kind, detail: _default_json_body_error(ctx, kind, detail)
@@ -118,13 +123,21 @@ def read_json_object(
     except ValueError, TypeError:
         length = 0
     if length <= 0:
+        if allow_empty:
+            return {}
         respond("empty", "empty request body")
         return None
     if length > max_bytes:
         respond("too_large", "request body too large")
         return None
+    raw_body = ctx.rfile.read(length)
+    if not raw_body.strip():
+        if allow_empty:
+            return {}
+        respond("empty", "empty request body")
+        return None
     try:
-        body = json.loads(ctx.rfile.read(length))
+        body = json.loads(raw_body)
     except ValueError as exc:  # JSONDecodeError and UnicodeDecodeError
         respond("malformed", str(exc))
         return None

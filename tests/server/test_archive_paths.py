@@ -113,6 +113,39 @@ class TestReadJsonObject:
         assert read_json_object(ctx) is None  # type: ignore[arg-type]
         ctx._bad_request.assert_called_once_with("Malformed JSON body")
 
+    def test_allow_empty_returns_empty_dict(self) -> None:
+        ctx = _ctx_for(b"")
+        assert read_json_object(ctx, allow_empty=True) == {}  # type: ignore[arg-type]
+        ctx._bad_request.assert_not_called()
+
+    def test_allow_empty_non_integer_content_length_returns_empty_dict(self) -> None:
+        ctx = _ctx_for(b"{}", length="abc")
+        assert read_json_object(ctx, allow_empty=True) == {}  # type: ignore[arg-type]
+        ctx._bad_request.assert_not_called()
+
+    def test_allow_empty_whitespace_body_returns_empty_dict(self) -> None:
+        ctx = _ctx_for(b"   \n\t  ")
+        assert read_json_object(ctx, allow_empty=True) == {}  # type: ignore[arg-type]
+        ctx._bad_request.assert_not_called()
+
+    def test_allow_empty_rejects_whitespace_body_without_flag(self) -> None:
+        ctx = _ctx_for(b"   ")
+        assert read_json_object(ctx) is None  # type: ignore[arg-type]
+        ctx._bad_request.assert_called_once_with("Malformed JSON body")
+
+    def test_allow_empty_still_rejects_malformed(self) -> None:
+        ctx = _ctx_for(b"{not json")
+        assert read_json_object(ctx, allow_empty=True) is None  # type: ignore[arg-type]
+        ctx._bad_request.assert_called_once_with("Malformed JSON body")
+
+    def test_allow_empty_still_enforces_max_bytes(self) -> None:
+        ctx = _ctx_for(b"{}", length=11)
+        assert (
+            read_json_object(ctx, allow_empty=True, max_bytes=10)  # type: ignore[arg-type]
+            is None
+        )
+        ctx._send_response.assert_called_once_with("Request body too large", status=413)
+
     def test_invalid_json(self) -> None:
         ctx = _ctx_for(b"{not json")
         assert read_json_object(ctx) is None  # type: ignore[arg-type]
