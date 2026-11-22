@@ -8,11 +8,38 @@ and reused by any caller that needs to compose a plain-text email.
 from __future__ import annotations
 
 from email import encoders
+from email.message import Message
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
 from typing import BinaryIO
+
+
+def _set_common_headers(
+    msg: Message,
+    from_addr: str,
+    to_addr: str,
+    subject: str,
+    cc: list[str] | None = None,
+    in_reply_to: str | None = None,
+    references: str | None = None,
+) -> None:
+    """Set the headers shared by all message builders.
+
+    Applies the standard From / To / Subject / Date headers and the
+    conditional Cc / In-Reply-To / References headers.
+    """
+    msg["From"] = from_addr
+    msg["To"] = to_addr
+    msg["Subject"] = subject
+    msg["Date"] = formatdate(localtime=True)
+    if cc:
+        msg["Cc"] = ", ".join(cc)
+    if in_reply_to is not None:
+        msg["In-Reply-To"] = in_reply_to
+    if references is not None:
+        msg["References"] = references
 
 
 def build_plain_text_message(
@@ -41,16 +68,7 @@ def build_plain_text_message(
         A ``MIMEText`` ready for ``send_message()``.
     """
     msg = MIMEText(body, _charset="utf-8")
-    msg["From"] = from_addr
-    msg["To"] = to_addr
-    msg["Subject"] = subject
-    msg["Date"] = formatdate(localtime=True)
-    if cc:
-        msg["Cc"] = ", ".join(cc)
-    if in_reply_to is not None:
-        msg["In-Reply-To"] = in_reply_to
-    if references is not None:
-        msg["References"] = references
+    _set_common_headers(msg, from_addr, to_addr, subject, cc, in_reply_to, references)
     return msg
 
 
@@ -83,16 +101,7 @@ def build_multipart_message(
         A ``MIMEMultipart`` ready for ``send_message()`` or IMAP APPEND.
     """
     msg = MIMEMultipart()
-    msg["From"] = from_addr
-    msg["To"] = to_addr
-    msg["Subject"] = subject
-    msg["Date"] = formatdate(localtime=True)
-    if cc:
-        msg["Cc"] = ", ".join(cc)
-    if in_reply_to is not None:
-        msg["In-Reply-To"] = in_reply_to
-    if references is not None:
-        msg["References"] = references
+    _set_common_headers(msg, from_addr, to_addr, subject, cc, in_reply_to, references)
 
     msg.attach(MIMEText(body, _charset="utf-8"))
 
