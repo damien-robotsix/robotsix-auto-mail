@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.4](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.12.3...v0.12.4) (2026-11-22)
+
+
+### Documentation
+
+* AGENT.md: Repo-specific gotchas — Every external base-image and multi-stage source reference in the Dockerfile —… (20261122T003750Z-agent-md-repo-specific-gotchas-every-ext-cce1) ([#1433](https://github.com/damien-robotsix/robotsix-auto-mail/issues/1433)) ([78149f6](https://github.com/damien-robotsix/robotsix-auto-mail/commit/78149f6ae1c5973cb5c144c25b3f80f78ff4f9fa))
+
 ## [0.12.3](https://github.com/damien-robotsix/robotsix-auto-mail/compare/v0.12.2...v0.12.3) (2026-11-13)
 
 
