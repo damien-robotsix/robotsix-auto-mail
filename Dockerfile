@@ -9,7 +9,7 @@ ARG ROBOTSIX_UI_VERSION=v0.1.41
 # package's `prepare` script builds dist/ on install, so no build toolchain is
 # needed here; the tag is pinned so what this image serves is verifiable.
 # ---------------------------------------------------------------------------
-FROM node:26-alpine AS ui
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS ui
 
 ARG ROBOTSIX_UI_VERSION
 
