@@ -19,7 +19,10 @@ from robotsix_auto_mail.server._archive_paths import (
     translate_archive_path,
 )
 from robotsix_auto_mail.server._constants import _with_db
-from robotsix_auto_mail.server._request_helpers import _json_field_value
+from robotsix_auto_mail.server._request_helpers import (
+    _json_field_value,
+    read_json_object,
+)
 from robotsix_auto_mail.server._services import Service
 
 if TYPE_CHECKING:
@@ -119,20 +122,9 @@ class AttachmentService(Service):
             return
 
         # -- parse optional body -------------------------------------------
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw_body = (
-            ctx.rfile.read(content_length).decode("utf-8") if content_length else ""
-        )
-        selector: dict[str, Any] = {}
-        if raw_body.strip():
-            try:
-                selector = json.loads(raw_body)
-            except json.JSONDecodeError:
-                ctx._bad_request("Malformed JSON body")
-                return
-            if not isinstance(selector, dict):
-                ctx._bad_request("Request body must be a JSON object")
-                return
+        selector = read_json_object(ctx, allow_empty=True)
+        if selector is None:
+            return  # a response has already been sent
 
         # -- resolve the message (board vs archive addressing) -------------
         archive_mode = (

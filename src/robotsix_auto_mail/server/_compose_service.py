@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any, BinaryIO, cast
 import httpx
 
 from robotsix_auto_mail.server._constants import _with_db
+from robotsix_auto_mail.server._request_helpers import read_json_object
 from robotsix_auto_mail.server._services import Service
 
 if TYPE_CHECKING:
@@ -96,18 +97,9 @@ class ComposeService(Service):
         from robotsix_auto_mail.db import get_record_by_message_id
 
         # -- parse JSON body -----------------------------------------------
-        content_length = int(ctx.headers.get("Content-Length", 0))
-        raw_body = (
-            ctx.rfile.read(content_length).decode("utf-8") if content_length else ""
-        )
-        try:
-            body: dict[str, Any] = json.loads(raw_body) if raw_body.strip() else {}
-        except json.JSONDecodeError:
-            ctx._bad_request("Malformed JSON body")
-            return
-        if not isinstance(body, dict):
-            ctx._bad_request("Request body must be a JSON object")
-            return
+        body = read_json_object(ctx, allow_empty=True)
+        if body is None:
+            return  # a response has already been sent
 
         account_id = body.get("account", "")
         to_addr = body.get("to", "")
