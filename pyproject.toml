@@ -233,12 +233,12 @@ ignore_names = ["format", "method_name"]
 # graph-wide is safe.  Drop this override once robotsix-llmio bumps its own
 # robotsix-http pin in lockstep.
 override-dependencies = [
-    "robotsix-http @ git+https://github.com/damien-robotsix/robotsix-http.git@f8e05c97b901d1ea9af69c1b2d16bc59e8064c42",  # pragma: allowlist secret
+    "robotsix-http @ git+https://github.com/damien-robotsix/robotsix-http.git@d73d042518b0ed77271e3c5ff8d48bca9d98273e",  # pragma: allowlist secret
 ]
 
 [tool.uv.sources]
-robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "7fc8e9d4cc27ee128c474f36147af87296359215" }  # pragma: allowlist secret
-robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "7eee4cf3726daadab6870bf5acbfede81675ce86" }  # pragma: allowlist secret
-robotsix-config = { git = "https://github.com/damien-robotsix/robotsix-config.git", rev = "8b9fa37f53b179986ca8b8f603d8786b9aa06018" }  # pragma: allowlist secret
-robotsix-http = { git = "https://github.com/damien-robotsix/robotsix-http.git", rev = "f8e05c97b901d1ea9af69c1b2d16bc59e8064c42" }  # pragma: allowlist secret
-robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "d916d1c14198dd00bb136605224177289c73352c" }  # pragma: allowlist secret
+robotsix-board = { git = "https://github.com/damien-robotsix/robotsix-board.git", rev = "d5e0df3df8e09025914664d32f974334dd6e33de" }  # pragma: allowlist secret
+robotsix-llmio = { git = "https://github.com/damien-robotsix/robotsix-llmio.git", rev = "e8291531b4e8de6320e6eace8fa000bd9e6988ec" }  # pragma: allowlist secret
+robotsix-config = { git = "https://github.com/damien-robotsix/robotsix-config.git", rev = "fdf125d4f34de1ff68b711a5e5d561f6061759ce" }  # pragma: allowlist secret
+robotsix-http = { git = "https://github.com/damien-robotsix/robotsix-http.git", rev = "d73d042518b0ed77271e3c5ff8d48bca9d98273e" }  # pragma: allowlist secret
+robotsix-modules = { git = "https://github.com/damien-robotsix/robotsix-modules.git", rev = "28c4c04b9f6dbf31108ee2c4af9f94a72bae43c3" }  # pragma: allowlist secret
