@@ -52,7 +52,6 @@ modules:
       - ROADMAP.md
       - tests/__init__.py
       - tests/conftest.py
-      - tests/test_stub.py
       - tests/test_model_name_guard.py
       - run_tests.sh
 
