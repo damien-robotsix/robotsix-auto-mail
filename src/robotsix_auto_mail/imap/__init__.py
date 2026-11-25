@@ -6,6 +6,8 @@ The implementation is split across internal submodules:
 - ``utils`` — pure modified-UTF-7 encoding helpers and mailbox quoting.
 - ``mailbox`` — the ``MailboxInfo`` model plus LIST-parsing and
   cross-folder / fallback UID resolution helpers.
+- ``_bulk`` — batched UID-set delete/move primitives (chunked
+  ``UID STORE`` / ``UID COPY``) wired up by ``ImapClient``.
 - ``client`` — the ``ImapClient`` class and its connection constants.
 
 This module re-exports the public and previously-importable symbols so
@@ -21,9 +23,9 @@ from __future__ import annotations
 # this package attribute (``robotsix_auto_mail.imap.build_token_provider``).
 from robotsix_auto_mail.oauth2 import build_token_provider as build_token_provider
 
+from ._bulk import _BATCH_UID_CHUNK as _BATCH_UID_CHUNK
 from ._protocol import _ProtocolClient as _ProtocolClient
 from ._protocol import build_xoauth2_response as build_xoauth2_response
-from .client import _BATCH_UID_CHUNK as _BATCH_UID_CHUNK
 from .client import ImapClient as ImapClient
 from .errors import ImapAuthError as ImapAuthError
 from .errors import ImapConnectionError as ImapConnectionError
