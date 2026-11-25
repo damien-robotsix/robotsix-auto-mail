@@ -12,7 +12,7 @@ from robotsix_auto_mail.imap import (
     MailboxInfo,
     cross_folder_resolve,
 )
-from robotsix_auto_mail.imap._parsing import _copyuid_indicates_empty_source
+from robotsix_auto_mail.imap._bulk import _copyuid_indicates_empty_source
 
 # ---------------------------------------------------------------------------
 # cross_folder_resolve

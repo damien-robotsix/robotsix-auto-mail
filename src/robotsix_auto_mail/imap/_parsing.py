@@ -293,32 +293,6 @@ def _parse_appenduid(data: Any) -> int | None:
     return None
 
 
-def _copyuid_indicates_empty_source(data: Any) -> bool:
-    """Return ``True`` when a COPY response carries an empty ``COPYUID``.
-
-    Inspects the ``UID COPY`` response data for a ``COPYUID`` response
-    code (RFC 4315: ``COPYUID <uidvalidity> <source-set> <dest-set>``).
-    Returns ``True`` only when ``COPYUID`` is present AND its source-UID
-    set is empty (zero messages copied).  Returns ``False`` when no
-    ``COPYUID`` is present, so servers without UIDPLUS are not regressed.
-    """
-    if not data:
-        return False
-    for item in data:
-        if isinstance(item, bytes):
-            text = item.decode("utf-8", errors="replace")
-        elif isinstance(item, str):
-            text = item
-        else:
-            continue
-        match = re.search(r"COPYUID\s+\d+\s+(\S*)", text)
-        if match is None:
-            continue
-        source_set = match.group(1).strip()
-        return source_set == ""
-    return False
-
-
 def _parse_uid_from_fetch_header(header: bytes) -> int | None:
     """Extract the UID from a FETCH response header line.
 

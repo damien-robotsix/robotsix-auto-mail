@@ -20,14 +20,21 @@ from __future__ import annotations
 import contextlib
 import imaplib
 import ssl
-from collections.abc import Iterator
 from typing import Any
 
 from robotsix_auto_mail.config import MailConfig
 from robotsix_auto_mail.imap import _ProtocolClient, build_xoauth2_response
 
-from ._parsing import (
+from ._bulk import (
     _copyuid_indicates_empty_source,
+)
+from ._bulk import (
+    delete_messages as _bulk_delete_messages,
+)
+from ._bulk import (
+    move_messages as _bulk_move_messages,
+)
+from ._parsing import (
     _parse_appenduid,
     _parse_inline_fetch_attrs,
     _parse_uid_from_fetch_header,
@@ -47,11 +54,6 @@ from .utils import _encode_mailbox, _is_gmail_host
 # IMAP4 and turn ``IMAP4.error`` into a MagicMock attribute.  Using
 # this reference in except clauses keeps tests reliable.
 _IMAP4_ERROR = imaplib.IMAP4.error
-
-# Maximum number of UIDs packed into a single ``UID STORE`` / ``UID COPY``
-# round-trip by the batched delete/move primitives.  A 518-mail column then
-# costs at most six round-trip pairs instead of one per message.
-_BATCH_UID_CHUNK = 100
 
 # Socket timeout (seconds) for IMAP connections.  stdlib ``imaplib`` opens
 # sockets with NO timeout by default, so a stalled server read blocks the
@@ -855,94 +857,38 @@ class ImapClient(_ProtocolClient):
         # Delete the original from the source mailbox.
         self.delete_message(uid)
 
-    def _filter_valid_uids(self, uids: list[int]) -> Iterator[tuple[str, list[int]]]:
-        """Yield ``(valid_set_str, valid_uids_list)`` for each batch of *uids*.
-
-        Chunks *uids* into groups of :data:`_BATCH_UID_CHUNK` and performs a
-        ``UID SEARCH`` pre-verification on each chunk to filter out stale UIDs
-        that are no longer present in the selected folder.  Chunks where every
-        UID is stale are silently skipped.
-        """
-        for start in range(0, len(uids), _BATCH_UID_CHUNK):
-            chunk = uids[start : start + _BATCH_UID_CHUNK]
-            uid_set = ",".join(str(uid) for uid in chunk)
-            existing = set(self.search_uids(f"UID {uid_set}"))
-            valid_uids = [uid for uid in chunk if uid in existing]
-            if not valid_uids:
-                continue
-            valid_set = ",".join(str(uid) for uid in valid_uids)
-            yield valid_set, valid_uids
-
     def delete_messages(self, uids: list[int]) -> None:
         """Mark a whole UID set ``\\Deleted`` and expunge, in chunks.
 
-        Processes *uids* in chunks of :data:`_BATCH_UID_CHUNK`, issuing a
-        single ``UID STORE +FLAGS (\\Deleted)`` over the comma-joined UID
-        set followed by **one** ``EXPUNGE`` per chunk.  A 518-mail delete
-        therefore costs at most six round-trip pairs instead of one per
-        message.  An empty list is a no-op (no IMAP calls).
+        Batched equivalent of :meth:`delete_message`: issues a single
+        ``UID STORE +FLAGS (\\Deleted)`` over the comma-joined UID set
+        followed by one ``EXPUNGE`` per chunk, so a large delete costs a
+        handful of round-trip pairs instead of one per message.  Stale
+        UIDs (no longer present in the selected folder) are silently
+        filtered out via a ``UID SEARCH`` pre-verification.  An empty
+        list is a no-op (no IMAP calls).
 
-        Stale UIDs (those no longer present in the selected folder) are
-        silently filtered out via a ``UID SEARCH`` pre-verification before
-        the destructive ``UID STORE`` is issued.  A chunk where every UID
-        is stale is skipped entirely.
+        Implementation is delegated to
+        ``robotsix_auto_mail.imap._bulk.delete_messages``.
 
         Raises :class:`ImapError` if not connected or the server returns
         a non-OK status for any ``UID STORE`` or ``EXPUNGE``.
         """
-        if not uids:
-            return
-        if self._imap is None:
-            raise ImapError("Not connected")
-
-        for valid_set, _valid_uids in self._filter_valid_uids(uids):
-            status, _ = self._imap.uid("STORE", valid_set, "+FLAGS", "(\\Deleted)")
-            if status != "OK":
-                raise ImapError(
-                    f"UID STORE +FLAGS (\\Deleted) for UID set "
-                    f"{valid_set!r} failed: {status}"
-                )
-
-            status, _ = self._imap.expunge()
-            if status != "OK":
-                raise ImapError(f"EXPUNGE failed: {status}")
+        _bulk_delete_messages(self._imap, self.search_uids, uids)
 
     def move_messages(self, uids: list[int], dest_folder: str) -> None:
         """Copy a whole UID set to *dest_folder* then delete the originals.
 
-        Processes *uids* in chunks of :data:`_BATCH_UID_CHUNK`: a single
-        ``UID COPY`` over the comma-joined UID set to *dest_folder*,
-        followed by a batched :meth:`delete_messages` of that same set.
+        Batched equivalent of :meth:`move_message`: a single ``UID COPY``
+        over the comma-joined UID set to *dest_folder*, followed by a
+        batched :meth:`delete_messages` of that same set.  Stale UIDs are
+        silently filtered out via a ``UID SEARCH`` pre-verification.
         An empty list is a no-op (no IMAP calls).
 
-        Stale UIDs are silently filtered out via a ``UID SEARCH``
-        pre-verification before ``UID COPY`` is issued.  After COPY,
-        the ``COPYUID`` response code (RFC 4315) is inspected — if it
-        indicates zero source messages were copied, deletion of the
-        originals is skipped.
+        Implementation is delegated to
+        ``robotsix_auto_mail.imap._bulk.move_messages``.
 
         Raises :class:`ImapError` if not connected or the server returns
         a non-OK status for any ``UID COPY`` or the subsequent deletion.
         """
-        if not uids:
-            return
-        if self._imap is None:
-            raise ImapError("Not connected")
-
-        for valid_set, valid_uids in self._filter_valid_uids(uids):
-            status, data = self._imap.uid(
-                "COPY", valid_set, _encode_mailbox(dest_folder)
-            )
-            if status != "OK":
-                raise ImapError(
-                    f"UID COPY of {valid_set!r} to {dest_folder!r} failed: {status}"
-                )
-
-            # Defensive hardening: if the server advertises UIDPLUS it
-            # returns a ``COPYUID`` response code.  When present and its
-            # source-UID set is empty the COPY affected zero messages —
-            # skip deletion of originals.
-            if _copyuid_indicates_empty_source(data):
-                continue
-
-            self.delete_messages(valid_uids)
+        _bulk_move_messages(self._imap, self.search_uids, uids, dest_folder)
