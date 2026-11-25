@@ -73,8 +73,7 @@ Tests live under `tests/` with per-module subdirectories that mirror `src/`
 `tests/server/`, `tests/core/`, `tests/draft/`, `tests/oauth2/`,
 `tests/observability/`, `tests/dev/`, …).  The
 `tests/` package itself has an `__init__.py`, and some subdirectories carry
-their own (e.g. `tests/server/conftest.py`).  Top-level files such as
-`tests/test_stub.py` and the shared `tests/conftest.py` are also valid.
+their own (e.g. `tests/server/conftest.py`).  Top-level files such as the shared `tests/conftest.py` are also valid.
 
 Conventions every test file follows:
 
