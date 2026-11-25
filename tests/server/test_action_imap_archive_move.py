@@ -12,7 +12,7 @@ from unittest import mock
 import pytest
 
 from robotsix_auto_mail.config import MailConfig
-from tests.server._test_helpers import _archive_service, _FakeHandler
+from robotsix_auto_mail.server._archive_transport import _imap_archive_move
 
 
 class TestImapArchiveMove:
@@ -25,7 +25,6 @@ class TestImapArchiveMove:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(":memory:", mail_config=mail_config)
 
         imap_patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
         mock_cls = imap_patcher.start()
@@ -38,7 +37,7 @@ class TestImapArchiveMove:
                 mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
 
                 with pytest.raises(ValueError, match="escapes archive root"):
-                    _archive_service(handler)._imap_archive_move(
+                    _imap_archive_move(
                         mail_config,
                         imap_uid=1,
                         effective_root="my-archive",
@@ -54,7 +53,6 @@ class TestImapArchiveMove:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(":memory:", mail_config=mail_config)
 
         patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
         mock_cls = patcher.start()
@@ -63,7 +61,7 @@ class TestImapArchiveMove:
             mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
             mock_client.search_uids.return_value = [7]
 
-            _archive_service(handler)._imap_archive_move(
+            _imap_archive_move(
                 mail_config,
                 imap_uid=7,
                 effective_root="my-archive",
@@ -89,7 +87,6 @@ class TestImapArchiveMove:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(":memory:", mail_config=mail_config)
 
         patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
         mock_cls = patcher.start()
@@ -98,7 +95,7 @@ class TestImapArchiveMove:
             mock_client.list_folders.return_value = [mock.Mock(delimiter="/")]
             mock_client.search_uids.return_value = [3]
 
-            _archive_service(handler)._imap_archive_move(
+            _imap_archive_move(
                 mail_config,
                 imap_uid=3,
                 effective_root="my-archive",
@@ -119,7 +116,6 @@ class TestImapArchiveMove:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(":memory:", mail_config=mail_config)
 
         patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
         mock_cls = patcher.start()
@@ -128,7 +124,7 @@ class TestImapArchiveMove:
             mock_client.list_folders.return_value = [mock.Mock(delimiter=".")]
             mock_client.search_uids.return_value = [23]
 
-            _archive_service(handler)._imap_archive_move(
+            _imap_archive_move(
                 mail_config,
                 imap_uid=23,
                 effective_root="my-archive",
@@ -158,7 +154,6 @@ class TestImapArchiveMove:
             username="test",
             password="test",
         )
-        handler = _FakeHandler(":memory:", mail_config=mail_config)
 
         patcher = mock.patch("robotsix_auto_mail.imap.ImapClient")
         mock_cls = patcher.start()
@@ -178,7 +173,7 @@ class TestImapArchiveMove:
 
             mock_client.search_uids.side_effect = _search_uids
 
-            _archive_service(handler)._imap_archive_move(
+            _imap_archive_move(
                 mail_config,
                 imap_uid=42,
                 effective_root="my-archive",
